@@ -118,6 +118,14 @@ Record hardware, OS, JVM/runtime versions, heap, mod list, warmup, repetitions, 
 
 For each change, report the commands run, results, checks omitted with reasons, and any required checks that remain blocked. Existing unrelated failures should be identified, not silently relabeled as passes. Once applicable checks pass, repeat or broaden testing only for a concrete unresolved risk or another required gate.
 
+## Ledger component recovery
+
+The initial persistence suite uses a committed version-one hex fixture from
+test resources, integrity/schema failures and 2,000 generated save/reload
+operations (seed 0x5A7E001). It exercises exact stock and reservation recovery
+offline. See [component contract](modules/PERSISTENCE.md); world interrupted
+save/move/break/clone and job/staging recovery tests remain mandatory P2/P4 work.
+
 ## Portable core benchmark
 
 `./gradlew coreBenchmark` runs the version-one small/large/overload/idle harness

@@ -12,6 +12,8 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
 - [Engineering rules](docs/ENGINEERING.md): architecture, documentation, and change discipline.
 - [Verification requirements](docs/TESTING.md): current checks and required implementation gates.
 - [Development changelog](CHANGELOG.md): versioned artifact status and limitations.
+- [Ledger persistence](docs/modules/PERSISTENCE.md): initial P2 schema/recovery
+  contract; world storage remains pending.
 - [Architecture decisions](docs/decisions/README.md): how to record significant choices.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.

@@ -23,3 +23,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Scheduling/workload targets](0003-scheduling-workloads.md).
 - [Rust/Wasm feasibility candidate](0004-wasm-feasibility.md); local probe verified,
   production and cross-OS validation pending.
+- [Persistence/ownership design](0005-persistence-ownership.md); initial component
+  schema selected, world integration/recovery validation pending.

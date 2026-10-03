@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /** Immutable exact identity. Component encoding belongs to the platform adapter. */
-public final class ResourceKey {
+public final class ResourceKey implements Comparable<ResourceKey> {
   public static final int MAX_COMPONENT_BYTES = 65_536;
   private static final Pattern REGISTRY_ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9/._-]+");
   public static final ResourceKey ENERGY =
@@ -43,6 +43,20 @@ public final class ResourceKey {
 
   public byte[] components() {
     return components.clone();
+  }
+
+  public int componentByteCount() {
+    return components.length;
+  }
+
+  /**
+   * Deterministic kind/registry/unsigned-component order, consistent with exact identity equality.
+   */
+  @Override
+  public int compareTo(ResourceKey other) {
+    int order = kind.compareTo(other.kind);
+    if (order == 0) order = registryId.compareTo(other.registryId);
+    return order == 0 ? Arrays.compareUnsigned(components, other.components) : order;
   }
 
   @Override

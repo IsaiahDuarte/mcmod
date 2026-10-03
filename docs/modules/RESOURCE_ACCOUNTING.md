@@ -29,7 +29,9 @@ All mutable ledger access runs on its constructing thread. `stock(key)` returns
 total/reserved/available/loaded. Offline stock remains visible but available is
 zero and insert/extract/reserve reject. `snapshot()` returns immutable contents
 for explicit persistence/planning, copying at most the configured catalog limit;
-it is not a per-tick catalog scan. Persistence/migration are not yet implemented.
+it is not a per-tick catalog scan. `persistentState()` additionally captures exact
+owner/key claims; [the initial persistence contract](PERSISTENCE.md) documents
+bounded serialization and offline restore. World persistence remains pending.
 
 - `insert(key, requested)` returns actual accepted units and a typed reason for
   any remainder. Wrong resource, full/offline and administrative/technical limits

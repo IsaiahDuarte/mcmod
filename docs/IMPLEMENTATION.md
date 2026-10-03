@@ -4,7 +4,7 @@
 
 [SPEC.md](../SPEC.md) owns product behavior and release scope. This file owns implementation sequence, decision gates, and evidence tracking. [AGENTS.md](../AGENTS.md) owns the contributor workflow. Follow the current user's instructions; do not treat old proposals or research comparisons as additional requirements.
 
-Current state: **P0 locally verified** on macOS arm64. The minimal loader entry, wrapper, JVM tests and build gates are implemented. Linux/Windows CI execution is pending. P1 is **in progress**; P2–P7 are **not started**. No complete product acceptance criterion has passing evidence yet.
+Current state: **P0 locally verified** on macOS arm64. The minimal loader entry, wrapper, JVM tests and build gates are implemented. Linux/Windows CI execution is pending. P1 is **in progress**; P2's portable ledger persistence is **in progress**; P3–P7 are **not started**. No complete product acceptance criterion has passing evidence yet.
 
 ## How an AI should proceed
 
@@ -18,7 +18,7 @@ Current state: **P0 locally verified** on macOS arm64. The minimal loader entry,
 
 ## Decision gates
 
-D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02 is selected in [ADR 0002](decisions/0002-resource-accounting.md) with initial local core/handler evidence. D07 scheduler/workload targets and a measured portable baseline are recorded in [ADR 0003](decisions/0003-scheduling-workloads.md). D04's interpreter candidate is selected and its local P1 probe validated in [ADR 0004](decisions/0004-wasm-feasibility.md); cross-OS/production evidence remains pending. D03/D05/D06 and D07 release validation remain open. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
+D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02 is selected in [ADR 0002](decisions/0002-resource-accounting.md) with initial local core/handler evidence. D07 scheduler/workload targets and a measured portable baseline are recorded in [ADR 0003](decisions/0003-scheduling-workloads.md). D04's interpreter candidate is selected and its local P1 probe validated in [ADR 0004](decisions/0004-wasm-feasibility.md); cross-OS/production evidence remains pending. D03's initial ledger/ownership design is selected in [ADR 0005](decisions/0005-persistence-ownership.md), with world validation pending. D05/D06 and D07 release validation remain open. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
 
 | Gate | Decide and record | Selection/validation timing | Required evidence |
 | --- | --- | --- | --- |
@@ -65,7 +65,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Not implemented. |
 | A12 | P2, P6 | Not implemented. |
-| A13 | P2, P4, P7 | Not implemented. |
+| A13 | P2, P4, P7 | Partial foundation: immutable ledger snapshots, version-one bounded/checksummed codec and offline claim recovery. World ownership, staging/jobs and interrupted external-write/save integration remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Storage handlers and optional-mod UI remain unimplemented. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
@@ -207,3 +207,32 @@ production SDK/lifecycle and scheduler/host-work integration remain pending.
 P1 remains in progress because full gate/platform evidence and performance
 validation are incomplete. P2's persistent-storage slice may proceed after D03;
 block/progression defaults require initial D06 selection.
+
+## P2 initial ledger persistence work log
+
+2026-10-03, same macOS/JDK environment; parent revision `5539981`:
+
+- Selected D03's initial component schema and future canonical registry/lease
+  ownership design before coding in ADR 0005. World ownership, move/break/clone,
+  staging/job save ordering and external uncertainty remain pending.
+- Implemented immutable exact stock/claim snapshots, bounded deterministic
+  version-one binary envelope with integrity hash, explicit schema rejection and
+  restore on the new owner thread with availability initially offline.
+- First `./gradlew spotlessApply build` ran 30 JVM tests and failed one fixture
+  lookup because the NeoForge harness uses another working directory. Loaded
+  the committed fixture from the test classpath instead; no coverage was removed.
+- Final `./gradlew spotlessApply build` passed 30 JVM tests, zero failures/skips,
+  formatter/PMD/compiler/architecture gates and pinned Rust checks. Six new
+  LedgerPersistenceTest tests cover exact huge counts/claims, all units/empty
+  saves, the fixed schema fixture/determinism, invalid/corrupt/unsupported data,
+  overflow/byte bounds and 2,000 generated reload operations (seed 0x5A7E001).
+- [Persistence contract](modules/PERSISTENCE.md) records fields, units, limits,
+  owner/thread rules, errors and example. Serialization failure preserves the
+  live contents; world storage must enforce its byte budget before deposits.
+- `python3 scripts/verify.py` passed documentation/acceptance tracking, all 24
+  tooling tests and the JVM/Rust build gates. Final review also exercises
+  checksum-valid negative quantities and duplicate stock declarations.
+
+P2 remains partial. The pure component codec is not an atomic world save,
+portable ownership registry, migration from a prior released schema, or proof of
+external-inventory crash recovery. No full A13 acceptance is complete.

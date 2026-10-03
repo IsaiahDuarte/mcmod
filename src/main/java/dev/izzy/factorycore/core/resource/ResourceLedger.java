@@ -3,6 +3,7 @@ package dev.izzy.factorycore.core.resource;
 import static dev.izzy.factorycore.core.resource.OperationResult.Reason.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -84,6 +85,50 @@ public final class ResourceLedger {
   public Map<ResourceKey, Long> snapshot() {
     checkThread();
     return Map.copyOf(contents);
+  }
+
+  /**
+   * Capture on the owner thread; the immutable result can be serialized away from world mutation.
+   */
+  public LedgerState persistentState() {
+    checkThread();
+    List<LedgerState.Reservation> reservations =
+        claims.entrySet().stream()
+            .map(
+                entry ->
+                    new LedgerState.Reservation(
+                        entry.getKey().owner(), entry.getKey().key(), entry.getValue()))
+            .toList();
+    return new LedgerState(
+        id, kind, capacity, infinite, catalogLimit, reservationLimit, contents, reservations);
+  }
+
+  /**
+   * Rebuild on the new owner thread; the caller must revalidate before making this ledger loaded.
+   */
+  public static ResourceLedger restore(LedgerState state) {
+    Objects.requireNonNull(state);
+    var ledger =
+        new ResourceLedger(
+            state.id(),
+            state.kind(),
+            state.capacity(),
+            state.infinite(),
+            state.catalogLimit(),
+            state.reservationLimit());
+    for (var entry : state.contents().entrySet()) {
+      if (ledger.insert(entry.getKey(), entry.getValue()).amount() != entry.getValue()) {
+        throw new IllegalStateException("Validated snapshot stock could not be restored");
+      }
+    }
+    for (var reservation : state.reservations()) {
+      if (ledger.reserve(reservation.owner(), reservation.key(), reservation.amount()).amount()
+          != reservation.amount()) {
+        throw new IllegalStateException("Validated snapshot reservation could not be restored");
+      }
+    }
+    ledger.setLoaded(false);
+    return ledger;
   }
 
   public void setLoaded(boolean loaded) {

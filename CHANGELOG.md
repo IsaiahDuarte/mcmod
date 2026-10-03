@@ -11,6 +11,8 @@
 - Added a pinned Rust/Wasm probe with parser declaration bounds, finite execution/
   stack/host/memory limits, trap-batch tests and cold/warm startup measurements.
   Chicory remains a test dependency; the production SDK/runtime is pending.
+- Added exact ledger snapshots, versioned integrity-checked serialization and
+  offline reservation recovery; world ownership/save integration is pending.
 
 This development artifact is not the first playable release. Storage blocks, world transfers, crafting, scripting, terminal UI, progression
 and wireless features remain unimplemented. P1 core accounting and bounded
