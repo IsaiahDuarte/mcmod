@@ -23,5 +23,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Scheduling/workload targets](0003-scheduling-workloads.md).
 - [Rust/Wasm feasibility candidate](0004-wasm-feasibility.md); local probe verified,
   production and cross-OS validation pending.
-- [Persistence/ownership design](0005-persistence-ownership.md); initial component
-  schema selected, world integration/recovery validation pending.
+- [Persistence/ownership design](0005-persistence-ownership.md); component/registry/physical lease checks pass locally; complete world/interruption validation pending.
+- [Initial progression/balance defaults](0006-initial-balance.md); selected before physical cells/drives, P6 survival/power/wireless validation pending.

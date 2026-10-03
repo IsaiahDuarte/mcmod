@@ -83,6 +83,16 @@ public final class ResourceLedger {
     return loaded;
   }
 
+  public long capacity() {
+    checkThread();
+    return capacity;
+  }
+
+  public boolean infinite() {
+    checkThread();
+    return infinite;
+  }
+
   public long entryCount() {
     checkThread();
     return (long) contents.size() + claims.size();

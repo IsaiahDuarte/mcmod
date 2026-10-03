@@ -1,8 +1,7 @@
 # ADR 0005 — Ledger persistence and device ownership
 
 Status: selected D03 design; ledger schema, owner registry and SavedData adapter
-locally implemented in P2. Physical block/item ownership, complete save ordering
-and interrupted transfers remain unvalidated.
+locally implemented in P2. Physical cell/drive lease tests now pass locally; complete save ordering, actual chunk unload/restart and interrupted transfers remain unvalidated.
 
 ## Decision and boundaries
 
@@ -21,7 +20,7 @@ live locations become unavailable with diagnostics until resolved. Restoring a
 backup requires an explicit registry operation; unknown/incompatible data must
 be retained for recovery rather than reset. These world transitions are selected
 requirements for subsequent physical block/item slices. Core lease transitions
-are implemented; placement/breaking and item components remain pending.
+are implemented and now wired to [physical cells/drives](../modules/STORAGE_CELLS.md), with headless placement/break/component tests. Actual chunk unload/restart remains pending.
 
 The initial component schema is a version-one exact ledger snapshot: backing
 UUID, resource kind, finite capacity/infinite flag, catalog/claim limits, positive
@@ -90,13 +89,12 @@ and [implementation evidence](../IMPLEMENTATION.md) for practical limits.
 The subsequent [ownership contract](../modules/DEVICE_OWNERSHIP.md) records
 generations, holder uniqueness, offline revalidation and quarantine. Actual
 NeoForge SavedData disk tests cover rejection/preservation, including avoiding
-an empty replacement when Minecraft swallows a corrupt-file read. Physical
-devices, full staging/jobs and external-write recovery remain pending.
+an empty replacement when Minecraft swallows a corrupt-file read. Physical cells/drives now have required headless tests; full staging/jobs and external-write recovery remain pending.
 
 The final canonical verifier passed 41 JVM and 24 tooling tests. Two orderly
 dedicated-server starts created/reloaded the empty registry with the same file
 checksum. Nonempty stock/claim recovery is covered by actual SavedData disk tests;
-large saves and physical block/item ownership are not yet verified.
+at that slice large saves and physical block/item ownership were not yet verified. The subsequent physical-cell slice adds ten required Minecraft GameTests; full acceptance and interruption validation remain incomplete.
 
 Primary adapter sources inspected 2026-10-03: pinned 21.1.252 merged sources for
 SavedData, DimensionDataStorage and IOUtilities, and

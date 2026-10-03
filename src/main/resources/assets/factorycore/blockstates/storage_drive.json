@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "factorycore:block/storage_drive"
+    }
+  }
+}

@@ -6,7 +6,7 @@ license="All Rights Reserved"
 modId="factorycore"
 version="${version}"
 displayName="Factory Core"
-description='''Shared storage and automation. Development bootstrap; gameplay is not implemented.'''
+description='''Shared storage and automation in development. Storage cells and drives are available; network routing and terminals are pending.'''
 
 [[dependencies.factorycore]]
 modId="neoforge"

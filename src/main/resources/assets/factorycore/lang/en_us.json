@@ -1,0 +1,14 @@
+{
+  "block.factorycore.storage_drive": "Storage Drive",
+  "item.factorycore.expansion_module": "Expansion Module",
+  "item.factorycore.advanced_module": "Advanced Module",
+  "item.factorycore.infinite_module": "Infinite Module",
+  "item.factorycore.starter_item_cell": "Starter Item Cell",
+  "item.factorycore.expanded_item_cell": "Expanded Item Cell",
+  "item.factorycore.advanced_item_cell": "Advanced Item Cell",
+  "item.factorycore.infinite_item_cell": "Infinite Item Cell",
+  "item.factorycore.starter_fluid_cell": "Starter Fluid Cell",
+  "item.factorycore.expanded_fluid_cell": "Expanded Fluid Cell",
+  "item.factorycore.advanced_fluid_cell": "Advanced Fluid Cell",
+  "itemGroup.factorycore": "Factory Core"
+}

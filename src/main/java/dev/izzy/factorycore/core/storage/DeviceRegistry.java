@@ -72,6 +72,22 @@ public final class DeviceRegistry {
 
   public record LeaseResult(Failure failure, Handle handle) {}
 
+  public record Definition(ResourceKind kind, long capacity, boolean infinite, Location location) {}
+
+  public boolean vacant(Location location) {
+    checkThread();
+    return !placements.containsKey(Objects.requireNonNull(location));
+  }
+
+  public Definition definition(Handle handle) {
+    checkThread();
+    Failure invalid = validate(handle);
+    if (invalid != Failure.OK) throw new IllegalStateException("Invalid device handle: " + invalid);
+    var device = devices.get(handle.backing());
+    return new Definition(
+        device.ledger.kind(), device.ledger.capacity(), device.ledger.infinite(), device.location);
+  }
+
   private static final class Device {
     final ResourceLedger ledger;
     long generation;

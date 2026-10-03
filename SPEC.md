@@ -4,7 +4,7 @@
 
 This file is the authoritative product contract for the first playable release. It consolidates user requirements and design defaults chosen under delegated authority. All requirements below apply unless explicitly marked **Later** or assigned to a decision gate in [IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 
-The repository is establishing its P0 loader/build bootstrap; gameplay is not implemented. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
+The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Network routing, terminals and automation remain unimplemented; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
 
 ## R01 — Release scope
 
@@ -259,7 +259,7 @@ Stable IDs are the release checklist. Record test/evidence paths per stage in [I
 | ID | Observable acceptance |
 | --- | --- |
 | A01 | Hopper imports without code; full storage retains all items across storage/buffer/source. |
-| A02 | Finite capacity and populated upgrades preserve counts/IDs/reservations; infinite item capacity removes gameplay caps; unsafe downgrade and overflow reject safely. |
+| A02 | Finite capacity and populated upgrades preserve counts/IDs/reservations; sequential module application to an offhand portable cell preserves components and consumes ingredients only after success; infinite item capacity removes gameplay caps; unsafe downgrade and overflow reject safely. |
 | A03 | Partial transfers/concurrent demands preserve exact accounting; overlapping backing stores never double available stock. |
 | A04 | Item/fluid/energy storage and transfer respect type, units, sides, rates, reservations, permissions, and provider availability. |
 | A05 | Reused labels remain private across branches; nesting/inherited policies hold; invalid rewiring suspends affected work. |

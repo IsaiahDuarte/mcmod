@@ -142,3 +142,29 @@ assertion. See [scheduler contract](modules/SCHEDULING.md),
 [target ADR](decisions/0003-scheduling-workloads.md), and
 [initial measured evidence](evidence/core-v1-2026-10-03.md). Guest/runtime, live
 world and client measurements remain required in their owning stages.
+
+## Required physical storage GameTests
+
+Gradle `check`/`build` now depends on `runGameTestServer`; the canonical verifier
+and existing Linux/Windows workflow therefore require the headless world tests.
+`./gradlew runGameTestServer` is the focused command. Separate `gameTest` sources
+load a test-only mod alongside Factory Core. Client/server/JVM runs explicitly
+load only the main mod, and the packaged-JAR test rejects test classes/resources.
+Formatting, compiler warnings and PMD also cover this new source set; dependency
+locks include its configurations.
+
+The server uses `build/gametest-run`; each run resets only its generated `world`
+folder and clears the prior XML report. The original empty structure fixture is
+scaffolding for real block/action assertions. All registered tests must complete;
+zero collection, a missing/stale report, failures/errors/skips or nonzero server
+exit fail the build. Reports are in `build/reports/gametest/results.xml`.
+
+Ten StorageDriveGameTests exercise placement/removal/break drops, four-slot/full
+and malformed rejection, copied/stale/foreign leases, module consumption and
+component/claim preservation, finite fluid capacity, block-entity lifecycle
+reload, unknown drive schema recovery, the version-one lease fixture and exact
+vanilla recipe costs/advancement loading. Direct registry activation seeds
+ownership fixtures; valid root routing is not implemented by the tests.
+See [physical contract](modules/STORAGE_CELLS.md) for their limits. Actual chunk
+unload/world restart, abrupt independent save boundaries, client visuals,
+multiplayer and survival progression remain required later evidence.

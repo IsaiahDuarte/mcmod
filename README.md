@@ -2,7 +2,7 @@
 
 A mod under development: unified item/fluid/energy storage, a crafting terminal, segmented factories, recipe-based autocrafting, and Rust/WebAssembly automation alongside a friendly language. Progression starts with wired storage and adds bounded wireless access/links and infinite item capacity.
 
-Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. No playable storage or automation exists yet. P1 accounting/scheduling foundations and a real Rust/Wasm sandbox probe are locally verified. See [resource contracts](docs/modules/RESOURCE_ACCOUNTING.md), [runtime decision](docs/decisions/0004-wasm-feasibility.md), [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
+Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. Initial P2 Storage Drives, item/fluid cells and upgrade modules are implemented with headless world tests; routing, terminals and automation remain pending. P1 accounting/scheduling foundations and a real Rust/Wasm sandbox probe are locally verified. See [resource contracts](docs/modules/RESOURCE_ACCOUNTING.md), [runtime decision](docs/decisions/0004-wasm-feasibility.md), [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
 
 ## Start here
 
@@ -13,9 +13,9 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
 - [Verification requirements](docs/TESTING.md): current checks and required implementation gates.
 - [Development changelog](CHANGELOG.md): versioned artifact status and limitations.
 - [Ledger persistence](docs/modules/PERSISTENCE.md): initial P2 schema/recovery
-  contract; world storage remains pending.
+  contract; full staging/job recovery remains pending.
 - [Device ownership](docs/modules/DEVICE_OWNERSHIP.md): registry/lease and actual
-  SavedData adapter; playable storage blocks remain pending.
+  SavedData adapter, with [physical storage contracts](docs/modules/STORAGE_CELLS.md) and the [player guide](docs/PLAYER_GUIDE.md).
 - [Architecture decisions](docs/decisions/README.md): how to record significant choices.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
@@ -38,9 +38,9 @@ python3 scripts/verify.py
 On Windows use `python scripts/verify.py`. This canonical check validates docs,
 acceptance tracking and nonempty tooling tests, then runs Gradle `build` for
 compilation, packaging, formatting, PMD, Rust fmt/clippy/tests/build and nonempty
-JVM/architecture/real-Wasm tests. Rust is checked only in the experiment's wired
+JVM/architecture/real-Wasm tests and required headless Minecraft GameTests. Rust is checked only in the experiment's wired
 source tree; other unwired Kotlin/Rust source still fails. Passing this command
-does not prove gameplay or client/server startup.
+proves only its covered behaviors, not full gameplay acceptance or actual client interactions.
 
 Development commands:
 

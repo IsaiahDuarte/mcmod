@@ -4,7 +4,7 @@
 
 [SPEC.md](../SPEC.md) owns product behavior and release scope. This file owns implementation sequence, decision gates, and evidence tracking. [AGENTS.md](../AGENTS.md) owns the contributor workflow. Follow the current user's instructions; do not treat old proposals or research comparisons as additional requirements.
 
-Current state: **P0 locally verified** on macOS arm64. The minimal loader entry, wrapper, JVM tests and build gates are implemented. Linux/Windows CI execution is pending. P1 is **in progress**; P2's portable ledger persistence is **in progress**; P3–P7 are **not started**. No complete product acceptance criterion has passing evidence yet.
+Current state: **P0 locally verified** on macOS arm64. The minimal loader entry, wrapper, JVM tests and build gates are implemented. Linux/Windows CI execution is pending. P1 is **in progress**; P2's cells/drives, ownership and wired topology are **in progress**; P3–P7 are **not started**. No complete product acceptance criterion has passing evidence yet.
 
 ## How an AI should proceed
 
@@ -18,7 +18,7 @@ Current state: **P0 locally verified** on macOS arm64. The minimal loader entry,
 
 ## Decision gates
 
-D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02 is selected in [ADR 0002](decisions/0002-resource-accounting.md) with initial local core/handler evidence. D07 scheduler/workload targets and a measured portable baseline are recorded in [ADR 0003](decisions/0003-scheduling-workloads.md). D04's interpreter candidate is selected and its local P1 probe validated in [ADR 0004](decisions/0004-wasm-feasibility.md); cross-OS/production evidence remains pending. D03's initial ledger/ownership design is selected in [ADR 0005](decisions/0005-persistence-ownership.md), with world validation pending. D05/D06 and D07 release validation remain open. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
+D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02 is selected in [ADR 0002](decisions/0002-resource-accounting.md) with initial local core/handler evidence. D07 scheduler/workload targets and a measured portable baseline are recorded in [ADR 0003](decisions/0003-scheduling-workloads.md). D04's interpreter candidate is selected and its local P1 probe validated in [ADR 0004](decisions/0004-wasm-feasibility.md); cross-OS/production evidence remains pending. D03's initial ledger/ownership design is selected in [ADR 0005](decisions/0005-persistence-ownership.md), with world validation pending. Initial D06 balance/progression defaults are selected in [ADR 0006](decisions/0006-initial-balance.md); survival/powered/wireless validation remains P6 work. D05 and D07 release validation remain open. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
 
 | Gate | Decide and record | Selection/validation timing | Required evidence |
 | --- | --- | --- | --- |
@@ -54,7 +54,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | Criterion | Owning stages | Evidence/status |
 | --- | --- | --- |
 | A01 | P3 | Not implemented. |
-| A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Devices/progression remain pending. |
+| A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
 | A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. World integration remains pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. World capabilities, permissions and UI remain pending. |
 | A05 | P2 | Not implemented. |
@@ -65,8 +65,8 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Not implemented. |
 | A12 | P2, P6 | Not implemented. |
-| A13 | P2, P4, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Physical block/item leases, staging/jobs and interrupted external-write/save integration remain pending. |
-| A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Storage handlers and optional-mod UI remain unimplemented. |
+| A13 | P2, P4, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Actual chunk unload/world restart, staging/jobs and interrupted external-write/save integration remain pending. |
+| A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
 | A17 | P6, P7 | Not implemented. |
@@ -275,3 +275,47 @@ external-inventory crash recovery. No full A13 acceptance is complete.
   physical storage blocks, permissions/topology and staging/jobs remain unverified.
 
 P2 remains in progress. No playable storage block or complete A13 is claimed.
+
+## P2 physical cells and drive work log
+
+2026-10-03, macOS 15.3.1 arm64 / Apple M1 / Java 21.0.12; parent `0e71869`:
+
+- Selected initial D06 capacities, vanilla recipes and progression before source
+  in ADR 0006. P6 survival/powered/wireless validation remains pending.
+- Implemented four-slot drives, seven item/fluid cell tiers, single-owner portable
+  references, server-thread sequential upgrade modules and vanilla recipe-book
+  unlocks. A creative tab, vanilla-referenced models and player guide accompany
+  the new behavior. Network routing stays offline pending validated topology.
+- Review fixed reload of a portable lease before it could consume a generation,
+  deactivation on failed removal, duplicate casing loot and unknown-data saves
+  overwriting Minecraft position metadata. Recovery preserves wrong-typed data
+  instead of converting it into an empty drive.
+- Initial compilation found Optional.getOrThrow was unavailable; corrected to
+  Optional.orElseThrow. Initial GameTest configuration referred to mods before
+  their declaration, then hit a split Java module package; moved tests into a
+  separate package and exercised module upgrades through player actions.
+- PMD's borrowed ServerLevel references triggered CloseResource false positives;
+  narrow method suppressions explain that Minecraft owns/closes those worlds.
+  No rule or coverage was disabled.
+- First eight GameTests passed but the JVM nonempty-test guard caught test-mod
+  construction without a GameTest report property. Restricted JVM loaded mods
+  to the main mod and scoped test reporting to the actual GameTest server.
+- `./gradlew spotlessApply build --write-locks` passed 41 JVM tests and ten
+  required Minecraft GameTests, zero failures/skips. The test source set has
+  formatting/compiler/PMD coverage and is excluded from the production JAR.
+  Existing Rust gates remain wired; no new production runtime dependency added.
+- `./gradlew spotlessApply build` passed after finite fluid-capacity/claim and
+  wrong-typed recovery-envelope regressions.
+- Final `python3 scripts/verify.py` passed document/acceptance tracking, all 24
+  tooling tests and the full Gradle build gates, including a fresh ten-GameTest
+  server run. Report totals: 41 JVM tests, ten GameTests, zero failures/errors/
+  skips. Existing Rust checks are satisfied from their unchanged verified inputs.
+- `git diff --check` passed. Reviewed lock changes retain dependency versions;
+  additional coordinates are existing NeoForge transitive launch/native libraries,
+  with the new test configurations recorded. No generated worlds/logs entered
+  the change. Remote Linux/Windows CI and actual client interaction were not run.
+
+This is an initial physical-device slice, not complete A02/A03/A13/A14. Actual
+chunk unload/full world restart, crash save ordering, network roots/gateways/
+permissions, banks/connectors, transfers/UI, client/manual survival checks and
+remaining release stages are pending. P2 and the full implementation stay active.

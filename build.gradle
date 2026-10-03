@@ -14,27 +14,69 @@ repositories {
     mavenCentral()
 }
 
+sourceSets {
+    gameTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+configurations.gameTestImplementation.extendsFrom(configurations.implementation)
+configurations.gameTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
+
 neoForge {
     version = '21.1.252'
+    addModdingDependenciesTo(sourceSets.gameTest)
+    mods {
+        factorycore { sourceSet(sourceSets.main) }
+        factorycore_tests { sourceSet(sourceSets.gameTest) }
+    }
     runs {
         client {
             client()
             gameDirectory = file('run/client')
+            loadedMods = [mods.factorycore]
         }
         server {
             server()
             gameDirectory = file('run/server')
             programArgument '--nogui'
+            loadedMods = [mods.factorycore]
         }
-    }
-    mods {
-        factorycore { sourceSet(sourceSets.main) }
+        gameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gameTest
+            gameDirectory = file('build/gametest-run')
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'factorycore_tests'
+            systemProperty 'factorycore.test.report', file('build/reports/gametest/results.xml').absolutePath
+            loadedMods = [mods.factorycore, mods.factorycore_tests]
+        }
     }
     unitTest {
         enable()
         testedMod = mods.factorycore
+        loadedMods = [mods.factorycore]
     }
 }
+
+tasks.named('runGameTestServer', JavaExec) {
+    doFirst {
+        // Only generated test state is reset. Client and dedicated-server worlds are separate.
+        delete file('build/gametest-run/world')
+        def report = file('build/reports/gametest/results.xml')
+        report.parentFile.mkdirs()
+        if (report.exists() && !report.delete()) throw new GradleException('Cannot clear stale GameTest report.')
+    }
+    doLast {
+        def report = file('build/reports/gametest/results.xml')
+        if (!report.isFile()) throw new GradleException('Required GameTest report is missing.')
+        def parsed = new groovy.xml.XmlParser().parse(report)
+        def cases = parsed.depthFirst().findAll { it.name() == 'testcase' }
+        if (cases.isEmpty() || parsed.depthFirst().any { it.name() in ['failure', 'error', 'skipped'] }) {
+            throw new GradleException('Required GameTests must execute and pass without skips.')
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
 
 tasks.named('runServer', JavaExec) {
     standardInput = System.in

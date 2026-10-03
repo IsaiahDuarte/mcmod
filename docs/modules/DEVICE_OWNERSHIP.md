@@ -1,8 +1,6 @@
 # Device ownership and world persistence
 
-Implemented P2 registry and NeoForge SavedData adapter; storage blocks, portable
-item components, topology/permissions and durable transfer/job staging remain
-pending. [ADR 0005](../decisions/0005-persistence-ownership.md) owns the design.
+Implemented P2 registry, NeoForge SavedData adapter and [physical cells/drives](STORAGE_CELLS.md). Topology/permissions and durable transfer/job staging remain pending. [ADR 0005](../decisions/0005-persistence-ownership.md) owns the design.
 
 ## Ownership contract
 
@@ -19,6 +17,12 @@ Stock enters through deposits or validated world restoration, never by creating
 another device from a copied ledger. UUID collision throws without replacing an
 owner or looping. `Location(dimension, packedBlockPosition, slot)` identifies one
 holder slot, with a bounded namespaced dimension ID and slot 0 through 63.
+
+`definition(handle)` returns immutable kind, exact capacity, infinite flag and
+current location (null for portable), throwing for an invalid lease. Ledger
+capacity/infinite accessors check their owner thread. `vacant(location)` tests
+holder occupancy in O(1), rejects null, and grants no authority to mutate. The
+physical adapter uses these checks before allocation and tier changes.
 
 | Operation | Invariant |
 | --- | --- |
