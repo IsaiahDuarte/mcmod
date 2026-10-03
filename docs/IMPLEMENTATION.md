@@ -64,8 +64,8 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A09 | P5 | Not implemented. |
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Not implemented. |
-| A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. Persistent network identities/grants, player permissions UI and multiplayer checks remain pending. |
-| A13 | P2, P4, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Actual chunk unload/world restart, staging/jobs and interrupted external-write/save integration remain pending. |
+| A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. Structural leases, player permissions UI and multiplayer checks remain pending. |
+| A13 | P2, P4, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-two network metadata also preserves exact offline stock/claims through migration and disk reload. Actual chunk unload/world restart, staging/jobs and interrupted external-write/save integration remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
@@ -356,3 +356,41 @@ P2/A05/A12 remain partial. Next work is physical controller/cable/gateway ports,
 bounded affected-region discovery/scheduling, persistent network identities and
 grants, and validated device activation. Real chunk/restart, multiplayer/client
 and full performance evidence remain pending. The full goal stays active.
+
+## P2 canonical network metadata work log
+
+2026-10-03, same macOS arm64 / Apple M1 / Java 21.0.12; parent `3079cb6`:
+
+- Selected ADR 0008 before source. Extended the existing canonical SavedData to
+  schema two for private network identities, owner UUIDs, checked permission
+  generations and fixed permission bits, with no second authority file.
+- Recognized schema-one migration preserves world identity, exact ledger bytes,
+  claims, physical generations/conflicts/locations and marks the migration dirty.
+  Its original fixture remains unchanged; the test now explicitly checks schema
+  two and the added empty network table instead of expecting schema one output.
+  Unsupported-schema coverage advances from two to three, and a committed
+  schema-two fixture protects the newly supported format.
+- Added preflight global principal admission and O(1) binding accounting, with
+  reclamation on revocation/transfer. Network/backing UUID collisions, unknown
+  fields, invalid masks, ownership and duplicate records preserve original tags
+  in the write-protected canonical authority. Unknown IDs cannot invent owners.
+- Five NetworkPersistenceTest cases exercise fixed bits, private/operator defaults,
+  compressed disk transfer/revocation with exact offline stock/claims, corruption,
+  world binding reclamation and network/principal ceilings. Added a portable
+  budget/overflow regression. Physical controller/gateway leases remain absent.
+- `./gradlew spotlessApply compileJava pmdMain` passed.
+  `./gradlew spotlessApply test pmdTest` and the expanded
+  `./gradlew spotlessApply test pmdMain pmdTest` passed.
+- Initial `python3 scripts/verify.py` passed 24 tooling tests but the sandbox
+  denied the external Gradle cache lock. Re-ran the exact command with approved
+  cache access: full verifier passed, 59 JVM tests and ten required Minecraft
+  GameTests, zero failures/errors/skips. Existing Rust gate inputs were unchanged
+  and their verified tasks were up to date.
+- `git diff --check` passed; no build/dependency/CI/policy gates changed and no
+  generated worlds entered the change. Client/multiplayer, actual chunk/full
+  restart, abrupt interruption and remote Linux/Windows checks were not run.
+
+P2/A12/A13 remain partial. Next are structural controller/cable/gateway identities
+and leases, explicit physical ports, bounded affected-region discovery and
+validated device activation. Terminal/transfer/crafting/scripting/wireless and
+full release verification remain required.

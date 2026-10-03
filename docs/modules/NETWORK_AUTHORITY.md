@@ -1,8 +1,8 @@
 # Topology and current network authority
 
 Portable P2 implementation supporting A05/A12 in part. Physical discovery,
-controller/cable/gateway blocks, stored grants and client/guest endpoints are
-pending. [ADR 0007](../decisions/0007-topology-authority.md) owns this design.
+controller/cable/gateway blocks and client/guest endpoints are pending.
+Canonical grants are implemented in [network persistence](NETWORK_PERSISTENCE.md). [ADR 0007](../decisions/0007-topology-authority.md) owns this design.
 This core does not activate installed cell ledgers by itself.
 
 ## Graph ownership and rebuilding
@@ -91,7 +91,8 @@ are OK/DENIED/LIMIT/OWNER_IMPLICIT; owner grants cannot be narrowed through an
 explicit entry. Limit 256 explicit principals; checked generation overflow
 rejects before mutation. Successful changes call trusted `changed`; the callback
 must not throw. `snapshot()` is deeply immutable. Restoring its validated `State`
-preserves owner/current grants/generation; a disk schema/adapter is still pending.
+preserves owner/current grants/generation; the canonical disk adapter and world
+binding quota are documented in [network persistence](NETWORK_PERSISTENCE.md).
 
 `GatewayPolicy` separately restricts branch permissions and inherited storage
 operations/resource kinds. `NetworkAuthority.register` admits at most 1,024
@@ -162,6 +163,6 @@ publication, stale/foreign/forged scopes, full graph/degree admission and 3,072
 gateway fanout with one visit/call. Generated 300 unload/recovery sequences use
 seed 0x70F0106. Private grants, operators, transfer/overflow, reused labels,
 pagination/ambiguity, inherited intersections and real FairScheduler queued
-revocation are exercised. World discovery, persisted graph identities/grants,
+revocation are exercised. Canonical network identities/grants now have [persistence evidence](NETWORK_PERSISTENCE.md). World discovery, persisted structural leases/policies,
 real chunk events, network/device activation, clients and server performance
 remain required P2/P3/P7 evidence. Full A05/A12 is not proved by these core tests.

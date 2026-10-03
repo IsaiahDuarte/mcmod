@@ -74,6 +74,17 @@ public final class DeviceRegistry {
 
   public record Definition(ResourceKind kind, long capacity, boolean infinite, Location location) {}
 
+  public UUID world() {
+    checkThread();
+    return world;
+  }
+
+  /** Includes offline and conflicted owners; UUID allocation must not reuse them. */
+  public boolean containsBacking(UUID id) {
+    checkThread();
+    return devices.containsKey(Objects.requireNonNull(id));
+  }
+
   public boolean vacant(Location location) {
     checkThread();
     return !placements.containsKey(Objects.requireNonNull(location));

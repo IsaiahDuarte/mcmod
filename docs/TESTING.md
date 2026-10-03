@@ -177,5 +177,16 @@ validation work. A 4,096-node/3,072-gateway fanout advances one visit per call;
 300 generated gateway unload/recovery sequences use seed 0x70F0106. A real
 FairScheduler queue verifies revocation and topology changes before mutation.
 These run in the required JVM suite. They do not replace physical port/chunk,
-permission persistence, multiplayer or live routing evidence; see
+structural lease persistence, multiplayer or live routing evidence; see
 [network contract](modules/NETWORK_AUTHORITY.md).
+
+## Canonical network persistence
+
+Five NetworkPersistenceTest cases cover fixed permission-bit/schema-two fixtures,
+real compressed disk owner transfer/revocation, malformed/colliding/unknown
+metadata preservation, global binding admission/reclamation and network/principal
+ceilings. DeviceSavedDataTest preserves its schema-one fixture as an exact
+migration check, including stock/claims/lease generations.
+NetworkPermissionBudgetTest verifies admission and overflow before mutation or
+accounting callbacks. These are required JVM tests; physical structural leases,
+actual world restart/chunks and multiplayer remain separate evidence.

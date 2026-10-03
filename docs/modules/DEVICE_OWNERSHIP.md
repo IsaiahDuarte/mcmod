@@ -1,6 +1,6 @@
 # Device ownership and world persistence
 
-Implemented P2 registry, NeoForge SavedData adapter and [physical cells/drives](STORAGE_CELLS.md). Topology/permissions and durable transfer/job staging remain pending. [ADR 0005](../decisions/0005-persistence-ownership.md) owns the design.
+Implemented P2 registry, NeoForge SavedData adapter and [physical cells/drives](STORAGE_CELLS.md). Portable topology/current grants and canonical network metadata are implemented; physical topology and durable transfer/job staging remain pending. [ADR 0005](../decisions/0005-persistence-ownership.md) owns the design.
 
 ## Ownership contract
 
@@ -22,7 +22,10 @@ holder slot, with a bounded namespaced dimension ID and slot 0 through 63.
 current location (null for portable), throwing for an invalid lease. Ledger
 capacity/infinite accessors check their owner thread. `vacant(location)` tests
 holder occupancy in O(1), rejects null, and grants no authority to mutate. The
-physical adapter uses these checks before allocation and tier changes.
+physical adapter uses these checks before allocation and tier changes. `world()`
+returns the namespace UUID and `containsBacking(id)` checks all known owners,
+including offline/conflicted devices, in O(1) on the owner thread. These grant
+no mutation authority and avoid allocating a full snapshot for UUID checks.
 
 | Operation | Invariant |
 | --- | --- |
@@ -65,17 +68,18 @@ thread. A server-start listener initializes/validates it. Minecraft's
 logs unavailable-registry diagnostics and preserves its file; access remains
 denied while the world may run.
 
-Schema one: integer `Schema=1`, UUID `World`, compound `Devices` list. Each device
+Current schema two: integer `Schema=2`, UUID `World`, compound `Devices` list,
+and required `Networks` list; see [network persistence](NETWORK_PERSISTENCE.md). Each device
 has checksummed `Ledger` bytes, positive long `Generation`, boolean byte `Conflict`,
 and optional `Location` (string `Dimension`, long `Position`, integer `Slot`).
 [Ledger schema/units](PERSISTENCE.md) remain separate. The committed SNBT fixture
-protects the first registry schema; future changes require migration/version
-evidence. Known typed/schema/ledger/owner failures retain original tags in a
+protects exact migration from schema one into schema two with an empty network
+table and a dirty save. Network grants have their own schema-two fixture. Known typed/schema/ledger/owner failures retain original tags in a
 read-only quarantined SavedData that rejects attempts to mark it dirty. If the upstream loader swallows outer NBT/I/O
 failure, the adapter proves file absence before creation; existing/unreadable
 files cannot become empty replacements. Unknown schemas are not silently migrated.
 
-Jobs/staging and complete network state are not yet in this authority. Consistent
+Jobs/staging and structural network leases/policies are not yet in this authority. Consistent
 digital transfers require those owned records in the same save boundary. The
 outer NBT reader and I/O error handling remain upstream-owned; inner admission
 bounds do not preempt damaged outer files or guarantee recovery from disk failure.

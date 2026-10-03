@@ -19,6 +19,8 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
 - [Architecture decisions](docs/decisions/README.md): how to record significant choices.
 - [Network authority](docs/modules/NETWORK_AUTHORITY.md): bounded portable
   topology, local scopes and current grants; world integration remains pending.
+- [Network persistence](docs/modules/NETWORK_PERSISTENCE.md): canonical grant
+  metadata, schema-one migration and bounded principal admission.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
 

@@ -1,11 +1,17 @@
 package dev.izzy.factorycore.platform.storage;
 
 import com.mojang.logging.LogUtils;
+import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.LedgerStateCodec;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -21,16 +27,31 @@ import org.slf4j.Logger;
 /** Overworld authority; unreadable/incompatible data never becomes a replacement empty registry. */
 public final class DeviceSavedData extends SavedData {
   public static final String NAME = "factorycore_devices";
+  public static final int MAX_NETWORKS = 1024;
+  public static final int MAX_NETWORK_GRANTS = 65536;
+  private final Map<UUID, NetworkPermissions> networks = new TreeMap<>();
+  private int principalBindings;
   private static final Logger LOGGER = LogUtils.getLogger();
   private final DeviceRegistry registry;
   private final CompoundTag rejected;
   private final String diagnostic;
 
-  private DeviceSavedData(DeviceRegistry.State state, CompoundTag rejected, String diagnostic) {
+  private DeviceSavedData(
+      DeviceRegistry.State state,
+      List<NetworkPermissions.State> networkStates,
+      CompoundTag rejected,
+      String diagnostic) {
     this.rejected = rejected;
     this.diagnostic = diagnostic;
     registry =
-        state == null ? null : DeviceRegistry.restore(state, this::setDirty, UUID::randomUUID);
+        state == null ? null : DeviceRegistry.restore(state, this::setDirty, this::newBackingId);
+    for (var network : networkStates) {
+      if (registry == null || registry.containsBacking(network.network()))
+        throw new IllegalArgumentException("Network/backing identity collision");
+      principalBindings += network.grants().size();
+      if (networks.putIfAbsent(network.network(), restoreNetwork(network)) != null)
+        throw new IllegalArgumentException("Duplicate network identity");
+    }
   }
 
   public static DeviceSavedData get(MinecraftServer server) {
@@ -68,13 +89,54 @@ public final class DeviceSavedData extends SavedData {
 
   private static DeviceSavedData create() {
     return new DeviceSavedData(
-        new DeviceRegistry.State(UUID.randomUUID(), java.util.List.of()), null, "");
+        new DeviceRegistry.State(UUID.randomUUID(), List.of()), List.of(), null, "");
   }
 
   public DeviceRegistry registry() {
     if (registry == null)
       throw new IllegalStateException("Device registry quarantined: " + diagnostic);
     return registry;
+  }
+
+  /** Trusted server commissioning only; this creates neither stock nor a physical lease/scope. */
+  public UUID createNetwork(UUID owner) {
+    registry().world();
+    Objects.requireNonNull(owner);
+    if (networks.size() == MAX_NETWORKS) throw new IllegalStateException("Network count limit");
+    UUID id = UUID.randomUUID();
+    if (networks.containsKey(id) || registry.containsBacking(id))
+      throw new IllegalStateException("Network identity collision");
+    networks.put(id, restoreNetwork(new NetworkPermissions.State(id, owner, 1, Map.of())));
+    setDirty();
+    return id;
+  }
+
+  /** Missing references never create replacement permissions or an implicit owner. */
+  public NetworkPermissions network(UUID id) {
+    registry().world();
+    var permissions = networks.get(Objects.requireNonNull(id));
+    if (permissions == null) throw new IllegalArgumentException("Unknown network identity");
+    return permissions;
+  }
+
+  public int principalBindings() {
+    registry().world();
+    return principalBindings;
+  }
+
+  private NetworkPermissions restoreNetwork(NetworkPermissions.State state) {
+    return new NetworkPermissions(
+        state,
+        this::setDirty,
+        delta -> principalBindings + delta >= 0 && principalBindings + delta <= MAX_NETWORK_GRANTS,
+        delta -> principalBindings += delta);
+  }
+
+  private UUID newBackingId() {
+    UUID id = UUID.randomUUID();
+    if (networks.containsKey(id))
+      throw new IllegalStateException("Backing/network identity collision");
+    return id;
   }
 
   public String diagnostic() {
@@ -91,8 +153,16 @@ public final class DeviceSavedData extends SavedData {
   public static DeviceSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
     try {
       require(tag, "Schema", Tag.TAG_INT);
-      if (tag.getInt("Schema") != 1 || !tag.hasUUID("World"))
+      int schema = tag.getInt("Schema");
+      if ((schema != 1 && schema != 2) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
+      NetworkStateCodec.fields(
+          tag,
+          schema == 1
+              ? Set.of("Schema", "World", "Devices")
+              : Set.of("Schema", "World", "Devices", "Networks"));
+      var networkStates =
+          schema == 1 ? List.<NetworkPermissions.State>of() : NetworkStateCodec.decode(tag);
       require(tag, "Devices", Tag.TAG_LIST);
       ListTag devices = tag.getList("Devices", Tag.TAG_COMPOUND);
       if (devices.size() != ((ListTag) tag.get("Devices")).size()
@@ -104,6 +174,7 @@ public final class DeviceSavedData extends SavedData {
       long entries = 0;
       for (int i = 0; i < devices.size(); i++) {
         CompoundTag entry = devices.getCompound(i);
+        NetworkStateCodec.fields(entry, Set.of("Ledger", "Generation", "Conflict", "Location"));
         require(entry, "Ledger", Tag.TAG_BYTE_ARRAY);
         require(entry, "Generation", Tag.TAG_LONG);
         require(entry, "Conflict", Tag.TAG_BYTE);
@@ -117,6 +188,7 @@ public final class DeviceSavedData extends SavedData {
         if (entry.contains("Location")) {
           require(entry, "Location", Tag.TAG_COMPOUND);
           var placed = entry.getCompound("Location");
+          NetworkStateCodec.fields(placed, Set.of("Dimension", "Position", "Slot"));
           require(placed, "Dimension", Tag.TAG_STRING);
           require(placed, "Position", Tag.TAG_LONG);
           require(placed, "Slot", Tag.TAG_INT);
@@ -133,12 +205,16 @@ public final class DeviceSavedData extends SavedData {
             new DeviceRegistry.Stored(
                 ledger, entry.getLong("Generation"), location, entry.getBoolean("Conflict")));
       }
-      return new DeviceSavedData(new DeviceRegistry.State(tag.getUUID("World"), records), null, "");
+      var loaded =
+          new DeviceSavedData(
+              new DeviceRegistry.State(tag.getUUID("World"), records), networkStates, null, "");
+      if (schema == 1) loaded.setDirty();
+      return loaded;
     } catch (RuntimeException invalid) {
       String message =
           invalid.getMessage() == null ? invalid.getClass().getSimpleName() : invalid.getMessage();
       return new DeviceSavedData(
-          null, tag.copy(), message.substring(0, Math.min(message.length(), 512)));
+          null, List.of(), tag.copy(), message.substring(0, Math.min(message.length(), 512)));
     }
   }
 
@@ -146,7 +222,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 1);
+    tag.putInt("Schema", 2);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {
@@ -164,6 +240,10 @@ public final class DeviceSavedData extends SavedData {
       devices.add(entry);
     }
     tag.put("Devices", devices);
+    tag.put(
+        "Networks",
+        NetworkStateCodec.encode(
+            networks.values().stream().map(NetworkPermissions::snapshot).toList()));
     return tag;
   }
 

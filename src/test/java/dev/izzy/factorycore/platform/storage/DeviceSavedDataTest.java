@@ -57,7 +57,12 @@ class DeviceSavedDataTest {
     assertFalse(loaded.registry().stock(handle, ResourceKey.ENERGY).loaded());
     assertEquals(17, loaded.registry().stock(handle, ResourceKey.ENERGY).total());
     assertEquals(7, loaded.registry().stock(handle, ResourceKey.ENERGY).reserved());
-    assertEquals(fixture, loaded.save(new CompoundTag(), registries));
+    assertTrue(loaded.isDirty());
+    var migrated = loaded.save(new CompoundTag(), registries);
+    assertEquals(2, migrated.getInt("Schema"));
+    assertEquals(fixture.get("World"), migrated.get("World"));
+    assertEquals(fixture.get("Devices"), migrated.get("Devices"));
+    assertTrue(migrated.getList("Networks", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty());
     loaded.registry().availability(handle, location, true);
     assertEquals(
         7, loaded.registry().extract(handle, ResourceKey.ENERGY, 100, new UUID(0, 2)).amount());
@@ -94,7 +99,7 @@ class DeviceSavedDataTest {
   void incompatibleOrWrongTypedRegistryIsQuarantinedAndOriginalTagsArePreserved() {
     var saved = DeviceSavedData.open(storage(), file());
     CompoundTag original = saved.save(new CompoundTag(), registries);
-    for (int schema : new int[] {0, 2}) {
+    for (int schema : new int[] {0, 3}) {
       var future = original.copy();
       future.putInt("Schema", schema);
       var rejected = DeviceSavedData.load(future, registries);

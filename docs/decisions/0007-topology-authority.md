@@ -1,8 +1,9 @@
 # ADR 0007 — Wired topology and current authority
 
 Status: selected for the P2 portable topology/authority slice before source.
-World discovery, block ports, permission persistence and full multiplayer evidence
-remain subsequent implementation work.
+Portable implementation is locally verified. [ADR 0008](0008-network-persistence.md)
+adds canonical grant persistence. World discovery, block ports and full multiplayer
+evidence remain subsequent implementation work.
 
 ## Decision
 

@@ -26,4 +26,6 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Persistence/ownership design](0005-persistence-ownership.md); component/registry/physical lease checks pass locally; complete world/interruption validation pending.
 - [Initial progression/balance defaults](0006-initial-balance.md); selected before physical cells/drives, P6 survival/power/wireless validation pending.
 - [Wired topology and current authority](0007-topology-authority.md); portable
-  graph/grant implementation, world discovery and persistence pending.
+  graph/grant implementation, physical world discovery pending.
+- [Canonical network grant persistence](0008-network-persistence.md); schema-two
+  metadata and schema-one migration verified locally, structural leases pending.

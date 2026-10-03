@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.IntConsumer;
+import java.util.function.IntPredicate;
 
 /**
  * Current, private-by-default grants; an operator may administer without bypassing resource scope.
@@ -57,6 +59,8 @@ public final class NetworkPermissions {
   private final Thread thread = Thread.currentThread();
   private final UUID network;
   private final Runnable changed;
+  private final IntPredicate admitPrincipalDelta;
+  private final IntConsumer accountPrincipalDelta;
   private final Map<UUID, Set<Permission>> grants = new HashMap<>();
   private UUID owner;
   private long generation;
@@ -66,6 +70,21 @@ public final class NetworkPermissions {
   }
 
   public NetworkPermissions(State state, Runnable changed) {
+    this(state, changed, delta -> true, delta -> {});
+  }
+
+  /**
+   * Budget callbacks run on the owner thread. Admission must be side-effect free; accounting and
+   * changed callbacks must not throw. Deltas count explicit principal bindings, not permission
+   * bits. Restored bindings must already be accounted by the enclosing authority.
+   */
+  public NetworkPermissions(
+      State state,
+      Runnable changed,
+      IntPredicate admitPrincipalDelta,
+      IntConsumer accountPrincipalDelta) {
+    this.admitPrincipalDelta = Objects.requireNonNull(admitPrincipalDelta);
+    this.accountPrincipalDelta = Objects.requireNonNull(accountPrincipalDelta);
     network = state.network();
     owner = state.owner();
     generation = state.generation();
@@ -96,9 +115,12 @@ public final class NetworkPermissions {
     if (!next.isEmpty() && !grants.containsKey(principal) && grants.size() == MAX_PRINCIPALS)
       return Change.LIMIT;
     long nextGeneration = Math.incrementExact(generation);
+    int delta = next.isEmpty() ? -1 : grants.containsKey(principal) ? 0 : 1;
+    if (delta != 0 && !admitPrincipalDelta.test(delta)) return Change.LIMIT;
     if (next.isEmpty()) grants.remove(principal);
     else grants.put(principal, next);
     generation = nextGeneration;
+    if (delta != 0) accountPrincipalDelta.accept(delta);
     changed.run();
     return Change.OK;
   }
@@ -109,9 +131,12 @@ public final class NetworkPermissions {
     if (!allows(administrator, Permission.MANAGE)) return Change.DENIED;
     if (owner.equals(nextOwner)) return Change.OK;
     long nextGeneration = Math.incrementExact(generation);
+    int delta = grants.containsKey(nextOwner) ? -1 : 0;
+    if (delta != 0 && !admitPrincipalDelta.test(delta)) return Change.LIMIT;
     grants.remove(nextOwner);
     owner = nextOwner;
     generation = nextGeneration;
+    if (delta != 0) accountPrincipalDelta.accept(delta);
     changed.run();
     return Change.OK;
   }

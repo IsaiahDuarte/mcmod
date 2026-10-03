@@ -62,6 +62,13 @@ cell removal keeps its exact reference in a labeled recovery item. Automatic
 repair and administrative reconciliation are pending; keep these items and
 back up the world rather than discarding them.
 
+The canonical world registry now uses schema two. Existing schema-one worlds
+migrate while preserving cell identities, contents and reservations. Unknown
+or malformed registry data remains unavailable with its original data preserved;
+keep `world/data/factorycore_devices.dat` for recovery. Network grant metadata
+saves with this registry, but player network setup and permission screens are
+still pending.
+
 Orderly registry save/reload and block lifecycle behavior are tested. Abrupt
 crash recovery across independently saved chunks/player inventory, actual chunk
 unload/reload and multiplayer/client interaction remain unverified. This is not

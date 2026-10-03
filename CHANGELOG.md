@@ -21,7 +21,11 @@
   lease preservation/reload, failures and recipe costs.
 - Added bounded portable topology validation, current private grants, gateway
   policy intersections and local machine queries. World discovery/activation,
-  network persistence and player permissions controls remain pending.
+  structural leases and player permissions controls remain pending.
+- Added canonical schema-two network identities, owners and grants, exact migration
+  of schema-one resource ownership, bounded global principal admission, and
+  preserved unknown metadata. Compressed disk reload verifies transfer/revocation;
+  physical controller/gateway leases and world network activation remain pending.
 
 This development artifact is not the first playable release. World transfers, crafting, scripting, terminal UI and wireless features remain unimplemented; complete survival progression remains unverified. P1 core accounting and bounded
 NeoForge handler ports are implemented and tested; they are not yet connected
