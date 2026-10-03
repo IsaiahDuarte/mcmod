@@ -13,6 +13,9 @@
   Chicory remains a test dependency; the production SDK/runtime is pending.
 - Added exact ledger snapshots, versioned integrity-checked serialization and
   offline reservation recovery; world ownership/save integration is pending.
+- Added world-scoped generations, metadata admission, live-copy quarantine and
+  Overworld SavedData with corrupt-file preservation. Physical storage devices
+  and complete staging/job saves remain pending.
 
 This development artifact is not the first playable release. Storage blocks, world transfers, crafting, scripting, terminal UI, progression
 and wireless features remain unimplemented. P1 core accounting and bounded

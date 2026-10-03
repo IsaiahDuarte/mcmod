@@ -1,7 +1,8 @@
 # Ledger persistence contract
 
-Initial P2 component implementation. World registry, portable ownership leases,
-staging/jobs, save ordering and chunk integration remain pending under
+Initial P2 component implementation. The [device registry/adapter](DEVICE_OWNERSHIP.md)
+now owns world-scoped generations and exact ledgers. Player block/item integration,
+staging/jobs, complete save ordering and chunk integration remain pending under
 [ADR 0005](../decisions/0005-persistence-ownership.md). This codec does not by
 itself make a playable device durable or prevent creative clones.
 
@@ -43,8 +44,8 @@ Quantities remain exact long item units, mB and FE. Limits are 8 MiB per envelop
 4,096 configured catalog entries, 8,192 configured claims, 256 ASCII registry-ID
 bytes and 65,536 component bytes/key. These technical/administrative limits are
 independent of item tiers. Serialization rejects snapshots/configurations it
-cannot represent, preserving original contents. P2 world admission must account
-for byte budgets before deposits; the P1 ledger constructor alone does not
+cannot represent, preserving original contents. The registry preflights byte
+budgets before deposits/reservations; the P1 ledger constructor alone does not
 enforce persistent-device admission.
 
 ## Version-one format

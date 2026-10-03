@@ -65,7 +65,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Not implemented. |
 | A12 | P2, P6 | Not implemented. |
-| A13 | P2, P4, P7 | Partial foundation: immutable ledger snapshots, version-one bounded/checksummed codec and offline claim recovery. World ownership, staging/jobs and interrupted external-write/save integration remain pending. |
+| A13 | P2, P4, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Physical block/item leases, staging/jobs and interrupted external-write/save integration remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Storage handlers and optional-mod UI remain unimplemented. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
@@ -233,6 +233,45 @@ block/progression defaults require initial D06 selection.
   tooling tests and the JVM/Rust build gates. Final review also exercises
   checksum-valid negative quantities and duplicate stock declarations.
 
-P2 remains partial. The pure component codec is not an atomic world save,
+At this slice P2 remained partial. The pure component codec is not an atomic world save,
 portable ownership registry, migration from a prior released schema, or proof of
 external-inventory crash recovery. No full A13 acceptance is complete.
+
+## P2 ownership and SavedData work log
+
+2026-10-03, same macOS/JDK environment; parent revision `f56da59`:
+
+- Inspected pinned Minecraft/NeoForge SavedData, DimensionDataStorage and
+  IOUtilities. The upstream loader swallows failed reads; the adapter proves
+  file absence before creating a registry and quarantines invalid typed/schema/
+  ledger records without replacing original tags.
+- Implemented one mutable backing owner/world, persisted generations/holder
+  slots, portable/placed transitions, stale/foreign rejection, persistent live-copy
+  conflicts and offline claim recovery. Physical block/item wiring and
+  topology/permission endpoints remain pending.
+- Added O(1) exact serialized-byte/entry counters and preflight admission/reclamation
+  for deposits/claims. World/device limits are bounded technical defaults, not
+  measured memory or latency guarantees.
+- `./gradlew spotlessApply build` passed initial core/adapter and aggregate-bound
+  tests; later revisions added the server hook and committed registry SNBT
+  fixture. Final checks and live startup evidence are recorded below.
+- [Ownership contract](modules/DEVICE_OWNERSHIP.md) documents units, owners,
+  locations, errors, thread behavior, schema and remaining recovery work.
+- `./gradlew spotlessApply runServer` reached `Done (1.941s)` at 17:37:08 and
+  accepted `stop` at 17:39:33; all dimensions saved and Gradle succeeded. The
+  server-start hook created a 101-byte compressed registry with schema one,
+  one world UUID and zero devices (no storage blocks exist yet).
+- `./gradlew runServer` reached `Done (1.593s)` at 17:41:54 and stopped normally
+  at 17:44:15. The registry SHA-256 remained
+  `74225a39d9d9ae6bad41c33bcb097b904e081ad21b6f611155a384e9098d1130`.
+  This verifies empty live-registry creation/reload; the actual disk adapter
+  tests provide nonempty stock/claim recovery evidence. Local logs/worlds stay ignored.
+- `python3 scripts/verify.py` passed the registry SNBT fixture, all 24 tooling
+  tests and JVM/Rust build gates. A final write-protection regression was then
+  added so quarantined SavedData cannot be marked dirty. Final
+  `python3 scripts/verify.py` passed 41 JVM tests with zero failures/skips,
+  all 24 tooling tests and required formatting/static/architecture/Rust gates.
+  `git diff --check` passed. Linux/Windows, large registry autosave performance,
+  physical storage blocks, permissions/topology and staging/jobs remain unverified.
+
+P2 remains in progress. No playable storage block or complete A13 is claimed.

@@ -126,6 +126,14 @@ operations (seed 0x5A7E001). It exercises exact stock and reservation recovery
 offline. See [component contract](modules/PERSISTENCE.md); world interrupted
 save/move/break/clone and job/staging recovery tests remain mandatory P2/P4 work.
 
+Ownership/adapter tests include a committed registry SNBT fixture, seven
+DeviceRegistryTest cases (3,000 generated accounting operations, seed 0xD031001)
+and four DeviceSavedDataTest cases with actual compressed disk save/reload.
+They cover consumed/stale/foreign leases, conflicting copies, admission and
+offline claims, and preventing replacement after a swallowed corrupt-file read.
+Block placement/unload, multiplayer authority and full staging/job saves remain
+separate checks; see [ownership contract](modules/DEVICE_OWNERSHIP.md).
+
 ## Portable core benchmark
 
 `./gradlew coreBenchmark` runs the version-one small/large/overload/idle harness

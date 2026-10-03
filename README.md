@@ -14,6 +14,8 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
 - [Development changelog](CHANGELOG.md): versioned artifact status and limitations.
 - [Ledger persistence](docs/modules/PERSISTENCE.md): initial P2 schema/recovery
   contract; world storage remains pending.
+- [Device ownership](docs/modules/DEVICE_OWNERSHIP.md): registry/lease and actual
+  SavedData adapter; playable storage blocks remain pending.
 - [Architecture decisions](docs/decisions/README.md): how to record significant choices.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.

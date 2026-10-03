@@ -26,6 +26,7 @@ public final class ResourceLedger {
   private long total;
   private boolean infinite;
   private boolean loaded = true;
+  private long serializedBytes = 82;
 
   public ResourceLedger(
       UUID id,
@@ -70,6 +71,34 @@ public final class ResourceLedger {
   public long total() {
     checkThread();
     return total;
+  }
+
+  public long serializedBytes() {
+    checkThread();
+    return serializedBytes;
+  }
+
+  public boolean loaded() {
+    checkThread();
+    return loaded;
+  }
+
+  public long entryCount() {
+    checkThread();
+    return (long) contents.size() + claims.size();
+  }
+
+  public long reservation(UUID owner, ResourceKey key) {
+    checkThread();
+    return claims.getOrDefault(new Claim(Objects.requireNonNull(owner), key), 0L);
+  }
+
+  public static long stockEntryBytes(ResourceKey key) {
+    return 14L + key.registryId().length() + key.componentByteCount();
+  }
+
+  public static long claimEntryBytes(ResourceKey key) {
+    return 16 + stockEntryBytes(key);
   }
 
   public long space(ResourceKey key) {
@@ -147,6 +176,7 @@ public final class ResourceLedger {
     }
     long amount = Math.min(requested, space(key));
     if (amount > 0) {
+      if (!contents.containsKey(key)) serializedBytes += stockEntryBytes(key);
       contents.merge(key, amount, Math::addExact);
       total = Math.addExact(total, amount);
     }
@@ -165,9 +195,11 @@ public final class ResourceLedger {
     long amount = Math.min(requested, available);
     if (amount > 0) {
       subtract(contents, key, amount);
+      if (!contents.containsKey(key)) serializedBytes -= stockEntryBytes(key);
       total -= amount;
       if (claim != null) {
         subtract(claims, claim, amount);
+        if (!claims.containsKey(claim)) serializedBytes -= claimEntryBytes(key);
         subtract(reserved, key, amount);
       }
     }
@@ -188,6 +220,7 @@ public final class ResourceLedger {
       return new OperationResult(0, RESERVATION_LIMIT);
     }
     if (stock(key).available() < requested) return new OperationResult(0, SHORTAGE);
+    if (!claims.containsKey(claim)) serializedBytes += claimEntryBytes(key);
     claims.merge(claim, requested, Math::addExact);
     reserved.merge(key, requested, Math::addExact);
     return new OperationResult(requested, OK);
@@ -198,6 +231,7 @@ public final class ResourceLedger {
     var claim = new Claim(Objects.requireNonNull(owner), key);
     long amount = claims.getOrDefault(claim, 0L);
     claims.remove(claim);
+    if (amount > 0) serializedBytes -= claimEntryBytes(key);
     if (amount > 0) subtract(reserved, key, amount);
     return amount;
   }
