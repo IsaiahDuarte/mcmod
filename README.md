@@ -17,6 +17,8 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
 - [Device ownership](docs/modules/DEVICE_OWNERSHIP.md): registry/lease and actual
   SavedData adapter, with [physical storage contracts](docs/modules/STORAGE_CELLS.md) and the [player guide](docs/PLAYER_GUIDE.md).
 - [Architecture decisions](docs/decisions/README.md): how to record significant choices.
+- [Network authority](docs/modules/NETWORK_AUTHORITY.md): bounded portable
+  topology, local scopes and current grants; world integration remains pending.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
 

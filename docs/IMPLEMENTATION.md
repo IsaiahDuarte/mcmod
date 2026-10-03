@@ -57,14 +57,14 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
 | A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. World integration remains pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. World capabilities, permissions and UI remain pending. |
-| A05 | P2 | Not implemented. |
+| A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Full world gateway/rewiring/chunk and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
 | A07 | P4 | Not implemented. |
 | A08 | P4, P5 | Not implemented. |
 | A09 | P5 | Not implemented. |
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Not implemented. |
-| A12 | P2, P6 | Not implemented. |
+| A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. Persistent network identities/grants, player permissions UI and multiplayer checks remain pending. |
 | A13 | P2, P4, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Actual chunk unload/world restart, staging/jobs and interrupted external-write/save integration remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
@@ -319,3 +319,40 @@ This is an initial physical-device slice, not complete A02/A03/A13/A14. Actual
 chunk unload/full world restart, crash save ordering, network roots/gateways/
 permissions, banks/connectors, transfers/UI, client/manual survival checks and
 remaining release stages are pending. P2 and the full implementation stay active.
+
+## P2 portable topology and current authority work log
+
+2026-10-03, same macOS arm64 / Apple M1 / Java 21.0.12; parent `b85dd27`:
+
+- Selected segment collapse, directed gateway validation, current grants and
+  publication/invalidation rules in ADR 0007 before implementation. This slice
+  contains portable core behavior; it does not activate world storage by itself.
+- Implemented bounded per-region node/edge admission and incremental union/
+  topological validation, valid ordinary loops, private segment scopes, branch
+  descendant suspension and stable paginated local label queries.
+- Added private current permission owners, operation grants, explicit ownership
+  transfer, operator administration without implicit storage/scope bypass, and
+  distinct branch/inherited gateway restrictions. Ancestor intersections stop
+  denied inherited views without enumerating private children.
+- Seven topology and five authority tests cover structural failure, generation
+  invalidation, stale/foreign/forged descriptors, local lookup/pagination and
+  policy/owner/grant semantics. A real FairScheduler queue rechecks revocation
+  and topology before mutation. Generated unload/recovery uses seed 0x70F0106
+  for 300 operations; a 4,096-node/3,072-gateway fanout advances one visit/call.
+- Review restricted machine targets to actual interfaces and fixed a completed
+  validation job retaining its publication flag after later edits. Added explicit
+  immediate invalidation before budgeted world discovery has captured edges.
+  Scope-checked permission-edit/ownership-transfer wrappers also verify that a
+  restricted branch cannot mutate the network's grants or owner.
+- `./gradlew spotlessApply compileJava pmdMain` passed initial production checks.
+  `./gradlew spotlessApply build` passed initial and expanded behavior suites.
+  Final `python3 scripts/verify.py` passed 24 tooling tests and full Gradle gates:
+  53 JVM tests, ten required Minecraft GameTests, zero failures/errors/skips.
+  Unchanged Rust inputs retain their prior verified gate results.
+- `git diff --check` passed. No dependency, platform, CI or policy gate changed.
+  Visit bounds are verified counts, not measured world/server latency claims.
+
+P2/A05/A12 remain partial. Next work is physical controller/cable/gateway ports,
+bounded affected-region discovery/scheduling, persistent network identities and
+grants, and validated device activation. Real chunk/restart, multiplayer/client
+and full performance evidence remain pending. The full goal stays active.

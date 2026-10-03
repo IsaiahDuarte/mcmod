@@ -168,3 +168,14 @@ ownership fixtures; valid root routing is not implemented by the tests.
 See [physical contract](modules/STORAGE_CELLS.md) for their limits. Actual chunk
 unload/world restart, abrupt independent save boundaries, client visuals,
 multiplayer and survival progression remain required later evidence.
+
+## Portable topology and authority
+
+Seven NetworkTopologyTest and five NetworkAuthorityTest cases cover invalid
+graphs, loaded membership, scopes/policies, current grants and bounded query/
+validation work. A 4,096-node/3,072-gateway fanout advances one visit per call;
+300 generated gateway unload/recovery sequences use seed 0x70F0106. A real
+FairScheduler queue verifies revocation and topology changes before mutation.
+These run in the required JVM suite. They do not replace physical port/chunk,
+permission persistence, multiplayer or live routing evidence; see
+[network contract](modules/NETWORK_AUTHORITY.md).

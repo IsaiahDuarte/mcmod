@@ -19,6 +19,9 @@
   safe sequential upgrade modules, vanilla recipes/recipe-book unlocks, creative tab
   and player documentation. Required headless GameTests cover placement, break,
   lease preservation/reload, failures and recipe costs.
+- Added bounded portable topology validation, current private grants, gateway
+  policy intersections and local machine queries. World discovery/activation,
+  network persistence and player permissions controls remain pending.
 
 This development artifact is not the first playable release. World transfers, crafting, scripting, terminal UI and wireless features remain unimplemented; complete survival progression remains unverified. P1 core accounting and bounded
 NeoForge handler ports are implemented and tested; they are not yet connected
