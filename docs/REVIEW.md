@@ -26,7 +26,7 @@ Reviewed on 2026-10-03. This records issues corrected during the design audit; i
 
 ## Remaining decisions, explicitly gated
 
-Minecraft/loader/toolchain, quantity/ABI representation, persistence durability, Wasm runtime, exact language grammar, numerical recipes/balance, and performance targets still require evidence. Their owner, deadline, and validation are recorded in [IMPLEMENTATION.md](IMPLEMENTATION.md). They are not silently chosen and are not a reason to invent incompatible behavior during coding.
+At the design audit, Minecraft/loader/toolchain, quantity/ABI representation, persistence durability, Wasm runtime, exact language grammar, numerical recipes/balance, and performance targets required evidence. The subsequent P0 platform selection and local build/startup evidence are in [ADR 0001](decisions/0001-platform.md); the other gates remain open. Their owner, deadline, and validation are recorded in [IMPLEMENTATION.md](IMPLEMENTATION.md). They are not silently chosen and are not a reason to invent incompatible behavior during coding.
 
 The spec is ready for staged AI implementation beginning with decision/verification bootstrap. It is not a claim that every technical detail is already settled, that gameplay has been tested, or that one automated generation will produce a correct release.
 

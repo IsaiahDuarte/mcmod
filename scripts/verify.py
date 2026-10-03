@@ -1,11 +1,13 @@
-"""Verify design docs and reject source before real build gates are configured.
+"""Verify documentation, tooling, and the real JVM implementation gates.
 
-Checks a documented subset of Markdown without network access or file writes.
-Review still owns documentation correctness.
+Documentation checks use a documented Markdown subset. Gradle may download
+dependencies and writes build output. Review still owns documentation correctness.
 """
 
 from pathlib import Path
 import re
+import os
+import subprocess
 import sys
 import unittest
 from urllib.parse import unquote, urlsplit
@@ -25,12 +27,20 @@ REQUIRED_FILES = (
     ".github/workflows/quality.yml",
     "scripts/verify.py",
     "tests/tooling/test_verify.py",
+    "build.gradle",
+    "settings.gradle",
+    "gradle.lockfile",
+    "gradlew",
+    "gradlew.bat",
+    "gradle/wrapper/gradle-wrapper.jar",
+    "gradle/wrapper/gradle-wrapper.properties",
+    "config/pmd/ruleset.xml",
 )
 IGNORED_DIRS = {
     ".git", ".agents", ".codex", ".venv", "__pycache__", ".gradle",
-    "build", "target", "node_modules",
+    "build", "target", "node_modules", "run",
 }
-BOOTSTRAP_SOURCE_SUFFIXES = {".java", ".kt", ".kts", ".rs"}
+UNWIRED_SOURCE_SUFFIXES = {".kt", ".kts", ".rs"}
 INLINE_LINK = re.compile(
     r'!?\[[^\]\n]*\]\((<[^>\n]+>|[^)\s]+)(?:\s+"[^"\n]*")?\)'
 )
@@ -112,7 +122,7 @@ def verify(root: Path) -> list[str]:
 
     for path in repository_files(root):
         relative = path.relative_to(root).as_posix()
-        if path.suffix.lower() in BOOTSTRAP_SOURCE_SUFFIXES:
+        if path.suffix.lower() in UNWIRED_SOURCE_SUFFIXES:
             errors.append(
                 f"{relative}: implementation verification is not configured. "
                 "Wire real build/static/architecture/test gates before removing "
@@ -174,9 +184,26 @@ def main() -> int:
         return 1
     if not run_tooling_tests(root):
         return 1
-    print("PASS: repository documentation, acceptance tracking, bootstrap, and tooling tests.")
-    print("No mod build or gameplay tests are configured yet.")
+    if not run_implementation_checks(root):
+        return 1
+    print("PASS: documentation, acceptance tracking, tooling, and JVM build/checks.")
+    print("Client/server startup and product acceptance require separate recorded evidence.")
     return 0
+
+
+def run_implementation_checks(root: Path, stream=None) -> bool:
+    """Build runs compilation, packaging, formatting, PMD and nonempty JVM tests."""
+    stream = sys.stderr if stream is None else stream
+    wrapper = root / ("gradlew.bat" if os.name == "nt" else "gradlew")
+    try:
+        result = subprocess.run([str(wrapper), "--no-daemon", "build"], cwd=root, check=False)
+    except OSError as error:
+        print(f"FAIL: cannot execute required JVM verification: {error}", file=stream)
+        return False
+    if result.returncode:
+        print(f"FAIL: JVM verification exited {result.returncode}.", file=stream)
+        return False
+    return True
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ This canonical command checks required files, document titles/nonempty content, 
 
 For focused tooling diagnosis, run: python -m unittest discover -s tests/tooling -v. This does not replace the canonical gate.
 
-It also rejects JVM/Rust source until implementation verification is configured. This is a temporary bootstrap guard, not a complete source-code inventory or permanent language restriction. Generated/build/dependency directories are excluded. The tooling tests check that missing docs, broken/escaping links, and unverified source fail while valid docs pass.
+The canonical command now also runs the required JVM `build` subprocess. Kotlin/Rust source remains rejected until its own implementation verification is configured. This is a temporary bootstrap guard, not a complete source-code inventory or permanent language restriction. Generated/build/dependency directories are excluded. The tooling tests check missing docs/build files, broken/escaping links, unwired Rust source, JVM subprocess dispatch/failure, and valid docs. The old Java rejection test was replaced because Java now has real build gates.
 
 The [CI workflow](../.github/workflows/quality.yml) runs the canonical command on Windows and Linux. It is prepared for GitHub; no remote execution or branch protection has been configured here.
 
@@ -30,7 +30,47 @@ Before the first production module can pass verification:
 
 Follow P0 and subsequent decision gates in [IMPLEMENTATION.md](IMPLEMENTATION.md). Platform integration and guest-specific checks become mandatory with their owning modules; no empty suite is accepted as a completed module's tests.
 
-Until these commands exist, documentation checks passing is not a mod build/test result.
+## JVM bootstrap commands
+
+Selected versions and alternatives are in [ADR 0001](decisions/0001-platform.md).
+Use JDK 21 and the wrapper (Windows: `gradlew.bat`):
+
+```text
+./gradlew clean build
+./gradlew spotlessApply
+./gradlew test
+./gradlew runClient
+./gradlew runServer
+```
+
+`build` includes `spotlessCheck`, PMD production/test analysis, compilation,
+resource processing, JAR packaging and JUnit/ArchUnit tests. `spotlessApply`
+changes source and does not replace checking. Compiler lint warnings are errors.
+JUnit rejects zero executed tests or skipped required tests. Architecture checks
+inspect compiled production classes; a negative fixture demonstrates forbidden
+optional integration detection. The core dependency rule may be empty during P0
+because no core module exists; require nonempty core coverage when P1 arrives.
+Metadata tests require the processed loader descriptor to match the entry point
+and reject remaining template tokens.
+
+Direct dependencies and build plugins are pinned. Architecture tests exclude
+ArchUnit's newer SLF4J dependency and use Minecraft's strictly pinned SLF4J 2.0.9;
+this compatibility was exercised by the passing JVM tests. Resolve reviewed lock updates
+with `./gradlew build --write-locks`; normal builds consume the committed lockfile.
+The wrapper validates the Gradle distribution SHA-256. Minecraft build tools are
+owned by pinned ModDevGradle/NeoForge, not a hand-maintained parallel graph.
+
+Client smoke: reach the title screen and confirm Factory Core in the Mods list;
+close the client normally. Dedicated development-server smoke: reach the `Done` startup message and
+stop through the console. The NeoForge development launch used locally did not
+require an `eula.txt` edit. Client/server logs and worlds are isolated under
+`run/client` and `run/server`. Startup without JEI/Mekanism is only P0's portion of
+A14. Handler and UI integration evidence is still required in later stages.
+Record commands, actual outcomes and environment in the implementation plan.
+Neither a JUnit metadata test nor `build` substitutes for real startup.
+
+Documentation/tooling and JVM gates remain required together. Rust/ABI and actual
+handler GameTests become mandatory when their owning modules arrive.
 
 ## Required implementation coverage
 

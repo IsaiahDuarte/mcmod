@@ -4,7 +4,7 @@
 
 [SPEC.md](../SPEC.md) owns product behavior and release scope. This file owns implementation sequence, decision gates, and evidence tracking. [AGENTS.md](../AGENTS.md) owns the contributor workflow. Follow the current user's instructions; do not treat old proposals or research comparisons as additional requirements.
 
-Current state: design/tooling only. All implementation stages below are **not started**. Product acceptance criteria have no passing evidence yet.
+Current state: **P0 locally verified** on macOS arm64. The minimal loader entry, wrapper, JVM tests and build gates are implemented. Linux/Windows CI execution is pending. P1–P7 are **not started**. No complete product acceptance criterion has passing evidence yet.
 
 ## How an AI should proceed
 
@@ -18,7 +18,7 @@ Current state: design/tooling only. All implementation stages below are **not st
 
 ## Decision gates
 
-All gates are currently **open**. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
+D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02–D07 remain **open**. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
 
 | Gate | Decide and record | Selection/validation timing | Required evidence |
 | --- | --- | --- | --- |
@@ -66,7 +66,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A11 | P3, P4, P6 | Not implemented. |
 | A12 | P2, P6 | Not implemented. |
 | A13 | P2, P4, P7 | Not implemented. |
-| A14 | P0, P3, P6 | Not implemented. |
+| A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Storage handlers and optional-mod UI remain unimplemented. |
 | A15 | P1, P7 | Not implemented. |
 | A16 | P6 | Not implemented. |
 | A17 | P6, P7 | Not implemented. |
@@ -76,3 +76,54 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 > Implement this repository according to AGENTS.md, SPEC.md, and docs/IMPLEMENTATION.md. Resolve decision gates with evidence and ADRs, starting with P0, then continue through the ordered stages. Preserve the full first-playable scope. Keep docs and meaningful tests with each behavior change, run the required checks, and maintain acceptance evidence. Make routine choices within the contract autonomously; report genuine blockers and never claim unrun checks passed.
 
 This instruction authorizes implementation when the user gives it to an agent. Its presence in a design repository does not itself start implementation.
+
+## P0 work log
+
+2026-10-03, macOS 15.3.1 arm64 (Apple M1), OpenJDK 21.0.12,
+Python 3.13.11, Rust 1.95.0:
+
+- Baseline `python3 scripts/verify.py`: passed all 15 original tooling tests.
+- `python3 -m unittest discover -s tests/tooling -v`: passed 21 tests after
+  wiring JVM dispatch/failure checks, an actual failing subprocess fixture and
+  retaining unwired-language rejection.
+- Initial `./gradlew build --write-locks`: failed because NeoForge JUnit support
+  was not enabled. After enabling it, resolution failed on ArchUnit's newer
+  SLF4J versus Minecraft's strict 2.0.9. Fixed by excluding only ArchUnit's
+  SLF4J dependency and using the platform version; no checks were disabled.
+- `./gradlew spotlessApply`: formatted the bootstrap tests.
+- `./gradlew build --write-locks`: passed after the fixes; reviewed dependencies
+  are recorded in `gradle.lockfile`.
+- `./gradlew clean build`: passed using the committed lock configuration. Java
+  compilation, JAR packaging, Spotless, PMD and three JVM tests passed with zero
+  failures/skips. Tests: `ModMetadataTest.processedMetadataMatchesLoaderEntryAndHasNoTemplateTokens`,
+  `ArchitectureTest.mandatoryClassesDoNotLoadOptionalIntegrations`,
+  `ArchitectureTest.optionalBoundaryDetectsAnIllegalDependency`.
+- Gradle wrapper JAR matches the official 9.2.1 checksum; distribution SHA-256
+  validation is configured.
+- `./gradlew runServer`: started with only Minecraft, NeoForge and Factory Core.
+  The first run shared the default directory with the client and was interrupted
+  (exit 130); that is not a graceful-shutdown pass. Final configuration isolates
+  server/client directories and forwards server console input. The second run
+  reported `Done (7.108s)` at 15:32:33, accepted `stop`, saved all dimensions,
+  and reported `BUILD SUCCESSFUL`. Local log: `run/server/logs/latest.log`.
+- `./gradlew runClient`: loaded Factory Core, initialized Apple M1 OpenGL/audio,
+  and entered an integrated world with `Dev joined the game` at 15:29:50.
+  This launch used the original `run/` directory; subsequent launches use
+  `run/client`. Local log: `run/logs/latest.log`. Client window remains available
+  for manual use; normal client exit has not been verified.
+- First server launches logged a missing `server.properties`, then generated it
+  and started. Upstream command/asset warnings appeared; no mod loading failure
+  was observed. Runtime logs/worlds are ignored rather than committed artifacts.
+- `./gradlew spotlessApply build`: passed after adding the packaged-JAR test;
+  four JVM tests passed with zero failures/skips. The added test is
+  `ModMetadataTest.developmentJarContainsEntryPointAndMetadataButNoTestFixtures`.
+- `python3 scripts/verify.py`: passed documentation/acceptance tracking, all 21
+  tooling tests and the required JVM build/check subprocess.
+- `git diff --check`: passed.
+- Remote Linux/Windows CI: not run. Workflow installs Java 21 and runs the
+  canonical verifier; this is configuration, not execution evidence.
+
+P0's local build/load requirements are met. Cross-OS execution and normal client
+exit remain unverified. No full acceptance criterion or first-playable feature
+is complete. Next stage: P1 accounting contracts, real Rust/Wasm feasibility and
+reference workloads, with D02/D04/D07 evidence before dependent implementation.

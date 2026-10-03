@@ -1,0 +1,96 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'com.diffplug.spotless' version '8.1.0'
+    id 'pmd'
+}
+
+group = 'dev.izzy.factorycore'
+version = '0.1.0-dev'
+base.archivesName = 'factorycore'
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    mavenCentral()
+}
+
+neoForge {
+    version = '21.1.252'
+    runs {
+        client {
+            client()
+            gameDirectory = file('run/client')
+        }
+        server {
+            server()
+            gameDirectory = file('run/server')
+            programArgument '--nogui'
+        }
+    }
+    mods {
+        factorycore { sourceSet(sourceSets.main) }
+    }
+    unitTest {
+        enable()
+        testedMod = mods.factorycore
+    }
+}
+
+tasks.named('runServer', JavaExec) {
+    standardInput = System.in
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+    testImplementation('com.tngtech.archunit:archunit:1.4.1') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+}
+
+dependencyLocking { lockAllConfigurations() }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-Xlint:all', '-Werror'])
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    afterSuite { descriptor, result ->
+        if (descriptor.parent == null && (result.testCount == 0 || result.skippedTestCount > 0)) {
+            throw new GradleException('Required JVM tests must execute and cannot be skipped.')
+        }
+    }
+}
+
+tasks.named('test') {
+    dependsOn tasks.named('jar')
+    systemProperty 'factorycore.test.jar', tasks.named('jar').get().archiveFile.get().asFile.absolutePath
+}
+
+spotless {
+    java {
+        googleJavaFormat('1.28.0')
+        target 'src/**/*.java'
+    }
+}
+
+pmd {
+    toolVersion = '7.17.0'
+    ruleSets = []
+    ruleSetFiles = files('config/pmd/ruleset.xml')
+    consoleOutput = true
+}
+
+tasks.named('processResources') {
+    inputs.property('version', project.version)
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(version: project.version)
+    }
+}
+
+tasks.named('jar') {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

@@ -5,3 +5,8 @@ __pycache__/
 *.egg-info/
 .DS_Store
 Thumbs.db
+.gradle/
+build/
+run/
+.idea/
+*.iml

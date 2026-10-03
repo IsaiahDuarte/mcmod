@@ -1,6 +1,6 @@
 # Architecture decision records
 
-Use sequential files such as `0001-platform.md` for decisions that materially affect architecture, compatibility, persistence, or performance. No implementation platform is selected yet.
+Use sequential files such as `0001-platform.md` for decisions that materially affect architecture, compatibility, persistence, or performance. The platform selection is recorded in [ADR 0001](0001-platform.md); local macOS validation passed; cross-OS execution is pending.
 
 Each record contains:
 

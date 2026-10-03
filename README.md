@@ -1,8 +1,8 @@
 # Minecraft Storage and Automation
 
-A mod in design: unified item/fluid/energy storage, a crafting terminal, segmented factories, recipe-based autocrafting, and Rust/WebAssembly automation alongside a friendly language. Progression starts with wired storage and adds bounded wireless access/links and infinite item capacity.
+A mod under development: unified item/fluid/energy storage, a crafting terminal, segmented factories, recipe-based autocrafting, and Rust/WebAssembly automation alongside a friendly language. Progression starts with wired storage and adds bounded wireless access/links and infinite item capacity.
 
-Status: specification and contributor tooling only. Minecraft version, loader, build system, and Wasm runtime are not selected. No playable mod exists yet.
+Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. No playable storage or automation exists yet. Wasm selection remains open. See [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
 
 ## Start here
 
@@ -11,18 +11,36 @@ Status: specification and contributor tooling only. Minecraft version, loader, b
 - [AI contributor instructions](AGENTS.md): required workflow and completion criteria.
 - [Engineering rules](docs/ENGINEERING.md): architecture, documentation, and change discipline.
 - [Verification requirements](docs/TESTING.md): current checks and required implementation gates.
+- [Development changelog](CHANGELOG.md): versioned artifact status and limitations.
 - [Architecture decisions](docs/decisions/README.md): how to record significant choices.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
 
 ## Verify this repository
 
-Requires Python 3.11 or later, using only its standard library:
+Requires Python 3.11 or later and JDK 21. The checked-in Gradle wrapper downloads
+Gradle and dependencies on the first run.
 
 ```text
-python scripts/verify.py
+python3 scripts/verify.py
 ```
 
-This canonical check validates documentation structure, local file links, acceptance-ID tracking, and tooling tests (failing on empty test collection). It rejects JVM/Rust implementation source until real build/test gates are configured. It does not validate a mod implementation or prove the design correct.
+On Windows use `python scripts/verify.py`. This canonical check validates docs,
+acceptance tracking and nonempty tooling tests, then runs Gradle `build` for
+compilation, packaging, formatting, PMD and nonempty JVM/architecture tests.
+Unwired Kotlin/Rust source still fails the bootstrap guard. Passing this command
+does not prove gameplay or client/server startup.
 
-The [GitHub Actions workflow](.github/workflows/quality.yml) runs this command on Windows and Linux once this repository is hosted on GitHub. Hosting and required merge checks are not configured in this local workspace.
+Development commands:
+
+```text
+./gradlew runClient
+./gradlew runServer
+```
+
+On Windows use `gradlew.bat`. The client and development server use separate
+`run/client` and `run/server` folders. Do not commit runtime worlds or local settings. See [verification requirements](docs/TESTING.md) for exact gates.
+
+The [GitHub Actions workflow](.github/workflows/quality.yml) installs Java 21 and
+runs the canonical command on Windows and Linux. Remote CI and branch protection
+remain unverified.

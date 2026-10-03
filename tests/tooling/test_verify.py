@@ -55,12 +55,51 @@ class RepositoryVerificationTests(unittest.TestCase):
         )
         self.assertEqual([], verifier.verify(self.root))
 
-    def test_source_cannot_pass_without_real_build_gates(self):
+    def test_java_source_is_allowed_with_required_build_files(self):
         source = self.root / "src/main/java/Storage.java"
         source.parent.mkdir(parents=True)
         source.write_text("class Storage {}\n", encoding="utf-8")
+        self.assertEqual([], verifier.verify(self.root))
+
+    def test_java_source_fails_when_required_build_is_missing(self):
+        (self.root / "build.gradle").unlink()
+        self.assertIn("Missing required file: build.gradle", verifier.verify(self.root))
+
+    def test_rust_source_requires_its_own_real_verification(self):
+        (self.root / "guest.rs").write_text("fn main() {}\n", encoding="utf-8")
         self.assertTrue(any("implementation verification is not configured" in error
                             for error in verifier.verify(self.root)))
+
+    def test_build_dispatches_real_required_command(self):
+        with patch.object(verifier.subprocess, "run") as run:
+            run.return_value.returncode = 0
+            self.assertTrue(verifier.run_implementation_checks(self.root, io.StringIO()))
+        wrapper = self.root / ("gradlew.bat" if verifier.os.name == "nt" else "gradlew")
+        run.assert_called_once_with(
+            [str(wrapper), "--no-daemon", "build"], cwd=self.root, check=False
+        )
+
+    def test_failing_build_is_not_a_pass(self):
+        with patch.object(verifier.subprocess, "run") as run:
+            run.return_value.returncode = 3
+            self.assertFalse(verifier.run_implementation_checks(self.root, io.StringIO()))
+
+    def test_real_subprocess_runs_in_repository_and_propagates_failure(self):
+        wrapper = self.root / ("gradlew.bat" if verifier.os.name == "nt" else "gradlew")
+        if verifier.os.name == "nt":
+            script = "@echo off\necho %1 %2 > invoked.txt\nexit /b 7\n"
+        else:
+            script = "#!/bin/sh\nprintf '%s %s' \"$1\" \"$2\" > invoked.txt\nexit 7\n"
+        wrapper.write_text(script, encoding="utf-8")
+        wrapper.chmod(0o755)
+        stream = io.StringIO()
+        self.assertFalse(verifier.run_implementation_checks(self.root, stream))
+        self.assertEqual("--no-daemon build", (self.root / "invoked.txt").read_text().strip())
+        self.assertIn("exited 7", stream.getvalue())
+
+    def test_missing_build_tool_is_not_a_pass(self):
+        with patch.object(verifier.subprocess, "run", side_effect=FileNotFoundError("java")):
+            self.assertFalse(verifier.run_implementation_checks(self.root, io.StringIO()))
 
     def test_title_inside_example_does_not_satisfy_document_title(self):
         self.write_readme("~~~text\n# Example title\n~~~\n")
