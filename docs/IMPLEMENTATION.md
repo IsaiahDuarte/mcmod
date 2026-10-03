@@ -18,7 +18,7 @@ Current state: **P0 locally verified** on macOS arm64. The minimal loader entry,
 
 ## Decision gates
 
-D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02 is selected in [ADR 0002](decisions/0002-resource-accounting.md) with initial local core/handler evidence. D04/D07 feasibility and workloads are next; D03–D07 remain open. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
+D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02 is selected in [ADR 0002](decisions/0002-resource-accounting.md) with initial local core/handler evidence. D07 scheduler/workload targets and a measured portable baseline are recorded in [ADR 0003](decisions/0003-scheduling-workloads.md); D04 feasibility is next; D03–D07 remain open. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
 
 | Gate | Decide and record | Selection/validation timing | Required evidence |
 | --- | --- | --- | --- |
@@ -62,12 +62,12 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A07 | P4 | Not implemented. |
 | A08 | P4, P5 | Not implemented. |
 | A09 | P5 | Not implemented. |
-| A10 | P1, P5, P7 | Not implemented. |
+| A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Guest/runtime and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Not implemented. |
 | A12 | P2, P6 | Not implemented. |
 | A13 | P2, P4, P7 | Not implemented. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Storage handlers and optional-mod UI remain unimplemented. |
-| A15 | P1, P7 | Not implemented. |
+| A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records workloads/raw samples, bounds, timing outliers and a slight large-throughput target miss. Full server/client/Wasm measurements remain pending. |
 | A16 | P6 | Not implemented. |
 | A17 | P6, P7 | Not implemented. |
 
@@ -151,3 +151,27 @@ reference workloads, with D02/D04/D07 evidence before dependent implementation.
 
 P1 is partial. These foundation tests do not prove completed A02/A03/A04 or a
 playable storage network. Full acceptance ownership remains unchanged.
+
+## P1 scheduling work log
+
+2026-10-03, Apple M1 / macOS 15.3.1 / OpenJDK 21.0.12 / 8 GiB RAM:
+
+- D07 target/design selection preceded scheduler implementation in ADR 0003.
+  [Module contract](modules/SCHEDULING.md) documents trusted host-work costs,
+  owner/queue limits, lazy quotas, cancellation, error behavior and an example.
+- `./gradlew spotlessApply build coreBenchmark`: passed 18 JVM tests, zero
+  failures/skips, and all four benchmark scenarios. Four FairSchedulerTest tests
+  cover saturation/fairness, replacement/cancellation, time/queue/error bounds and
+  preserving queued work when diagnostics fail.
+- Three warmup and five measured passes per scenario produced 40,000 raw samples.
+  Compressed raw data and factual target assessment are in the evidence document.
+  Initial exploratory stock-depleting samples were excluded after correcting the
+  harness to sustain transfers; production scheduler budgets were not relaxed.
+- Every measured tick respected queue/visit/task/credit bounds. Idle registered
+  owners required zero active work. A few timing outliers and slightly low mean
+  large-workload throughput remain target misses, not reclassified passes.
+- `python3 scripts/verify.py`: passed with the final scheduling docs/evidence,
+  all 21 tooling tests and the JVM build/check gates. `git diff --check`: passed.
+
+D04 real Rust/Wasm sandbox feasibility, world scheduling integration, live
+networking and release performance remain incomplete. P1 stays in progress.

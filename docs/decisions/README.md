@@ -20,3 +20,4 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 
 - [Platform bootstrap](0001-platform.md).
 - [Resource accounting](0002-resource-accounting.md).
+- [Scheduling/workload targets](0003-scheduling-workloads.md).

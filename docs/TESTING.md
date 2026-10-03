@@ -95,3 +95,12 @@ Record hardware, OS, JVM/runtime versions, heap, mod list, warmup, repetitions, 
 ## Reporting
 
 For each change, report the commands run, results, checks omitted with reasons, and any required checks that remain blocked. Existing unrelated failures should be identified, not silently relabeled as passes. Once applicable checks pass, repeat or broaden testing only for a concrete unresolved risk or another required gate.
+
+## Portable core benchmark
+
+`./gradlew coreBenchmark` runs the version-one small/large/overload/idle harness
+using a separate 2 GiB JVM. It is a manual evidence command, not a CI latency
+assertion. See [scheduler contract](modules/SCHEDULING.md),
+[target ADR](decisions/0003-scheduling-workloads.md), and
+[initial measured evidence](evidence/core-v1-2026-10-03.md). Guest/runtime, live
+world and client measurements remain required in their owning stages.

@@ -94,3 +94,10 @@ tasks.named('jar') {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
 }
+
+tasks.register('coreBenchmark', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.izzy.factorycore.benchmark.CoreBenchmark'
+    maxHeapSize = '2g'
+}
