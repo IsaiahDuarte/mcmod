@@ -1,0 +1,57 @@
+# Verification requirements
+
+## Current executable checks
+
+Run from the repository root with Python 3.11 or later:
+
+```text
+python scripts/verify.py
+```
+
+This canonical command checks required files, document titles/nonempty content, Markdown conflict markers, closed code fences, repository-local inline file links, and matching nonempty acceptance-ID tables in the spec/plan. It then runs the tooling suite and fails if collection is empty, a test fails, or a required tooling test is skipped. It skips fenced examples for link/title checking and does not validate external URLs, heading fragments, reference-style links, or semantic correctness.
+
+For focused tooling diagnosis, run: python -m unittest discover -s tests/tooling -v. This does not replace the canonical gate.
+
+It also rejects JVM/Rust source until implementation verification is configured. This is a temporary bootstrap guard, not a complete source-code inventory or permanent language restriction. Generated/build/dependency directories are excluded. The tooling tests check that missing docs, broken/escaping links, and unverified source fail while valid docs pass.
+
+The [CI workflow](../.github/workflows/quality.yml) runs the canonical command on Windows and Linux. It is prepared for GitHub; no remote execution or branch protection has been configured here.
+
+## Implementation bootstrap gate
+
+Before the first production module can pass verification:
+
+1. Select and document Minecraft, loader, JDK, build, test, and guest-language toolchain versions.
+2. Add reproducible build tooling and pinned/locked dependencies according to the platform ADR.
+3. Replace the temporary source guard with actual checked subprocesses in the verification entry point, and install the necessary toolchains in CI.
+4. Wire compilation, formatter checking, static analysis, architecture dependency tests, and unit/property tests. Add platform integration/GameTests and Rust guest/ABI tests as the corresponding modules arrive.
+5. Fail on command failure or missing required tools. Never report success for skipped required gates. Record exact commands and supported platforms here.
+6. Include one real behavior test demonstrating the new module's acceptance contract and a meaningful failure case.
+7. Preserve current documentation/tooling checks and acceptance-ID tracking while adding the real gates. Replace the expected-rejection bootstrap regression with actual build/test dispatch tests in the same change; keeping a test that demands rejection after build verification exists would be incorrect.
+
+Follow P0 and subsequent decision gates in [IMPLEMENTATION.md](IMPLEMENTATION.md). Platform integration and guest-specific checks become mandatory with their owning modules; no empty suite is accepted as a completed module's tests.
+
+Until these commands exist, documentation checks passing is not a mod build/test result.
+
+## Required implementation coverage
+
+| Area | Required behaviors |
+| --- | --- |
+| Storage/transfer | Exact identities/counts; partial acceptance; full destination; external mutation; upgrade/downgrade; arithmetic limits; conservation across staged moves. |
+| Topology | Private scopes, reused labels, stale handles, rewiring/bypass rejection, unload/reload, nested gateway policies. |
+| Crafting | Dependencies/cycles, missing inputs, competing reservations, busy machines, real output attribution, cancellation and recovery. |
+| Scheduler/runtime | Fairness, idle cost, finite queues, infinite-loop interruption, memory and host-work limits, malformed guest requests. |
+| Persistence | Versioned fixtures, migrations, interrupted transitions, explicit uncertain recovery, no blind replay. |
+| Integrations | Actual handler contracts, optional dependencies absent, JEI dragging, representative inventories/tanks/energy sources. |
+| UI/networking | Server validation, scopes, stale state, pagination/deltas, useful errors, actual client interaction for affected flows. |
+
+Use deterministic clocks and recorded random seeds. Prefer observable output and state invariants to implementation details. Keep regression fixtures minimal and representative. Measure coverage to identify untested branches; no arbitrary coverage percentage is currently required.
+
+## Performance verification
+
+Maintain small, large, and overload workloads, with documented active/idle programs, slots, distinct resources, transfer rates, crafting graph sizes, concurrent users, and mutation patterns. Include both huge quantities of identical items and many distinct metadata-heavy items.
+
+Record hardware, OS, JVM/runtime versions, heap, mod list, warmup, repetitions, baseline revision, throughput, tick cost, tail latency, allocations, and memory. Establish numerical budgets before advertising performance. Run stable microbenchmarks in their harness and full server workloads on controlled hardware; do not claim precise server latency from noisy shared CI runners.
+
+## Reporting
+
+For each change, report the commands run, results, checks omitted with reasons, and any required checks that remain blocked. Existing unrelated failures should be identified, not silently relabeled as passes. Once applicable checks pass, repeat or broaden testing only for a concrete unresolved risk or another required gate.
