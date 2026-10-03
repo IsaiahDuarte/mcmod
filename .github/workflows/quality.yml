@@ -29,5 +29,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned Rust guest tools
+        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
       - name: Verify repository
         run: python scripts/verify.py

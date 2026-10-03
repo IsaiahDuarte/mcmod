@@ -53,7 +53,7 @@ The next implementation bootstrap must record the chosen Minecraft/loader/JDK ve
 
 ## Enforcement boundaries
 
-The local verifier and prepared CI enforce required files, basic Markdown structure including closed fences, local file links, matching acceptance IDs in spec/plan, passing nonempty tooling tests, required JVM build files and a passing Gradle build/check subprocess. Unwired Kotlin/Rust source still fails. They cannot prove prose accurate, evidence authentic, or tests meaningful. CI has not run remotely.
+The local verifier and prepared CI enforce required files, basic Markdown structure including closed fences, local file links, matching acceptance IDs in spec/plan, passing nonempty tooling tests, required JVM/guest build files and a passing Gradle build/check subprocess. The Rust experiment has fmt/clippy/native-test/build and real guest gates; unwired Kotlin/Rust source still fails. They cannot prove prose accurate, evidence authentic, or tests meaningful. CI has not run remotely.
 
 The JVM bootstrap automates formatting/static checks, compiled dependency boundaries, compilation and loader metadata tests. Add behavioral and required integration checks with each gameplay module. Semantic documentation quality and acceptance coverage remain review responsibilities. Do not substitute a coverage percentage or a checked PR checkbox for behavioral evidence.
 

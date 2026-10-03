@@ -35,6 +35,11 @@ REQUIRED_FILES = (
     "gradle/wrapper/gradle-wrapper.jar",
     "gradle/wrapper/gradle-wrapper.properties",
     "config/pmd/ruleset.xml",
+    "scripts/verify_guest.py",
+    "tests/tooling/test_verify_guest.py",
+    "experiments/wasm-guest/Cargo.toml",
+    "experiments/wasm-guest/Cargo.lock",
+    "experiments/wasm-guest/rust-toolchain.toml",
 )
 IGNORED_DIRS = {
     ".git", ".agents", ".codex", ".venv", "__pycache__", ".gradle",
@@ -122,7 +127,9 @@ def verify(root: Path) -> list[str]:
 
     for path in repository_files(root):
         relative = path.relative_to(root).as_posix()
-        if path.suffix.lower() in UNWIRED_SOURCE_SUFFIXES:
+        if path.suffix.lower() in UNWIRED_SOURCE_SUFFIXES and not (
+            path.suffix.lower() == ".rs" and path.is_relative_to(root / "experiments/wasm-guest/src")
+        ):
             errors.append(
                 f"{relative}: implementation verification is not configured. "
                 "Wire real build/static/architecture/test gates before removing "

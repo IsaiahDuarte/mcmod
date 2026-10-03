@@ -2,6 +2,8 @@
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
 ca.weblite:java-objc-bridge:1.1=compileClasspath,mainPmdAuxClasspath,neoForgeTestLibraries,neoFormRuntimeDependenciesCompileClasspath,neoFormRuntimeDependenciesRuntimeClasspath,testCompileClasspath,testPmdAuxClasspath,testRuntimeClasspath
+com.dylibso.chicory:runtime:1.7.5=testCompileClasspath,testPmdAuxClasspath,testRuntimeClasspath
+com.dylibso.chicory:wasm:1.7.5=testCompileClasspath,testPmdAuxClasspath,testRuntimeClasspath
 com.electronwill.night-config:core:3.8.3=compileClasspath,mainPmdAuxClasspath,neoForgeTestLibraries,neoFormRuntimeDependenciesCompileClasspath,neoFormRuntimeDependenciesRuntimeClasspath,testCompileClasspath,testPmdAuxClasspath,testRuntimeClasspath
 com.electronwill.night-config:toml:3.8.3=compileClasspath,mainPmdAuxClasspath,neoForgeTestLibraries,neoFormRuntimeDependenciesCompileClasspath,neoFormRuntimeDependenciesRuntimeClasspath,testCompileClasspath,testPmdAuxClasspath,testRuntimeClasspath
 com.github.oowekyala.ooxml:nice-xml-messages:3.1=pmd

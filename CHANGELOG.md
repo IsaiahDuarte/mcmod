@@ -8,6 +8,9 @@
   JVM metadata/artifact tests and compiled architecture checks.
 - Extended the canonical Python verifier and Linux/Windows CI configuration.
 - Verified local macOS arm64 build and client/dedicated-server loading.
+- Added a pinned Rust/Wasm probe with parser declaration bounds, finite execution/
+  stack/host/memory limits, trap-batch tests and cold/warm startup measurements.
+  Chicory remains a test dependency; the production SDK/runtime is pending.
 
 This development artifact is not the first playable release. Storage blocks, world transfers, crafting, scripting, terminal UI, progression
 and wireless features remain unimplemented. P1 core accounting and bounded

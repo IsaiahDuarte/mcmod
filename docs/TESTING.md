@@ -12,7 +12,13 @@ This canonical command checks required files, document titles/nonempty content, 
 
 For focused tooling diagnosis, run: python -m unittest discover -s tests/tooling -v. This does not replace the canonical gate.
 
-The canonical command now also runs the required JVM `build` subprocess. Kotlin/Rust source remains rejected until its own implementation verification is configured. This is a temporary bootstrap guard, not a complete source-code inventory or permanent language restriction. Generated/build/dependency directories are excluded. The tooling tests check missing docs/build files, broken/escaping links, unwired Rust source, JVM subprocess dispatch/failure, and valid docs. The old Java rejection test was replaced because Java now has real build gates.
+The canonical command also runs the required JVM `build` subprocess and its Rust
+guest checks. Rust under `experiments/wasm-guest/src` is wired; other Rust/Kotlin
+source remains rejected until its verification is configured. This is a temporary
+bootstrap guard, not a complete source inventory or permanent language restriction.
+Generated/build/dependency directories are excluded. Tooling tests exercise missing
+docs/build/guest files, broken/escaping links, unwired sources, JVM dispatch/failure,
+empty/skipped Rust summaries and valid docs.
 
 The [CI workflow](../.github/workflows/quality.yml) runs the canonical command on Windows and Linux. It is prepared for GitHub; no remote execution or branch protection has been configured here.
 
@@ -71,6 +77,22 @@ Neither a JUnit metadata test nor `build` substitutes for real startup.
 
 Documentation/tooling and JVM gates remain required together. Rust/ABI and actual
 handler GameTests become mandatory when their owning modules arrive.
+
+## Rust/Wasm feasibility checks
+
+Install Rust 1.95.0 with rustfmt, clippy and wasm32-unknown-unknown as shown in
+[the experiment guide](../experiments/wasm-guest/README.md). `build` depends on
+`verifyRustGuest` and executes `scripts/verify_guest.py`: locked native/guest
+clippy with warnings as errors, fmt check, nonempty/unskipped native tests and a
+Wasm release build. JVM tests consume that real artifact; no checked-in binary
+substitutes for compilation. Only this exact Rust source tree bypasses the guard.
+CI installs the same pinned toolchain on Windows/Linux; execution is unverified.
+
+Focused commands are `python3 scripts/verify_guest.py` and `./gradlew test`.
+`./gradlew wasmBenchmark` writes manual raw timing/allocation samples. See
+[ADR 0004](decisions/0004-wasm-feasibility.md) and
+[local evidence](evidence/wasm-v1-2026-10-03.md) for limits and interpretation.
+This probe is test-only; world host API/lifecycle/event/log/state checks remain P5.
 
 ## Required implementation coverage
 

@@ -18,7 +18,7 @@ Current state: **P0 locally verified** on macOS arm64. The minimal loader entry,
 
 ## Decision gates
 
-D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02 is selected in [ADR 0002](decisions/0002-resource-accounting.md) with initial local core/handler evidence. D07 scheduler/workload targets and a measured portable baseline are recorded in [ADR 0003](decisions/0003-scheduling-workloads.md); D04 feasibility is next; D03–D07 remain open. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
+D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02 is selected in [ADR 0002](decisions/0002-resource-accounting.md) with initial local core/handler evidence. D07 scheduler/workload targets and a measured portable baseline are recorded in [ADR 0003](decisions/0003-scheduling-workloads.md). D04's interpreter candidate is selected and its local P1 probe validated in [ADR 0004](decisions/0004-wasm-feasibility.md); cross-OS/production evidence remains pending. D03/D05/D06 and D07 release validation remain open. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
 
 | Gate | Decide and record | Selection/validation timing | Required evidence |
 | --- | --- | --- | --- |
@@ -62,12 +62,12 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A07 | P4 | Not implemented. |
 | A08 | P4, P5 | Not implemented. |
 | A09 | P5 | Not implemented. |
-| A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Guest/runtime and world overload integration remain pending. |
+| A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Not implemented. |
 | A12 | P2, P6 | Not implemented. |
 | A13 | P2, P4, P7 | Not implemented. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Storage handlers and optional-mod UI remain unimplemented. |
-| A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records workloads/raw samples, bounds, timing outliers and a slight large-throughput target miss. Full server/client/Wasm measurements remain pending. |
+| A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
 | A17 | P6, P7 | Not implemented. |
 
@@ -175,3 +175,35 @@ playable storage network. Full acceptance ownership remains unchanged.
 
 D04 real Rust/Wasm sandbox feasibility, world scheduling integration, live
 networking and release performance remain incomplete. P1 stays in progress.
+
+## P1 Rust/Wasm work log
+
+2026-10-03, same macOS/JDK environment; parent revision `2377399`:
+
+- Selected Chicory 1.7.5 interpreter and Rust 1.95.0 experiment in ADR 0004.
+  Runtime/parser dependencies remain test-only and locked. Only the guest source
+  tree bypasses the Rust bootstrap guard, with real Gradle/CI verification wired.
+- Installed exact fmt/clippy/Wasm target; `python3 scripts/verify_guest.py` passed
+  native/guest lint, formatting, one native boundary test and a real Wasm build.
+- Initial Gradle wiring failed because a task was registered during test-task
+  configuration; moved registration to the task container. Initial compilation
+  found a missing scalar-type reader; added it. No checks were disabled.
+- `./gradlew spotlessApply build --write-locks` passed the corrected probe and
+  dependency lock update. `./gradlew spotlessApply build wasmBenchmark` passed
+  the final 24 JVM tests, zero failures/skips, including six runtime tests.
+- Tests cover exact i64, runaway/flood/deadline limits, finite memory, trap batch
+  discard/non-resumption, malformed declarations/imports/proposals, recursive
+  calls and valid nested operand-stack accumulation. No world host operations
+  are implemented by this observation-only experimental ABI.
+- [Measurements and raw evidence](evidence/wasm-v1-2026-10-03.md) preserve a
+  107.7-ms first startup and the warm distributions. P5 must separately schedule
+  startup and measure maximum artifacts; warm timing is not cold tick evidence.
+- `python3 scripts/verify.py` passed documentation/acceptance tracking, 24 tooling
+  tests, pinned Rust checks and the JVM build gates. Final guest bytes are an
+  explicit Gradle test input, so changed artifacts invalidate cached ABI tests.
+
+D04 is locally feasible and selected for P5 experiments; cross-OS execution,
+production SDK/lifecycle and scheduler/host-work integration remain pending.
+P1 remains in progress because full gate/platform evidence and performance
+validation are incomplete. P2's persistent-storage slice may proceed after D03;
+block/progression defaults require initial D06 selection.

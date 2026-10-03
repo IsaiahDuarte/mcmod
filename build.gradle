@@ -41,6 +41,7 @@ tasks.named('runServer', JavaExec) {
 }
 
 dependencies {
+    testImplementation 'com.dylibso.chicory:runtime:1.7.5'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
     testImplementation('com.tngtech.archunit:archunit:1.4.1') {
@@ -64,9 +65,17 @@ tasks.withType(Test).configureEach {
     }
 }
 
+tasks.register('verifyRustGuest', Exec) {
+    commandLine(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows') ? 'python' : 'python3', 'scripts/verify_guest.py')
+    inputs.files(fileTree('experiments/wasm-guest'), file('scripts/verify_guest.py'))
+    outputs.file('build/test-guests/probe.wasm')
+}
+
 tasks.named('test') {
-    dependsOn tasks.named('jar')
+    dependsOn tasks.named('jar'), tasks.named('verifyRustGuest')
     systemProperty 'factorycore.test.jar', tasks.named('jar').get().archiveFile.get().asFile.absolutePath
+    systemProperty 'factorycore.test.guest', file('build/test-guests/probe.wasm').absolutePath
+    inputs.file('build/test-guests/probe.wasm')
 }
 
 spotless {
@@ -100,4 +109,12 @@ tasks.register('coreBenchmark', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'dev.izzy.factorycore.benchmark.CoreBenchmark'
     maxHeapSize = '2g'
+}
+
+tasks.register('wasmBenchmark', JavaExec) {
+    dependsOn tasks.named('testClasses'), tasks.named('verifyRustGuest')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.izzy.factorycore.wasm.WasmBenchmark'
+    maxHeapSize = '2g'
+    systemProperty 'factorycore.test.guest', file('build/test-guests/probe.wasm').absolutePath
 }

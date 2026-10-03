@@ -70,6 +70,14 @@ class RepositoryVerificationTests(unittest.TestCase):
         self.assertTrue(any("implementation verification is not configured" in error
                             for error in verifier.verify(self.root)))
 
+    def test_checked_probe_source_is_allowed_but_missing_guest_gate_fails(self):
+        source = self.root / "experiments/wasm-guest/src/lib.rs"
+        source.parent.mkdir(parents=True)
+        source.write_text("fn main() {}\n", encoding="utf-8")
+        self.assertEqual([], verifier.verify(self.root))
+        (self.root / "scripts/verify_guest.py").unlink()
+        self.assertIn("Missing required file: scripts/verify_guest.py", verifier.verify(self.root))
+
     def test_build_dispatches_real_required_command(self):
         with patch.object(verifier.subprocess, "run") as run:
             run.return_value.returncode = 0
