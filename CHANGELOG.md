@@ -9,7 +9,8 @@
 - Extended the canonical Python verifier and Linux/Windows CI configuration.
 - Verified local macOS arm64 build and client/dedicated-server loading.
 
-This development artifact is not the first playable release. Storage, transfers,
-crafting, scripting, terminal UI, progression and wireless features remain
-unimplemented. Linux/Windows runtime compatibility and remote CI are unverified.
+This development artifact is not the first playable release. Storage blocks, world transfers, crafting, scripting, terminal UI, progression
+and wireless features remain unimplemented. P1 core accounting and bounded
+NeoForge handler ports are implemented and tested; they are not yet connected
+to a playable network. Linux/Windows runtime compatibility and remote CI are unverified.
 See [implementation evidence](docs/IMPLEMENTATION.md).

@@ -2,7 +2,7 @@
 
 A mod under development: unified item/fluid/energy storage, a crafting terminal, segmented factories, recipe-based autocrafting, and Rust/WebAssembly automation alongside a friendly language. Progression starts with wired storage and adds bounded wireless access/links and infinite item capacity.
 
-Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. No playable storage or automation exists yet. Wasm selection remains open. See [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
+Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. No playable storage or automation exists yet. P1 resource-accounting foundations are implemented; Wasm selection remains open. See [resource contracts](docs/modules/RESOURCE_ACCOUNTING.md). See [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
 
 ## Start here
 

@@ -33,7 +33,7 @@ class ArchitectureTest {
         .should()
         .dependOnClassesThat()
         .resideInAnyPackage("net.minecraft..", "net.neoforged..", "..platform..")
-        .allowEmptyShould(true)
+        .allowEmptyShould(false)
         .check(classes);
   }
 

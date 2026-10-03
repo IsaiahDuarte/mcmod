@@ -4,7 +4,7 @@
 
 [SPEC.md](../SPEC.md) owns product behavior and release scope. This file owns implementation sequence, decision gates, and evidence tracking. [AGENTS.md](../AGENTS.md) owns the contributor workflow. Follow the current user's instructions; do not treat old proposals or research comparisons as additional requirements.
 
-Current state: **P0 locally verified** on macOS arm64. The minimal loader entry, wrapper, JVM tests and build gates are implemented. Linux/Windows CI execution is pending. P1–P7 are **not started**. No complete product acceptance criterion has passing evidence yet.
+Current state: **P0 locally verified** on macOS arm64. The minimal loader entry, wrapper, JVM tests and build gates are implemented. Linux/Windows CI execution is pending. P1 is **in progress**; P2–P7 are **not started**. No complete product acceptance criterion has passing evidence yet.
 
 ## How an AI should proceed
 
@@ -18,7 +18,7 @@ Current state: **P0 locally verified** on macOS arm64. The minimal loader entry,
 
 ## Decision gates
 
-D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02–D07 remain **open**. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
+D01 is **selected and locally validated** in [ADR 0001](decisions/0001-platform.md). D02 is selected in [ADR 0002](decisions/0002-resource-accounting.md) with initial local core/handler evidence. D04/D07 feasibility and workloads are next; D03–D07 remain open. The implementing AI owns resolution within the stated product contract. Record a selected design before dependent coding; mark it validated only after its required evidence exists. Experimental implementation/builds needed to obtain evidence are allowed within the owning stage. They do not count as a completed gate or stage. Performance budgets are targets until measured.
 
 | Gate | Decide and record | Selection/validation timing | Required evidence |
 | --- | --- | --- | --- |
@@ -54,9 +54,9 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | Criterion | Owning stages | Evidence/status |
 | --- | --- | --- |
 | A01 | P3 | Not implemented. |
-| A02 | P2, P6 | Not implemented. |
-| A03 | P1, P2, P3 | Not implemented. |
-| A04 | P2, P3, P6 | Not implemented. |
+| A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Devices/progression remain pending. |
+| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. World integration remains pending. |
+| A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. World capabilities, permissions and UI remain pending. |
 | A05 | P2 | Not implemented. |
 | A06 | P4 | Not implemented. |
 | A07 | P4 | Not implemented. |
@@ -127,3 +127,27 @@ P0's local build/load requirements are met. Cross-OS execution and normal client
 exit remain unverified. No full acceptance criterion or first-playable feature
 is complete. Next stage: P1 accounting contracts, real Rust/Wasm feasibility and
 reference workloads, with D02/D04/D07 evidence before dependent implementation.
+
+## P1 accounting work log
+
+2026-10-03, same macOS/JDK environment as P0; bootstrap commit `54bb0f7`:
+
+- D02 selected before source in ADR 0002; [module contract](modules/RESOURCE_ACCOUNTING.md)
+  records units, bounds, errors, thread ownership, handler limits and an example.
+- `./gradlew spotlessApply build`: passed with 14 JVM tests (four bootstrap, six
+  portable accounting and four real platform-handler tests), zero failures/skips.
+- Implemented signed-long checked device accounting, arbitrary-precision unique
+  backing aggregates, immutable exact identities, reservations, capacity changes,
+  loaded-state rejection and explicit staging/uncertain-transfer records.
+- Actual NeoForge ItemStackHandler/FluidTank/EnergyStorage checks passed. Item
+  ports intentionally mutate at most one slot per call so known extraction cannot
+  accumulate through several external mutations before a later handler throws.
+- Generated conservation tests completed 30,000 operations with replay seeds
+  0xFAC7001/0xFAC7002/0xFAC7003, including reservation competition, unload, resize,
+  partial insertion, retries and cancellation.
+- `python3 scripts/verify.py`: passed after module docs; `git diff --check` passed.
+  D04 real Rust guest/sandbox,
+  D07 scheduling workloads/baseline, and world adapters remain incomplete.
+
+P1 is partial. These foundation tests do not prove completed A02/A03/A04 or a
+playable storage network. Full acceptance ownership remains unchanged.
