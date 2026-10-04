@@ -164,6 +164,7 @@ publication, stale/foreign/forged scopes, full graph/degree admission and 3,072
 gateway fanout with one visit/call. Generated 300 unload/recovery sequences use
 seed 0x70F0106. Private grants, operators, transfer/overflow, reused labels,
 pagination/ambiguity, inherited intersections and real FairScheduler queued
-revocation are exercised. Canonical network identities/grants now have [persistence evidence](NETWORK_PERSISTENCE.md). Physical leases/policies now have [adapter evidence](STRUCTURAL_NODES.md). World discovery,
+revocation are exercised. A [budgeted physical discovery producer](WIRE_DISCOVERY.md) now supplies bounded
+world descriptors; automatic coordination/activation remain pending. Canonical network identities/grants now have [persistence evidence](NETWORK_PERSISTENCE.md). Physical leases/policies now have [adapter evidence](STRUCTURAL_NODES.md). World discovery,
 real chunk events, network/device activation, clients and server performance
 remain required P2/P3/P7 evidence. Full A05/A12 is not proved by these core tests.

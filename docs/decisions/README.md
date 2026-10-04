@@ -31,3 +31,7 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
   metadata and schema-one migration verified locally; extended by ADR 0009.
 - [Physical structural leases](0009-structural-leases.md): controllers/gateways,
   directional ports and schema-three migration; discovery/activation pending.
+
+- [Budgeted wire discovery](0010-bounded-wire-discovery.md): portable producer,
+  common scheduler task and nonloading world reader; automatic event coordination
+  and device activation remain pending.

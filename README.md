@@ -23,6 +23,8 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
   metadata, schema-one migration and bounded principal admission.
 - [Physical network nodes](docs/modules/STRUCTURAL_NODES.md): portable structural
   ownership, gateway ports and migration; network activation pending.
+- [Wire discovery](docs/modules/WIRE_DISCOVERY.md): budgeted reciprocal probes,
+  shared scheduling and nonloading world reads; automatic coordination pending.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
 

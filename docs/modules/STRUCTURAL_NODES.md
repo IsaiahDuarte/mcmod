@@ -1,7 +1,8 @@
 # Physical controllers, gateways and cables
 
 Implemented P2 physical ownership/ports for parts of A05/A12/A13/A14. These blocks
-do not yet discover or activate a network. Bounded world discovery, routing,
+do not yet discover or activate a network. The [budgeted discovery producer](WIRE_DISCOVERY.md) now reads these physical
+ports; automatic world coordination, routing,
 gateway policy editing, permission screens and terminals remain pending.
 [ADR 0009](../decisions/0009-structural-leases.md) records the design.
 

@@ -31,6 +31,10 @@
   Schema three adds canonical structural ownership/policies with exact legacy
   migration. World discovery/activation and permission screens remain pending.
 
+- Added budgeted reciprocal wire discovery, separate gateway virtual ports,
+  shared scheduler dispatch, source-epoch cancellation and a nonloading world
+  reader. Automatic region/event coordination and resource activation are pending.
+
 This development artifact is not the first playable release. World transfers, crafting, scripting, terminal UI and wireless features remain unimplemented; complete survival progression remains unverified. P1 core accounting and bounded
 NeoForge handler ports are implemented and tested; they are not yet connected
 to a playable network. Linux/Windows runtime compatibility and remote CI are unverified.

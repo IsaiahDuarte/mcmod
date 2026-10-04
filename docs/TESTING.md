@@ -201,3 +201,13 @@ placement/movement, gateway faces, clone/lifecycle behavior, future-data recover
 portable chunk rejection, exact recipes and explicit controller commissioning.
 See [structural contract](modules/STRUCTURAL_NODES.md). World discovery/activation,
 real chunks/restart and client/multiplayer remain pending.
+
+## Budgeted wire discovery
+
+Six WiredDiscoveryTest cases cover reciprocal ports, gateway boundaries/unload,
+bypass/collision, stale/cancelled jobs, 4,096-node one-visit progress, ceilings and
+shared scheduling. Two required WireDiscoveryGameTests bring the world suite to
+sixteen; actual placements produce private scopes, detached drives remain rootless
+and remote chunk probes never load chunks. These tests explicitly own cancellation
+and scheduling. Automatic region/event hooks and activation remain pending; see
+[discovery contract](modules/WIRE_DISCOVERY.md).

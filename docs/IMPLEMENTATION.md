@@ -57,7 +57,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
 | A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. World integration remains pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. World capabilities, permissions and UI remain pending. |
-| A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. Full world discovery/gateway rewiring/chunk and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
+| A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. Automatic world region/event coordination, activation, chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
 | A07 | P4 | Not implemented. |
 | A08 | P4, P5 | Not implemented. |
@@ -445,3 +445,49 @@ P2/A05/A12/A13/A14 remain partial. Next: bounded affected-region world discovery
 shared scheduling/invalidation and validated storage activation, followed by
 banks/connectors and the remaining transfer/terminal/crafting/program/wireless
 stages. Full release acceptance is still incomplete and the goal remains active.
+
+## P2 bounded wire discovery work log
+
+2026-10-03, same macOS arm64 / Apple M1 / Java 21.0.12; parent `4d2d60a`:
+
+- The prior committed turn made verified structural-ownership progress. The
+  interrupted discovery turn made no file changes; revalidated the clean tree
+  and took the next safe implementation action. Selected ADR 0010 before source.
+- Added owner-thread discovery of bounded immutable physical descriptors,
+  reciprocal adjacency, separate gateway virtual ports, collision/admission
+  rejection, memoized probes and complete source-epoch-checked publication.
+  Incremental graph validation shares the discovery visit budget.
+- Added common FairScheduler resubmission/cost admission and a real nonloading
+  ServerLevel reader. Absent chunks retain only known unavailable geometry; loaded
+  air rejects cached geometry. Canonical root/gateway references validate before
+  loaded descriptors are admitted. Cached gateways suspend descendants while
+  retaining virtual anchors so upstream/sibling segments stay usable.
+- Six WiredDiscoveryTest cases include private reciprocal scopes, unload/removal,
+  bypass/collision, reader failure diagnostics, cancelled/stale publication, a
+  4,096-node chain advanced one visit/call with at most one actual host probe,
+  seed/node ceilings and common scheduler rescheduling/rejected admission.
+- Two required WireDiscoveryGameTests read actual placed controllers/gateways/
+  drives, inspect private inherited views, explicitly cancel before an edit and
+  reject detached-root invention. A real remote getChunkNow remains null before
+  and after a cached/unknown probe; loaded air does not reuse cached geometry.
+  These tests own scheduling/cancellation; no automatic runtime hooks are claimed.
+- `./gradlew spotlessApply compileJava pmdMain` passed initially. The next
+  `./gradlew spotlessApply test pmdMain pmdTest` and initial full build caught a
+  helper-signature mismatch after removal of an unused argument; corrected both
+  declaration and call sites. Full builds then caught PMD CloseResource on a
+  borrowed Minecraft chunk cache despite passing sixteen GameTests. A narrow
+  method annotation documents that Minecraft owns it; no rule/test was disabled.
+- `./gradlew spotlessApply build` passed after corrections. Final
+  `python3 scripts/verify.py` passed document/acceptance tracking, 24 tooling tests
+  and all Gradle gates, 73 JVM tests and a fresh sixteen-GameTest server run, zero
+  failures/errors/skips. Unchanged Rust gate inputs remained verified/up to date.
+- `git diff --check` passed. Reviewed source/module boundaries, unchanged build/
+  dependency/CI/policy files and absence of generated worlds. No persistence
+  schema changed. Actual client, multiplayer, chunk lifecycle/full restart,
+  interruption and representative server latency were not run.
+
+P2/A05/A10 remain partial. Automatic region ownership/coalescing, immediate
+block/chunk/canonical-owner event invalidation and validated cell activation are
+the next required integration. Producer publication alone activates no resources.
+Remaining storage/transfer/terminal/crafting/program/wireless/release work stays
+in scope; the full goal remains active.
