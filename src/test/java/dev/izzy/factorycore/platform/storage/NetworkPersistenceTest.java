@@ -75,7 +75,7 @@ class NetworkPersistenceTest {
     var tag = fixture();
     var loaded = DeviceSavedData.load(tag, registries);
     assertEquals("", loaded.diagnostic());
-    assertFalse(loaded.isDirty());
+    assertTrue(loaded.isDirty());
     var permissions = loaded.network(NETWORK);
     assertEquals(3, permissions.snapshot().generation());
     assertEquals(OWNER, permissions.snapshot().owner());
@@ -91,7 +91,12 @@ class NetworkPersistenceTest {
     }
     assertThrows(IllegalArgumentException.class, () -> loaded.network(new UUID(0, 999)));
     assertEquals(1, loaded.principalBindings());
-    assertEquals(tag, loaded.save(new CompoundTag(), registries));
+    var migrated = loaded.save(new CompoundTag(), registries);
+    assertEquals(3, migrated.getInt("Schema"));
+    assertEquals(tag.get("World"), migrated.get("World"));
+    assertEquals(tag.get("Devices"), migrated.get("Devices"));
+    assertEquals(tag.get("Networks"), migrated.get("Networks"));
+    assertTrue(migrated.getList("Nodes", Tag.TAG_COMPOUND).isEmpty());
     var all = Set.of(Permission.values());
     assertEquals(Change.OK, permissions.setGrants(new Actor(OWNER, false), PRINCIPAL, all));
     assertEquals(127, grant(loaded.save(new CompoundTag(), registries)).getInt("Permissions"));
@@ -272,9 +277,12 @@ class NetworkPersistenceTest {
     tag.put("Networks", networks);
     var loaded = DeviceSavedData.load(tag, registries);
     assertEquals("", loaded.diagnostic());
+    loaded.setDirty(false);
     assertThrows(IllegalStateException.class, () -> loaded.createNetwork(OWNER));
     assertFalse(loaded.isDirty());
-    assertEquals(tag, loaded.save(new CompoundTag(), registries));
+    var migrated = loaded.save(new CompoundTag(), registries);
+    assertEquals(tag.get("Networks"), migrated.get("Networks"));
+    assertEquals(tag.get("Devices"), migrated.get("Devices"));
     networks.add(emptyNetwork(DeviceSavedData.MAX_NETWORKS, 0));
     rejected(tag);
     tag.put("Networks", new ListTag());

@@ -13,7 +13,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 
-/** Schema-two network metadata; fixed bits are independent of Java enum order. */
+/** Network metadata introduced in schema two; fixed bits are independent of Java enum order. */
 final class NetworkStateCodec {
   private NetworkStateCodec() {}
 
@@ -50,12 +50,7 @@ final class NetworkStateCodec {
           throw new IllegalArgumentException("Invalid principal UUID");
         require(grant, "Permissions", Tag.TAG_INT);
         int mask = grant.getInt("Permissions");
-        if (mask <= 0 || (mask & ~127) != 0)
-          throw new IllegalArgumentException("Unknown/empty permission mask");
-        var decoded = EnumSet.noneOf(Permission.class);
-        for (var permission : Permission.values()) {
-          if ((mask & bit(permission)) != 0) decoded.add(permission);
-        }
+        var decoded = decodePermissions(mask, false);
         if (permissions.putIfAbsent(grant.getUUID("Principal"), decoded) != null)
           throw new IllegalArgumentException("Duplicate network principal");
       }
@@ -77,8 +72,7 @@ final class NetworkStateCodec {
       for (var principal : state.grants().keySet().stream().sorted().toList()) {
         var grant = new CompoundTag();
         grant.putUUID("Principal", principal);
-        int mask = 0;
-        for (var permission : state.grants().get(principal)) mask |= bit(permission);
+        int mask = encodePermissions(state.grants().get(principal));
         grant.putInt("Permissions", mask);
         grants.add(grant);
       }
@@ -86,6 +80,22 @@ final class NetworkStateCodec {
       list.add(entry);
     }
     return list;
+  }
+
+  static Set<Permission> decodePermissions(int mask, boolean allowEmpty) {
+    if (mask < 0 || (!allowEmpty && mask == 0) || (mask & ~127) != 0)
+      throw new IllegalArgumentException("Unknown/empty permission mask");
+    var decoded = EnumSet.noneOf(Permission.class);
+    for (var permission : Permission.values()) {
+      if ((mask & bit(permission)) != 0) decoded.add(permission);
+    }
+    return Set.copyOf(decoded);
+  }
+
+  static int encodePermissions(Set<Permission> permissions) {
+    int mask = 0;
+    for (var permission : permissions) mask |= bit(permission);
+    return mask;
   }
 
   private static int bit(Permission permission) {

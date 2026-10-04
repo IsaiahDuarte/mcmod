@@ -1,7 +1,7 @@
 # Canonical network identity and grants
 
-Implemented P2 authority metadata for A12/A13; physical controller leases,
-gateway policies, world discovery and player permission screens remain pending.
+Implemented P2 authority metadata for A12/A13; physical controller leases and gateway policies now have
+[structural ownership](STRUCTURAL_NODES.md); world discovery and player permission screens remain pending.
 [ADR 0008](../decisions/0008-network-persistence.md) records the save decision.
 
 ## Ownership and lifecycle
@@ -41,9 +41,10 @@ from physical block-lease and topology-scope generations.
 
 ## Schema and migration
 
-Canonical `world/data/factorycore_devices.dat` now has integer `Schema=2`, UUID
+Canonical `world/data/factorycore_devices.dat` now has integer `Schema=3`, UUID
 `World`, the existing compound `Devices` list, and required compound `Networks`
-list. The checksummed ledger binary schema remains one. Each network contains:
+list, plus the required [structural Nodes table](STRUCTURAL_NODES.md). The
+checksummed ledger binary schema remains one. Each network contains:
 
 | Field | Type and meaning |
 | --- | --- |
@@ -71,9 +72,9 @@ also reject rather than disappear on the next save. Rejection preserves the
 original tag and prohibits marking it dirty, keeping recovery data read-only.
 An upstream swallowed read failure still cannot replace an existing file.
 
-Recognized schema one migrates with exact world identity, ledger bytes, claims,
-physical lease generations, conflict flags and locations preserved. It adds an
-empty network list and marks the migration dirty. Previous schema-one builds
+Recognized schema one/two migrates with exact world identity, ledger bytes, claims,
+physical lease generations, conflict flags and locations preserved. Schema one adds an
+empty network list; both add an empty node list and mark the migration dirty. Previous schema-one builds
 had no network records. Unknown schemas do not migrate. Committed schema-one
 and schema-two SNBT fixtures exercise both compatibility paths.
 
@@ -96,8 +97,8 @@ run no accounting callback. Standalone core constructors retain their per-networ
 ceiling without inventing a world budget.
 
 Orderly compressed SavedData save/reload is verified. Metadata commissioning is
-not persisted structural ownership; a future compatible schema must add physical
-root/controller/gateway leases and policies before world activation. Durable
+distinct from the [schema-three structural leases](STRUCTURAL_NODES.md). World
+activation must still validate current physical ownership and topology. Durable
 staging/jobs, actual world restart/chunk behavior, abrupt save-order recovery,
 client/multiplayer checks and full A12/A13 remain pending. Outer NBT allocation,
 disk errors and independent chunk/player/foreign-handler writes remain outside

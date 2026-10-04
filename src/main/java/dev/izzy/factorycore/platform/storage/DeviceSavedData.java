@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import com.mojang.logging.LogUtils;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.LedgerStateCodec;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import java.nio.file.Files;
@@ -33,12 +34,14 @@ public final class DeviceSavedData extends SavedData {
   private int principalBindings;
   private static final Logger LOGGER = LogUtils.getLogger();
   private final DeviceRegistry registry;
+  private final NodeRegistry nodes;
   private final CompoundTag rejected;
   private final String diagnostic;
 
   private DeviceSavedData(
       DeviceRegistry.State state,
       List<NetworkPermissions.State> networkStates,
+      List<NodeRegistry.Stored> nodeStates,
       CompoundTag rejected,
       String diagnostic) {
     this.rejected = rejected;
@@ -51,6 +54,12 @@ public final class DeviceSavedData extends SavedData {
       principalBindings += network.grants().size();
       if (networks.putIfAbsent(network.network(), restoreNetwork(network)) != null)
         throw new IllegalArgumentException("Duplicate network identity");
+    }
+    nodes = state == null ? null : new NodeRegistry(state.world(), nodeStates, this::setDirty);
+    for (var node : nodeStates) {
+      if (registry.containsBacking(node.id())
+          || (node.kind() == NodeRegistry.Kind.CONTROLLER) != networks.containsKey(node.id()))
+        throw new IllegalArgumentException("Invalid structural/network ownership binding");
     }
   }
 
@@ -89,7 +98,7 @@ public final class DeviceSavedData extends SavedData {
 
   private static DeviceSavedData create() {
     return new DeviceSavedData(
-        new DeviceRegistry.State(UUID.randomUUID(), List.of()), List.of(), null, "");
+        new DeviceRegistry.State(UUID.randomUUID(), List.of()), List.of(), List.of(), null, "");
   }
 
   public DeviceRegistry registry() {
@@ -104,11 +113,36 @@ public final class DeviceSavedData extends SavedData {
     Objects.requireNonNull(owner);
     if (networks.size() == MAX_NETWORKS) throw new IllegalStateException("Network count limit");
     UUID id = UUID.randomUUID();
-    if (networks.containsKey(id) || registry.containsBacking(id))
+    if (networks.containsKey(id) || nodes.contains(id) || registry.containsBacking(id))
       throw new IllegalStateException("Network identity collision");
     networks.put(id, restoreNetwork(new NetworkPermissions.State(id, owner, 1, Map.of())));
     setDirty();
     return id;
+  }
+
+  public NodeRegistry nodes() {
+    registry().world();
+    return nodes;
+  }
+
+  /** Preflight both authorities before creating a root; owner is authenticated by the adapter. */
+  public NodeRegistry.Handle createController(UUID owner, NodeRegistry.Position position) {
+    Objects.requireNonNull(owner);
+    var admission = nodes().admission(position);
+    if (admission != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Controller admission: " + admission);
+    UUID id = createNetwork(owner);
+    return nodes.create(id, NodeRegistry.Kind.CONTROLLER, position).handle();
+  }
+
+  public NodeRegistry.Handle createGateway(NodeRegistry.Position position) {
+    var admission = nodes().admission(position);
+    if (admission != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Gateway admission: " + admission);
+    UUID id = newBackingId();
+    if (registry.containsBacking(id))
+      throw new IllegalStateException("Gateway/backing identity collision");
+    return nodes.create(id, NodeRegistry.Kind.GATEWAY, position).handle();
   }
 
   /** Missing references never create replacement permissions or an implicit owner. */
@@ -134,7 +168,7 @@ public final class DeviceSavedData extends SavedData {
 
   private UUID newBackingId() {
     UUID id = UUID.randomUUID();
-    if (networks.containsKey(id))
+    if (networks.containsKey(id) || nodes.contains(id))
       throw new IllegalStateException("Backing/network identity collision");
     return id;
   }
@@ -154,15 +188,18 @@ public final class DeviceSavedData extends SavedData {
     try {
       require(tag, "Schema", Tag.TAG_INT);
       int schema = tag.getInt("Schema");
-      if ((schema != 1 && schema != 2) || !tag.hasUUID("World"))
+      if ((schema != 1 && schema != 2 && schema != 3) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
       NetworkStateCodec.fields(
           tag,
           schema == 1
               ? Set.of("Schema", "World", "Devices")
-              : Set.of("Schema", "World", "Devices", "Networks"));
+              : schema == 2
+                  ? Set.of("Schema", "World", "Devices", "Networks")
+                  : Set.of("Schema", "World", "Devices", "Networks", "Nodes"));
       var networkStates =
           schema == 1 ? List.<NetworkPermissions.State>of() : NetworkStateCodec.decode(tag);
+      var nodeStates = schema < 3 ? List.<NodeRegistry.Stored>of() : NodeStateCodec.decode(tag);
       require(tag, "Devices", Tag.TAG_LIST);
       ListTag devices = tag.getList("Devices", Tag.TAG_COMPOUND);
       if (devices.size() != ((ListTag) tag.get("Devices")).size()
@@ -207,14 +244,22 @@ public final class DeviceSavedData extends SavedData {
       }
       var loaded =
           new DeviceSavedData(
-              new DeviceRegistry.State(tag.getUUID("World"), records), networkStates, null, "");
-      if (schema == 1) loaded.setDirty();
+              new DeviceRegistry.State(tag.getUUID("World"), records),
+              networkStates,
+              nodeStates,
+              null,
+              "");
+      if (schema < 3) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
           invalid.getMessage() == null ? invalid.getClass().getSimpleName() : invalid.getMessage();
       return new DeviceSavedData(
-          null, List.of(), tag.copy(), message.substring(0, Math.min(message.length(), 512)));
+          null,
+          List.of(),
+          List.of(),
+          tag.copy(),
+          message.substring(0, Math.min(message.length(), 512)));
     }
   }
 
@@ -222,7 +267,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 2);
+    tag.putInt("Schema", 3);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {
@@ -240,6 +285,7 @@ public final class DeviceSavedData extends SavedData {
       devices.add(entry);
     }
     tag.put("Devices", devices);
+    tag.put("Nodes", NodeStateCodec.encode(nodes.snapshot()));
     tag.put(
         "Networks",
         NetworkStateCodec.encode(

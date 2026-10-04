@@ -1,7 +1,7 @@
 # ADR 0008 — Canonical network grant persistence
 
-Status: accepted; selected before source, with local P2 adapter evidence. Physical structural
-leases, discovery and device activation remain subsequent work.
+Status: accepted; selected before source, with local P2 adapter evidence. [ADR 0009](0009-structural-leases.md) extends the format to schema three with
+structural leases/policies. Discovery and device activation remain subsequent work.
 
 ## Decision
 

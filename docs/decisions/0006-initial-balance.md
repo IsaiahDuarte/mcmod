@@ -33,8 +33,12 @@ work and must be measured before release.
 
 Starter item cell: four iron ingots, four redstone dust, one chest. Starter fluid
 cell: seven glass, one empty bucket, one redstone dust. Drive: four iron ingots,
-four redstone dust, one hopper. Later basic controller/cable/terminal recipes use
-iron, redstone, wood/crafting table and glass without diamonds or Nether resources.
+four redstone dust, one hopper. [ADR 0009](0009-structural-leases.md) adds the
+implemented controller (four iron, four redstone, one glass), eight cables (six
+iron, three redstone) and gateway (four iron, two quartz, two redstone, one ender
+pearl). Basic controller/cable/terminal progression uses iron, redstone,
+wood/crafting table and glass without diamonds or Nether resources; the gateway
+is a later segmentation tier. Terminal recipes remain pending.
 
 Expansion module: four gold, two redstone, one diamond. Advanced module: four
 diamonds, two redstone, one netherite ingot. Infinite module: eight netherite ingots

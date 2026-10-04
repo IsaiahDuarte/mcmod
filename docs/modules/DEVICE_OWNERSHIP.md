@@ -68,18 +68,19 @@ thread. A server-start listener initializes/validates it. Minecraft's
 logs unavailable-registry diagnostics and preserves its file; access remains
 denied while the world may run.
 
-Current schema two: integer `Schema=2`, UUID `World`, compound `Devices` list,
-and required `Networks` list; see [network persistence](NETWORK_PERSISTENCE.md). Each device
+Current schema three: integer `Schema=3`, UUID `World`, compound `Devices` list,
+and required `Networks` and `Nodes` lists; see [network persistence](NETWORK_PERSISTENCE.md). Each device
 has checksummed `Ledger` bytes, positive long `Generation`, boolean byte `Conflict`,
 and optional `Location` (string `Dimension`, long `Position`, integer `Slot`).
 [Ledger schema/units](PERSISTENCE.md) remain separate. The committed SNBT fixture
-protects exact migration from schema one into schema two with an empty network
-table and a dirty save. Network grants have their own schema-two fixture. Known typed/schema/ledger/owner failures retain original tags in a
+protects exact migration from schema one into schema three with empty network/node
+tables and a dirty save. Network grants have their own schema-two fixture. Known typed/schema/ledger/owner failures retain original tags in a
 read-only quarantined SavedData that rejects attempts to mark it dirty. If the upstream loader swallows outer NBT/I/O
 failure, the adapter proves file absence before creation; existing/unreadable
 files cannot become empty replacements. Unknown schemas are not silently migrated.
 
-Jobs/staging and structural network leases/policies are not yet in this authority. Consistent
+Structural leases/policies now share this authority; see
+[physical nodes](STRUCTURAL_NODES.md). Jobs/staging are not yet in this authority. Consistent
 digital transfers require those owned records in the same save boundary. The
 outer NBT reader and I/O error handling remain upstream-owned; inner admission
 bounds do not preempt damaged outer files or guarantee recovery from disk failure.

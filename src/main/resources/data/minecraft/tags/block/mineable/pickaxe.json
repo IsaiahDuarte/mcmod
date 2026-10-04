@@ -1,6 +1,9 @@
 {
   "replace": false,
   "values": [
-    "factorycore:storage_drive"
+    "factorycore:storage_drive",
+    "factorycore:network_controller",
+    "factorycore:gateway",
+    "factorycore:network_cable"
   ]
 }

@@ -190,3 +190,14 @@ migration check, including stock/claims/lease generations.
 NetworkPermissionBudgetTest verifies admission and overflow before mutation or
 accounting callbacks. These are required JVM tests; physical structural leases,
 actual world restart/chunks and multiplayer remain separate evidence.
+
+## Physical structural ownership
+
+Four NodeRegistryTest and four NodePersistenceTest cases cover structural leases,
+copy quarantine, policy/schema fixtures, compressed disk movement, overflow,
+duplicate positions and admission without orphan grants. Four required
+NetworkNodeGameTests bring the headless suite to fourteen: actual creative
+placement/movement, gateway faces, clone/lifecycle behavior, future-data recovery,
+portable chunk rejection, exact recipes and explicit controller commissioning.
+See [structural contract](modules/STRUCTURAL_NODES.md). World discovery/activation,
+real chunks/restart and client/multiplayer remain pending.

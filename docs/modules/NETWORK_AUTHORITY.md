@@ -1,7 +1,8 @@
 # Topology and current network authority
 
 Portable P2 implementation supporting A05/A12 in part. Physical discovery,
-controller/cable/gateway blocks and client/guest endpoints are pending.
+[controller/cable/gateway blocks](STRUCTURAL_NODES.md) now have physical
+lease/port evidence; world discovery and client/guest endpoints are pending.
 Canonical grants are implemented in [network persistence](NETWORK_PERSISTENCE.md). [ADR 0007](../decisions/0007-topology-authority.md) owns this design.
 This core does not activate installed cell ledgers by itself.
 
@@ -163,6 +164,6 @@ publication, stale/foreign/forged scopes, full graph/degree admission and 3,072
 gateway fanout with one visit/call. Generated 300 unload/recovery sequences use
 seed 0x70F0106. Private grants, operators, transfer/overflow, reused labels,
 pagination/ambiguity, inherited intersections and real FairScheduler queued
-revocation are exercised. Canonical network identities/grants now have [persistence evidence](NETWORK_PERSISTENCE.md). World discovery, persisted structural leases/policies,
+revocation are exercised. Canonical network identities/grants now have [persistence evidence](NETWORK_PERSISTENCE.md). Physical leases/policies now have [adapter evidence](STRUCTURAL_NODES.md). World discovery,
 real chunk events, network/device activation, clients and server performance
 remain required P2/P3/P7 evidence. Full A05/A12 is not proved by these core tests.

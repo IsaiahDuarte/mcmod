@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform;
 
+import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import net.neoforged.bus.api.IEventBus;
@@ -13,6 +14,7 @@ public final class FactoryCoreMod {
 
   public FactoryCoreMod(IEventBus bus) {
     StorageContent.register(bus);
+    NetworkContent.register(bus);
     NeoForge.EVENT_BUS.addListener(DeviceSavedData::serverStarted);
   }
 }

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.network.NetworkContent;
 import java.util.EnumMap;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -53,6 +54,9 @@ public final class StorageContent {
                   .displayItems(
                       (parameters, output) -> {
                         output.accept(DRIVE_ITEM.get());
+                        output.accept(NetworkContent.CONTROLLER_ITEM.get());
+                        output.accept(NetworkContent.GATEWAY_ITEM.get());
+                        output.accept(NetworkContent.CABLE_ITEM.get());
                         for (var tier : CellTier.values()) output.accept(cell(tier));
                         output.accept(EXPANSION.get());
                         output.accept(ADVANCED.get());

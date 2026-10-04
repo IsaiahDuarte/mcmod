@@ -28,4 +28,6 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Wired topology and current authority](0007-topology-authority.md); portable
   graph/grant implementation, physical world discovery pending.
 - [Canonical network grant persistence](0008-network-persistence.md); schema-two
-  metadata and schema-one migration verified locally, structural leases pending.
+  metadata and schema-one migration verified locally; extended by ADR 0009.
+- [Physical structural leases](0009-structural-leases.md): controllers/gateways,
+  directional ports and schema-three migration; discovery/activation pending.

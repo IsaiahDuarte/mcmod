@@ -10,5 +10,8 @@
   "item.factorycore.starter_fluid_cell": "Starter Fluid Cell",
   "item.factorycore.expanded_fluid_cell": "Expanded Fluid Cell",
   "item.factorycore.advanced_fluid_cell": "Advanced Fluid Cell",
-  "itemGroup.factorycore": "Factory Core"
+  "itemGroup.factorycore": "Factory Core",
+  "block.factorycore.network_controller": "Network Controller",
+  "block.factorycore.gateway": "Gateway",
+  "block.factorycore.network_cable": "Network Cable"
 }
