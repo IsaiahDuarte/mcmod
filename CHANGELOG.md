@@ -37,6 +37,10 @@
   callbacks, shared post-tick rebuilding, current structural/grant checks and
   automatic validated cell activation. Actual chunk/restart checks remain pending.
 
+- Added portable finite energy-bank tier definitions and per-identity input/output
+  rate accounting using canonical ENERGY stock, current routing and reservations.
+  Simulation and movement preserve budgets; physical banks/capabilities remain pending.
+
 This development artifact is not the first playable release. World transfers, crafting, scripting, terminal UI and wireless features remain unimplemented; complete survival progression remains unverified. P1 core accounting and bounded
 NeoForge handler ports are implemented and tested; they are not yet connected
 to a playable network. Linux/Windows runtime compatibility and remote CI are unverified.

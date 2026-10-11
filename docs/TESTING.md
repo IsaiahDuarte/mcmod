@@ -226,3 +226,12 @@ cover current routing/queued writes, offline cleanup, capture listener
 failure and full-size repeated-seed rediscovery. See [runtime contract](modules/WORLD_NETWORKS.md).
 Actual chunk unload/reload, full restart, interrupted saves, client/multiplayer and
 representative tick/memory measurements remain required future evidence.
+
+## Energy-bank accounting prerequisite
+
+Six EnergyBankAccessTest cases verify combined calls/simulation, independent
+input/output ceilings, capacity/claim preservation, same-tick movement/upgrades,
+stale/offline access, clock reversal and canonical snapshot restoration. A 4,000-step
+conservation/rate sequence records seed 0xE0B001. They run in the required JVM suite.
+See [contract](modules/ENERGY_BANKS.md). Physical capability/block/upgrade/recipe,
+actual chunk/full-world restart and client tests remain required as integration lands.

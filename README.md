@@ -27,6 +27,8 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
   shared scheduling and nonloading world reads.
 - [Live wired networks](docs/modules/WORLD_NETWORKS.md): indexed event invalidation,
   bounded server post-ticks and automatic validated cell availability.
+- [Energy-bank accounting](docs/modules/ENERGY_BANKS.md): finite tiers and shared
+  identity-based FE/tick budgets; physical integration pending.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
 

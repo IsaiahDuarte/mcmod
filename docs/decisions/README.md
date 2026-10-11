@@ -39,3 +39,6 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Live region coordination](0011-live-region-coordination.md): indexed callbacks,
   shared server ticks and current routing availability; actual chunk/restart and
   representative performance checks remain pending.
+
+- [Finite energy-bank access](0012-energy-bank-access.md): selected identity-based
+  rate accounting and canonical finite FE; physical bank integration pending.

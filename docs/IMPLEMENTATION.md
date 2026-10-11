@@ -56,7 +56,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A01 | P3 | Not implemented. |
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
 | A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. World integration remains pending. |
-| A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. World capabilities, permissions and UI remain pending. |
+| A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest](modules/ENERGY_BANKS.md) adds finite bank rates, identity-based movement budgets, simulation/claim preservation and seeded conservation. World capabilities, permissions and UI remain pending. |
 | A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Actual chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
 | A07 | P4 | Not implemented. |
@@ -562,3 +562,39 @@ Final separately verified source, 2026-10-11:
   does not relabel the cache-blocked canonical subprocess as passed.
 - `git diff --check` passed. The final canonical cache-access block remains
   recorded above; no checker, policy or CI requirement was changed to avoid it.
+
+
+## P2 finite energy-bank access prerequisite
+
+2026-10-11, same macOS arm64 / Java 21.0.12; parent `6018045`:
+
+- Selected ADR 0012 before coding. Reused ADR 0006's finite capacities and rates;
+  ENERGY remains canonical DeviceRegistry stock with existing leases/claims.
+- Added portable tier progression and shared identity-based input/output budgets.
+  Multiple callers and moved generations cannot reset spending; simulation preserves
+  resource/claim/rate state. Backwards clocks and mismatched tier definitions reject.
+- Added RATE_LIMIT as an appended operation reason, with no serialized enum/schema
+  change. Actual acceptance alone spends rate credits; offline and reserved stock
+  remain unavailable to physical extraction.
+- Six tests cover example/failure behavior and 4,000 generated operations with
+  seed 0xE0B001. Canonical snapshot reload remains offline with exact claims.
+- `./gradlew spotlessApply test pmdMain pmdTest` passed. Required full build and
+  documentation results are recorded after completion. This prerequisite adds
+  no physical bank or capability and is not full A04/A13/A14 evidence.
+
+Next is physical bank integration with current wired activation, NeoForge ports,
+consumed portable leases, upgrades/recovery, recipes and real GameTests. P2 and
+all remaining release stages stay in the active full-mod goal.
+
+Energy-bank prerequisite final checks, 2026-10-11:
+
+- `./gradlew spotlessApply build` passed with 85 JVM tests and a fresh 21 required
+  Minecraft GameTests, zero failures/errors/skips; all format/static/architecture/
+  packaging gates passed. Unchanged Rust inputs retained verified up-to-date results.
+- Separate `scripts.verify.verify(Path.cwd())` and
+  `scripts.verify.run_tooling_tests(Path.cwd())` passed document/acceptance checks
+  and 24 tooling tests. The canonical command's earlier external Gradle cache
+  access block remains unresolved; separate checks are not a canonical-command pass.
+- `git diff --check` passed. No dependency, schema, CI/checker or player-visible
+  resource endpoint changed. Physical banks and their required world checks remain
+  unfinished, and the complete release goal remains active.

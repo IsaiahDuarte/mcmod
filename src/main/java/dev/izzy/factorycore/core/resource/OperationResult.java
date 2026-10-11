@@ -14,7 +14,8 @@ public record OperationResult(long amount, Reason reason) {
     WRONG_RESOURCE,
     DENIED,
     HANDLER_FAULT,
-    UNCERTAIN
+    UNCERTAIN,
+    RATE_LIMIT
   }
 
   public OperationResult {
