@@ -69,6 +69,7 @@ public final class NetworkNodeEntity extends BlockEntity {
       commission(player);
     }
     setChanged();
+    networkingChanged();
   }
 
   public void commission(java.util.UUID player) {
@@ -80,6 +81,7 @@ public final class NetworkNodeEntity extends BlockEntity {
             : authority().createGateway(position());
     data = NodeHandleData.write(handle);
     setChanged();
+    networkingChanged();
   }
 
   public void validatePlaced() {
@@ -113,6 +115,7 @@ public final class NetworkNodeEntity extends BlockEntity {
       handle = placed.handle();
       data = NodeHandleData.write(handle);
       setChanged();
+      networkingChanged();
     } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
       diagnostic = failure.getMessage();
     }
@@ -146,6 +149,17 @@ public final class NetworkNodeEntity extends BlockEntity {
   public void onLoad() {
     super.onLoad();
     if (level instanceof ServerLevel) bind(false);
+    networkingChanged();
+  }
+
+  private void networkingChanged() {
+    WorldNetworks.changed(level, worldPosition);
+  }
+
+  @Override
+  public void setRemoved() {
+    networkingChanged();
+    super.setRemoved();
   }
 
   @Override

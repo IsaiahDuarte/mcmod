@@ -5,6 +5,9 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.network.NetworkContent;
+import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
+import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.CellItem;
 import dev.izzy.factorycore.platform.storage.CellUpgradeItem;
@@ -128,7 +131,7 @@ public final class StorageDriveGameTests {
     drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
     var placed = CellHandleData.read(drive.cell(0));
     helper.assertTrue(!registry.stock(placed, IRON).loaded(), "New placement stays offline");
-    registry.availability(placed, drive.location(0), true);
+    activate(helper, drive);
     helper.assertTrue(
         registry.insert(placed, IRON, 9000).amount() == 8192, "Exact starter capacity");
     var job = UUID.randomUUID();
@@ -182,7 +185,7 @@ public final class StorageDriveGameTests {
     var registry = registry(helper);
     drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
     var placed = CellHandleData.read(drive.cell(0));
-    registry.availability(placed, drive.location(0), true);
+    activate(helper, drive);
     registry.insert(placed, IRON, 8000);
     registry.reserve(placed, UUID.randomUUID(), IRON, 500);
     var portable = drive.removeCell(0);
@@ -256,7 +259,7 @@ public final class StorageDriveGameTests {
     drive.installCell(fluid);
     var placed = CellHandleData.read(drive.cell(0));
     var water = new ResourceKey(ResourceKind.FLUID, "minecraft:water", new byte[0]);
-    registry.availability(placed, drive.location(0), true);
+    activate(helper, drive);
     helper.assertTrue(
         registry.insert(placed, water, Long.MAX_VALUE).amount() == 4096000,
         "Finite advanced fluid capacity in mB");
@@ -295,7 +298,7 @@ public final class StorageDriveGameTests {
     var registry = registry(helper);
     drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
     var handle = CellHandleData.read(drive.cell(0));
-    registry.availability(handle, drive.location(0), true);
+    activate(helper, drive);
     registry.insert(handle, IRON, 100);
     registry.reserve(handle, UUID.randomUUID(), IRON, 60);
     var saved = drive.saveWithFullMetadata(helper.getLevel().registryAccess());
@@ -334,7 +337,7 @@ public final class StorageDriveGameTests {
     var registry = registry(helper);
     drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
     var old = CellHandleData.read(drive.cell(0));
-    registry.availability(old, drive.location(0), true);
+    activate(helper, drive);
     registry.insert(old, IRON, 45);
     var absolute = helper.absolutePos(FIRST);
     helper.getLevel().destroyBlock(absolute, true);
@@ -488,8 +491,31 @@ public final class StorageDriveGameTests {
   }
 
   private static StorageDriveEntity drive(GameTestHelper helper, BlockPos position) {
+    var root = new BlockPos(1, 0, 1);
+    if (!(helper.getLevel().getBlockEntity(helper.absolutePos(root))
+        instanceof NetworkNodeEntity)) {
+      helper.setBlock(root, NetworkContent.CONTROLLER.get());
+      ((NetworkNodeEntity) helper.getBlockEntity(root)).commission(UUID.randomUUID());
+      helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
+    }
     helper.setBlock(position, StorageContent.DRIVE.get());
     return helper.getBlockEntity(position);
+  }
+
+  private static void activate(GameTestHelper helper, StorageDriveEntity drive) {
+    var runtime = WorldNetworks.get(helper.getLevel().getServer());
+    var location = drive.location(0);
+    var position =
+        new dev.izzy.factorycore.core.network.NodeRegistry.Position(
+            location.dimension(), location.position());
+    for (int i = 0;
+        i < 100
+            && runtime.membership(position).status()
+                != dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID;
+        i++) runtime.tick();
+    helper.assertTrue(
+        registry(helper).stock(CellHandleData.read(drive.cell(0)), IRON).loaded(),
+        "Physical root validation activates fixture cells");
   }
 
   private static DeviceRegistry registry(GameTestHelper helper) {

@@ -4,7 +4,7 @@
 
 This file is the authoritative product contract for the first playable release. It consolidates user requirements and design defaults chosen under delegated authority. All requirements below apply unless explicitly marked **Later** or assigned to a decision gate in [IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 
-The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Network routing, terminals and automation remain unimplemented; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
+The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Automatic wired membership and cell availability are implemented; terminals and automation remain unimplemented; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
 
 ## R01 — Release scope
 

@@ -9,14 +9,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 
 /** Captures bounded reciprocal physical ports before publishing a complete current topology. */
 public final class WiredDiscovery {
-  public static final int MAX_SEEDS = 4096;
+  public static final int MAX_SEEDS = 8192;
   public static final int MAX_PENDING = 24576;
-  public static final int MAX_PROBES = 28672;
+  public static final int MAX_PROBES = 32768;
 
   public enum State {
     DISCOVERING,
@@ -85,6 +86,7 @@ public final class WiredDiscovery {
   private final Function<NodeRegistry.Position, Wire> reader;
   private final LongSupplier sourceEpoch;
   private final long epoch;
+  private final BiConsumer<NodeRegistry.Position, Wire> capturedListener;
   private final NetworkTopology topology;
   private final ArrayDeque<Request> pending = new ArrayDeque<>();
   private final Map<NodeRegistry.Position, Wire> probes = new HashMap<>();
@@ -101,6 +103,17 @@ public final class WiredDiscovery {
       Iterator<NodeRegistry.Position> seeds,
       Function<NodeRegistry.Position, Wire> reader,
       LongSupplier sourceEpoch) {
+    this(region, depth, seeds, reader, sourceEpoch, (position, wire) -> {});
+  }
+
+  public WiredDiscovery(
+      UUID region,
+      int depth,
+      Iterator<NodeRegistry.Position> seeds,
+      Function<NodeRegistry.Position, Wire> reader,
+      LongSupplier sourceEpoch,
+      BiConsumer<NodeRegistry.Position, Wire> capturedListener) {
+    this.capturedListener = Objects.requireNonNull(capturedListener);
     this.seeds = Objects.requireNonNull(seeds);
     this.reader = Objects.requireNonNull(reader);
     this.sourceEpoch = Objects.requireNonNull(sourceEpoch);
@@ -164,6 +177,7 @@ public final class WiredDiscovery {
         topology.putGateway(wire.gateway());
       }
       captured.put(request.position(), wire);
+      capturedListener.accept(request.position(), wire);
       for (var port : wire.ports()) {
         if (pending.size() == MAX_PENDING)
           throw new IllegalStateException("Discovery neighbor queue limit");

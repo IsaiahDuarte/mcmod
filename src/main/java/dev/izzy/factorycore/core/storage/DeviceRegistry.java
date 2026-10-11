@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -85,6 +86,15 @@ public final class DeviceRegistry {
     return devices.containsKey(Objects.requireNonNull(id));
   }
 
+  /**
+   * Trusted owner-thread routing predicate, checked on stock reads and insert/extract/reserve. Does
+   * not activate an offline ledger. Release and capacity/ownership cleanup remain available.
+   */
+  public void routing(Predicate<Location> routing) {
+    checkThread();
+    this.routing = Objects.requireNonNull(routing);
+  }
+
   public boolean vacant(Location location) {
     checkThread();
     return !placements.containsKey(Objects.requireNonNull(location));
@@ -119,6 +129,7 @@ public final class DeviceRegistry {
   private final Supplier<UUID> identifiers;
   private final Map<UUID, Device> devices = new HashMap<>();
   private final Map<Location, UUID> placements = new HashMap<>();
+  private Predicate<Location> routing = location -> true;
   private long bytes;
   private long entries;
 
@@ -233,7 +244,11 @@ public final class DeviceRegistry {
     checkThread();
     Failure invalid = validate(handle);
     if (invalid != Failure.OK) throw new IllegalStateException("Invalid device handle: " + invalid);
-    return devices.get(handle.backing()).ledger.stock(key);
+    var device = devices.get(handle.backing());
+    var stock = device.ledger.stock(key);
+    return device.location != null && routing.test(device.location)
+        ? stock
+        : new ResourceLedger.Stock(stock.total(), stock.reserved(), 0, false);
   }
 
   public OperationResult insert(Handle handle, ResourceKey key, long amount) {
@@ -326,7 +341,9 @@ public final class DeviceRegistry {
   private Device available(Handle handle) {
     if (validate(handle) != Failure.OK) return null;
     Device device = devices.get(handle.backing());
-    return device.location != null && device.ledger.loaded() ? device : null;
+    return device.location != null && device.ledger.loaded() && routing.test(device.location)
+        ? device
+        : null;
   }
 
   private OperationResult denied(Handle handle) {

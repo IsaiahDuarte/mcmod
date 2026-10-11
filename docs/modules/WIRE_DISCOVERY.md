@@ -1,8 +1,8 @@
 # Budgeted physical wire discovery
 
 Implemented P2 discovery producer and nonloading world adapter supporting A05/A10
-in part. Automatic runtime region coordination, block/chunk/ownership event
-invalidation and storage activation remain pending. This producer does not
+in part. [Live region coordination](WORLD_NETWORKS.md) now connects automatic
+block/chunk/owner callbacks and storage activation. This producer does not
 activate resource owners or expose client/guest operations. See
 [ADR 0010](../decisions/0010-bounded-wire-discovery.md) and the existing
 [topology/authority contract](NETWORK_AUTHORITY.md).
@@ -47,6 +47,14 @@ scope/authority checks. `captured(position)` returns one immutable descriptor
 without copying a full region; it is geometry, including private failed/cancelled
 capture, and grants no access.
 
+The optional sixth constructor argument is a trusted owner-thread
+`BiConsumer<Position, Wire>` capture listener. It receives each joined descriptor
+once, after private capture; merely probed nonreciprocal neighbors are excluded.
+It may index immutable geometry with bounded work, but must not reenter/mutate the
+producer or grant authority. Listener admission exceptions cause FAILED and prevent
+publication; retained indexes remain provisional. The five-argument overload uses
+an empty listener. No complete-capture copy or uncharged enumeration is needed.
+
 Source epoch changes are checked during advance and publication access, including
 completed jobs. `cancel()` immediately invalidates issued scopes. The runtime
 coordinator must call cancellation/invalidation before edits and before queued
@@ -55,10 +63,35 @@ not a world event listener. Constructor/reader/supplier callbacks belong to the
 trusted owner thread and must have bounded work. A stale/failed/cancelled job
 cannot publish. Quantity/resource/grant state remains untouched.
 
-Limits/job: 4,096 seed visits, 4,096 graph vertices, 24,576 pending neighbor requests
-and 28,672 memoized probes. Zero or over-limit advance arguments throw before
+Limits/job: 8,192 seed visits, 4,096 graph vertices, 24,576 pending neighbor requests
+and 32,768 memoized probes. Zero or over-limit advance arguments throw before
 advancing. Descriptor/graph/reader failures produce FAILED with up to 512 diagnostic
 characters. These count ceilings are not measured memory/server latency claims.
+
+## Retained replacement seeds
+
+`DiscoverySeeds(anchor)` is an owner-thread iterator for trusted replacement
+sources. `appendPositions(iterator)` retains a bounded callback source without
+copying it; null rejects. `append(oldSources)` borrows remaining cursors only after
+the old producer is cancelled. A borrowed source cannot append again or be borrowed
+by another target, preventing mutable-cursor sharing and indirect cycles. Each
+`next()` inspects only the head iterator: an empty-source transition removes one
+source and returns the anchor to charge a visit. `hasNext()` does not scan sources.
+Exhaustion throws NoSuchElementException. Iterator callbacks must be bounded.
+
+Limits are 8,192 queued source iterators/container and depth 32. Depth/queue admission
+throws before borrowing or discarding old cursors. Total seed visits still obey
+WiredDiscovery's independent cap. Sources are transient and have no resource or
+permission authority. Four DiscoverySeedsTest cases exercise empty transitions,
+retained positions, nested interruption rejection, cycles/sharing and queue limits.
+
+```java
+var oldSeeds = new DiscoverySeeds(anchor);
+oldSeeds.appendPositions(previousPositions.iterator());
+var nextSeeds = new DiscoverySeeds(anchor);
+nextSeeds.append(oldSeeds); // old producer is cancelled; stop appending to oldSeeds.
+// Pass nextSeeds to a fresh WiredDiscovery; each transition remains charged.
+```
 
 ## Actual world reader and common scheduling
 
@@ -83,7 +116,7 @@ explicit network/program UUIDs and key. Its cost equals the configured visit
 budget (1–256). It resubmits unfinished work; no timer, worker or idle scan exists.
 Queue/cost admission rejection cancels the discovery and records its reason.
 Read diagnostics on the owner thread; scheduler limits still govern dispatch.
-Runtime ownership of region jobs and event invalidation is subsequent work.
+Runtime ownership and event invalidation are documented in the live region contract.
 
 Example in trusted server integration:
 
@@ -100,13 +133,14 @@ task.submit();
 
 ## Evidence and remaining integration
 
-Six WiredDiscoveryTest cases cover reciprocal edges/private segments, unloaded
+Seven WiredDiscoveryTest cases cover reciprocal edges/private segments, unloaded
 root/gateway behavior, removed geometry, physical bypass, collision, stale/cancelled
 publication, a 4,096-node one-visit chain, over-limit nodes/seeds and real scheduler
 rescheduling/rejected admission. Two required WireDiscoveryGameTests capture real
 controller/gateway/drive placements through the scheduler, inspect private inherited
 views, explicitly cancel before a world edit, reject detached-root invention,
 prove a remote chunk stays absent after probing, and reject loaded-air cache reuse.
-They use explicit test-owned scheduling/cancellation, not automatic production
-world event hooks. Actual event coordination, storage activation, chunk lifecycle/
-restart/multiplayer and measured server performance remain required P2/P7 evidence.
+Those two tests use test-owned scheduling/cancellation. Five additional
+WorldNetworksGameTests exercise production post-ticks/events and automatic cell
+activation; actual chunk lifecycle/restart/multiplayer and measured server
+performance remain required P2/P7 evidence.

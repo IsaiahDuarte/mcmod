@@ -57,14 +57,14 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
 | A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. World integration remains pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. World capabilities, permissions and UI remain pending. |
-| A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. Automatic world region/event coordination, activation, chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
+| A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Actual chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
 | A07 | P4 | Not implemented. |
 | A08 | P4, P5 | Not implemented. |
 | A09 | P5 | Not implemented. |
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Not implemented. |
-| A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. World discovery/activation, player permissions UI and multiplayer checks remain pending. |
+| A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation is implemented; player permissions UI and multiplayer checks remain pending. |
 | A13 | P2, P4, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Actual chunk unload/world restart, staging/jobs and interrupted external-write/save integration remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
@@ -491,3 +491,74 @@ block/chunk/canonical-owner event invalidation and validated cell activation are
 the next required integration. Producer publication alone activates no resources.
 Remaining storage/transfer/terminal/crafting/program/wireless/release work stays
 in scope; the full goal remains active.
+
+
+## P2 live wired coordination work log
+
+2026-10-03, same macOS arm64 / Apple M1 / Java 21.0.12; parent `f0474b8`:
+
+- Selected ADR 0011 before integration. Added indexed per-server region ownership,
+  shared scheduler post-ticks and block/entity/chunk callbacks. Edits cancel
+  publication immediately; repeated callbacks coalesce until charged replacement.
+  Disconnected old geometry and unfinished sources transfer incrementally; roots,
+  indexes and four-slot availability prepare before final scope publication.
+- Added execution-time registry routing predicate, preserving offline total/claims
+  and cleanup. Current root/gateway canonical leases and shared authority/grants
+  prevent use of copied structural owners or revoked grants. Runtime admission/
+  failures suspend affected ownership without taking independent published regions
+  offline. Quarantined registry files remain preserved, with no new empty authority.
+- Added capture listener and bounded admission failure tests. Raised seed/probe
+  ceilings to 8,192/32,768 for full-size replacements with repeated anchors/source
+  transitions; graph capacity remains 4,096 and per-visit work is unchanged.
+- Five new required WorldNetworksGameTests use production callbacks/post-ticks for
+  automatic activation, exact disconnection/reconnection claims, 100 coalesced
+  notifications, invalid multiple roots/recovery, independent regions, private
+  inherited storage views, queued grant revocation and remote copied-root denial.
+  A typed chunk-load adapter regression covers adjacent-index invalidation with a
+  loaded fixture; it does not claim actual chunk unload/reload. Existing ownership
+  fixtures now construct valid roots before seeding stock.
+- Final interruption-path review found retained source nesting was not separately
+  bounded. Added portable DiscoverySeeds with depth 32, 8,192 source slots, frozen
+  borrowed streams and one-cursor ownership. Four regressions cover preservation,
+  empty transitions, admission, cycles/sharing. Adoption failure preserves the old
+  source; scheduled replacement failures no longer strand other queued rebuilds.
+- Updated block inspection and player/module contracts. No persistence schema,
+  dependency, build/CI policy or release scope changed. Complete terminal/resource
+  transfer endpoints and chunk/restart/multiplayer/performance evidence remain pending.
+
+Verification (final continuation 2026-10-11):
+
+- Initial `./gradlew spotlessApply compileJava pmdMain` caught an overloaded event
+  listener ambiguity; renamed the listener. Static checks caught Minecraft-owned
+  borrowed resources; localized ownership annotations preserve all PMD rules.
+  Compilation caught mismatched test API names; corrected against existing APIs.
+- `./gradlew spotlessApply build` passed before and after routing-failure isolation,
+  including 75 JVM tests and 19 required GameTests. The first canonical
+  `python3 scripts/verify.py` passed 24 tooling tests and a 20-GameTest run before
+  the final adjacent-chunk regression.
+- The final sandboxed `python3 scripts/verify.py` passed documentation/acceptance
+  and 24 tooling tests, then failed opening Gradle's external cache lock. Escalated
+  canonical retries were interrupted before a result; they are not passes.
+- Direct approved-wrapper `./gradlew spotlessApply build` verifies the final source
+  separately. Exact final results are appended after completion. The canonical
+  command remains blocked by cache access pending a completed approved retry.
+- `git diff --check` passed; no generated worlds or unrelated changes were added.
+  Actual chunk unload/reload/full restart, clients, multiplayer and representative
+  server measurements remain unrun.
+
+P2 and A05/A10/A12/A13 remain partial; banks/connectors, transfers, terminal, crafting,
+programs, wireless and full release acceptance remain in the active goal.
+
+Final separately verified source, 2026-10-11:
+
+- `./gradlew spotlessApply build` passed after the deterministic west-neighbor
+  fixture and bounded-source fixes: 79 JVM tests and 21 required Minecraft
+  GameTests, zero failures/errors/skips. Formatting, PMD, compilation, architecture,
+  packaging and required GameTest report gates passed. Unchanged Rust inputs
+  remained verified/up to date.
+- `python3` calling `scripts.verify.verify(Path.cwd())` and
+  `scripts.verify.run_tooling_tests(Path.cwd())` passed with no documentation/
+  acceptance errors and 24 tooling tests. This separate diagnostic execution
+  does not relabel the cache-blocked canonical subprocess as passed.
+- `git diff --check` passed. The final canonical cache-access block remains
+  recorded above; no checker, policy or CI requirement was changed to avoid it.

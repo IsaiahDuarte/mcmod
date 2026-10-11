@@ -61,6 +61,37 @@ class WiredDiscoveryTest {
   }
 
   @Test
+  void captureListenerIndexesOnlyJoinedDescriptorsAndFailurePreventsPublication() {
+    var world = branch();
+    var captured = new HashMap<NodeRegistry.Position, WiredDiscovery.Wire>();
+    var discovery =
+        new WiredDiscovery(
+            UUID.randomUUID(),
+            8,
+            List.of(pos(1), pos(1)).iterator(),
+            world::get,
+            () -> 1,
+            (position, descriptor) -> {
+              assertNull(captured.put(position, descriptor), "A joined descriptor is emitted once");
+            });
+    assertEquals(WiredDiscovery.State.PUBLISHED, finish(discovery).state());
+    assertEquals(java.util.Set.of(pos(1), pos(2), pos(3)), captured.keySet());
+    assertFalse(captured.containsKey(pos(4)), "A nonreciprocal probe is not captured");
+    discovery =
+        new WiredDiscovery(
+            UUID.randomUUID(),
+            8,
+            List.of(pos(1)).iterator(),
+            world::get,
+            () -> 1,
+            (position, descriptor) -> {
+              throw new IllegalStateException("Index admission exhausted");
+            });
+    assertEquals(WiredDiscovery.State.FAILED, finish(discovery).state());
+    assertThrows(IllegalStateException.class, discovery::publishedTopology);
+  }
+
+  @Test
   void reciprocalPortsKeepGatewaySidesAndChildStoragePrivate() {
     var world = branch();
     var discovery = job(world, 1, 4);
@@ -196,6 +227,16 @@ class WiredDiscoveryTest {
     assertEquals(
         NetworkTopology.Status.VALID,
         discovery.publishedTopology().membership(id(NetworkTopology.MAX_NODES)).status());
+    // A replacement seeds all old positions plus its anchor and charged source transitions.
+    var replacementSeeds = new ArrayList<>(world.keySet());
+    replacementSeeds.add(pos(1));
+    replacementSeeds.add(pos(1));
+    var replacement =
+        new WiredDiscovery(UUID.randomUUID(), 8, replacementSeeds.iterator(), world::get, () -> 1);
+    assertEquals(WiredDiscovery.State.PUBLISHED, finish(replacement).state());
+    assertEquals(
+        NetworkTopology.Status.VALID,
+        replacement.publishedTopology().membership(id(NetworkTopology.MAX_NODES)).status());
     world.put(
         pos(NetworkTopology.MAX_NODES),
         wire(

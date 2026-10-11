@@ -29,6 +29,10 @@ used while rebuilding. Failed/over-limit discovery remains unavailable and keeps
 resource ownership intact. No observer/activation behavior is implied by this
 producer's existence.
 
+ADR 0011 extends the seed/probe admission to 8,192/32,768 for full-size region
+replacement sources. Graph limits and per-visit work remain unchanged; the bounds
+below record the original producer decision.
+
 ## Bounds and alternatives
 
 At most 4,096 seed visits, 4,096 graph vertices, six ports/physical descriptor,

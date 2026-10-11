@@ -35,3 +35,7 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Budgeted wire discovery](0010-bounded-wire-discovery.md): portable producer,
   common scheduler task and nonloading world reader; automatic event coordination
   and device activation remain pending.
+
+- [Live region coordination](0011-live-region-coordination.md): indexed callbacks,
+  shared server ticks and current routing availability; actual chunk/restart and
+  representative performance checks remain pending.

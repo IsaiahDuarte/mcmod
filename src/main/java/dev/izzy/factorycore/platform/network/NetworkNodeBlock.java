@@ -80,14 +80,19 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
     try {
       if (node.handle() == null && node.diagnostic().isEmpty()) node.commission(player.getUUID());
       node.validatePlaced();
+      var routing =
+          WorldNetworks.get(((net.minecraft.server.level.ServerLevel) level).getServer())
+              .membership(node.position())
+              .status();
       String message =
           kind == NodeRegistry.Kind.GATEWAY
               ? "Downstream: "
                   + state.getValue(BlockStateProperties.FACING).getName()
                   + "; upstream: "
                   + state.getValue(BlockStateProperties.FACING).getOpposite().getName()
-                  + "; routing not yet active"
-              : "Network " + node.handle().id() + "; routing not yet active";
+                  + "; "
+                  + routing
+              : "Network " + node.handle().id() + "; " + routing;
       player.displayClientMessage(Component.literal(message), true);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
@@ -102,8 +107,28 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
   }
 
   @Override
+  protected void onPlace(
+      BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
+    super.onPlace(state, level, position, previous, moved);
+    WorldNetworks.changed(level, position);
+  }
+
+  @Override
+  protected void neighborChanged(
+      BlockState state,
+      Level level,
+      BlockPos position,
+      Block neighbor,
+      BlockPos from,
+      boolean moved) {
+    super.neighborChanged(state, level, position, neighbor, from, moved);
+    WorldNetworks.changed(level, position);
+  }
+
+  @Override
   protected void onRemove(
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
+    WorldNetworks.changed(level, position);
     if (!state.is(next.getBlock())
         && !level.isClientSide()
         && level.getBlockEntity(position) instanceof NetworkNodeEntity node) {

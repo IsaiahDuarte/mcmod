@@ -2,10 +2,9 @@
 
 Initial P2 implementation supporting A02/A03/A13/A14 in part, with
 [balance version one](../decisions/0006-initial-balance.md) and
-[player instructions](../PLAYER_GUIDE.md). No network root, terminal or guest
-endpoint is implemented in this slice. Physical installation/removal is outside
-script grants under R04; ledger routing remains offline until future validated
-topology/authorization integration.
+[player instructions](../PLAYER_GUIDE.md). [Live wired networks](WORLD_NETWORKS.md)
+now activate installed cells after validation; terminal/guest endpoints remain
+pending. Physical installation/removal is outside script grants under R04.
 
 ## Components and lifecycle
 
@@ -85,9 +84,10 @@ four-slot limits, malformed input, player insertion/sneak removal, module-use
 consumption, claims/components, finite fluid tiers, stale/foreign references,
 copied block conflicts, block-entity remove/save/reload and unknown-schema
 recovery. Recipe checks use the live recipe/advancement managers and compare
-vanilla ingredients and exact costs with balance version one. Tests activate
-registry availability directly only to seed/inspect ownership fixtures; this
-does not prove a valid player-accessible network.
+vanilla ingredients and exact costs with balance version one. Ownership fixtures
+now use real physical roots and bounded coordinator ticks to activate cells before
+stock seeding. Separate WorldNetworksGameTests exercise actual production post-ticks;
+no player deposit/withdrawal endpoint is claimed.
 
 Block-entity lifecycle calls are not an actual chunk-unload experiment. Canonical
 registry disk tests separately verify orderly nonempty SavedData recovery. Full

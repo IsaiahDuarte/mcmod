@@ -1,6 +1,6 @@
 # Device ownership and world persistence
 
-Implemented P2 registry, NeoForge SavedData adapter and [physical cells/drives](STORAGE_CELLS.md). Portable topology/current grants and canonical network metadata are implemented; physical topology and durable transfer/job staging remain pending. [ADR 0005](../decisions/0005-persistence-ownership.md) owns the design.
+Implemented P2 registry, NeoForge SavedData adapter and [physical cells/drives](STORAGE_CELLS.md). Portable topology/current grants and canonical network metadata are implemented; [live wired availability](WORLD_NETWORKS.md) is implemented; durable transfer/job staging remains pending. [ADR 0005](../decisions/0005-persistence-ownership.md) owns the design.
 
 ## Ownership contract
 
@@ -49,6 +49,23 @@ portable/inactive stores report offline. Reservation release may run as owned
 cleanup while offline and never changes stock. Amounts remain nonnegative exact
 longs. Malformed locations/configurations throw; all core access checks its thread.
 
+`routing(predicate)` installs a trusted, transient owner-thread location predicate.
+Stock reads and insert/extract/reserve check it at execution. False yields offline
+stock (exact total/reserved retained, available zero) and OFFLINE mutation results.
+A true predicate does not reactivate an explicitly offline ledger. Release, resize
+and ownership cleanup remain permitted under their existing lease checks. The
+predicate must perform bounded, non-reentrant work; exceptions propagate before
+stock mutation. Null rejects. Standalone registries default to true for explicit
+fake/adapter availability; the world coordinator installs current valid membership.
+Predicate changes do not dirty/save state; restored ledgers still begin offline.
+
+```java
+registry.routing(location -> currentRouting(location));
+// A later disconnection changes currentRouting before a queued operation runs.
+var result = registry.extract(placedLease, exactKey, 10, reservationOwner);
+// OFFLINE preserves contents and claims; owned reservation release still works.
+```
+
 ## Admission and persistence
 
 Stock/claim changes and ownership/capacity transitions notify the trusted `changed`
@@ -88,8 +105,9 @@ Foreign-inventory crash atomicity remains unpromised.
 
 ## Verification
 
-Seven DeviceRegistryTest cases cover move/replay, live-copy quarantine,
-foreign/stale handles, offline reload, upgrades/claims, metadata reclamation,
+Eight DeviceRegistryTest cases cover move/replay, live-copy quarantine,
+foreign/stale handles, offline reload, execution-time routing/queued denial,
+offline claim cleanup, upgrades/claims, metadata reclamation,
 duplicate owners, generation overflow, device/aggregate limits and 3,000 seeded
 byte-accounting operations (`0xD031001`). Four DeviceSavedDataTest cases use actual
 compressed disk save/reload, a fixed SNBT fixture, quarantined-tag preservation,

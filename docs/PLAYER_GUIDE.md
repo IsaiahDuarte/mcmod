@@ -2,8 +2,8 @@
 
 This development build provides Storage Drives, item/fluid cells and upgrade
 modules on Minecraft 1.21.1 / NeoForge 21.1.252. Network Controllers, Gateways and Cables now have physical placement and
-ownership. Routing, terminals, automation and wireless access are still pending. Installed cells
-remain offline; the current build has no player deposit/withdrawal endpoint.
+ownership. Valid wired networks now activate installed cells after bounded server rebuilding.
+Terminals, automation and wireless access are still pending; the current build has no player deposit/withdrawal endpoint.
 
 ## Cells and drives
 
@@ -66,7 +66,8 @@ The canonical world registry now uses schema three. Existing schema-one/two worl
 migrate while preserving cell identities, contents and reservations. Unknown
 or malformed registry data remains unavailable with its original data preserved;
 keep `world/data/factorycore_devices.dat` for recovery. Network grant metadata
-saves with this registry, but active routing and permission screens are still pending.
+saves with this registry. Wired availability uses current grants and leases;
+permission screens are still pending.
 
 Orderly registry save/reload and block lifecycle behavior are tested. Abrupt
 crash recovery across independently saved chunks/player inventory, actual chunk
@@ -85,4 +86,14 @@ Eight Cables use six iron and three redstone. A Gateway uses four iron, two
 quartz, two redstone and one ender pearl. Its red output face is downstream and
 its eye face is upstream; only those two faces connect. Use it to inspect the
 directions. Controllers/cables connect on all six faces. The current textures
-use vanilla assets. These blocks do not yet activate cell routing.
+use vanilla assets.
+
+Connect drives by cables to exactly one commissioned controller. Installed cells
+become available after server validation. Use the controller/gateway to inspect
+current routing status. Disconnecting a cable or structural owner immediately
+makes affected cells unavailable; contents and reservations are preserved.
+Reconnection must finish validation before access resumes. Multiple roots,
+gateway bypasses and other invalid topology suspend affected routing. Independent
+valid regions stay available. Gateway child storage stays private from its parent;
+child access to ancestor storage follows current gateway policies/grants.
+No player deposit/withdrawal terminal is available yet.

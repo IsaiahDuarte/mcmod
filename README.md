@@ -2,7 +2,7 @@
 
 A mod under development: unified item/fluid/energy storage, a crafting terminal, segmented factories, recipe-based autocrafting, and Rust/WebAssembly automation alongside a friendly language. Progression starts with wired storage and adds bounded wireless access/links and infinite item capacity.
 
-Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. Initial P2 Storage Drives, item/fluid cells, upgrade modules and physical controllers/gateways/cables are implemented with headless world tests; routing, terminals and automation remain pending. P1 accounting/scheduling foundations and a real Rust/Wasm sandbox probe are locally verified. See [resource contracts](docs/modules/RESOURCE_ACCOUNTING.md), [runtime decision](docs/decisions/0004-wasm-feasibility.md), [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
+Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. Initial P2 Storage Drives, item/fluid cells, upgrade modules and physical controllers/gateways/cables are implemented with headless world tests; automatic wired cell availability is implemented, while terminals and automation remain pending. P1 accounting/scheduling foundations and a real Rust/Wasm sandbox probe are locally verified. See [resource contracts](docs/modules/RESOURCE_ACCOUNTING.md), [runtime decision](docs/decisions/0004-wasm-feasibility.md), [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
 
 ## Start here
 
@@ -18,13 +18,15 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
   SavedData adapter, with [physical storage contracts](docs/modules/STORAGE_CELLS.md) and the [player guide](docs/PLAYER_GUIDE.md).
 - [Architecture decisions](docs/decisions/README.md): how to record significant choices.
 - [Network authority](docs/modules/NETWORK_AUTHORITY.md): bounded portable
-  topology, local scopes and current grants; world integration remains pending.
+  topology, local scopes and current grants, integrated with live wired availability.
 - [Network persistence](docs/modules/NETWORK_PERSISTENCE.md): canonical grant
   metadata, schema-one migration and bounded principal admission.
 - [Physical network nodes](docs/modules/STRUCTURAL_NODES.md): portable structural
-  ownership, gateway ports and migration; network activation pending.
+  ownership, gateway ports and migration.
 - [Wire discovery](docs/modules/WIRE_DISCOVERY.md): budgeted reciprocal probes,
-  shared scheduling and nonloading world reads; automatic coordination pending.
+  shared scheduling and nonloading world reads.
+- [Live wired networks](docs/modules/WORLD_NETWORKS.md): indexed event invalidation,
+  bounded server post-ticks and automatic validated cell availability.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
 

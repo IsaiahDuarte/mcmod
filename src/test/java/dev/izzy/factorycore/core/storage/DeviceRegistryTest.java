@@ -38,6 +38,39 @@ class DeviceRegistryTest {
   }
 
   @Test
+  void currentRoutingDeniesQueuedWritesAndPreservesOfflineClaims() {
+    var registry = registry(() -> {});
+    var handle = placed(registry);
+    registry.insert(handle, KEY, 100);
+    registry.reserve(handle, JOB, KEY, 60);
+    boolean[] connected = {true};
+    registry.routing(location -> FIRST.equals(location) && connected[0]);
+    var scheduler =
+        new dev.izzy.factorycore.core.scheduling.FairScheduler(
+            dev.izzy.factorycore.core.scheduling.FairScheduler.Limits.defaults(),
+            () -> 0,
+            failure -> fail(failure.diagnostic()));
+    OperationResult[] queued = {null};
+    scheduler.submit(
+        WORLD, JOB, "extract", 1, () -> queued[0] = registry.extract(handle, KEY, 10, JOB));
+    connected[0] = false;
+    assertEquals(new ResourceLedger.Stock(100, 60, 0, false), registry.stock(handle, KEY));
+    assertEquals(OperationResult.Reason.OFFLINE, registry.insert(handle, KEY, 1).reason());
+    assertEquals(OperationResult.Reason.OFFLINE, registry.reserve(handle, JOB, KEY, 1).reason());
+    scheduler.tick();
+    assertNotNull(queued[0]);
+    assertEquals(OperationResult.Reason.OFFLINE, queued[0].reason());
+    assertEquals(60, registry.release(handle, JOB, KEY).amount());
+    assertEquals(new ResourceLedger.Stock(100, 0, 0, false), registry.stock(handle, KEY));
+    connected[0] = true;
+    assertEquals(new ResourceLedger.Stock(100, 0, 100, true), registry.stock(handle, KEY));
+    registry.availability(handle, FIRST, false);
+    assertFalse(
+        registry.stock(handle, KEY).loaded(), "Routing cannot reactivate an offline ledger");
+    assertEquals(OperationResult.Reason.OFFLINE, registry.extract(handle, KEY, 1, null).reason());
+  }
+
+  @Test
   void movingDeviceConsumesPortableGenerationAndRetainsExactStockAndReservations() {
     var registry = registry(() -> {});
     var placed = placed(registry);

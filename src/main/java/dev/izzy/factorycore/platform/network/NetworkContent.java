@@ -5,7 +5,6 @@ import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
@@ -30,8 +29,8 @@ public final class NetworkContent {
   public static final DeferredBlock<NetworkNodeBlock> GATEWAY =
       BLOCKS.registerBlock(
           "gateway", p -> new NetworkNodeBlock(p, NodeRegistry.Kind.GATEWAY), properties());
-  public static final DeferredBlock<Block> CABLE =
-      BLOCKS.registerBlock("network_cable", Block::new, properties());
+  public static final DeferredBlock<NetworkCableBlock> CABLE =
+      BLOCKS.registerBlock("network_cable", NetworkCableBlock::new, properties());
   public static final DeferredItem<NetworkNodeItem> CONTROLLER_ITEM =
       ITEMS.register("network_controller", () -> new NetworkNodeItem(CONTROLLER.get()));
   public static final DeferredItem<NetworkNodeItem> GATEWAY_ITEM =

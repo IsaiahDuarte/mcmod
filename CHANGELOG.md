@@ -33,7 +33,9 @@
 
 - Added budgeted reciprocal wire discovery, separate gateway virtual ports,
   shared scheduler dispatch, source-epoch cancellation and a nonloading world
-  reader. Automatic region/event coordination and resource activation are pending.
+  reader. The subsequent runtime integration adds indexed block/entity/chunk
+  callbacks, shared post-tick rebuilding, current structural/grant checks and
+  automatic validated cell activation. Actual chunk/restart checks remain pending.
 
 This development artifact is not the first playable release. World transfers, crafting, scripting, terminal UI and wireless features remain unimplemented; complete survival progression remains unverified. P1 core accounting and bounded
 NeoForge handler ports are implemented and tested; they are not yet connected

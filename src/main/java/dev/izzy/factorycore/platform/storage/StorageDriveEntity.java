@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -59,6 +60,7 @@ public final class StorageDriveEntity extends BlockEntity {
       if (cells[slot].isEmpty()) {
         cells[slot] = CellOwnership.install(input, registry(), location(slot));
         setChanged();
+        networkingChanged();
         return slot;
       }
     }
@@ -78,6 +80,7 @@ public final class StorageDriveEntity extends BlockEntity {
     CellHandleData.write(portable, detached.handle());
     cells[slot] = ItemStack.EMPTY;
     setChanged();
+    networkingChanged();
     return portable;
   }
 
@@ -127,12 +130,14 @@ public final class StorageDriveEntity extends BlockEntity {
       }
       onLoad();
       setChanged();
+      networkingChanged();
     }
   }
 
   @Override
   public void onLoad() {
     super.onLoad();
+    networkingChanged();
     if (!(level instanceof ServerLevel) || rejected != null) return;
     for (int slot = 0; slot < cells.length; slot++) {
       if (!cells[slot].isEmpty()) {
@@ -147,6 +152,7 @@ public final class StorageDriveEntity extends BlockEntity {
 
   @Override
   public void setRemoved() {
+    networkingChanged();
     if (level instanceof ServerLevel && rejected == null) {
       for (int slot = 0; slot < cells.length; slot++) {
         if (!cells[slot].isEmpty()) {
@@ -155,6 +161,10 @@ public final class StorageDriveEntity extends BlockEntity {
       }
     }
     super.setRemoved();
+  }
+
+  private void networkingChanged() {
+    WorldNetworks.changed(level, worldPosition);
   }
 
   private void deactivate(int slot) {

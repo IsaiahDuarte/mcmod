@@ -163,8 +163,8 @@ Ten StorageDriveGameTests exercise placement/removal/break drops, four-slot/full
 and malformed rejection, copied/stale/foreign leases, module consumption and
 component/claim preservation, finite fluid capacity, block-entity lifecycle
 reload, unknown drive schema recovery, the version-one lease fixture and exact
-vanilla recipe costs/advancement loading. Direct registry activation seeds
-ownership fixtures; valid root routing is not implemented by the tests.
+vanilla recipe costs/advancement loading. Ownership fixtures now construct valid physical roots and dispatch bounded
+coordinator ticks for stock seeding; separate production post-tick tests are below.
 See [physical contract](modules/STORAGE_CELLS.md) for their limits. Actual chunk
 unload/world restart, abrupt independent save boundaries, client visuals,
 multiplayer and survival progression remain required later evidence.
@@ -211,3 +211,18 @@ sixteen; actual placements produce private scopes, detached drives remain rootle
 and remote chunk probes never load chunks. These tests explicitly own cancellation
 and scheduling. Automatic region/event hooks and activation remain pending; see
 [discovery contract](modules/WIRE_DISCOVERY.md).
+
+## Live wired coordination
+
+Five WorldNetworksGameTests bring the required headless suite to twenty-one. They use
+production block/entity notifications and actual server post-ticks to prove cell
+activation, immediate disconnection denial, detached/reconnected exact claims,
+coalesced notifications, multiple roots/independent regions, private storage views,
+queued revocation and stock denial on remote structural clone conflicts. Existing
+ownership assertions remain; their stock fixtures now use valid physical roots.
+A typed chunk-load adapter regression verifies adjacent-index invalidation; its
+fixture stays loaded, so actual unload/reload is still unverified. Core tests
+cover current routing/queued writes, offline cleanup, capture listener
+failure and full-size repeated-seed rediscovery. See [runtime contract](modules/WORLD_NETWORKS.md).
+Actual chunk unload/reload, full restart, interrupted saves, client/multiplayer and
+representative tick/memory measurements remain required future evidence.

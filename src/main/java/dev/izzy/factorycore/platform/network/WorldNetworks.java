@@ -1,0 +1,464 @@
+package dev.izzy.factorycore.platform.network;
+
+import dev.izzy.factorycore.core.network.DiscoverySeeds;
+import dev.izzy.factorycore.core.network.NetworkAuthority;
+import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NetworkTopology;
+import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.network.WiredDiscovery;
+import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.scheduling.FairScheduler;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.storage.CellHandleData;
+import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+
+/** Server-owned indexed geometry; world edits invalidate access before bounded rebuilding. */
+public final class WorldNetworks {
+  public static final int MAX_POSITIONS = 65536;
+  public static final int MAX_QUEUED = 8192;
+  private static final int STEP = 32;
+  private static final UUID WORK_NETWORK = new UUID(0xFAC7000, 1);
+  private static final UUID WORK_PROGRAM = new UUID(0xFAC7000, 2);
+  private static final Map<MinecraftServer, WorldNetworks> SERVERS = new HashMap<>();
+
+  private record ChunkKey(String dimension, int x, int z) {}
+
+  private record Structural(NodeRegistry.Handle handle, NodeRegistry.Position position) {}
+
+  private final MinecraftServer server;
+  private final DeviceSavedData saved;
+  private final FairScheduler scheduler;
+  private final Map<NodeRegistry.Position, Region> owners = new HashMap<>();
+  private final Map<NodeRegistry.Position, WiredDiscovery.Wire> geometry = new HashMap<>();
+  private final Map<ChunkKey, Map<Region, Integer>> chunks = new HashMap<>();
+  private final Map<String, WorldWireReader> readers = new HashMap<>();
+  private final ArrayDeque<Region> active = new ArrayDeque<>();
+  private String diagnostic = "";
+
+  private static final class Region {
+    final UUID id = UUID.randomUUID();
+    final NodeRegistry.Position anchor;
+    final Set<NodeRegistry.Position> points = new LinkedHashSet<>();
+    final DiscoverySeeds sources;
+    final Map<UUID, Structural> structures = new HashMap<>();
+    NetworkAuthority authority;
+    Region replacement;
+    WiredDiscovery discovery;
+    Iterator<NodeRegistry.Position> preparing;
+    boolean valid;
+    boolean restart;
+    boolean retired;
+    String failure = "";
+
+    Region(NodeRegistry.Position anchor) {
+      this.anchor = anchor;
+      sources = new DiscoverySeeds(anchor);
+    }
+  }
+
+  private WorldNetworks(MinecraftServer server) {
+    this.server = server;
+    DeviceSavedData opened = null;
+    try {
+      opened = DeviceSavedData.get(server);
+      opened.registry().routing(this::available);
+    } catch (IllegalStateException unavailable) {
+      diagnostic = message(unavailable);
+      opened = null;
+    }
+    saved = opened;
+    scheduler =
+        new FairScheduler(
+            FairScheduler.Limits.defaults(),
+            System::nanoTime,
+            failure -> {
+              diagnostic =
+                  failure.diagnostic().substring(0, Math.min(512, failure.diagnostic().length()));
+            });
+  }
+
+  public static WorldNetworks get(MinecraftServer server) {
+    if (!server.isSameThread())
+      throw new IllegalStateException("World networking requires server thread");
+    return SERVERS.computeIfAbsent(server, WorldNetworks::new);
+  }
+
+  public FairScheduler scheduler() {
+    checkThread();
+    return scheduler;
+  }
+
+  public String diagnostic() {
+    checkThread();
+    return diagnostic;
+  }
+
+  public static void postTick(ServerTickEvent.Post event) {
+    var runtime = SERVERS.get(event.getServer());
+    if (runtime != null) runtime.tick();
+  }
+
+  public void tick() {
+    checkThread();
+    scheduler.tick();
+  }
+
+  public static void stopped(ServerStoppedEvent event) {
+    SERVERS.remove(event.getServer());
+  }
+
+  // Minecraft owns the borrowed level; the coordinator never closes worlds or chunk caches.
+  @SuppressWarnings("PMD.CloseResource")
+  public static void changed(net.minecraft.world.level.Level level, BlockPos position) {
+    if (!(level instanceof ServerLevel serverLevel)) return;
+    get(serverLevel.getServer())
+        .changed(
+            new NodeRegistry.Position(level.dimension().location().toString(), position.asLong()));
+  }
+
+  public void changed(NodeRegistry.Position position) {
+    checkThread();
+    if (saved == null) return;
+    var affected = new java.util.HashSet<Region>();
+    var owner = owners.get(position);
+    if (owner != null) affected.add(resolve(owner));
+    var block = BlockPos.of(position.block());
+    for (var face : Direction.values()) {
+      owner =
+          owners.get(
+              new NodeRegistry.Position(position.dimension(), block.relative(face).asLong()));
+      if (owner != null) affected.add(resolve(owner));
+    }
+    for (var region : affected) if (region != null) invalidate(region);
+    if (owners.get(position) == null && wired(position)) start(position, null);
+    wake();
+  }
+
+  private void invalidate(Region current) {
+    if (current == null || current.retired || current.restart) return;
+    current.valid = false;
+    current.discovery.cancel();
+    current.restart = true;
+    if (active.size() >= MAX_QUEUED) {
+      diagnostic = "Network rebuild queue limit";
+      return;
+    }
+    active.addLast(current);
+  }
+
+  private Region start(NodeRegistry.Position anchor, Region previous) {
+    if (previous != null && previous.replacement != null) return resolve(previous);
+    if (active.size() >= MAX_QUEUED) {
+      diagnostic = "Network rebuild queue limit";
+      return null;
+    }
+    if (previous == null && owners.size() >= MAX_POSITIONS) {
+      diagnostic = "Known network position limit";
+      return null;
+    }
+    var region = new Region(anchor);
+    region.sources.appendPositions(List.of(anchor).iterator());
+    if (previous != null) absorb(region, previous);
+    region.discovery =
+        new WiredDiscovery(
+            region.id,
+            8,
+            region.sources,
+            position -> probe(region, position),
+            () -> 0,
+            (position, wire) -> capture(region, position, wire));
+    if (previous == null) {
+      region.points.add(anchor);
+      assign(anchor, region);
+    }
+    active.addLast(region);
+    return region;
+  }
+
+  private void absorb(Region target, Region previous) {
+    if (previous == target || previous.replacement != null) return;
+    previous.valid = false;
+    if (previous.discovery != null) previous.discovery.cancel();
+    target.sources.appendPositions(previous.points.iterator());
+    target.sources.append(previous.sources);
+    previous.retired = true;
+    previous.replacement = target;
+  }
+
+  private WiredDiscovery.Wire probe(Region region, NodeRegistry.Position position) {
+    var old = owners.get(position);
+    if (old != null && resolve(old) == region) region.points.add(position);
+    return readers
+        .computeIfAbsent(
+            position.dimension(), dimension -> new WorldWireReader(level(dimension), geometry::get))
+        .apply(position);
+  }
+
+  private void capture(Region region, NodeRegistry.Position position, WiredDiscovery.Wire wire) {
+    var previous = owners.get(position);
+    var current = previous == null ? null : resolve(previous);
+    if (current != null && current != region) absorb(region, current);
+    if (previous == null && owners.size() >= MAX_POSITIONS)
+      throw new IllegalStateException("Known network position limit");
+    region.points.add(position);
+    geometry.put(position, wire);
+    assign(position, region);
+  }
+
+  private void assign(NodeRegistry.Position position, Region next) {
+    var previous = next == null ? owners.remove(position) : owners.put(position, next);
+    if (previous == next) return;
+    var key = chunk(position);
+    var index = chunks.computeIfAbsent(key, k -> new HashMap<>());
+    if (previous != null) {
+      int count = index.getOrDefault(previous, 0) - 1;
+      if (count <= 0) index.remove(previous);
+      else index.put(previous, count);
+    }
+    if (next != null) index.merge(next, 1, Integer::sum);
+    if (index.isEmpty()) chunks.remove(key);
+  }
+
+  private Region resolve(Region region) {
+    for (int i = 0; i < 32; i++) {
+      if (region.replacement == null) return region;
+      region = region.replacement;
+    }
+    diagnostic = "Network replacement depth limit";
+    return null;
+  }
+
+  private void wake() {
+    if (active.isEmpty()) return;
+    var admission = scheduler.submit(WORK_NETWORK, WORK_PROGRAM, "world-regions", STEP, this::step);
+    if (admission != FairScheduler.Admission.ACCEPTED
+        && admission != FairScheduler.Admission.REPLACED) {
+      diagnostic = "Network scheduling limit: " + admission;
+    }
+  }
+
+  private void step() {
+    int visits = 0;
+    while (visits < STEP && !active.isEmpty()) {
+      visits++;
+      var region = active.removeFirst();
+      if (region.retired) continue;
+      try {
+        if (region.restart) {
+          start(region.anchor, region);
+          continue;
+        }
+        if (region.preparing != null) {
+          if (region.preparing.hasNext()) prepare(region, region.preparing.next());
+          else {
+            region.valid = true;
+            region.preparing = null;
+          }
+        } else {
+          var progress = region.discovery.advance(1);
+          if (progress.state() == WiredDiscovery.State.PUBLISHED) {
+            region.authority = new NetworkAuthority(region.discovery.publishedTopology());
+            region.preparing = region.points.iterator();
+          } else if (progress.state() == WiredDiscovery.State.FAILED
+              || progress.state() == WiredDiscovery.State.CANCELLED) {
+            region.failure =
+                progress.diagnostic().isEmpty()
+                    ? "Network rebuild cancelled"
+                    : progress.diagnostic();
+            diagnostic = region.failure;
+            continue;
+          }
+        }
+        if (!region.valid && !region.retired) active.addLast(region);
+      } catch (IllegalArgumentException | IllegalStateException error) {
+        region.failure = message(error);
+        diagnostic = region.failure;
+        region.discovery.cancel();
+      }
+    }
+    wake();
+  }
+
+  // ServerLevel and chunk cache are borrowed from Minecraft.
+  @SuppressWarnings("PMD.CloseResource")
+  private void prepare(Region region, NodeRegistry.Position position) {
+    var wire = region.discovery.captured(position);
+    if (wire == null) {
+      var previous = owners.get(position);
+      if (previous != null && resolve(previous) == region) {
+        assign(position, null);
+        geometry.remove(position);
+      }
+      return;
+    }
+    var level = level(position.dimension());
+    var block = BlockPos.of(position.block());
+    var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+    assign(position, region);
+    if (chunk == null) return;
+    var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
+    if (entity instanceof NetworkNodeEntity node
+        && node.handle() != null
+        && node.diagnostic().isEmpty()) {
+      var lease = node.handle();
+      region.structures.put(lease.id(), new Structural(lease, position));
+      if (lease.kind() == NodeRegistry.Kind.CONTROLLER
+          && saved.nodes().validate(lease) == NodeRegistry.Failure.OK)
+        region.authority.register(saved.network(lease.id()));
+    }
+    if (entity instanceof StorageDriveEntity drive) {
+      UUID vertex = wire.nodes().getFirst().id();
+      boolean valid =
+          region.discovery.publishedTopology().membership(vertex).status()
+              == NetworkTopology.Status.VALID;
+      for (int slot = 0; slot < 4; slot++) {
+        var stack = drive.cell(slot);
+        if (stack.isEmpty()) continue;
+        try {
+          var handle = CellHandleData.read(stack);
+          if (handle != null) saved.registry().availability(handle, drive.location(slot), valid);
+        } catch (IllegalArgumentException | IllegalStateException invalid) {
+          diagnostic = message(invalid);
+        }
+      }
+    }
+  }
+
+  public NetworkTopology.Membership membership(NodeRegistry.Position position) {
+    checkThread();
+    var region = owners.get(position);
+    region = region == null ? null : resolve(region);
+    if (region == null || !region.valid || region.retired)
+      return new NetworkTopology.Membership(NetworkTopology.Status.REBUILDING, null);
+    var wire = geometry.get(position);
+    if (wire == null) return new NetworkTopology.Membership(NetworkTopology.Status.UNKNOWN, null);
+    UUID vertex =
+        wire.gateway() == null ? wire.nodes().getFirst().id() : wire.gateway().downstream();
+    var result = region.discovery.publishedTopology().membership(vertex);
+    if (result.status() != NetworkTopology.Status.VALID) return result;
+    if (!structuralValid(region, result.scope()))
+      return new NetworkTopology.Membership(NetworkTopology.Status.UNLOADED, null);
+    return result;
+  }
+
+  private boolean structuralValid(Region region, NetworkTopology.Scope scope) {
+    if (!current(region.structures.get(scope.network()))) return false;
+    for (var ancestor : region.discovery.publishedTopology().ancestors(scope)) {
+      // Ancestor descriptors contain the parent's segment; the child segment identifies its
+      // gateway.
+      // The chain is bounded by the configured depth, including the immediate child gateway.
+      if (!ancestor.segment().equals(scope.network())
+          && !current(region.structures.get(ancestor.segment()))) return false;
+    }
+    return scope.segment().equals(scope.network())
+        || current(region.structures.get(scope.segment()));
+  }
+
+  private boolean current(Structural structural) {
+    if (structural == null
+        || saved.nodes().validate(structural.handle()) != NodeRegistry.Failure.OK) return false;
+    return structural.position().equals(saved.nodes().definition(structural.handle()).position());
+  }
+
+  public NetworkAuthority.StorageQuery storage(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      ResourceKey resource,
+      NetworkPermissions.Permission operation) {
+    var membership = membership(origin);
+    if (membership.status() != NetworkTopology.Status.VALID)
+      return new NetworkAuthority.StorageQuery(NetworkAuthority.Decision.INVALID_SCOPE, List.of());
+    return resolve(owners.get(origin))
+        .authority
+        .storage(actor, membership.scope(), resource, operation);
+  }
+
+  private boolean available(DeviceRegistry.Location location) {
+    return membership(new NodeRegistry.Position(location.dimension(), location.position())).status()
+        == NetworkTopology.Status.VALID;
+  }
+
+  private boolean wired(NodeRegistry.Position position) {
+    var block = BlockPos.of(position.block());
+    var chunk =
+        level(position.dimension())
+            .getChunkSource()
+            .getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+    return chunk != null && NetworkContent.connects(chunk.getBlockState(block), Direction.UP)
+        || chunk != null && chunk.getBlockState(block).getBlock() instanceof NetworkNodeBlock;
+  }
+
+  private ServerLevel level(String dimension) {
+    var key =
+        net.minecraft.resources.ResourceKey.create(
+            net.minecraft.core.registries.Registries.DIMENSION,
+            net.minecraft.resources.ResourceLocation.parse(dimension));
+    var level = server.getLevel(key);
+    if (level == null) throw new IllegalStateException("Unknown networking dimension");
+    return level;
+  }
+
+  private static ChunkKey chunk(NodeRegistry.Position position) {
+    var block = BlockPos.of(position.block());
+    return new ChunkKey(position.dimension(), block.getX() >> 4, block.getZ() >> 4);
+  }
+
+  public static void loaded(ChunkEvent.Load event) {
+    chunkChanged(event);
+  }
+
+  public static void unloaded(ChunkEvent.Unload event) {
+    chunkChanged(event);
+  }
+
+  // Minecraft owns the event's borrowed world.
+  @SuppressWarnings("PMD.CloseResource")
+  private static void chunkChanged(ChunkEvent event) {
+    if (!(event.getLevel() instanceof ServerLevel level) || !level.getServer().isSameThread())
+      return;
+    if (level.getServer().overworld() == null) return;
+    var runtime = get(level.getServer());
+    if (runtime.saved == null) return;
+    var position = event.getChunk().getPos();
+    runtime.invalidateChunk(level.dimension().location().toString(), position.x, position.z);
+    // First loading an unindexed chunk can expose a connection to its indexed neighbors.
+    runtime.invalidateChunk(level.dimension().location().toString(), position.x - 1, position.z);
+    runtime.invalidateChunk(level.dimension().location().toString(), position.x + 1, position.z);
+    runtime.invalidateChunk(level.dimension().location().toString(), position.x, position.z - 1);
+    runtime.invalidateChunk(level.dimension().location().toString(), position.x, position.z + 1);
+    runtime.wake();
+  }
+
+  private void invalidateChunk(String dimension, int x, int z) {
+    var index = chunks.get(new ChunkKey(dimension, x, z));
+    if (index != null) for (var region : index.keySet()) invalidate(resolve(region));
+  }
+
+  private static String message(RuntimeException error) {
+    String value =
+        error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
+    return value.substring(0, Math.min(512, value.length()));
+  }
+
+  private void checkThread() {
+    if (!server.isSameThread())
+      throw new IllegalStateException("World networking requires server thread");
+  }
+}
