@@ -1,7 +1,7 @@
 # Bounded scheduling contract
 
-Implemented P1 portable scheduler; live network, UI, crafting and runtime
-integration are pending. [ADR 0003](../decisions/0003-scheduling-workloads.md)
+Implemented P1 portable scheduler, now used by [live wired coordination](WORLD_NETWORKS.md).
+UI, crafting and production guest-runtime integration remain pending. [ADR 0003](../decisions/0003-scheduling-workloads.md)
 owns targets and version-one workloads.
 
 ## Ownership, admission and lifecycle

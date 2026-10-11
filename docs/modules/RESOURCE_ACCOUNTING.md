@@ -1,6 +1,8 @@
 # Resource accounting and handler contracts
 
-Implemented P1 foundation; no block, terminal, crafting or script integration yet.
+Implemented P1 foundation, integrated with [physical cells/drives](STORAGE_CELLS.md)
+and [live wired availability](WORLD_NETWORKS.md). Player transfer endpoints,
+crafting and script integration remain pending.
 Selection and limits are owned by [ADR 0002](../decisions/0002-resource-accounting.md).
 
 ## Identities and units
@@ -31,7 +33,8 @@ zero and insert/extract/reserve reject. `snapshot()` returns immutable contents
 for explicit persistence/planning, copying at most the configured catalog limit;
 it is not a per-tick catalog scan. `persistentState()` additionally captures exact
 owner/key claims; [the initial persistence contract](PERSISTENCE.md) documents
-bounded serialization and offline restore. World persistence remains pending.
+bounded serialization and offline restore. [Canonical world ownership](DEVICE_OWNERSHIP.md)
+persists ledgers; durable transfer/job staging and full interruption validation remain pending.
 
 - `insert(key, requested)` returns actual accepted units and a typed reason for
   any remainder. Wrong resource, full/offline and administrative/technical limits

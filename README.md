@@ -8,6 +8,8 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
 
 - [Product specification](SPEC.md): authoritative release scope, behavior, and acceptance criteria.
 - [Implementation handoff](docs/IMPLEMENTATION.md): ordered stages, decision gates, evidence tracking, and an instruction to give an implementing AI.
+- [Release asset inventory](docs/ASSETS.md): models, textures, device states, screens, onboarding and client verification status.
+- [Agent continuation task](docs/AGENT_HANDOFF.md): copyable goal-oriented handoff for the full first playable release.
 - [AI contributor instructions](AGENTS.md): required workflow and completion criteria.
 - [Engineering rules](docs/ENGINEERING.md): architecture, documentation, and change discipline.
 - [Verification requirements](docs/TESTING.md): current checks and required implementation gates.

@@ -20,8 +20,8 @@
   and player documentation. Required headless GameTests cover placement, break,
   lease preservation/reload, failures and recipe costs.
 - Added bounded portable topology validation, current private grants, gateway
-  policy intersections and local machine queries. World discovery/activation,
-  player permissions controls and world integration remain pending.
+  policy intersections and local machine queries. Discovery/activation were integrated
+  in the later wired slice below; player permissions controls and full world validation remain pending.
 - Added canonical schema-two network identities, owners and grants, exact migration
   of schema-one resource ownership, bounded global principal admission, and
   preserved unknown metadata. Compressed disk reload verifies transfer/revocation;
@@ -29,7 +29,7 @@
 - Added Network Controllers, two-port Gateways and Cables, vanilla recipes/models,
   private player commissioning, consumed portable leases and copied-block quarantine.
   Schema three adds canonical structural ownership/policies with exact legacy
-  migration. World discovery/activation and permission screens remain pending.
+  migration. The later wired slice adds discovery/activation; permission screens remain pending.
 
 - Added budgeted reciprocal wire discovery, separate gateway virtual ports,
   shared scheduler dispatch, source-epoch cancellation and a nonloading world

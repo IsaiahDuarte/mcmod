@@ -24,6 +24,7 @@ The first playable release includes:
 - Local programs and central coordination through published branch crafting jobs.
 - Multiplayer permissions, bounded work, profiling, and measured acceptance workloads.
 - Same-dimension wireless terminal access and later-tier paired wireless branch links, under R11's costs and limits.
+- Finished device/item visuals, readable status feedback, and in-game onboarding under R08; the release asset inventory is tracked in [ASSETS.md](docs/ASSETS.md).
 
 “Scripting first” describes development order relative to a full visual automation editor. The storage terminal, pattern editor, presets, and friendly script editor ship in the first release. Internal milestones are incomplete development slices, not permission to shrink this scope.
 
@@ -215,6 +216,17 @@ The main terminal opens to searchable Items. Additional views are Fluids, Energy
 - Rust is edited/compiled externally with a starter project and documented commands, then explicitly uploaded as a bounded Wasm artifact. No in-game Rust compiler/editor is required.
 - Paginate catalogs and send bounded client deltas. Reject unauthorized/stale client mutations server-side.
 
+### Presentation and onboarding
+
+- Give every shipped block and item a coherent Factory Core appearance. Replace development stand-ins with finished textures, models and inventory icons; simple geometry is sufficient where it clearly communicates the device's role. Custom animation and custom audio are optional polish, not required for every device.
+- Cables visually connect to their eligible neighbors, with selection/collision shapes matching their geometry. Gateway upstream/downstream ports remain distinguishable in every placement orientation. Drives expose their four bays and installed-cell status through visuals or inspection.
+- Expose applicable ready, rebuilding, offline, working, paused and fault states through device inspection or screens. Use text or symbols alongside color; show a cause and next action for blocked operations without revealing unauthorized network data. Do not invent external machine telemetry.
+- Use translatable player-facing text, readable controls/tooltips at supported GUI scales, and keyboard navigation for primary screen actions. Document and test the supported resolution/scale combinations. Permission and quota errors must distinguish access restrictions, server limits and gameplay capacity.
+- Provide an in-game guide or equivalent discoverable help with a first-network placement example, hopper-to-terminal walkthrough, safe cell upgrade instructions, and links between storage, presets, crafting, programming and wireless progression. Basic storage/preset instructions require neither scripts nor optional mods.
+- Track every release block/item/screen and its relevant states in [ASSETS.md](docs/ASSETS.md). P6 requires completed assets and recorded client interaction/visual checks; P7 confirms coverage. Packaged resources or headless tests alone do not prove visual completion.
+
+These are release requirements, not claims about the current development build.
+
 ## R09 — Persistence and failure guarantees
 
 Supported normal operation conserves resources across source, destination, and owned staging, including partial rejection, cancellation, orderly save/restart, and chunk unload. Jobs, reservations, programs, and storage have versioned owners and explicit transitions.
@@ -222,6 +234,13 @@ Supported normal operation conserves resources across source, destination, and o
 Hard crashes may interrupt independent Minecraft/mod saves or external mutations. Universal exactly-once durability across arbitrary third-party inventories is not promised. D03 must define durable owned-state boundaries, save ordering, uncertain external operations, migration, and recovery before persistence implementation. Diagnose/pause uncertain work; never blindly replay or fabricate refunds.
 
 Player/admin docs and release notes must state actual guarantees and third-party limits. Incompatible saved data never silently resets.
+
+Recovery diagnostics must identify the affected device/job and a safe next action.
+Provide a documented, authorized administrative workflow for inspection and
+reconciliation of supported ownership conflicts and quarantined operations;
+preserve evidence before mutation. Where recovery cannot determine the true
+external outcome, retain quarantine and explain backup/manual investigation
+steps. Never offer an automatic replay or refund that assumes an unknown result.
 
 ## R10 — Performance and engineering
 
@@ -268,13 +287,13 @@ Stable IDs are the release checklist. Record test/evidence paths per stage in [I
 | A08 | Competing scripts/crafts obey port leases and reservations with actionable busy states. |
 | A09 | Rust and friendly language perform equivalent supported operations; registration, pause, replacement, trap, and reload semantics hold. |
 | A10 | Infinite loops, compilation, host work, events, and memory are bounded while unrelated work retains its fair share. |
-| A11 | Terminal search, manual grid, JEI filling, fluid containers, and energy-item operations work without duplicating/losing resources, including full inventory and screen closure. |
+| A11 | Terminal search, manual grid, JEI filling, fluid containers, and energy-item operations work without duplicating/losing resources, including full inventory and screen closure. R08 screens/device feedback use finished assets, translatable text, readable supported GUI scales, keyboard navigation and actionable states; record client evidence against the asset inventory. |
 | A12 | Unauthorized client/program actions fail; permission revocation and stale handles prevent later mutation. |
-| A13 | Device movement, orderly reload, migration, unload, and injected interruptions meet D03's recovery contract. |
+| A13 | Device movement, orderly reload, migration, unload, and injected interruptions meet D03's recovery contract. Recovery diagnostics and the authorized administrative workflow preserve evidence, explain safe next steps and never replay/refund uncertain external operations. |
 | A14 | Core works without JEI/Mekanism; representative platform inventories/tanks/energy handlers pass integration checks. |
 | A15 | D07 small/large/overload workloads meet recorded budgets with raw evidence. |
 | A16 | Wireless terminal/link range, pairing, power loss, permissions, unload, and throughput limits work; equivalent-tier wired throughput is at least as high. |
-| A17 | Survival playtest reaches useful starter storage, scripting/crafting, expanded factory links, and infinite item storage without compulsory optional mods or circular unlock recipes. |
+| A17 | Survival playtest follows discoverable in-game onboarding to useful starter storage, scripting/crafting, expanded factory links, and infinite item storage without compulsory optional mods or circular unlock recipes. Record recipe dependencies, upgrade motivation, combined power demand and a working endgame factory, not just ownership of an Infinite Cell. |
 
 Later reactor-fuel scenarios add chemicals, continuous-production thresholds, and supported telemetry/control freshness. They are not first-release acceptance gates.
 

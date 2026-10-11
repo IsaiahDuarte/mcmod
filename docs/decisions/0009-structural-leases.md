@@ -1,7 +1,8 @@
 # ADR 0009 — Physical controller and gateway leases
 
-Status: accepted; selected before source and locally verified with core/disk/GameTests. Discovery/activation remain subsequent
-work; this slice must provide real placement, port orientation and ownership.
+Status: accepted; selected before source and locally verified with core/disk/GameTests. This slice provides placement, port orientation and ownership.
+Discovery/activation were subsequently integrated by ADRs 0010–0011; actual
+chunk/restart and client/multiplayer validation remain pending.
 
 ## Decision
 

@@ -199,8 +199,8 @@ duplicate positions and admission without orphan grants. Four required
 NetworkNodeGameTests bring the headless suite to fourteen: actual creative
 placement/movement, gateway faces, clone/lifecycle behavior, future-data recovery,
 portable chunk rejection, exact recipes and explicit controller commissioning.
-See [structural contract](modules/STRUCTURAL_NODES.md). World discovery/activation,
-real chunks/restart and client/multiplayer remain pending.
+See [structural contract](modules/STRUCTURAL_NODES.md). Discovery/activation now
+have the additional evidence below; real chunks/restart and client/multiplayer remain pending.
 
 ## Budgeted wire discovery
 
@@ -209,8 +209,8 @@ bypass/collision, stale/cancelled jobs, 4,096-node one-visit progress, ceilings 
 shared scheduling. Two required WireDiscoveryGameTests bring the world suite to
 sixteen; actual placements produce private scopes, detached drives remain rootless
 and remote chunk probes never load chunks. These tests explicitly own cancellation
-and scheduling. Automatic region/event hooks and activation remain pending; see
-[discovery contract](modules/WIRE_DISCOVERY.md).
+and scheduling. Automatic region/event hooks and activation now have the live
+coordination evidence below; see [discovery contract](modules/WIRE_DISCOVERY.md).
 
 ## Live wired coordination
 
@@ -235,3 +235,14 @@ stale/offline access, clock reversal and canonical snapshot restoration. A 4,000
 conservation/rate sequence records seed 0xE0B001. They run in the required JVM suite.
 See [contract](modules/ENERGY_BANKS.md). Physical capability/block/upgrade/recipe,
 actual chunk/full-world restart and client tests remain required as integration lands.
+
+## Presentation and onboarding verification
+
+R08/A11 require real client checks against [ASSETS.md](ASSETS.md), including
+block/item appearance, cable shapes, gateway orientations, applicable status
+feedback, translatable messages, keyboard actions and documented GUI scales.
+Record environment, actions, observed results and evidence paths in the plan.
+Resource loading and headless GameTests do not prove visual or interaction quality.
+A17 requires following discoverable in-game help through the survival progression;
+A13 requires exercising supported administrative recovery and unresolved quarantine.
+These checks remain pending until the owning features and evidence exist.

@@ -1,8 +1,8 @@
 # ADR 0010 — Budgeted physical wire discovery
 
 Status: accepted; selected before source, with local core/world producer evidence. Runtime
-region coordination, event invalidation and device activation remain subsequent
-integration; this producer must not independently activate resource owners.
+region coordination, event invalidation and device activation were subsequently
+integrated in ADR 0011; this producer does not independently activate resource owners.
 
 ## Decision
 

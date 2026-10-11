@@ -1,7 +1,7 @@
 # Canonical network identity and grants
 
 Implemented P2 authority metadata for A12/A13; physical controller leases and gateway policies now have
-[structural ownership](STRUCTURAL_NODES.md); world discovery and player permission screens remain pending.
+[structural ownership](STRUCTURAL_NODES.md) and [live wired availability](WORLD_NETWORKS.md). Player permission screens and actual chunk/restart/multiplayer checks remain pending.
 [ADR 0008](../decisions/0008-network-persistence.md) records the save decision.
 
 ## Ownership and lifecycle

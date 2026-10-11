@@ -42,10 +42,44 @@ A gate may produce a selected interface/design before the dependent module is co
 | P3 — Transfers and simple player path | Implement item/fluid/energy adapters, staging, presets, hopper path, terminal item search/deposit/withdrawal, pagination, and accounting diagnostics. | Real inventory/tank/energy integration tests and hopper-to-terminal gameplay evidence. |
 | P4 — Crafting | Add manual terminal grid/remainders, patterns, recursive jobs, machine leases, published branch jobs, cancellation/recovery, and stock-maintenance requests. | Dependency/reservation/contention/output attribution tests and representative machine demonstration. |
 | P5 — Programming | Resolve D05. Implement versioned host API/SDK, runtime lifecycle, friendly language, deployment, templates, script diagnostics, and script-backed production. | Rust/DSL conformance, runaway/host-work limits, pause/restart/replacement tests, job ownership tests. |
-| P6 — Complete player experience and progression | Finish terminal fluid/container and energy-item actions, job UI, friendly editor/JEI, wireless access/paired links, recipes/balance, player/admin docs. Finalize D06. | Client interactions with optional mods present/absent, wireless fault cases, survival progression playtest. |
-| P7 — Release verification | Run the complete acceptance matrix, migrations/interruption suite, multiplayer and D07 performance scenarios. Package and document the supported configuration. | All acceptance rows have evidence; required checks pass; benchmark data and release limitations published. |
+| P6 — Complete player experience and progression | Finish terminal fluid/container and energy-item actions, job UI, friendly editor/JEI, wireless access/paired links, recipes/balance, in-game onboarding, recovery administration and player/admin docs. Complete the asset inventory. Finalize D06. | Client interactions with optional mods present/absent, asset/state/GUI-scale checks, recovery walkthrough, wireless fault cases and survival progression playtest. |
+| P7 — Release verification | Run the complete acceptance matrix, migrations/interruption suite, multiplayer and D07 performance scenarios. Confirm presentation/onboarding evidence and package/document the supported configuration. | All acceptance rows and release asset rows have evidence; required checks pass; benchmark data and release limitations published. |
 
 Dependency order is logical, not a requirement for a monolithic phase. Small vertical slices can cross a boundary if their prerequisites are resolved. Do not mark the first playable complete at P3 or omit remaining features because a demo runs.
+
+## Playable milestones and presentation tracking
+
+These demonstrations make progress observable within P0–P7; they do not replace
+stage exits or narrow the first-release scope. All demonstrations below are
+currently unverified. Existing component tests remain partial evidence only.
+
+| Milestone | Stages / acceptance | Required demonstration and evidence |
+| --- | --- | --- |
+| Useful storage | P2–P3; A01–A03, A11–A14 | Craft/place a root, drive, cell, cables, Buffered Interface and terminal; import by hopper, search, deposit and withdraw. Fill storage and the player inventory without loss, disconnect/reconnect and restart with exact counts. Record a reproducible world setup, checks and actual client interaction. |
+| Reliable utility network | P2–P3; A04–A05, A12–A14 | Use physical banks/connectors and representative item/fluid/energy handlers; prove sides, rates, permissions, movement/upgrades and actual chunk/restart behavior. Include ownership recovery and offline diagnostics. |
+| Everyday automation | P3; A01, A03–A05, A12, A14 | Configure import/export/stock presets without scripts; demonstrate filtering, backpressure and actionable full/busy/offline states through player controls. |
+| Crafting factory | P4; A06–A08, A11, A13 | Use the manual grid and saved patterns; request recursive machine processing and a published child recipe; show shortages, contention, cancellation, real output attribution and recovery. |
+| Programmable factory | P5; A08–A10, A12–A13 | Run equivalent Rust/friendly-language examples; edit/deploy/pause/replace/reload, diagnose errors, and isolate runaway work while other operations progress. |
+| Complete progression | P6; A02, A11, A14, A16–A17 | Follow in-game help through starter storage, presets/crafting, scripting, generator-powered wireless and Infinite. Record recipe dependencies, fuel/power demand, why each upgrade is useful, and a functioning endgame factory. |
+| Finished release | P7; A01–A17 | Complete acceptance evidence, finished assets and onboarding, supported recovery, multiplayer/migration/interruption checks and full workloads on documented supported configurations. |
+
+The immediate direction is to close remaining P1/P2 prerequisites and deliver
+the useful-storage demonstration. Physical energy-bank integration remains P2
+work; dependencies determine slice order. Keep A04 and other unfinished criteria
+open even when the first item-storage loop works. Do not restart completed P0
+work or defer all player feedback until the full backend is built.
+
+Maintain [ASSETS.md](ASSETS.md) alongside each feature: models/textures/icons,
+relevant device states, screens, translatable messages and client evidence.
+Establish the visual style with the starter devices; implement their finished
+presentation in the same feature sequence. P6 closes remaining inventory gaps
+and P7 verifies them. Asset implementation and client verification are separate
+statuses; placeholders cannot count as release-complete.
+
+For each milestone, append evidence here with revision/environment, exact
+commands, setup/actions, expected and observed outcomes, artifact/test paths and
+remaining failures. Never infer a playtest pass from a recipe-loading test.
+The copyable full-release continuation task is in [AGENT_HANDOFF.md](AGENT_HANDOFF.md).
 
 ## Acceptance ownership and evidence
 
@@ -63,17 +97,17 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A08 | P4, P5 | Not implemented. |
 | A09 | P5 | Not implemented. |
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
-| A11 | P3, P4, P6 | Not implemented. |
+| A11 | P3, P4, P6 | Not implemented. Terminal flows and R08 presentation/client checks remain pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
 | A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation is implemented; player permissions UI and multiplayer checks remain pending. |
-| A13 | P2, P4, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Actual chunk unload/world restart, staging/jobs and interrupted external-write/save integration remain pending. |
+| A13 | P2, P4, P6, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Actual chunk unload/world restart, staging/jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
-| A17 | P6, P7 | Not implemented. |
+| A17 | P6, P7 | Not implemented. In-game onboarding, complete recipe dependency/power/upgrade playtest and working endgame factory evidence remain pending. |
 
 ## Suggested implementation instruction
 
-> Implement this repository according to AGENTS.md, SPEC.md, and docs/IMPLEMENTATION.md. Resolve decision gates with evidence and ADRs, starting with P0, then continue through the ordered stages. Preserve the full first-playable scope. Keep docs and meaningful tests with each behavior change, run the required checks, and maintain acceptance evidence. Make routine choices within the contract autonomously; report genuine blockers and never claim unrun checks passed.
+> Implement this repository according to AGENTS.md, SPEC.md, docs/IMPLEMENTATION.md and docs/ASSETS.md. Resume from the earliest incomplete prerequisite, preserving existing P0–P2 work, then continue through P7. Deliver the playable milestones with finished presentation alongside each feature. Preserve the full first-playable scope. Resolve decision gates with evidence and ADRs, keep docs and meaningful tests with each behavior change, run required checks, and maintain acceptance/asset evidence. Make routine choices within the contract autonomously; report genuine blockers and never claim unrun checks passed. See docs/AGENT_HANDOFF.md for the full continuation task.
 
 This instruction authorizes implementation when the user gives it to an agent. Its presence in a design repository does not itself start implementation.
 
@@ -598,3 +632,25 @@ Energy-bank prerequisite final checks, 2026-10-11:
 - `git diff --check` passed. No dependency, schema, CI/checker or player-visible
   resource endpoint changed. Physical banks and their required world checks remain
   unfinished, and the complete release goal remains active.
+
+## Release presentation and handoff review — 2026-10-11
+
+Documentation-only update: made R08 presentation/onboarding and R09 recovery
+expectations explicit, extended A11/A13/A17 without changing their IDs, added
+playable demonstration checkpoints and the asset inventory, and reconciled stale
+wired-network status summaries. Added a copyable full-release continuation task.
+No gameplay or asset implementation is claimed; no stage/acceptance row was closed.
+No skill, contributor policy or CI gate was changed.
+
+Verification on local macOS arm64 / Java 21:
+
+- `python3 scripts/verify.py`: initial sandbox run passed 24 tooling tests but
+  could not open Gradle's cache lock outside the workspace. Authorized rerun
+  passed documentation/acceptance checks, all 24 tooling tests and Gradle build.
+  All 21 headless Minecraft GameTests executed and passed; JVM/Rust and other
+  unchanged tasks were up-to-date, not newly executed.
+- `git diff --check`: passed. Final documentation validation also passed after
+  updating this evidence and A13's P6 recovery ownership.
+- No new gameplay tests were added because only documentation changed. No client,
+  survival, multiplayer or performance checks were run for this edit; those
+  release evidence gaps remain open.
