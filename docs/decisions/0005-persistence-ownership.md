@@ -167,3 +167,13 @@ unknown/malformed/duplicate/over-limit data is preserved and quarantined. Downgr
 requires a matching backup. A stale saved preference changes only target order;
 it cannot authorize uncertain-transfer replay. Schema-five transfer context and
 entry schema two are unchanged. Actual server interruptions remain unverified.
+
+
+## Owned item-buffer extension — 2026-10-12
+
+Canonical schema eight includes nested schema-one real buffer slots and distinct
+structural leases, as selected in [ADR 0014](0014-buffered-inventory.md). Inventory,
+leases, grants and staging share one normal snapshot boundary. Schema one through
+seven migration preserves exact old tables and adds empty buffers. Runtime binding
+and availability are never persisted. Unknown/malformed/over-limit payloads retain
+raw recovery data. Independent provider save ordering is still not atomic.

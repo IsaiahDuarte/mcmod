@@ -85,7 +85,7 @@ performs 2,000 stock/claim operations with a save/reload after each operation,
 replay seed `0x5A7E001`. This is portable recovery evidence, not a world crash or
 external-inventory atomicity guarantee.
 
-The world envelope now targets schema seven, retaining schema-five [accepted transfer context](TRANSFER_PERSISTENCE.md).
+The world envelope now targets schema eight, retaining schema-five [accepted transfer context](TRANSFER_PERSISTENCE.md).
 Ledger/component formats remain unchanged. Version-one through four world fixtures
 preserve their exact data; missing legacy context is never invented.
 
@@ -105,7 +105,7 @@ transfer-entry schema two remain unchanged. Missing table/fields, wrong types,
 future/unknown fields, duplicate claims, nonpositive amounts, total overflow,
 4,096-record/4 MiB metadata violations or backing collisions with owned
 ledgers/nodes/networks quarantine the entire authority and preserve its raw tags.
-Schema seven additionally contains routing preferences below; global schema eight
+Schema seven additionally contains routing preferences below; global schema nine
 and newer reject. Nested future schemas reject. Older binaries reject newer
 global schemas, so downgrade requires a matching backup.
 
@@ -148,3 +148,30 @@ provider saves cannot become atomic through this cursor. A stale disk cursor aft
 interruption can alter distribution order, never replay extraction or delivery.
 Orderly compressed SavedData reload is covered; full running-server crash/client
 and multiplayer evidence remain separate release requirements.
+
+
+## Canonical item buffers — world schema eight
+
+A required Buffers compound has nested integer Schema=1 and a Buffers compound
+list. Records have Backing UUID int array and Slots compound list; only occupied
+slots are encoded in ascending slot order. Each contains Slot int (0–8), Registry
+string, Components byte array, Count int and Limit int (1–64 with Count <= Limit).
+Keys are exact ITEM identities. Empty slots are implicit and no stock is copied
+into structural Nodes. Every record must match one BUFFERED_INTERFACE node ID;
+every such node must have a record, including detached/conflicted owners.
+
+Up to 256 owners and 16 MiB estimated metadata are accepted. Malformed fields,
+duplicate positions/owners, missing structural ownership, wrong kinds/limits,
+unknown nested schemas and over-limit tables quarantine and retain raw data.
+Runtime insertions preflight the same metadata charge before consuming input.
+Snapshots capture buffer slots in the same canonical save as staging and grants;
+loaded bindings are not persisted. Restored inventory never automatically serves
+a transfer or releases resources. Schemas one through seven add empty buffers
+and retain all old ownership/journal/rotation evidence; schema nine is future.
+
+Compressed save/reload, exact nonempty schema-seven migration, sparse fixed-slot
+fixtures, strict rejection, quota/no-orphan admission and lease movement/copy
+isolation have local JVM evidence. Physical block/chunk/server-restart and
+independent-save interruption evidence remains required. This is not atomicity
+with third-party inventories. The new buffer endpoint/recovery bindings must be
+wired before scheduled world transfers can use these owned slots.

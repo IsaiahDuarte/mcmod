@@ -6,8 +6,10 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ExternalClaims;
 import dev.izzy.factorycore.core.resource.LedgerStateCodec;
 import dev.izzy.factorycore.core.resource.TransferRegistry;
+import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankAccess;
+import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.core.storage.RouteCursors;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,6 +45,7 @@ public final class DeviceSavedData extends SavedData {
   private final TransferRegistry transfers;
   private final ExternalClaims externalClaims;
   private final RouteCursors routeCursors;
+  private final BufferRegistry buffers;
   private final CompoundTag rejected;
   private final String diagnostic;
 
@@ -53,6 +56,7 @@ public final class DeviceSavedData extends SavedData {
       List<TransferRegistry.Stored> transferStates,
       List<ExternalClaims.Claim> claimStates,
       List<RouteCursors.Cursor> cursorStates,
+      List<ItemBuffer.State> bufferStates,
       CompoundTag rejected,
       String diagnostic) {
     externalClaims = state == null ? null : new ExternalClaims(claimStates, this::setDirty);
@@ -70,6 +74,7 @@ public final class DeviceSavedData extends SavedData {
         throw new IllegalArgumentException("Duplicate network identity");
     }
     nodes = state == null ? null : new NodeRegistry(state.world(), nodeStates, this::setDirty);
+    buffers = state == null ? null : new BufferRegistry(nodes, bufferStates, this::setDirty);
     for (var node : nodeStates) {
       if (registry.containsBacking(node.id())
           || (node.kind() == NodeRegistry.Kind.CONTROLLER) != networks.containsKey(node.id()))
@@ -101,6 +106,11 @@ public final class DeviceSavedData extends SavedData {
     if (saved.registry != null && saved.energyBanks == null)
       saved.energyBanks =
           new EnergyBankAccess(saved.registry, () -> Integer.toUnsignedLong(server.getTickCount()));
+    if (saved.buffers != null) {
+      var codec =
+          new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(server.registryAccess());
+      saved.buffers.stackLimit(key -> codec.itemStack(key, 1).getMaxStackSize());
+    }
     return saved;
   }
 
@@ -144,6 +154,7 @@ public final class DeviceSavedData extends SavedData {
         List.of(),
         List.of(),
         List.of(),
+        List.of(),
         null,
         "");
   }
@@ -162,6 +173,25 @@ public final class DeviceSavedData extends SavedData {
   public RouteCursors routeCursors() {
     registry().world();
     return routeCursors;
+  }
+
+  public BufferRegistry buffers() {
+    registry().world();
+    return buffers;
+  }
+
+  /** Preflight structural and owned inventory quotas together; this does not bind a live block. */
+  public NodeRegistry.Handle createBuffer(NodeRegistry.Position position) {
+    var admission = nodes().admission(position);
+    if (admission != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Buffer placement admission: " + admission);
+    if (!buffers().canCreate()) throw new IllegalStateException("Buffer inventory admission limit");
+    var id = newBackingId();
+    if (registry.containsBacking(id))
+      throw new IllegalStateException("Buffer/backing identity collision");
+    var handle = nodes.create(id, NodeRegistry.Kind.BUFFERED_INTERFACE, position).handle();
+    buffers.create(handle);
+    return handle;
   }
 
   public TransferRegistry transfers() {
@@ -260,36 +290,9 @@ public final class DeviceSavedData extends SavedData {
     try {
       require(tag, "Schema", Tag.TAG_INT);
       int schema = tag.getInt("Schema");
-      if ((schema < 1 || schema > 7) || !tag.hasUUID("World"))
+      if ((schema < 1 || schema > 8) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
-      NetworkStateCodec.fields(
-          tag,
-          schema == 1
-              ? Set.of("Schema", "World", "Devices")
-              : schema == 2
-                  ? Set.of("Schema", "World", "Devices", "Networks")
-                  : schema == 3
-                      ? Set.of("Schema", "World", "Devices", "Networks", "Nodes")
-                      : schema < 6
-                          ? Set.of("Schema", "World", "Devices", "Networks", "Nodes", "Transfers")
-                          : schema == 6
-                              ? Set.of(
-                                  "Schema",
-                                  "World",
-                                  "Devices",
-                                  "Networks",
-                                  "Nodes",
-                                  "Transfers",
-                                  "ExternalClaims")
-                              : Set.of(
-                                  "Schema",
-                                  "World",
-                                  "Devices",
-                                  "Networks",
-                                  "Nodes",
-                                  "Transfers",
-                                  "ExternalClaims",
-                                  "RouteCursors"));
+      NetworkStateCodec.fields(tag, worldFields(schema));
       var networkStates =
           schema == 1 ? List.<NetworkPermissions.State>of() : NetworkStateCodec.decode(tag);
       var nodeStates = schema < 3 ? List.<NodeRegistry.Stored>of() : NodeStateCodec.decode(tag);
@@ -336,7 +339,8 @@ public final class DeviceSavedData extends SavedData {
                 ledger, entry.getLong("Generation"), location, entry.getBoolean("Conflict")));
       }
       if (schema >= 6) require(tag, "ExternalClaims", Tag.TAG_COMPOUND);
-      if (schema == 7) require(tag, "RouteCursors", Tag.TAG_COMPOUND);
+      if (schema >= 7) require(tag, "RouteCursors", Tag.TAG_COMPOUND);
+      if (schema == 8) require(tag, "Buffers", Tag.TAG_COMPOUND);
       var loaded =
           new DeviceSavedData(
               new DeviceRegistry.State(tag.getUUID("World"), records),
@@ -347,15 +351,17 @@ public final class DeviceSavedData extends SavedData {
                   ? List.of()
                   : ExternalClaimsCodec.decode(tag.getCompound("ExternalClaims")),
               schema < 7 ? List.of() : RouteCursorCodec.decode(tag.getCompound("RouteCursors")),
+              schema < 8 ? List.of() : BufferStateCodec.decode(tag.getCompound("Buffers")),
               null,
               "");
-      if (schema < 7) loaded.setDirty();
+      if (schema < 8) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
           invalid.getMessage() == null ? invalid.getClass().getSimpleName() : invalid.getMessage();
       return new DeviceSavedData(
           null,
+          List.of(),
           List.of(),
           List.of(),
           List.of(),
@@ -370,7 +376,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 7);
+    tag.putInt("Schema", 8);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {
@@ -392,11 +398,23 @@ public final class DeviceSavedData extends SavedData {
     tag.put("Transfers", TransferStateCodec.encode(transfers.snapshot()));
     tag.put("ExternalClaims", ExternalClaimsCodec.encode(externalClaims.snapshot()));
     tag.put("RouteCursors", RouteCursorCodec.encode(routeCursors.snapshot()));
+    tag.put("Buffers", BufferStateCodec.encode(buffers.snapshot()));
     tag.put(
         "Networks",
         NetworkStateCodec.encode(
             networks.values().stream().map(NetworkPermissions::snapshot).toList()));
     return tag;
+  }
+
+  private static Set<String> worldFields(int schema) {
+    var fields = new java.util.HashSet<>(Set.of("Schema", "World", "Devices"));
+    if (schema >= 2) fields.add("Networks");
+    if (schema >= 3) fields.add("Nodes");
+    if (schema >= 4) fields.add("Transfers");
+    if (schema >= 6) fields.add("ExternalClaims");
+    if (schema >= 7) fields.add("RouteCursors");
+    if (schema >= 8) fields.add("Buffers");
+    return fields;
   }
 
   private static void require(CompoundTag tag, String field, int type) {

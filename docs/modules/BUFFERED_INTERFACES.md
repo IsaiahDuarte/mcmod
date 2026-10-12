@@ -1,8 +1,8 @@
 # Buffered Interfaces
 
 P3 prerequisite component: `ItemBuffer` and `BufferedItemHandler` implement the
-selected nine-slot owned inventory and its NeoForge automation view. The physical
-block, canonical world table/lease, import/export presets, configuration UI and
+selected nine-slot owned inventory and its NeoForge automation view. The canonical world table/structural lease now exists. The physical
+block, import/export presets, configuration UI and
 hopper gameplay path are not implemented yet. A working handler alone is not A01.
 See [ownership decision](../decisions/0014-buffered-inventory.md).
 
@@ -37,7 +37,8 @@ stock. An old admitted stack remains extractable; further insertion uses the
 smaller current/admitted limit. `snapshot()` copies the slot list and retains
 immutable keys; restoring it neither dirties data nor validates a physical owner.
 The caller must establish one canonical instance per backing ID before binding.
-This component snapshot is not yet a disk schema or a physical ownership lease.
+Canonical persistence and lease validation are described below; a snapshot alone
+is not a usable physical owner.
 
 ```java
 var buffer = new ItemBuffer(ItemBuffer.empty(serverOwnedBackingId),
@@ -75,3 +76,48 @@ simulation and restore, replay seed `0xB0FFE901`.
 component-preserving partial admission, detached stack reads, transfer-port/shared
 stock, unsupported metadata and stale capability denial/revalidation.
 These are portable/platform JVM checks, not hopper/world/restart/client evidence.
+
+
+## Canonical inventory ownership — world schema eight
+
+`DeviceSavedData.buffers()` owns one `ItemBuffer` per BUFFERED_INTERFACE structural
+lease. Slot quantities live only in the canonical world authority, never in chunk
+or portable reference NBT. At most 256 buffers share a 16-MiB estimated metadata
+budget (256 bytes per buffer, plus 256 bytes + three registry-ID characters +
+component bytes per occupied slot). Both simulations and actual insertions
+preflight proposed slot state before mutation. A rejected metadata expansion
+returns zero acceptance; cleanup/extraction remains able to reclaim capacity.
+Every positive mutation updates accounting and marks canonical data dirty.
+
+`createBuffer(position)` preflights both structural placement/count and inventory
+budgets before allocating either owner. It creates no permission network or live
+capability. World restore requires exactly one buffer record for every buffer
+lease, with no duplicate/unknown/nonbuffer owner. Existing cell/bank/network
+identity collision rules still apply. These fixed bounds are technical admission
+limits, not gameplay type limits or measured throughput promises.
+
+`bind(handle, position, ownerToken)` belongs to the server thread and requires the
+current unconflicted lease at that exact position. A different active owner token
+cannot borrow its inventory. `unbind` releases only a matching handle/token;
+`usable` revalidates generation/kind/world/position/conflict. All restored records
+start unbound, preserving stock while offline. Movement increments structural
+generation; old handle/token pairs cannot bind the moved inventory. A copied
+placed lease quarantines access without dropping contents. The borrowed mutable
+`inventory(handle, token)` is for trusted adapters; each capability/transfer call
+must recheck its captured handle/token through `usable`, as the hopper adapter's
+guard does. Raw core references do not authenticate a player or script.
+
+Install a bounded native stack-limit resolver before item insertion. Normal
+`DeviceSavedData.get(server)` installs the registry-aware codec resolver;
+platform-independent tests can supply deterministic limits. Restore validates
+owned slot structure without inventing availability or loading native providers.
+Unknown native identities stay owned until supported decode/recovery exists.
+
+Schemas one through seven migrate with an empty buffer table; current schema-eight
+saves include nested schema one and the BUFFERED_INTERFACE structural kind.
+The fixed schema-seven world fixture contains ledgers/grants/nodes/staging/foreign
+holds/rotation, and migration removes only the new empty table/version change to
+compare exact original data. Missing/wrong-type/future/duplicate/over-limit data
+preserves and quarantines the whole authority. No running block, buffer endpoint
+or preset is registered yet; real break/drop, chunk/world restart, interrupted
+independent files, client and hopper flow remain unverified.

@@ -394,3 +394,17 @@ for partial admission, components, detached reads, shared transfer/slot quantiti
 metadata limits and stale capability denial. These run in the mandatory JVM suite.
 Physical hopper flow, canonical ownership/persistence, restart/clone/chunks and
 client onboarding remain separate required evidence.
+
+
+## Canonical buffered inventory ownership
+
+Four BufferRegistryTest cases cover loaded-owner binding, exact preserved movement,
+copy quarantine, unbound restore, shared metadata preflight/reclamation and strict
+owner/record count admission. Five BufferPersistenceTest cases require fixed
+sparse slot/schema-seven world fixtures, exact migration, compressed real disk
+reload, retained generations/contents, malformed/future/duplicate/missing owner
+preservation, byte/count limits and no orphan lease after failed placement.
+Existing legacy migration tests now target eight and assert empty buffers; future
+world tests use nine. Their conserved quantities and full raw-table equality
+assertions remain. These are mandatory JVM checks; physical hopper/block/chunk,
+restart/interruption and client evidence remain separate release requirements.

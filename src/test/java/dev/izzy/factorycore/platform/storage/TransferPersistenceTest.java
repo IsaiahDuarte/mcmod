@@ -158,7 +158,12 @@ class TransferPersistenceTest {
     assertEquals("", loaded.diagnostic());
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(7, migrated.getInt("Schema"));
+    assertEquals(8, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("Buffers")
+            .getList("Buffers", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
     assertTrue(
         migrated
             .getCompound("RouteCursors")
@@ -177,6 +182,7 @@ class TransferPersistenceTest {
     }
     migrated.remove("ExternalClaims");
     migrated.remove("RouteCursors");
+    migrated.remove("Buffers");
     migrated.putInt("Schema", 4);
     assertEquals(original, migrated);
     var record = loaded.transfers().get(new UUID(0, 401));
@@ -224,7 +230,7 @@ class TransferPersistenceTest {
     tag.remove("Transfers");
     rejected(tag);
     tag = fixture();
-    tag.putInt("Schema", 8);
+    tag.putInt("Schema", 9);
     rejected(tag);
     tag = fixture();
     tag.getList("Transfers", Tag.TAG_COMPOUND).getCompound(0).remove("Owner");

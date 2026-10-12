@@ -125,5 +125,5 @@ entries; pages are advisory rather than a snapshot across calls. These raw
 metadata APIs do not authorize a player/guest or filter private/offline records.
 The shared world catalog checks current scope/visibility/physical leases before
 publishing rows and binds its server-only cursor to actor/root/segment/exact key.
-Do not send raw registry cursors to clients. Persistence now uses schema seven with
+Do not send raw registry cursors to clients. Persistence now uses schema eight with
 unchanged ownership/component contracts; full snapshots are still save operations.

@@ -314,7 +314,7 @@ canonical transfer record when a snapshot exists. Retain that actual ID for
 recovery. Metadata-only terminal results have no snapshot. `cancel(id, actor)`
 cancels only an owned undispatched route outside shared task execution, without a
 callback. Restart loses unextracted discovery work; actual staging remains in the
-canonical schema-seven registry. Priority mode stores no cursor. Automatic
+canonical schema-eight registry. Priority mode stores no cursor. Automatic
 presets and the player terminal remain unfinished.
 
 ```java

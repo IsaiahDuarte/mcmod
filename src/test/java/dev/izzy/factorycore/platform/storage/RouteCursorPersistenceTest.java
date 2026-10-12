@@ -59,9 +59,15 @@ class RouteCursorPersistenceTest {
     assertTrue(restored.isDirty());
     assertTrue(restored.routeCursors().snapshot().isEmpty());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(7, migrated.getInt("Schema"));
+    assertEquals(8, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("Buffers")
+            .getList("Buffers", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
     assertTrue(migrated.getCompound("RouteCursors").getList("Cursors", Tag.TAG_COMPOUND).isEmpty());
     migrated.remove("RouteCursors");
+    migrated.remove("Buffers");
     migrated.putInt("Schema", 6);
     assertEquals(original, migrated);
   }

@@ -15,7 +15,8 @@ public final class NodeRegistry {
   public enum Kind {
     CONTROLLER,
     GATEWAY,
-    CONNECTOR
+    CONNECTOR,
+    BUFFERED_INTERFACE
   }
 
   public enum Failure {

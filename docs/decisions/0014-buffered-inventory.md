@@ -1,7 +1,8 @@
 # ADR 0014 — Owned physical inventory for Buffered Interfaces
 
 Status: accepted P3 inventory boundary; component inventory/handler implemented.
-Physical/canonical persistence and automatic presets remain pending.
+Canonical slot persistence/lease bindings are implemented; physical blocks and
+automatic presets remain pending.
 
 ## Decision and alternatives
 
@@ -46,3 +47,25 @@ staging cleanup, metadata rejection and stale handler access. Physical hopper
 flow, canonical migration/interruption, clone/movement/chunks, real client UI and
 survival onboarding remain owning-stage evidence. This is a prerequisite for the
 playable storage loop; it does not complete A01–A17 or the Buffered Interface.
+
+
+## Canonical ownership extension — 2026-10-12
+
+World schema eight adds required nested buffer schema one and a distinct
+BUFFERED_INTERFACE structural kind. NodeRegistry retains generation/copy/conflict
+semantics; BufferRegistry owns the matching inventory with runtime handle/position/
+owner-token bindings. At most 256 owners share 16 MiB estimated slot metadata.
+ItemBuffer now accepts a proposed-state admission predicate, evaluated before any
+insertion, including simulation. Quota rejection retains caller input; actual
+positive mutation updates shared byte accounting before marking SavedData dirty.
+Restored buffers start unbound. Buffer state and staging share normal canonical
+save boundaries, while independent provider files still have crash ambiguity.
+
+The alternative of representing a buffer as a zero-capacity digital cell would
+hide its ownership role, risk accidental enumeration and require a useless second
+ledger. Separate inventories with chunk-owned stacks remain rejected. Distinct
+structural ownership and one table make identity/capacity/conservation explicit.
+Schemas one through seven migrate with empty buffers and exact existing tables;
+unknown/malformed/duplicate/over-limit payloads remain raw and quarantined. A
+structural owner without inventory or inventory without owner rejects. No native
+block, capability or automatic import is claimed by this extension.

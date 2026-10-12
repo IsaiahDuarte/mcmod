@@ -172,7 +172,7 @@ class TransferContextTest {
     assertEquals(context, loaded.transfers().context(id));
     assertEquals(37, loaded.transfers().get(id).staged());
     assertEquals(owner, loaded.network(root.id()).snapshot().owner());
-    assertEquals(7, loaded.save(new CompoundTag(), registries).getInt("Schema"));
+    assertEquals(8, loaded.save(new CompoundTag(), registries).getInt("Schema"));
     var malformed = loaded.save(new CompoundTag(), registries);
     var original = malformed.copy();
     malformed

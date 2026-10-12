@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /** Nine real owned item slots; a transfer port and slot view share the same quantities. */
@@ -44,15 +45,26 @@ public final class ItemBuffer implements ResourcePort {
   private final Slot[] slots;
   private final ToIntFunction<ResourceKey> stackLimit;
   private final Runnable changed;
+  private final Predicate<State> admission;
   private boolean notifying;
   private boolean resolving;
 
   /** Resolver is bounded/nonthrowing for valid item keys and supplies their current stack limit. */
   public ItemBuffer(State restored, ToIntFunction<ResourceKey> stackLimit, Runnable changed) {
+    this(restored, stackLimit, changed, state -> true);
+  }
+
+  /** Admission checks proposed owned state before mutation, for canonical metadata quotas. */
+  public ItemBuffer(
+      State restored,
+      ToIntFunction<ResourceKey> stackLimit,
+      Runnable changed,
+      Predicate<State> admission) {
     backing = restored.backing();
     slots = restored.slots().toArray(Slot[]::new);
     this.stackLimit = Objects.requireNonNull(stackLimit);
     this.changed = Objects.requireNonNull(changed);
+    this.admission = Objects.requireNonNull(admission);
   }
 
   public static State empty(UUID backing) {
@@ -91,9 +103,16 @@ public final class ItemBuffer implements ResourcePort {
     OperationResult.requireQuantity(offered);
     int limit = limit(key);
     long accepted = Math.min(offered, space(slots[index], key, limit));
-    if (!simulate && accepted > 0) {
-      add(index, key, (int) accepted, limit);
-      notifyChanged();
+    if (accepted > 0) {
+      var proposed = slots.clone();
+      var old = proposed[index];
+      proposed[index] =
+          new Slot(key, old.count() + (int) accepted, old.key() == null ? limit : old.limit());
+      if (!admitted(proposed)) return 0;
+      if (!simulate) {
+        add(index, key, (int) accepted, limit);
+        notifyChanged();
+      }
     }
     return accepted;
   }
@@ -121,7 +140,8 @@ public final class ItemBuffer implements ResourcePort {
     int limit = limit(key);
     long capacity = 0;
     for (var slot : slots) capacity += space(slot, key, limit);
-    return Math.min(offered, capacity);
+    long accepted = Math.min(offered, capacity);
+    return accepted == 0 || admitted(proposedInsert(key, accepted, limit)) ? accepted : 0;
   }
 
   @Override
@@ -129,21 +149,41 @@ public final class ItemBuffer implements ResourcePort {
     checkMutation();
     OperationResult.requireQuantity(offered);
     int limit = limit(key);
+    var proposed = proposedInsert(key, offered, limit);
+    long accepted = 0;
+    for (int index = 0; index < SLOTS; index++)
+      accepted += proposed[index].count() - slots[index].count();
+    if (accepted == 0 || !admitted(proposed)) return 0;
+    System.arraycopy(proposed, 0, slots, 0, SLOTS);
+    notifyChanged();
+    return accepted;
+  }
+
+  private Slot[] proposedInsert(ResourceKey key, long offered, int limit) {
+    var proposed = slots.clone();
     long left = offered;
     // Stack with matching identities before occupying empty physical slots.
     for (int pass = 0; pass < 2 && left > 0; pass++)
       for (int index = 0; index < SLOTS && left > 0; index++) {
-        var slot = slots[index];
+        var slot = proposed[index];
         if ((slot.key() == null) != (pass == 1)) continue;
         int accepted = (int) Math.min(left, space(slot, key, limit));
         if (accepted > 0) {
-          add(index, key, accepted, limit);
+          proposed[index] =
+              new Slot(key, slot.count() + accepted, slot.key() == null ? limit : slot.limit());
           left -= accepted;
         }
       }
-    long accepted = offered - left;
-    if (accepted > 0) notifyChanged();
-    return accepted;
+    return proposed;
+  }
+
+  private boolean admitted(Slot[] proposed) {
+    resolving = true;
+    try {
+      return admission.test(new State(backing, Arrays.asList(proposed)));
+    } finally {
+      resolving = false;
+    }
   }
 
   @Override
