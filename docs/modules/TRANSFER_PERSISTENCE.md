@@ -168,3 +168,23 @@ It rebinds exact saved endpoints only on the server thread and schedules bounded
 known-staging delivery or owned cleanup. It never resumes extraction, guesses
 legacy context, adopts another principal's operation, or retries uncertain calls.
 Automatic dispatch and full world restart/interruption evidence remain pending.
+
+
+A bounded unresolved-backing index now includes canonical restored/unbound staging
+and uncertain/pending intent, independent of live adapter indexes. Automatic buffer
+rules cannot begin another extraction while this evidence exists. Matching current
+deployments may deliver only known accepted staging; completed callbacks retire
+records. Pause/replacement retains context and quantities. Explicit original-owner
+buffer cleanup can use a newer preset configuration only for insertion into the
+same world/backing/structural lease under the accepted current scope; normal
+delivery still needs its accepted configuration. Movement/uncertainty stays blocked.
+
+`TransferRegistry.unresolved(backingUuid)` is an owner-thread, metadata-only query:
+it returns null when no record owns unresolved evidence for that source/destination,
+otherwise the first immutable Stored snapshot by UUID order. It includes pending
+calls even when staged item count is zero, and quarantined records with no known
+remaining quantity. It grants no player permission or mutable transfer access.
+The index derives from canonical records on restore and journal transitions, has
+at most 2,048 backing/record references, and releases entries only when known
+completion has neither staged quantity nor pending call. Unbinding native handlers
+does not remove canonical unresolved evidence.

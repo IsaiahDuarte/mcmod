@@ -2,7 +2,8 @@
 
 Status: accepted P3 inventory boundary; component inventory/handler implemented.
 Canonical slot persistence/lease bindings, physical holders, explicit transfers
-and preset deployment authority are implemented; automatic dispatch remains pending.
+preset deployment authority and automatic Import controls are implemented; full
+preset screens and client/release verification remain pending.
 
 ## Decision and alternatives
 
@@ -110,3 +111,31 @@ stored deployer's current rights and accepted identity/scope before queued work.
 PAUSED remains configurable without resource grants so an authorized editor can
 stop a rule. This extension records intent only; automatic dispatch and controls
 remain the next slice, with preserved staging as a replacement/recovery invariant.
+
+
+## Automatic import and owned cleanup extension — 2026-10-12
+
+Use an active-only server coordinator with positive inventory/configuration wake-up,
+256 holder ceiling, eight metadata visits/admissions per tick and sixteen-credit
+shared preparations. At most nine slots and one exact-key priority route per
+buffer are active. Full/offline/denied rules retry with bounded twenty-tick
+backoff. Empty rules sleep. The alternative of polling every inventory/block
+on every tick would add idle work; per-buffer threads and direct ad-hoc transfers
+would bypass the selected authorization/scheduler/accounting paths.
+
+Every queued mutation retains exact accepted scope/revision/lease and current
+DEPLOY/resource grants. Preserve unresolved canonical records with a bounded
+backing index across unbind/restore; known matching staging can deliver but fresh
+extraction cannot overlap unresolved evidence. Finished callbacks retire records.
+Native toggle/inspection/owned-return gestures provide an immediate no-script
+path while full preset screens/filters/export/stock remain the next milestones.
+
+Owned return after preset replacement intentionally ignores only the configuration
+counter: it inserts existing staging into the exact original world/backing/lease,
+under the original operation actor and accepted root/origin/segment. It adopts no
+new actor or lease and performs no source extraction/target delivery. Requiring
+the old configuration for this cleanup would strand known resources when pausing.
+Normal delivery still requires the old accepted configuration/current grants.
+Unknown pending calls and moved leases remain unavailable for automatic refund;
+manual reconciliation is still required. No owned persistence schema change is
+needed: slot/deployment/context/journal ownership already shares canonical saves.

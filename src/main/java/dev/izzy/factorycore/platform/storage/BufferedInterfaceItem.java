@@ -20,6 +20,8 @@ public final class BufferedInterfaceItem extends BlockItem {
     super.appendHoverText(stack, context, tooltip, flag);
     tooltip.add(Component.translatable("tooltip.factorycore.buffer_slots"));
     tooltip.add(Component.translatable("tooltip.factorycore.buffer_move"));
+    tooltip.add(Component.translatable("tooltip.factorycore.buffer_import"));
+    tooltip.add(Component.translatable("tooltip.factorycore.buffer_cleanup"));
   }
 
   @Override

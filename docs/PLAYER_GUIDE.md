@@ -4,8 +4,8 @@ This development build provides Storage Drives, item/fluid cells and upgrade
 modules on Minecraft 1.21.1 / NeoForge 21.1.252. Network Controllers, Gateways and Cables now have physical placement and
 ownership. Valid wired networks now activate installed cells after bounded server rebuilding.
 Finite Energy Banks expose real NeoForge energy ports on valid wired networks.
-Buffered Interfaces now receive and expose real hopper items.
-Terminals, network transfer presets and wireless access are still pending; the current build has no player deposit/withdrawal endpoint.
+Buffered Interfaces now import real hopper items into permitted storage without code.
+Terminals, advanced presets and wireless access are still pending; the current build has no player deposit/withdrawal endpoint.
 
 ## Cells and drives
 
@@ -91,12 +91,12 @@ cell removal keeps its exact reference in a labeled recovery item. Automatic
 repair and administrative reconciliation are pending; keep these items and
 back up the world rather than discarding them.
 
-The canonical world registry now uses schema four. Existing schema-one/two/three worlds
+The canonical world registry now uses schema nine. Existing schema-one through eight worlds
 migrate while preserving cell identities, contents and reservations. Unknown
 or malformed registry data remains unavailable with its original data preserved;
-keep `world/data/factorycore_devices.dat` for recovery. Network grants and owned transfer staging
-save with this registry. Transfer endpoints and administrative reconciliation
-remain pending; uncertain transfer intents never replay or receive automatic refunds. Wired availability uses current grants and leases;
+keep `world/data/factorycore_devices.dat` for recovery. Network grants, buffers, presets and owned transfer staging
+save with this registry. Administrative reconciliation
+remains pending; uncertain transfer intents never replay or receive automatic refunds. Wired availability uses current grants and leases;
 permission screens are still pending.
 
 Orderly registry save/reload and block lifecycle behavior are tested. Abrupt
@@ -186,9 +186,33 @@ Connect the device to cables/controller and use it with an empty hand to inspect
 item and occupied-slot counts; network VIEW permission is required for inspection.
 Local hopper access works while the network is disconnected, until the physical
 buffer fills. These buffered items are not automatically published as shared
-network stock. Automatic import/export presets and the player inventory screen
-are still pending in this development build; connecting storage does not yet
-start a network import.
+network stock. Crouch-use with **both hands empty** to enable Import. Repeat to
+pause. This needs current interface-edit/program-deployment rights and enabling
+Import additionally needs view/deposit/withdraw rights. The controller owner has
+these rights by default. Legacy and newly placed buffers start paused; connecting
+storage alone does not enable a rule.
+
+In Import mode the network moves up to 64 items per buffer/tick into permitted
+storage, using storage priority and backing-identity order. Faces and requests
+share the rate, and server scheduling/limits can reduce throughput. Exact item
+components are retained. Full/offline storage backs up the buffer and then the
+hopper; nothing is voided. Normal empty-hand use shows mode, counts and an
+explanation when work is blocked. Revocation stops queued work before mutation;
+reconnection resumes when the accepted network/branch is valid again. Moving a
+buffer or changing its accepted root/branch requires explicit reconfiguration.
+
+Known partial transfers retain items in owned staging and block another extraction.
+The matching current deployment retries delivery of that staging without extracting
+refills. Pause before cleanup, then crouch-use with redstone in your **offhand**
+and an empty main hand to return your known staging to the same buffer. Redstone
+is not consumed. Only the operation's original principal can return it, including
+after grant revocation/preset replacement; the physical lease and accepted network
+scope must still match. Full buffers retain remaining staging, so make room and
+repeat if needed. Unknown pending calls stay quarantined and never replay or
+receive an automatic refund. Moved leases, root/scope changes and uncertain work
+still need administrative recovery; keep their references and world backups.
+Export/stock/filter presets, an inventory screen and the terminal loop remain
+unfinished in this development build.
 
 Breaking the block drops one portable Buffered Interface reference containing
 its canonical ownership identity, preserving the contents. Placing it again

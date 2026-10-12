@@ -48,6 +48,7 @@ public final class WorldNetworks {
   private final DeviceSavedData saved;
   private final FairScheduler scheduler;
   private WorldStorageTransfers transfers;
+  private dev.izzy.factorycore.platform.storage.WorldBufferImports imports;
   private dev.izzy.factorycore.platform.storage.WorldConnectors connectors;
   private final Map<NodeRegistry.Position, Region> owners = new HashMap<>();
   private final Map<NodeRegistry.Position, WiredDiscovery.Wire> geometry = new HashMap<>();
@@ -119,6 +120,25 @@ public final class WorldNetworks {
     return connectors;
   }
 
+  public dev.izzy.factorycore.platform.storage.WorldBufferImports imports() {
+    checkThread();
+    if (saved == null) throw new IllegalStateException("World storage unavailable: " + diagnostic);
+    if (imports == null)
+      imports = new dev.izzy.factorycore.platform.storage.WorldBufferImports(server, this);
+    return imports;
+  }
+
+  /** Teardown does not initialize services; stale copied holders cannot unregister replacements. */
+  @SuppressWarnings("PMD.CloseResource")
+  public static void bufferInvalidated(
+      net.minecraft.world.level.Level level,
+      dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity owner) {
+    if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
+      return;
+    var runtime = SERVERS.get(serverLevel.getServer());
+    if (runtime != null && runtime.imports != null) runtime.imports.unregister(owner);
+  }
+
   /** Cleanup never constructs storage services during recovery or server shutdown. */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed event level.
   public static void connectorInvalidated(
@@ -157,6 +177,7 @@ public final class WorldNetworks {
 
   public void tick() {
     checkThread();
+    if (imports != null) imports.tick();
     scheduler.tick();
   }
 

@@ -158,9 +158,13 @@ class TransferRegistryTest {
         IllegalStateException.class,
         () -> registry.start(id, UUID.randomUUID(), KEY, source, dest, 20, 20, auth::get));
     assertThrows(IllegalStateException.class, () -> registry.retire(id));
+    assertEquals(id, registry.unresolved(source.id).id());
+    assertEquals(id, registry.unresolved(dest.id).id());
     registry.unbind(id);
+    assertEquals(id, registry.unresolved(source.id).id());
     assertEquals(OperationResult.Reason.OFFLINE, registry.deliver(id).reason());
     var loaded = new TransferRegistry(registry.snapshot(), () -> {});
+    assertEquals(id, loaded.unresolved(source.id).id());
     loaded.bind(id, source, dest, auth::get);
     assertThrows(IllegalStateException.class, () -> loaded.bind(id, source, dest, auth::get));
     auth.set(false);
@@ -168,6 +172,8 @@ class TransferRegistryTest {
     assertEquals(50, loaded.cancel(id).amount());
     assertEquals(90, source.stock);
     assertEquals(10, dest.stock);
+    assertNull(loaded.unresolved(source.id));
+    assertNull(loaded.unresolved(dest.id));
     loaded.retire(id);
     assertTrue(loaded.snapshot().isEmpty());
   }
@@ -294,11 +300,40 @@ class TransferRegistryTest {
         new TransferRegistry(List.of(new TransferRegistry.Stored(id, pending)), () -> {});
     assertTrue(restored.uncertain(pending.source(), pending.owner(), KEY));
     assertTrue(restored.uncertain(pending.destination(), pending.owner(), KEY));
+    assertEquals(id, restored.unresolved(pending.source()).id());
     restored.unbind(id);
+    assertEquals(id, restored.unresolved(pending.destination()).id());
     assertTrue(restored.uncertain(pending.source(), pending.owner(), KEY));
     assertFalse(restored.uncertain(pending.source(), UUID.randomUUID(), KEY));
     assertFalse(restored.uncertain(UUID.randomUUID(), pending.owner(), KEY));
     assertFalse(restored.uncertain(pending.source(), pending.owner(), ResourceKey.ENERGY));
     assertEquals(pending, restored.get(id));
+  }
+
+  @Test
+  void multipleUnresolvedOwnersRemainBlockedAcrossReloadUntilAllKnownStagingFinishes() {
+    var registry = new TransferRegistry(List.of(), () -> {});
+    var source = new Port(UUID.randomUUID(), 100);
+    var target = new Port(UUID.randomUUID(), 0);
+    target.acceptance = 0;
+    var first = new UUID(0, 1);
+    var second = new UUID(0, 2);
+    registry.start(second, UUID.randomUUID(), KEY, source, target, 30, 30, () -> true);
+    registry.start(first, UUID.randomUUID(), KEY, source, target, 20, 20, () -> true);
+    assertEquals(50, source.stock);
+    assertEquals(first, registry.unresolved(source.id).id());
+    var restored = new TransferRegistry(registry.snapshot(), () -> {});
+    assertEquals(first, restored.unresolved(target.id).id());
+    target.acceptance = 20;
+    restored.bind(first, source, target, () -> true);
+    assertEquals(20, restored.deliver(first).amount());
+    restored.retire(first);
+    assertEquals(second, restored.unresolved(source.id).id());
+    assertEquals(30, restored.unresolved(source.id).transfer().staged());
+    restored.bind(second, source, target, () -> true);
+    assertEquals(30, restored.cancel(second).amount());
+    assertNull(restored.unresolved(source.id));
+    assertNull(restored.unresolved(target.id));
+    assertEquals(100, source.stock + target.stock);
   }
 }

@@ -25,12 +25,14 @@ public final class TransferRegistry {
   }
 
   private static final class Entry {
+    final UUID id;
     StagedTransfer.Snapshot saved;
     StagedTransfer live;
     boolean unavailable;
     final TransferContext context;
 
-    Entry(StagedTransfer.Snapshot saved, TransferContext context) {
+    Entry(UUID id, StagedTransfer.Snapshot saved, TransferContext context) {
+      this.id = id;
       this.saved = saved;
       this.context = context;
     }
@@ -39,6 +41,7 @@ public final class TransferRegistry {
   private final Thread thread = Thread.currentThread();
   private final Map<UUID, Entry> entries = new HashMap<>();
   private final Map<UUID, java.util.Set<UUID>> byBacking = new HashMap<>();
+  private final Map<UUID, java.util.SortedSet<UUID>> unresolved = new HashMap<>();
   private final Runnable changed;
   private long bytes;
   private boolean executing;
@@ -47,12 +50,14 @@ public final class TransferRegistry {
     this.changed = Objects.requireNonNull(changed);
     if (saved.size() > MAX_RECORDS) throw new IllegalArgumentException("Transfer record limit");
     for (var record : saved) {
-      if (entries.putIfAbsent(record.id(), new Entry(record.transfer(), record.context())) != null)
-        throw new IllegalArgumentException("Duplicate transfer owner");
+      if (entries.putIfAbsent(
+              record.id(), new Entry(record.id(), record.transfer(), record.context()))
+          != null) throw new IllegalArgumentException("Duplicate transfer owner");
       bytes =
           Math.addExact(
               bytes, footprint(record.transfer().key()) + (record.context() == null ? 0 : 1024));
       if (bytes > MAX_BYTES) throw new IllegalArgumentException("Transfer byte limit");
+      indexUnresolved(record.id(), record.transfer());
     }
   }
 
@@ -132,7 +137,7 @@ public final class TransferRegistry {
       throw new IllegalStateException("Transfer ID already owns a record");
     if (entries.size() == MAX_RECORDS || size > MAX_BYTES - bytes)
       throw new IllegalStateException("Transfer admission limit");
-    var entry = new Entry(initial, context);
+    var entry = new Entry(id, initial, context);
     entries.put(id, entry);
     bytes += size;
     index(id, entry.saved);
@@ -267,6 +272,16 @@ public final class TransferRegistry {
     return entries.containsKey(Objects.requireNonNull(id));
   }
 
+  /** First canonical unresolved owner for a backing, including restored/unbound records. */
+  public Stored unresolved(UUID backing) {
+    checkThread();
+    var ids = unresolved.get(Objects.requireNonNull(backing));
+    if (ids == null) return null;
+    var id = ids.first();
+    var entry = entry(id);
+    return new Stored(id, entry.saved, entry.context);
+  }
+
   public TransferContext context(UUID id) {
     checkThread();
     return entry(id).context;
@@ -292,7 +307,27 @@ public final class TransferRegistry {
         || !entry.saved.destination().equals(next.destination()))
       throw new IllegalStateException("Transfer record identity changed");
     entry.saved = next;
+    removeUnresolved(entry.id, next);
+    indexUnresolved(entry.id, next);
     changed.run();
+  }
+
+  private void indexUnresolved(UUID id, StagedTransfer.Snapshot snapshot) {
+    if (snapshot.state() == StagedTransfer.State.COMPLETE
+        && snapshot.pending() == StagedTransfer.PendingCall.NONE
+        && snapshot.staged() == 0) return;
+    for (var backing : List.of(snapshot.source(), snapshot.destination()))
+      unresolved.computeIfAbsent(backing, ignored -> new java.util.TreeSet<>()).add(id);
+  }
+
+  private void removeUnresolved(UUID id, StagedTransfer.Snapshot snapshot) {
+    for (var backing : List.of(snapshot.source(), snapshot.destination())) {
+      var ids = unresolved.get(backing);
+      if (ids != null) {
+        ids.remove(id);
+        if (ids.isEmpty()) unresolved.remove(backing);
+      }
+    }
   }
 
   private Entry entry(UUID id) {

@@ -88,7 +88,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 
 | Criterion | Owning stages | Evidence/status |
 | --- | --- | --- |
-| A01 | P3 | Not implemented. |
+| A01 | P3 | Partial: headless BufferImportGameTests exercise no-code real hopper-to-cell imports, exact components, full cell/buffer/hopper retention and resumption. Import/Paused and owned-cleanup player controls are wired. Actual client/multiplayer/chunk/full-server restart and the complete terminal loop remain pending. |
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
 | A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, canonical schema-eight ownership/migration and physical hopper/movement/copy/recipe evidence; explicit buffered item endpoints now have scope, rate, partial staging and recovery evidence; automatic buffer network presets, crafting job claims, all-key search and full server restart/interruption integration remain pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Automatic external catalog/selection, permissions UI and actual chunks/restart remain pending. |
@@ -1601,3 +1601,53 @@ Final `python3 scripts/verify.py` passed in a 32-second Gradle build: 24 tooling
 170 JVM (zero failures/errors/skips), 102 required GameTests, formatting/static/
 architecture gates. Rust guest verification was up-to-date. Actual client controls,
 background transfers, server restart and full release acceptance are unverified.
+
+
+## Automatic buffer import and native controls — 2026-10-12
+
+Implemented an active-only server import coordinator through shared scheduled
+preparation, paged priority routes and conserved staging/progress. It registers
+only matching current holders (256 maximum), visits/admission-schedules at most
+eight metadata entries per tick and charges sixteen credits per preparation;
+at most nine slots select one exact-key request per buffer, up to 64 items. Empty
+rules sleep until positive real mutation/configuration; simulations do not wake.
+Blocked rules use twenty-tick backoff, with current deployer DEPLOY/resource grants,
+exact canonical/local revision/lease and accepted root/segment before each queued
+mutation. Disconnects can resume under the same scope; movement/save divergence
+cannot implicitly adopt authorization. Fresh/legacy buffers remain paused.
+
+Added an unresolved canonical backing index retaining all known staging and
+unknown/pending evidence across unbind/restore. It blocks fresh automatic extraction.
+Current matching deployments can retry known delivery without touching refills;
+known finished callbacks retire records. No new persistence table/schema is added.
+Import/Paused native crouch-use controls, authorized inspection and translated
+blocked states/tooltips are wired. Crouch-use with offhand redstone returns only
+the original actor's known staging without consuming redstone. Owned return may
+use a newer preset configuration after pause/replacement, but exact original
+world/backing/structural lease and accepted origin/root/segment still apply;
+normal delivery retains exact accepted configuration/current grants. Uncertainty,
+moved leases and incompatible scopes never replay/refund resources.
+
+Twelve new world scenarios and an additional portable multi-record conservation
+case cover the new behavior and failures; player/module/persistence/ADR/asset docs
+are updated. Initial builds found two fixture/signature errors and one erroneous
+level helper reference; those were corrected without changing expected behavior
+or disabling checks. Two prior complete builds passed eight, then eleven new world
+cases; cleanup-inclusive GameTests passed, and final canonical verification is recorded below.
+A PMD borrowed-level warning after extracting the physical helper was fixed by
+applying the existing narrow Minecraft-owned-level annotation to that helper;
+Minecraft owns this level and closing it would be incorrect. No PMD rule was disabled.
+
+Next implement all-key bounded storage search and server-authorized terminal
+inventory operations/screens, then remaining filter/export/stock presets. This
+closes part of A01/A03/P3, not the full playable release. Full restart/independent
+files, actual chunks, client/multiplayer/GUI scales, crafting/production scripting,
+power/wireless, finished assets/onboarding and P7 evidence remain incomplete.
+
+Verification: final `python3 scripts/verify.py` passed: 24 tooling tests, 171 JVM
+tests (zero failures/errors/skips), 114 required Minecraft GameTests, formatting,
+static/architecture checks and the JVM build. The canonical Gradle build completed
+in 33 seconds (7 executed/15 up-to-date tasks); Rust guest verification was
+up-to-date. `./gradlew spotlessApply` and `git diff --check` also passed. No actual
+client/multiplayer/chunk/full-server restart or independent-file interruption pass
+is claimed; those remain required release evidence.

@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.ToIntFunction;
 
 /** Single canonical slot owner per structural buffer lease; restored inventories are unbound. */
@@ -55,6 +56,13 @@ public final class BufferRegistry {
         throw new IllegalStateException("Buffer stack resolver is not installed");
       };
   private long bytes;
+  private Consumer<UUID> activity = ignored -> {};
+
+  /** Server coordinator wake-up only; callback must not mutate the inventory or throw. */
+  public void activity(Consumer<UUID> listener) {
+    checkThread();
+    activity = Objects.requireNonNull(listener);
+  }
 
   public BufferRegistry(NodeRegistry nodes, List<ItemBuffer.State> restored, Runnable changed) {
     this(nodes, restored, List.of(), changed);
@@ -187,6 +195,7 @@ public final class BufferRegistry {
             handle.id(), revision, handle.generation(), principal, network, segment, mode);
     deployments.put(handle.id(), deployment);
     changed.run();
+    activity.accept(handle.id());
     return deployment;
   }
 
@@ -213,6 +222,7 @@ public final class BufferRegistry {
               long current = charge(buffers.get(id).snapshot());
               bytes += current - charges.put(id, current);
               changed.run();
+              activity.accept(id);
             },
             proposed -> bytes <= MAX_BYTES - (charge(proposed) - charges.get(id)));
     buffers.put(id, buffer);

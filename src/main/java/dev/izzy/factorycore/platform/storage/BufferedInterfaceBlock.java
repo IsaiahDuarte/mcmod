@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -39,7 +40,7 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
         && level.getBlockEntity(position) instanceof BufferedInterfaceEntity buffer)
       try {
         buffer.place(stack, placer.getUUID());
-      } catch (IllegalArgumentException | IllegalStateException failure) {
+      } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
         if (placer instanceof Player player)
           player.displayClientMessage(
               Component.translatable("message.factorycore.buffer_fault", failure.getMessage()),
@@ -59,6 +60,50 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
       var actor =
           new NetworkPermissions.Actor(
               player.getUUID(), player instanceof ServerPlayer server && server.hasPermissions(2));
+      if (player.isShiftKeyDown()
+          && player.getOffhandItem().is(net.minecraft.world.item.Items.REDSTONE)) {
+        var admission =
+            buffer.returnStaging(
+                actor,
+                result ->
+                    player.displayClientMessage(
+                        Component.translatable(
+                            "message.factorycore.buffer_cleanup",
+                            result.transfer() == null ? 0 : result.transfer().staged(),
+                            Component.translatable(
+                                "status.factorycore.buffer_reason."
+                                    + result.reason().name().toLowerCase(java.util.Locale.ROOT))),
+                        false));
+        player.displayClientMessage(
+            Component.translatable(
+                "message.factorycore.buffer_cleanup_queued",
+                Component.translatable(
+                    "status.factorycore.buffer_reason."
+                        + admission.rejection().name().toLowerCase(java.util.Locale.ROOT))),
+            false);
+        return admission.rejection() == dev.izzy.factorycore.core.resource.OperationResult.Reason.OK
+            ? InteractionResult.CONSUME
+            : InteractionResult.FAIL;
+      }
+      if (player.isShiftKeyDown() && player.getOffhandItem().isEmpty()) {
+        var current =
+            DeviceSavedData.get(buffer.serverLevel().getServer())
+                .buffers()
+                .deployment(buffer.handle().id());
+        var mode =
+            current != null && current.mode() == BufferRegistry.Mode.IMPORT
+                ? BufferRegistry.Mode.PAUSED
+                : BufferRegistry.Mode.IMPORT;
+        buffer.configure(actor, mode);
+        player.displayClientMessage(
+            Component.translatable(
+                "message.factorycore.buffer_mode",
+                Component.translatable(
+                    "status.factorycore.buffer_mode."
+                        + mode.name().toLowerCase(java.util.Locale.ROOT))),
+            false);
+        return InteractionResult.CONSUME;
+      }
       if (WorldNetworks.get(buffer.serverLevel().getServer())
               .authorize(actor, buffer.position(), NetworkPermissions.Permission.VIEW)
           != NetworkAuthority.Decision.ALLOWED) {
@@ -71,8 +116,19 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
       long occupied = slots.stream().filter(slot -> slot.key() != null).count();
       player.displayClientMessage(
           Component.translatable("message.factorycore.buffer_status", items, occupied), false);
+      var status = WorldNetworks.get(buffer.serverLevel().getServer()).imports().status(buffer);
+      player.displayClientMessage(
+          Component.translatable(
+              "message.factorycore.buffer_import_status",
+              Component.translatable(
+                  "status.factorycore.buffer_mode."
+                      + status.mode().name().toLowerCase(java.util.Locale.ROOT)),
+              Component.translatable(
+                  "status.factorycore.buffer_reason."
+                      + status.reason().name().toLowerCase(java.util.Locale.ROOT))),
+          false);
       return InteractionResult.CONSUME;
-    } catch (IllegalArgumentException | IllegalStateException failure) {
+    } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
       player.displayClientMessage(
           Component.translatable("message.factorycore.buffer_fault", failure.getMessage()), true);
       return InteractionResult.FAIL;

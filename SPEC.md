@@ -4,7 +4,7 @@
 
 This file is the authoritative product contract for the first playable release. It consolidates user requirements and design defaults chosen under delegated authority. All requirements below apply unless explicitly marked **Later** or assigned to a decision gate in [IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 
-The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Automatic wired membership, cell availability, physical finite energy banks and explicit connector/transfer primitives, bounded scheduled external stock observations and principal-owned utility holds are implemented; aggregate external catalogs/crafting-job reservations, terminals and automatic presets remain unimplemented; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
+The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Automatic wired membership, cell availability, physical finite energy banks and explicit connector/transfer primitives, bounded scheduled external stock observations and principal-owned utility holds are implemented; all-key external catalogs/crafting-job reservations, terminals and advanced presets remain unimplemented; basic buffer Import is implemented; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
 
 ## R01 — Release scope
 
@@ -62,7 +62,8 @@ The nine-slot owned item inventory and NeoForge hopper-handler adapter now exist
 as a P3 prerequisite, with exact component/stack limits and backpressure tests.
 Canonical slot ownership/persistence, physical placement and actual hopper-to-buffer
 flow now have local evidence; explicit shared buffer transfers and recovery now have local evidence. Automatic
-network import presets and the terminal loop remain unfinished; A01 is not yet satisfied.
+Import/Paused controls, real hopper-to-cell imports and full-storage backpressure now have headless world evidence.
+The terminal loop and full release/client/restart acceptance remain unfinished; A01 has partial evidence.
 [Buffered Interface contract](docs/modules/BUFFERED_INTERFACES.md) records this scope.
 
 The implemented connector primitive has a provider-facing socket and five cable

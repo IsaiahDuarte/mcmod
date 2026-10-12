@@ -74,7 +74,7 @@ and model inventory transforms remain pending real-client inspection.
 | Storage Connector + block item | Connection face, resource/access/priority inspection | P2–P3 | Implemented native six-direction socket model, matching shape, tooltips and translated chat inspection; advanced settings screen remains pending | Pending |
 | Storage Terminal + block item | Recognizable access screen and connection state | P3 | Missing | Pending |
 | Machine Interface + block item | Port/side/label identification and preset state | P3 | Missing | Pending |
-| Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Implemented native nine-slot top geometry, item parent, tooltip and authorized item/slot inspection; preset state/screens remain pending | Pending |
+| Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Implemented native nine-slot top geometry, item parent, tooltip and authorized item/slot/mode/status inspection and Import/Paused/owned-cleanup controls; full preset/inventory screens remain pending | Pending |
 | Crafting Interface + block item | Processing ports and busy/blocked state | P4 | Missing | Pending |
 | Crafting Unit + block item | Distinct crafting role and working/blocked state | P4 | Missing | Pending |
 | Pattern items, if used by selected implementation | Distinguish recipe/processing identity and invalid patterns | P4 | Missing; physical representation to be selected | Pending |
@@ -103,7 +103,7 @@ row. Share navigation and components where appropriate.
 | Wireless setup | Pairing, direction, range, authorization, power loss and reconnection | P6 | Missing / Pending |
 | Device diagnostics and recovery | Safe next actions, preserved evidence, authorized reconciliation and unresolved quarantine | P2–P6 | Partial literal-English messages; workflow missing / Pending |
 | In-game help and progression | First-network diagram, hopper walkthrough, offhand upgrades, factory examples and next unlocks | P3–P6 | Missing; external player guide and recipe unlocks exist / Pending |
-| Shared UI assets and localization | Consistent controls/icons/tooltips/focus, translation keys, readable scales and non-color status cues | P3–P6 | Only registered names translated / Pending |
+| Shared UI assets and localization | Consistent controls/icons/tooltips/focus, translation keys, readable scales and non-color status cues | P3–P6 | Registered names and bank/connector/buffer tooltips/chat feedback translated; shared screens remain missing / Pending |
 
 ## Client completion checklist
 
@@ -140,4 +140,5 @@ are wired into the creative tab and recipe. Original editable JSON uses the same
 16-unit grid and repository license; vanilla textures are supplied by Minecraft.
 Translated inspection reports exact item and occupied-slot counts. Headless recipe,
 hopper and ownership tests passed; actual client appearance/transforms/GUI-scale
-checks remain pending, as do import/export preset controls and the inventory screen.
+checks remain pending. Import/Paused and owned-cleanup controls now have translated
+tooltips/chat states; export/stock/filter controls and the inventory screen remain pending.

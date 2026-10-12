@@ -91,3 +91,7 @@ See [implementation evidence](docs/IMPLEMENTATION.md).
 - Added canonical buffered preset configuration authority with authenticated
   grants, accepted scope/lease, monotonic revisions and nested schema-two recovery;
   background import dispatch and player controls remain unfinished.
+
+- Added automatic authorized Buffered Interface imports, Import/Paused controls,
+  exact full-storage backpressure, translated status and original-owner known
+  staging return. Terminal/search and remaining presets remain unfinished.

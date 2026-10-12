@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import net.minecraft.server.MinecraftServer;
 
@@ -44,6 +45,8 @@ public final class WorldStorageRoutes {
     final long amount;
     final Direction direction;
     final Consumer<Result> completion;
+    final BooleanSupplier authorized;
+    final BooleanSupplier canStart;
     final UUID network;
     final UUID segment;
     final RouteCursors.Scope cursorScope;
@@ -66,7 +69,11 @@ public final class WorldStorageRoutes {
         Consumer<Result> completion,
         UUID network,
         UUID segment,
-        UUID deployment) {
+        UUID deployment,
+        BooleanSupplier authorized,
+        BooleanSupplier canStart) {
+      this.authorized = authorized;
+      this.canStart = canStart;
       this.id = id;
       this.actor = actor;
       this.origin = origin;
@@ -117,7 +124,8 @@ public final class WorldStorageRoutes {
       long amount,
       Direction direction,
       Consumer<Result> completion) {
-    return route(id, actor, origin, fixed, key, amount, direction, completion, null);
+    return route(
+        id, actor, origin, fixed, key, amount, direction, completion, null, () -> true, () -> true);
   }
 
   /** Explicit rotating mode; deployment IDs must come from authenticated server-owned state. */
@@ -140,7 +148,30 @@ public final class WorldStorageRoutes {
         amount,
         direction,
         completion,
-        Objects.requireNonNull(deployment));
+        Objects.requireNonNull(deployment),
+        () -> true,
+        () -> true);
+  }
+
+  WorldStorageTransfers.Submission priorityGuarded(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      WorldStorageTransfers.Endpoint fixed,
+      ResourceKey key,
+      long amount,
+      Direction direction,
+      Consumer<Result> completion,
+      BooleanSupplier authorized,
+      BooleanSupplier canStart) {
+    return route(
+        id, actor, origin, fixed, key, amount, direction, completion, null, authorized, canStart);
+  }
+
+  boolean active(UUID id) {
+    checkThread();
+    prune();
+    return requests.containsKey(id);
   }
 
   private WorldStorageTransfers.Submission route(
@@ -152,7 +183,9 @@ public final class WorldStorageRoutes {
       long amount,
       Direction direction,
       Consumer<Result> completion,
-      UUID deployment) {
+      UUID deployment,
+      BooleanSupplier authorized,
+      BooleanSupplier canStart) {
     checkThread();
     Objects.requireNonNull(id);
     Objects.requireNonNull(actor);
@@ -161,6 +194,7 @@ public final class WorldStorageRoutes {
     Objects.requireNonNull(key);
     Objects.requireNonNull(direction);
     Objects.requireNonNull(completion);
+    Objects.requireNonNull(authorized);
     OperationResult.requireQuantity(amount);
     if (amount > (key.kind() == ResourceKind.ITEM ? 128 : 1000))
       throw new IllegalArgumentException("Route exceeds bounded quantum");
@@ -187,7 +221,9 @@ public final class WorldStorageRoutes {
             completion,
             member.scope().network(),
             member.scope().segment(),
-            deployment);
+            deployment,
+            authorized,
+            canStart);
     if (requests.containsKey(id)
         || requests.size() == MAX_REQUESTS
         || bytes > MAX_BYTES - request.bytes)
@@ -286,7 +322,7 @@ public final class WorldStorageRoutes {
     var target = request.direction == Direction.TO_STORAGE ? row.endpoint() : request.fixed;
     request.ticket = UUID.randomUUID();
     var admission =
-        transfers.submit(
+        transfers.submitGuarded(
             request.ticket,
             request.actor,
             request.origin,
@@ -320,7 +356,9 @@ public final class WorldStorageRoutes {
                 drop(request);
                 request.completion.accept(new Result(request.id, result));
               }
-            });
+            },
+            request.authorized,
+            request.canStart);
     if (admission.rejection() != OperationResult.Reason.OK) finish(request, admission.rejection());
   }
 
@@ -336,7 +374,8 @@ public final class WorldStorageRoutes {
 
   private boolean scopeValid(Request request) {
     var member = networks.membership(request.origin);
-    return member.status() == NetworkTopology.Status.VALID
+    return request.authorized.getAsBoolean()
+        && member.status() == NetworkTopology.Status.VALID
         && member.scope().network().equals(request.network)
         && member.scope().segment().equals(request.segment)
         && networks.authorize(request.actor, request.origin, NetworkPermissions.Permission.VIEW)

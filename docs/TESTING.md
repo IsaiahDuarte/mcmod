@@ -447,3 +447,16 @@ compressed deployment/slot reload and nine malformed/future/unowned authority
 variants. BufferTransferGameTests adds authenticated EDIT/DEPLOY/resource grant
 checks, provenance/operator rejection, revocation and canonical replacement.
 These tests prove configuration intent only; background import is still missing.
+
+
+Twelve BufferImportGameTests exercise automatic real hopper-to-cell component
+movement; full-cell/buffer/hopper backpressure/resumption; queued selective DEPLOY
+revocation, pause/resume and disconnect/reconnect; known staging/no re-extraction;
+uncertainty/non-replay even for explicit cleanup; old local reference rejection;
+empty sleep/actual wake/no simulation wake; native player controls; queued break/
+movement/reconfiguration; and original-owner redstone cleanup after pause/revocation.
+Queue-order fixtures visit at most 32 eight-entry metadata batches within one
+server tick to admit preparation before the next task for that principal; production
+bounds and FIFO semantics are unchanged. TransferRegistryTest additionally checks
+multiple known owners across restore/delivery/cancellation with exact conservation
+and unresolved-backing visibility, plus unbind/uncertainty index retention.

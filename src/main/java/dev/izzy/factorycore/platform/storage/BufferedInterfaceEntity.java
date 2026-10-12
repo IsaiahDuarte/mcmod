@@ -4,12 +4,16 @@ import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.OperationResult;
+import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.BufferedItemHandler;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.UUID;
+import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
@@ -153,6 +157,35 @@ public final class BufferedInterfaceEntity extends BlockEntity {
     }
   }
 
+  /** Explicit cleanup by the original owner; only known staging returns, never fresh extraction. */
+  public WorldStorageTransfers.Submission returnStaging(
+      NetworkPermissions.Actor actor, Consumer<WorldStorageTransfers.Result> completion) {
+    validatePlaced();
+    var saved = authority();
+    var record = saved.transfers().unresolved(state.lease().id());
+    if (record == null)
+      return new WorldStorageTransfers.Submission(null, OperationResult.Reason.DENIED);
+    if (!record.transfer().owner().equals(actor.id())
+        || record.context() == null
+        || record.context().source().type() != TransferContext.Type.BUFFER
+        || !record.context().source().backing().equals(state.lease().id()))
+      return new WorldStorageTransfers.Submission(null, OperationResult.Reason.DENIED);
+    return WorldNetworks.get(serverLevel().getServer())
+        .transfers()
+        .progress(
+            record.id(),
+            actor,
+            true,
+            result -> {
+              if (result.transfer() != null
+                  && result.transfer().state() == StagedTransfer.State.COMPLETE
+                  && result.transfer().pending() == StagedTransfer.PendingCall.NONE
+                  && result.transfer().staged() == 0
+                  && saved.transfers().contains(result.id())) saved.transfers().retire(result.id());
+              completion.accept(result);
+            });
+  }
+
   private void parse() {
     state = null;
     diagnostic = "";
@@ -187,6 +220,7 @@ public final class BufferedInterfaceEntity extends BlockEntity {
                       && physicallyCurrent()
                       && saved.buffers().usable(lease, this));
       write();
+      WorldNetworks.get(serverLevel().getServer()).imports().register(this);
     } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
       fault(failure);
     }
@@ -205,6 +239,7 @@ public final class BufferedInterfaceEntity extends BlockEntity {
   }
 
   private void unbind() {
+    WorldNetworks.bufferInvalidated(level, this);
     var saved = authority();
     if (saved.buffers().boundTo(state.lease(), this))
       saved.transfers().unbindBacking(state.lease().id());

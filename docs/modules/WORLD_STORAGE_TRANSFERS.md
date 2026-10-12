@@ -3,7 +3,8 @@
 Implemented server API: `WorldNetworks.get(server).transfers()` returns the shared
 `WorldStorageTransfers` service. Digital cells/banks, explicit [Buffered Interface endpoints](BUFFERED_INTERFACES.md)
 and [registered foreign connector endpoints](CONNECTORS.md) now share
-this path. Client packets, terminal/preset frontends and automatic recovery dispatch remain unfinished. Explicit scheduled recovery is implemented below.
+this path. Client packets/terminal frontends and general recovery dispatch remain unfinished;
+automatic buffer import and original-owner cleanup controls are implemented below. Explicit scheduled recovery is implemented below.
 
 ## Contract and ownership
 
@@ -279,7 +280,8 @@ without provider marker creation, queued VIEW revocation and cursor actor/key/ro
 binding. [Metadata measurement](../performance/CATALOG_METADATA.md) records one
 standalone baseline/page comparison; full world catalog performance remains pending.
 All-key searchable catalog, offline listings, global selection/persisted rotation,
-automatic presets, player routes and client/SDK query lifecycle remain unfinished.
+remaining export/stock/filter presets, terminal player routes and client/SDK query
+lifecycle remain unfinished. Basic buffer Import is implemented below.
 
 
 ## Explicit global storage routes
@@ -316,7 +318,7 @@ recovery. Metadata-only terminal results have no snapshot. `cancel(id, actor)`
 cancels only an owned undispatched route outside shared task execution, without a
 callback. Restart loses unextracted discovery work; actual staging remains in the
 canonical schema-nine registry. Priority mode stores no cursor. Automatic
-presets and the player terminal remain unfinished.
+remaining presets and the player terminal remain unfinished; buffer Import is implemented below.
 
 ```java
 var routes = WorldNetworks.get(server).transfers().routes();
@@ -423,3 +425,21 @@ var admission = service.submit(UUID.randomUUID(), authenticatedActor,
       // Consume actual counts and retain any staged/uncertain operation ID.
     });
 ```
+
+
+Automatic buffer imports now use guarded priority routes and owned progress.
+The server coordinator rechecks the canonical deployer's current DEPLOY grant,
+exact local/canonical revision, physical lease and accepted root/segment at catalog
+callbacks, dispatch and pre-mutation authorization. Its fresh-start guard separately
+rejects unresolved work; that guard does not mistake the operation's own newly
+journaled staging for a competing transfer. Existing explicit callers retain their
+current authorization contracts. No fresh extraction occurs while indexed
+canonical staging/uncertainty is unresolved, including after restore/unbind.
+
+Explicit original-owner buffer returns may rebind the holder's current preset
+configuration, preserving exact original world/backing/structural generation and
+accepted origin/root/segment. This only inserts existing staging and does not use
+a new actor or resource permission to extract/deliver. Pausing/replacing a preset
+therefore cannot strand otherwise known same-lease staging. Normal delivery still
+requires its accepted configuration/grants. Unknown pending calls, changed leases
+and incompatible scopes retain owned data; no blind replay/refund is introduced.

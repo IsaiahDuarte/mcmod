@@ -2,7 +2,7 @@
 
 P3 prerequisite component: `ItemBuffer` and `BufferedItemHandler` implement the
 selected nine-slot owned inventory and its NeoForge automation view. The canonical world table/structural lease now exists. The physical block and hopper inventory path are implemented with headless world
-evidence. Network import/export presets and the inventory screen remain missing;
+evidence. Automatic Import and Paused controls are implemented; export/stock/filter presets and the inventory screen remain missing;
 the hopper-to-storage-to-terminal loop is not yet A01.
 See [ownership decision](../decisions/0014-buffered-inventory.md).
 
@@ -118,9 +118,9 @@ saves include nested schema one and the BUFFERED_INTERFACE structural kind.
 The fixed schema-seven world fixture contains ledgers/grants/nodes/staging/foreign
 holds/rotation, and migration removes only the new empty table/version change to
 compare exact original data. Missing/wrong-type/future/duplicate/over-limit data
-preserves and quarantines the whole authority. A physical block/capability is now registered below; its explicit shared world-transfer endpoint is now implemented; automatic presets
-remain missing; real break/drop, chunk/world restart, interrupted
-independent files, client and hopper flow remain unverified.
+preserves and quarantines the whole authority. A physical block/capability is now registered below; its explicit shared world-transfer endpoint and automatic Import mode are implemented.
+Real chunk/world restart, interrupted independent files and client evidence
+remain unverified; hopper flow and physical break/drop have headless evidence.
 
 
 ## Physical holder and hopper path
@@ -161,7 +161,7 @@ quarantine, future raw preservation, declared foreign overlap rejection and exac
 recipe/unlock. These do not prove actual chunk/full-server restart, cross-file
 interruption, multiplayer or complete player automation. The distinct buffer endpoint now uses shared authorization, network rate accounting
 and explicit staging recovery. Next add canonical deployment ownership and
-scheduled network imports, then terminal/all-key search.
+complete player terminal/all-key search and remaining presets.
 
 
 Explicit `WorldStorageTransfers.Buffered(handle, configuration)` item endpoints
@@ -173,8 +173,8 @@ accepted identity/generations under world schema nine, preserving old context-on
 fields and owned tables. Unbinding releases indexed transfer references only when
 handle/token ownership matches, including conflicted originals awaiting teardown;
 stale copies cannot invalidate a replacement holder. Native key incompatibility
-rejects recovery before insertion, retaining staging. No background import or
-saved-principal authorization is claimed yet.
+rejects recovery before insertion, retaining staging. Background Import is implemented
+below; saved reference principals never authorize it.
 
 
 ## Canonical preset deployment authority
@@ -220,5 +220,73 @@ Registry tests prove replacement, revision overflow, stale owner denial, offline
 restore and movement. Fixed buffers-v2 and compressed round-trip tests prove
 exact slots/deployment persistence and malformed/future/unowned quarantine. The
 world permission case exercises provenance/operator denial, missing import grants,
-revocation and replacement. Background import dispatch and player controls are
-still missing; configuring IMPORT currently stores intent without moving stock.
+revocation and replacement. Background dispatch and player controls now use this
+authority, as described below.
+
+
+## Active automatic import and player controls
+
+WorldBufferImports is server-owned and registers only currently bound holders,
+with 256 maximum runtime entries. Canonical deployments remain the sole authority.
+Fresh/legacy references without a deployment stay paused. Positive actual buffer
+mutations and configuration changes wake the matching entry; simulations/no-ops
+never wake it. Empty inventories leave the active queue. Teardown unregisters only
+the same physical owner; old queued closures cannot mutate a replacement.
+
+Tick-boundary work visits at most eight active metadata entries and admits one
+coalesced sixteen-credit preparation per buffer into the shared FairScheduler.
+Preparation examines at most nine slots and picks exact keys in rotating slot
+order. Each key offers at most 64 items to the existing paged priority route,
+with one in-flight logical request per buffer. Existing shared queue/page/candidate/
+metadata limits and 64-item identity/tick budgets still apply. This upper bound is
+not a promised throughput; scheduling and backpressure can reduce it. Blocked
+rules retry after at least twenty server ticks and bounded active-queue visits;
+no one-thread-per-buffer or unbounded topology/provider scan is introduced.
+
+Each preparation, catalog callback, transfer dispatch and pre-mutation authorization
+checks the exact canonical deployment, local revision, structural generation,
+accepted root/segment, loaded holder and deployer's current DEPLOY/VIEW/DEPOSIT/
+WITHDRAW. Background actors never retain operator privilege. Replacement/pause,
+revocation, disconnection, stale local saves and movement reject queued work.
+Reconnection under the same accepted identity/scope resumes; movement/scope/revision
+changes require explicit reconfiguration. Canonical records never adopt chunk
+provenance. Work requests/queues are transient; no second owned save table exists.
+
+TransferRegistry maintains a bounded canonical unresolved-backing index (at most
+two references per each of 1,024 records), including restored/unbound/pending-call
+records. Any unresolved work for a buffer blocks fresh automatic extraction.
+The current deployment can retry known matching source staging through shared
+progress, with exact original actor/origin/scope/lease/configuration and no
+re-extraction. Unknown/pending intent stays UNCERTAIN. Other principals, prior
+revisions or incompatible accepted contexts require explicit recovery. Known
+completed callbacks retire records and reclaim admission; indexed lookup neither
+loads chunks nor enumerates native inventories.
+
+Normal empty-main-hand use requires VIEW and reports counts/mode/typed status.
+Crouch-use with both hands empty toggles Import/Paused through authenticated
+configuration. Crouch-use with offhand redstone requests return of the original
+actor's known buffered-source staging; the control consumes no material and exposes
+no other principal's stock. `returnStaging(actor, completion)` returns scheduler
+admission/rejection immediately and, when admitted, later supplies actual snapshot
+status. No owned unresolved operation or a different owner rejects DENIED;
+uncertainty rejects UNCERTAIN. Full/offline/stale scope retains staging.
+
+Owned return may use the holder's current configuration after pause/replacement:
+only insertion of already owned staging into the exact original world/backing/
+structural generation is permitted. Accepted operation context is retained rather
+than rewritten. Current origin/root/segment and loaded unconflicted holder remain
+mandatory. No target operation, source extraction, fresh transfer, actor reassignment
+or changed-lease adoption is permitted. It does not require revoked resource
+permissions, consistent with the shared owned-cleanup contract. Normal delivery
+continues to require the exact saved configuration and current grants. Completed
+cleanup retires its known record; partial cleanup remains bounded and retryable.
+Pause before cleanup to avoid an enabled rule moving those returned items again.
+
+Twelve BufferImportGameTests cover real component-aware hopper-to-cell movement,
+full cell/buffer/hopper retention and resumption, selective queued DEPLOY revocation,
+pause/resume, disconnection/reconnection, known staging without re-extraction,
+uncertainty/non-replay, old local saves, empty sleep/actual wake, native player
+controls, queued removal/movement and owned return after pause/grant revocation.
+These are headless live world checks, not actual chunks/server restart, independent
+file interruption or client/multiplayer evidence. All-key search, terminal player
+operations, remaining presets and inventory screens are the next player-path work.

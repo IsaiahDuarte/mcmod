@@ -9,6 +9,7 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -16,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
@@ -360,7 +362,18 @@ public final class WorldStorageTransfers {
       ResourceKey key,
       long amount,
       Consumer<Result> completion) {
-    return submit(id, actor, origin, source, destination, key, amount, completion, false);
+    return submit(
+        id,
+        actor,
+        origin,
+        source,
+        destination,
+        key,
+        amount,
+        completion,
+        false,
+        () -> true,
+        () -> true);
   }
 
   public Submission submitClaimed(
@@ -373,7 +386,42 @@ public final class WorldStorageTransfers {
       long amount,
       Consumer<Result> completion) {
     return submit(
-        id, actor, origin, new External(source), destination, key, amount, completion, true);
+        id,
+        actor,
+        origin,
+        new External(source),
+        destination,
+        key,
+        amount,
+        completion,
+        true,
+        () -> true,
+        () -> true);
+  }
+
+  Submission submitGuarded(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      Endpoint source,
+      Endpoint destination,
+      ResourceKey key,
+      long amount,
+      Consumer<Result> completion,
+      BooleanSupplier authorized,
+      BooleanSupplier canStart) {
+    return submit(
+        id,
+        actor,
+        origin,
+        source,
+        destination,
+        key,
+        amount,
+        completion,
+        false,
+        authorized,
+        canStart);
   }
 
   private Submission submit(
@@ -385,7 +433,9 @@ public final class WorldStorageTransfers {
       ResourceKey key,
       long amount,
       Consumer<Result> completion,
-      boolean claimed) {
+      boolean claimed,
+      BooleanSupplier authorized,
+      BooleanSupplier canStart) {
     checkThread();
     Objects.requireNonNull(id);
     Objects.requireNonNull(actor);
@@ -394,6 +444,8 @@ public final class WorldStorageTransfers {
     Objects.requireNonNull(destination);
     Objects.requireNonNull(key);
     Objects.requireNonNull(completion);
+    Objects.requireNonNull(authorized);
+    if (!authorized.getAsBoolean()) return new Submission(null, OperationResult.Reason.DENIED);
     OperationResult.requireQuantity(amount);
     long quantum = key.kind() == ResourceKind.ITEM ? 128 : 1000;
     if (amount > quantum)
@@ -427,7 +479,18 @@ public final class WorldStorageTransfers {
         key,
         ticket ->
             execute(
-                id, actor, origin, source, destination, key, amount, completion, ticket, claimed));
+                id,
+                actor,
+                origin,
+                source,
+                destination,
+                key,
+                amount,
+                completion,
+                ticket,
+                claimed,
+                authorized,
+                canStart));
   }
 
   /** Reserve or release only this authenticated principal's foreign holds. */
@@ -560,7 +623,18 @@ public final class WorldStorageTransfers {
   /** Progress only existing owned staging. Caller supplies a currently authenticated actor. */
   public Submission progress(
       UUID id, NetworkPermissions.Actor actor, boolean returning, Consumer<Result> completion) {
+    return progressGuarded(id, actor, returning, completion, () -> true);
+  }
+
+  Submission progressGuarded(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      boolean returning,
+      Consumer<Result> completion,
+      BooleanSupplier authorized) {
     checkThread();
+    Objects.requireNonNull(authorized);
+    if (!authorized.getAsBoolean()) return new Submission(null, OperationResult.Reason.DENIED);
     Objects.requireNonNull(id);
     Objects.requireNonNull(actor);
     Objects.requireNonNull(completion);
@@ -584,7 +658,7 @@ public final class WorldStorageTransfers {
         context.network(),
         context.segment(),
         snapshot.key(),
-        ticket -> executeProgress(id, actor, context, returning, completion));
+        ticket -> executeProgress(id, actor, context, returning, completion, authorized));
   }
 
   private void executeProgress(
@@ -592,8 +666,11 @@ public final class WorldStorageTransfers {
       NetworkPermissions.Actor actor,
       dev.izzy.factorycore.core.resource.TransferContext expected,
       boolean returning,
-      Consumer<Result> completion) {
-    if (!saved.transfers().contains(id) || !expected.equals(saved.transfers().context(id))) {
+      Consumer<Result> completion,
+      BooleanSupplier authorized) {
+    if (!authorized.getAsBoolean()
+        || !saved.transfers().contains(id)
+        || !expected.equals(saved.transfers().context(id))) {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, null));
       return;
     }
@@ -624,7 +701,10 @@ public final class WorldStorageTransfers {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, snapshot));
       return;
     }
-    Endpoint source = recover(context.world(), context.source());
+    Endpoint source =
+        returning && context.source().type() == TransferContext.Type.BUFFER
+            ? recoverOwnedBufferSource(context.world(), context.source())
+            : recover(context.world(), context.source());
     Endpoint destination = returning ? null : recover(context.world(), context.destination());
     if (source == null || !returning && destination == null) {
       completion.accept(new Result(id, OperationResult.Reason.OFFLINE, snapshot));
@@ -665,6 +745,7 @@ public final class WorldStorageTransfers {
             output,
             () ->
                 !returning
+                    && authorized.getAsBoolean()
                     && allowed(
                         actor,
                         context.origin(),
@@ -727,6 +808,22 @@ public final class WorldStorageTransfers {
                   reference.configuration(),
                   reference.backing());
       return registration.handle() == null ? null : new External(registration.handle());
+    } catch (IllegalArgumentException | IllegalStateException unavailable) {
+      return null;
+    }
+  }
+
+  /** Owned returns may survive preset replacement, but never lease/world/physical replacement. */
+  private Endpoint recoverOwnedBufferSource(UUID world, TransferContext.Endpoint reference) {
+    try {
+      var handle =
+          new NodeRegistry.Handle(
+              world,
+              reference.backing(),
+              reference.generation(),
+              NodeRegistry.Kind.BUFFERED_INTERFACE);
+      var holder = physical(new Buffered(handle, reference.configuration()), true);
+      return holder == null ? null : new Buffered(handle, holder.reference().configuration());
     } catch (IllegalArgumentException | IllegalStateException unavailable) {
       return null;
     }
@@ -825,7 +922,9 @@ public final class WorldStorageTransfers {
       long amount,
       Consumer<Result> completion,
       Queued ticket,
-      boolean claimed) {
+      boolean claimed,
+      BooleanSupplier authorized,
+      BooleanSupplier canStart) {
     var current = networks.membership(origin);
     if (current.status() != NetworkTopology.Status.VALID
         || !current.scope().network().equals(ticket.network())
@@ -833,7 +932,9 @@ public final class WorldStorageTransfers {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, null));
       return;
     }
-    if (saved.transfers().contains(id)
+    if (!authorized.getAsBoolean()
+        || !canStart.getAsBoolean()
+        || saved.transfers().contains(id)
         || !allowed(actor, origin, source, key, NetworkPermissions.Permission.WITHDRAW)
         || !allowed(actor, origin, destination, key, NetworkPermissions.Permission.DEPOSIT)) {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, null));
@@ -911,7 +1012,9 @@ public final class WorldStorageTransfers {
                 amount,
                 amount,
                 () ->
-                    allowed(actor, origin, source, key, NetworkPermissions.Permission.WITHDRAW)
+                    authorized.getAsBoolean()
+                        && allowed(
+                            actor, origin, source, key, NetworkPermissions.Permission.WITHDRAW)
                         && allowed(
                             actor, origin, destination, key, NetworkPermissions.Permission.DEPOSIT),
                 context(origin, source, destination));
@@ -1095,6 +1198,11 @@ public final class WorldStorageTransfers {
 
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private BufferedInterfaceEntity physical(Buffered endpoint) {
+    return physical(endpoint, false);
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns this borrowed level.
+  private BufferedInterfaceEntity physical(Buffered endpoint, boolean ownedReturn) {
     var location = saved.nodes().definition(endpoint.handle()).position();
     if (location == null) return null;
     var level =
@@ -1109,7 +1217,8 @@ public final class WorldStorageTransfers {
         || !(chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK)
             instanceof BufferedInterfaceEntity holder)
         || !endpoint.handle().equals(holder.handle())
-        || holder.reference().configuration() != endpoint.configuration()) return null;
+        || !ownedReturn && holder.reference().configuration() != endpoint.configuration())
+      return null;
     holder.validatePlaced();
     return holder;
   }
