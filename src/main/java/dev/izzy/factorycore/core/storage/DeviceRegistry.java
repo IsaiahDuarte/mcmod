@@ -127,7 +127,7 @@ public final class DeviceRegistry {
   private final UUID world;
   private final Runnable changed;
   private final Supplier<UUID> identifiers;
-  private final Map<UUID, Device> devices = new HashMap<>();
+  private final java.util.NavigableMap<UUID, Device> devices = new java.util.TreeMap<>();
   private final Map<Location, UUID> placements = new HashMap<>();
   private Predicate<Location> routing = location -> true;
   private long bytes;
@@ -251,6 +251,22 @@ public final class DeviceRegistry {
         : new ResourceLedger.Stock(stock.total(), stock.reserved(), 0, false);
   }
 
+  /** Shares actual insertion's authority and metadata preflight; no reservation is created. */
+  public OperationResult simulateInsert(Handle handle, ResourceKey key, long amount) {
+    checkThread();
+    OperationResult.requireQuantity(amount);
+    Device device = available(handle);
+    if (device == null) return denied(handle);
+    if (key.kind() != device.ledger.kind())
+      return new OperationResult(0, OperationResult.Reason.WRONG_RESOURCE);
+    long extra =
+        amount > 0 && device.ledger.stock(key).total() == 0
+            ? ResourceLedger.stockEntryBytes(key)
+            : 0;
+    if (!fits(device, extra)) return new OperationResult(0, OperationResult.Reason.TECHNICAL_LIMIT);
+    return device.ledger.simulateInsert(key, amount);
+  }
+
   public OperationResult insert(Handle handle, ResourceKey key, long amount) {
     checkThread();
     OperationResult.requireQuantity(amount);
@@ -304,6 +320,27 @@ public final class DeviceRegistry {
     var result = devices.get(handle.backing()).ledger.resize(capacity, infinite);
     if (result.reason() == OperationResult.Reason.OK) changed.run();
     return result;
+  }
+
+  public record HandlePage(List<Handle> handles, UUID next) {
+    public HandlePage {
+      handles = List.copyOf(handles);
+    }
+  }
+
+  /** Bounded stable-ID enumeration without copying ledgers or resource catalogs. */
+  public HandlePage handles(UUID after, int limit) {
+    checkThread();
+    if (limit < 1 || limit > 16) throw new IllegalArgumentException("Invalid handle page size");
+    var iterator = (after == null ? devices : devices.tailMap(after, false)).entrySet().iterator();
+    var result = new ArrayList<Handle>();
+    UUID last = null;
+    while (result.size() < limit && iterator.hasNext()) {
+      var entry = iterator.next();
+      last = entry.getKey();
+      result.add(new Handle(world, last, entry.getValue().generation));
+    }
+    return new HandlePage(result, iterator.hasNext() ? last : null);
   }
 
   public State snapshot() {

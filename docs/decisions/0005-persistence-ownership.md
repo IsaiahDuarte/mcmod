@@ -55,6 +55,18 @@ catalog availability. P2/P3 must implement these records and save integration.
 Arbitrary crash/power-loss atomicity across external mods is not promised; the
 normal-operation guarantee includes orderly save/restart and chunk unload.
 
+The portable StagedTransfer prerequisite now captures immutable accounting
+snapshots and notifies a caller-supplied recorder before each mutation and after
+known accounting. Records include endpoint IDs, intent kind/amount and exact
+known staging/delivery/returns. Rebinding requires matching IDs; any pending call
+restores quarantined without handler calls, retries or refunds. This extends the
+selected recovery design without changing a disk schema. The bounded canonical TransferRegistry and schema-four SavedData now persist
+these records beside ledgers and grants. Schemas one/two/three migrate with empty
+transfer tables; component schemas remain unchanged. Admission reserves maximum
+record metadata before extraction (1,024 records / 4 MiB separate from the ledger
+budget). A notification alone supplies no crash atomicity; actual world endpoints,
+restart/save-boundary interruptions and reconciliation remain pending.
+
 ## Alternatives and consequences
 
 Contents stored independently in every item/block entity would simplify local
@@ -99,3 +111,38 @@ at that slice large saves and physical block/item ownership were not yet verifie
 Primary adapter sources inspected 2026-10-03: pinned 21.1.252 merged sources for
 SavedData, DimensionDataStorage and IOUtilities, and
 [official 1.21.1 SavedData docs](https://docs.neoforged.net/docs/1.21.1/datastorage/saveddata/).
+
+
+## Accepted transfer context extension — 2026-10-11
+
+Advance the canonical world envelope to schema five and transfer entries to schema
+two, embedding strict context schema one before any resource call. Save accepted
+world/network/segment/origin and endpoint device/backing/lease/config generations
+beside the single owned staging record; do not persist operator authority or live
+handlers. Restore legacy entry-schema-one records without inventing context or
+rewriting quantities/intents. Missing legacy context means explicit reconciliation,
+not a coordinate guess. This avoids an independent context file/save boundary or
+silently reinterpreting old entries as fully resumable operations. Existing source,
+destination and count evidence remains intact through migration fixtures.
+
+New context consumes 1,024 estimated bytes in addition to the existing fixed/key
+record budget, while count/byte limits remain unchanged. Fresh world validation
+must still recheck accepted scope/current actor, endpoint identity/generations,
+permissions/policy and loaded status before delivery/cleanup. No pending intent
+may replay/refund. The initial context codec and compressed canonical disk tests
+are implemented; the recovery scheduler, real chunks/full restart and injected
+independent-save boundaries remain incomplete.
+
+## Canonical foreign hold table — 2026-10-12
+
+Global schema six adds nested-schema-one external holds to the existing authority.
+The alternative of a separate claim file would split holds from owned staging at
+normal save boundaries. The table stores backing/owner/exact-key/long amount only;
+foreign resource contents remain owned by the provider. Dirty callbacks track
+positive known mutations; restore retains orphan holds without current stock.
+Schemas one through five migrate with an empty table; nested/global unknown or
+malformed data preserves and quarantines the whole original authority. Owned
+identity collisions reject. No load-time release or uncertain-call replay occurs.
+Current implementation covers canonical save/codec/migration/disk tests. Shared
+scheduled reservation/extraction, job reconciliation and real restart/interruption
+remain incomplete; the table alone supplies no cross-mod crash atomicity.

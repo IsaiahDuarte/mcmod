@@ -153,4 +153,141 @@ class PlatformResourceTest {
     assertEquals(77, bank.total());
     assertEquals(1000, source.getEnergyStored() + target.getEnergyStored() + bank.total());
   }
+
+  @Test
+  void largeSparseSlotIndexStaysBoundedAndNegativeSlotCountsRejectWithoutOverflow() {
+    var actual = new ItemStackHandler(1);
+    actual.setStackInSlot(0, new ItemStack(Items.IRON_INGOT, 64));
+    int[] reported = {Integer.MAX_VALUE};
+    int selected = Integer.MAX_VALUE - 1;
+    var sparse =
+        new net.neoforged.neoforge.items.IItemHandler() {
+          private void requireSlot(int slot) {
+            if (slot != selected) throw new IllegalArgumentException("Unexpected sparse slot");
+          }
+
+          @Override
+          public int getSlots() {
+            return reported[0];
+          }
+
+          @Override
+          public ItemStack getStackInSlot(int slot) {
+            requireSlot(slot);
+            return actual.getStackInSlot(0);
+          }
+
+          @Override
+          public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            requireSlot(slot);
+            return actual.insertItem(0, stack, simulate);
+          }
+
+          @Override
+          public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            requireSlot(slot);
+            return actual.extractItem(0, amount, simulate);
+          }
+
+          @Override
+          public int getSlotLimit(int slot) {
+            requireSlot(slot);
+            return 64;
+          }
+
+          @Override
+          public boolean isItemValid(int slot, ItemStack stack) {
+            requireSlot(slot);
+            return true;
+          }
+        };
+    var key = codec.itemKey(actual.getStackInSlot(0));
+    var port = new ItemHandlerPort(UUID.randomUUID(), sparse, codec, selected, 1);
+    var destination = new ResourceLedger(UUID.randomUUID(), ResourceKind.ITEM, 3, false, 8, 8);
+    var transfer =
+        StagedTransfer.start(
+            UUID.randomUUID(), key, port, new LedgerPort(destination, null), 64, 64, () -> true);
+    assertEquals(3, transfer.delivered());
+    assertEquals(61, actual.getStackInSlot(0).getCount());
+    assertEquals(3, destination.stock(key).total());
+    assertEquals(3, port.simulateInsert(key, 20));
+    assertEquals(61, actual.getStackInSlot(0).getCount());
+    reported[0] = Integer.MIN_VALUE;
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ItemHandlerPort(UUID.randomUUID(), sparse, codec, 0, 1));
+  }
+
+  @Test
+  void foreignStockPagesBoundReadsAndKeepComponentIdentities() {
+    var handler = new ItemStackHandler(40);
+    var named = new ItemStack(Items.IRON_INGOT, 31);
+    named.set(DataComponents.CUSTOM_NAME, Component.literal("Exact observed identity"));
+    handler.setStackInSlot(2, named);
+    handler.setStackInSlot(18, new ItemStack(Items.GOLD_INGOT, 17));
+    handler.setStackInSlot(35, new ItemStack(Items.DIAMOND, 1));
+    var first = ExternalStockPage.read(ResourceKind.ITEM, handler, codec, 2, 32, 0);
+    assertEquals(16, first.next());
+    assertEquals(1, first.entries().size());
+    assertEquals(codec.itemKey(named), first.entries().getFirst().key());
+    assertEquals(31, first.entries().getFirst().stored());
+    assertNull(first.entries().getFirst().capacity());
+    var second = ExternalStockPage.read(ResourceKind.ITEM, handler, codec, 2, 32, first.next());
+    assertEquals(-1, second.next());
+    assertEquals(17, second.entries().getFirst().stored());
+    assertEquals(16, second.entries().getFirst().index());
+    assertEquals(31, handler.getStackInSlot(2).getCount());
+    assertThrows(UnsupportedOperationException.class, () -> first.entries().clear());
+    assertTrue(
+        ExternalStockPage.read(ResourceKind.ITEM, handler, codec, 2, 32, 100).entries().isEmpty());
+  }
+
+  @Test
+  void foreignFluidAndEnergyObservationsReportKnownCapacityWithoutMutation() {
+    var tank = new FluidTank(5000);
+    tank.fill(
+        new FluidStack(Fluids.WATER, 2500),
+        net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+    var fluid = ExternalStockPage.read(ResourceKind.FLUID, tank, codec, 0, 1, 0);
+    assertEquals(codec.fluidKey(tank.getFluid()), fluid.entries().getFirst().key());
+    assertEquals(2500, fluid.entries().getFirst().stored());
+    assertEquals(5000L, fluid.entries().getFirst().capacity());
+    var energy = new EnergyStorage(10000);
+    energy.receiveEnergy(3000, false);
+    var observed = ExternalStockPage.read(ResourceKind.ENERGY, energy, codec, 0, 1, 0);
+    assertEquals(ResourceKey.ENERGY, observed.entries().getFirst().key());
+    assertEquals(3000, observed.entries().getFirst().stored());
+    assertEquals(10000L, observed.entries().getFirst().capacity());
+    assertEquals(2500, tank.getFluidAmount());
+    assertEquals(3000, energy.getEnergyStored());
+  }
+
+  @Test
+  void foreignCatalogReadCallsStayBoundedForHugeProviders() {
+    int[] reads = {0};
+    var handler =
+        new ItemStackHandler() {
+          @Override
+          public int getSlots() {
+            return Integer.MAX_VALUE;
+          }
+
+          @Override
+          public ItemStack getStackInSlot(int slot) {
+            reads[0]++;
+            return new ItemStack(Items.IRON_INGOT, 1);
+          }
+        };
+    var page =
+        ExternalStockPage.read(ResourceKind.ITEM, handler, codec, Integer.MAX_VALUE - 64, 64, 0);
+    assertEquals(16, reads[0]);
+    assertEquals(16, page.entries().size());
+    var tail =
+        ExternalStockPage.read(ResourceKind.ITEM, handler, codec, Integer.MAX_VALUE - 64, 64, 63);
+    assertEquals(17, reads[0]);
+    assertEquals(-1, tail.next());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExternalStockPage.read(ResourceKind.ITEM, handler, codec, 0, 1, -1));
+  }
 }

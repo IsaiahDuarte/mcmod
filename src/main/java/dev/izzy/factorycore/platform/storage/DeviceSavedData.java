@@ -3,8 +3,11 @@ package dev.izzy.factorycore.platform.storage;
 import com.mojang.logging.LogUtils;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ExternalClaims;
 import dev.izzy.factorycore.core.resource.LedgerStateCodec;
+import dev.izzy.factorycore.core.resource.TransferRegistry;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.core.storage.EnergyBankAccess;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -34,7 +37,10 @@ public final class DeviceSavedData extends SavedData {
   private int principalBindings;
   private static final Logger LOGGER = LogUtils.getLogger();
   private final DeviceRegistry registry;
+  private EnergyBankAccess energyBanks;
   private final NodeRegistry nodes;
+  private final TransferRegistry transfers;
+  private final ExternalClaims externalClaims;
   private final CompoundTag rejected;
   private final String diagnostic;
 
@@ -42,8 +48,12 @@ public final class DeviceSavedData extends SavedData {
       DeviceRegistry.State state,
       List<NetworkPermissions.State> networkStates,
       List<NodeRegistry.Stored> nodeStates,
+      List<TransferRegistry.Stored> transferStates,
+      List<ExternalClaims.Claim> claimStates,
       CompoundTag rejected,
       String diagnostic) {
+    externalClaims = state == null ? null : new ExternalClaims(claimStates, this::setDirty);
+    transfers = state == null ? null : new TransferRegistry(transferStates, this::setDirty);
     this.rejected = rejected;
     this.diagnostic = diagnostic;
     registry =
@@ -61,14 +71,37 @@ public final class DeviceSavedData extends SavedData {
           || (node.kind() == NodeRegistry.Kind.CONTROLLER) != networks.containsKey(node.id()))
         throw new IllegalArgumentException("Invalid structural/network ownership binding");
     }
+    for (var record : transferStates)
+      if (record.context() != null) {
+        var context = record.context();
+        if (!state.world().equals(context.world()) || !networks.containsKey(context.network()))
+          throw new IllegalArgumentException("Transfer context has unknown world/network");
+      }
+    for (var claim : claimStates)
+      if (registry.containsBacking(claim.backing())
+          || nodes.contains(claim.backing())
+          || networks.containsKey(claim.backing()))
+        throw new IllegalArgumentException("Foreign claim backing collides with owned identity");
   }
 
   public static DeviceSavedData get(MinecraftServer server) {
     if (!server.isSameThread())
       throw new IllegalStateException("Device registry belongs to the server thread");
-    return open(
-        server.overworld().getDataStorage(),
-        server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(NAME + ".dat"));
+    var saved =
+        open(
+            server.overworld().getDataStorage(),
+            server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(NAME + ".dat"));
+    if (saved.registry != null && saved.energyBanks == null)
+      saved.energyBanks =
+          new EnergyBankAccess(saved.registry, () -> Integer.toUnsignedLong(server.getTickCount()));
+    return saved;
+  }
+
+  public EnergyBankAccess energyBanks() {
+    registry().world();
+    if (energyBanks == null)
+      throw new IllegalStateException("Bank service requires a running server");
+    return energyBanks;
   }
 
   public static void serverStarted(ServerStartedEvent event) {
@@ -98,13 +131,29 @@ public final class DeviceSavedData extends SavedData {
 
   private static DeviceSavedData create() {
     return new DeviceSavedData(
-        new DeviceRegistry.State(UUID.randomUUID(), List.of()), List.of(), List.of(), null, "");
+        new DeviceRegistry.State(UUID.randomUUID(), List.of()),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        null,
+        "");
   }
 
   public DeviceRegistry registry() {
     if (registry == null)
       throw new IllegalStateException("Device registry quarantined: " + diagnostic);
     return registry;
+  }
+
+  public ExternalClaims externalClaims() {
+    registry().world();
+    return externalClaims;
+  }
+
+  public TransferRegistry transfers() {
+    registry().world();
+    return transfers;
   }
 
   /** Trusted server commissioning only; this creates neither stock nor a physical lease/scope. */
@@ -143,6 +192,16 @@ public final class DeviceSavedData extends SavedData {
     if (registry.containsBacking(id))
       throw new IllegalStateException("Gateway/backing identity collision");
     return nodes.create(id, NodeRegistry.Kind.GATEWAY, position).handle();
+  }
+
+  public NodeRegistry.Handle createConnector(NodeRegistry.Position position) {
+    var admission = nodes().admission(position);
+    if (admission != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Connector admission: " + admission);
+    UUID id = newBackingId();
+    if (registry.containsBacking(id))
+      throw new IllegalStateException("Connector/backing identity collision");
+    return nodes.create(id, NodeRegistry.Kind.CONNECTOR, position).handle();
   }
 
   /** Missing references never create replacement permissions or an implicit owner. */
@@ -188,7 +247,7 @@ public final class DeviceSavedData extends SavedData {
     try {
       require(tag, "Schema", Tag.TAG_INT);
       int schema = tag.getInt("Schema");
-      if ((schema != 1 && schema != 2 && schema != 3) || !tag.hasUUID("World"))
+      if ((schema < 1 || schema > 6) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
       NetworkStateCodec.fields(
           tag,
@@ -196,7 +255,18 @@ public final class DeviceSavedData extends SavedData {
               ? Set.of("Schema", "World", "Devices")
               : schema == 2
                   ? Set.of("Schema", "World", "Devices", "Networks")
-                  : Set.of("Schema", "World", "Devices", "Networks", "Nodes"));
+                  : schema == 3
+                      ? Set.of("Schema", "World", "Devices", "Networks", "Nodes")
+                      : schema < 6
+                          ? Set.of("Schema", "World", "Devices", "Networks", "Nodes", "Transfers")
+                          : Set.of(
+                              "Schema",
+                              "World",
+                              "Devices",
+                              "Networks",
+                              "Nodes",
+                              "Transfers",
+                              "ExternalClaims"));
       var networkStates =
           schema == 1 ? List.<NetworkPermissions.State>of() : NetworkStateCodec.decode(tag);
       var nodeStates = schema < 3 ? List.<NodeRegistry.Stored>of() : NodeStateCodec.decode(tag);
@@ -242,20 +312,27 @@ public final class DeviceSavedData extends SavedData {
             new DeviceRegistry.Stored(
                 ledger, entry.getLong("Generation"), location, entry.getBoolean("Conflict")));
       }
+      if (schema == 6) require(tag, "ExternalClaims", Tag.TAG_COMPOUND);
       var loaded =
           new DeviceSavedData(
               new DeviceRegistry.State(tag.getUUID("World"), records),
               networkStates,
               nodeStates,
+              schema < 4 ? List.of() : TransferStateCodec.decode(tag),
+              schema < 6
+                  ? List.of()
+                  : ExternalClaimsCodec.decode(tag.getCompound("ExternalClaims")),
               null,
               "");
-      if (schema < 3) loaded.setDirty();
+      if (schema < 6) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
           invalid.getMessage() == null ? invalid.getClass().getSimpleName() : invalid.getMessage();
       return new DeviceSavedData(
           null,
+          List.of(),
+          List.of(),
           List.of(),
           List.of(),
           tag.copy(),
@@ -267,7 +344,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 3);
+    tag.putInt("Schema", 6);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {
@@ -286,6 +363,8 @@ public final class DeviceSavedData extends SavedData {
     }
     tag.put("Devices", devices);
     tag.put("Nodes", NodeStateCodec.encode(nodes.snapshot()));
+    tag.put("Transfers", TransferStateCodec.encode(transfers.snapshot()));
+    tag.put("ExternalClaims", ExternalClaimsCodec.encode(externalClaims.snapshot()));
     tag.put(
         "Networks",
         NetworkStateCodec.encode(

@@ -103,3 +103,11 @@ staging/jobs, actual world restart/chunk behavior, abrupt save-order recovery,
 client/multiplayer checks and full A12/A13 remain pending. Outer NBT allocation,
 disk errors and independent chunk/player/foreign-handler writes remain outside
 this component's atomicity boundary.
+
+Canonical schema four adds [owned transfer records](TRANSFER_PERSISTENCE.md)
+while preserving network fields, fixed permission bits and all legacy fixtures.
+
+Canonical world schema six retains accepted transfer context introduced by schema five and adds foreign holds; older network,
+node, ledger and transfer tables preserve exact owned data through migration.
+See [transfer context migration](TRANSFER_PERSISTENCE.md). Network grant encoding
+and its component fixtures are unchanged.

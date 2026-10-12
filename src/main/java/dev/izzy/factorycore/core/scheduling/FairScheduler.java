@@ -216,6 +216,27 @@ public final class FairScheduler {
     return new TickReport(visits, executed, failed, credits, queued, timeLimited);
   }
 
+  /** True only while this keyed action remains undispatched. */
+  public boolean isQueued(UUID networkId, UUID programId, String key) {
+    checkThread();
+    var network = networks.get(networkId);
+    var program = network == null ? null : network.programs.get(programId);
+    return program != null && program.tasks.containsKey(key);
+  }
+
+  /** Cancels one undispatched command without removing its principal's other work. */
+  public boolean cancelTask(UUID networkId, UUID programId, String key) {
+    checkThread();
+    if (ticking) throw new IllegalStateException("Cancel at the tick boundary");
+    var network = networks.get(networkId);
+    if (network == null) return false;
+    var program = network.programs.get(programId);
+    if (program == null || program.tasks.remove(key) == null) return false;
+    queued--;
+    if (program.tasks.isEmpty()) cancelProgram(networkId, programId);
+    return true;
+  }
+
   /** Removes undispatched work on revocation, pause, replacement or device unload. */
   public int cancelProgram(UUID networkId, UUID programId) {
     checkThread();

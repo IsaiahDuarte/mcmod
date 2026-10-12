@@ -4,7 +4,7 @@
 
 [SPEC.md](../SPEC.md) owns product behavior and release scope. This file owns implementation sequence, decision gates, and evidence tracking. [AGENTS.md](../AGENTS.md) owns the contributor workflow. Follow the current user's instructions; do not treat old proposals or research comparisons as additional requirements.
 
-Current state: **P0 locally verified** on macOS arm64. The minimal loader entry, wrapper, JVM tests and build gates are implemented. Linux/Windows CI execution is pending. P1 is **in progress**; P2's cells/drives, ownership and wired topology are **in progress**; P3–P7 are **not started**. No complete product acceptance criterion has passing evidence yet.
+Current state: **P0 locally verified** on macOS arm64. The minimal loader entry, wrapper, JVM tests and build gates are implemented. Linux/Windows CI execution is pending. P1 is **in progress**; P2's storage/ownership/wired integration and P3's explicit world-transfer primitives are **in progress**; P4–P7 are **not started**. No complete product acceptance criterion has passing evidence yet.
 
 ## How an AI should proceed
 
@@ -64,8 +64,9 @@ currently unverified. Existing component tests remain partial evidence only.
 | Finished release | P7; A01–A17 | Complete acceptance evidence, finished assets and onboarding, supported recovery, multiplayer/migration/interruption checks and full workloads on documented supported configurations. |
 
 The immediate direction is to close remaining P1/P2 prerequisites and deliver
-the useful-storage demonstration. Physical energy-bank integration remains P2
-work; dependencies determine slice order. Keep A04 and other unfinished criteria
+the useful-storage demonstration. Physical banks and explicit sided connector transfers have local headless evidence;
+external catalog/claims, stable endpoint context and actual chunk/restart
+verification remain P2/P3 work. Dependencies determine slice order. Keep A04 and other unfinished criteria
 open even when the first item-storage loop works. Do not restart completed P0
 work or defer all player feedback until the full backend is built.
 
@@ -89,8 +90,8 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | --- | --- | --- |
 | A01 | P3 | Not implemented. |
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
-| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. World integration remains pending. |
-| A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest](modules/ENERGY_BANKS.md) adds finite bank rates, identity-based movement budgets, simulation/claim preservation and seeded conservation. World capabilities, permissions and UI remain pending. |
+| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; crafting job claims, global selection/all-key search and full server restart/interruption integration remain pending. |
+| A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Automatic external catalog/selection, permissions UI and actual chunks/restart remain pending. |
 | A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Actual chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
 | A07 | P4 | Not implemented. |
@@ -98,8 +99,8 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A09 | P5 | Not implemented. |
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Not implemented. Terminal flows and R08 presentation/client checks remain pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
-| A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation is implemented; player permissions UI and multiplayer checks remain pending. |
-| A13 | P2, P4, P6, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Actual chunk unload/world restart, staging/jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
+| A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation and execution-time scheduled physical transfer permissions/private segments are implemented with seven WorldStorageTransfersGameTests. Connector cases additionally verify source/target current grants, denied parent/private-child transfers, config revocation and stale provider handles. Player permissions UI and multiplayer checks remain pending. |
+| A13 | P2, P4, P6, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. Actual chunk unload/world restart, world-scoped provider identity markers now have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
@@ -654,3 +655,613 @@ Verification on local macOS arm64 / Java 21:
 - No new gameplay tests were added because only documentation changed. No client,
   survival, multiplayer or performance checks were run for this edit; those
   release evidence gaps remain open.
+
+## Energy-bank ownership transitions — 2026-10-11
+
+Continued from the earliest unfinished P2 physical-bank prerequisite on macOS
+15.3.1 arm64 / OpenJDK 21.0.12. Added `EnergyBankOwnership` for tier-checked
+place/reload/remove and sequential portable upgrades against the canonical
+registry. Four new behavioral tests prove populated movement/upgrades retain
+stock and claims, shared tick spending follows the backing, copied placed leases
+quarantine, invalid admission rejects without mutation, and snapshot reload stays
+offline. The service has no independent energy copy or new persistence schema.
+
+- `./gradlew spotlessApply test`: passed; new ownership tests executed.
+- `python3 scripts/verify.py`: passed documentation/acceptance checks, all 24
+  tooling tests and Gradle build/check. All 21 required headless Minecraft
+  GameTests executed and passed. JVM tests were up-to-date in this build after
+  the preceding test run; unchanged Rust verification was also up-to-date.
+- Format/static/architecture/packaging gates passed; `git diff --check` passed.
+- Physical blocks/items/capabilities, client visuals, actual chunks/full restart,
+  multiplayer and survival checks were not implemented or verified by this slice.
+
+Next prerequisite remains the physical bank adapter: register three tier blocks
+and lease-consuming items, wire shared server-tick energy access and bounded wired
+availability, preserve malformed/future data on break, add sequential module
+application, recipes/finished assets, and real capability/ownership GameTests.
+P2 and A04/A13/A14 remain partial; the A01–A17 full release goal remains active.
+
+## Physical finite energy banks — 2026-10-11
+
+Implemented three tier blocks/items and their NeoForge energy capabilities.
+Lease-consuming placement, exact single break drops, sequential portable module
+upgrades, wired validation and shared server-tick rate budgets use existing core
+ownership/accounting. Bank chunks/items carry strict version-one references only;
+canonical schema three is unchanged. Malformed/future references survive save,
+break and placement without replacement stock. Added player inspection, tooltips,
+native tier models and vanilla Starter recipe/unlock; player/asset/module docs
+track implementation separately from client evidence.
+
+Six required EnergyBankGameTests exercise the real block/capability/recipe and
+ownership paths. Two EnergyBankHandleDataTest cases add a committed schema-one
+fixture and strict malformed/future-input rejection. These support A04/A13/A14;
+no release acceptance row is complete.
+
+Verification on macOS 15.3.1 arm64 / OpenJDK 21.0.12:
+
+- Initial `./gradlew spotlessApply compileJava` passed.
+- Intermediate `./gradlew spotlessApply build` passed the first five new tests
+  (26 total GameTests) plus the JVM suite; unchanged Rust tasks were up-to-date.
+- Expanded build executed all 27 GameTests successfully, but failed three of 91
+  JVM tests on asynchronous NeoForge read-cleanup racing JUnit temporary-directory
+  deletion. Added owner-lifecycle drains in the three affected disk-fixture classes;
+  no test assertion/check was removed or weakened.
+- Final `./gradlew spotlessApply build`: passed 91 JVM tests and 27 required
+  GameTests with zero failures/errors/skips; format/static/architecture/packaging
+  gates passed. Rust verification retained its unchanged up-to-date result.
+- `python3 scripts/verify.py`: passed document/acceptance validation, 24 tooling
+  tests and the complete Gradle build/check; all 27 GameTests ran afresh. JVM/Rust
+  and other unchanged checks were up-to-date after the preceding build.
+- `git diff --check` and final focused documentation validation passed.
+
+Actual chunk unload/full-world restart, independently interrupted saves, client
+model/interaction checks, multiplayer and survival/generator progression remain
+unverified. P2 stays in progress. Continue bank world-lifecycle/recovery evidence
+and physical connectors, then the bounded hopper/terminal path through P3 and all
+remaining full-release stages; this checkpoint does not narrow the A01–A17 goal.
+
+## Physical populated-bank movement evidence — 2026-10-11
+
+Added `EnergyBankGameTests.brokenPopulatedBankUpgradesAndReplacesItsPhysicalOwner`
+for the remaining P2 movement/upgrade path. The actual world breaks a bank seeded
+through its capability, upgrades the one dropped portable item, places the
+Expanded bank at another cable-connected position, and waits for production
+wired revalidation. It checks backing identity, exact energy/claims, rejection by
+the retained removed entity, offline replacement backpressure, claim-owner
+extraction and the new tier's 4,000 FE input ceiling. This strengthens A04/A13
+physical evidence; actual chunk unload and full-world restart remain unverified.
+
+The initial same-position replacement version passed `./gradlew spotlessApply build`
+with all 28 required GameTests; JVM/Rust tasks were up-to-date. The final test
+moves to a distinct position; its canonical verifier result is recorded below.
+Full first-playable scope and remaining P2–P7 obligations stay unchanged.
+
+Final `python3 scripts/verify.py` passed documentation/acceptance checks, 24 tooling
+tests, and the required build/check. All 28 GameTests executed afresh, including
+the distinct-position move; unchanged 91-test JVM and Rust tasks were up-to-date.
+`git diff --check` and focused final documentation validation passed. No client,
+chunk-unload, full-world restart, multiplayer or survival check was run here.
+
+## Transfer recovery prerequisite — 2026-10-11
+
+External world endpoints require owned persistent staging before mutation. Extended
+existing `StagedTransfer` with immutable validated snapshots, pending call/amount,
+pre-call and post-accounting journal notifications, and exact-backing restore.
+Known partial remainders preserve accounting and current authorization. Any pending
+external extraction/delivery/return restores quarantined without replay/refund;
+recording failure before extraction stops mutation. Diagnostics are bounded to
+512 characters. No independent resource copy, player endpoint, disk schema or
+crash-durability claim is introduced.
+
+Four TransferRecoveryTest cases capture interruption records from inside handlers
+that mutate before throwing, and verify partial recovery/conservation, denied
+fresh authority, inert completed records, endpoint mismatch, journal failure,
+malformed snapshots and overflow. `./gradlew spotlessApply compileJava` and
+`./gradlew spotlessApply test` passed. The initial canonical verifier passed 24
+tooling tests and all 28 GameTests; JVM/Rust tasks were up-to-date after the test
+run. Final stricter snapshot-validation checks are recorded below.
+
+Next prerequisite is a bounded canonical staging-record manager and versioned
+save/migration/recovery integration, then physical connectors and the hopper/
+terminal loop. World interruption/chunk/restart, client and all other release
+obligations remain open; A03/A13 gain only portable component evidence here.
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 95 executed JVM tests
+and 28 executed required GameTests, with zero failures/errors/skips. Formatting,
+PMD, architecture and packaging passed; unchanged Rust verification remained
+up-to-date. `git diff --check` and focused final documentation validation passed.
+No world staging/restart/interruption, client, multiplayer or survival check was
+claimed by this core-only slice. The full release goal remains active.
+
+## Canonical owned transfer records — 2026-10-11
+
+Implemented TransferRegistry as the single bounded owner of staging runtime
+instances. Admission precedes extraction and reserves maximum record metadata;
+record IDs expose immutable snapshots, binding is explicit after reload/unload,
+and uncertain records cannot retire, replay or refund. Added strict local transfer
+schema one and canonical world schema four alongside ledgers/grants/nodes.
+Schemas one/two/three migrate by adding empty missing tables while preserving
+existing data exactly. Unknown schemas/types/codes/fields/duplicate/overflowed
+records quarantine the entire original save instead of resetting storage.
+
+Four TransferRegistryTest and three TransferPersistenceTest cases add core
+lifecycle/limits/reentrancy and real compressed disk debit/credit/staging recovery,
+plus a committed schema-four pending-intent fixture. Existing migration tests now
+expect schema four and explicitly preserve old owned data; unknown-version tests
+advance to schema five. This reflects the new versioned contract, not relaxed
+checks. No physical transfer endpoint or release criterion is marked complete.
+
+`./gradlew spotlessApply compileJava`, `./gradlew spotlessApply test` and the
+initial `./gradlew spotlessApply build` passed; the full build executed all 28
+required GameTests and the JVM suite. Final admission/reentrancy regression and
+canonical verifier outcomes are recorded below. Rust inputs remained unchanged.
+
+Next is scheduled/authorized world endpoint integration and physical connectors,
+then the hopper/terminal path. Real world restart/chunks, interrupted independent
+external saves, administrative reconciliation, client, multiplayer, performance
+and all P4–P7 release obligations remain unfinished. The full A01–A17 goal stays
+active.
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 102 executed JVM tests
+and all 28 executed required GameTests, zero failures/errors/skips. Formatting,
+PMD, architecture and packaging passed. Unchanged Rust verification was
+up-to-date. `git diff --check` and focused final documentation validation passed.
+No client, full-world restart/chunk, multiplayer, survival or independent external
+save interruption pass is claimed. The schema-four disk tests are component
+integration evidence, not release-wide persistence acceptance.
+
+
+## Scheduled digital world transfer checkpoint — 2026-10-11
+
+Added `WorldStorageTransfers`, shared through the wired runtime, for bounded
+queued cell/bank moves using authenticated principals, current physical holders,
+shared permission/segment visibility, scheduler fairness, registry simulation,
+unreserved extraction and canonical schema-four transfer ownership. Requests are
+limited to 128 items or 1,000 mB/FE, 16 credits each, 256 tickets and 2 MiB estimated
+queued payload; completed/staged records still use the separate canonical quotas.
+Execution-time record quota rejection is typed TECHNICAL_LIMIT before extraction.
+Individual cancellation preserves unrelated work; externally cancelled scheduler
+tickets are reclaimed on next admission with a bounded scan. Neither completion
+nor operator status widens segment scope.
+
+Added three JVM behavioral tests (ledger/registry simulation and targeted scheduler
+cancellation) and five real GameTests (partial unreserved transfer, permission
+revocation, cable disconnection, removed cell and parent/private-child denial).
+`./gradlew spotlessApply test compileGameTestJava` passed, executing the JVM tests.
+`./gradlew spotlessApply build` passed all 33 actual required GameTests and static
+checks; JVM/Rust tasks were cached after the earlier run. Further verification
+below records the final revision after admission/queue cleanup review.
+
+P1/P2 and A03/A12 remain partial: digital world transfer API is implemented, but
+external inventory/fluid/energy connectors, terminal/player packet paths,
+coordinated world restart/rebind/refund, actual chunk unload, client/multiplayer
+and representative performance evidence remain incomplete. No full release
+acceptance criterion or implementation stage is marked complete. Next prerequisite
+is physical connector integration through shared authorization/scheduling/accounting,
+including conservative foreign-outcome recovery and endpoint lifecycle ownership.
+See [world transfer contract](modules/WORLD_STORAGE_TRANSFERS.md).
+
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 105 executed JVM tests
+and all 35 executed required GameTests, with zero failures/errors/skips. Formatting,
+PMD, architecture and build/check passed; Rust guest verification was UP-TO-DATE.
+The two additional world scenarios verify individual/whole-principal cancellation
+admission reclamation and a physical bank move limited to 300 FE of destination
+space with exact canonical conservation. Final diff review and `git diff --check`
+found no whitespace errors, disabled tests or incidental generated artifacts.
+Actual full restart/chunk unload, client/multiplayer, external handlers and
+performance evidence are not claimed. The full-release goal remains active.
+
+
+## Sided connector and external transfer checkpoint — 2026-10-11
+
+Implemented a leased physical Storage Connector with six-way socket/model/shape,
+five cable faces, item/fluid/FE kind, read/write policy, priority, bounded item
+window and dual provider/connector rate accounting. Copper/redstone/hopper recipe,
+short translated tooltip controls and native chat inspection ship alongside it.
+Configuration requires current shared EDIT permission, does not consume material,
+and invalidates queued handles. The connector registers a foreign view rather
+than copying contents into a digital ledger. Canonical string kind CONNECTOR
+extends existing schemas; a fixed local schema-one fixture and compressed lease
+movement/reload checks preserve old fields and create no network grants.
+
+Vanilla wrappers require actual container identity and normalized chest halves;
+opaque providers require explicit complete backing descriptions. Same-kind
+registration overlaps reject, including different faces, disjoint windows or
+shared handlers. All backing chunks must be loaded. Only supported generic
+NeoForge APIs are imported; no optional dependency is loaded. Real third-party
+identity adapters and external catalog/reservation/selection remain unfinished.
+The same shared service admits foreign endpoint types, checks exact key encoding,
+current scopes/grants/ownership/access/rates, and journals mutations through
+canonical staging. Quarantined outcomes never retry/refund. Recursive calls,
+self-moves, bad keys and stale providers have observable rejection coverage.
+
+Backing invalidation indexes at most 1,024 live/in-progress records with two
+links each, releasing capabilities without a network scan or losing saved
+counts. The regression invalidates during extraction/delivery, retains actual
+known staging and isolates unrelated records. Quarantine remains UNCERTAIN
+without binding; the old pending-intent disk fixture still requires OFFLINE
+until validated bind transitions it, with no changed expected fixture result.
+Cleanup avoids creating new services during recovery or shutdown.
+
+Nineteen new required GameTests cover real chest/NeoForge handlers, partial exact
+item/mB/FE moves, reservations, revocation, private children, overlap/double chests,
+rate/settings/backing-description changes, rotations, physical controls, movement,
+future data, opaque identity, faults/reentry, slots/orientations and self-moves.
+Three ConnectorDataTest cases, compressed NodePersistenceTest, the sparse last-int
+slot/negative-slot regression and an indexed transfer-lifecycle test add JVM
+coverage. Bounds remain explicit; representative performance is unmeasured.
+
+During implementation, the first build passed world tests but failed three PMD
+borrowed-world annotations; another test compile identified a missing test import.
+Two new world assertions initially inspected replacement/rotation before required
+topology revalidation. Corrected scenarios now require immediate suspension and
+fresh-provider behavior after revalidation, rather than accepting any reason.
+An initial cleanup change altered legacy unbound-pending failure classification;
+restored the existing OFFLINE-until-bind fixture contract without editing its
+assertion. Focused JVM verification passed after those corrections. Final
+canonical results below cover the resulting revision.
+
+P1/P2/P3 and A03/A04/A12/A13/A14 remain partial. Next prerequisites: persistent
+source/destination/origin context and stable provider identity; validated world
+resume/cancellation/unload/restart; indexed authorized external catalog and shared
+claims/selection; then the hopper/buffered-preset/terminal loop. P4–P7 and complete
+assets/onboarding/compatibility/multiplayer/performance acceptance remain required.
+No full release, stage or acceptance criterion is marked complete. Contract:
+[CONNECTORS.md](modules/CONNECTORS.md); rationale: [ADR 0013](decisions/0013-external-connectors.md).
+
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 111 executed JVM tests
+and all 54 executed required GameTests, zero failures/errors/skips. Formatting,
+PMD, architecture, compiler and build/check passed; pinned Rust guest checks were
+UP-TO-DATE (unchanged). The final suite includes nineteen connector world cases,
+the fixed connector SNBT fixture, indexed in-call capability unbinding and the
+last-int/negative-slot regression. Final `git diff --check` and documentation/
+acceptance validation passed after evidence recording. Scope review found no
+removed/skipped/weakened test, policy/CI bypass or accidental generated artifact;
+all prior work remains uncommitted and preserved. Real client, multiplayer,
+chunks/full restart, stable foreign endpoint context/recovery, catalog/claims,
+automatic routes, complete onboarding/progression and performance remain open.
+The full first-playable goal remains active.
+
+
+## Persistent provider identity prerequisite — 2026-10-11
+
+Added reference-only marker schema one in NeoForge persistent block-entity data:
+world UUID and component UUID, never copied resource contents. Stable group IDs
+include kind and sorted component identities. Validate all existing parts before
+initialization, require loaded persistent block entities, preserve unknown/foreign
+markers, and reject concurrent copied identities at separate coordinates. Rate
+budgets now follow persistent backing identity while connector identity still
+prevents group/reconfiguration bypass. Lifetime tokens remain transient so old
+queued handles cannot serve a replaced/reloaded provider. Existing global save,
+connector and transfer formats/fixtures remain unchanged; legacy transient
+transfer endpoints cannot be guessed into new markers.
+
+Two codec/identity tests and three world cases cover strict/future/foreign data,
+group semantics, compressed real-container NBT content/identity reload, replacement
+and copied-identity rejection. The existing metadata-group rate scenario now has
+real block entities for all declared parts, keeping its original assertions.
+`./gradlew spotlessApply build` passed 56 world cases at the intermediate revision;
+final verification below covers copied-marker and diagnostic/rate updates.
+No full world/chunk restart or transfer continuation is claimed. P2/P3 and A03/
+A04/A12/A13 remain partial. Next: persist source/destination/origin context and
+implement validated resume/cancellation, then external catalog/claims/selection
+and the hopper/terminal loop. The full release objective remains active.
+
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 113 executed JVM tests
+and all 57 executed required GameTests, zero failures/errors/skips. Formatting,
+PMD, architecture, compiler and build/check passed; unchanged Rust guest checks
+were UP-TO-DATE. Final whitespace/documentation/acceptance checks passed after
+recording this evidence. Existing changes and assertions are preserved; no CI or
+verification rule was weakened and no generated world artifact was added to git.
+Stable provider identities are implemented/verified at codec and compressed
+block-NBT scope. Source/destination/origin operation context and recovery driver
+remain unfinished, as do actual chunk/full world restart, client, multiplayer,
+external stock/claims, automatic presets/terminal and the remaining release
+criteria. The full first-playable goal remains active.
+
+
+## Accepted transfer context — 2026-10-11
+
+Implemented immutable portable TransferContext and strict nested codec, attached
+before resource calls in the single canonical staging owner. Save world/network/
+segment/origin and both device/backing/lease/configuration references; save no
+operator authority or handler. Global world schema five and transfer entry schema
+two retain all old quantities/claims/grants/identities/intents, with null context
+for older records. Unknown or mismatched context retains full recovery files.
+Shared world transfers now capture original root/segment at queue admission and
+deny migration to a replacement root before mutation, even for the same owner.
+
+The fixed context fixture and four behavioral/disk tests prove exact scope/type
+round trips, pre-mutation mismatch denial, compressed context/count/grant recovery,
+foreign/malformed preservation and unbound restore. World tests prove attached
+references and old-root queue denial. Initially extending every record's fixed
+allowance failed the unchanged 1,024-record admission test; corrected to a separate
+1,024-byte context charge without weakening counts/byte limits or tests. Existing
+migration fixtures now target schema five and normalize only declared version
+changes before asserting all prior data remains exact. Schema six is the new
+unknown-format case. `./gradlew spotlessApply build` passed 58 actual GameTests and
+the JVM/static gates at the intermediate final-code revision; canonical results
+below cover completed docs and checks.
+
+P2/P3 and A03/A12/A13 remain partial. Next is a bounded recovery API/scheduler that
+reacquires current endpoints, validates accepted root/segment, actor ownership,
+current generations/policy/grants and stable provider markers, and progresses only
+known staging or owned cleanup. Never repeat extraction; unknown/pending records
+remain quarantined and legacy missing context requires explicit reconciliation.
+Then prove real chunks/full restart/interruption boundaries, implement external
+stock/claims/selection and deliver the hopper/preset/terminal loop. The full A01–
+A17/asset/onboarding/performance objective remains active; no stage is complete.
+
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 117 executed JVM tests
+and all 58 executed required GameTests, zero failures/errors/skips. Formatting,
+PMD, architecture, compiler and build/check passed; unchanged Rust checks were
+UP-TO-DATE. The first canonical attempt caught a newly lengthened Javadoc's
+formatter requirement; applied formatting and reran the canonical command to a
+pass. No assertion, quota, policy or CI rule was weakened. Final documentation/
+acceptance validation and `git diff --check` passed after recording this evidence;
+prior changes remain preserved and uncommitted. Implemented/verified: context
+storage, schema migrations and replacement-root queued rejection. Still incomplete:
+validated world progress/cleanup, actual chunk/full restart/interruption evidence,
+client/multiplayer, external stock/claims and all remaining first-playable scope.
+The active goal is not complete; resume with the recovery API/scheduler prerequisite.
+
+## Explicit saved-staging progress checkpoint — 2026-10-12
+
+Implemented `WorldStorageTransfers.progress` for the recorded principal to queue
+bounded delivery or owned cleanup using shared fairness, credits and limits.
+Accepted origin/root/segment and endpoint references are revalidated; foreign
+leases, configuration generations and persistent backing markers must match.
+Delivery checks current grants before provider probes. Cleanup returns only known
+staging after revocation and does not require the old destination. Ports reject
+extraction. Pending/quarantined and missing-context records are never replayed.
+Retirement or context changes before dispatch produce denial. Queue footprint now
+reserves 1,536 bytes plus exact key payload; existing count/byte gates are retained.
+
+Six new headless scenarios prove no repeated extraction, revoked delivery plus
+owned return, stale source retention, destination-independent cleanup, other
+principal/operator denial and legacy missing-context preservation. The initial
+build failed two assertions because cell removal temporarily rebuilt the origin
+scope; fixtures now wait for valid topology before testing endpoint recovery.
+No expectations were weakened. `./gradlew spotlessApply build` passed with 64
+executed required GameTests and JVM/static gates; canonical verification follows.
+
+P2/P3 and A03/A12/A13 remain partial. Automatic recovery dispatch, actual chunk/
+full server restart and interruption evidence, external stock/claims/selection,
+client operations and all remaining first-playable features/assets still remain.
+Next: exercise foreign recovery and larger staged quantities, then real lifecycle
+recovery and the external stock/preset/terminal prerequisite. No stage is complete.
+
+Canonical `python3 scripts/verify.py` passed 24 tooling tests and all JVM/build/
+formatting/static/documentation gates. Its 64 required GameTests executed and
+passed without skips; JVM test and unchanged Rust tasks were UP-TO-DATE. The
+preceding `./gradlew spotlessApply build` executed the JVM suite (117 tests) and
+64 GameTests successfully. `git diff --check` passed. No full world restart,
+client, multiplayer or release performance evidence is claimed. The full-release
+goal remains active.
+
+
+## Recovery quantum and external reacquisition evidence — 2026-10-12
+
+Added a 250-item known-staging scenario: the first scheduled call delivers 128
+and retains 122, then a second call completes 250 exactly while source stock stays
+50 throughout. Added an external-source scenario using a real chest capability,
+exact named item identity and actual extraction into canonical staging. After
+provider invalidation and replacement with its saved block-entity NBT, scheduled
+progress reacquires the stable backing and delivers 64 from staging while the
+reloaded chest stays empty. This proves block-entity NBT endpoint reacquisition,
+not a full server restart or atomic cross-file persistence guarantee.
+
+`./gradlew spotlessApply build` passed with 66 executed required GameTests and
+formatting/static gates; JVM and unchanged Rust tasks were UP-TO-DATE. Previous
+turn produced 117 executed passing JVM tests. A03/A12/A13 remain partial. Next
+prerequisite: bounded foreign catalog observations and shared claims for automatic
+selection/presets, while full chunk/restart/interruption and administrative
+reconciliation remain required. No acceptance criterion or stage is complete.
+
+Canonical `python3 scripts/verify.py` passed 24 tooling tests, all 66 executed
+required GameTests with no skips, and JVM/build/static/formatting gates. JVM tests
+(117 passing in the retained report) and unchanged Rust verification were
+UP-TO-DATE; no fresh execution of those cached tasks is claimed. Documentation/
+acceptance validation and `git diff --check` passed. Previous goal turn and this
+turn both changed authoritative state and added passing behavioral evidence;
+the full-release goal remains active.
+
+
+## Scheduled external stock observation checkpoint — 2026-10-12
+
+Implemented bounded advisory item/fluid/FE pages behind shared scheduling and
+VIEW/segment validation. Each call reads at most 16 configured positions, returns
+exact immutable keys/counts and explicitly unknown item insertion capacity, and
+never simulates transfers or reserves/caches foreign resources. Queue scope is
+pinned and revalidated; provider read faults quarantine without partial rows.
+Acceptance A03/A04/A12 remain partial: shared claims, aggregate selection, presets,
+terminal/client operations, actual chunks/restart and performance are still absent.
+
+Three JVM scenarios cover component identity, configured-window pagination,
+nonmutation, fluid/FE capacities, immutable results and a provider reporting
+Integer.MAX_VALUE slots with exactly bounded reads. Two new world scenarios check
+queued VIEW revocation hides rows, authorized observation returns exact named-item
+stock without mutation, and a second-slot provider fault discards the entire
+partial page while preserving stock and persisting quarantine. Authority is also
+rechecked after provider reads before any page is published. Canonical verification results follow.
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 120 executed JVM tests
+and all 68 executed required GameTests with zero failures/errors/skips. Compiler,
+formatting, PMD, architecture and build/check gates passed; unchanged Rust guest
+verification was UP-TO-DATE. `./gradlew spotlessApply build` also passed during
+implementation; no failed expectations were weakened. `git diff --check` passed.
+This is backend observation evidence; no finished aggregate catalog, claims,
+terminal, client/multiplayer, full world restart or performance result is claimed.
+The goal remains active; next implement shared foreign claims and execution-time
+stock revalidation, then aggregate selection and automatic storage presets.
+
+## Portable shared foreign claim prerequisite — 2026-10-12
+
+Implemented `ExternalClaims` metadata accounting and `ExternalClaimPort` fresh
+execution-time stock validation. Canonical backing/owner/exact-key holds are
+additive, all-or-nothing and bounded to 4,096 records/4 MiB. Shrinking foreign
+stock never exposes another owner's hold; known partial extraction consumes only
+actual units, unknown outcomes leave holds intact. Immutable restore retains
+orphans and rejects duplicates, overflow and quota violations without resources.
+A shared guard rejects reentrant claim mutation/extraction across wrappers.
+
+Six JVM scenarios include 10,000 generated reserve/consume/release operations
+(seed 0xEC1A1), competing shortage/background access, partial/faulty extraction,
+restore/count/byte bounds and shared reentrancy. A03/A04/A12/A13 remain partial:
+this portable prerequisite is not exposed by world transfers. Next integrate the
+registry into canonical SavedData with versioned codec/migration fixtures, then
+scheduled reserve/release/claimed extraction and current provider revalidation.
+No live world reservation, persisted job recovery or complete stage is claimed.
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 126 executed JVM tests
+and all 68 executed required GameTests, zero failures/errors/skips. Compiler,
+formatting, PMD, architecture and build/check passed; unchanged Rust guest checks
+were UP-TO-DATE. Intermediate `./gradlew spotlessApply build` commands also passed.
+`git diff --check` and post-evidence documentation/acceptance checks passed. No
+world claim behavior, full restart/client or performance verification is claimed.
+This turn adds portable accounting code and behavioral evidence; the full-release
+goal remains active with canonical claim persistence as the next prerequisite.
+
+## Canonical foreign claim persistence checkpoint — 2026-10-12
+
+Added one ExternalClaims registry to DeviceSavedData with bounded dirty callbacks,
+nested schema-one strict/deterministic codec and global schema-six migration.
+Old versions one through five add an empty table; existing counts, grants, node
+leases and accepted transfer contexts remain exact. Orphan holds survive absent
+foreign providers/stock. Malformed/future/duplicate/overflow/oversized claims and
+owned-identity collisions quarantine the whole authority and preserve raw tags.
+New fixed external-claim and schema-five world fixtures protect exact identities,
+large long quantities, pending-call evidence and accepted context.
+
+Six new JVM scenarios exercise exact/deterministic fixture encoding, actual
+compressed SavedData disk reload, dirty state, schema-five migration with populated
+prior tables/context, malformed/future/type/duplicate/overflow raw preservation,
+identity collisions and metadata excess. Earlier migration assertions now expect
+six, assert the new table is empty, then remove only that declared addition before
+comparing prior full data. Future-global tests now use seven; nested schemas stay
+unchanged. Initial focused runs caught the new fixture's wrong storage constructor,
+an asynchronous write observed too soon, and a remaining schema-five expectation;
+corrected setup/wait and version expectation without weakening data assertions.
+
+P2/P3 and A03/A04/A12/A13 remain partial. World claim mutations/claimed extraction
+still await shared scheduled admission, current provider stock validation and
+job/uncertainty reconciliation. Full server restart/chunk interruption, player
+routes, assets and remaining A01–A17 release scope remain unfinished. Next wire
+bounded scheduled reserve/release and all foreign extraction through this registry.
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 132 executed JVM tests
+and all 68 executed required GameTests with zero failures/errors/skips. Compiler,
+formatting, PMD, architecture and build/check passed. Unchanged Rust guest checks
+were UP-TO-DATE. `git diff --check` and post-evidence documentation/acceptance
+validation passed. This proves canonical hold persistence and migration, not live
+world reservations or full server restart. The full-release goal remains active.
+
+## Scheduled foreign holds and protected extraction — 2026-10-12
+
+Wired canonical schema-six holds into shared scheduled principal reserve/release
+and claimed transfers. All connector background extraction respects unclaimed
+stock; claimed extraction revalidates complete bounded fresh totals and consumes
+only actual known units. Reservation checks current grants/visible scope/access/
+lease/config/backing before and after reads. Queue admission pins root/segment.
+Revocation permits only unused metadata cleanup; a matching retained uncertain
+transfer blocks release, including after capability unbinding/disk restore.
+Complete totals are bounded to 64 configured item positions/64 fluid tanks/one FE
+provider. Larger tank catalogs remain paginated but cannot create/use holds until
+bounded complete stock validation exists. Unheld transfers retain bounded calls.
+
+Five headless scenarios prove item competition, background protection, principal
+nonadoption, claimed actual debit, revoked cleanup/new-reservation denial, unknown
+extraction/hold retention/release blocking and exact fluid/FE conservation. One
+JVM regression checks uncertain backing/owner/key lookup after unbound restore.
+Tests stage competing request admission deterministically without assuming actor
+fairness order or bypassing the scheduled release path. No failed requirement,
+quota, expectation or gate was weakened.
+
+A03/A04/A12/A13 remain partial: these principal-owned utility holds are not crafting
+job identities/reconciliation. Aggregate catalogs/selection, automatic presets,
+player deposit/withdrawal, lifecycle/client/multiplayer/performance evidence and
+all remaining A01–A17 presentation/onboarding scope remain unfinished. Next build
+bounded aggregate storage selection then the hopper/preset/terminal loop; preserve
+full restart/interruption and job recovery as outstanding release requirements.
+
+Final `python3 scripts/verify.py` passed 24 tooling tests, 133 executed JVM tests
+and all 73 executed required GameTests with zero failures/errors/skips. Compiler,
+formatting, PMD, architecture and build/check passed; unchanged Rust guest checks
+were UP-TO-DATE. Intermediate `./gradlew spotlessApply build` commands passed.
+`git diff --check` and post-evidence documentation/acceptance validation passed.
+These results verify scheduled principal holds and live protected item/fluid/FE
+extraction; no aggregate selection, crafting-job ownership, client/multiplayer,
+full world restart/interruption or performance evidence is claimed. The full
+first-playable goal remains active; resume with aggregate selection/presets.
+
+## Bounded live exact-key catalog prerequisite — 2026-10-12
+
+Added scheduled live digital/foreign catalog pages using metadata-only UUID-indexed
+registry enumeration. Each step examines eight records; no full ledger snapshot,
+unbounded network scan, chunk load or observed-stock cache is used. Current VIEW,
+root/segment, physical leases and inherited visibility precede provider discovery.
+Rows retain total/held/available, current endpoints, priority and a separate
+withdrawable flag; backing IDs are deduplicated and each page sorts priority/ID.
+Server-only continuation captures actor/root/segment/key and rejects adoption or
+owned replacement-root scope changes. Publication rechecks current visible scope.
+
+Two JVM tests prove bounded stable metadata paging, immutable results, current
+moved generations and unchanged dirty state. Four headless scenarios cover mixed
+catalog counts/holds/discovery, other-root exclusion, parent/operator private-child
+nonenumeration before marker creation, queued revocation and cursor actor/key/root
+binding. Added and ran a reproducible standalone metadata benchmark: 1,024 devices /
+65,536 keys, existing full-save snapshot baseline versus eight-handle index page;
+recorded hardware/runtime, workload, warmup/samples, allocation/timing results and
+limitations in docs/performance/CATALOG_METADATA.md. No world throughput claim.
+
+P2/P3 and A03/A04/A12 remain partial. This is an exact-key live discovery API, not
+all-key search/global distribution or a finished terminal. Next implement bounded
+collected priority selection and persisted rotation, then automatic presets and
+the hopper/storage/terminal/withdrawal loop. Keep all full restart/interruption,
+crafting/job ownership, client/multiplayer, presentation/onboarding and P7 evidence
+requirements outstanding; no stage or acceptance criterion is complete.
+
+Final `python3 scripts/verify.py` passed 24 tooling tests and all 77 executed
+required GameTests with zero failures/errors/skips. JVM test task was UP-TO-DATE;
+the preceding canonical run executed all 135 JVM tests successfully (retained XML
+report: zero failures/errors/skips). Compiler/formatting/PMD/architecture/build
+checks passed; unchanged Rust guest verification was UP-TO-DATE. Intermediate
+`./gradlew spotlessApply build` checks passed. Benchmark command compiled via
+`./gradlew spotlessApply testClasses` and ran explicitly on Java 21; exact results,
+workload and limitations are recorded in the performance document. `git diff --check`
+and post-evidence documentation/acceptance validation passed. No client, full
+world restart or release throughput evidence is claimed. The full-release goal
+remains active; next connect bounded collected global selection to presets.
+
+## Reviewed storage checkpoint and next milestone — 2026-10-12
+
+User requested committing the accumulated changes and reviewing the next steps.
+Prepare one coherent storage checkpoint (physical banks/connectors, canonical
+staging/context/foreign holds and bounded catalog discovery); use smaller feature
+commits for subsequent work. No release criterion or incomplete stage is promoted
+to complete. Global routing work is deferred until after this checkpoint review.
+
+The session's new restricted sandbox prevented fresh Gradle startup: default
+wrapper access to ~/.gradle's lock was denied; an isolated copy-on-write cache in
+/private/tmp allowed cache access but Gradle's local file-lock contention socket
+was denied (SocketException: Operation not permitted). No verification/CI rule,
+Gradle distribution or test was modified to bypass the restriction. Last canonical
+evidence remains 24 tooling tests, 135 executed JVM tests and 77 executed required
+GameTests, with the cache distinctions recorded above. Current documentation/
+acceptance and staged whitespace checks passed; staged Java sources passed a
+standalone check with the configured google-java-format 1.28.0 (long-string reflow
+excluded to match the normal formatter step). A full fresh Gradle run remains
+blocked by the environment, not recorded as passing.
+
+Recommended next milestone: deliver the playable hopper -> storage -> searchable
+terminal -> withdrawal loop, including bounded routing, basic import/export presets,
+server-authorized player operations and usable native UI/assets. Commit each
+coherent feature slice. Then close remaining recovery/restart/multiplayer and
+performance evidence alongside crafting, production scripting, powered/wireless
+progression and final A01–A17/asset/onboarding release audit. An optional user
+preference on playable-loop versus restart/recovery priority is pending; the full
+release goal remains active.

@@ -9,6 +9,27 @@ import org.junit.jupiter.api.Test;
 
 class FairSchedulerTest {
   @Test
+  void cancellingOneTaskKeepsOtherWorkAndReleasesEmptyProgram() {
+    var scheduler = new FairScheduler(LIMITS, () -> 0, failure -> fail(failure.toString()));
+    var network = UUID.randomUUID();
+    var program = UUID.randomUUID();
+    var ran = new ArrayList<String>();
+    scheduler.submit(network, program, "move", 1, () -> ran.add("move"));
+    scheduler.submit(network, program, "query", 1, () -> ran.add("query"));
+    assertTrue(scheduler.isQueued(network, program, "move"));
+    assertTrue(scheduler.cancelTask(network, program, "move"));
+    assertFalse(scheduler.isQueued(network, program, "move"));
+    assertFalse(scheduler.cancelTask(network, program, "move"));
+    assertEquals(1, scheduler.backlog());
+    scheduler.tick();
+    assertEquals(java.util.List.of("query"), ran);
+    scheduler.submit(network, program, "last", 1, () -> ran.add("last"));
+    assertTrue(scheduler.cancelTask(network, program, "last"));
+    assertEquals(0, scheduler.tick().visits());
+    assertEquals(0, scheduler.backlog());
+  }
+
+  @Test
   void diagnosticsFailurePreservesOtherQueuedWork() {
     var ran = new AtomicLong();
     var scheduler =

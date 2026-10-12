@@ -3,6 +3,7 @@
 This development build provides Storage Drives, item/fluid cells and upgrade
 modules on Minecraft 1.21.1 / NeoForge 21.1.252. Network Controllers, Gateways and Cables now have physical placement and
 ownership. Valid wired networks now activate installed cells after bounded server rebuilding.
+Finite Energy Banks expose real NeoForge energy ports on valid wired networks.
 Terminals, automation and wireless access are still pending; the current build has no player deposit/withdrawal endpoint.
 
 ## Cells and drives
@@ -37,6 +38,7 @@ creative tab. Initial icons reference vanilla textures.
 | Starter Item Cell | 4 iron ingots, 4 redstone dust, 1 chest |
 | Starter Fluid Cell | 7 glass blocks, 1 empty bucket, 1 redstone dust |
 | Storage Drive | 4 iron ingots, 4 redstone dust, 1 hopper |
+| Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Expansion Module | 4 gold ingots, 2 redstone dust, 1 diamond |
 | Advanced Module | 4 diamonds, 2 redstone dust, 1 netherite ingot |
 | Infinite Module | 8 netherite ingots, 1 Nether star |
@@ -47,6 +49,31 @@ Fluids stop at Advanced. A successful survival upgrade consumes one module and
 preserves the cell's backing identity, stored contents, reservations and custom
 components. Creative use retains the module. Invalid, placed or copied stale
 references reject the upgrade without consuming ingredients.
+
+## Energy banks
+
+Place a Starter Energy Bank beside your cables/controller. All six faces accept
+and provide FE through compatible energy pipes; ports remain offline until the
+network is valid. Starter/Expanded/Advanced hold 100,000/1,000,000/10,000,000 FE
+and allow 1,000/4,000/16,000 FE each tick separately for input and output.
+Faces share these rates. Reserved energy is unavailable to foreign pipes.
+Use the bank with an empty hand to inspect its stored FE, capacity, rates and
+routing state. Disconnecting its network immediately stops transfers and retains
+the energy. A command-created empty bank is initialized by player inspection.
+
+Break a bank to obtain one portable bank carrying its lease; creative placement
+also consumes this physical reference. Hold the portable bank in your offhand and
+apply Expansion then Advanced modules from your main hand. Contents, identity,
+reservations and custom item components survive upgrades. Infinite energy banks
+do not exist; an Infinite module rejects without consuming ingredients. Higher
+tiers use modules rather than recipes consuming a populated bank.
+
+Malformed/future bank leases break into a labeled recovery bank preserving the
+original reference data. Conflicting block copies quarantine the canonical
+backing; preserve the references and world backup for recovery. Full chunk/restart
+and administrative reconciliation evidence is still pending. The built-in Fuel
+Generator is not implemented yet; current energy ports can use a compatible
+external source. This does not complete the no-optional-mod powered progression.
 
 ## Ownership and recovery
 
@@ -62,11 +89,12 @@ cell removal keeps its exact reference in a labeled recovery item. Automatic
 repair and administrative reconciliation are pending; keep these items and
 back up the world rather than discarding them.
 
-The canonical world registry now uses schema three. Existing schema-one/two worlds
+The canonical world registry now uses schema four. Existing schema-one/two/three worlds
 migrate while preserving cell identities, contents and reservations. Unknown
 or malformed registry data remains unavailable with its original data preserved;
-keep `world/data/factorycore_devices.dat` for recovery. Network grant metadata
-saves with this registry. Wired availability uses current grants and leases;
+keep `world/data/factorycore_devices.dat` for recovery. Network grants and owned transfer staging
+save with this registry. Transfer endpoints and administrative reconciliation
+remain pending; uncertain transfer intents never replay or receive automatic refunds. Wired availability uses current grants and leases;
 permission screens are still pending.
 
 Orderly registry save/reload and block lifecycle behavior are tested. Abrupt
@@ -97,3 +125,47 @@ gateway bypasses and other invalid topology suspend affected routing. Independen
 valid regions stay available. Gateway child storage stays private from its parent;
 child access to ancestor storage follows current gateway policies/grants.
 No player deposit/withdrawal terminal is available yet.
+
+
+## Storage Connector (partial development feature)
+
+Craft with four copper, four redstone and one hopper. Place its copper socket
+against a container and cable the other faces. Empty-hand use prints type,
+access, provider side, priority, configured rate and readiness in chat. With both
+hands empty, crouch-use cycles Items/Fluids/Energy. Normal empty-main-hand use
+with offhand redstone cycles access; iron/gold selects positive/negative
+stack-size priority. Materials are not consumed. Changing settings needs your
+network's current interface-edit grant; gateway restrictions still apply.
+
+A backing inventory is registered only once: another face or double-chest half
+reports overlap. Vanilla item containers are supported when the wrapper identifies
+the actual inventory. Other providers need an explicit backing-identity adapter;
+unknown opaque providers report unsupported. Read-only withdraws from a provider,
+write-only deposits into it. Default rates are 64 items or 1,000 mB/FE per tick
+per direction. No stock is generated or copied into the connector.
+
+This development slice exposes server transfer primitives, not an automatic
+preset or terminal catalog. Priority is stored/displayed; automatic distribution,
+advanced settings screens and external stock reservations are not implemented.
+Runtime endpoint handles expire on changes/reload. Keep incomplete/uncertain
+operation IDs and recovery casings; no automatic replay, refund or administrative
+reconciliation tool is available yet. Persisted endpoint context and full world
+restart/client evidence are still required before the player path is complete.
+
+
+Supported providers now retain a world-scoped identity marker across normal block
+NBT save/load. Replacing a provider without that marker creates a different
+identity; copied identities cannot register twice. Unknown/foreign marker data
+needs recovery and is preserved. This does not yet resume saved transfers:
+operation context, recovery controls and actual full restart evidence remain
+unfinished. Keep pending operation IDs and backups; never replay/refund uncertain
+work based only on a matching block position.
+
+
+The development save now retains a transfer's accepted network/branch, origin and
+endpoint identities beside its staged resources. Root replacement cannot inherit
+already queued work. Existing saves migrate without changing resource quantities
+or assuming missing endpoint details. This still does not automatically resume
+work after restart: current identity/grants/policy validation and recovery controls
+are unfinished. Keep matching world backups; do not downgrade this save to an
+older mod binary or replay an uncertain operation.

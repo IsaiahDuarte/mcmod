@@ -120,6 +120,14 @@ For each change, report the commands run, results, checks omitted with reasons, 
 
 ## Ledger component recovery
 
+Four TransferRecoveryTest cases exercise immutable transfer snapshots and
+interrupted extraction/delivery/return using fake handlers that mutate before
+capturing the pending intent. They require quarantine without replay/refund,
+known-partial conservation, current authority after restore, strict backing
+rebinding, completed-record inertness, journal failure before mutation and
+malformed/overflow/bounded-diagnostic behavior. Canonical world staging saves and
+real interrupted-save/connector evidence remain pending.
+
 The initial persistence suite uses a committed version-one hex fixture from
 test resources, integrity/schema failures and 2,000 generated save/reload
 operations (seed 0x5A7E001). It exercises exact stock and reservation recovery
@@ -233,8 +241,29 @@ Six EnergyBankAccessTest cases verify combined calls/simulation, independent
 input/output ceilings, capacity/claim preservation, same-tick movement/upgrades,
 stale/offline access, clock reversal and canonical snapshot restoration. A 4,000-step
 conservation/rate sequence records seed 0xE0B001. They run in the required JVM suite.
-See [contract](modules/ENERGY_BANKS.md). Physical capability/block/upgrade/recipe,
-actual chunk/full-world restart and client tests remain required as integration lands.
+See [contract](modules/ENERGY_BANKS.md). Physical integration evidence is below;
+actual chunk/full-world restart and client tests remain required.
+
+Four EnergyBankOwnershipTest cases extend the bank prerequisite with lease
+movement, populated sequential upgrades retaining claims, same-tick shared rates,
+copied placed-reference quarantine, occupied/wrong-tier/foreign rejection and
+offline snapshot reload. They run in the required JVM suite.
+
+Seven EnergyBankGameTests exercise actual placement/break, all-face capabilities,
+combined rates/simulation/claims, immediate disconnect/reconnection, populated
+module upgrades/components, lifecycle reload/copy quarantine, malformed/future
+preservation and vanilla recipe costs/unlocks. Two EnergyBankHandleDataTest cases
+require a committed schema-one fixture and reject malformed/future fields.
+The physical movement/upgrade case also verifies the old capability cannot spend
+the replacement bank and preserved claims retain their original owner.
+These extend the required headless suite to 28 GameTests. Actual chunks, full-world
+restart, interruptions, multiplayer and client checks remain required evidence.
+
+DeviceSavedDataTest, NetworkPersistenceTest and NodePersistenceTest drain
+NeoForge's I/O worker in `@AfterEach` before JUnit removes temporary directories.
+Reads schedule cleanup as well as saves; the earlier read/teardown race produced
+NoSuchFileException failures in three tests. The drain retains failure propagation
+and does not skip or weaken assertions.
 
 ## Presentation and onboarding verification
 
@@ -246,3 +275,90 @@ Resource loading and headless GameTests do not prove visual or interaction quali
 A17 requires following discoverable in-game help through the survival progression;
 A13 requires exercising supported administrative recovery and unresolved quarantine.
 These checks remain pending until the owning features and evidence exist.
+
+## Canonical staging record verification
+
+Four TransferRegistryTest cases cover bounded admission before extraction,
+single runtime binding, unload/rebind, known-partial conservation, current
+authority, uncertain-intent retention, retirement/reclaimed admission, duplicate
+and byte/count limits, owner thread and reentrant notification denial. Three
+TransferPersistenceTest cases exercise real compressed schema-four SavedData
+source/destination/staging recovery, the committed registry-v4 SNBT intent fixture,
+and full-save preservation for malformed/future/duplicate/overflowed records.
+Existing schema-one/two/three fixtures now require exact owned-data migration and
+empty transfer tables; schema five is the unknown-version rejection case. These
+replace schema-three target expectations because canonical schema four adds owned
+transfer records; no old fixture or assertion about conserved data was removed.
+Actual world endpoints, full restart/chunks and interrupted independent saves remain
+required. See [transfer persistence contract](modules/TRANSFER_PERSISTENCE.md).
+
+
+## Scheduled world storage transfers
+
+`InsertSimulationTest`, the registry simulation regression and targeted scheduler
+cancellation test cover nonmutating admission, exact partial capacity, catalog,
+offline/routing, Long.MAX_VALUE limits and conserved claims/dirty state.
+Seven `WorldStorageTransfersGameTests` exercise the real shared scheduler and
+physical holders: unreserved partial moves, revocation, disconnection, removed
+cell, private-child denial, cancellation/reclaimed queue admission and partial
+bank FE transfer. These are component world tests; external inventories,
+actual chunks/restart/interrupted saves, client and multiplayer remain required.
+See [API and lifecycle limits](modules/WORLD_STORAGE_TRANSFERS.md).
+
+
+## Sided external connectors
+
+Three ConnectorDataTest cases freeze local schema-one SNBT/field types and reject
+invalid/future policy/reference data. NodePersistenceTest adds compressed connector
+lease movement/reload without network-grant invention. The sparse item-adapter
+regression uses the final valid int slot without allocating/scanning a giant
+inventory and rejects Integer.MIN_VALUE slot-count arithmetic. TransferRegistryTest
+now also exercises backing invalidation during extraction/delivery, preserves
+known staging, releases live references, rebinds and isolates unrelated records.
+Legacy pending schema-four data retains its OFFLINE-until-bind behavior and exact
+fields; quarantine never replays or refunds after unbinding.
+
+Nineteen ConnectorGameTests add real vanilla/NeoForge capability hosts: partial
+component-aware item import/export and reservations, mB/FE, sided availability,
+queued revocation, private child denial, same-provider/double-chest overlap,
+policy/rate/backing-description changes, rotation/revalidation, physical controls,
+movement/stale copies, future evidence, opaque providers and recursive/faulting
+post-mutation calls. Test-only provider blocks remain outside the packaged mod.
+These component checks do not establish real chunks/full restart, endpoint context
+recovery, multiplayer, client scales/rendering, third-party identity adapters or
+performance. See [contract](modules/CONNECTORS.md).
+
+
+## Provider identity persistence
+
+ExternalProviderIdentityTest validates strict world/version/field semantics and
+preserves rejected markers; group identity ignores order, separates kinds/worlds,
+and rejects duplicate/oversized components. Three ConnectorGameTests require real
+compressed chest NBT identity/content round trips, replacement/lifetime separation,
+future-marker preservation and copied identity rejection at distinct coordinates.
+The existing group-change budget case now supplies real persistent block entities
+for both declared parts rather than treating air as an identity-bearing component.
+This replaces its fixture setup to satisfy the new persistent-provider contract;
+its original rate/no-mutation assertions remain unchanged. Full chunks/server
+restart, operation context/recovery and cross-file interruptions are still pending.
+
+
+## Accepted transfer-context schema and scope
+
+Four TransferContextTest cases cover the fixed transfer-context-v1 SNBT fixture,
+strict type/schema/privilege fields, canonical pre-mutation endpoint matching,
+immutable restore, compressed context/staging/grant recovery and full invalid or
+foreign-context preservation. Schema-one/two/three migration tests now target
+world schema five; their owned-data assertions remain unchanged. Schema-four's
+pending fixture migrates to entry schema two without Context and is compared with
+its original bytes after removing only declared version changes; counts/intents
+and OFFLINE-until-bind semantics are preserved. Unknown schema six replaces five
+as the future-world test because five is now the documented supported format.
+
+WorldStorageTransfersGameTests verify context attachment and queue rejection
+across replacement-root network/scope changes, preserving both inventories and
+avoiding phantom records. A metadata budget regression caught an initial fixed
+allowance that made 1,024 records unreachable. Corrected code charges context
+separately, keeping the existing count/byte tests and limits unchanged. These are
+component/disk-adapter evidence; recovery execution, real world restart/chunks,
+client/multiplayer and independent-save interruptions remain required.

@@ -2,8 +2,8 @@
 
 [SPEC.md](../SPEC.md) R08 owns presentation requirements. This inventory tracks
 delivery; [IMPLEMENTATION.md](IMPLEMENTATION.md) owns sequence and acceptance
-evidence. Initial audit: 2026-10-11. No finished visual family or actual client
-visual check is claimed by this document.
+evidence. Initial audit: 2026-10-11. Energy-bank native model geometry is now
+implemented; actual client visual checks remain pending for every family.
 
 ## Style and implementation direction
 
@@ -42,8 +42,24 @@ listed tiers and block-item forms must be covered before closing a row.
 Existing models are under [models](../src/main/resources/assets/factorycore/models),
 with [blockstates](../src/main/resources/assets/factorycore/blockstates) and
 [English names](../src/main/resources/assets/factorycore/lang/en_us.json).
-The current four blocks and fourteen item models reference vanilla textures;
-custom texture/audio assets are absent in the initial audit.
+The current eight blockstate families and eighteen item models reference vanilla
+textures; custom texture/audio assets remain absent. The initial four-block audit
+has been extended by three bank tiers and the connector.
+
+The bank family establishes a native-model direction: dark polished-deepslate
+casings, black inset panels, iron/gold/diamond resource symbols, and one/two/three
+geometric tier bars. Geometry uses a 16-unit block grid and the game's existing
+16-pixel texture materials. The symbol and bar count carry meaning independent
+of color. Original editable JSON geometry is in the
+[Starter](../src/main/resources/assets/factorycore/models/block/starter_energy_bank.json),
+[Expanded](../src/main/resources/assets/factorycore/models/block/expanded_energy_bank.json),
+and [Advanced](../src/main/resources/assets/factorycore/models/block/advanced_energy_bank.json)
+models, with corresponding item parents and blockstates in the directories above.
+These files are original repository assets under the repository license; referenced
+Minecraft textures are supplied by the game and are not copied into the mod.
+No custom bitmap, audio, animation or charge-state renderer is used for banks;
+inspection provides exact charge and routing feedback. The assembled appearance
+and model inventory transforms remain pending real-client inspection.
 
 | Family / variants | Required presentation and feedback | Stage | Asset status | Client evidence |
 | --- | --- | --- | --- | --- |
@@ -54,8 +70,8 @@ custom texture/audio assets are absent in the initial audit.
 | Item cells: Starter, Expanded, Advanced, Infinite | Unique cell icons, tier markings, exact capacity/ownership tooltips | P2 | Placeholder: vanilla item icons | Pending |
 | Fluid cells: Starter, Expanded, Advanced | Fluid symbol, tier markings, mB capacity tooltips | P2 | Placeholder: vanilla bucket icons | Pending |
 | Expansion, Advanced, Infinite modules | Related upgrade icons; discoverable compatible tier/application instructions | P2 | Placeholder: vanilla material icons | Pending |
-| Energy Banks: Starter, Expanded, Advanced + block items | Tier/charge identity; observable stored/capacity/rate state | P2 | Missing | Pending |
-| Storage Connector + block item | Connection face, resource/access/priority inspection | P2–P3 | Missing | Pending |
+| Energy Banks: Starter, Expanded, Advanced + block items | Lightning symbol and tier bars; observable stored/capacity/rate/routing inspection | P2 | Implemented native JSON models and item parents; appearance not yet reviewed in client | Pending |
+| Storage Connector + block item | Connection face, resource/access/priority inspection | P2–P3 | Implemented native six-direction socket model, matching shape, tooltips and translated chat inspection; advanced settings screen remains pending | Pending |
 | Storage Terminal + block item | Recognizable access screen and connection state | P3 | Missing | Pending |
 | Machine Interface + block item | Port/side/label identification and preset state | P3 | Missing | Pending |
 | Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Missing | Pending |
@@ -103,3 +119,14 @@ appearance; interaction logs/tests must establish behavior.
 - [ ] Follow onboarding from a fresh survival setup, including cell upgrades and recovery instructions.
 - [ ] Inspect packaged resources for missing models/textures, remaining stand-ins and provenance; record optional audio/animation decisions.
 - [ ] Link passing evidence for every required family and flow before P6/P7 completion.
+
+
+Connector assets: [block model](../src/main/resources/assets/factorycore/models/block/storage_connector.json),
+[item parent](../src/main/resources/assets/factorycore/models/item/storage_connector.json),
+[six-facing blockstates](../src/main/resources/assets/factorycore/blockstates/storage_connector.json)
+and English keys in the language file above. Original JSON uses deepslate casing,
+copper socket and three iron contacts, with matching six-way selection/collision
+shapes. Vanilla texture references are supplied by Minecraft, not copied assets.
+Status/type/access/side/rate/priority inspection wraps through native chat; short
+tooltip lines document controls. Headless shape/interaction/recipe checks exist;
+real rendering, tooltip wrapping/GUI scales and onboarding remain unverified.

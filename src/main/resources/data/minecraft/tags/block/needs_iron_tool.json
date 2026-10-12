@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "factorycore:starter_energy_bank",
+    "factorycore:expanded_energy_bank",
+    "factorycore:advanced_energy_bank",
+    "factorycore:storage_connector"
+  ]
+}

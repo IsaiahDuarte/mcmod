@@ -1,7 +1,8 @@
 # ADR 0012 — Finite energy banks and identity-based rate accounting
 
 Status: accepted; selected before implementation. Portable core locally verified;
-physical integration remains pending P2 work supporting A04/A13/A14.
+physical integration implemented with local headless evidence supporting
+A04/A13/A14; real chunks/full restart, client and complete release checks pending.
 
 ## Decision
 
@@ -30,7 +31,7 @@ introduced by this service.
 
 ## Physical integration and alternatives
 
-The physical bank will expose bounded NeoForge energy ports on all six faces and
+The physical bank exposes bounded NeoForge energy ports on all six faces and
 validate its current placed lease on every call. Direct foreign pipes are physical
 access outside script grants under R04; network/player/program operations must
 also use current shared authorization and scheduling. Root loss still makes the
@@ -40,6 +41,13 @@ stock must not be copied into block NBT or loot.
 Per-face budgets multiply throughput. Per-entity budgets reset on movement.
 Independent block energy copies break resource ownership. A shared per-identity
 service avoids these errors and preserves the existing canonical save boundary.
+
+The portable `EnergyBankOwnership` transition service validates finite tier
+identity before place/reload/remove/upgrade. Reload cannot consume a portable
+reference; only placement advances it. Conflicting placed copies use the existing
+registry quarantine transition. Movement and sequential upgrades preserve the
+same backing and claims, so the access service retains its tick spending. Physical
+items must replace/consume references only after a successful transition.
 
 Required evidence: partial/full admission, combined sides/calls, simulation,
 reservations, unload/reload and stale leases, same-tick movement, tier changes,

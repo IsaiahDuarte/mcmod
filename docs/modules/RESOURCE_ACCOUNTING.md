@@ -82,6 +82,39 @@ cancel or fabricate a refund; diagnosis/recovery belongs to D03. Supported handl
 partial rejection conserves source + destination + trusted staging exactly.
 The implementation catches runtime handler failures, not arbitrary JVM failures.
 
+### Transfer snapshots and interrupted-call recovery
+
+The `start(..., authorized, journal)` overload invokes an owner-thread
+`Consumer<StagedTransfer.Snapshot>` before actual extraction, delivery or return,
+and after known accounting completes. The seven-argument overload remains an
+in-memory operation with a no-op journal; production persistent endpoints must
+use the recording overload. A journal failure before extraction stops the call.
+Journal failures after a possible mutation conservatively quarantine the move.
+The recorder must not mutate handlers or authorize new work from its callback.
+
+`snapshot()` captures owner, exact resource key, both backing IDs, staged,
+delivered and returned units, state/reason, a diagnostic bounded to 512 characters,
+and pending call/amount. Quantities are nonnegative signed longs in the key's
+units; their accounting sum is checked. Pending amounts record intent, not known
+delivered stock. A pending extraction may have zero known staging even when the
+external source already removed resources.
+
+`restore(snapshot, source, destination, authorized, journal)` requires the exact
+saved backing IDs, binds fresh current-authority callbacks and performs no
+handler operation. Known STAGED remainders can deliver after authorization or
+return as owned cleanup. COMPLETE records do nothing. Any saved pending EXTRACT,
+DELIVER or RETURN restores QUARANTINED, even if its last stored state looked
+complete; delivery and cancellation then report UNCERTAIN without replay/refund.
+Existing quarantined snapshots stay quarantined. Recovery is on the constructing
+thread; snapshot objects are immutable and may be handed to serialization.
+
+Snapshots are accounting data, not portable resource ownership tokens. An outer
+canonical manager must keep exactly one live instance per record, bound record
+counts/bytes, and admit its record before extraction. The [canonical transfer registry](TRANSFER_PERSISTENCE.md) now supplies that
+manager and schema-four SavedData serialization. Intent notification is not an
+fsync or an atomic transaction with foreign inventories; interrupted world-save
+evidence remains required for physical connectors.
+
 The NeoForge adapters accept a caller-supplied backing UUID and selected
 capability, with no optional mod dependency:
 
@@ -124,8 +157,98 @@ quarantine without replay. Generated sequences use seeds `0xFAC7001`, `0xFAC7002
 `0xFAC7003`, each with 10,000 operations and conservation assertions after every
 step. Replay messages include seed and step.
 
+Four TransferRecoveryTest cases capture interruption snapshots from inside fake
+handlers after real fake-stock mutation. They cover extraction/delivery/return
+interruption, no replay or manufactured refund, exact known partial recovery,
+current authorization, completed-record inertness, wrong-backing rejection,
+journal failure before mutation, bounded diagnostics and malformed/overflowed
+snapshots. These are portable recovery tests, not world persistence evidence.
+
 `PlatformResourceTest` uses actual NeoForge `ItemStackHandler`, `FluidTank` and
 `EnergyStorage`, with real Minecraft registry/component codecs. It verifies
 metadata equality/round trips, oversized identity rejection, selected slots,
 full/partial capacity and FE rate limits. These tests do not replace world sided
 capability, unload/reload or client integration checks in P2/P3/P6.
+
+`ResourceLedger.simulateInsert(key, quantity)` reports the same capacity/catalog/
+kind/offline/overflow admission as insertion without mutating stock, claims or
+serialized size. `DeviceRegistry.simulateInsert` additionally checks current lease,
+routing and global metadata budget without dirtying canonical storage. The
+[scheduled world transfer service](WORLD_STORAGE_TRANSFERS.md) uses this advisory
+admission and rechecks actual insertion through the canonical ports.
+
+
+[Physical connector endpoints](CONNECTORS.md) now reacquire sided capabilities
+through explicit backing groups and use these same ports through the shared
+scheduler/staging service. Opaque provider aliases remain unsupported until an
+identity adapter exists; no observed stock is copied into a ledger. Item windows
+support any valid signed-int platform index with at most 64 visited slots and one
+mutated slot. Negative handler slot counts reject before subtraction can overflow.
+A sparse-window test moves exactly three units from the last valid int slot into
+a three-unit ledger without scanning/allocating an enormous inventory. External
+catalog/reservation/port-lease integration and restart context remain unfinished.
+
+## Foreign claim prerequisite
+
+Implemented portable `ExternalClaims` and `ExternalClaimPort` provide the next
+shared-accounting prerequisite. They now persist in canonical world SavedData under schema six; principal-owned scheduled world holds and connector extraction now share them; crafting jobs and player APIs remain unwired. World APIs now expose principal-owned utility holds; aggregate catalogs, automatic selection and crafting job reservations remain unfinished.
+DeviceSavedData supplies one canonical registry per world and persists its snapshot
+beside owned ledgers/staging. Future jobs must share it and authenticate every operation before use.
+
+`ExternalClaims.reserve(backing, owner, key, requested, observed)` creates an
+all-or-nothing additive hold. Backing is the canonical persistent provider-group
+UUID; owner is a trusted job/operation UUID, not a client-selected principal.
+Key preserves exact resource identity. Requested/observed quantities use items,
+mB or FE and must be nonnegative. Zero creates no entry. The caller must validate
+fresh total stock for the complete configured resource window; advisory/stale
+catalog pages cannot establish availability. SHORTAGE returns zero without a
+change. New entries beyond 4,096 claims or 4 MiB conservative metadata return
+RESERVATION_LIMIT. Duplicate provider views must share the same backing key.
+
+`available(backing, owner, key, observed)` returns background availability when
+owner is null; otherwise it returns only that owner's usable hold. If foreign
+stock shrinks below all holds, other owners' quantities stay protected and the
+result clamps to zero. Neither observations nor holds are resource ownership;
+no contents map, foreign inventory or observed total is retained. `held` and
+`reserved` report exact claim metadata. `consume` debits only known actual claimed
+extraction and rejects an amount beyond the hold; `release` explicitly returns the
+entire unused hold amount, without inserting or refunding resources.
+
+`ExternalClaimPort(delegate, canonicalClaims, ownerOrNull, freshObservation)`
+revalidates immediately before each extraction, caps the offered quantity to
+usable stock and checks the actual returned amount. Known partial extraction
+consumes only actual units; a throw/invalid outcome leaves the hold untouched for
+canonical uncertain-operation quarantine. It must be nested inside the journaled
+staged transfer and current world authorization/rate/provider guards. It supplies
+no retry/refund, standalone fault recovery, permission or scheduler bypass.
+Insertion delegates through normal capacity/rate paths and does not release holds.
+The fresh observation must be bounded, nonmutating, not load chunks and report
+exact total matching the canonical backing/window/key. Negative observations fail.
+
+All access belongs to the registry's creating thread. The registry rejects
+reentrant extraction/reserve/consume/release across every wrapper sharing it,
+including observer/foreign callbacks, before calling a second handler. Actual
+claim debit happens only after a known handler return. Immutable `snapshot()`
+contains positive backing/owner/key/amount references only. Restore rejects
+duplicates, sum overflow and metadata/count excess, never drops orphan holds or
+infers foreign contents. Canonical [schema-six persistence](PERSISTENCE.md#canonical-foreign-claims--world-schema-six)
+now preserves these snapshots; scheduled principal holds/provider enforcement and uncertain-release blocking now exist; persisted job reconciliation and full lifecycle evidence remain incomplete.
+
+Example for the future authenticated, scheduled world adapter:
+
+```java
+var reservation = claims.reserve(backingId, jobId, exactKey, 32, freshlyObserved);
+if (reservation.reason() == OperationResult.Reason.OK) {
+  var input = new ExternalClaimPort(validatedProviderPort, claims, jobId,
+      key -> boundedFreshTotal(key));
+  // Pass input through the canonical journaled staged transfer, not direct UI I/O.
+}
+```
+
+Six JVM tests cover competing/background holds, falling foreign stock, known
+partial/unknown extraction, immutable restore/orphans, duplicate/overflow/count/
+byte bounds, cross-wrapper reentrancy and 10,000 generated accounting operations
+(replay seed `0xEC1A1`). These tests do not prove live external reservations.
+
+
+The `(state, changed)` constructor supports the canonical owner’s bounded dirty callback. Restore validates without invoking it. Successful positive reserve and actual consume/release invoke it once; rejected/zero operations do not.

@@ -14,7 +14,8 @@ public final class NodeRegistry {
 
   public enum Kind {
     CONTROLLER,
-    GATEWAY
+    GATEWAY,
+    CONNECTOR
   }
 
   public enum Failure {
@@ -65,7 +66,7 @@ public final class NodeRegistry {
   private final Thread thread = Thread.currentThread();
   private final UUID world;
   private final Runnable changed;
-  private final Map<UUID, Stored> nodes = new HashMap<>();
+  private final java.util.NavigableMap<UUID, Stored> nodes = new java.util.TreeMap<>();
   private final Map<Position, UUID> positions = new HashMap<>();
 
   public NodeRegistry(UUID world, List<Stored> records, Runnable changed) {
@@ -159,6 +160,27 @@ public final class NodeRegistry {
     put(portable);
     changed.run();
     return new Result(Failure.OK, handle(portable));
+  }
+
+  public record HandlePage(List<Handle> handles, UUID next) {
+    public HandlePage {
+      handles = List.copyOf(handles);
+    }
+  }
+
+  /** Metadata-only stable-ID page; every structural kind advances the bounded cursor. */
+  public HandlePage handles(UUID after, int limit) {
+    checkThread();
+    if (limit < 1 || limit > 16) throw new IllegalArgumentException("Invalid node page size");
+    var iterator = (after == null ? nodes : nodes.tailMap(after, false)).entrySet().iterator();
+    var result = new java.util.ArrayList<Handle>();
+    UUID last = null;
+    while (result.size() < limit && iterator.hasNext()) {
+      var entry = iterator.next();
+      last = entry.getKey();
+      result.add(new Handle(world, last, entry.getValue().generation(), entry.getValue().kind()));
+    }
+    return new HandlePage(result, iterator.hasNext() ? last : null);
   }
 
   public List<Stored> snapshot() {

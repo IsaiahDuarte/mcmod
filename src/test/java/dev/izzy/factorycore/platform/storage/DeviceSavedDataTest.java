@@ -19,6 +19,7 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 import net.neoforged.neoforge.common.IOUtilities;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -26,6 +27,12 @@ import org.junit.jupiter.api.io.TempDir;
 class DeviceSavedDataTest {
   @TempDir Path folder;
   private static HolderLookup.Provider registries;
+
+  @AfterEach
+  void finishMinecraftIoBeforeTemporaryDirectoryCleanup() {
+    // Disk reads schedule NeoForge cleanup too, not only saves. Keep its directory alive.
+    IOUtilities.waitUntilIOWorkerComplete();
+  }
 
   @BeforeAll
   static void bootstrap() {
@@ -59,7 +66,13 @@ class DeviceSavedDataTest {
     assertEquals(7, loaded.registry().stock(handle, ResourceKey.ENERGY).reserved());
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(3, migrated.getInt("Schema"));
+    assertEquals(6, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("ExternalClaims")
+            .getList("Claims", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
+    assertTrue(migrated.getList("Transfers", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty());
     assertEquals(fixture.get("World"), migrated.get("World"));
     assertEquals(fixture.get("Devices"), migrated.get("Devices"));
     assertTrue(migrated.getList("Networks", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty());
@@ -100,7 +113,7 @@ class DeviceSavedDataTest {
   void incompatibleOrWrongTypedRegistryIsQuarantinedAndOriginalTagsArePreserved() {
     var saved = DeviceSavedData.open(storage(), file());
     CompoundTag original = saved.save(new CompoundTag(), registries);
-    for (int schema : new int[] {0, 4}) {
+    for (int schema : new int[] {0, 7}) {
       var future = original.copy();
       future.putInt("Schema", schema);
       var rejected = DeviceSavedData.load(future, registries);

@@ -117,4 +117,36 @@ class NodeRegistryTest {
     records.add(duplicate);
     assertThrows(IllegalArgumentException.class, () -> new NodeRegistry(WORLD, records, () -> {}));
   }
+
+  @Test
+  void structuralPagesAdvanceThroughAllKindsAndExposeCurrentGenerations() {
+    int[] dirty = {0};
+    var registry = new NodeRegistry(WORLD, List.of(), () -> dirty[0]++);
+    var expected = new ArrayList<NodeRegistry.Handle>();
+    for (int index = 35; index > 0; index--)
+      expected.add(
+          registry
+              .create(
+                  new UUID(0, index),
+                  index % 2 == 0 ? NodeRegistry.Kind.CONNECTOR : NodeRegistry.Kind.GATEWAY,
+                  new NodeRegistry.Position("minecraft:overworld", index))
+              .handle());
+    int before = dirty[0];
+    var actual = new ArrayList<NodeRegistry.Handle>();
+    UUID cursor = null;
+    do {
+      var page = registry.handles(cursor, 8);
+      assertTrue(page.handles().size() <= 8);
+      actual.addAll(page.handles());
+      cursor = page.next();
+    } while (cursor != null);
+    assertEquals(
+        expected.stream().sorted(java.util.Comparator.comparing(NodeRegistry.Handle::id)).toList(),
+        actual);
+    assertEquals(before, dirty[0]);
+    var first = actual.getFirst();
+    var moved = registry.detach(first, registry.definition(first).position()).handle();
+    assertEquals(moved, registry.handles(null, 1).handles().getFirst());
+    assertThrows(IllegalArgumentException.class, () -> registry.handles(null, 0));
+  }
 }

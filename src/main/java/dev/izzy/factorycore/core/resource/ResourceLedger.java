@@ -175,6 +175,20 @@ public final class ResourceLedger {
     this.loaded = loaded;
   }
 
+  /** Advisory exact admission without stock, claim or metadata mutation. */
+  public OperationResult simulateInsert(ResourceKey key, long requested) {
+    checkThread();
+    OperationResult.requireQuantity(requested);
+    if (key.kind() != kind) return new OperationResult(0, WRONG_RESOURCE);
+    if (!loaded) return new OperationResult(0, OFFLINE);
+    if (requested == 0) return new OperationResult(0, OK);
+    if (!contents.containsKey(key) && contents.size() >= catalogLimit)
+      return new OperationResult(0, CATALOG_LIMIT);
+    long amount = Math.min(requested, space(key));
+    return new OperationResult(
+        amount, amount == requested ? OK : infinite ? TECHNICAL_LIMIT : FULL);
+  }
+
   public OperationResult insert(ResourceKey key, long requested) {
     checkThread();
     OperationResult.requireQuantity(requested);

@@ -38,6 +38,29 @@ class DeviceRegistryTest {
   }
 
   @Test
+  void simulationPreservesStockClaimsAndDirtyStateAndRechecksRouting() {
+    var dirty = new AtomicLong();
+    var registry = registry(dirty::incrementAndGet);
+    var handle = placed(registry);
+    registry.insert(handle, KEY, 990);
+    registry.reserve(handle, JOB, KEY, 60);
+    long before = dirty.get();
+    assertEquals(
+        new OperationResult(10, OperationResult.Reason.FULL),
+        registry.simulateInsert(handle, KEY, 30));
+    assertEquals(before, dirty.get());
+    assertEquals(990, registry.stock(handle, KEY).total());
+    assertEquals(60, registry.stock(handle, KEY).reserved());
+    registry.routing(location -> false);
+    assertEquals(0, registry.simulateInsert(handle, KEY, 1).amount());
+    assertEquals(before, dirty.get());
+    registry.routing(location -> true);
+    assertEquals(10, registry.insert(handle, KEY, 30).amount());
+    registry.detach(handle, FIRST);
+    assertEquals(0, registry.simulateInsert(handle, KEY, 1).amount());
+  }
+
+  @Test
   void currentRoutingDeniesQueuedWritesAndPreservesOfflineClaims() {
     var registry = registry(() -> {});
     var handle = placed(registry);
@@ -257,5 +280,28 @@ class DeviceRegistryTest {
         () ->
             DeviceRegistry.restore(
                 new DeviceRegistry.State(WORLD, owners), () -> {}, UUID::randomUUID));
+  }
+
+  @Test
+  void metadataPagesAreBoundedStableAndDoNotCopyOrMutateStock() {
+    var dirty = new AtomicLong();
+    var registry = registry(dirty::incrementAndGet);
+    var ids = new java.util.ArrayList<UUID>();
+    for (int index = 0; index < 35; index++)
+      ids.add(registry.create(ResourceKind.ITEM, 1000, false, 4096, 8192).handle().backing());
+    long before = dirty.get();
+    var actual = new java.util.ArrayList<UUID>();
+    UUID cursor = null;
+    do {
+      var page = registry.handles(cursor, 8);
+      assertTrue(page.handles().size() <= 8);
+      page.handles().forEach(handle -> actual.add(handle.backing()));
+      assertThrows(UnsupportedOperationException.class, () -> page.handles().clear());
+      cursor = page.next();
+    } while (cursor != null);
+    assertEquals(ids.stream().sorted().toList(), actual);
+    assertEquals(before, dirty.get());
+    assertThrows(IllegalArgumentException.class, () -> registry.handles(null, 17));
+    assertTrue(registry.handles(actual.getLast(), 8).handles().isEmpty());
   }
 }

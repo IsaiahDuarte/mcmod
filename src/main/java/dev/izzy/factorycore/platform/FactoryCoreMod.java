@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -15,6 +16,8 @@ public final class FactoryCoreMod {
 
   public FactoryCoreMod(IEventBus bus) {
     StorageContent.register(bus);
+    dev.izzy.factorycore.platform.storage.ConnectorContent.register(bus);
+    EnergyBankContent.register(bus);
     NetworkContent.register(bus);
     NeoForge.EVENT_BUS.addListener(DeviceSavedData::serverStarted);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::postTick);

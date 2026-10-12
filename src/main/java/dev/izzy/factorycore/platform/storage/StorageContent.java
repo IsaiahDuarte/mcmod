@@ -54,9 +54,12 @@ public final class StorageContent {
                   .displayItems(
                       (parameters, output) -> {
                         output.accept(DRIVE_ITEM.get());
+                        output.accept(ConnectorContent.ITEM.get());
                         output.accept(NetworkContent.CONTROLLER_ITEM.get());
                         output.accept(NetworkContent.GATEWAY_ITEM.get());
                         output.accept(NetworkContent.CABLE_ITEM.get());
+                        for (var tier : dev.izzy.factorycore.core.storage.EnergyBankTier.values())
+                          output.accept(EnergyBankContent.item(tier));
                         for (var tier : CellTier.values()) output.accept(cell(tier));
                         output.accept(EXPANSION.get());
                         output.accept(ADVANCED.get());

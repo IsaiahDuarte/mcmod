@@ -1,0 +1,1 @@
+{Schema:1,Claims:[{Backing:[I;0,0,0,501],Owner:[I;0,0,0,502],Kind:"ITEM",Registry:"minecraft:iron_ingot",Components:[B;1B,2B],Amount:23L},{Backing:[I;0,0,0,503],Owner:[I;0,0,0,502],Kind:"ENERGY",Registry:"neoforge:energy",Components:[B;],Amount:9007199254740993L}]}

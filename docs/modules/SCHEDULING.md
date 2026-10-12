@@ -90,3 +90,12 @@ those samples are excluded from the published baseline.
 An idle case registers then drains 65,536 program owners across 1,024 networks
 before timing. No active queue means zero visits/executions. This is evidence for
 the portable idle scheduler, not idle Wasm or full-game block-entity overhead.
+
+
+`FairScheduler.cancelTask(networkId, programId, key)` removes one undispatched
+keyed action, returning false when absent, while retaining unrelated queued work.
+It runs on the owner thread at a tick boundary and rejects during execution.
+`isQueued(networkId, programId, key)` is a side-effect-free owner-thread query;
+it is false once dispatch takes the action. [World transfers](WORLD_STORAGE_TRANSFERS.md)
+use these primitives for individual cancellation and bounded reclamation after
+whole-principal cancellation. Neither primitive refunds already executed resources.

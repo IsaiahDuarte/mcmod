@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.storage.EnergyBankBlock;
 import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -49,7 +50,13 @@ public final class NetworkContent {
   public static boolean connects(BlockState state, Direction face) {
     java.util.Objects.requireNonNull(face);
     if (state.getBlock() instanceof NetworkNodeBlock node) return node.connects(state, face);
-    return state.is(CABLE.get()) || state.getBlock() instanceof StorageDriveBlock;
+    if (state.getBlock() instanceof dev.izzy.factorycore.platform.storage.ConnectorBlock)
+      return face
+          != state.getValue(
+              net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING);
+    return state.is(CABLE.get())
+        || state.getBlock() instanceof StorageDriveBlock
+        || state.getBlock() instanceof EnergyBankBlock;
   }
 
   private NetworkContent() {}

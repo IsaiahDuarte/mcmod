@@ -14,7 +14,12 @@
 - Added exact ledger snapshots, versioned integrity-checked serialization and
   offline reservation recovery; full staging/job recovery is pending.
 - Added world-scoped generations, metadata admission, live-copy quarantine and
-  Overworld SavedData with corrupt-file preservation. Complete staging/job saves remain pending.
+  Overworld SavedData with corrupt-file preservation. Complete world staging/job recovery remains pending.
+- Added bounded canonical transfer records and schema-four migration from schemas
+  one/two/three. Source/debit/staging recovery is covered by compressed disk tests;
+  pending external calls retain evidence without replay or refunds. Physical
+  transfer endpoints, real world restart/interruption and administrative recovery
+  remain unfinished.
 - Added four-slot Storage Drives, finite item/fluid tiers, earned Infinite Item Cells,
   safe sequential upgrade modules, vanilla recipes/recipe-book unlocks, creative tab
   and player documentation. Required headless GameTests cover placement, break,
@@ -45,3 +50,22 @@ This development artifact is not the first playable release. World transfers, cr
 NeoForge handler ports are implemented and tested; they are not yet connected
 to a playable network. Linux/Windows runtime compatibility and remote CI are unverified.
 See [implementation evidence](docs/IMPLEMENTATION.md).
+
+- Added bounded scheduled digital transfers with current world ownership and
+  shared permission/segment checks; player endpoints and connectors remain pending.
+
+- Added leased, sided item/fluid/FE connector primitives with access/priority/rate
+  policy, bounded windows, backing overlap rejection, staged transfers and native
+  six-direction presentation. External catalogs, presets, stable provider recovery
+  and real client/world restart verification remain unfinished.
+- Backing invalidation releases indexed live transfer capability references while
+  retaining exact owned staging/uncertainty; sparse last-int slot windows and
+  negative slot-count arithmetic now have regression coverage.
+
+- Added strict world-scoped persistent provider component identities and stable
+  kind/group backing IDs; replaced providers and copied/unknown identities fail
+  closed. Persisted operation context and automatic recovery remain unfinished.
+
+- World schema five now saves accepted transfer scope/endpoint context beside
+  owned staging; schemas one through four migrate without invented context or
+  changed counts/intents. Queued moves cannot follow a replacement root.

@@ -1,0 +1,1 @@
+{Schema:1,Node:{Schema:1,Lease:{World:[I;0,0,0,11],Id:[I;0,0,0,271],Generation:2L,Kind:"CONNECTOR"}},Kind:"FLUID",Access:"READ_ONLY",Priority:7,FirstSlot:0,SlotCount:64,Rate:1000,Generation:3L,Fault:""}

@@ -16,6 +16,8 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
 - [Development changelog](CHANGELOG.md): versioned artifact status and limitations.
 - [Ledger persistence](docs/modules/PERSISTENCE.md): initial P2 schema/recovery
   contract; full staging/job recovery remains pending.
+- [Canonical transfer staging](docs/modules/TRANSFER_PERSISTENCE.md): bounded
+  ownership, schema-four migration and conservative external-intent recovery.
 - [Device ownership](docs/modules/DEVICE_OWNERSHIP.md): registry/lease and actual
   SavedData adapter, with [physical storage contracts](docs/modules/STORAGE_CELLS.md) and the [player guide](docs/PLAYER_GUIDE.md).
 - [Architecture decisions](docs/decisions/README.md): how to record significant choices.
@@ -30,7 +32,8 @@ Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / Neo
 - [Live wired networks](docs/modules/WORLD_NETWORKS.md): indexed event invalidation,
   bounded server post-ticks and automatic validated cell availability.
 - [Energy-bank accounting](docs/modules/ENERGY_BANKS.md): finite tiers and shared
-  identity-based FE/tick budgets; physical integration pending.
+  identity-based FE/tick budgets and physical bank capabilities; real chunks/client
+  and complete powered progression evidence pending.
 - [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
 
@@ -69,3 +72,7 @@ On Windows use `gradlew.bat`. The client and development server use separate
 The [GitHub Actions workflow](.github/workflows/quality.yml) installs Java 21 and pinned Rust tools, and
 runs the canonical command on Windows and Linux. Remote CI and branch protection
 remain unverified.
+
+Scheduled digital world transfer API and remaining integration limits: [contract](docs/modules/WORLD_STORAGE_TRANSFERS.md).
+
+Physical connector identities, controls, supported providers and unfinished recovery: [connector contract](docs/modules/CONNECTORS.md).

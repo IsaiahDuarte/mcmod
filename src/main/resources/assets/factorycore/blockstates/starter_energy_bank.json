@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "factorycore:block/starter_energy_bank"
+    }
+  }
+}

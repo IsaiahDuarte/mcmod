@@ -13,7 +13,8 @@ import net.neoforged.fml.common.Mod;
 /** Test-only loader entry; it is excluded from the distributed mod. */
 @Mod("factorycore_tests")
 public final class GameTestMod {
-  public GameTestMod() throws ParserConfigurationException {
+  public GameTestMod(net.neoforged.bus.api.IEventBus bus) throws ParserConfigurationException {
+    ConnectorFixture.register(bus);
     if (!Boolean.getBoolean("neoforge.gameTestServer")) return;
     var xml = new JUnitLikeTestReporter(new File(System.getProperty("factorycore.test.report")));
     var log = new LogTestReporter();

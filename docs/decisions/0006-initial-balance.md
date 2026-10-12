@@ -24,7 +24,7 @@ gameplay targets, distinct from the technical metadata/ownership quotas.
 | Wireless terminal access | Same dimension, 64-block range; 16 FE/active tick and 64 FE/action, bounded to 128 item units/action. |
 | Paired branch links | Same dimension, 256-block endpoint range; 32 FE/connected tick plus bounded traffic costs; 256 item / 4,000 mB / 8,000 FE units per tick, under shared quotas. |
 
-The current slice implements cells/drives and direct cell upgrades only. Other
+The current implementation includes cells/drives, physical finite banks and portable upgrades. Other
 rows freeze initial choices for subsequent modules; they are not implemented
 features. Wireless/local fairness and detailed power billing remain owning-stage
 work and must be measured before release.
@@ -39,6 +39,14 @@ iron, three redstone) and gateway (four iron, two quartz, two redstone, one ende
 pearl). Basic controller/cable/terminal progression uses iron, redstone,
 wood/crafting table and glass without diamonds or Nether resources; the gateway
 is a later segmentation tier. Terminal recipes remain pending.
+
+The P2 bank extension selects four iron, four redstone and one copper ingot for
+a Starter Energy Bank, unlocked by copper in the recipe book. Expanded/Advanced
+banks use the same sequential Expansion/Advanced modules as portable cells; no
+populated-bank crafting recipe exists. This gives finite starter power storage
+without diamonds, Nether materials or an optional mod. A distinct bank-upgrade
+material family would add unlock complexity without a new capacity axis. These
+defaults remain subject to the complete generator/wireless survival playtest.
 
 Expansion module: four gold, two redstone, one diamond. Advanced module: four
 diamonds, two redstone, one netherite ingot. Infinite module: eight netherite ingots
@@ -67,3 +75,29 @@ endgame materials, not an optional mod or a freely duplicable contents item.
 Require exact capacity/upgrade tests, recipe dependency/resource checks, actual
 placement/removal/reload tests, and a starter-to-endgame playtest. The latter and
 full powered/wireless validation are still pending; do not call D06 finalized.
+
+
+## Bounded digital transfer quantum — 2026-10-11
+
+Scheduled cell/bank commands now admit at most 128 items or 1,000 mB/FE per
+request for 16 scheduler credits. A service permits 256 queued tickets and an
+estimated 2 MiB payload budget in addition to shared scheduler and durable-record
+quotas. These are provisional host-work bounds; they do not establish connector
+throughput or final powered-machine balance. Splitting larger requests retains
+shared fairness and accounting. Alternative unlimited single moves would make
+credit cost unrelated to maximum mutation size. Representative performance and
+combined powered progression evidence remain pending.
+
+
+## Connector defaults — 2026-10-11
+
+The Storage Connector now costs four copper ingots, four redstone and one hopper;
+its layout differs from the Drive's iron recipe. It registers one selected
+provider kind and has no automatic import/export rule or power upkeep. Default
+rates are 64 item units or 1,000 mB/FE per tick in each direction, with both
+provider and connector accounting. Configured maxima are 128 item units or
+1,000 mB/FE under existing shared command budgets. Priority is -1,000..1,000;
+item windows visit up to 64 slots starting at any valid platform index. These
+are provisional admission/balance choices, not completed automatic selection or
+measured throughput. Recipes/models load in headless checks; survival/client,
+combined power demand and complete progression remain pending.

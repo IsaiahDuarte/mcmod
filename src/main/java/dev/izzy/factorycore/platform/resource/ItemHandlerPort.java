@@ -27,10 +27,12 @@ public final class ItemHandlerPort implements ResourcePort {
     this.backingId = Objects.requireNonNull(backingId);
     this.handler = Objects.requireNonNull(handler);
     this.codec = Objects.requireNonNull(codec);
-    if (firstSlot < 0
+    int totalSlots = handler.getSlots();
+    if (totalSlots < 0
+        || firstSlot < 0
         || slotCount <= 0
         || slotCount > MAX_SLOTS_PER_CALL
-        || firstSlot > handler.getSlots() - slotCount) {
+        || firstSlot > totalSlots - slotCount) {
       throw new IllegalArgumentException("Invalid or unbounded item slot window");
     }
     this.firstSlot = firstSlot;

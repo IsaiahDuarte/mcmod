@@ -4,7 +4,7 @@
 
 This file is the authoritative product contract for the first playable release. It consolidates user requirements and design defaults chosen under delegated authority. All requirements below apply unless explicitly marked **Later** or assigned to a decision gate in [IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 
-The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Automatic wired membership and cell availability are implemented; terminals and automation remain unimplemented; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
+The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Automatic wired membership, cell availability, physical finite energy banks and explicit connector/transfer primitives, bounded scheduled external stock observations and principal-owned utility holds are implemented; aggregate external catalogs/crafting-job reservations, terminals and automatic presets remain unimplemented; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
 
 ## R01 — Release scope
 
@@ -57,6 +57,15 @@ Names are working names; responsibilities are binding.
 Gateways and Program Controllers are separate blocks. A branch can have no program or multiple controllers. Root programs may coordinate published jobs without a gateway of their own.
 
 A hopper feeds a Buffered Interface in Import mode; the network drains its buffer into permitted storage. Full storage backs up the buffer/hopper without voiding. This setup requires no program or private branch. D06 specifies buffer sizes, recipes, and rates before implementation.
+
+The implemented connector primitive has a provider-facing socket and five cable
+faces. Empty-hand inspection shows type/access/provider side/priority/rate/state;
+authorized physical controls cycle resource/access and set priority without
+consuming materials. Opaque aliases require explicit backing metadata and fail
+closed otherwise. This is partial P2/P3 evidence, not an automatic preset/catalog
+or complete A04/A13 acceptance. [Connector contract](docs/modules/CONNECTORS.md)
+records units, schemas, limits and unfinished restart/context integration.
+
 
 ## R03 — Storage identity, capacities, and views
 

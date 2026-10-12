@@ -113,3 +113,13 @@ reservation cleanup, explicit loaded flags, capture-listener admission failure
 and full-size rediscovery with repeated seeds. Actual chunk unload/reload and full
 world restart, interrupted independent save boundaries, client/multiplayer,
 representative server measurements and complete A01–A17 release remain unverified.
+
+
+[Storage Connectors](CONNECTORS.md) are leased storage nodes with five cable
+faces, excluding the provider socket. All six orientations participate in bounded
+world discovery and port eligibility. `authorize(actor, origin, permission)`
+exposes the current shared authority for small server-side configuration actions;
+connector edits do not bypass gateway policies. `connectors()` lazily returns one
+server registry, and static invalidation cleans existing bindings without creating
+services during recovery/shutdown. Connector rotations use normal topology
+invalidation before accepting fresh endpoint handles.

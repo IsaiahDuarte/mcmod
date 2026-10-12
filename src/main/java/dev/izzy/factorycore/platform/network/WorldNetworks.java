@@ -11,7 +11,9 @@ import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -45,6 +47,8 @@ public final class WorldNetworks {
   private final MinecraftServer server;
   private final DeviceSavedData saved;
   private final FairScheduler scheduler;
+  private WorldStorageTransfers transfers;
+  private dev.izzy.factorycore.platform.storage.WorldConnectors connectors;
   private final Map<NodeRegistry.Position, Region> owners = new HashMap<>();
   private final Map<NodeRegistry.Position, WiredDiscovery.Wire> geometry = new HashMap<>();
   private final Map<ChunkKey, Map<Region, Integer>> chunks = new HashMap<>();
@@ -98,6 +102,42 @@ public final class WorldNetworks {
     if (!server.isSameThread())
       throw new IllegalStateException("World networking requires server thread");
     return SERVERS.computeIfAbsent(server, WorldNetworks::new);
+  }
+
+  public WorldStorageTransfers transfers() {
+    checkThread();
+    if (saved == null) throw new IllegalStateException("World storage unavailable: " + diagnostic);
+    if (transfers == null) transfers = new WorldStorageTransfers(server, this);
+    return transfers;
+  }
+
+  public dev.izzy.factorycore.platform.storage.WorldConnectors connectors() {
+    checkThread();
+    if (saved == null) throw new IllegalStateException("World storage unavailable: " + diagnostic);
+    if (connectors == null)
+      connectors = new dev.izzy.factorycore.platform.storage.WorldConnectors(server, this);
+    return connectors;
+  }
+
+  /** Cleanup never constructs storage services during recovery or server shutdown. */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed event level.
+  public static void connectorInvalidated(
+      net.minecraft.world.level.Level level,
+      dev.izzy.factorycore.platform.storage.ConnectorEntity owner) {
+    if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
+      return;
+    var runtime = SERVERS.get(serverLevel.getServer());
+    if (runtime != null && runtime.connectors != null) runtime.connectors.invalidate(owner);
+  }
+
+  public NetworkAuthority.Decision authorize(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      NetworkPermissions.Permission operation) {
+    var membership = membership(origin);
+    if (membership.status() != NetworkTopology.Status.VALID)
+      return NetworkAuthority.Decision.INVALID_SCOPE;
+    return resolve(owners.get(origin)).authority.authorize(actor, membership.scope(), operation);
   }
 
   public FairScheduler scheduler() {
@@ -323,6 +363,12 @@ public final class WorldNetworks {
           && saved.nodes().validate(lease) == NodeRegistry.Failure.OK)
         region.authority.register(saved.network(lease.id()));
     }
+    if (entity instanceof EnergyBankEntity bank && bank.handle() != null) {
+      boolean valid =
+          region.discovery.publishedTopology().membership(wire.nodes().getFirst().id()).status()
+              == NetworkTopology.Status.VALID;
+      saved.registry().availability(bank.handle(), bank.location(), valid);
+    }
     if (entity instanceof StorageDriveEntity drive) {
       UUID vertex = wire.nodes().getFirst().id();
       boolean valid =
@@ -401,8 +447,11 @@ public final class WorldNetworks {
         level(position.dimension())
             .getChunkSource()
             .getChunkNow(block.getX() >> 4, block.getZ() >> 4);
-    return chunk != null && NetworkContent.connects(chunk.getBlockState(block), Direction.UP)
-        || chunk != null && chunk.getBlockState(block).getBlock() instanceof NetworkNodeBlock;
+    if (chunk == null) return false;
+    var state = chunk.getBlockState(block);
+    for (var direction : Direction.values())
+      if (NetworkContent.connects(state, direction)) return true;
+    return false;
   }
 
   private ServerLevel level(String dimension) {

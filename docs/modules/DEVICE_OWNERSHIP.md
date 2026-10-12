@@ -1,6 +1,6 @@
 # Device ownership and world persistence
 
-Implemented P2 registry, NeoForge SavedData adapter and [physical cells/drives](STORAGE_CELLS.md). Portable topology/current grants and canonical network metadata are implemented; [live wired availability](WORLD_NETWORKS.md) is implemented; durable transfer/job staging remains pending. [ADR 0005](../decisions/0005-persistence-ownership.md) owns the design.
+Implemented P2 registry, NeoForge SavedData adapter and [physical cells/drives](STORAGE_CELLS.md). Portable topology/current grants and canonical network metadata are implemented; [live wired availability](WORLD_NETWORKS.md) is implemented; canonical transfer staging is implemented; job staging and full world recovery remain pending. [ADR 0005](../decisions/0005-persistence-ownership.md) owns the design.
 
 ## Ownership contract
 
@@ -85,20 +85,20 @@ thread. A server-start listener initializes/validates it. Minecraft's
 logs unavailable-registry diagnostics and preserves its file; access remains
 denied while the world may run.
 
-Current schema three: integer `Schema=3`, UUID `World`, compound `Devices` list,
-and required `Networks` and `Nodes` lists; see [network persistence](NETWORK_PERSISTENCE.md). Each device
+Current schema four: integer `Schema=4`, UUID `World`, compound `Devices` list,
+and required `Networks`, `Nodes` and `Transfers` lists; see [network persistence](NETWORK_PERSISTENCE.md). Each device
 has checksummed `Ledger` bytes, positive long `Generation`, boolean byte `Conflict`,
 and optional `Location` (string `Dimension`, long `Position`, integer `Slot`).
 [Ledger schema/units](PERSISTENCE.md) remain separate. The committed SNBT fixture
-protects exact migration from schema one into schema three with empty network/node
-tables and a dirty save. Network grants have their own schema-two fixture. Known typed/schema/ledger/owner failures retain original tags in a
+protects exact migration from schemas one/two/three into schema four with empty
+new tables and a dirty save. Network grants have their own schema-two fixture. Known typed/schema/ledger/owner failures retain original tags in a
 read-only quarantined SavedData that rejects attempts to mark it dirty. If the upstream loader swallows outer NBT/I/O
 failure, the adapter proves file absence before creation; existing/unreadable
 files cannot become empty replacements. Unknown schemas are not silently migrated.
 
 Structural leases/policies now share this authority; see
-[physical nodes](STRUCTURAL_NODES.md). Jobs/staging are not yet in this authority. Consistent
-digital transfers require those owned records in the same save boundary. The
+[physical nodes](STRUCTURAL_NODES.md). [Transfer staging](TRANSFER_PERSISTENCE.md) now shares this authority and save
+boundary; job state and world endpoint integration remain pending. The
 outer NBT reader and I/O error handling remain upstream-owned; inner admission
 bounds do not preempt damaged outer files or guarantee recovery from disk failure.
 Foreign-inventory crash atomicity remains unpromised.
@@ -113,3 +113,17 @@ byte-accounting operations (`0xD031001`). Four DeviceSavedDataTest cases use act
 compressed disk save/reload, a fixed SNBT fixture, quarantined-tag preservation,
 and swallowed corrupt-file rejection. These are core/adapter tests, not
 block-placement, topology or multiplayer gameplay evidence.
+
+## Metadata-only handle pages
+
+`DeviceRegistry.handles(afterOrNull, limit)` returns immutable current-generation
+handles in stable UUID order with an exclusive continuation UUID or null at end.
+Limit must be 1–16; no stock/claims maps are copied and no dirty change occurs.
+`NodeRegistry.handles` follows the same contract for every structural kind.
+Both run on their owning thread. Lifecycle changes update the canonical tree
+entries; pages are advisory rather than a snapshot across calls. These raw
+metadata APIs do not authorize a player/guest or filter private/offline records.
+The shared world catalog checks current scope/visibility/physical leases before
+publishing rows and binds its server-only cursor to actor/root/segment/exact key.
+Do not send raw registry cursors to clients. Persistence remains schema six with
+unchanged ownership/component contracts; full snapshots are still save operations.

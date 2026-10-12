@@ -41,4 +41,7 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
   representative performance checks remain pending.
 
 - [Finite energy-bank access](0012-energy-bank-access.md): selected identity-based
-  rate accounting and canonical finite FE; physical bank integration pending.
+  rate accounting and canonical finite FE; physical bank integration has local
+  headless evidence, with real chunks/restart/client evidence pending.
+
+- [ADR 0013 — Sided external storage registration](0013-external-connectors.md): leased connectors, explicit backing identity, bounds and unfinished recovery.

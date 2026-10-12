@@ -20,11 +20,17 @@ code/tests. Inspect current git changes and preserve unrelated work. Do not
 delegate unless I explicitly request it.
 
 Current recorded baseline: Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21.
-P0 is locally verified; P1/P2 are partial; P3–P7 are unstarted. Cells/drives,
+P0 is locally verified; P1/P2/P3 are partial; P4–P7 are unstarted. Cells/drives,
 controller/gateway/cable ownership, automatic wired availability, core resource
-accounting and scheduling exist. Energy-bank accounting is portable only.
+accounting and scheduling exist. Physical energy banks, capabilities and portable
+upgrades now have local headless evidence; real chunks/restart and client evidence
+remain pending. Canonical transfer staging and accepted operation context now persist with schema-five migration
+and conservative pending-intent recovery; scheduled digital cell/bank endpoints now exist; sided connector primitives now exist; bounded advisory external stock pages now share the scheduler; portable foreign claim metadata/revalidation now persists under canonical schema six; scheduled principal-owned reserve/release/claimed moves and background hold enforcement now exist; crafting-job claim ownership/reconciliation remains missing. Bounded live exact-key digital/foreign catalog discovery now exists; all-key search, global priority selection/persisted rotation and automatic recovery dispatch remain
+missing. Explicit scheduled delivery/owned cleanup now rebinds validated saved endpoints without re-extraction. Accepted source/destination/origin context now persists alongside staging. World-scoped provider component markers now retain
+backing identity across supported block-entity NBT save/load.
 Rust/Wasm is a test-only feasibility probe. There is no player deposit/withdrawal
-endpoint, production scripting, crafting or wireless. Visuals are placeholders.
+endpoint, production scripting, crafting or wireless. Legacy device visuals are placeholders; native bank models
+are implemented with client inspection pending.
 Confirm this baseline against the current checkout before choosing work.
 
 Resume from the earliest incomplete prerequisite; do not rebuild completed

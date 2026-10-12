@@ -4,6 +4,10 @@
     "factorycore:storage_drive",
     "factorycore:network_controller",
     "factorycore:gateway",
-    "factorycore:network_cable"
+    "factorycore:network_cable",
+    "factorycore:starter_energy_bank",
+    "factorycore:expanded_energy_bank",
+    "factorycore:advanced_energy_bank",
+    "factorycore:storage_connector"
   ]
 }

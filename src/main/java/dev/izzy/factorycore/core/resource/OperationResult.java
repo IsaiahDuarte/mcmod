@@ -15,7 +15,9 @@ public record OperationResult(long amount, Reason reason) {
     DENIED,
     HANDLER_FAULT,
     UNCERTAIN,
-    RATE_LIMIT
+    RATE_LIMIT,
+    OVERLAP,
+    UNSUPPORTED
   }
 
   public OperationResult {

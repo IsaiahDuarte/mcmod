@@ -78,8 +78,8 @@ textures; real client visuals and survival playtesting remain unverified.
 
 ## Schema-three save boundary
 
-Canonical `factorycore_devices.dat` now requires integer `Schema=3`, UUID `World`,
-and compound `Devices`, `Networks` and `Nodes` lists. Each node has UUID `Id`,
+Canonical `factorycore_devices.dat` now requires integer `Schema=4`, UUID `World`,
+and compound `Devices`, `Networks`, `Nodes` and `Transfers` lists. Each node has UUID `Id`,
 string `Kind`, positive long `Generation`, boolean byte `Conflict`, optional
 compound `Position` (string `Dimension`, long `Block`). Gateways require compound
 `Policy`: integer `Branch` and `Inherited` fixed permission masks (0–127), and
@@ -88,8 +88,8 @@ Controllers must have a corresponding network entry and no policy. Gateways
 cannot overlap resource/network IDs. Duplicate node/position and unknown fields,
 kinds, masks/types quarantine the complete original authority without overwriting.
 
-Recognized schema one/two migrates exact resource records and any existing grants
-into schema three, adding an empty node list and marking dirty. No earlier schema
+Recognized schemas one/two/three migrate exact resource records, grants and nodes
+into schema four, adding missing empty node/transfer lists and marking dirty. No earlier schema
 had structural nodes. Binary ledger and local cell/reference schemas are unchanged.
 Committed fixtures protect exact migrations and schema-three policy meaning.
 
@@ -102,3 +102,16 @@ portable chunk rejection, gateway faces, vanilla recipes and explicit commission
 They do not prove world discovery, active storage, actual chunk unload/full restart,
 client/multiplayer interactions or abrupt save ordering. Independent chunk/player/
 entity writes and foreign handlers still have no crash-atomicity guarantee.
+
+Canonical schema four adds [transfer staging](TRANSFER_PERSISTENCE.md) while
+preserving structural fields and the schema-three migration fixture.
+
+
+The canonical structural table now also accepts explicit CONNECTOR string kinds.
+They share admission/generation/position/portable-copy rules and create no network
+grants or gateway policy. [Connector holders](CONNECTORS.md) own local schema-one
+settings; they are not controller/gateway blocks. Existing encoded kinds/fixtures
+remain unchanged, and older binaries reject/preserve unknown CONNECTOR records.
+Compressed disk tests preserve connector identity through movement/reload without
+inventing a NetworkPermissions entry. Global schema/reference versions remain
+four/one; unknown fields/versions still preserve full recovery data.

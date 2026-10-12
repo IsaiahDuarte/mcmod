@@ -20,6 +20,7 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 import net.neoforged.neoforge.common.IOUtilities;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,6 +30,12 @@ class NodePersistenceTest {
   private static HolderLookup.Provider registries;
   private static final NodeRegistry.Position POSITION =
       new NodeRegistry.Position("minecraft:overworld", 42);
+
+  @AfterEach
+  void finishMinecraftIoBeforeTemporaryDirectoryCleanup() {
+    // Disk reads schedule NeoForge cleanup too, not only saves. Keep its directory alive.
+    IOUtilities.waitUntilIOWorkerComplete();
+  }
 
   @BeforeAll
   static void bootstrap() {
@@ -49,12 +56,49 @@ class NodePersistenceTest {
   }
 
   @Test
+  void compressedConnectorLeaseReloadAndMovementPreserveIdentityWithoutNetworkGrants() {
+    var path = folder.resolve(DeviceSavedData.NAME + ".dat");
+    var storage = storage();
+    var saved = DeviceSavedData.open(storage, path);
+    var lease = saved.createConnector(POSITION);
+    assertEquals(NodeRegistry.Kind.CONNECTOR, lease.kind());
+    assertThrows(IllegalArgumentException.class, () -> saved.network(lease.id()));
+    var portable = saved.nodes().detach(lease, POSITION).handle();
+    storage.save();
+    IOUtilities.waitUntilIOWorkerComplete();
+    var loaded = DeviceSavedData.open(storage(), path);
+    assertEquals("", loaded.diagnostic());
+    assertNull(loaded.nodes().definition(portable).position());
+    assertEquals(NodeRegistry.Failure.STALE, loaded.nodes().validate(lease));
+    var moved =
+        loaded
+            .nodes()
+            .attach(portable, new NodeRegistry.Position("minecraft:overworld", 43))
+            .handle();
+    assertEquals(lease.id(), moved.id());
+    assertEquals(lease.generation() + 2, moved.generation());
+    assertNull(loaded.nodes().definition(moved).policy());
+    assertThrows(IllegalArgumentException.class, () -> loaded.network(moved.id()));
+  }
+
+  @Test
   void fixtureProtectsStructuralPoliciesAndCanonicalBindings() throws Exception {
     var original = fixture();
     var loaded = DeviceSavedData.load(original, registries);
     assertEquals("", loaded.diagnostic());
-    assertFalse(loaded.isDirty());
-    assertEquals(original, loaded.save(new CompoundTag(), registries));
+    assertTrue(loaded.isDirty());
+    var migrated = loaded.save(new CompoundTag(), registries);
+    assertEquals(6, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("ExternalClaims")
+            .getList("Claims", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
+    assertTrue(migrated.getList("Transfers", Tag.TAG_COMPOUND).isEmpty());
+    migrated.remove("Transfers");
+    migrated.remove("ExternalClaims");
+    migrated.putInt("Schema", 3);
+    assertEquals(original, migrated);
     var root =
         new NodeRegistry.Handle(new UUID(0, 11), new UUID(0, 101), 2, NodeRegistry.Kind.CONTROLLER);
     assertEquals(POSITION, loaded.nodes().definition(root).position());
@@ -127,10 +171,22 @@ class NodePersistenceTest {
     tag.put("Nodes", nodes);
     var loaded = DeviceSavedData.load(tag, registries);
     assertEquals("", loaded.diagnostic());
+    loaded.setDirty(false);
     assertThrows(
         IllegalStateException.class, () -> loaded.createController(new UUID(0, 501), POSITION));
     assertFalse(loaded.isDirty());
-    assertEquals(tag, loaded.save(new CompoundTag(), registries));
+    var migrated = loaded.save(new CompoundTag(), registries);
+    assertEquals(6, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("ExternalClaims")
+            .getList("Claims", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
+    assertTrue(migrated.getList("Transfers", Tag.TAG_COMPOUND).isEmpty());
+    migrated.remove("Transfers");
+    migrated.remove("ExternalClaims");
+    migrated.putInt("Schema", 3);
+    assertEquals(tag, migrated);
   }
 
   private void reject(CompoundTag tag) {

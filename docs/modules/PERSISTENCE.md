@@ -1,8 +1,9 @@
 # Ledger persistence contract
 
 Initial P2 component implementation. The [device registry/adapter](DEVICE_OWNERSHIP.md)
-now owns world-scoped generations and exact ledgers. Player block/item integration,
-staging/jobs, complete save ordering and chunk integration remain pending under
+now owns world-scoped generations and exact ledgers, with physical cell/bank
+references and [canonical transfer staging](TRANSFER_PERSISTENCE.md). Job state,
+complete world save ordering and chunk integration remain pending under
 [ADR 0005](../decisions/0005-persistence-ownership.md). This codec does not by
 itself make a playable device durable or prevent creative clones.
 
@@ -29,7 +30,7 @@ integrity checking, not authentication or a portable ownership credential.
 with the same backing UUID and exact claims, initially **offline**. Queries
 retain total/reserved counts and expose zero availability; operations reject
 until the adapter revalidates and calls `setLoaded(true)`. Loading never silently
-releases reservations. Only the future canonical registry may install one
+releases reservations. Only the canonical registry may install one
 authoritative instance per backing UUID. Calling restore twice does not establish
 two valid owners; duplicate resolution belongs to that registry.
 
@@ -83,3 +84,37 @@ compatibility; it contains 17 FE with a 7-FE owner reservation. Generated recove
 performs 2,000 stock/claim operations with a save/reload after each operation,
 replay seed `0x5A7E001`. This is portable recovery evidence, not a world crash or
 external-inventory atomicity guarantee.
+
+The world envelope now targets schema six, retaining schema-five [accepted transfer context](TRANSFER_PERSISTENCE.md).
+Ledger/component formats remain unchanged. Version-one through four world fixtures
+preserve their exact data; missing legacy context is never invented.
+
+## Canonical foreign claims — world schema six
+
+The canonical world file now writes schema six with an additional ExternalClaims
+compound (nested schema one: Schema and Claims). Each positive claim contains
+Backing/Owner UUIDs, Kind/Registry/Components exact identity and Amount long units
+(items, mB or FE). No foreign contents, observed totals or platform handles are
+stored. The world namespace comes from the enclosing authority. Claims save at
+the same server-thread snapshot boundary as digital ledgers, grants and staging.
+Hold changes mark SavedData dirty; zero/rejected operations and restore do not.
+
+Schemas one through five migrate with an empty foreign claim table, preserving
+all existing tables, quantities and intent evidence. Schema-five context and
+transfer-entry schema two remain unchanged. Missing table/fields, wrong types,
+future/unknown fields, duplicate claims, nonpositive amounts, total overflow,
+4,096-record/4 MiB metadata violations or backing collisions with owned
+ledgers/nodes/networks quarantine the entire authority and preserve its raw tags.
+Global schema seven and newer reject; nested future schemas reject. Old binaries
+reject schema six, so downgrade requires a matching backup.
+
+Foreign providers may be absent or empty during restore. Orphan claims remain
+held; no load-time release, guessed inventory, automatic retry or refund occurs.
+Snapshot references do not establish usable stock, grants or current provider
+identity. Authenticated scheduler/provider/job reconciliation is still required
+before world reservations are exposed. Hard crashes cannot make independent
+third-party saves atomic. Pending uncertain staging stays quarantined separately.
+Fixed nested-claim and schema-five world fixtures plus compressed SavedData reload
+cover exact quantities including beyond 2^53, orphan preservation, dirty behavior,
+strict rejection and migration. Real server-restart/interruption evidence remains
+pending.

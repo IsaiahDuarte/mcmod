@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.network.WiredDiscovery;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import java.nio.charset.StandardCharsets;
@@ -82,8 +83,38 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
     }
     if (state.is(NetworkContent.CABLE.get()))
       return ordinary(block, id(position, "wire"), NetworkTopology.Role.CABLE, true);
-    if (!(state.getBlock() instanceof StorageDriveBlock)) return null;
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
+    if (entity instanceof dev.izzy.factorycore.platform.storage.ConnectorEntity connector) {
+      boolean valid;
+      try {
+        connector.validatePlaced();
+        valid = !connector.isRemoved();
+      } catch (IllegalArgumentException | IllegalStateException unavailable) {
+        valid = false;
+      }
+      var wire =
+          ordinary(
+              block,
+              connector.handle() == null ? id(position, "unowned") : connector.handle().id(),
+              NetworkTopology.Role.STORAGE,
+              valid);
+      var target = block.relative(connector.targetDirection()).asLong();
+      return new WiredDiscovery.Wire(
+          wire.nodes(),
+          wire.ports().stream().filter(port -> port.neighbor().block() != target).toList(),
+          null);
+    }
+    if (entity instanceof EnergyBankEntity bank) {
+      boolean valid;
+      try {
+        bank.validatePlaced();
+        valid = true;
+      } catch (IllegalArgumentException | IllegalStateException unavailable) {
+        valid = false;
+      }
+      return ordinary(block, id(position, "wire"), NetworkTopology.Role.STORAGE, valid);
+    }
+    if (!(state.getBlock() instanceof StorageDriveBlock)) return null;
     boolean loaded =
         entity instanceof StorageDriveEntity drive
             && !drive.isRemoved()

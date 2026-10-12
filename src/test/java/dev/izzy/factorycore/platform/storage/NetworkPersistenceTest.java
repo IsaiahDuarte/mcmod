@@ -22,6 +22,7 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 import net.neoforged.neoforge.common.IOUtilities;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -32,6 +33,12 @@ class NetworkPersistenceTest {
   private static final UUID OWNER = new UUID(0, 201);
   private static final UUID PRINCIPAL = new UUID(0, 202);
   private static final UUID NETWORK = new UUID(0, 101);
+
+  @AfterEach
+  void finishMinecraftIoBeforeTemporaryDirectoryCleanup() {
+    // Disk reads schedule NeoForge cleanup too, not only saves. Keep its directory alive.
+    IOUtilities.waitUntilIOWorkerComplete();
+  }
 
   @BeforeAll
   static void bootstrap() {
@@ -92,7 +99,13 @@ class NetworkPersistenceTest {
     assertThrows(IllegalArgumentException.class, () -> loaded.network(new UUID(0, 999)));
     assertEquals(1, loaded.principalBindings());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(3, migrated.getInt("Schema"));
+    assertEquals(6, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("ExternalClaims")
+            .getList("Claims", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
+    assertTrue(migrated.getList("Transfers", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty());
     assertEquals(tag.get("World"), migrated.get("World"));
     assertEquals(tag.get("Devices"), migrated.get("Devices"));
     assertEquals(tag.get("Networks"), migrated.get("Networks"));

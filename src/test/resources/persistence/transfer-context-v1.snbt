@@ -1,0 +1,1 @@
+{Schema:1,World:[I;0,0,0,11],Network:[I;0,0,0,101],Segment:[I;0,0,0,102],Dimension:"minecraft:overworld",Origin:42L,Source:{Type:"DIGITAL",Device:[I;0,0,0,301],Backing:[I;0,0,0,301],Generation:2L,Configuration:0L},Destination:{Type:"EXTERNAL",Device:[I;0,0,0,271],Backing:[I;0,0,0,401],Generation:3L,Configuration:4L}}
