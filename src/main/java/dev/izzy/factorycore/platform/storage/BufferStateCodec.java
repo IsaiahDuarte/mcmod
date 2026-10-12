@@ -8,15 +8,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 
-/** Canonical nested schema-one owned slots; physical references contain no stock copies. */
+/** Canonical owned slots and optional schema-two deployments; physical references own no stock. */
 final class BufferStateCodec {
   private BufferStateCodec() {}
 
   static CompoundTag encode(List<ItemBuffer.State> buffers) {
+    return encode(buffers, List.of());
+  }
+
+  static CompoundTag encode(
+      List<ItemBuffer.State> buffers, List<BufferRegistry.Deployment> deployments) {
     var root = new CompoundTag();
     root.putInt("Schema", 1);
     var records = new ListTag();
@@ -39,13 +45,33 @@ final class BufferStateCodec {
       records.add(record);
     }
     root.put("Buffers", records);
+    if (!deployments.isEmpty()) {
+      root.putInt("Schema", 2);
+      var encoded = new ListTag();
+      for (var deployment : deployments) {
+        var entry = new CompoundTag();
+        entry.putUUID("Backing", deployment.backing());
+        entry.putLong("Revision", deployment.revision());
+        entry.putLong("LeaseGeneration", deployment.leaseGeneration());
+        entry.putUUID("Principal", deployment.principal());
+        entry.putUUID("Network", deployment.network());
+        entry.putUUID("Segment", deployment.segment());
+        entry.putString("Mode", deployment.mode().name());
+        encoded.add(entry);
+      }
+      root.put("Deployments", encoded);
+    }
     return root;
   }
 
   static List<ItemBuffer.State> decode(CompoundTag root) {
-    NetworkStateCodec.fields(root, Set.of("Schema", "Buffers"));
+    NetworkStateCodec.fields(
+        root,
+        root.getInt("Schema") == 2
+            ? Set.of("Schema", "Buffers", "Deployments")
+            : Set.of("Schema", "Buffers"));
     if (!root.contains("Schema", Tag.TAG_INT)
-        || root.getInt("Schema") != 1
+        || (root.getInt("Schema") != 1 && root.getInt("Schema") != 2)
         || !root.contains("Buffers", Tag.TAG_LIST))
       throw new IllegalArgumentException("Unsupported buffer schema");
     var records = root.getList("Buffers", Tag.TAG_COMPOUND);
@@ -92,6 +118,44 @@ final class BufferStateCodec {
         throw new IllegalArgumentException("Buffer metadata byte limit");
       states.add(state);
     }
+    deployments(root);
     return List.copyOf(states);
+  }
+
+  static List<BufferRegistry.Deployment> deployments(CompoundTag root) {
+    if (root.getInt("Schema") == 1) return List.of();
+    if (root.getInt("Schema") != 2 || !root.contains("Deployments", Tag.TAG_LIST))
+      throw new IllegalArgumentException("Unsupported buffer deployments");
+    var entries = root.getList("Deployments", Tag.TAG_COMPOUND);
+    if (entries.size() != ((ListTag) root.get("Deployments")).size()
+        || entries.size() > BufferRegistry.MAX_BUFFERS)
+      throw new IllegalArgumentException("Invalid deployment list");
+    var result = new ArrayList<BufferRegistry.Deployment>();
+    var owners = new java.util.HashSet<UUID>();
+    for (int index = 0; index < entries.size(); index++) {
+      var entry = entries.getCompound(index);
+      NetworkStateCodec.fields(
+          entry,
+          Set.of(
+              "Backing", "Revision", "LeaseGeneration", "Principal", "Network", "Segment", "Mode"));
+      for (var field : new String[] {"Backing", "Principal", "Network", "Segment"})
+        if (!entry.hasUUID(field))
+          throw new IllegalArgumentException("Malformed deployment identity");
+      if (!entry.contains("Revision", Tag.TAG_LONG)
+          || !entry.contains("LeaseGeneration", Tag.TAG_LONG)
+          || !entry.contains("Mode", Tag.TAG_STRING)
+          || !owners.add(entry.getUUID("Backing")))
+        throw new IllegalArgumentException("Malformed/duplicate deployment");
+      result.add(
+          new BufferRegistry.Deployment(
+              entry.getUUID("Backing"),
+              entry.getLong("Revision"),
+              entry.getLong("LeaseGeneration"),
+              entry.getUUID("Principal"),
+              entry.getUUID("Network"),
+              entry.getUUID("Segment"),
+              BufferRegistry.Mode.valueOf(entry.getString("Mode"))));
+    }
+    return List.copyOf(result);
   }
 }

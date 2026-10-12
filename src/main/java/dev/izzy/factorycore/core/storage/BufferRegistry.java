@@ -15,6 +15,31 @@ public final class BufferRegistry {
   public static final int MAX_BUFFERS = 256;
   public static final long MAX_BYTES = 16L * 1024 * 1024;
 
+  public enum Mode {
+    PAUSED,
+    IMPORT
+  }
+
+  /** Server-owned deployment identity; authority must be rechecked before every queued mutation. */
+  public record Deployment(
+      UUID backing,
+      long revision,
+      long leaseGeneration,
+      UUID principal,
+      UUID network,
+      UUID segment,
+      Mode mode) {
+    public Deployment {
+      Objects.requireNonNull(backing);
+      Objects.requireNonNull(principal);
+      Objects.requireNonNull(network);
+      Objects.requireNonNull(segment);
+      Objects.requireNonNull(mode);
+      if (revision <= 0 || leaseGeneration <= 0)
+        throw new IllegalArgumentException("Invalid buffer deployment generation");
+    }
+  }
+
   private record Binding(
       NodeRegistry.Handle handle, NodeRegistry.Position position, Object owner) {}
 
@@ -24,6 +49,7 @@ public final class BufferRegistry {
   private final Map<UUID, ItemBuffer> buffers = new TreeMap<>();
   private final Map<UUID, Long> charges = new HashMap<>();
   private final Map<UUID, Binding> bindings = new HashMap<>();
+  private final Map<UUID, Deployment> deployments = new TreeMap<>();
   private ToIntFunction<ResourceKey> stackLimit =
       key -> {
         throw new IllegalStateException("Buffer stack resolver is not installed");
@@ -31,6 +57,14 @@ public final class BufferRegistry {
   private long bytes;
 
   public BufferRegistry(NodeRegistry nodes, List<ItemBuffer.State> restored, Runnable changed) {
+    this(nodes, restored, List.of(), changed);
+  }
+
+  public BufferRegistry(
+      NodeRegistry nodes,
+      List<ItemBuffer.State> restored,
+      List<Deployment> restoredDeployments,
+      Runnable changed) {
     this.nodes = Objects.requireNonNull(nodes);
     this.changed = Objects.requireNonNull(changed);
     if (restored.size() > MAX_BUFFERS) throw new IllegalArgumentException("Buffer count limit");
@@ -47,6 +81,13 @@ public final class BufferRegistry {
     }
     if (!leases.isEmpty())
       throw new IllegalArgumentException("Buffer lease has no owned inventory");
+    var generations = new HashMap<UUID, Long>();
+    for (var node : nodes.snapshot()) generations.put(node.id(), node.generation());
+    for (var deployment : restoredDeployments)
+      if (!buffers.containsKey(deployment.backing())
+          || generations.getOrDefault(deployment.backing(), 0L) < deployment.leaseGeneration()
+          || deployments.putIfAbsent(deployment.backing(), deployment) != null)
+        throw new IllegalArgumentException("Deployment has no unique buffer owner");
   }
 
   public void stackLimit(ToIntFunction<ResourceKey> resolver) {
@@ -113,6 +154,40 @@ public final class BufferRegistry {
   public List<ItemBuffer.State> snapshot() {
     checkThread();
     return buffers.values().stream().map(ItemBuffer::snapshot).toList();
+  }
+
+  public List<Deployment> deployments() {
+    checkThread();
+    return List.copyOf(deployments.values());
+  }
+
+  public Deployment deployment(UUID backing) {
+    checkThread();
+    return deployments.get(Objects.requireNonNull(backing));
+  }
+
+  /** Trusted configuration path must authenticate EDIT/DEPLOY and current scope before calling. */
+  public Deployment configure(
+      NodeRegistry.Handle handle,
+      Object owner,
+      long referenceRevision,
+      UUID principal,
+      UUID network,
+      UUID segment,
+      Mode mode) {
+    checkThread();
+    if (!usable(handle, owner)) throw new IllegalStateException("Buffer is not currently bound");
+    if (referenceRevision <= 0) throw new IllegalArgumentException("Invalid reference revision");
+    var previous = deployments.get(handle.id());
+    long revision =
+        Math.incrementExact(
+            Math.max(referenceRevision, previous == null ? 0 : previous.revision()));
+    var deployment =
+        new Deployment(
+            handle.id(), revision, handle.generation(), principal, network, segment, mode);
+    deployments.put(handle.id(), deployment);
+    changed.run();
+    return deployment;
   }
 
   public long bytes() {

@@ -57,6 +57,7 @@ public final class DeviceSavedData extends SavedData {
       List<ExternalClaims.Claim> claimStates,
       List<RouteCursors.Cursor> cursorStates,
       List<ItemBuffer.State> bufferStates,
+      List<BufferRegistry.Deployment> deploymentStates,
       CompoundTag rejected,
       String diagnostic) {
     externalClaims = state == null ? null : new ExternalClaims(claimStates, this::setDirty);
@@ -74,7 +75,10 @@ public final class DeviceSavedData extends SavedData {
         throw new IllegalArgumentException("Duplicate network identity");
     }
     nodes = state == null ? null : new NodeRegistry(state.world(), nodeStates, this::setDirty);
-    buffers = state == null ? null : new BufferRegistry(nodes, bufferStates, this::setDirty);
+    buffers =
+        state == null
+            ? null
+            : new BufferRegistry(nodes, bufferStates, deploymentStates, this::setDirty);
     for (var node : nodeStates) {
       if (registry.containsBacking(node.id())
           || (node.kind() == NodeRegistry.Kind.CONTROLLER) != networks.containsKey(node.id()))
@@ -94,6 +98,16 @@ public final class DeviceSavedData extends SavedData {
     for (var cursor : cursorStates)
       if (!networks.containsKey(cursor.scope().network()))
         throw new IllegalArgumentException("Route cursor has unknown network");
+    for (var deployment : deploymentStates)
+      if (!networks.containsKey(deployment.network())
+          || nodeStates.stream()
+              .noneMatch(
+                  node ->
+                      node.id().equals(deployment.segment())
+                          && (node.kind() == NodeRegistry.Kind.GATEWAY
+                              || node.kind() == NodeRegistry.Kind.CONTROLLER
+                                  && node.id().equals(deployment.network()))))
+        throw new IllegalArgumentException("Buffer deployment has unknown network/segment");
   }
 
   public static DeviceSavedData get(MinecraftServer server) {
@@ -149,6 +163,7 @@ public final class DeviceSavedData extends SavedData {
   private static DeviceSavedData create() {
     return new DeviceSavedData(
         new DeviceRegistry.State(UUID.randomUUID(), List.of()),
+        List.of(),
         List.of(),
         List.of(),
         List.of(),
@@ -365,6 +380,7 @@ public final class DeviceSavedData extends SavedData {
                   : ExternalClaimsCodec.decode(tag.getCompound("ExternalClaims")),
               schema < 7 ? List.of() : RouteCursorCodec.decode(tag.getCompound("RouteCursors")),
               schema < 8 ? List.of() : BufferStateCodec.decode(tag.getCompound("Buffers")),
+              schema < 8 ? List.of() : BufferStateCodec.deployments(tag.getCompound("Buffers")),
               null,
               "");
       if (schema < 9) loaded.setDirty();
@@ -374,6 +390,7 @@ public final class DeviceSavedData extends SavedData {
           invalid.getMessage() == null ? invalid.getClass().getSimpleName() : invalid.getMessage();
       return new DeviceSavedData(
           null,
+          List.of(),
           List.of(),
           List.of(),
           List.of(),
@@ -411,7 +428,7 @@ public final class DeviceSavedData extends SavedData {
     tag.put("Transfers", TransferStateCodec.encode(transfers.snapshot()));
     tag.put("ExternalClaims", ExternalClaimsCodec.encode(externalClaims.snapshot()));
     tag.put("RouteCursors", RouteCursorCodec.encode(routeCursors.snapshot()));
-    tag.put("Buffers", BufferStateCodec.encode(buffers.snapshot()));
+    tag.put("Buffers", BufferStateCodec.encode(buffers.snapshot(), buffers.deployments()));
     tag.put(
         "Networks",
         NetworkStateCodec.encode(

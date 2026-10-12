@@ -358,4 +358,103 @@ public final class BufferTransferGameTests {
       GameTestHelper helper) {
     scenario(helper, 8);
   }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void bufferDeploymentUsesAuthenticatedGrantsInsteadOfReferencePrincipal(
+      GameTestHelper helper) {
+    var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
+    var guest = new NetworkPermissions.Actor(UUID.randomUUID(), true);
+    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
+    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
+    root.commission(actor.id());
+    helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
+    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
+    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
+    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), guest.id());
+    var saved = DeviceSavedData.get(helper.getLevel().getServer());
+    var runtime = WorldNetworks.get(helper.getLevel().getServer());
+    var mode = dev.izzy.factorycore.core.storage.BufferRegistry.Mode.IMPORT;
+    helper
+        .startSequence()
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    runtime.membership(buffer.position()).status() == NetworkTopology.Status.VALID,
+                    "Buffer scope ready"))
+        .thenExecute(
+            () -> {
+              boolean denied = false;
+              try {
+                buffer.configure(guest, mode);
+              } catch (IllegalStateException expected) {
+                denied = true;
+              }
+              helper.assertTrue(
+                  denied
+                      && saved.buffers().deployment(buffer.handle().id()) == null
+                      && buffer.reference().configuration() == 1,
+                  "Reference principal and operator status cannot authorize deployment");
+              var permissions = saved.network(root.handle().id());
+              permissions.setGrants(
+                  actor,
+                  guest.id(),
+                  Set.of(NetworkPermissions.Permission.EDIT, NetworkPermissions.Permission.DEPLOY));
+              denied = false;
+              try {
+                buffer.configure(guest, mode);
+              } catch (IllegalStateException expected) {
+                denied = true;
+              }
+              helper.assertTrue(
+                  denied && saved.buffers().deployment(buffer.handle().id()) == null,
+                  "Import also requires current view/deposit/withdraw grants");
+              var paused =
+                  buffer.configure(
+                      guest, dev.izzy.factorycore.core.storage.BufferRegistry.Mode.PAUSED);
+              helper.assertTrue(
+                  paused.revision() == 2 && paused.principal().equals(guest.id()),
+                  "Paused deployment records authenticated owner with edit/deploy rights");
+              permissions.setGrants(
+                  actor,
+                  guest.id(),
+                  Set.of(
+                      NetworkPermissions.Permission.EDIT,
+                      NetworkPermissions.Permission.DEPLOY,
+                      NetworkPermissions.Permission.VIEW,
+                      NetworkPermissions.Permission.DEPOSIT,
+                      NetworkPermissions.Permission.WITHDRAW));
+              var enabled = buffer.configure(guest, mode);
+              helper.assertTrue(
+                  enabled.revision() == 3
+                      && enabled.leaseGeneration() == buffer.handle().generation()
+                      && enabled.network().equals(root.handle().id())
+                      && enabled.segment().equals(root.handle().id())
+                      && buffer.reference().configuration() == 3,
+                  "Server derives canonical network scope and advances reference revision");
+              permissions.setGrants(actor, guest.id(), Set.of());
+              denied = false;
+              try {
+                buffer.configure(guest, mode);
+              } catch (IllegalStateException expected) {
+                denied = true;
+              }
+              helper.assertTrue(
+                  denied
+                      && enabled.equals(saved.buffers().deployment(buffer.handle().id()))
+                      && buffer.reference().configuration() == 3,
+                  "Revoked configuration cannot replace ownership or increment revision");
+              var replacement =
+                  buffer.configure(
+                      actor, dev.izzy.factorycore.core.storage.BufferRegistry.Mode.PAUSED);
+              helper.assertTrue(
+                  replacement.revision() == 4
+                      && replacement.principal().equals(actor.id())
+                      && saved.buffers().deployments().stream()
+                              .filter(entry -> entry.backing().equals(buffer.handle().id()))
+                              .count()
+                          == 1,
+                  "Authorized replacement retains exactly one deployment per buffer");
+            })
+        .thenSucceed();
+  }
 }

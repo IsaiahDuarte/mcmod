@@ -200,4 +200,64 @@ class BufferPersistenceTest {
     assertEquals(BufferRegistry.MAX_BUFFERS, saved.buffers().snapshot().size());
     assertFalse(saved.isDirty());
   }
+
+  @Test
+  void canonicalDeploymentRoundTripRetainsSlotsAndRejectsUnownedOrFutureAuthority()
+      throws Exception {
+    var original = fixture("registry-v8");
+    original.putInt("Schema", 9);
+    var saved = DeviceSavedData.load(original, registries);
+    var handle =
+        new NodeRegistry.Handle(
+            saved.registry().world(), new UUID(0, 601), 3, NodeRegistry.Kind.BUFFERED_INTERFACE);
+    var pos = saved.nodes().definition(handle).position();
+    var token = new Object();
+    assertTrue(saved.buffers().bind(handle, pos, token));
+    var deployment =
+        saved
+            .buffers()
+            .configure(
+                handle,
+                token,
+                1,
+                new UUID(0, 9),
+                new UUID(0, 101),
+                new UUID(0, 102),
+                BufferRegistry.Mode.IMPORT);
+    var encoded = saved.save(new CompoundTag(), registries);
+    assertEquals(2, encoded.getCompound("Buffers").getInt("Schema"));
+    var restored = DeviceSavedData.load(encoded, registries);
+    assertEquals("", restored.diagnostic());
+    assertEquals(deployment, restored.buffers().deployment(handle.id()));
+    assertEquals(saved.buffers().snapshot(), restored.buffers().snapshot());
+    assertFalse(restored.buffers().usable(handle, token));
+    var nested = encoded.getCompound("Buffers");
+    var fixture = fixture("buffers-v2");
+    assertEquals(fixture, nested);
+    var disk = directory.resolve("buffer-deployment.dat");
+    NbtIo.writeCompressed(encoded, disk);
+    var diskRestored =
+        DeviceSavedData.load(NbtIo.readCompressed(disk, NbtAccounter.unlimitedHeap()), registries);
+    assertEquals("", diskRestored.diagnostic());
+    assertEquals(deployment, diskRestored.buffers().deployment(handle.id()));
+    assertEquals(saved.buffers().snapshot(), diskRestored.buffers().snapshot());
+    for (int mode = 0; mode < 9; mode++) {
+      var invalid = encoded.copy();
+      var table = invalid.getCompound("Buffers");
+      var list = table.getList("Deployments", Tag.TAG_COMPOUND);
+      var entry = list.getCompound(0);
+      if (mode == 0) entry.putLong("Revision", 0);
+      if (mode == 1) entry.putLong("LeaseGeneration", 4);
+      if (mode == 2) entry.putUUID("Backing", new UUID(0, 999));
+      if (mode == 3) entry.putUUID("Network", new UUID(0, 999));
+      if (mode == 4) entry.putUUID("Segment", new UUID(0, 999));
+      if (mode == 5) list.add(entry.copy());
+      if (mode == 6) entry.putString("Mode", "FUTURE");
+      if (mode == 7) table.putInt("Schema", 3);
+      if (mode == 8) entry.putInt("Revision", 2);
+      var rejected = DeviceSavedData.load(invalid, registries);
+      assertThrows(IllegalStateException.class, rejected::buffers);
+      assertEquals(invalid, rejected.save(new CompoundTag(), registries));
+    }
+  }
 }

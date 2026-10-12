@@ -1572,3 +1572,32 @@ alone cannot authorize automation. Automatic presets, searchable terminal player
 operations, crafting, production scripting, power/wireless, onboarding and full
 restart/client/multiplayer/performance evidence remain incomplete. The full
 A01–A17 goal remains active.
+
+
+## Canonical buffered preset authority prerequisite — 2026-10-12
+
+Added one server-owned fixed-size PAUSED/IMPORT deployment per buffer with accepted
+principal/root/segment/lease and monotonically increasing configuration revision.
+The loaded holder authenticates EDIT/DEPLOY and enabling IMPORT additionally
+requires VIEW/DEPOSIT/WITHDRAW. Operator/provenance flags cannot substitute for
+those grants. Denied requests preserve state; authorized replacement invalidates
+old transfer bindings while retaining staging. Moving a holder preserves its
+old accepted lease and therefore requires reconfiguration before future dispatch.
+Nested buffer schema two persists records with strict field/ownership/scope/
+future-generation checks; no records retain exact schema-one output. Fixed v2 and
+compressed persistence, core replacement/overflow/offline/movement and real world
+permission/revocation cases provide evidence. Background dispatch and player
+controls remain missing; IMPORT stores intent only in this prerequisite.
+
+Next implement bounded background import with exact canonical/reference/lease/
+scope matching, current deployer grants checked at queued mutation, one active
+request per buffer, and retained owned staging blocking new extraction. Add real
+hopper-to-cell/backpressure/revocation/removal tests and simple player controls.
+Then all-key search and terminal operations. A01–A17 release remains incomplete.
+
+Verification: `./gradlew spotlessApply test` passed the initial JVM slice;
+`./gradlew spotlessApply compileGameTestJava` passed the world fixture compilation.
+Final `python3 scripts/verify.py` passed in a 32-second Gradle build: 24 tooling,
+170 JVM (zero failures/errors/skips), 102 required GameTests, formatting/static/
+architecture gates. Rust guest verification was up-to-date. Actual client controls,
+background transfers, server restart and full release acceptance are unverified.

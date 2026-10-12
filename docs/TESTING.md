@@ -438,3 +438,12 @@ compressed owned slot/staging reload. Legacy context-one fixtures/fields and old
 quantity/raw-table assertions remain; world migration now targets nine, future ten.
 Automatic import/deployment authority, actual restart/chunks/interruption, client,
 multiplayer and release-performance evidence remain separate obligations.
+
+
+Buffer deployment authority adds two BufferRegistryTest cases for single-record
+replacement, monotonic revision, overflow/no mutation, offline restore and movement
+without renewed authority. BufferPersistenceTest fixes buffers-v2 nested output,
+compressed deployment/slot reload and nine malformed/future/unowned authority
+variants. BufferTransferGameTests adds authenticated EDIT/DEPLOY/resource grant
+checks, provenance/operator rejection, revocation and canonical replacement.
+These tests prove configuration intent only; background import is still missing.

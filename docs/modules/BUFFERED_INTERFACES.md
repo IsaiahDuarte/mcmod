@@ -62,8 +62,8 @@ validity. This neither erases owned contents nor loads a chunk.
 
 Local mechanical inventory access must remain separate from a program/player
 request to withdraw network stock: the latter still requires shared scheduling,
-authentication, permission and accepted segment checks. This adapter is not yet
-registered as a block capability or a globally available network storage source.
+authentication, permission and accepted segment checks. The physical block registers this adapter as a capability; it is excluded from
+globally available network storage sources.
 
 ## Evidence and remaining integration
 
@@ -175,3 +175,50 @@ handle/token ownership matches, including conflicted originals awaiting teardown
 stale copies cannot invalidate a replacement holder. Native key incompatibility
 rejects recovery before insertion, retaining staging. No background import or
 saved-principal authorization is claimed yet.
+
+
+## Canonical preset deployment authority
+
+`BufferRegistry.Deployment` records backing UUID, positive configuration revision,
+accepted structural lease generation, authenticated principal UUID, accepted root
+network/segment and PAUSED or IMPORT mode. At most one record exists per owned
+buffer (256 total); records contain fixed-size fields and no item metadata. Their
+maximum additional estimated storage is 64 KiB. Canonical slot quantities remain
+unchanged. Restored deployments do not bind a holder or authenticate an actor.
+An older accepted lease after movement remains stored but cannot authorize a
+future automation run; movement requires explicit authorized reconfiguration.
+
+`BufferedInterfaceEntity.configure(actor, mode)` is the trusted server control
+path. It validates the loaded holder and wired membership, requires current EDIT
+and DEPLOY, and additionally VIEW/DEPOSIT/WITHDRAW to enable IMPORT. It derives
+network/segment from current server topology, records the authenticated actor ID
+without operator privilege, and increments revision beyond both canonical and
+local reference counters. Denied/offline/overflow requests preserve the prior
+record/reference. Authorized replacement keeps one record and invalidates old
+transfer bindings without erasing owned staging. Local reference principal remains
+placement provenance. Calling the lower-level registry method without these
+checks is unsupported outside trusted server adapters.
+
+```java
+// actor is constructed from the authenticated server player, never packet flags.
+var deployment = buffer.configure(actor, BufferRegistry.Mode.IMPORT);
+// Pause through the same EDIT/DEPLOY path; no transfer grants are required to pause.
+buffer.configure(actor, BufferRegistry.Mode.PAUSED);
+```
+
+Nested buffer schema two adds a required Deployments list with strict fixed fields,
+duplicate/unknown owner checks, known root/structural segment checks and no future
+lease generations. Unknown modes/types/schemas retain the raw quarantined world
+authority. Buffer schema one remains byte-for-byte unchanged when no deployment
+exists; legacy records have no automation authority. World schema nine owns both
+slots and deployments. Rejected schema-two data is never silently converted to
+paused empty stock. Independent canonical/chunk saves may leave configuration
+revisions mismatched; future execution must require an exact match and offer
+explicit reconfiguration rather than adopt a reference's actor/revision.
+
+Registry tests prove replacement, revision overflow, stale owner denial, offline
+restore and movement. Fixed buffers-v2 and compressed round-trip tests prove
+exact slots/deployment persistence and malformed/future/unowned quarantine. The
+world permission case exercises provenance/operator denial, missing import grants,
+revocation and replacement. Background import dispatch and player controls are
+still missing; configuring IMPORT currently stores intent without moving stock.

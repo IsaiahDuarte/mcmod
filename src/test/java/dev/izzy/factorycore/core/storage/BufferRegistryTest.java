@@ -135,4 +135,79 @@ class BufferRegistryTest {
     assertFalse(buffers.canCreate());
     assertEquals(BufferRegistry.MAX_BUFFERS, buffers.snapshot().size());
   }
+
+  @Test
+  void deploymentsReplaceOneOwnerWithIncreasingRevisionAndRestoreOffline() {
+    var nodes = new NodeRegistry(WORLD, List.of(), () -> {});
+    int[] changes = {0};
+    var buffers = new BufferRegistry(nodes, List.of(), () -> changes[0]++);
+    var handle = create(nodes, buffers, 1);
+    var token = new Object();
+    buffers.bind(handle, position(1), token);
+    var actor = new UUID(0, 9);
+    var root = new UUID(0, 10);
+    var first = buffers.configure(handle, token, 1, actor, root, root, BufferRegistry.Mode.IMPORT);
+    assertEquals(2, first.revision());
+    var next =
+        buffers.configure(
+            handle, token, 1, new UUID(0, 11), root, root, BufferRegistry.Mode.PAUSED);
+    assertEquals(3, next.revision());
+    assertEquals(1, buffers.deployments().size());
+    assertEquals(next, buffers.deployment(handle.id()));
+    int dirty = changes[0];
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            buffers.configure(
+                handle, new Object(), 3, actor, root, root, BufferRegistry.Mode.IMPORT));
+    assertThrows(
+        ArithmeticException.class,
+        () ->
+            buffers.configure(
+                handle, token, Long.MAX_VALUE, actor, root, root, BufferRegistry.Mode.IMPORT));
+    assertEquals(dirty, changes[0]);
+    assertEquals(next, buffers.deployment(handle.id()));
+    var restored =
+        new BufferRegistry(
+            new NodeRegistry(WORLD, nodes.snapshot(), () -> {}),
+            buffers.snapshot(),
+            buffers.deployments(),
+            () -> {});
+    assertEquals(next, restored.deployment(handle.id()));
+    assertFalse(restored.usable(handle, token));
+    assertThrows(
+        IllegalStateException.class,
+        () -> restored.configure(handle, token, 3, actor, root, root, BufferRegistry.Mode.IMPORT));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new BufferRegistry(nodes, buffers.snapshot(), List.of(first, next), () -> {}));
+  }
+
+  @Test
+  void movementDoesNotRenewDeploymentAuthorityAndFutureLeaseRejects() {
+    var nodes = new NodeRegistry(WORLD, List.of(), () -> {});
+    var buffers = new BufferRegistry(nodes, List.of(), () -> {});
+    var handle = create(nodes, buffers, 1);
+    var token = new Object();
+    buffers.bind(handle, position(1), token);
+    var root = new UUID(0, 10);
+    var deployment =
+        buffers.configure(handle, token, 1, new UUID(0, 9), root, root, BufferRegistry.Mode.IMPORT);
+    buffers.unbind(handle, token);
+    var moved = nodes.attach(nodes.detach(handle, position(1)).handle(), position(2)).handle();
+    assertNotEquals(moved.generation(), deployment.leaseGeneration());
+    assertEquals(deployment, buffers.deployment(handle.id()));
+    var future =
+        new BufferRegistry.Deployment(
+            handle.id(),
+            2,
+            Long.MAX_VALUE,
+            deployment.principal(),
+            root,
+            root,
+            BufferRegistry.Mode.IMPORT);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new BufferRegistry(nodes, buffers.snapshot(), List.of(future), () -> {}));
+  }
 }

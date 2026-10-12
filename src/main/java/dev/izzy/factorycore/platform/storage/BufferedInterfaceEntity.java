@@ -1,6 +1,10 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.network.NetworkAuthority;
+import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.BufferedItemHandler;
@@ -98,6 +102,46 @@ public final class BufferedInterfaceEntity extends BlockEntity {
   public ItemBuffer inventory() {
     validatePlaced();
     return authority().buffers().inventory(state.lease(), this);
+  }
+
+  /** Authenticated server controls; reference provenance never supplies deployment authority. */
+  public BufferRegistry.Deployment configure(
+      NetworkPermissions.Actor actor, BufferRegistry.Mode mode) {
+    validatePlaced();
+    var networks = WorldNetworks.get(serverLevel().getServer());
+    var member = networks.membership(position());
+    if (member.status() != NetworkTopology.Status.VALID)
+      throw new IllegalStateException("Buffer network is offline");
+    for (var permission :
+        new NetworkPermissions.Permission[] {
+          NetworkPermissions.Permission.EDIT, NetworkPermissions.Permission.DEPLOY
+        })
+      if (networks.authorize(actor, position(), permission) != NetworkAuthority.Decision.ALLOWED)
+        throw new IllegalStateException("Buffer deployment permission denied");
+    if (mode == BufferRegistry.Mode.IMPORT)
+      for (var permission :
+          new NetworkPermissions.Permission[] {
+            NetworkPermissions.Permission.VIEW,
+            NetworkPermissions.Permission.WITHDRAW,
+            NetworkPermissions.Permission.DEPOSIT
+          })
+        if (networks.authorize(actor, position(), permission) != NetworkAuthority.Decision.ALLOWED)
+          throw new IllegalStateException("Buffer transfer permission denied");
+    var deployment =
+        authority()
+            .buffers()
+            .configure(
+                state.lease(),
+                this,
+                state.configuration(),
+                actor.id(),
+                member.scope().network(),
+                member.scope().segment(),
+                mode);
+    authority().transfers().unbindBacking(state.lease().id());
+    state = new BufferData.State(state.lease(), state.principal(), deployment.revision());
+    write();
+    return deployment;
   }
 
   public IItemHandler capability() {

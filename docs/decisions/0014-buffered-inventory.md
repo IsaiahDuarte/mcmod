@@ -1,8 +1,8 @@
 # ADR 0014 — Owned physical inventory for Buffered Interfaces
 
 Status: accepted P3 inventory boundary; component inventory/handler implemented.
-Canonical slot persistence/lease bindings are implemented; physical blocks and
-automatic presets remain pending.
+Canonical slot persistence/lease bindings, physical holders, explicit transfers
+and preset deployment authority are implemented; automatic dispatch remains pending.
 
 ## Decision and alternatives
 
@@ -90,3 +90,23 @@ staging; recovery validates current identity/keys and never re-extracts. Referen
 reload/removal releases live indexed bindings for the matching owner only.
 Native import presets still need server-owned deployment authority; saved reference
 principal metadata is not an authenticated grant or reusable actor credential.
+
+
+## Preset authority extension — 2026-10-12
+
+Store one fixed-size deployment record per canonical buffer, separately from chunk
+reference provenance. Nested buffer schema two adds Deployments; schema one stays
+unchanged without deployments, retaining existing migration fixtures exactly.
+A new top-level world table/version is unnecessary: versioned nested data already
+fails closed in old readers and remains raw. Canonical records retain authenticated
+principal, accepted network/segment/lease and increasing revision. Movement or
+independent reference save divergence cannot implicitly renew these values.
+
+The alternative of trusting the item's principal lets copied/edited references
+impersonate a deployer. Inferring the root owner on every tick silently transfers
+automation authority when topology changes. Both are rejected. Server configuration
+requires EDIT/DEPLOY and transfer grants for IMPORT; execution will recheck the
+stored deployer's current rights and accepted identity/scope before queued work.
+PAUSED remains configurable without resource grants so an authorized editor can
+stop a rule. This extension records intent only; automatic dispatch and controls
+remain the next slice, with preserved staging as a replacement/recovery invariant.

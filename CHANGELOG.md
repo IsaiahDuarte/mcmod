@@ -87,3 +87,7 @@ See [implementation evidence](docs/IMPLEMENTATION.md).
 - World schema five now saves accepted transfer scope/endpoint context beside
   owned staging; schemas one through four migrate without invented context or
   changed counts/intents. Queued moves cannot follow a replacement root.
+
+- Added canonical buffered preset configuration authority with authenticated
+  grants, accepted scope/lease, monotonic revisions and nested schema-two recovery;
+  background import dispatch and player controls remain unfinished.

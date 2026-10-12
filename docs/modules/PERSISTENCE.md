@@ -193,3 +193,13 @@ Malformed/unknown/future unions or schemas preserve rejected raw tags. Actual
 compressed source-slot/staging reload retains the accepted buffer reference and
 keeps every endpoint unbound, preventing re-extraction. This does not prove live
 server restart or make local reference NBT/foreign providers atomically saved.
+
+
+Buffered preset authority remains under world schema nine. Nested buffer schema
+two adds strict fixed-size Deployments records (backing, revision, lease generation,
+principal, root network, segment, PAUSED/IMPORT mode), bounded by owned buffer count.
+No deployments means unchanged nested schema-one output. Legacy inventories
+therefore gain no automation authority. Exact reference/canonical revision, lease,
+scope and current grants are prerequisites for future dispatch. Invalid/future
+metadata preserves the whole raw authority; slot/staging quantities never reset.
+Fixed buffers-v2 and compressed canonical round-trip coverage accompany the change.
