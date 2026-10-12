@@ -90,7 +90,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | --- | --- | --- |
 | A01 | P3 | Not implemented. |
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
-| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, plus canonical schema-eight slot ownership, metadata preflight and migration/reload checks; physical buffers, crafting job claims, all-key search and full server restart/interruption integration remain pending. |
+| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, canonical schema-eight ownership/migration and physical hopper/movement/copy/recipe evidence; automatic buffer network presets, crafting job claims, all-key search and full server restart/interruption integration remain pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Automatic external catalog/selection, permissions UI and actual chunks/restart remain pending. |
 | A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Actual chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
@@ -1471,3 +1471,52 @@ tooling tests. Compiler, formatting, all PMD source sets, architecture and
 packaged-artifact checks passed. Unchanged Rust guest verification was UP-TO-DATE.
 Existing world scenarios remain regression coverage, not physical buffer evidence.
 Final documentation/acceptance, whitespace and focused-diff review passed.
+
+
+## Physical Buffered Interface and hopper inventory slice — 2026-10-12
+
+Registered the Buffered Interface block/item/entity and six-face IItemHandler,
+using the canonical nine-slot inventory from schema eight. Local schema-one
+reference records world/ID/generation, server placer provenance and configuration
+counter only; no chunk/item stock copy exists. Break validates the current holder,
+unbinds/detaches its lease and drops one populated portable reference; creative
+placement consumes it. Retained capabilities recheck current loaded chunk/entity,
+lease/token/conflict and never load chunks. Lifecycle reload rebinds exact slots;
+copied placed references quarantine access without creating/dropping quantities.
+Unsupported reference payloads remain raw through load/break/replacement.
+
+The device joins live wired geometry without entering shared stock enumeration.
+Direct or declared foreign provider groups cannot alias an owned buffer. Actual
+vanilla hoppers can insert exact component-aware items into nine slots, retain
+input against full slots and resume after space returns. Empty-hand inspection
+checks current VIEW before reporting item/occupied-slot counts. Local mechanical
+access works independently of a valid network and cannot withdraw network stock.
+The saved principal is provenance, not authority; upcoming presets must establish
+server-owned deployment ownership and current grants rather than trust item data.
+
+Selected a distinct starter recipe: four iron, two glass, two redstone, one hopper
+(IGI/RHR/IGI), recipe-book unlocked by hopper. Native original JSON model uses the
+bank palette with a recessed tray and nine raised slot markers; item/blockstate,
+creative listing, tooltips and translated inspection are wired. Asset inventory
+records actual paths and pending client inspection. Player guide documents what
+works and explicitly retains automatic network import/export as unfinished.
+
+Two BufferDataTest cases freeze strict six-field local schema one. Seven required
+BufferedInterfaceGameTests prove actual hopper insertion/backpressure/resumption,
+six faces, wired discovery, creative placement/break/movement, stale capability,
+lifecycle clone isolation, raw future data, foreign group rejection and exact
+recipe/unlock. `./gradlew spotlessApply build` passed initially; after adding the
+nonloading physical-holder guard, `./gradlew spotlessApply` and
+`python3 scripts/verify.py` passed. Final canonical verification executed all 164
+JVM tests and 92 required world tests with zero failures/errors/skips, plus 24
+tooling tests. Compiler, formatting, all PMD, architecture and packaged-artifact
+checks passed. Unchanged Rust guest verification was UP-TO-DATE. Documentation/
+acceptance, focused scope and whitespace review passed.
+
+This verifies hopper -> real buffer, not hopper -> network storage -> terminal.
+Next add the distinct authorized buffer transfer endpoint and bounded import
+preset through shared scheduling/accounting, then all-key search and player
+terminal operations. A01/P3 and full A01–A17 release remain incomplete. Actual
+chunks/server restart/independent interruptions, client/multiplayer, finished
+preset/terminal UI/onboarding, crafting/scripting/power/wireless and P7 remain
+required release work; no headless result substitutes for that evidence.

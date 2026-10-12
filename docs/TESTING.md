@@ -408,3 +408,16 @@ Existing legacy migration tests now target eight and assert empty buffers; futur
 world tests use nine. Their conserved quantities and full raw-table equality
 assertions remain. These are mandatory JVM checks; physical hopper/block/chunk,
 restart/interruption and client evidence remain separate release requirements.
+
+
+## Physical Buffered Interface
+
+Two BufferDataTest cases freeze the six-field schema-one reference fixture and
+reject malformed/future/nonpositive metadata without changing recovery tags.
+Seven required BufferedInterfaceGameTests cover actual vanilla hopper insertion,
+full slots/backpressure/resumption, shared six-face inventory, wired discovery,
+creative reference consumption/break/movement, stale capabilities, lifecycle
+reload/copied-reference isolation, raw future data, declared foreign alias rejection
+and exact starter recipe/unlock. Physical buffers are outside shared stock catalog.
+Network import/export, actual chunks/full restart/interruption, multiplayer and
+client appearance/interaction evidence remain required future work.

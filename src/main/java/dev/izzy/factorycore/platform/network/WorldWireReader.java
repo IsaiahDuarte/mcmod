@@ -84,6 +84,20 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
     if (state.is(NetworkContent.CABLE.get()))
       return ordinary(block, id(position, "wire"), NetworkTopology.Role.CABLE, true);
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
+    if (entity instanceof dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity buffer) {
+      boolean valid;
+      try {
+        buffer.validatePlaced();
+        valid = true;
+      } catch (IllegalArgumentException | IllegalStateException unavailable) {
+        valid = false;
+      }
+      return ordinary(
+          block,
+          buffer.handle() == null ? id(position, "unowned") : buffer.handle().id(),
+          NetworkTopology.Role.STORAGE,
+          valid);
+    }
     if (entity instanceof dev.izzy.factorycore.platform.storage.ConnectorEntity connector) {
       boolean valid;
       try {

@@ -42,9 +42,9 @@ listed tiers and block-item forms must be covered before closing a row.
 Existing models are under [models](../src/main/resources/assets/factorycore/models),
 with [blockstates](../src/main/resources/assets/factorycore/blockstates) and
 [English names](../src/main/resources/assets/factorycore/lang/en_us.json).
-The current eight blockstate families and eighteen item models reference vanilla
+The current nine blockstate families and nineteen item models reference vanilla
 textures; custom texture/audio assets remain absent. The initial four-block audit
-has been extended by three bank tiers and the connector.
+has been extended by three bank tiers, the connector and the Buffered Interface.
 
 The bank family establishes a native-model direction: dark polished-deepslate
 casings, black inset panels, iron/gold/diamond resource symbols, and one/two/three
@@ -74,7 +74,7 @@ and model inventory transforms remain pending real-client inspection.
 | Storage Connector + block item | Connection face, resource/access/priority inspection | P2–P3 | Implemented native six-direction socket model, matching shape, tooltips and translated chat inspection; advanced settings screen remains pending | Pending |
 | Storage Terminal + block item | Recognizable access screen and connection state | P3 | Missing | Pending |
 | Machine Interface + block item | Port/side/label identification and preset state | P3 | Missing | Pending |
-| Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Missing | Pending |
+| Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Implemented native nine-slot top geometry, item parent, tooltip and authorized item/slot inspection; preset state/screens remain pending | Pending |
 | Crafting Interface + block item | Processing ports and busy/blocked state | P4 | Missing | Pending |
 | Crafting Unit + block item | Distinct crafting role and working/blocked state | P4 | Missing | Pending |
 | Pattern items, if used by selected implementation | Distinguish recipe/processing identity and invalid patterns | P4 | Missing; physical representation to be selected | Pending |
@@ -130,3 +130,14 @@ shapes. Vanilla texture references are supplied by Minecraft, not copied assets.
 Status/type/access/side/rate/priority inspection wraps through native chat; short
 tooltip lines document controls. Headless shape/interaction/recipe checks exist;
 real rendering, tooltip wrapping/GUI scales and onboarding remain unverified.
+
+
+The [Buffered Interface model](../src/main/resources/assets/factorycore/models/block/buffered_interface.json)
+uses the established polished-deepslate/black/copper/iron materials with a recessed
+tray and nine raised slot markers. Its [item parent](../src/main/resources/assets/factorycore/models/item/buffered_interface.json)
+and [blockstate](../src/main/resources/assets/factorycore/blockstates/buffered_interface.json)
+are wired into the creative tab and recipe. Original editable JSON uses the same
+16-unit grid and repository license; vanilla textures are supplied by Minecraft.
+Translated inspection reports exact item and occupied-slot counts. Headless recipe,
+hopper and ownership tests passed; actual client appearance/transforms/GUI-scale
+checks remain pending, as do import/export preset controls and the inventory screen.

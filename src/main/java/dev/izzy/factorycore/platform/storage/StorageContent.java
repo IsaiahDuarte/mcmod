@@ -54,6 +54,7 @@ public final class StorageContent {
                   .displayItems(
                       (parameters, output) -> {
                         output.accept(DRIVE_ITEM.get());
+                        output.accept(BufferedInterfaceContent.ITEM.get());
                         output.accept(ConnectorContent.ITEM.get());
                         output.accept(NetworkContent.CONTROLLER_ITEM.get());
                         output.accept(NetworkContent.GATEWAY_ITEM.get());

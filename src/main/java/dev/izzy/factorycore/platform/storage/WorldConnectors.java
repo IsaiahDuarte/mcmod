@@ -698,6 +698,7 @@ public final class WorldConnectors {
     if (chunk == null) return null;
     BlockEntity entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
     if (entity instanceof EnergyBankEntity
+        || entity instanceof BufferedInterfaceEntity
         || entity instanceof StorageDriveEntity
         || entity instanceof ConnectorEntity)
       throw new IllegalArgumentException(
@@ -730,6 +731,7 @@ public final class WorldConnectors {
         if (backingChunk == null) return null;
         var part = backingChunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
         if (part instanceof EnergyBankEntity
+            || part instanceof BufferedInterfaceEntity
             || part instanceof StorageDriveEntity
             || part instanceof ConnectorEntity)
           throw new IllegalArgumentException("Declared backing overlaps canonical digital storage");

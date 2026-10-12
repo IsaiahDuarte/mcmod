@@ -4,7 +4,8 @@ This development build provides Storage Drives, item/fluid cells and upgrade
 modules on Minecraft 1.21.1 / NeoForge 21.1.252. Network Controllers, Gateways and Cables now have physical placement and
 ownership. Valid wired networks now activate installed cells after bounded server rebuilding.
 Finite Energy Banks expose real NeoForge energy ports on valid wired networks.
-Terminals, automation and wireless access are still pending; the current build has no player deposit/withdrawal endpoint.
+Buffered Interfaces now receive and expose real hopper items.
+Terminals, network transfer presets and wireless access are still pending; the current build has no player deposit/withdrawal endpoint.
 
 ## Cells and drives
 
@@ -38,6 +39,7 @@ creative tab. Initial icons reference vanilla textures.
 | Starter Item Cell | 4 iron ingots, 4 redstone dust, 1 chest |
 | Starter Fluid Cell | 7 glass blocks, 1 empty bucket, 1 redstone dust |
 | Storage Drive | 4 iron ingots, 4 redstone dust, 1 hopper |
+| Buffered Interface | 4 iron ingots, 2 glass blocks, 2 redstone dust, 1 hopper |
 | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Expansion Module | 4 gold ingots, 2 redstone dust, 1 diamond |
 | Advanced Module | 4 diamonds, 2 redstone dust, 1 netherite ingot |
@@ -169,3 +171,28 @@ or assuming missing endpoint details. This still does not automatically resume
 work after restart: current identity/grants/policy validation and recovery controls
 are unfinished. Keep matching world backups; do not downgrade this save to an
 older mod binary or replay an uncertain operation.
+
+
+## Buffered Interfaces
+
+Craft a Buffered Interface using four iron ingots, two glass blocks, two redstone
+and a hopper. Its top has nine raised slot markers. A hopper pointing into any
+face deposits real items into its nine inventory slots. Stack sizes and exact
+item components are preserved; a tool occupies one item per slot. If all slots
+are full, the hopper keeps its remaining items and resumes when space returns.
+Adjacent automation can extract the real local contents from any face.
+
+Connect the device to cables/controller and use it with an empty hand to inspect
+item and occupied-slot counts; network VIEW permission is required for inspection.
+Local hopper access works while the network is disconnected, until the physical
+buffer fills. These buffered items are not automatically published as shared
+network stock. Automatic import/export presets and the player inventory screen
+are still pending in this development build; connecting storage does not yet
+start a network import.
+
+Breaking the block drops one portable Buffered Interface reference containing
+its canonical ownership identity, preserving the contents. Placing it again
+moves that inventory and invalidates older references/capabilities. Creative
+placement consumes the reference too. Copied stale/placed references cannot
+produce another inventory; conflicting copies leave the contents in recovery
+and block access. Preserve a faulted reference for administrative recovery.

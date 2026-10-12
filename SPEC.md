@@ -60,8 +60,9 @@ A hopper feeds a Buffered Interface in Import mode; the network drains its buffe
 
 The nine-slot owned item inventory and NeoForge hopper-handler adapter now exist
 as a P3 prerequisite, with exact component/stack limits and backpressure tests.
-Canonical slot ownership/persistence now exists; physical placement, automatic
-import presets and the actual hopper flow remain unfinished; A01 is not yet satisfied.
+Canonical slot ownership/persistence, physical placement and actual hopper-to-buffer
+flow now have local evidence; automatic network import presets and the terminal
+loop remain unfinished; A01 is not yet satisfied.
 [Buffered Interface contract](docs/modules/BUFFERED_INTERFACES.md) records this scope.
 
 The implemented connector primitive has a provider-facing socket and five cable

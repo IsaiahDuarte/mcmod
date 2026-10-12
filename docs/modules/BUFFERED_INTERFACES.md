@@ -1,9 +1,9 @@
 # Buffered Interfaces
 
 P3 prerequisite component: `ItemBuffer` and `BufferedItemHandler` implement the
-selected nine-slot owned inventory and its NeoForge automation view. The canonical world table/structural lease now exists. The physical
-block, import/export presets, configuration UI and
-hopper gameplay path are not implemented yet. A working handler alone is not A01.
+selected nine-slot owned inventory and its NeoForge automation view. The canonical world table/structural lease now exists. The physical block and hopper inventory path are implemented with headless world
+evidence. Network import/export presets and the inventory screen remain missing;
+the hopper-to-storage-to-terminal loop is not yet A01.
 See [ownership decision](../decisions/0014-buffered-inventory.md).
 
 ## Owned slots and bounded transfer port
@@ -118,6 +118,46 @@ saves include nested schema one and the BUFFERED_INTERFACE structural kind.
 The fixed schema-seven world fixture contains ledgers/grants/nodes/staging/foreign
 holds/rotation, and migration removes only the new empty table/version change to
 compare exact original data. Missing/wrong-type/future/duplicate/over-limit data
-preserves and quarantines the whole authority. No running block, buffer endpoint
-or preset is registered yet; real break/drop, chunk/world restart, interrupted
+preserves and quarantines the whole authority. A physical block/capability is now registered below; its world transfer buffer
+endpoint and automatic presets remain missing; real break/drop, chunk/world restart, interrupted
 independent files, client and hopper flow remain unverified.
+
+
+## Physical holder and hopper path
+
+The Buffered Interface block exposes the same nine owned slots on all six faces
+through the registered IItemHandler capability. Mechanical access requires the
+current loaded block entity, exact lease, owner token and unconflicted state;
+retained capabilities reject while removed, detached, unloaded/replaced or copied.
+Chunk checks use getChunkNow/CHECK and never load chunks. It joins the wired graph
+as a storage-role structural vertex, without being enumerated as shared stock.
+Foreign connector registration rejects direct or declared overlaps with owned
+buffers, so no second alias can spend or double-count their inventory.
+
+Fresh player placement commissions canonical inventory and records the server
+placer principal, configuration generation one, world/ID/lease generation in
+local BufferData schema one. These six typed fields are the entire reference;
+no item contents are saved in chunk NBT or portable stacks. The principal is
+provenance only, not a saved grant/operator override. Upcoming presets must not
+authorize work from an item reference principal; they need server-owned deployment
+ownership and current grant checks. Local
+schema-one fields are strict; malformed/future payloads stay raw and unavailable,
+including across break/drop. Chunk loading rejects portable references instead
+of silently placing them. Break validates the current holder, unbinds and detaches
+its lease, then drops one reference with the new generation. Creative placement
+also consumes one reference; copied references cannot allocate replacement stock.
+
+Inspection with an empty hand requires current wired VIEW permission before
+reading exact item/occupied-slot counts. Local mechanical input/output does not
+withdraw network stock and remains available when disconnected. Starter recipe:
+four iron, two glass, two redstone, one hopper; obtaining a hopper unlocks it.
+Nine raised top markers, recessed tray, native item/block model and translated
+messages are wired; client appearance and interactions are not yet verified.
+
+Seven BufferedInterfaceGameTests exercise actual vanilla hopper insertion and
+full-buffer backpressure/resumption, six shared faces, live wired membership,
+creative placement/break/movement/stale capabilities, lifecycle reload/copy
+quarantine, future raw preservation, declared foreign overlap rejection and exact
+recipe/unlock. These do not prove actual chunk/full-server restart, cross-file
+interruption, multiplayer or complete player automation. Next add the distinct
+buffer endpoint and shared scheduled network import, then terminal/all-key search.

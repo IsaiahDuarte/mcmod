@@ -101,3 +101,13 @@ item windows visit up to 64 slots starting at any valid platform index. These
 are provisional admission/balance choices, not completed automatic selection or
 measured throughput. Recipes/models load in headless checks; survival/client,
 combined power demand and complete progression remain pending.
+
+
+## Physical Buffered Interface starter recipe — 2026-10-12
+
+Select four iron, two glass, two redstone and one hopper, arranged IGI/RHR/IGI.
+This avoids the existing Storage Drive recipe and adds no diamonds/Nether/optional
+mod prerequisite. Obtaining a hopper unlocks it. Nine physical slots cap stacks
+at 64 while respecting smaller native maxima. Real hopper full-buffer backpressure
+and recipe loading have headless evidence. Automatic network presets, measured
+throughput and complete survival progression remain pending D06/P3/P6 validation.

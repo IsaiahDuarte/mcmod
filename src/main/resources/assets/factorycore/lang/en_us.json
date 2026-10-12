@@ -64,5 +64,11 @@
   "direction.factorycore.east": "East",
   "direction.factorycore.west": "West",
   "direction.factorycore.up": "Up",
-  "direction.factorycore.down": "Down"
+  "direction.factorycore.down": "Down",
+  "block.factorycore.buffered_interface": "Buffered Interface",
+  "tooltip.factorycore.buffer_slots": "Nine real item slots; accepts hopper input.",
+  "tooltip.factorycore.buffer_move": "Contents stay with its ownership reference when moved.",
+  "message.factorycore.buffer_fault": "Buffered Interface unavailable: %s",
+  "message.factorycore.buffer_denied": "You do not have permission to inspect this buffer.",
+  "message.factorycore.buffer_status": "Buffered Interface: %s items in %s/9 slots."
 }
