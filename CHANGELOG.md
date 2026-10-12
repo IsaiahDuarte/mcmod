@@ -2,6 +2,11 @@
 
 ## 0.1.0-dev — Development bootstrap
 
+- Added bounded global priority and persisted stable-ID round-robin storage routes
+  through the shared scheduler, retaining actual partial/uncertain transfer IDs.
+  World schema seven migrates prior authorities with empty routing preferences;
+  automatic presets and the player terminal remain unfinished.
+
 - Selected Minecraft 1.21.1, NeoForge 21.1.252 and Java 21.
 - Added a minimal loadable Factory Core entry point, later extended with storage registration.
 - Added checksum-validated Gradle tooling, dependency locks, formatting, PMD,

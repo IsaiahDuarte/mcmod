@@ -99,7 +99,12 @@ class NetworkPersistenceTest {
     assertThrows(IllegalArgumentException.class, () -> loaded.network(new UUID(0, 999)));
     assertEquals(1, loaded.principalBindings());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(6, migrated.getInt("Schema"));
+    assertEquals(7, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("RouteCursors")
+            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
     assertTrue(
         migrated
             .getCompound("ExternalClaims")

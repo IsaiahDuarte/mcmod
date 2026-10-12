@@ -362,3 +362,23 @@ allowance that made 1,024 records unreachable. Corrected code charges context
 separately, keeping the existing count/byte tests and limits unchanged. These are
 component/disk-adapter evidence; recovery execution, real world restart/chunks,
 client/multiplayer and independent-save interruptions remain required.
+
+
+## Explicit global priority routing
+
+Three PriorityOrderTest cases cover ordering across discovery-page arrival,
+duplicate backing updates, extreme integer priorities, stable ties and bounded
+admission/reclamation. Eight ConnectorGameTests exercise preferred foreign import,
+preferred partial withdrawal, full-target fallback, owned cancellation, queued
+revocation, uncertain extraction without fallback, stable repeated rotation and full-target
+rotation fallback, with exact conservation.
+An isolated pinned-runtime run executed all 80 world tests successfully; see the
+implementation-plan checkpoint for commands, report paths and canonical-build
+limitations. Cancellation/revocation and uncertain extraction now have world coverage. Real
+client/full-restart and representative world-performance evidence remain required.
+
+
+Claimed-uncertainty cleanup waits for quarantine-triggered origin topology
+revalidation and asserts cleanup admission before expecting a completion.
+Rejected OFFLINE work has no callback; ignoring that result previously produced
+an intermittent fixture timeout. Journal/hold/conservation assertions remain.

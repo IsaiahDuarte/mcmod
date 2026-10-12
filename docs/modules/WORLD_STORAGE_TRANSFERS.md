@@ -279,3 +279,90 @@ binding. [Metadata measurement](../performance/CATALOG_METADATA.md) records one
 standalone baseline/page comparison; full world catalog performance remains pending.
 All-key searchable catalog, offline listings, global selection/persisted rotation,
 automatic presets, player routes and client/SDK query lifecycle remain unfinished.
+
+
+## Explicit global storage routes
+
+`transfers().routes().priority(id, actor, origin, fixed, key, amount, direction,
+completion)` discovers eligible storage across bounded catalog pages before
+selecting descending priority, then stable backing UUID order. `TO_STORAGE`
+withdraws from the fixed endpoint; `FROM_STORAGE` deposits into it. Fixed endpoint
+and candidate permissions, accepted root/segment, loaded leases and exact identity
+are revalidated through the existing shared transfer path. Catalog rows expose
+separate `withdrawable` and `depositable` flags; VIEW alone never grants mutation.
+
+Calls and completions belong to the server thread. Quantities use items/mB/FE,
+with the existing 128-item or 1,000-mB/FE quantum. Null/negative/oversized requests
+fail before queueing; typed admission failures produce no completion. Callbacks
+must be bounded and nonthrowing. At most 32 discovery requests share a 2-MiB
+estimated metadata budget: 2,048 base bytes plus exact-key bytes/registry ID,
+and 384 bytes per candidate. Each request collects at most 5,120 distinct backing
+IDs over at most 640 eight-record pages. Every page and attempted move consumes
+16 shared scheduler credits; collection does not scan all endpoints in one tick.
+These are work/admission bounds, not measured throughput promises.
+
+A request performs one actual move quantum. A preferred source may supply only
+part of the requested amount; consume actual snapshot counts before requesting
+more. Full/offline/denied/rate-limited candidates may be skipped only when no
+resources moved and no staging or pending uncertainty exists. A clean empty
+completed attempt is retired before another candidate is tried. Once extraction,
+delivery, return, staging or uncertainty exists, the route returns that durable
+move and never automatically tries a second backing.
+
+The logical request UUID is ephemeral; `Result.move().id()` identifies the actual
+canonical transfer record when a snapshot exists. Retain that actual ID for
+recovery. Metadata-only terminal results have no snapshot. `cancel(id, actor)`
+cancels only an owned undispatched route outside shared task execution, without a
+callback. Restart loses unextracted discovery work; actual staging remains in the
+canonical schema-seven registry. Priority mode stores no cursor. Automatic
+presets and the player terminal remain unfinished.
+
+```java
+var routes = WorldNetworks.get(server).transfers().routes();
+var admission = routes.priority(UUID.randomUUID(), authenticatedActor,
+    controllerPosition, new WorldStorageTransfers.External(importConnector),
+    exactKey, 64, WorldStorageRoutes.Direction.TO_STORAGE, result -> {
+      var move = result.move();
+      // Consume actual delivered counts; retain move.id() for staged recovery.
+    });
+```
+
+
+### Persisted round-robin mode
+
+`roundRobin(id, deployment, actor, origin, fixed, key, amount, direction, completion)`
+uses the same lifecycle, resource quanta, failure rules and shared scheduler as
+`priority`. The caller supplies a stable server-owned deployment/action UUID,
+never a client-supplied scope or an identity regenerated for every tick. Candidate
+priority is ignored in this explicit mode. Selection chooses the smallest eligible
+backing UUID strictly after the stored last UUID, wrapping to the first if needed.
+An absent/unloaded last target does not reset rotation or require loading it.
+Each candidate is tried at most once per request.
+
+The cursor is scoped to accepted network/segment, principal, deployment UUID,
+fixed endpoint backing, resource kind and direction. Different filters under the
+same deployment/kind/direction share rotation; no exact resource metadata is
+stored. Cursor selection reads current canonical state after discovery, so queued
+requests for the same deployment share the newest rotation point. It advances on
+selection before move dispatch, including rejected/full/uncertain attempts; this
+is distribution preference, not delivered-count evidence. Cancellation before
+selection, rejected route admission and empty discovery create no cursor.
+A crash may retain an older saved preference; it never authorizes stock replay.
+
+At most 1,024 fixed-size cursor scopes are retained world-wide. Admission preflights
+capacity and dispatch rechecks it before extracting; races for the final slot
+return TECHNICAL_LIMIT. Existing scopes can continue at capacity. Canonical
+`RouteCursors.forget(scope)` is a trusted server deployment-retirement primitive:
+frontends must validate lifecycle ownership before using it. Changed cursor/forget
+marks SavedData dirty; unchanged/no-op/rejected operations do not. Schemas one
+through six migrate with an empty cursor table. Nested schema-one fields and
+migration/recovery limits are documented in [persistence](PERSISTENCE.md).
+
+```java
+var admission = routes.roundRobin(UUID.randomUUID(), persistedDeploymentId,
+    authenticatedActor, controllerPosition,
+    new WorldStorageTransfers.External(importConnector), exactKey, 32,
+    WorldStorageRoutes.Direction.TO_STORAGE, result -> {
+      // Account for result.move().transfer() actual counts, retaining uncertainty.
+    });
+```

@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.resource.LedgerStateCodec;
 import dev.izzy.factorycore.core.resource.TransferRegistry;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankAccess;
+import dev.izzy.factorycore.core.storage.RouteCursors;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -41,6 +42,7 @@ public final class DeviceSavedData extends SavedData {
   private final NodeRegistry nodes;
   private final TransferRegistry transfers;
   private final ExternalClaims externalClaims;
+  private final RouteCursors routeCursors;
   private final CompoundTag rejected;
   private final String diagnostic;
 
@@ -50,9 +52,11 @@ public final class DeviceSavedData extends SavedData {
       List<NodeRegistry.Stored> nodeStates,
       List<TransferRegistry.Stored> transferStates,
       List<ExternalClaims.Claim> claimStates,
+      List<RouteCursors.Cursor> cursorStates,
       CompoundTag rejected,
       String diagnostic) {
     externalClaims = state == null ? null : new ExternalClaims(claimStates, this::setDirty);
+    routeCursors = state == null ? null : new RouteCursors(cursorStates, this::setDirty);
     transfers = state == null ? null : new TransferRegistry(transferStates, this::setDirty);
     this.rejected = rejected;
     this.diagnostic = diagnostic;
@@ -82,6 +86,9 @@ public final class DeviceSavedData extends SavedData {
           || nodes.contains(claim.backing())
           || networks.containsKey(claim.backing()))
         throw new IllegalArgumentException("Foreign claim backing collides with owned identity");
+    for (var cursor : cursorStates)
+      if (!networks.containsKey(cursor.scope().network()))
+        throw new IllegalArgumentException("Route cursor has unknown network");
   }
 
   public static DeviceSavedData get(MinecraftServer server) {
@@ -136,6 +143,7 @@ public final class DeviceSavedData extends SavedData {
         List.of(),
         List.of(),
         List.of(),
+        List.of(),
         null,
         "");
   }
@@ -149,6 +157,11 @@ public final class DeviceSavedData extends SavedData {
   public ExternalClaims externalClaims() {
     registry().world();
     return externalClaims;
+  }
+
+  public RouteCursors routeCursors() {
+    registry().world();
+    return routeCursors;
   }
 
   public TransferRegistry transfers() {
@@ -247,7 +260,7 @@ public final class DeviceSavedData extends SavedData {
     try {
       require(tag, "Schema", Tag.TAG_INT);
       int schema = tag.getInt("Schema");
-      if ((schema < 1 || schema > 6) || !tag.hasUUID("World"))
+      if ((schema < 1 || schema > 7) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
       NetworkStateCodec.fields(
           tag,
@@ -259,14 +272,24 @@ public final class DeviceSavedData extends SavedData {
                       ? Set.of("Schema", "World", "Devices", "Networks", "Nodes")
                       : schema < 6
                           ? Set.of("Schema", "World", "Devices", "Networks", "Nodes", "Transfers")
-                          : Set.of(
-                              "Schema",
-                              "World",
-                              "Devices",
-                              "Networks",
-                              "Nodes",
-                              "Transfers",
-                              "ExternalClaims"));
+                          : schema == 6
+                              ? Set.of(
+                                  "Schema",
+                                  "World",
+                                  "Devices",
+                                  "Networks",
+                                  "Nodes",
+                                  "Transfers",
+                                  "ExternalClaims")
+                              : Set.of(
+                                  "Schema",
+                                  "World",
+                                  "Devices",
+                                  "Networks",
+                                  "Nodes",
+                                  "Transfers",
+                                  "ExternalClaims",
+                                  "RouteCursors"));
       var networkStates =
           schema == 1 ? List.<NetworkPermissions.State>of() : NetworkStateCodec.decode(tag);
       var nodeStates = schema < 3 ? List.<NodeRegistry.Stored>of() : NodeStateCodec.decode(tag);
@@ -312,7 +335,8 @@ public final class DeviceSavedData extends SavedData {
             new DeviceRegistry.Stored(
                 ledger, entry.getLong("Generation"), location, entry.getBoolean("Conflict")));
       }
-      if (schema == 6) require(tag, "ExternalClaims", Tag.TAG_COMPOUND);
+      if (schema >= 6) require(tag, "ExternalClaims", Tag.TAG_COMPOUND);
+      if (schema == 7) require(tag, "RouteCursors", Tag.TAG_COMPOUND);
       var loaded =
           new DeviceSavedData(
               new DeviceRegistry.State(tag.getUUID("World"), records),
@@ -322,15 +346,17 @@ public final class DeviceSavedData extends SavedData {
               schema < 6
                   ? List.of()
                   : ExternalClaimsCodec.decode(tag.getCompound("ExternalClaims")),
+              schema < 7 ? List.of() : RouteCursorCodec.decode(tag.getCompound("RouteCursors")),
               null,
               "");
-      if (schema < 6) loaded.setDirty();
+      if (schema < 7) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
           invalid.getMessage() == null ? invalid.getClass().getSimpleName() : invalid.getMessage();
       return new DeviceSavedData(
           null,
+          List.of(),
           List.of(),
           List.of(),
           List.of(),
@@ -344,7 +370,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 6);
+    tag.putInt("Schema", 7);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {
@@ -365,6 +391,7 @@ public final class DeviceSavedData extends SavedData {
     tag.put("Nodes", NodeStateCodec.encode(nodes.snapshot()));
     tag.put("Transfers", TransferStateCodec.encode(transfers.snapshot()));
     tag.put("ExternalClaims", ExternalClaimsCodec.encode(externalClaims.snapshot()));
+    tag.put("RouteCursors", RouteCursorCodec.encode(routeCursors.snapshot()));
     tag.put(
         "Networks",
         NetworkStateCodec.encode(

@@ -85,7 +85,7 @@ performs 2,000 stock/claim operations with a save/reload after each operation,
 replay seed `0x5A7E001`. This is portable recovery evidence, not a world crash or
 external-inventory atomicity guarantee.
 
-The world envelope now targets schema six, retaining schema-five [accepted transfer context](TRANSFER_PERSISTENCE.md).
+The world envelope now targets schema seven, retaining schema-five [accepted transfer context](TRANSFER_PERSISTENCE.md).
 Ledger/component formats remain unchanged. Version-one through four world fixtures
 preserve their exact data; missing legacy context is never invented.
 
@@ -105,8 +105,9 @@ transfer-entry schema two remain unchanged. Missing table/fields, wrong types,
 future/unknown fields, duplicate claims, nonpositive amounts, total overflow,
 4,096-record/4 MiB metadata violations or backing collisions with owned
 ledgers/nodes/networks quarantine the entire authority and preserve its raw tags.
-Global schema seven and newer reject; nested future schemas reject. Old binaries
-reject schema six, so downgrade requires a matching backup.
+Schema seven additionally contains routing preferences below; global schema eight
+and newer reject. Nested future schemas reject. Older binaries reject newer
+global schemas, so downgrade requires a matching backup.
 
 Foreign providers may be absent or empty during restore. Orphan claims remain
 held; no load-time release, guessed inventory, automatic retry or refund occurs.
@@ -118,3 +119,32 @@ Fixed nested-claim and schema-five world fixtures plus compressed SavedData relo
 cover exact quantities including beyond 2^53, orphan preservation, dirty behavior,
 strict rejection and migration. Real server-restart/interruption evidence remains
 pending.
+
+
+## Canonical route preferences — world schema seven
+
+`RouteCursors` is a required compound with nested integer Schema=1 and a Cursors
+compound list. Each entry contains UUID int arrays Network, Segment, Principal,
+Deployment, Fixed and Last; string Kind (ITEM/FLUID/ENERGY); byte ToStorage (0 or 1).
+The enclosing world authority supplies the namespace. Scope excludes Last and
+orders by network/segment/principal/deployment/fixed/kind/direction. Last may name
+an absent backing; it is a rotating preference, never owned stock or permission.
+No handler, resource contents, component bytes, operation intent or granted
+privilege is persisted. At most 1,024 fixed-size entries are accepted.
+
+Schema one through six world envelopes migrate with an empty route table,
+retaining existing stock, claims, permissions, leases, context and journal evidence.
+A fixed schema-six fixture includes nonempty ledgers, grants, nodes, staging and
+foreign holds and requires exact equality after removing only the new empty table
+and global version change. Existing legacy migration tests additionally assert
+empty cursor tables; their conservation and byte comparisons remain intact.
+
+Strict types, field sets, duplicate scopes, unknown network references, unknown
+kind/nested version and over-limit tables quarantine the whole authority and
+preserve its raw tags. Restoring a valid cursor neither dirties the current schema
+nor validates any endpoint. Selection marks preference dirty before dispatch;
+actual transfer intent remains owned by the unchanged staging subsystem. Independent
+provider saves cannot become atomic through this cursor. A stale disk cursor after
+interruption can alter distribution order, never replay extraction or delivery.
+Orderly compressed SavedData reload is covered; full running-server crash/client
+and multiplayer evidence remain separate release requirements.

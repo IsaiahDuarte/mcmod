@@ -90,7 +90,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | --- | --- | --- |
 | A01 | P3 | Not implemented. |
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
-| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; crafting job claims, global selection/all-key search and full server restart/interruption integration remain pending. |
+| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; crafting job claims, all-key search and full server restart/interruption integration remain pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Automatic external catalog/selection, permissions UI and actual chunks/restart remain pending. |
 | A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Actual chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
@@ -1265,3 +1265,126 @@ performance evidence alongside crafting, production scripting, powered/wireless
 progression and final A01–A17/asset/onboarding release audit. An optional user
 preference on playable-loop versus restart/recovery priority is pending; the full
 release goal remains active.
+
+
+## Global priority routing prerequisite — 2026-10-12
+
+Storage checkpoint committed by the user as `22be4e9` after sandbox Git writes
+prevented agent commit creation. Subsequent routing work remains a separate slice.
+Implemented explicit scheduled TO_STORAGE/FROM_STORAGE exact-key priority routes:
+bounded eight-record discovery pages collect a global descending-priority/stable-ID
+order, recheck accepted scope and grants, then attempt one actual move quantum.
+Unavailable/full candidates are skipped only before any resource mutation or
+uncertainty; staged/partial/uncertain results preserve their actual durable move ID.
+Catalog mutation flags distinguish deposit permission from VIEW/WITHDRAW.
+Requests have documented count, metadata, candidate and page limits; every step
+uses existing actor/network fairness and accounting. Persisted round-robin,
+automatic presets, all-key search and terminal/player operations remain missing.
+
+Direct Java 21 compilation of changed main/core/world-test sources passed.
+Standalone Jupiter execution of the portable core package passed all 86 tests,
+including three new global-order/duplicate/extreme-priority/quota tests; this is
+not the full JVM suite. An isolated launch of the pinned NeoForge GameTest runtime
+using cached artifacts and updated compiled classes executed all 80 required
+world tests successfully, with zero failures/errors/skips and server exit zero.
+Command: `python3 /private/tmp/factorycore-route-worldcheck/launch.py`.
+Report: `/private/tmp/factorycore-route-worldcheck/results.xml`; launch log beside
+it. Existing canonical build reports were not overwritten. Two initial failures
+came from the new fixture's unsupported north-side capability query; correcting
+connector placement to its supported west provider face preserved all assertions.
+Tests prove preferred global import, exact preferred partial withdrawal and full
+preferred-target fallback. They do not prove restart/client/multiplayer behavior.
+
+Fresh canonical Gradle/format/PMD/build gates remain blocked by sandbox lock/socket
+restrictions. No gate was weakened. P2/P3 and A03/A04/A12 remain partial; the full
+A01–A17 release objective remains active. Next finish route failure/cancellation
+coverage and persisted round-robin, then connect presets and the player terminal.
+
+
+### Priority route failure-path evidence — 2026-10-12
+
+Added three real scheduled scenarios: only the owning actor can cancel queued
+route discovery (no callback/mutation), revoked VIEW/transfer grants prevent
+queued discovery from mutating either endpoint, and a foreign post-extraction
+exception returns the durable quarantined operation without fallback/refund.
+Assertions check real source/destination/ledger state rather than mock calls.
+Direct Java compilation passed; configured standalone formatter applied.
+The isolated pinned world suite now collected 83 required tests. First run:
+82 passed, existing `uncertainClaimedExtractionBlocksHoldRelease` timed out waiting
+for its second callback. All new route scenarios passed. Immediate repeat via
+`python3 /private/tmp/factorycore-route-worldcheck/launch.py` passed all 83, exit
+zero. The intermittent existing callback timeout is unresolved and remains a
+verification concern; no timeout/assertion was weakened. Latest XML/log remain
+in the isolated directory. Canonical Gradle gates remain environment-blocked.
+Next investigate that callback/admission failure and implement persisted rotation
+before wiring the automatic import/export and player terminal loop.
+
+
+### Claimed cleanup test admission race — 2026-10-12
+
+Traced the intermittent second-callback timeout to the fixture submitting cleanup
+while provider quarantine had invalidated the origin's wired topology.
+`ConnectorEntity.quarantine()` calls `changed()`; claim admission correctly returns
+OFFLINE for an invalid origin and rejected work never calls completion. The test
+ignored that admission result. It now waits for VALID origin membership before
+submitting the cleanup and asserts OK admission before waiting for its callback.
+All existing uncertain-journal, retained-hold and exact physical-stock assertions
+remain unchanged; no timeout, scheduler limit or production authorization rule was
+weakened. This corrects fixture sequencing to the documented API contract.
+
+Verification: direct Java 21 compilation and configured standalone formatting
+passed. Three consecutive isolated pinned NeoForge world launches each executed
+83 required tests, server exit zero, with zero failures/errors/skips confirmed
+from XML. Commands used the same `/private/tmp/factorycore-route-worldcheck/launch.py`
+launcher; separate `repeated-1.xml` through `repeated-3.xml` and matching logs retain
+each result. This supports the sequencing correction, without claiming absence
+of all flakiness or substituting for blocked canonical Gradle gates.
+
+
+## Persisted global distribution checkpoint — 2026-10-12
+
+Implemented explicit global priority and persisted stable-ID round-robin routing
+for exact-key digital/foreign endpoints. Shared bounded discovery and transfer
+steps retain current root/segment/principal checks, resource quanta and quotas.
+One actual move quantum may be partial; fallback requires no moved/staged/returned
+resources or pending uncertainty. Cancelled/revoked discovery never mutates stock.
+Route callbacks expose the actual durable operation identity for recovery.
+
+Round-robin preferences persist under canonical world schema seven, nested cursor
+schema one. Scope includes accepted root/segment/principal, stable deployment,
+fixed backing, kind and direction. Selection advances before dispatch, skipping
+ineligible/full endpoints without treating the cursor as resource ownership.
+At most 1,024 fixed-size scopes are retained; admission/dispatch enforce limits.
+Schemas one through six migrate with empty cursors and exact existing tables.
+Fixed nested-cursor and nonempty schema-six fixtures protect compatibility.
+Updated prior migration/future tests target seven/eight while retaining all old
+ownership, conservation and raw-tag comparisons. Unknown/malformed/duplicate or
+over-limit preferences preserve and quarantine the whole authority.
+
+Four portable cursor/rotation tests and four platform persistence tests cover
+stable wrap/absent IDs, duplicate admission, count/reclaim, dirty/no-op behavior,
+scoped restore, immutable snapshots/reentry, compressed reload, strict rejection
+and exact migration. Eight world routing scenarios cover preferred import/partial
+withdrawal, full-target fallback, cancellation, revocation, uncertainty, repeated
+rotation and persisted full-target skipping. The previously intermittent foreign
+claim cleanup fixture now waits for quarantine-triggered topology revalidation
+and asserts admission, preserving its existing journal/hold/resource assertions.
+
+After the user restored unrestricted session permissions, normal
+`./gradlew spotlessApply build` passed (38 seconds): all 146 JVM tests and 85
+required GameTests executed with zero failures/errors/skips. Java compiler,
+Spotless, all PMD source sets, architecture and packaged-artifact checks passed.
+`python3 scripts/verify.py` then passed 24 tooling tests and a fresh 85-GameTest run;
+JVM/format/PMD/build inputs were UP-TO-DATE, supported by the preceding executed
+146-test run. Rust guest verification was unchanged/UP-TO-DATE. Direct fallback
+compilation and 128 targeted core/storage JVM tests also passed before normal
+permissions returned; those results are narrower evidence, not substitutes for
+canonical gates. Earlier sandbox failures remain historical; fresh local required
+verification is no longer blocked. Final whitespace/scope/docs review passed.
+
+P1/P2/P3 and A03/A04/A12 remain partial. Next implement the Buffered Interface's
+owned inventory/import preset and server-authorized player terminal/all-key search
+for the hopper -> storage -> terminal -> withdrawal loop. Full restart/interrupted
+saves, crafting/job ownership, production scripting, powered/wireless progression,
+client/multiplayer, finished presentation/onboarding and P7 acceptance/performance
+remain required; the full A01–A17 release goal stays active.

@@ -1771,4 +1771,286 @@ public final class ConnectorGameTests {
                     "Owned replacement root cannot inherit old catalog cursor"))
         .thenSucceed();
   }
+
+  private static void priorityRoute(GameTestHelper helper, int mode) {
+    var setup = setup(helper);
+    helper.setBlock(PROVIDER, ConnectorFixture.BLOCK.get());
+    ConnectorFixture.ProviderEntity fixed = helper.getBlockEntity(PROVIDER);
+    var highPos = new BlockPos(2, 1, 3);
+    var highProviderPos = new BlockPos(3, 1, 3);
+    var high = connector(helper, highPos, Direction.EAST);
+    helper.setBlock(highProviderPos, ConnectorFixture.BLOCK.get());
+    ConnectorFixture.ProviderEntity preferred = helper.getBlockEntity(highProviderPos);
+    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
+    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
+    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    var cell = CellHandleData.read(drive.cell(0));
+    var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(1));
+    WorldStorageRoutes.Result[] result = {null};
+    var request = UUID.randomUUID();
+    var guest = new NetworkPermissions.Actor(UUID.randomUUID(), false);
+    var routeActor = mode == 5 ? guest : setup.actor();
+    helper
+        .startSequence()
+        .thenWaitUntil(
+            () -> {
+              ready(helper, setup.runtime(), CONNECTOR);
+              ready(helper, setup.runtime(), highPos);
+              ready(helper, setup.runtime(), STORAGE);
+            })
+        .thenExecute(
+            () -> {
+              high.configure(
+                  setup.actor(),
+                  new ConnectorSettings(
+                      ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 10, 0, 64, 64));
+              if (mode == 1) {
+                preferred.items.setStackInSlot(0, marked(32));
+                setup.saved().registry().insert(cell, key, 64);
+              } else {
+                fixed.items.setStackInSlot(0, marked(64));
+                if (mode == 2 || mode == 7) {
+                  preferred.items.setStackInSlot(0, marked(64));
+                  preferred.items.setStackInSlot(1, marked(64));
+                }
+              }
+              if (mode == 3) fixed.failAfterExtraction = true;
+              if (mode == 5)
+                setup
+                    .saved()
+                    .network(setup.root().handle().id())
+                    .setGrants(
+                        setup.actor(),
+                        guest.id(),
+                        Set.of(
+                            NetworkPermissions.Permission.VIEW,
+                            NetworkPermissions.Permission.WITHDRAW,
+                            NetworkPermissions.Permission.DEPOSIT));
+              var endpoint = setup.runtime().connectors().bind(setup.connector()).handle();
+              var scope = setup.runtime().membership(position(helper, ROOT)).scope();
+              var rotationScope =
+                  new dev.izzy.factorycore.core.storage.RouteCursors.Scope(
+                      scope.network(),
+                      scope.segment(),
+                      routeActor.id(),
+                      request,
+                      endpoint.backing(),
+                      ResourceKind.ITEM,
+                      true);
+              if (mode == 7) setup.saved().routeCursors().advance(rotationScope, cell.backing());
+              var admission =
+                  mode >= 6
+                      ? setup
+                          .runtime()
+                          .transfers()
+                          .routes()
+                          .roundRobin(
+                              request,
+                              request,
+                              routeActor,
+                              position(helper, ROOT),
+                              new WorldStorageTransfers.External(endpoint),
+                              key,
+                              mode == 6 ? 32 : 64,
+                              WorldStorageRoutes.Direction.TO_STORAGE,
+                              value -> result[0] = value)
+                      : setup
+                          .runtime()
+                          .transfers()
+                          .routes()
+                          .priority(
+                              request,
+                              routeActor,
+                              position(helper, ROOT),
+                              new WorldStorageTransfers.External(endpoint),
+                              key,
+                              64,
+                              mode == 1
+                                  ? WorldStorageRoutes.Direction.FROM_STORAGE
+                                  : WorldStorageRoutes.Direction.TO_STORAGE,
+                              value -> result[0] = value);
+              helper.assertTrue(
+                  admission.rejection() == OperationResult.Reason.OK, "Priority route admitted");
+              if (mode == 4) {
+                var routes = setup.runtime().transfers().routes();
+                helper.assertTrue(
+                    !routes.cancel(request, guest), "Other principal cannot cancel route");
+                helper.assertTrue(
+                    routes.cancel(request, setup.actor()), "Owner cancels queued route");
+                helper.assertTrue(
+                    !routes.cancel(request, setup.actor()), "Cancellation is single use");
+              }
+              if (mode == 5)
+                setup
+                    .saved()
+                    .network(setup.root().handle().id())
+                    .setGrants(setup.actor(), guest.id(), Set.of());
+            })
+        .thenIdle(3)
+        .thenWaitUntil(
+            () -> helper.assertTrue(mode == 4 || result[0] != null, "Priority route callback"))
+        .thenExecute(
+            () -> {
+              if (mode == 4 || mode == 5) {
+                helper.assertTrue(
+                    mode == 4
+                        ? result[0] == null
+                        : result[0].move().reason() == OperationResult.Reason.DENIED
+                            && result[0].move().transfer() == null,
+                    "Cancelled/revoked route never mutates");
+                helper.assertTrue(
+                    fixed.items.getStackInSlot(0).getCount() == 64
+                        && preferred.items.getStackInSlot(0).isEmpty()
+                        && setup.saved().registry().stock(cell, key).total() == 0,
+                    "Cancellation/revocation preserves both destinations and source");
+                return;
+              }
+              helper.assertTrue(
+                  result[0].request().equals(request)
+                      && result[0].move().transfer() != null
+                      && setup.saved().transfers().contains(result[0].move().id()),
+                  "Route returns durable actual move identity");
+              if (mode == 3)
+                helper.assertTrue(
+                    result[0].move().reason() == OperationResult.Reason.UNCERTAIN
+                        && result[0].move().transfer().state() == StagedTransfer.State.QUARANTINED
+                        && fixed.items.getStackInSlot(0).isEmpty()
+                        && preferred.items.getStackInSlot(0).isEmpty()
+                        && setup.saved().registry().stock(cell, key).total() == 0,
+                    "Uncertain extraction retains actual record and never falls back or refunds");
+              if (mode == 0)
+                helper.assertTrue(
+                    result[0].move().transfer().delivered() == 64
+                        && preferred.items.getStackInSlot(0).getCount() == 64
+                        && fixed.items.getStackInSlot(0).isEmpty()
+                        && setup.saved().registry().stock(cell, key).total() == 0,
+                    "Global high priority target wins over digital default regardless of page order");
+              if (mode == 1)
+                helper.assertTrue(
+                    result[0].move().transfer().delivered() == 32
+                        && preferred.items.getStackInSlot(0).isEmpty()
+                        && fixed.items.getStackInSlot(0).getCount() == 32
+                        && setup.saved().registry().stock(cell, key).total() == 64,
+                    "High priority source supplies exact partial units; lower source is untouched");
+              if (mode == 2 || mode == 7)
+                helper.assertTrue(
+                    result[0].move().transfer().delivered() == 64
+                        && preferred.items.getStackInSlot(0).getCount() == 64
+                        && preferred.items.getStackInSlot(1).getCount() == 64
+                        && fixed.items.getStackInSlot(0).isEmpty()
+                        && setup.saved().registry().stock(cell, key).total() == 64,
+                    "Full preferred target is skipped before extraction and lower target conserves units");
+              if (mode == 6 || mode == 7) {
+                var member = setup.runtime().membership(position(helper, ROOT)).scope();
+                var fixedEndpoint = setup.runtime().connectors().bind(setup.connector()).handle();
+                var rotationScope =
+                    new dev.izzy.factorycore.core.storage.RouteCursors.Scope(
+                        member.network(),
+                        member.segment(),
+                        setup.actor().id(),
+                        request,
+                        fixedEndpoint.backing(),
+                        ResourceKind.ITEM,
+                        true);
+                helper.assertTrue(
+                    setup
+                        .saved()
+                        .routeCursors()
+                        .last(rotationScope)
+                        .equals(result[0].move().transfer().destination()),
+                    "Rotation records selected stable backing");
+                var restored =
+                    DeviceSavedData.load(
+                        setup
+                            .saved()
+                            .save(
+                                new net.minecraft.nbt.CompoundTag(),
+                                helper.getLevel().registryAccess()),
+                        helper.getLevel().registryAccess());
+                helper.assertTrue(
+                    restored
+                        .routeCursors()
+                        .last(rotationScope)
+                        .equals(setup.saved().routeCursors().last(rotationScope)),
+                    "Canonical reload retains rotation");
+                if (mode == 6) {
+                  helper.assertTrue(
+                      result[0].move().transfer().delivered() == 32,
+                      "First rotating quantum delivers actual requested units");
+                  result[0] = null;
+                  var admission =
+                      setup
+                          .runtime()
+                          .transfers()
+                          .routes()
+                          .roundRobin(
+                              UUID.randomUUID(),
+                              request,
+                              setup.actor(),
+                              position(helper, ROOT),
+                              new WorldStorageTransfers.External(fixedEndpoint),
+                              key,
+                              32,
+                              WorldStorageRoutes.Direction.TO_STORAGE,
+                              value -> result[0] = value);
+                  helper.assertTrue(
+                      admission.rejection() == OperationResult.Reason.OK,
+                      "Second rotating request admitted for same deployment");
+                }
+              }
+            })
+        .thenWaitUntil(
+            () -> helper.assertTrue(result[0] != null || mode == 4, "Final route callback"))
+        .thenExecute(
+            () -> {
+              if (mode == 6)
+                helper.assertTrue(
+                    result[0].move().transfer().delivered() == 32
+                        && preferred.items.getStackInSlot(0).getCount() == 32
+                        && setup.saved().registry().stock(cell, key).total() == 32
+                        && fixed.items.getStackInSlot(0).isEmpty(),
+                    "Repeated deployment rotates across stable targets independently of priority");
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void priorityRouteChoosesGlobalPreferredStorageTarget(GameTestHelper helper) {
+    priorityRoute(helper, 0);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void priorityRouteWithdrawsPreferredPartialStockExactly(GameTestHelper helper) {
+    priorityRoute(helper, 1);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void priorityRouteSkipsFullPreferredTargetWithoutExtraction(GameTestHelper helper) {
+    priorityRoute(helper, 2);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void priorityRouteRetainsUncertainExtractionWithoutFallback(GameTestHelper helper) {
+    priorityRoute(helper, 3);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void priorityRouteCancellationIsOwnedAndNonmutating(GameTestHelper helper) {
+    priorityRoute(helper, 4);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void priorityRouteRechecksRevokedDiscoveryPermission(GameTestHelper helper) {
+    priorityRoute(helper, 5);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void roundRobinRotatesStableTargetsAndPersistsSelection(GameTestHelper helper) {
+    priorityRoute(helper, 6);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void roundRobinSkipsFullTargetAndAdvancesPersistedCursor(GameTestHelper helper) {
+    priorityRoute(helper, 7);
+  }
 }

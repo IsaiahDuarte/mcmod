@@ -184,6 +184,12 @@ public final class WorldExternalClaimsGameTests {
                 helper.assertTrue(
                     result[0] != null && (mode != 1 || claim[0] != null && claim[1] != null),
                     "First mutation callback"))
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    mode != 2
+                        || runtime.membership(origin).status() == NetworkTopology.Status.VALID,
+                    "Quarantine topology revalidated before cleanup admission"))
         .thenExecute(
             () -> {
               if (mode == 0) {
@@ -217,15 +223,19 @@ public final class WorldExternalClaimsGameTests {
                             == 48,
                     "Unknown extraction retains full claim and journal evidence");
                 claim[0] = null;
-                service.claim(
-                    UUID.randomUUID(),
-                    actor,
-                    origin,
-                    endpoint[0],
-                    key,
-                    48,
-                    true,
-                    value -> claim[0] = value);
+                var cleanupAdmission =
+                    service.claim(
+                        UUID.randomUUID(),
+                        actor,
+                        origin,
+                        endpoint[0],
+                        key,
+                        48,
+                        true,
+                        value -> claim[0] = value);
+                helper.assertTrue(
+                    cleanupAdmission.rejection() == OperationResult.Reason.OK,
+                    "Uncertain cleanup admitted before waiting for callback");
               }
             })
         .thenWaitUntil(

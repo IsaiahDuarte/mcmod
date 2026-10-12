@@ -48,7 +48,8 @@ public final class WorldStorageTransfers {
       long reserved,
       long available,
       int priority,
-      boolean withdrawable) {}
+      boolean withdrawable,
+      boolean depositable) {}
 
   public record CatalogPage(
       OperationResult.Reason reason, java.util.List<CatalogRow> rows, CatalogCursor next) {
@@ -121,8 +122,9 @@ public final class WorldStorageTransfers {
                         stock.reserved(),
                         stock.available(),
                         0,
+                        allowed(actor, origin, handle, key, NetworkPermissions.Permission.WITHDRAW),
                         allowed(
-                            actor, origin, handle, key, NetworkPermissions.Permission.WITHDRAW)));
+                            actor, origin, handle, key, NetworkPermissions.Permission.DEPOSIT)));
             }
             next =
                 page.next() == null
@@ -173,7 +175,11 @@ public final class WorldStorageTransfers {
                       networks
                           .connectors()
                           .allowed(
-                              actor, origin, handle, key, NetworkPermissions.Permission.WITHDRAW)));
+                              actor, origin, handle, key, NetworkPermissions.Permission.WITHDRAW),
+                      networks
+                          .connectors()
+                          .allowed(
+                              actor, origin, handle, key, NetworkPermissions.Permission.DEPOSIT)));
             }
             next =
                 page.next() == null
@@ -263,6 +269,36 @@ public final class WorldStorageTransfers {
           }
           completion.accept(networks.connectors().observe(actor, origin, endpoint, cursor));
         });
+  }
+
+  private WorldStorageRoutes routes;
+
+  public WorldStorageRoutes routes() {
+    checkThread();
+    if (routes == null) routes = new WorldStorageRoutes(server, networks, this);
+    return routes;
+  }
+
+  boolean routeAllowed(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      Endpoint endpoint,
+      ResourceKey key,
+      NetworkPermissions.Permission operation) {
+    return allowed(actor, origin, endpoint, key, operation);
+  }
+
+  boolean routeTicketActive(UUID id) {
+    checkThread();
+    var ticket = queued.get(id);
+    return id.equals(executing)
+        || ticket != null
+            && networks.scheduler().isQueued(ticket.network(), ticket.principal(), taskKey(id));
+  }
+
+  boolean inExecution() {
+    checkThread();
+    return executing != null;
   }
 
   public sealed interface Endpoint permits Digital, External {}

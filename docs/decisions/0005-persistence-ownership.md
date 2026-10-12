@@ -146,3 +146,24 @@ identity collisions reject. No load-time release or uncertain-call replay occurs
 Current implementation covers canonical save/codec/migration/disk tests. Shared
 scheduled reservation/extraction, job reconciliation and real restart/interruption
 remain incomplete; the table alone supplies no cross-mod crash atomicity.
+
+
+## Canonical routing preference extension — 2026-10-12
+
+World schema seven adds fixed-size nested-schema-one round-robin cursors to the
+same server-owned authority. A cursor records network/segment/principal/deployment,
+fixed backing/kind/direction and last selected backing only. Unlike holds or
+staging, it grants no stock ownership. Advancing before dispatch coordinates
+concurrent requests without replaying uncertain resource calls; even a failed
+attempt advances distribution. Authority and endpoint validation still belong to
+the shared scheduler/transfer path. At most 1,024 scopes are retained.
+
+An independent preference file would be resource-safe but adds a new loader/save
+boundary without a current benefit. Storing the cursor only in connector NBT would
+couple routing to one physical device and make terminal/program deployments lose
+their shared canonical preference. Canonical metadata supports each caller with
+strict scope isolation. Schemas one through six migrate with an empty table;
+unknown/malformed/duplicate/over-limit data is preserved and quarantined. Downgrade
+requires a matching backup. A stale saved preference changes only target order;
+it cannot authorize uncertain-transfer replay. Schema-five transfer context and
+entry schema two are unchanged. Actual server interruptions remain unverified.

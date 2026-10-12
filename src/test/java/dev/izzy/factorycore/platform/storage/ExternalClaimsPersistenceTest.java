@@ -94,9 +94,15 @@ class ExternalClaimsPersistenceTest {
     assertEquals("", restored.diagnostic());
     assertTrue(restored.isDirty());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(6, migrated.getInt("Schema"));
+    assertEquals(7, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("RouteCursors")
+            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
     assertTrue(restored.externalClaims().snapshot().isEmpty());
     migrated.remove("ExternalClaims");
+    migrated.remove("RouteCursors");
     migrated.putInt("Schema", 5);
     assertEquals(original, migrated);
   }

@@ -88,7 +88,12 @@ class NodePersistenceTest {
     assertEquals("", loaded.diagnostic());
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(6, migrated.getInt("Schema"));
+    assertEquals(7, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("RouteCursors")
+            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
     assertTrue(
         migrated
             .getCompound("ExternalClaims")
@@ -97,6 +102,7 @@ class NodePersistenceTest {
     assertTrue(migrated.getList("Transfers", Tag.TAG_COMPOUND).isEmpty());
     migrated.remove("Transfers");
     migrated.remove("ExternalClaims");
+    migrated.remove("RouteCursors");
     migrated.putInt("Schema", 3);
     assertEquals(original, migrated);
     var root =
@@ -176,7 +182,12 @@ class NodePersistenceTest {
         IllegalStateException.class, () -> loaded.createController(new UUID(0, 501), POSITION));
     assertFalse(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(6, migrated.getInt("Schema"));
+    assertEquals(7, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("RouteCursors")
+            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
     assertTrue(
         migrated
             .getCompound("ExternalClaims")
@@ -185,6 +196,7 @@ class NodePersistenceTest {
     assertTrue(migrated.getList("Transfers", Tag.TAG_COMPOUND).isEmpty());
     migrated.remove("Transfers");
     migrated.remove("ExternalClaims");
+    migrated.remove("RouteCursors");
     migrated.putInt("Schema", 3);
     assertEquals(tag, migrated);
   }

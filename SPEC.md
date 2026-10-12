@@ -97,6 +97,14 @@ Upgrades preserve device identity, contents, and reservations. Reject a downgrad
 - Unloaded storage may remain in a marked cached listing but cannot serve transfers. No automatic chunk loading.
 - Energy views count unique authorized banks/providers once and report stored/capacity values only when observable. Estimated or unavailable external capacities are labeled.
 
+Implemented prerequisite for A03/A04/A12: explicit server priority and persisted
+round-robin routing discover bounded live exact-key storage pages and dispatch
+through shared authorization/accounting. Partial/uncertain outcomes retain actual
+operation identity; fallback requires an untouched source. Priority is global
+across collected pages; rotation is stable-ID/scoped metadata and grants no stock.
+This does not establish automatic presets, all-key search or a player terminal.
+See [routing contract](docs/modules/WORLD_STORAGE_TRANSFERS.md).
+
 ## R04 — Segments, topology, and multiplayer authority
 
 ~~~text

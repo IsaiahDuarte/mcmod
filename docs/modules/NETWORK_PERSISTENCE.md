@@ -107,7 +107,7 @@ this component's atomicity boundary.
 Canonical schema four adds [owned transfer records](TRANSFER_PERSISTENCE.md)
 while preserving network fields, fixed permission bits and all legacy fixtures.
 
-Canonical world schema six retains accepted transfer context introduced by schema five and adds foreign holds; older network,
+Canonical world schema seven retains accepted transfer context introduced by schema five, foreign holds from schema six, and route preferences; older network,
 node, ledger and transfer tables preserve exact owned data through migration.
 See [transfer context migration](TRANSFER_PERSISTENCE.md). Network grant encoding
 and its component fixtures are unchanged.
