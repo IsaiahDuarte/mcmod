@@ -382,3 +382,15 @@ Claimed-uncertainty cleanup waits for quarantine-triggered origin topology
 revalidation and asserts cleanup admission before expecting a completion.
 Rejected OFFLINE work has no callback; ignoring that result previously produced
 an intermittent fixture timeout. Journal/hold/conservation assertions remain.
+
+
+## Owned buffered inventory prerequisite
+
+Five ItemBufferTest cases cover nine-slot/component/stack bounds, simulation and
+immutable reload, exact partial staging cleanup blocked by a full return buffer,
+notification reentry and a 5,000-step conservation sequence (seed `0xB0FFE901`).
+Two BufferedItemHandlerTest cases use real Minecraft stacks and IItemHandler calls
+for partial admission, components, detached reads, shared transfer/slot quantities,
+metadata limits and stale capability denial. These run in the mandatory JVM suite.
+Physical hopper flow, canonical ownership/persistence, restart/clone/chunks and
+client onboarding remain separate required evidence.

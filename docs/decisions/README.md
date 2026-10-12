@@ -45,3 +45,6 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
   headless evidence, with real chunks/restart/client evidence pending.
 
 - [ADR 0013 — Sided external storage registration](0013-external-connectors.md): leased connectors, explicit backing identity, bounds and unfinished recovery.
+
+- [Owned buffered inventory](0014-buffered-inventory.md): nine-slot transfer/NeoForge
+  inventory boundary; canonical physical ownership and presets remain pending.

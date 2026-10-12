@@ -58,6 +58,12 @@ Gateways and Program Controllers are separate blocks. A branch can have no progr
 
 A hopper feeds a Buffered Interface in Import mode; the network drains its buffer into permitted storage. Full storage backs up the buffer/hopper without voiding. This setup requires no program or private branch. D06 specifies buffer sizes, recipes, and rates before implementation.
 
+The nine-slot owned item inventory and NeoForge hopper-handler adapter now exist
+as a P3 prerequisite, with exact component/stack limits and backpressure tests.
+Physical placement, canonical ownership/persistence, automatic import presets and
+the actual hopper flow remain unfinished; A01 is not yet satisfied.
+[Buffered Interface contract](docs/modules/BUFFERED_INTERFACES.md) records this scope.
+
 The implemented connector primitive has a provider-facing socket and five cable
 faces. Empty-hand inspection shows type/access/provider side/priority/rate/state;
 authorized physical controls cycle resource/access and set priority without

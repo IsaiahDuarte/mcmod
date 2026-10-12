@@ -7,6 +7,9 @@
   World schema seven migrates prior authorities with empty routing preferences;
   automatic presets and the player terminal remain unfinished.
 
+- Added the nine-slot owned buffer inventory and NeoForge automation adapter,
+  sharing physical/transfer quantities and preserving backpressure/remainders.
+  Physical Buffered Interfaces and import/export presets remain unfinished.
 - Selected Minecraft 1.21.1, NeoForge 21.1.252 and Java 21.
 - Added a minimal loadable Factory Core entry point, later extended with storage registration.
 - Added checksum-validated Gradle tooling, dependency locks, formatting, PMD,
