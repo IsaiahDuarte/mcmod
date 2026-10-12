@@ -94,7 +94,7 @@ class ExternalClaimsPersistenceTest {
     assertEquals("", restored.diagnostic());
     assertTrue(restored.isDirty());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(8, migrated.getInt("Schema"));
+    assertEquals(9, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")

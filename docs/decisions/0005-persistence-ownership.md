@@ -177,3 +177,13 @@ leases, grants and staging share one normal snapshot boundary. Schema one throug
 seven migration preserves exact old tables and adds empty buffers. Runtime binding
 and availability are never persisted. Unknown/malformed/over-limit payloads retain
 raw recovery data. Independent provider save ordering is still not atomic.
+
+
+## Buffer endpoint context extension — 2026-10-12
+
+Canonical world schema nine accepts buffer context schema two as selected in
+[ADR 0014](0014-buffered-inventory.md). Legacy digital/foreign contexts retain
+schema one unchanged; migration from schema eight changes only the world version.
+No new owned table or independent save boundary is introduced. Unknown/future/
+malformed contexts preserve raw recovery data. Actual restart/interrupted saves
+and automatic preset dispatch remain owning-stage work.

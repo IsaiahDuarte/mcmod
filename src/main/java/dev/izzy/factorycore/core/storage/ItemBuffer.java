@@ -135,13 +135,23 @@ public final class ItemBuffer implements ResourcePort {
 
   @Override
   public long simulateInsert(ResourceKey key, long offered) {
+    return admitInsert(key, offered).amount();
+  }
+
+  public OperationResult admitInsert(ResourceKey key, long offered) {
     checkMutation();
     OperationResult.requireQuantity(offered);
+    Objects.requireNonNull(key);
+    if (key.kind() != ResourceKind.ITEM)
+      return new OperationResult(0, OperationResult.Reason.WRONG_RESOURCE);
     int limit = limit(key);
     long capacity = 0;
     for (var slot : slots) capacity += space(slot, key, limit);
     long accepted = Math.min(offered, capacity);
-    return accepted == 0 || admitted(proposedInsert(key, accepted, limit)) ? accepted : 0;
+    if (accepted > 0 && !admitted(proposedInsert(key, accepted, limit)))
+      return new OperationResult(0, OperationResult.Reason.TECHNICAL_LIMIT);
+    return new OperationResult(
+        accepted, accepted == offered ? OperationResult.Reason.OK : OperationResult.Reason.FULL);
   }
 
   @Override

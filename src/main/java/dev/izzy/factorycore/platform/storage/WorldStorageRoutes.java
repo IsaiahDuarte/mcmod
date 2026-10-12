@@ -383,6 +383,7 @@ public final class WorldStorageRoutes {
   }
 
   private static UUID backing(WorldStorageTransfers.Endpoint endpoint) {
+    if (endpoint instanceof WorldStorageTransfers.Buffered buffer) return buffer.handle().id();
     return endpoint instanceof WorldStorageTransfers.Digital digital
         ? digital.handle().backing()
         : ((WorldStorageTransfers.External) endpoint).handle().backing();

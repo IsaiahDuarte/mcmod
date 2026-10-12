@@ -301,7 +301,15 @@ public final class WorldStorageTransfers {
     return executing != null;
   }
 
-  public sealed interface Endpoint permits Digital, External {}
+  public sealed interface Endpoint permits Digital, External, Buffered {}
+
+  public record Buffered(NodeRegistry.Handle handle, long configuration) implements Endpoint {
+    public Buffered {
+      Objects.requireNonNull(handle);
+      if (handle.kind() != NodeRegistry.Kind.BUFFERED_INTERFACE || configuration <= 0)
+        throw new IllegalArgumentException("Invalid buffer endpoint");
+    }
+  }
 
   public record Digital(DeviceRegistry.Handle handle) implements Endpoint {
     public Digital {
@@ -390,7 +398,14 @@ public final class WorldStorageTransfers {
     long quantum = key.kind() == ResourceKind.ITEM ? 128 : 1000;
     if (amount > quantum)
       throw new IllegalArgumentException("World transfer exceeds bounded quantum");
-    if (source instanceof External || destination instanceof External) {
+    if (source instanceof Buffered || destination instanceof Buffered) {
+      if (key.kind() != ResourceKind.ITEM)
+        return new Submission(null, OperationResult.Reason.WRONG_RESOURCE);
+    }
+    if (source instanceof External
+        || destination instanceof External
+        || source instanceof Buffered
+        || destination instanceof Buffered) {
       try {
         var codec =
             new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
@@ -667,6 +682,16 @@ public final class WorldStorageTransfers {
   }
 
   private boolean compatible(Endpoint endpoint, ResourceKey key) {
+    if (endpoint instanceof Buffered) {
+      if (key.kind() != ResourceKind.ITEM) return false;
+      try {
+        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(server.registryAccess())
+            .itemStack(key, 1);
+        return true;
+      } catch (RuntimeException unsupported) {
+        return false;
+      }
+    }
     return endpoint instanceof Digital digital
         ? saved.registry().definition(digital.handle()).kind() == key.kind()
         : ((External) endpoint).handle().kind() == key.kind();
@@ -678,6 +703,17 @@ public final class WorldStorageTransfers {
       if (reference.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.DIGITAL) {
         var handle = new DeviceRegistry.Handle(world, reference.backing(), reference.generation());
         return physical(handle) == null ? null : new Digital(handle);
+      }
+      if (reference.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.BUFFER) {
+        var endpoint =
+            new Buffered(
+                new NodeRegistry.Handle(
+                    world,
+                    reference.device(),
+                    reference.generation(),
+                    NodeRegistry.Kind.BUFFERED_INTERFACE),
+                reference.configuration());
+        return physical(endpoint) == null ? null : endpoint;
       }
       var registration =
           networks
@@ -819,7 +855,16 @@ public final class WorldStorageTransfers {
     var admission =
         destination instanceof Digital digital
             ? new Port(digital.handle()).admit(key, amount)
-            : networks.connectors().limit(((External) destination).handle(), true, amount);
+            : destination instanceof Buffered buffer
+                ? new BufferPort(buffer).admit(key, amount)
+                : networks.connectors().limit(((External) destination).handle(), true, amount);
+    if (source instanceof Buffered buffer) {
+      var available = new BufferPort(buffer).available(key, amount);
+      if (available.amount() == 0 && amount > 0) {
+        completion.accept(new Result(id, available.reason(), null));
+        return;
+      }
+    }
     if (source instanceof External external) {
       var held = saved.externalClaims().reserved(external.handle().backing(), key);
       if (amount > 0 && (claimed || held > 0)) {
@@ -886,6 +931,13 @@ public final class WorldStorageTransfers {
   }
 
   private dev.izzy.factorycore.core.resource.TransferContext.Endpoint reference(Endpoint endpoint) {
+    if (endpoint instanceof Buffered buffer)
+      return new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
+          dev.izzy.factorycore.core.resource.TransferContext.Type.BUFFER,
+          buffer.handle().id(),
+          buffer.handle().id(),
+          buffer.handle().generation(),
+          buffer.configuration());
     if (endpoint instanceof Digital digital)
       return new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
           dev.izzy.factorycore.core.resource.TransferContext.Type.DIGITAL,
@@ -903,9 +955,106 @@ public final class WorldStorageTransfers {
   }
 
   private ResourcePort port(Endpoint endpoint) {
+    if (endpoint instanceof Buffered buffer) return new BufferPort(buffer);
     return endpoint instanceof Digital digital
         ? new Port(digital.handle())
         : networks.connectors().port(((External) endpoint).handle());
+  }
+
+  private static final class BufferBudget {
+    int tick;
+    long inserted;
+    long extracted;
+
+    BufferBudget(int tick) {
+      this.tick = tick;
+    }
+  }
+
+  private final java.util.Map<UUID, BufferBudget> bufferBudgets = new java.util.HashMap<>();
+
+  private BufferBudget bufferBudget(UUID backing) {
+    int tick = server.getTickCount();
+    var budget = bufferBudgets.get(backing);
+    if (budget == null) {
+      if (bufferBudgets.size() == dev.izzy.factorycore.core.storage.BufferRegistry.MAX_BUFFERS)
+        throw new IllegalStateException("Buffer rate metadata limit");
+      budget = new BufferBudget(tick);
+      bufferBudgets.put(backing, budget);
+    } else if (budget.tick != tick) {
+      budget.tick = tick;
+      budget.inserted = 0;
+      budget.extracted = 0;
+    }
+    return budget;
+  }
+
+  private final class BufferPort implements ResourcePort {
+    private final Buffered endpoint;
+    private final BufferedInterfaceEntity owner;
+
+    BufferPort(Buffered endpoint) {
+      this.endpoint = endpoint;
+      owner = physical(endpoint);
+    }
+
+    private boolean current() {
+      try {
+        return owner != null && physical(endpoint) == owner;
+      } catch (IllegalArgumentException | IllegalStateException unavailable) {
+        return false;
+      }
+    }
+
+    OperationResult available(ResourceKey key, long amount) {
+      if (!current()) return new OperationResult(0, OperationResult.Reason.OFFLINE);
+      long rate = 64 - bufferBudget(backingId()).extracted;
+      if (rate == 0 && amount > 0) return new OperationResult(0, OperationResult.Reason.RATE_LIMIT);
+      long available = Math.min(Math.min(rate, amount), owner.inventory().total(key));
+      return new OperationResult(
+          available,
+          amount == 0 || available > 0
+              ? OperationResult.Reason.OK
+              : OperationResult.Reason.SHORTAGE);
+    }
+
+    OperationResult admit(ResourceKey key, long amount) {
+      if (!current()) return new OperationResult(0, OperationResult.Reason.OFFLINE);
+      long rate = 64 - bufferBudget(backingId()).inserted;
+      if (rate == 0 && amount > 0) return new OperationResult(0, OperationResult.Reason.RATE_LIMIT);
+      return owner.inventory().admitInsert(key, Math.min(amount, rate));
+    }
+
+    @Override
+    public UUID backingId() {
+      return endpoint.handle().id();
+    }
+
+    @Override
+    public long simulateInsert(ResourceKey key, long amount) {
+      OperationResult.requireQuantity(amount);
+      return admit(key, amount).amount();
+    }
+
+    @Override
+    public long insert(ResourceKey key, long amount) {
+      OperationResult.requireQuantity(amount);
+      if (!current()) return 0;
+      var budget = bufferBudget(backingId());
+      long accepted = owner.inventory().insert(key, Math.min(amount, 64 - budget.inserted));
+      budget.inserted += accepted;
+      return accepted;
+    }
+
+    @Override
+    public long extract(ResourceKey key, long amount) {
+      OperationResult.requireQuantity(amount);
+      if (!current()) return 0;
+      var budget = bufferBudget(backingId());
+      long extracted = owner.inventory().extract(key, Math.min(amount, 64 - budget.extracted));
+      budget.extracted += extracted;
+      return extracted;
+    }
   }
 
   private boolean allowed(
@@ -914,11 +1063,55 @@ public final class WorldStorageTransfers {
       Endpoint endpoint,
       ResourceKey key,
       NetworkPermissions.Permission operation) {
+    if (endpoint instanceof Buffered buffer) return allowed(actor, origin, buffer, key, operation);
     return endpoint instanceof Digital digital
         ? allowed(actor, origin, digital.handle(), key, operation)
         : networks
             .connectors()
             .allowed(actor, origin, ((External) endpoint).handle(), key, operation);
+  }
+
+  private boolean allowed(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      Buffered endpoint,
+      ResourceKey key,
+      NetworkPermissions.Permission operation) {
+    try {
+      var holder = physical(endpoint);
+      if (key.kind() != ResourceKind.ITEM || holder == null) return false;
+      var target = networks.membership(holder.position());
+      var from = networks.membership(origin);
+      if (target.status() != NetworkTopology.Status.VALID
+          || from.status() != NetworkTopology.Status.VALID
+          || !target.scope().network().equals(from.scope().network())) return false;
+      var view = networks.storage(actor, origin, key, operation);
+      return view.decision() == NetworkAuthority.Decision.ALLOWED
+          && view.segments().contains(target.scope().segment());
+    } catch (IllegalArgumentException | IllegalStateException unavailable) {
+      return false;
+    }
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
+  private BufferedInterfaceEntity physical(Buffered endpoint) {
+    var location = saved.nodes().definition(endpoint.handle()).position();
+    if (location == null) return null;
+    var level =
+        server.getLevel(
+            net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.DIMENSION,
+                net.minecraft.resources.ResourceLocation.parse(location.dimension())));
+    if (level == null) return null;
+    var position = BlockPos.of(location.block());
+    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    if (chunk == null
+        || !(chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK)
+            instanceof BufferedInterfaceEntity holder)
+        || !endpoint.handle().equals(holder.handle())
+        || holder.reference().configuration() != endpoint.configuration()) return null;
+    holder.validatePlaced();
+    return holder;
   }
 
   private boolean allowed(

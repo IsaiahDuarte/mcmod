@@ -16,7 +16,8 @@ public record TransferContext(
     Endpoint destination) {
   public enum Type {
     DIGITAL,
-    EXTERNAL
+    EXTERNAL,
+    BUFFER
   }
 
   public record Endpoint(
@@ -28,7 +29,7 @@ public record TransferContext(
       if (generation <= 0
           || (type == Type.DIGITAL
               ? configuration != 0 || !device.equals(backing)
-              : configuration <= 0))
+              : configuration <= 0 || type == Type.BUFFER && !device.equals(backing)))
         throw new IllegalArgumentException("Invalid saved transfer endpoint");
     }
   }
@@ -45,6 +46,9 @@ public record TransferContext(
   }
 
   public void validate(StagedTransfer.Snapshot move) {
+    if ((source.type() == Type.BUFFER || destination.type() == Type.BUFFER)
+        && move.key().kind() != ResourceKind.ITEM)
+      throw new IllegalArgumentException("Buffer context requires item staging");
     if (!source.backing().equals(move.source())
         || !destination.backing().equals(move.destination()))
       throw new IllegalArgumentException("Transfer context does not match owned staging");

@@ -97,6 +97,13 @@ public final class BufferRegistry {
         && valid(handle, binding.position());
   }
 
+  /** Binding ownership only, including a newly conflicted lease awaiting physical teardown. */
+  public boolean boundTo(NodeRegistry.Handle handle, Object owner) {
+    checkThread();
+    var binding = bindings.get(handle.id());
+    return binding != null && binding.handle().equals(handle) && binding.owner() == owner;
+  }
+
   public ItemBuffer inventory(NodeRegistry.Handle handle, Object owner) {
     if (!usable(handle, owner))
       throw new IllegalStateException("Buffer lease is not currently bound");

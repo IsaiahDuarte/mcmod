@@ -85,7 +85,7 @@ performs 2,000 stock/claim operations with a save/reload after each operation,
 replay seed `0x5A7E001`. This is portable recovery evidence, not a world crash or
 external-inventory atomicity guarantee.
 
-The world envelope now targets schema eight, retaining schema-five [accepted transfer context](TRANSFER_PERSISTENCE.md).
+The world envelope now targets schema nine, retaining schema-five [accepted transfer context](TRANSFER_PERSISTENCE.md).
 Ledger/component formats remain unchanged. Version-one through four world fixtures
 preserve their exact data; missing legacy context is never invented.
 
@@ -105,7 +105,7 @@ transfer-entry schema two remain unchanged. Missing table/fields, wrong types,
 future/unknown fields, duplicate claims, nonpositive amounts, total overflow,
 4,096-record/4 MiB metadata violations or backing collisions with owned
 ledgers/nodes/networks quarantine the entire authority and preserve its raw tags.
-Schema seven additionally contains routing preferences below; global schema nine
+Schema seven additionally contains routing preferences below; global schema ten
 and newer reject. Nested future schemas reject. Older binaries reject newer
 global schemas, so downgrade requires a matching backup.
 
@@ -167,7 +167,7 @@ Runtime insertions preflight the same metadata charge before consuming input.
 Snapshots capture buffer slots in the same canonical save as staging and grants;
 loaded bindings are not persisted. Restored inventory never automatically serves
 a transfer or releases resources. Schemas one through seven add empty buffers
-and retain all old ownership/journal/rotation evidence; schema nine is future.
+and retain all old ownership/journal/rotation evidence; schema nine adds buffer transfer contexts below; schema ten is future.
 
 Compressed save/reload, exact nonempty schema-seven migration, sparse fixed-slot
 fixtures, strict rejection, quota/no-orphan admission and lease movement/copy
@@ -175,3 +175,21 @@ isolation have local JVM evidence. Physical block/chunk/server-restart and
 independent-save interruption evidence remains required. This is not atomicity
 with third-party inventories. The new buffer endpoint/recovery bindings must be
 wired before scheduled world transfers can use these owned slots.
+
+
+## Buffered transfer context compatibility — world schema nine
+
+World schema nine introduces no new owned tables. It allows BUFFER endpoints in
+nested transfer-context schema two: Device=Backing UUID, positive structural
+Generation and positive Configuration. Context schema two must contain at least
+one buffer endpoint; contexts with only DIGITAL/EXTERNAL retain schema one and
+unchanged bytes. BUFFER contexts require ITEM staged identity. Schema one cannot
+silently accept the new union tag, and worlds one through eight cannot contain it.
+
+A fixed context-two fixture and nonempty world schema-eight fixture protect the
+extension. Migration to nine changes only the global version: existing ledgers,
+claims, leases, buffers, rotation, staging and context-one records compare exactly.
+Malformed/unknown/future unions or schemas preserve rejected raw tags. Actual
+compressed source-slot/staging reload retains the accepted buffer reference and
+keeps every endpoint unbound, preventing re-extraction. This does not prove live
+server restart or make local reference NBT/foreign providers atomically saved.

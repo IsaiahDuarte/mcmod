@@ -290,7 +290,7 @@ public final class DeviceSavedData extends SavedData {
     try {
       require(tag, "Schema", Tag.TAG_INT);
       int schema = tag.getInt("Schema");
-      if ((schema < 1 || schema > 8) || !tag.hasUUID("World"))
+      if ((schema < 1 || schema > 9) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
       NetworkStateCodec.fields(tag, worldFields(schema));
       var networkStates =
@@ -340,13 +340,26 @@ public final class DeviceSavedData extends SavedData {
       }
       if (schema >= 6) require(tag, "ExternalClaims", Tag.TAG_COMPOUND);
       if (schema >= 7) require(tag, "RouteCursors", Tag.TAG_COMPOUND);
-      if (schema == 8) require(tag, "Buffers", Tag.TAG_COMPOUND);
+      if (schema >= 8) require(tag, "Buffers", Tag.TAG_COMPOUND);
+      var transferStates =
+          schema < 4 ? List.<TransferRegistry.Stored>of() : TransferStateCodec.decode(tag);
+      if (schema < 9
+          && transferStates.stream()
+              .anyMatch(
+                  record ->
+                      record.context() != null
+                          && (record.context().source().type()
+                                  == dev.izzy.factorycore.core.resource.TransferContext.Type.BUFFER
+                              || record.context().destination().type()
+                                  == dev.izzy.factorycore.core.resource.TransferContext.Type
+                                      .BUFFER)))
+        throw new IllegalArgumentException("Buffer transfer requires world schema nine");
       var loaded =
           new DeviceSavedData(
               new DeviceRegistry.State(tag.getUUID("World"), records),
               networkStates,
               nodeStates,
-              schema < 4 ? List.of() : TransferStateCodec.decode(tag),
+              transferStates,
               schema < 6
                   ? List.of()
                   : ExternalClaimsCodec.decode(tag.getCompound("ExternalClaims")),
@@ -354,7 +367,7 @@ public final class DeviceSavedData extends SavedData {
               schema < 8 ? List.of() : BufferStateCodec.decode(tag.getCompound("Buffers")),
               null,
               "");
-      if (schema < 8) loaded.setDirty();
+      if (schema < 9) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
@@ -376,7 +389,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 8);
+    tag.putInt("Schema", 9);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {

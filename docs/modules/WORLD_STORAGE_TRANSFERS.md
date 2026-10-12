@@ -1,7 +1,8 @@
 # Scheduled world storage transfers
 
 Implemented server API: `WorldNetworks.get(server).transfers()` returns the shared
-`WorldStorageTransfers` service. Digital and [registered foreign connector endpoints](CONNECTORS.md) now share
+`WorldStorageTransfers` service. Digital cells/banks, explicit [Buffered Interface endpoints](BUFFERED_INTERFACES.md)
+and [registered foreign connector endpoints](CONNECTORS.md) now share
 this path. Client packets, terminal/preset frontends and automatic recovery dispatch remain unfinished. Explicit scheduled recovery is implemented below.
 
 ## Contract and ownership
@@ -314,7 +315,7 @@ canonical transfer record when a snapshot exists. Retain that actual ID for
 recovery. Metadata-only terminal results have no snapshot. `cancel(id, actor)`
 cancels only an owned undispatched route outside shared task execution, without a
 callback. Restart loses unextracted discovery work; actual staging remains in the
-canonical schema-eight registry. Priority mode stores no cursor. Automatic
+canonical schema-nine registry. Priority mode stores no cursor. Automatic
 presets and the player terminal remain unfinished.
 
 ```java
@@ -364,5 +365,61 @@ var admission = routes.roundRobin(UUID.randomUUID(), persistedDeploymentId,
     new WorldStorageTransfers.External(importConnector), exactKey, 32,
     WorldStorageRoutes.Direction.TO_STORAGE, result -> {
       // Account for result.move().transfer() actual counts, retaining uncertainty.
+    });
+```
+
+
+## Explicit buffered endpoints
+
+`new Buffered(nodeHandle, configurationGeneration)` describes a server-selected
+physical Buffered Interface. The handle must have BUFFERED_INTERFACE kind and
+positive lease/configuration generations. Client IDs and saved reference
+principals do not grant authorization: frontends must derive actor/origin/endpoint
+from authenticated server-owned interaction or deployment state. Buffers are
+explicit sources/targets, never rows in the shared storage catalog.
+
+Buffered requests support exact item identities only; mB/FE reject WRONG_RESOURCE
+before queueing. Native key decoding must round-trip before admission. Execution
+requires the current loaded chunk/entity, canonical handle/token and matching
+configuration, plus current origin/target network, visible segment and operation
+WITHDRAW/DEPOSIT grants. Parent/operator privileges do not reveal child-private
+buffer stock. Missing/changed/foreign references reject without extraction.
+No chunk is loaded by validation. Priority/round-robin routes can use a fixed
+buffer endpoint while discovering only ordinary digital/foreign storage targets.
+
+Network operations share a 64-item input and a separate 64-item output allowance
+per buffer backing ID/server tick, across all ports/requests. The rate map holds
+at most the 256 canonical buffers; movement/configuration cannot allocate a fresh
+allowance for the same ID. Simulations do not spend it; known actual quantities
+alone consume credits. These bounds do not cap direct local hopper mechanics or
+promise measured throughput. Quanta remain at most 128 items per request; use
+actual delivered counts when the buffer rate supplies a smaller move.
+
+Destination slot/metadata/rate preflight happens before extraction and canonical
+record creation. Full buffers return FULL, metadata expansion failure returns
+TECHNICAL_LIMIT, exhausted network allowance returns RATE_LIMIT. Source shortage
+and rate exhaustion return typed outcomes without phantom records. The canonical
+staging registry still owns partial/uncertain outcomes and its usual limits.
+
+World schema nine supports buffer endpoints with nested context schema two; old
+digital/foreign contexts retain schema one and exact fields. Buffered references
+persist device=backing UUID, structural generation and configuration generation;
+no handler, actor grant or stock copy is stored in context. Type BUFFER requires
+item staging. Schemas one through eight migrate without changing existing tables.
+Unsupported union/schema/type data preserves the raw authority. Explicit progress
+reacquires current buffer identity and native key support, then only delivers or
+returns known staging under existing recovery rules, never extracting again.
+Removal/reference reload unbinds indexed transfers only for the matching physical
+binding owner, preserving quantities/journal evidence and releasing old entity
+references. Automatic imports, deployment ownership and player controls remain
+unfinished; saved item principals must not become preset authority.
+
+```java
+var endpoint = new WorldStorageTransfers.Buffered(buffer.handle(),
+    buffer.reference().configuration());
+var admission = service.submit(UUID.randomUUID(), authenticatedActor,
+    serverValidatedOrigin, endpoint, new WorldStorageTransfers.Digital(cell),
+    exactKey, 64, result -> {
+      // Consume actual counts and retain any staged/uncertain operation ID.
     });
 ```

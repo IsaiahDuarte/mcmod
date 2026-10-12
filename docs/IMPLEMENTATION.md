@@ -90,7 +90,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | --- | --- | --- |
 | A01 | P3 | Not implemented. |
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
-| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, canonical schema-eight ownership/migration and physical hopper/movement/copy/recipe evidence; automatic buffer network presets, crafting job claims, all-key search and full server restart/interruption integration remain pending. |
+| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, canonical schema-eight ownership/migration and physical hopper/movement/copy/recipe evidence; explicit buffered item endpoints now have scope, rate, partial staging and recovery evidence; automatic buffer network presets, crafting job claims, all-key search and full server restart/interruption integration remain pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Automatic external catalog/selection, permissions UI and actual chunks/restart remain pending. |
 | A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Actual chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
@@ -1520,3 +1520,55 @@ terminal operations. A01/P3 and full A01–A17 release remain incomplete. Actual
 chunks/server restart/independent interruptions, client/multiplayer, finished
 preset/terminal UI/onboarding, crafting/scripting/power/wireless and P7 remain
 required release work; no headless result substitutes for that evidence.
+
+
+## Explicit shared buffer transfer prerequisite — 2026-10-12
+
+Added typed Buffered(handle, configuration) source/destination endpoints to the
+existing WorldStorageTransfers and priority/round-robin fixed-endpoint routes.
+They use current loaded canonical references/configuration, actor grants and
+origin/target segment visibility; buffers stay excluded from shared stock rows.
+Native item identities must round-trip; fluids/FE fail before queueing. Full slot,
+metadata and shared rate admission precede source mutation. Network input/output
+each share 64-item allowances per buffer backing/tick across every wrapper; native
+mechanical hopper inventory remains local. Typed ItemBuffer.admitInsert identifies
+metadata TECHNICAL_LIMIT separately from FULL, with no mutation by simulation.
+
+Removal, reference reload and placement release indexed transfer bindings only
+for the matching handle/token owner, preserving staging/journal data and releasing
+live entity references. Stale copies cannot invalidate replacement holders.
+Explicit progress rebinds accepted buffered endpoints, checks supported native
+identity and only delivers/returns existing staging, never re-extracting refills.
+The saved reference principal remains provenance, not preset authorization.
+
+World schema nine adds no owned table: it permits BUFFER endpoints in context
+schema two, with equal device/backing and positive lease/configuration versions,
+and item staging only. Context two exclusively describes an operation involving
+a buffer; old digital/foreign context-one bytes are unchanged. Schemas one through
+eight migrate without changing existing quantities, tables or intent evidence.
+Legacy migration/future tests now target nine/ten, preserving prior comparisons.
+Fixed context-two/nonempty world-eight fixtures and compressed buffer-source/
+staging disk recovery add compatibility evidence. Unknown/invalid/future union,
+kind or schema retains raw quarantined authority data.
+
+Nine real world cases cover exact partial buffer-to-cell movement, full-buffer
+preflight, revocation, old configuration after valid topology rebuild, shared
+source/input budgets and independent directions, preserved staging delivery,
+private-child denial even for parent/operator and global priority routing from
+a fixed buffer. The rate fixtures advance at most sixteen queue steps within one
+fixed Minecraft tick to separate rate behavior from scheduler wall-clock cutoffs;
+production scheduling is unchanged. Three platform persistence cases prove exact
+fixture/version behavior and orderly compressed owned source/staging recovery.
+
+Verification: `./gradlew spotlessApply compileGameTestJava` passed. Final
+`python3 scripts/verify.py` passed: 24 tooling tests, 167 JVM tests, 101 required
+Minecraft GameTests, formatting, static/architecture checks and the JVM build.
+The canonical Gradle build completed in 34 seconds; cached Rust guest verification
+was up-to-date. These headless results do not prove client or release acceptance.
+
+Next establish canonical authorized preset deployment, then bounded automatic
+buffer import through the shared route/transfer services. Reference provenance
+alone cannot authorize automation. Automatic presets, searchable terminal player
+operations, crafting, production scripting, power/wireless, onboarding and full
+restart/client/multiplayer/performance evidence remain incomplete. The full
+A01–A17 goal remains active.

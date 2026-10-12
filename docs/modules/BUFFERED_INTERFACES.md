@@ -118,8 +118,8 @@ saves include nested schema one and the BUFFERED_INTERFACE structural kind.
 The fixed schema-seven world fixture contains ledgers/grants/nodes/staging/foreign
 holds/rotation, and migration removes only the new empty table/version change to
 compare exact original data. Missing/wrong-type/future/duplicate/over-limit data
-preserves and quarantines the whole authority. A physical block/capability is now registered below; its world transfer buffer
-endpoint and automatic presets remain missing; real break/drop, chunk/world restart, interrupted
+preserves and quarantines the whole authority. A physical block/capability is now registered below; its explicit shared world-transfer endpoint is now implemented; automatic presets
+remain missing; real break/drop, chunk/world restart, interrupted
 independent files, client and hopper flow remain unverified.
 
 
@@ -159,5 +159,19 @@ full-buffer backpressure/resumption, six shared faces, live wired membership,
 creative placement/break/movement/stale capabilities, lifecycle reload/copy
 quarantine, future raw preservation, declared foreign overlap rejection and exact
 recipe/unlock. These do not prove actual chunk/full-server restart, cross-file
-interruption, multiplayer or complete player automation. Next add the distinct
-buffer endpoint and shared scheduled network import, then terminal/all-key search.
+interruption, multiplayer or complete player automation. The distinct buffer endpoint now uses shared authorization, network rate accounting
+and explicit staging recovery. Next add canonical deployment ownership and
+scheduled network imports, then terminal/all-key search.
+
+
+Explicit `WorldStorageTransfers.Buffered(handle, configuration)` item endpoints
+now use current root/segment/grants and loaded reference checks. Network input and
+output each share 64 item units per backing ID/tick; direct mechanical hopper
+access remains real local inventory. ItemBuffer.admitInsert returns typed FULL or
+TECHNICAL_LIMIT before consuming input. Buffered context schema two persists
+accepted identity/generations under world schema nine, preserving old context-one
+fields and owned tables. Unbinding releases indexed transfer references only when
+handle/token ownership matches, including conflicted originals awaiting teardown;
+stale copies cannot invalidate a replacement holder. Native key incompatibility
+rejects recovery before insertion, retaining staging. No background import or
+saved-principal authorization is claimed yet.

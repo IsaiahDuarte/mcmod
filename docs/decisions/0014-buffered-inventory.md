@@ -69,3 +69,24 @@ Schemas one through seven migrate with empty buffers and exact existing tables;
 unknown/malformed/duplicate/over-limit payloads remain raw and quarantined. A
 structural owner without inventory or inventory without owner rejects. No native
 block, capability or automatic import is claimed by this extension.
+
+
+## Authorized transfer endpoint extension — 2026-10-12
+
+Expose buffers as explicit typed endpoints in the existing shared transfer path,
+not foreign providers or global stock rows. Requests use authenticated actor and
+server-derived origin, current segment visibility/grants, canonical structural
+lease/configuration and nonloading physical checks. Network operations share
+separate 64-item input/output allowances per identity/tick across wrappers;
+mechanical inventory access stays local. Full/metadata/rate admission precedes
+source mutation. Known actual counts alone consume allowances.
+
+World schema nine allows BUFFER references in nested context schema two. Preserve
+legacy digital/foreign context-one bytes rather than rewriting all old records
+for an additive endpoint union. Context two exclusively describes operations with
+at least one buffer and requires item staging. Migration from one through eight
+retains all tables and counts. Buffers keep canonical ownership through partial
+staging; recovery validates current identity/keys and never re-extracts. Reference
+reload/removal releases live indexed bindings for the matching owner only.
+Native import presets still need server-owned deployment authority; saved reference
+principal metadata is not an authenticated grant or reusable actor credential.

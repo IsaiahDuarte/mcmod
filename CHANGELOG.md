@@ -16,6 +16,10 @@
 - Added physical Buffered Interfaces with real hopper input/backpressure, one
   portable populated ownership reference, native nine-slot models and recipe.
   Scheduled network imports and terminal flows remain unfinished.
+- Added explicit scoped buffer transfer endpoints with shared identity rates,
+  typed admission and saved-staging recovery. World schema nine supports buffer
+  context two while retaining legacy tables/context bytes; automatic presets
+  remain unfinished.
 - Selected Minecraft 1.21.1, NeoForge 21.1.252 and Java 21.
 - Added a minimal loadable Factory Core entry point, later extended with storage registration.
 - Added checksum-validated Gradle tooling, dependency locks, formatting, PMD,

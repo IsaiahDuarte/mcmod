@@ -6,13 +6,18 @@ import java.util.Set;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 
-/** Nested context schema one; absence is explicit legacy data, never synthesized endpoints. */
+/** Context schema one, or two for buffers; absent legacy contexts never synthesize endpoints. */
 final class TransferContextCodec {
   private TransferContextCodec() {}
 
   static CompoundTag encode(TransferContext context) {
     var tag = new CompoundTag();
-    tag.putInt("Schema", 1);
+    tag.putInt(
+        "Schema",
+        context.source().type() == TransferContext.Type.BUFFER
+                || context.destination().type() == TransferContext.Type.BUFFER
+            ? 2
+            : 1);
     tag.putUUID("World", context.world());
     tag.putUUID("Network", context.network());
     tag.putUUID("Segment", context.segment());
@@ -45,7 +50,8 @@ final class TransferContextCodec {
                 "Destination")
             .equals(tag.getAllKeys())
         || !tag.contains("Schema", Tag.TAG_INT)
-        || tag.getInt("Schema") != 1)
+        || tag.getInt("Schema") < 1
+        || tag.getInt("Schema") > 2)
       throw new IllegalArgumentException("Unsupported transfer context");
     for (var field : new String[] {"World", "Network", "Segment"})
       if (!tag.hasUUID(field))
@@ -55,13 +61,20 @@ final class TransferContextCodec {
         || !tag.contains("Source", Tag.TAG_COMPOUND)
         || !tag.contains("Destination", Tag.TAG_COMPOUND))
       throw new IllegalArgumentException("Malformed transfer context fields");
-    return new TransferContext(
-        tag.getUUID("World"),
-        tag.getUUID("Network"),
-        tag.getUUID("Segment"),
-        new NodeRegistry.Position(tag.getString("Dimension"), tag.getLong("Origin")),
-        endpoint(tag.getCompound("Source")),
-        endpoint(tag.getCompound("Destination")));
+    var context =
+        new TransferContext(
+            tag.getUUID("World"),
+            tag.getUUID("Network"),
+            tag.getUUID("Segment"),
+            new NodeRegistry.Position(tag.getString("Dimension"), tag.getLong("Origin")),
+            endpoint(tag.getCompound("Source")),
+            endpoint(tag.getCompound("Destination")));
+    boolean buffered =
+        context.source().type() == TransferContext.Type.BUFFER
+            || context.destination().type() == TransferContext.Type.BUFFER;
+    if ((tag.getInt("Schema") == 2) != buffered)
+      throw new IllegalArgumentException("Buffer endpoint requires context schema two exclusively");
+    return context;
   }
 
   private static TransferContext.Endpoint endpoint(CompoundTag tag) {

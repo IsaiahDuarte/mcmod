@@ -99,7 +99,7 @@ class NetworkPersistenceTest {
     assertThrows(IllegalArgumentException.class, () -> loaded.network(new UUID(0, 999)));
     assertEquals(1, loaded.principalBindings());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(8, migrated.getInt("Schema"));
+    assertEquals(9, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")

@@ -76,6 +76,8 @@ class BufferRegistryTest {
     assertEquals(NodeRegistry.Failure.CONFLICT, nodes.attach(placed, position(2)).failure());
     assertFalse(buffers.usable(placed, owner));
     assertFalse(buffers.bind(placed, position(2), new Object()));
+    assertTrue(buffers.boundTo(placed, owner));
+    assertFalse(buffers.boundTo(placed, new Object()));
     assertEquals(64, buffers.snapshot().getFirst().slots().getFirst().count());
   }
 

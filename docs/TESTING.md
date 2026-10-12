@@ -421,3 +421,20 @@ reload/copied-reference isolation, raw future data, declared foreign alias rejec
 and exact starter recipe/unlock. Physical buffers are outside shared stock catalog.
 Network import/export, actual chunks/full restart/interruption, multiplayer and
 client appearance/interaction evidence remain required future work.
+
+
+## Explicit buffered world transfers
+
+Nine BufferTransferGameTests cover partial buffer-to-cell conservation/context,
+full-target preflight, queued grant revocation, old configuration after valid
+scope rebuild, per-identity shared rates with independent input/output, explicit saved-staging delivery without
+re-extracting refilled items, operator/private-child denial and global priority
+routing from a fixed buffer. The rate case advances at most sixteen shared queue
+steps in one fixed Minecraft tick to isolate rate accounting from wall-clock
+scheduler cutoffs; production uses normal post-ticks. Three
+BufferEndpointPersistenceTest cases require fixed context-two/world-schema-eight
+fixtures, exact migration, invalid kind/configuration/union rejection and actual
+compressed owned slot/staging reload. Legacy context-one fixtures/fields and old
+quantity/raw-table assertions remain; world migration now targets nine, future ten.
+Automatic import/deployment authority, actual restart/chunks/interruption, client,
+multiplayer and release-performance evidence remain separate obligations.

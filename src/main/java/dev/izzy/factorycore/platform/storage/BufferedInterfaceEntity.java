@@ -69,6 +69,7 @@ public final class BufferedInterfaceEntity extends BlockEntity {
   }
 
   public void place(ItemStack stack, UUID placer) {
+    if (state != null) unbind();
     var custom = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
     if (custom.contains(BufferData.FIELD)) {
       data = custom.get(BufferData.FIELD).copy();
@@ -159,12 +160,20 @@ public final class BufferedInterfaceEntity extends BlockEntity {
     setChanged();
   }
 
+  private void unbind() {
+    var saved = authority();
+    if (saved.buffers().boundTo(state.lease(), this))
+      saved.transfers().unbindBacking(state.lease().id());
+    saved.buffers().unbind(state.lease(), this);
+    handler = null;
+  }
+
   public ItemStack portableForBreak() {
     var stack = new ItemStack(BufferedInterfaceContent.ITEM.get());
     if (state != null && diagnostic.isEmpty()) {
       try {
         validatePlaced();
-        authority().buffers().unbind(state.lease(), this);
+        unbind();
         var result = authority().nodes().detach(state.lease(), position());
         if (result.failure() != NodeRegistry.Failure.OK)
           throw new IllegalStateException("Buffer removal: " + result.failure());
@@ -190,8 +199,7 @@ public final class BufferedInterfaceEntity extends BlockEntity {
 
   @Override
   public void setRemoved() {
-    if (level instanceof ServerLevel && state != null)
-      authority().buffers().unbind(state.lease(), this);
+    if (level instanceof ServerLevel && state != null) unbind();
     handler = null;
     WorldNetworks.changed(level, worldPosition);
     super.setRemoved();
@@ -206,8 +214,7 @@ public final class BufferedInterfaceEntity extends BlockEntity {
   @Override
   protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.loadAdditional(tag, registries);
-    if (level instanceof ServerLevel && state != null)
-      authority().buffers().unbind(state.lease(), this);
+    if (level instanceof ServerLevel && state != null) unbind();
     handler = null;
     data = tag.contains(BufferData.FIELD) ? tag.get(BufferData.FIELD).copy() : null;
     parse();

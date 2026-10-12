@@ -148,7 +148,7 @@ snapshot IDs or unknown world/network quarantine and preserve the entire world
 file. Global versions one/two/three still add missing tables. Version four migrates
 its entry-schema-one records into schema two without changing a single quantity,
 owner, key, endpoint ID, diagnostic or pending intent. No legacy context is guessed.
-Versions five/six/seven/eight use entry schema two; schema six adds canonical foreign claims and seven adds routing preferences. Global schema nine/future versions reject.
+Versions five/six/seven/eight/nine use entry schema two; schema six adds canonical foreign claims and seven adds routing preferences. Global schema ten/future versions reject; schema nine adds buffer context schema two.
 Old binaries reject the new format, so downgrade without a matching backup is
 unsupported. Fixed schema-one/two/three/four fixtures continue to assert exact
 owned-data preservation after stripping only the declared format-version changes.

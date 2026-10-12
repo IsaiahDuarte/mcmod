@@ -71,7 +71,7 @@ class BufferPersistenceTest {
     assertTrue(restored.isDirty());
     assertTrue(restored.buffers().snapshot().isEmpty());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(8, migrated.getInt("Schema"));
+    assertEquals(9, migrated.getInt("Schema"));
     migrated.remove("Buffers");
     migrated.putInt("Schema", 7);
     assertEquals(original, migrated);
