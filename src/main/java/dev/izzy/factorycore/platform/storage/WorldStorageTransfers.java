@@ -814,7 +814,12 @@ public final class WorldStorageTransfers {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, snapshot));
       return;
     }
-    var input = bounded(port(source, context.origin()), snapshot.key());
+    var input =
+        bounded(
+            returning && source instanceof Buffered buffer
+                ? new BufferPort(buffer, true)
+                : port(source, context.origin()),
+            snapshot.key());
     var output =
         returning
             ? unavailable(snapshot.destination())
@@ -1201,8 +1206,14 @@ public final class WorldStorageTransfers {
   private final class BufferPort implements ResourcePort {
     private final Buffered endpoint;
     private final BufferedInterfaceEntity owner;
+    private final boolean ownedReturn;
 
     BufferPort(Buffered endpoint) {
+      this(endpoint, false);
+    }
+
+    BufferPort(Buffered endpoint, boolean ownedReturn) {
+      this.ownedReturn = ownedReturn;
       this.endpoint = endpoint;
       owner = physical(endpoint);
     }
@@ -1210,6 +1221,21 @@ public final class WorldStorageTransfers {
     private int rate() {
       var deployment = saved.buffers().deployment(backingId());
       return deployment == null ? 64 : deployment.policy().rate();
+    }
+
+    private long stockRoom(ResourceKey key, long amount) {
+      var deployment = saved.buffers().deployment(backingId());
+      if (ownedReturn
+          || deployment == null
+          || deployment.mode() != dev.izzy.factorycore.core.storage.BufferRegistry.Mode.STOCK)
+        return amount;
+      var tags = new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server);
+      var filter = deployment.policy().filter();
+      if (!filter.matches(key, tags)) return amount;
+      long resident = 0;
+      for (var slot : owner.inventory().snapshot().slots())
+        if (slot.key() != null && filter.matches(slot.key(), tags)) resident += slot.count();
+      return Math.min(amount, Math.max(0, deployment.policy().target() - resident));
     }
 
     private boolean current() {
@@ -1236,7 +1262,9 @@ public final class WorldStorageTransfers {
       if (!current()) return new OperationResult(0, OperationResult.Reason.OFFLINE);
       long rate = Math.max(0, rate() - bufferBudget(backingId()).inserted);
       if (rate == 0 && amount > 0) return new OperationResult(0, OperationResult.Reason.RATE_LIMIT);
-      return owner.inventory().admitInsert(key, Math.min(amount, rate));
+      long wanted = stockRoom(key, Math.min(amount, rate));
+      if (wanted == 0 && amount > 0) return new OperationResult(0, OperationResult.Reason.FULL);
+      return owner.inventory().admitInsert(key, wanted);
     }
 
     @Override
@@ -1256,7 +1284,9 @@ public final class WorldStorageTransfers {
       if (!current()) return 0;
       var budget = bufferBudget(backingId());
       long accepted =
-          owner.inventory().insert(key, Math.min(amount, Math.max(0, rate() - budget.inserted)));
+          owner
+              .inventory()
+              .insert(key, stockRoom(key, Math.min(amount, Math.max(0, rate() - budget.inserted))));
       budget.inserted += accepted;
       return accepted;
     }

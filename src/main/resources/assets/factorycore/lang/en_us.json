@@ -137,5 +137,9 @@
   "status.factorycore.buffer_filter.include": "Allow selected items",
   "status.factorycore.buffer_filter.exclude": "Block selected items",
   "tooltip.factorycore.buffer_filter": "Offhand sample: use for item type, sneak-use for exact data. Sneak with paper clears.",
-  "tooltip.factorycore.buffer_rate": "Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude)."
+  "tooltip.factorycore.buffer_rate": "Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude).",
+  "status.factorycore.buffer_mode.export": "Export",
+  "status.factorycore.buffer_mode.stock": "Stock",
+  "message.factorycore.buffer_target": "Stock goal: %s matching items across this buffer.",
+  "tooltip.factorycore.buffer_export_stock": "Sneak with compass cycles modes; sneak with chest changes stock goal."
 }

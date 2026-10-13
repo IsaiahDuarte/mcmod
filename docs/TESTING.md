@@ -555,3 +555,14 @@ fixture uses the public registry rebinding API and a test-only item, preserving
 all vanilla memberships; no production class or tag is packaged from gameTest.
 See [policy contract](modules/BUFFERED_INTERFACES.md). Actual client/restart/
 independent-file/multiplayer/performance and export/stock remain separate checks.
+
+
+Seven BufferExportGameTests require actual scheduled buffer/hopper export and
+conservation, Stock stop/replenish/full-vacancy, live physical deficit caps, known
+inbound/no-refill re-extraction, pause/zero and competing goals with reserved
+supply. Native compass/chest control assertions retain filter/rate/goal. Policy
+codec and canonical persistence tests add strict table-v4/policy-v2 compressed
+reload, old unions/bytes and future raw preservation. The new future buffer version
+is5; no prior stock/raw assertion was weakened. GUI/editor, external-provider mode
+recovery, actual chunks/restart/independent saves, multiplayer and performance
+are separate required evidence. See [mode contract](modules/BUFFERED_INTERFACES.md).

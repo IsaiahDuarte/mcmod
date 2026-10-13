@@ -4,7 +4,8 @@ P3 prerequisite implementation, not a deployed preset or player settings screen.
 The physical buffer now consumes these selectors in guarded Import/Paused policy;
 [canonical integration](BUFFERED_INTERFACES.md) records save/rate/player controls. These
 shared components are intended for export/stock controls and later SDK/crafting
-frontends; export/stock and full multi-rule settings remain dependent integration work.
+frontends; buffered Export/Stock now consumes these models; full multi-rule settings and
+remaining machine-interface/client integration stay unfinished.
 The original selector/planner checkpoint introduced no schema change; later
 buffer integration uses nested buffers-v3 under world schema ten.
 

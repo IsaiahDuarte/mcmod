@@ -7,13 +7,17 @@ import java.util.Objects;
 /**
  * Canonical item selection and shared per-backing network I/O limit, independently per direction.
  */
-public record BufferPolicy(ResourceFilter filter, int rate) {
+public record BufferPolicy(ResourceFilter filter, int rate, int target) {
   public static final BufferPolicy DEFAULT =
       new BufferPolicy(ResourceFilter.all(ResourceKind.ITEM), 64);
 
+  public BufferPolicy(ResourceFilter filter, int rate) {
+    this(filter, rate, 64);
+  }
+
   public BufferPolicy {
     Objects.requireNonNull(filter);
-    if (filter.kind() != ResourceKind.ITEM || rate < 1 || rate > 64)
+    if (filter.kind() != ResourceKind.ITEM || rate < 1 || rate > 64 || target < 0 || target > 576)
       throw new IllegalArgumentException("Buffer policy requires items and 1–64 items/tick");
   }
 

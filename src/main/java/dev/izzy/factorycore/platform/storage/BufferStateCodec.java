@@ -50,7 +50,14 @@ final class BufferStateCodec {
           deployments.stream()
               .anyMatch(
                   d -> !d.policy().equals(dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT));
-      root.putInt("Schema", policies ? 3 : 2);
+      boolean extended =
+          deployments.stream()
+              .anyMatch(
+                  d ->
+                      d.mode() == BufferRegistry.Mode.EXPORT
+                          || d.mode() == BufferRegistry.Mode.STOCK
+                          || d.policy().target() != 64);
+      root.putInt("Schema", extended ? 4 : policies ? 3 : 2);
       var encoded = new ListTag();
       for (var deployment : deployments) {
         var entry = new CompoundTag();
@@ -61,7 +68,8 @@ final class BufferStateCodec {
         entry.putUUID("Network", deployment.network());
         entry.putUUID("Segment", deployment.segment());
         entry.putString("Mode", deployment.mode().name());
-        if (policies) entry.put("Policy", BufferPolicyCodec.encode(deployment.policy()));
+        if (policies || extended)
+          entry.put("Policy", BufferPolicyCodec.encode(deployment.policy(), extended));
         encoded.add(entry);
       }
       root.put("Deployments", encoded);
@@ -76,7 +84,7 @@ final class BufferStateCodec {
             ? Set.of("Schema", "Buffers", "Deployments")
             : Set.of("Schema", "Buffers"));
     if (!root.contains("Schema", Tag.TAG_INT)
-        || (root.getInt("Schema") < 1 || root.getInt("Schema") > 3)
+        || (root.getInt("Schema") < 1 || root.getInt("Schema") > 4)
         || !root.contains("Buffers", Tag.TAG_LIST))
       throw new IllegalArgumentException("Unsupported buffer schema");
     var records = root.getList("Buffers", Tag.TAG_COMPOUND);
@@ -131,7 +139,7 @@ final class BufferStateCodec {
 
   static List<BufferRegistry.Deployment> deployments(CompoundTag root) {
     if (root.getInt("Schema") == 1) return List.of();
-    if ((root.getInt("Schema") != 2 && root.getInt("Schema") != 3)
+    if ((root.getInt("Schema") < 2 || root.getInt("Schema") > 4)
         || !root.contains("Deployments", Tag.TAG_LIST))
       throw new IllegalArgumentException("Unsupported buffer deployments");
     var entries = root.getList("Deployments", Tag.TAG_COMPOUND);
@@ -145,7 +153,7 @@ final class BufferStateCodec {
       var entry = entries.getCompound(index);
       NetworkStateCodec.fields(
           entry,
-          root.getInt("Schema") == 3
+          root.getInt("Schema") >= 3
               ? Set.of(
                   "Backing",
                   "Revision",
@@ -172,14 +180,21 @@ final class BufferStateCodec {
           || !owners.add(entry.getUUID("Backing")))
         throw new IllegalArgumentException("Malformed/duplicate deployment");
       var policy = dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT;
-      if (root.getInt("Schema") == 3) {
+      if (root.getInt("Schema") >= 3) {
         if (!entry.contains("Policy", Tag.TAG_COMPOUND))
           throw new IllegalArgumentException("Missing buffer policy");
-        policy = BufferPolicyCodec.decode(entry.getCompound("Policy"));
+        var encodedPolicy = entry.getCompound("Policy");
+        if (encodedPolicy.getInt("Schema") != (root.getInt("Schema") == 4 ? 2 : 1))
+          throw new IllegalArgumentException("Policy/table version mismatch");
+        policy = BufferPolicyCodec.decode(encodedPolicy);
       }
       policyBytes += policy.bytes();
       if (policyBytes > BufferRegistry.MAX_BYTES)
         throw new IllegalArgumentException("Buffer policy metadata limit");
+      var mode = BufferRegistry.Mode.valueOf(entry.getString("Mode"));
+      if (root.getInt("Schema") < 4
+          && (mode == BufferRegistry.Mode.EXPORT || mode == BufferRegistry.Mode.STOCK))
+        throw new IllegalArgumentException("Mode requires buffer table four");
       result.add(
           new BufferRegistry.Deployment(
               entry.getUUID("Backing"),
@@ -188,7 +203,7 @@ final class BufferStateCodec {
               entry.getUUID("Principal"),
               entry.getUUID("Network"),
               entry.getUUID("Segment"),
-              BufferRegistry.Mode.valueOf(entry.getString("Mode")),
+              mode,
               policy));
     }
     return List.copyOf(result);

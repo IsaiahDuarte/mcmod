@@ -62,7 +62,7 @@ The nine-slot owned item inventory and NeoForge hopper-handler adapter now exist
 as a P3 prerequisite, with exact component/stack limits and backpressure tests.
 Canonical slot ownership/persistence, physical placement and actual hopper-to-buffer
 flow now have local evidence; explicit shared buffer transfers and recovery now have local evidence. Automatic
-Import/Paused controls, real hopper-to-cell imports and full-storage backpressure now have headless world evidence. Canonical registry/exact/tag include/exclude selection and shared configurable network rates now have component/world evidence; export/stock/full settings remain unfinished.
+Import/Paused controls, real hopper-to-cell imports and full-storage backpressure now have headless world evidence. Canonical registry/exact/tag include/exclude selection and shared configurable network rates now have component/world evidence; buffered Export/Stock now has component/world evidence; full settings/client and remaining machine-interface work remain unfinished.
 The physical item terminal loop now has a server menu implementation; full release/client/restart acceptance remains unfinished and A01 has partial evidence.
 [Buffered Interface contract](docs/modules/BUFFERED_INTERFACES.md) records this scope.
 

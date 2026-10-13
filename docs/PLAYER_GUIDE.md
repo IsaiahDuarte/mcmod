@@ -274,3 +274,21 @@ Inspect with an empty offhand to see rate/filter mode/rule count. You need Edit/
 Deploy and the relevant active Import grants. New controls have headless native
 evidence, with actual client help/interaction checks pending. Multiple rules,
 export/stock and the complete settings screen remain unfinished.
+
+## Export and Stock buffers
+
+Use an empty main hand and sneak-use a buffer with a compass in the offhand to
+cycle Paused, Import, Export, Stock. Export withdraws permitted matching storage
+into the real buffer so a hopper below can pull it out. Stock withdraws only the
+missing amount toward its physical goal, counting all currently matching buffer
+items; another job's reserved source supply is unavailable. Targets are best
+effort and can remain short when capacity, permissions, holds or rates block work.
+
+Sneak-use with an offhand chest cycles the stock goal through0,8,16,32,64,128,256,
+512,576. Initial goal64; zero stops stock withdrawal. Selection/rate edits retain
+the goal, and mode/goal tools are not consumed. Items fed physically beyond a goal
+remain owned; Stock does not remove or void them. Rate limits and partial staging
+still apply. Old staged operations remain under their original owner after edits;
+redstone cleanup returns known resources to the recorded source when valid.
+A full settings screen and actual client verification of these controls remain
+pending; the current native controls have headless behavior evidence.

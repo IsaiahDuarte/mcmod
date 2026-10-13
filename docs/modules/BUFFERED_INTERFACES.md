@@ -2,7 +2,7 @@
 
 P3 prerequisite component: `ItemBuffer` and `BufferedItemHandler` implement the
 selected nine-slot owned inventory and its NeoForge automation view. The canonical world table/structural lease now exists. The physical block and hopper inventory path are implemented with headless world
-evidence. Automatic filtered Import and Paused controls are implemented; export/stock and full settings/inventory screens remain missing;
+evidence. Automatic filtered Import/Export/Stock and Paused controls are implemented; full settings/inventory screens remain missing;
 the hopper-to-storage-to-terminal loop is not yet A01.
 See [ownership decision](../decisions/0014-buffered-inventory.md).
 
@@ -355,13 +355,67 @@ Seven BufferPolicyGameTests exercise actual registry/exact imports, rejected sto
 queued replacement/revocation, shared configured rate, real sample/clock/paper/tag
 controls, native tag rebinding wake and known partial cleanup after exclusion.
 The isolated test item avoids changing vanilla membership. Full restart/independent
-files, client/multiplayer/performance and export/stock/settings screens remain open.
+files, client/multiplayer/performance and full settings screens remain open.
 
 The public server-thread overload `configure(actor, mode, policy)` returns the new
 immutable deployment after authenticating current EDIT/DEPLOY and active resource
-grants. It accepts IMPORT/PAUSED and a validated item BufferPolicy; the mode-only
+grants. It accepts IMPORT/EXPORT/STOCK/PAUSED and a validated item BufferPolicy; the mode-only
 overload retains the existing policy. Offline/stale holders, denial and shared
 metadata exhaustion throw IllegalStateException without new authority; invalid
 policy values fail construction, and revision overflow throws ArithmeticException.
 No configuration call consumes samples or moves resources. Native callers must
 derive actors from authenticated bodies; portable provenance supplies no grants.
+
+## Automatic Export and Stock
+
+The same deployment now supports EXPORT (storage→buffer) and STOCK (maintain a
+best-effort physical goal). Import/Paused policies retain buffers-v2/v3 and
+policy-v1 bytes when the goal is the legacy64. Export/Stock or a nondefault goal
+requires buffers-v4 with policy-v2 `{Schema:2,Rate,Mode,Terms,Target:int}`. Target
+is0–576 individual matching items across the nine slots, independent of exact
+component variants selected by broad rules. Kind remains ITEM. Old tables cannot
+encode the new modes; table/policy versions must agree. Unknown/future/invalid
+unions preserve raw canonical evidence. World schema ten/physical reference one
+are unchanged; older goal-less policies supply64 without changing prior fields.
+
+Export discovers one bounded authorized all-key page through the shared scheduler,
+then routes one exact selected key through existing global priority withdrawal.
+Private sources remain unreadable, buffer inventories remain outside stock
+catalogs, and current reservations/capacity/rates/leases/grants are revalidated.
+Page-local reserved observations are not subtracted to infer complete backing
+availability: exact routing performs the authoritative check. Candidate rotation
+and page cursors progress without a whole network snapshot. At most256 loaded
+entries retain cursors, sharing a2MiB transient cursor charge and32768-page scan
+limit. Each discovery/route is queued; no work loads chunks or scans unboundedly.
+Pause/reconfiguration/unregister/tag wake releases stale cursor state. Source
+shortage/full/goals retry after20 ticks; local physical activity wakes immediately.
+These are bounds, not measured throughput or a representative performance pass.
+
+Stock uses the shared StockTarget deficit model against the current sum of matching
+resident slots. Known unresolved inbound blocks fresh extraction and is progressed
+under original ownership instead; uncertainty freezes. Matching network insertion
+is capped against live resident stock at each native call, including independently
+authorized explicit moves, so late arrivals can leave partial owned staging. Native
+hopper/IItemHandler input remains physical access and can exceed a best-effort goal;
+Stock never voids/removes that excess. Nonmatching explicit network insertion stays
+ordinary inventory admission. Original-owner buffer-source returns are exempt from
+the goal but still share rate/capacity, so configuring Stock cannot prevent known
+cleanup solely because a goal is full. Original export-source cleanup returns known
+staging to its saved digital/foreign source, never re-extracts it.
+
+Sneak-use with an offhand compass cycles Paused→Import→Export→Stock→Paused, retaining
+selection/rate/goal. Sneak-use with a chest cycles0→8→16→32→64→128→256→512→576→0.
+The initial goal is64. Tools are not consumed; all active modes require current
+EDIT/DEPLOY/VIEW/WITHDRAW/DEPOSIT. Existing empty-offhand sneak remains the simple
+Import/Paused toggle. Clock/paper/redstone/compass/chest special controls take
+precedence over exact sample selection. Rate/filter edits retain the goal.
+
+Seven BufferExportGameTests add real hopper export, selected/excluded source
+conservation, exact Stock stop/replenish, full-target preflight/vacancy wake,
+live deficit caps, saved known inbound without re-extracting refill, queued pause/
+zero-goal behavior and competing goals with reserved supply. Policy codec and
+canonical persistence tests add policy-v2/table-v4 compressed round trips and
+strict old/new unions/future raw preservation. Native compass/chest tests extend
+the real authenticated control case. The complete multi-rule settings screen,
+actual new-control client interactions, external provider/version restart/chunks,
+independent saves, multiplayer and representative performance remain required.

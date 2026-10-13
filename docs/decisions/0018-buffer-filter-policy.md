@@ -59,3 +59,17 @@ Tests must cover strict old/new bytes, malformed/future/raw preservation, combin
 admission, actual matching/backpressure, queued reconfiguration/revocation, same-tick
 rate sharing, tag-reload wake, native controls and staged cleanup. Actual client,
 chunks/restart/independent saves, multiplayer and performance remain release checks.
+
+## Export/Stock extension
+
+The same coordinator now discovers bounded authorized item pages and dispatches
+priority withdrawals into its owned buffer. Transient cursors share2MiB/256-owner
+and32768-page limits; source discovery never replaces exact route reservation/
+permission admission. Stock maintains0–576 total matching physical units, using
+live insertion caps to avoid overshoot and unresolved staging to block fresh
+extraction. Physical pipe access stays ordinary inventory; owned returns bypass
+only the goal cap, preserving rate/lease/ownership validation. New modes/nondefault
+goals require buffers-v4/policy-v2; older Import/Paused encodings stay byte-stable.
+Basic compass/chest controls retain other policy settings; full editor/client and
+release verification remain pending. No wider persistence or authority override
+is introduced by these modes.

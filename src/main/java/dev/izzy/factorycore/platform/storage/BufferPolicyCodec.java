@@ -11,8 +11,13 @@ final class BufferPolicyCodec {
   private BufferPolicyCodec() {}
 
   static CompoundTag encode(BufferPolicy policy) {
+    return encode(policy, policy.target() != 64);
+  }
+
+  static CompoundTag encode(BufferPolicy policy, boolean extended) {
     var tag = new CompoundTag();
-    tag.putInt("Schema", 1);
+    tag.putInt("Schema", extended ? 2 : 1);
+    if (extended) tag.putInt("Target", policy.target());
     tag.putInt("Rate", policy.rate());
     tag.putString("Mode", policy.filter().mode().name());
     var terms = new ListTag();
@@ -36,13 +41,19 @@ final class BufferPolicyCodec {
   }
 
   static BufferPolicy decode(CompoundTag tag) {
-    NetworkStateCodec.fields(tag, Set.of("Schema", "Rate", "Mode", "Terms"));
+    NetworkStateCodec.fields(
+        tag,
+        tag.getInt("Schema") == 2
+            ? Set.of("Schema", "Rate", "Mode", "Terms", "Target")
+            : Set.of("Schema", "Rate", "Mode", "Terms"));
     if (!tag.contains("Schema", Tag.TAG_INT)
-        || tag.getInt("Schema") != 1
+        || (tag.getInt("Schema") != 1 && tag.getInt("Schema") != 2)
         || !tag.contains("Rate", Tag.TAG_INT)
         || !tag.contains("Mode", Tag.TAG_STRING)
         || !tag.contains("Terms", Tag.TAG_LIST))
       throw new IllegalArgumentException("Unsupported buffer policy");
+    if (tag.getInt("Schema") == 2 && !tag.contains("Target", Tag.TAG_INT))
+      throw new IllegalArgumentException("Missing stock target");
     var terms = tag.getList("Terms", Tag.TAG_COMPOUND);
     if (terms.size() != ((ListTag) tag.get("Terms")).size()
         || terms.size() > ResourceFilter.MAX_TERMS)
@@ -72,6 +83,7 @@ final class BufferPolicyCodec {
     return new BufferPolicy(
         new ResourceFilter(
             ResourceKind.ITEM, ResourceFilter.Mode.valueOf(tag.getString("Mode")), result),
-        tag.getInt("Rate"));
+        tag.getInt("Rate"),
+        tag.getInt("Schema") == 2 ? tag.getInt("Target") : 64);
   }
 }

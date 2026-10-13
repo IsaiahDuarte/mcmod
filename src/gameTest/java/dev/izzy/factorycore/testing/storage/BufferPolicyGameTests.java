@@ -302,6 +302,20 @@ public final class BufferPolicyGameTests {
                   f.saved.buffers().deployment(f.buffer.handle().id()).mode()
                       == BufferRegistry.Mode.PAUSED,
                   "Editing does not deploy a paused preset");
+              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.CHEST));
+              helper.useBlock(BUFFER, player);
+              helper.assertTrue(
+                  f.saved.buffers().deployment(f.buffer.handle().id()).policy().target() == 128,
+                  "Chest cycles physical goal without changing selection/rate");
+              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.COMPASS));
+              for (int step = 0; step < 3; step++) helper.useBlock(BUFFER, player);
+              var configured = f.saved.buffers().deployment(f.buffer.handle().id());
+              helper.assertTrue(
+                  configured.mode() == BufferRegistry.Mode.STOCK
+                      && configured.policy().target() == 128
+                      && configured.policy().rate() == 32
+                      && configured.policy().filter().mode() == ResourceFilter.Mode.EXCLUDE,
+                  "Compass reaches Stock and preserves typed policy");
               player.connection.disconnect(Component.literal("Policy controls fixture complete"));
             })
         .thenSucceed();

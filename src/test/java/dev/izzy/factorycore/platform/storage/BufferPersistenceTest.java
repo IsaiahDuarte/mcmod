@@ -253,7 +253,7 @@ class BufferPersistenceTest {
       if (mode == 4) entry.putUUID("Segment", new UUID(0, 999));
       if (mode == 5) list.add(entry.copy());
       if (mode == 6) entry.putString("Mode", "FUTURE");
-      if (mode == 7) table.putInt("Schema", 4);
+      if (mode == 7) table.putInt("Schema", 5);
       if (mode == 8) entry.putInt("Revision", 2);
       var rejected = DeviceSavedData.load(invalid, registries);
       assertThrows(IllegalStateException.class, rejected::buffers);
@@ -315,5 +315,49 @@ class BufferPersistenceTest {
       assertEquals(bad, rejected.save(new CompoundTag(), registries));
       assertFalse(rejected.isDirty());
     }
+  }
+
+  @Test
+  void canonicalStockFourCompressedReloadAndFuturePolicyRemainConservative() throws Exception {
+    var saved = DeviceSavedData.load(fixture("registry-v8"), registries);
+    var handle =
+        new NodeRegistry.Handle(
+            saved.registry().world(), new UUID(0, 601), 3, NodeRegistry.Kind.BUFFERED_INTERFACE);
+    var owner = new Object();
+    saved.buffers().bind(handle, saved.nodes().definition(handle).position(), owner);
+    var policy =
+        new dev.izzy.factorycore.core.storage.BufferPolicy(
+            dev.izzy.factorycore.core.resource.ResourceFilter.all(
+                dev.izzy.factorycore.core.resource.ResourceKind.ITEM),
+            16,
+            128);
+    var deployed =
+        saved
+            .buffers()
+            .configure(
+                handle,
+                owner,
+                1,
+                new UUID(0, 9),
+                new UUID(0, 101),
+                new UUID(0, 102),
+                BufferRegistry.Mode.STOCK,
+                policy);
+    var encoded = saved.save(new CompoundTag(), registries);
+    assertEquals(10, encoded.getInt("Schema"));
+    assertEquals(4, encoded.getCompound("Buffers").getInt("Schema"));
+    var path = directory.resolve("world-stock.dat");
+    NbtIo.writeCompressed(encoded, path);
+    var restored =
+        DeviceSavedData.load(NbtIo.readCompressed(path, NbtAccounter.unlimitedHeap()), registries);
+    assertEquals("", restored.diagnostic());
+    assertEquals(deployed, restored.buffers().deployment(handle.id()));
+    assertEquals(saved.buffers().snapshot(), restored.buffers().snapshot());
+    var future = encoded.copy();
+    future.getCompound("Buffers").putInt("Schema", 5);
+    var rejected = DeviceSavedData.load(future, registries);
+    assertFalse(rejected.diagnostic().isEmpty());
+    assertEquals(future, rejected.save(new CompoundTag(), registries));
+    assertFalse(rejected.isDirty());
   }
 }

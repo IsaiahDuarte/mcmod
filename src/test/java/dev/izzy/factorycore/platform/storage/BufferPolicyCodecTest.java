@@ -36,7 +36,7 @@ class BufferPolicyCodecTest {
     for (int i = 0; i < 9; i++) {
       var invalid = tag.copy();
       var first = invalid.getList("Terms", Tag.TAG_COMPOUND).getCompound(0);
-      if (i == 0) invalid.putInt("Schema", 2);
+      if (i == 0) invalid.putInt("Schema", 3);
       if (i == 1) invalid.putLong("Rate", 16);
       if (i == 2) invalid.putInt("Rate", 65);
       if (i == 3) invalid.putString("Mode", "UNKNOWN");
@@ -81,10 +81,45 @@ class BufferPolicyCodecTest {
     for (int i = 0; i < 3; i++) {
       var bad = table.copy();
       var entry = bad.getList("Deployments", Tag.TAG_COMPOUND).getCompound(0);
-      if (i == 0) bad.putInt("Schema", 4);
+      if (i == 0) bad.putInt("Schema", 5);
       if (i == 1) entry.remove("Policy");
       if (i == 2) entry.getCompound("Policy").putInt("Schema", 2);
       assertThrows(IllegalArgumentException.class, () -> BufferStateCodec.decode(bad));
     }
+  }
+
+  @Test
+  void stockPolicyTwoAndBufferTableFourRetainOlderBytesAndRejectWrongUnions() throws Exception {
+    var stock = new BufferPolicy(policy().filter(), 8, 20);
+    var nested = BufferPolicyCodec.encode(stock);
+    assertEquals(2, nested.getInt("Schema"));
+    assertEquals(20, nested.getInt("Target"));
+    assertEquals(stock, BufferPolicyCodec.decode(nested));
+    var id = new UUID(0, 601);
+    var root = new UUID(0, 101);
+    var deployment =
+        new BufferRegistry.Deployment(
+            id, 4, 3, new UUID(0, 9), root, root, BufferRegistry.Mode.STOCK, stock);
+    var table = BufferStateCodec.encode(List.of(ItemBuffer.empty(id)), List.of(deployment));
+    assertEquals(4, table.getInt("Schema"));
+    assertEquals(List.of(deployment), BufferStateCodec.deployments(table));
+    var file = directory.resolve("stock-policy.dat");
+    NbtIo.writeCompressed(table, file);
+    var loaded = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
+    assertEquals(
+        table,
+        BufferStateCodec.encode(
+            BufferStateCodec.decode(loaded), BufferStateCodec.deployments(loaded)));
+    for (int i = 0; i < 5; i++) {
+      var bad = table.copy();
+      var entry = bad.getList("Deployments", Tag.TAG_COMPOUND).getCompound(0);
+      if (i == 0) bad.putInt("Schema", 5);
+      if (i == 1) entry.getCompound("Policy").putInt("Schema", 3);
+      if (i == 2) entry.getCompound("Policy").putInt("Target", 577);
+      if (i == 3) entry.getCompound("Policy").putLong("Target", 20);
+      if (i == 4) bad.putInt("Schema", 3);
+      assertThrows(IllegalArgumentException.class, () -> BufferStateCodec.decode(bad));
+    }
+    assertThrows(IllegalArgumentException.class, () -> new BufferPolicy(policy().filter(), 8, -1));
   }
 }

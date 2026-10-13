@@ -136,7 +136,7 @@ public final class BufferedInterfaceEntity extends BlockEntity {
         })
       if (networks.authorize(actor, position(), permission) != NetworkAuthority.Decision.ALLOWED)
         throw new IllegalStateException("Buffer deployment permission denied");
-    if (mode == BufferRegistry.Mode.IMPORT)
+    if (mode != BufferRegistry.Mode.PAUSED)
       for (var permission :
           new NetworkPermissions.Permission[] {
             NetworkPermissions.Permission.VIEW,
@@ -182,8 +182,10 @@ public final class BufferedInterfaceEntity extends BlockEntity {
       return new WorldStorageTransfers.Submission(null, OperationResult.Reason.DENIED);
     if (!record.transfer().owner().equals(actor.id())
         || record.context() == null
-        || record.context().source().type() != TransferContext.Type.BUFFER
-        || !record.context().source().backing().equals(state.lease().id()))
+        || !((record.context().source().type() == TransferContext.Type.BUFFER
+                && record.context().source().backing().equals(state.lease().id()))
+            || (record.context().destination().type() == TransferContext.Type.BUFFER
+                && record.context().destination().backing().equals(state.lease().id()))))
       return new WorldStorageTransfers.Submission(null, OperationResult.Reason.DENIED);
     return WorldNetworks.get(serverLevel().getServer())
         .transfers()

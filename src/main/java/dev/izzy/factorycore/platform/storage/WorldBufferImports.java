@@ -33,6 +33,11 @@ public final class WorldBufferImports {
     UUID scheduledPrincipal;
     UUID request;
     boolean progress;
+    boolean discovery;
+    WorldStorageCatalog.Cursor cursor;
+    long cursorCharge;
+    long discoveryRevision;
+    int pages, pick;
     int slot;
     int nextTick;
     OperationResult.Reason reason = OperationResult.Reason.SHORTAGE;
@@ -52,6 +57,8 @@ public final class WorldBufferImports {
   private final DeviceSavedData saved;
   private final Map<UUID, Entry> entries = new HashMap<>();
   private final ArrayDeque<Entry> active = new ArrayDeque<>();
+  private long cursorBytes;
+  private static final long MAX_CURSOR_BYTES = 2L * 1024 * 1024;
 
   public WorldBufferImports(MinecraftServer server, WorldNetworks networks) {
     this.server = server;
@@ -82,6 +89,7 @@ public final class WorldBufferImports {
     if (owner.handle() == null) return;
     var entry = entries.get(owner.handle().id());
     if (entry == null || entry.owner != owner) return;
+    cursor(entry, null);
     entries.remove(entry.backing);
     active.remove(entry);
     entry.active = false;
@@ -100,7 +108,11 @@ public final class WorldBufferImports {
   /** Native tag rebinding is complete; metadata-only wake of at most 256 loaded holders. */
   public void tagsReloaded() {
     checkThread();
-    for (var backing : entries.keySet()) wake(backing);
+    for (var entry : entries.values()) {
+      cursor(entry, null);
+      entry.pages = 0;
+      wake(entry.backing);
+    }
   }
 
   private boolean matches(
@@ -144,7 +156,7 @@ public final class WorldBufferImports {
       }
       if (entry.request != null) {
         boolean pending =
-            entry.progress
+            entry.progress || entry.discovery
                 ? networks.transfers().routeTicketActive(entry.request)
                 : networks.transfers().routes().active(entry.request);
         if (pending) {
@@ -159,6 +171,8 @@ public final class WorldBufferImports {
       }
       var deployment = saved.buffers().deployment(entry.backing);
       if (deployment == null || deployment.mode() == BufferRegistry.Mode.PAUSED) {
+        cursor(entry, null);
+        entry.pages = 0;
         entry.reason = OperationResult.Reason.OK;
         continue;
       }
@@ -195,7 +209,7 @@ public final class WorldBufferImports {
     } catch (IllegalStateException | IllegalArgumentException unavailable) {
       return OperationResult.Reason.OFFLINE;
     }
-    if (deployment.mode() != BufferRegistry.Mode.IMPORT
+    if (deployment.mode() == BufferRegistry.Mode.PAUSED
         || deployment.revision() != entry.owner.reference().configuration()
         || deployment.leaseGeneration() != entry.owner.handle().generation())
       return OperationResult.Reason.DENIED;
@@ -222,6 +236,11 @@ public final class WorldBufferImports {
       return;
     }
     var actor = new NetworkPermissions.Actor(deployment.principal(), false);
+    if (entry.discoveryRevision != deployment.revision()) {
+      cursor(entry, null);
+      entry.pages = 0;
+      entry.discoveryRevision = deployment.revision();
+    }
     var unresolved = saved.transfers().unresolved(entry.backing);
     if (unresolved != null) {
       if (unresolved.transfer().pending() != StagedTransfer.PendingCall.NONE
@@ -239,6 +258,7 @@ public final class WorldBufferImports {
       }
       entry.request = unresolved.id();
       entry.progress = true;
+      entry.discovery = false;
       var admission =
           networks
               .transfers()
@@ -254,6 +274,10 @@ public final class WorldBufferImports {
       admitted(entry, admission);
       return;
     }
+    if (deployment.mode() != BufferRegistry.Mode.IMPORT) {
+      export(entry, deployment, actor);
+      return;
+    }
     var inventory = entry.owner.inventory();
     for (int offset = 0; offset < ItemBuffer.SLOTS; offset++) {
       int index = (entry.slot + offset) % ItemBuffer.SLOTS;
@@ -263,6 +287,7 @@ public final class WorldBufferImports {
       var id = UUID.randomUUID();
       entry.request = id;
       entry.progress = false;
+      entry.discovery = false;
       var admission =
           networks
               .transfers()
@@ -289,16 +314,143 @@ public final class WorldBufferImports {
   private static boolean owns(
       TransferRegistry.Stored record, Entry entry, BufferRegistry.Deployment deployment) {
     var context = record.context();
-    return context != null
-        && context.destination().type() != TransferContext.Type.PLAYER
-        && record.transfer().owner().equals(deployment.principal())
+    if (context == null
+        || context.source().type() == TransferContext.Type.PLAYER
+        || context.destination().type() == TransferContext.Type.PLAYER) return false;
+    var endpoint =
+        deployment.mode() == BufferRegistry.Mode.IMPORT ? context.source() : context.destination();
+    return record.transfer().owner().equals(deployment.principal())
         && context.network().equals(deployment.network())
         && context.segment().equals(deployment.segment())
         && context.origin().equals(entry.owner.position())
-        && context.source().type() == TransferContext.Type.BUFFER
-        && context.source().backing().equals(entry.backing)
-        && context.source().generation() == deployment.leaseGeneration()
-        && context.source().configuration() == deployment.revision();
+        && endpoint.type() == TransferContext.Type.BUFFER
+        && endpoint.backing().equals(entry.backing)
+        && endpoint.generation() == deployment.leaseGeneration()
+        && endpoint.configuration() == deployment.revision();
+  }
+
+  private long room(Entry entry, BufferRegistry.Deployment deployment) {
+    if (deployment.mode() != BufferRegistry.Mode.STOCK) return deployment.policy().rate();
+    long resident = 0;
+    for (var slot : entry.owner.inventory().snapshot().slots())
+      if (slot.key() != null && matches(deployment, slot.key())) resident += slot.count();
+    return new dev.izzy.factorycore.core.resource.StockTarget(
+            dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+            deployment.policy().target(),
+            deployment.policy().rate())
+        .missing(resident, 0);
+  }
+
+  private boolean cursor(Entry entry, WorldStorageCatalog.Cursor next) {
+    long charge =
+        next == null
+            ? 0
+            : 512
+                + (next.afterKey() == null
+                    ? 0
+                    : next.afterKey().componentByteCount()
+                        + 3L * next.afterKey().registryId().length());
+    if (cursorBytes - entry.cursorCharge > MAX_CURSOR_BYTES - charge) return false;
+    cursorBytes += charge - entry.cursorCharge;
+    entry.cursorCharge = charge;
+    entry.cursor = next;
+    return true;
+  }
+
+  private void export(
+      Entry entry, BufferRegistry.Deployment deployment, NetworkPermissions.Actor actor) {
+    if (room(entry, deployment) == 0) {
+      retry(entry, OperationResult.Reason.OK);
+      return;
+    }
+    boolean capacity = false;
+    for (var slot : entry.owner.inventory().snapshot().slots())
+      if (slot.key() == null || slot.count() < slot.limit()) {
+        capacity = true;
+        break;
+      }
+    if (!capacity) {
+      retry(entry, OperationResult.Reason.FULL);
+      return;
+    }
+    var id = UUID.randomUUID();
+    entry.request = id;
+    entry.progress = false;
+    entry.discovery = true;
+    var admission =
+        networks
+            .transfers()
+            .allKeys()
+            .page(
+                id,
+                actor,
+                entry.owner.position(),
+                dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+                entry.cursor,
+                page -> {
+                  if (entries.get(entry.backing) != entry || !id.equals(entry.request)) return;
+                  entry.request = null;
+                  entry.discovery = false;
+                  var reason = validate(entry, deployment);
+                  if (reason != OperationResult.Reason.OK
+                      || page.reason() != OperationResult.Reason.OK) {
+                    cursor(entry, null);
+                    entry.pages = 0;
+                    retry(entry, reason != OperationResult.Reason.OK ? reason : page.reason());
+                    return;
+                  }
+                  if (++entry.pages > WorldStorageSearch.MAX_PAGES || !cursor(entry, page.next())) {
+                    cursor(entry, null);
+                    entry.pages = 0;
+                    retry(entry, OperationResult.Reason.TECHNICAL_LIMIT);
+                    return;
+                  }
+                  var rows = page.rows();
+                  for (int offset = 0; offset < rows.size(); offset++) {
+                    int index = Math.floorMod(entry.pick + offset, rows.size());
+                    var row = rows.get(index);
+                    if (row.total() == 0
+                        || !matches(deployment, row.key())
+                        || entry.owner.inventory().simulateInsert(row.key(), 1) == 0) continue;
+                    entry.pick = (index + 1) % rows.size();
+                    var request = UUID.randomUUID();
+                    long amount = room(entry, deployment);
+                    if (amount == 0) {
+                      retry(entry, OperationResult.Reason.OK);
+                      return;
+                    }
+                    entry.request = request;
+                    entry.progress = false;
+                    var move =
+                        networks
+                            .transfers()
+                            .routes()
+                            .priorityGuarded(
+                                request,
+                                actor,
+                                entry.owner.position(),
+                                new WorldStorageTransfers.Buffered(
+                                    entry.owner.handle(), deployment.revision()),
+                                row.key(),
+                                amount,
+                                WorldStorageRoutes.Direction.FROM_STORAGE,
+                                result -> finish(entry, request, result.move(), 0),
+                                () ->
+                                    validate(entry, deployment) == OperationResult.Reason.OK
+                                        && matches(deployment, row.key()),
+                                () ->
+                                    saved.transfers().unresolved(entry.backing) == null
+                                        && room(entry, deployment) >= amount);
+                    if (page.next() == null) entry.pages = 0;
+                    admitted(entry, move);
+                    return;
+                  }
+                  if (page.next() == null) {
+                    entry.pages = 0;
+                    retry(entry, OperationResult.Reason.SHORTAGE);
+                  } else wake(entry.backing);
+                });
+    admitted(entry, admission);
   }
 
   private void admitted(Entry entry, WorldStorageTransfers.Submission admission) {

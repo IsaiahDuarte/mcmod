@@ -18,7 +18,9 @@ public final class BufferRegistry {
 
   public enum Mode {
     PAUSED,
-    IMPORT
+    IMPORT,
+    EXPORT,
+    STOCK
   }
 
   /** Server-owned deployment identity; authority must be rechecked before every queued mutation. */

@@ -96,7 +96,31 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
                 ? dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT
                 : current.policy();
         var sample = player.getOffhandItem();
-        if (player.isShiftKeyDown() && sample.is(net.minecraft.world.item.Items.CLOCK)) {
+        if (player.isShiftKeyDown() && sample.is(net.minecraft.world.item.Items.COMPASS)) {
+          mode =
+              switch (mode) {
+                case PAUSED -> BufferRegistry.Mode.IMPORT;
+                case IMPORT -> BufferRegistry.Mode.EXPORT;
+                case EXPORT -> BufferRegistry.Mode.STOCK;
+                case STOCK -> BufferRegistry.Mode.PAUSED;
+              };
+        } else if (player.isShiftKeyDown() && sample.is(net.minecraft.world.item.Items.CHEST)) {
+          int target =
+              switch (policy.target()) {
+                case 0 -> 8;
+                case 8 -> 16;
+                case 16 -> 32;
+                case 32 -> 64;
+                case 64 -> 128;
+                case 128 -> 256;
+                case 256 -> 512;
+                case 512 -> 576;
+                default -> 0;
+              };
+          policy =
+              new dev.izzy.factorycore.core.storage.BufferPolicy(
+                  policy.filter(), policy.rate(), target);
+        } else if (player.isShiftKeyDown() && sample.is(net.minecraft.world.item.Items.CLOCK)) {
           int rate =
               switch (policy.rate()) {
                 case 64 -> 32;
@@ -106,13 +130,16 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
                 case 4 -> 1;
                 default -> 64;
               };
-          policy = new dev.izzy.factorycore.core.storage.BufferPolicy(policy.filter(), rate);
+          policy =
+              new dev.izzy.factorycore.core.storage.BufferPolicy(
+                  policy.filter(), rate, policy.target());
         } else if (player.isShiftKeyDown() && sample.is(net.minecraft.world.item.Items.PAPER)) {
           policy =
               new dev.izzy.factorycore.core.storage.BufferPolicy(
                   dev.izzy.factorycore.core.resource.ResourceFilter.all(
                       dev.izzy.factorycore.core.resource.ResourceKind.ITEM),
-                  policy.rate());
+                  policy.rate(),
+                  policy.target());
         } else {
           dev.izzy.factorycore.core.resource.ResourceFilter.Term term;
           var key =
@@ -141,9 +168,17 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
                       dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
                       filterMode,
                       List.of(term)),
-                  policy.rate());
+                  policy.rate(),
+                  policy.target());
         }
         buffer.configure(actor, mode, policy);
+        player.displayClientMessage(
+            Component.translatable(
+                "message.factorycore.buffer_mode",
+                Component.translatable(
+                    "status.factorycore.buffer_mode."
+                        + mode.name().toLowerCase(java.util.Locale.ROOT))),
+            false);
         player.displayClientMessage(
             Component.translatable(
                 "message.factorycore.buffer_policy",
@@ -153,6 +188,8 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
                         + policy.filter().mode().name().toLowerCase(java.util.Locale.ROOT)),
                 policy.filter().terms().size()),
             false);
+        player.displayClientMessage(
+            Component.translatable("message.factorycore.buffer_target", policy.target()), false);
         return InteractionResult.CONSUME;
       }
       if (player.isShiftKeyDown() && player.getOffhandItem().isEmpty()) {
@@ -203,6 +240,8 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
                       + policy.filter().mode().name().toLowerCase(java.util.Locale.ROOT)),
               policy.filter().terms().size()),
           false);
+      player.displayClientMessage(
+          Component.translatable("message.factorycore.buffer_target", policy.target()), false);
       var status = WorldNetworks.get(buffer.serverLevel().getServer()).imports().status(buffer);
       player.displayClientMessage(
           Component.translatable(

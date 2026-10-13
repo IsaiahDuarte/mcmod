@@ -97,7 +97,7 @@ row. Share navigation and components where appropriate.
 | Terminal manual crafting and patterns | Ghost grid, remainders, JEI/manual selection, pattern editing | P4, P6 | Missing / Pending |
 | Crafting jobs | Preview/shortages/cycles, progress, cancellation, busy/cleanup state | P4–P6 | Missing / Pending |
 | Fluids and Energy | Real container/charge actions, units, observable capacities/rates and unsupported errors | P3, P6 | Missing / Pending |
-| Presets and machine binding | Sides/slots/labels, filters, priorities, rates, stock targets and preview | P3 | Basic item Import selection/rate has translated physical controls and headless evidence; full settings, other bindings/export/stock missing / new-control client checks Pending |
+| Presets and machine binding | Sides/slots/labels, filters, priorities, rates, stock targets and preview | P3 | Basic item Import selection/rate has translated physical controls and headless evidence; basic buffered Export/Stock implemented; full settings/other bindings missing / new-control client checks Pending |
 | Permissions and gateway policies | Authorized view/edit/ownership transfer, inherited limits and revocation feedback | P2–P6 | Missing / Pending |
 | Friendly editor and deployment | Highlighting, completion, errors, undo, templates, draft/deployed, logs/quotas, bounded Wasm upload | P5–P6 | Missing / Pending |
 | Wireless setup | Pairing, direction, range, authorization, power loss and reconnection | P6 | Missing / Pending |
@@ -141,7 +141,7 @@ are wired into the creative tab and recipe. Original editable JSON uses the same
 Translated inspection reports exact item and occupied-slot counts. Headless recipe,
 hopper and ownership tests passed; actual client appearance/transforms/GUI-scale
 checks remain pending. Import/Paused and owned-cleanup controls now have translated
-tooltips/chat states; basic registry/exact/tag include/exclude and shared rate controls now have translated tooltips/chat with headless native evidence; export/stock/full settings/inventory screens and actual new-control client checks remain pending.
+tooltips/chat states; basic registry/exact/tag include/exclude and shared rate controls now have translated tooltips/chat with headless native evidence; basic Export/Stock and compass/chest controls now have translated inspection/help and headless evidence; full settings/inventory screens and actual new-control client checks remain pending.
 
 
 Storage Terminal: [editable model](../src/main/resources/assets/factorycore/models/block/storage_terminal.json),
