@@ -373,7 +373,14 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     graphics.drawString(
         font,
         font.plainSubstrByWidth(
-            Component.translatable("gui.factorycore.buffer.status." + view.status()).getString(),
+            (view.requested() == 0
+                    ? Component.translatable("gui.factorycore.buffer.status." + view.status())
+                    : Component.translatable(
+                        "gui.factorycore.buffer.result",
+                        Component.translatable("gui.factorycore.buffer.status." + view.status()),
+                        view.moved(),
+                        view.requested()))
+                .getString(),
             300),
         10,
         219,

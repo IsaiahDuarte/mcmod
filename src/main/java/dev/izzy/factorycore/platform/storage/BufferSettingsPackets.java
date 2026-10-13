@@ -112,7 +112,9 @@ public final class BufferSettingsPackets {
       boolean editable,
       boolean busy,
       boolean dirty,
-      long staged)
+      long staged,
+      long moved,
+      int requested)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
@@ -131,7 +133,10 @@ public final class BufferSettingsPackets {
           || rules.stream().anyMatch(r -> r.length() > 128)
           || slots.size() > 9
           || status.length() > 64
-          || staged < 0) throw new IllegalArgumentException("Invalid buffer view");
+          || staged < 0
+          || moved < 0
+          || requested < 0
+          || requested > 64) throw new IllegalArgumentException("Invalid buffer view");
     }
 
     @Override
@@ -163,6 +168,8 @@ public final class BufferSettingsPackets {
               b.writeBoolean(v.busy);
               b.writeBoolean(v.dirty);
               b.writeVarLong(v.staged);
+              b.writeVarLong(v.moved);
+              b.writeVarInt(v.requested);
             },
             b -> {
               int id = b.readVarInt();
@@ -192,14 +199,16 @@ public final class BufferSettingsPackets {
                   b.readBoolean(),
                   b.readBoolean(),
                   b.readBoolean(),
-                  b.readVarLong());
+                  b.readVarLong(),
+                  b.readVarLong(),
+                  b.readVarInt());
             });
   }
 
   private BufferSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var r = event.registrar("1");
+    var r = event.registrar("2");
     r.playToServer(
         Command.TYPE,
         Command.CODEC,

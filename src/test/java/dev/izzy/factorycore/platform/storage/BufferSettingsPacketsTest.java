@@ -83,7 +83,9 @@ class BufferSettingsPacketsTest {
             true,
             false,
             true,
-            3);
+            3,
+            8,
+            64);
     var output = buffer();
     try {
       BufferSettingsPackets.View.CODEC.encode(output, packet);
@@ -129,6 +131,8 @@ class BufferSettingsPacketsTest {
                 true,
                 false,
                 false,
+                0,
+                0,
                 0));
     var output = buffer();
     try {

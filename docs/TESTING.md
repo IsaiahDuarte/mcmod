@@ -566,3 +566,20 @@ reload, old unions/bytes and future raw preservation. The new future buffer vers
 is5; no prior stock/raw assertion was weakened. GUI/editor, external-provider mode
 recovery, actual chunks/restart/independent saves, multiplayer and performance
 are separate required evidence. See [mode contract](modules/BUFFERED_INTERFACES.md).
+
+
+## Buffer settings client fixture and partial results
+
+`./gradlew runTerminalClient` now includes the Settings/Inventory extension and
+requires13 terminal/buffer captures and a PASS result. Its isolated world/test-only
+source set/package exclusions are unchanged. New steps exercise native draft,
+registry/tag, exact sample and inventory controls plus Stock behavior and exact
+conservation; physical Shift remains unverified. See the
+[blocked launch record](evidence/buffer-client-attempt-2026-10-13.md): compilation
+passed, but the new UI steps have not run because macOS reports no active display.
+
+Five BufferSettingsGameTests now cover canonical drafts, invalidation/authentication,
+non-consuming exact samples, round-trip conservation and explicit partial/full
+move counts under rate/goal limits. Three packet tests round-trip the new bounded
+operation projection. All are part of canonical verification; neither they nor
+client compilation replace the graphical check.

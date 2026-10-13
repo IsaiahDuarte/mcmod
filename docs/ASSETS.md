@@ -155,3 +155,10 @@ buttons, keyboard row selection and exact-count hover text. [Graphical screen ev
 scales2–4, search, Take1, paging and a real deposit payload. Block geometry/held
 transforms, physical Shift gesture, hover/focus completeness and remaining states
 are still unverified.
+
+
+The buffer settings fixture is prepared for rule paging, exact ghost samples,
+draft Apply and inventory/full/partial results at scales2–4. Its latest actual
+launch was [blocked before execution](evidence/buffer-client-attempt-2026-10-13.md)
+by zero active macOS displays. The new buffer-screen client evidence therefore
+remains Pending; no prepared capture is counted as an observed result.

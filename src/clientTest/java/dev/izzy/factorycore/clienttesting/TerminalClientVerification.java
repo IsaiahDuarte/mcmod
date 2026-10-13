@@ -1,10 +1,12 @@
 package dev.izzy.factorycore.clienttesting;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -18,6 +20,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -57,7 +60,8 @@ public final class TerminalClientVerification {
   private boolean importEnabled;
   private DeviceRegistry.Handle cell;
   private ResourceKey key;
-  private int stage, ticks, entered;
+  private int stage, ticks, entered, rule;
+  private boolean sampleSeeded;
   private long previousRevision;
 
   public TerminalClientVerification() {
@@ -75,7 +79,7 @@ public final class TerminalClientVerification {
   private void tick(ClientTickEvent.Post event) {
     Minecraft client = Minecraft.getInstance();
     ticks++;
-    if (stage == 12) return;
+    if (stage == 40) return;
     if (failure.get() != null)
       throw new IllegalStateException("Graphical terminal fixture failed", failure.get());
     if (ticks - entered > 1200)
@@ -84,6 +88,10 @@ public final class TerminalClientVerification {
               + stage
               + " screen="
               + (client.screen == null ? "none" : client.screen.getClass().getName()));
+    if (stage >= 12) {
+      bufferTick(client);
+      return;
+    }
     if (stage == 0
         && client.screen
             instanceof net.minecraft.client.gui.screens.AccessibilityOnboardingScreen onboarding) {
@@ -313,21 +321,310 @@ public final class TerminalClientVerification {
       return;
     }
     if (stage == 11 && view.rows().size() == 8 && view.next()) {
-      try {
-        Files.createDirectories(report.getParent());
-        Files.writeString(
-            report,
-            "PASS\n"
-                + evidence
-                + "Input: native search Enter, row number key, Take 1/Next/Home mouse handlers; deposit uses real C2S payload. Physical Shift gesture remains unverified.\n");
-      } catch (IOException error) {
-        throw new IllegalStateException(error);
-      }
+      client.player.closeContainer();
+      client.options.guiScale().set(2);
+      client.resizeDisplay();
       next();
-      client.level.disconnect();
-      client.disconnect();
-      client.stop();
     }
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Borrowed active client/server/window.
+  private void bufferTick(Minecraft client) {
+    if (stage == 12 && client.screen == null && ticks - entered > 4) {
+      client.gameMode.useItemOn(
+          client.player,
+          InteractionHand.MAIN_HAND,
+          new BlockHitResult(Vec3.atCenterOf(BUFFER), Direction.SOUTH, BUFFER, false));
+      next();
+      return;
+    }
+    if (!(client.screen instanceof BufferSettingsScreen screen)) return;
+    var menu = screen.getMenu();
+    var view = menu.view();
+    if (ticks - entered < 4 || view.busy()) return;
+    switch (stage) {
+      case 13 -> {
+        if (!view.editable() || view.slots().size() != 9) return;
+        check(
+            view.mode().equals("IMPORT") && !view.dirty(),
+            "Native buffer menu opens saved Import settings");
+        capture(client, "buffer-scale-2-settings.png");
+        click(screen, "Import");
+        next();
+      }
+      case 14 -> {
+        if (!view.mode().equals("EXPORT")) return;
+        click(screen, "Export");
+        next();
+      }
+      case 15 -> {
+        if (!view.mode().equals("STOCK")) return;
+        edit(screen, 0, "8", true);
+        next();
+      }
+      case 16 -> {
+        if (view.rate() != 8) return;
+        edit(screen, 1, "8", true);
+        next();
+      }
+      case 17 -> {
+        if (view.target() != 8 || view.rules().size() != rule) return;
+        String[] rules = {
+          "minecraft:iron_ingot",
+          "minecraft:gold_ingot",
+          "minecraft:copper_ingot",
+          "minecraft:coal",
+          "minecraft:redstone",
+          "minecraft:diamond",
+          "#minecraft:logs"
+        };
+        if (rule < rules.length) {
+          edit(screen, 2, rules[rule], false);
+          click(screen, rule == 6 ? "Tag" : "Item ID");
+          rule++;
+          entered = ticks;
+          return;
+        }
+        check(
+            view.dirty() && view.filter().equals("INCLUDE"),
+            "Native registry/tag edits remain separate draft");
+        capture(client, "buffer-scale-2-rules-page-1.png");
+        click(screen, "Next");
+        next();
+      }
+      case 18 -> {
+        capture(client, "buffer-scale-2-rules-page-2.png");
+        if (!sampleSeeded) {
+          var server = client.getSingleplayerServer();
+          var principal = client.player.getUUID();
+          server.execute(
+              () -> {
+                try {
+                  server.getPlayerList().getPlayer(principal).getInventory().setItem(9, named(2));
+                } catch (RuntimeException error) {
+                  failure.set(error);
+                }
+              });
+          sampleSeeded = true;
+        }
+        click(screen, "Sample");
+        next();
+      }
+      case 19 -> {
+        if (client.player.getInventory().getItem(9).getCount() != 2) return;
+        pointer(client, screen, 87, 111);
+        next();
+      }
+      case 20 -> {
+        sample(screen);
+        next();
+      }
+      case 21 -> {
+        if (view.rules().size() != 8) return;
+        check(
+            client.player.getInventory().getItem(9).getCount() == 2 && !menu.inventoryTab(),
+            "Native exact ghost click keeps both sample items");
+        click(screen, "Clear");
+        next();
+      }
+      case 22 -> {
+        if (!view.rules().isEmpty()) return;
+        click(screen, "Sample");
+        pointer(client, screen, 87, 111);
+        next();
+      }
+      case 23 -> {
+        sample(screen);
+        next();
+      }
+      case 24 -> {
+        if (view.rules().size() != 1) return;
+        check(
+            view.rules().getFirst().contains("Client hopper variant"),
+            "Exact native sample rule includes component name");
+        click(screen, "Apply");
+        next();
+      }
+      case 25 -> {
+        if (view.dirty()
+            || !view.status().equals("applied")
+            || view.slots().getFirst().count() != 8) return;
+        click(screen, "Inventory");
+        next();
+      }
+      case 26 -> {
+        capture(client, "buffer-scale-2-stock.png");
+        click(screen, "Take 1");
+        next();
+      }
+      case 27 -> {
+        if (client.player.getInventory().getItem(0).getCount() != 1
+            || view.slots().getFirst().count() != 8) return;
+        check(
+            ItemStack.isSameItemSameComponents(client.player.getInventory().getItem(0), named(1)),
+            "Stock Take1 delivers exact named item and replenishes goal");
+        deposit(client, menu, 0);
+        next();
+      }
+      case 28 -> {
+        if (!view.status().equals("full")) return;
+        check(
+            client.player.getInventory().getItem(0).getCount() == 1
+                && view.slots().getFirst().count() == 8,
+            "Full Stock goal retains player deposit without extraction");
+        capture(client, "buffer-scale-2-full.png");
+        click(screen, "Stock");
+        next();
+      }
+      case 29 -> {
+        if (!view.mode().equals("PAUSED")) return;
+        click(screen, "Apply");
+        next();
+      }
+      case 30 -> {
+        if (view.dirty() || !view.status().equals("applied")) return;
+        deposit(client, menu, 0);
+        next();
+      }
+      case 31 -> {
+        if (!client.player.getInventory().getItem(0).isEmpty()
+            || view.slots().getFirst().count() != 9) return;
+        click(screen, "Take 64");
+        next();
+      }
+      case 32 -> {
+        if (client.player.getInventory().getItem(0).getCount() != 8
+            || view.slots().getFirst().count() != 1) return;
+        check(
+            view.status().equals("partial") && view.moved() == 8 && view.requested() == 64,
+            "Take64 reports actual eight of64 under shared rate");
+        deposit(client, menu, 0);
+        next();
+      }
+      case 33 -> {
+        if (!client.player.getInventory().getItem(0).isEmpty()
+            || view.slots().getFirst().count() != 9) return;
+        checked.set(false);
+        var server = client.getSingleplayerServer();
+        var principal = client.player.getUUID();
+        server.execute(
+            () -> {
+              try {
+                var player = server.getPlayerList().getPlayer(principal);
+                var saved = DeviceSavedData.get(server);
+                check(
+                    saved.registry().stock(cell, key).total() == 14
+                        && fixtureBuffer.inventory().total(key) == 9
+                        && player.getInventory().getItem(9).getCount() == 2
+                        && player.getInventory().getItem(0).isEmpty(),
+                    "Exact conservation: cell14 + buffer9 + original sample2 =25");
+                var deployed = saved.buffers().deployment(fixtureBuffer.handle().id());
+                check(
+                    deployed.mode() == BufferRegistry.Mode.PAUSED
+                        && deployed.policy().rate() == 8
+                        && deployed.policy().target() == 8
+                        && deployed.policy().filter().terms().getFirst()
+                            instanceof ResourceFilter.Exact,
+                    "Client Apply persists exact paused policy");
+                checked.set(true);
+              } catch (RuntimeException error) {
+                failure.set(error);
+              }
+            });
+        client.options.guiScale().set(3);
+        client.resizeDisplay();
+        next();
+      }
+      case 34 -> {
+        if (!checked.get()) return;
+        capture(client, "buffer-scale-3-inventory.png");
+        click(screen, "Settings");
+        next();
+      }
+      case 35 -> {
+        capture(client, "buffer-scale-3-settings.png");
+        client.options.guiScale().set(4);
+        client.resizeDisplay();
+        next();
+      }
+      case 36 -> {
+        capture(client, "buffer-scale-4-settings.png");
+        click(screen, "Inventory");
+        next();
+      }
+      case 37 -> {
+        capture(client, "buffer-scale-4-inventory.png");
+        next();
+      }
+      case 38 -> {
+        try {
+          Files.createDirectories(report.getParent());
+          Files.writeString(
+              report,
+              "PASS\n"
+                  + evidence
+                  + "Input: native terminal search/row/Take1/Next/Home; buffer mode, rate/goal Enter, registry/tag, paging, ghost sample, Apply, inventory Take1/Take64. Deposits use real C2S payloads. Physical Shift gesture remains unverified.\n"
+                  + "Conservation: named cell14 + buffer9 + original sample2 =25; paused exact rule/rate8/goal8 persisted.\n");
+        } catch (IOException error) {
+          throw new IllegalStateException(error);
+        }
+        stage = 40;
+        client.level.disconnect();
+        client.disconnect();
+        client.stop();
+      }
+      default -> throw new IllegalStateException("Unexpected buffer client stage " + stage);
+    }
+  }
+
+  private static void edit(BufferSettingsScreen screen, int index, String text, boolean enter) {
+    var fields =
+        screen.children().stream()
+            .filter(child -> child instanceof EditBox)
+            .map(child -> (EditBox) child)
+            .toList();
+    for (var field : fields) field.setFocused(false);
+    var field = fields.get(index);
+    field.setValue("");
+    field.setFocused(true);
+    screen.setFocused(field);
+    for (char c : text.toCharArray()) screen.charTyped(c, 0);
+    if (enter) screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Borrowed native window and connected level.
+  private static void pointer(Minecraft client, BufferSettingsScreen screen, int x, int y) {
+    var window = client.getWindow();
+    double guiX = (screen.width - 320) / 2.0 + x, guiY = (screen.height - 232) / 2.0 + y;
+    GLFW.glfwSetCursorPos(
+        window.getWindow(),
+        guiX * window.getScreenWidth() / window.getGuiScaledWidth(),
+        guiY * window.getScreenHeight() / window.getGuiScaledHeight());
+  }
+
+  private static void sample(BufferSettingsScreen screen) {
+    var slot = screen.getSlotUnderMouse();
+    check(
+        slot != null && slot.getContainerSlot() == 9,
+        "Actual renderer hovers sample inventory slot");
+    screen.mouseClicked((screen.width - 320) / 2.0 + 87, (screen.height - 232) / 2.0 + 111, 0);
+  }
+
+  private static void deposit(Minecraft client, BufferSettingsMenu menu, int slot) {
+    var stack = client.player.getInventory().getItem(slot);
+    var digest =
+        TerminalPackets.fingerprint(
+            new PlatformResourceCodec(client.level.registryAccess()).itemKey(stack));
+    PacketDistributor.sendToServer(
+        new BufferSettingsPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.view().revision(),
+            BufferSettingsPackets.DEPOSIT,
+            slot,
+            Math.min(64, stack.getCount()),
+            "",
+            digest));
   }
 
   private void next() {
@@ -384,7 +681,7 @@ public final class TerminalClientVerification {
     throw new IllegalStateException("Search widget missing");
   }
 
-  private static void click(TerminalScreen screen, String text) {
+  private static void click(Screen screen, String text) {
     for (var child : screen.children())
       if (child instanceof Button button && button.getMessage().getString().equals(text)) {
         check(button.active, "Action enabled: " + text);

@@ -252,4 +252,89 @@ public final class BufferSettingsGameTests {
             })
         .thenSucceed();
   }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void partialCountAndFullStockDepositRetainExactOwnership(GameTestHelper helper) {
+    var f = setup(helper);
+    var actor = new NetworkPermissions.Actor(f.player.getUUID(), false);
+    var codec =
+        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(f.player.registryAccess());
+    var key = codec.itemKey(new ItemStack(Items.IRON_INGOT));
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> helper.assertTrue(f.buffer.canUse(f.player), "Wired owner ready"))
+        .thenExecute(
+            () -> {
+              f.buffer.configure(
+                  actor,
+                  BufferRegistry.Mode.PAUSED,
+                  new BufferPolicy(ResourceFilter.all(ResourceKind.ITEM), 8, 1));
+              f.buffer.inventory().insertSlot(0, key, 9, false);
+              open(helper, f);
+              command(f, BufferSettingsPackets.TAKE, 0, 64, "", new byte[32]);
+            })
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    !menu(f).view().busy() && f.player.getInventory().getItem(0).getCount() == 8,
+                    "Rate-bounded partial withdrawal completed"))
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  menu(f).view().status().equals("partial")
+                      && menu(f).view().moved() == 8
+                      && menu(f).view().requested() == 64
+                      && f.buffer.inventory().total(key) == 1,
+                  "Partial result projects actual eight of64 with exact remaining ownership");
+              f.buffer.configure(
+                  actor,
+                  BufferRegistry.Mode.STOCK,
+                  new BufferPolicy(ResourceFilter.all(ResourceKind.ITEM), 8, 1));
+            })
+        .thenIdle(6)
+        .thenExecute(
+            () -> {
+              menu(f).broadcastChanges();
+              command(f, BufferSettingsPackets.DEPOSIT, 0, 1, "", TerminalPackets.fingerprint(key));
+            })
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    !menu(f).view().busy() && menu(f).view().status().equals("full"),
+                    "Live Stock goal rejects deposit before extraction"))
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  menu(f).view().moved() == 0
+                      && menu(f).view().requested() == 1
+                      && f.player.getInventory().getItem(0).getCount() == 8
+                      && f.buffer.inventory().total(key) == 1,
+                  "Full projection reports zero of one without losing player stock");
+              f.buffer.configure(
+                  actor,
+                  BufferRegistry.Mode.PAUSED,
+                  new BufferPolicy(ResourceFilter.all(ResourceKind.ITEM), 8, 1));
+            })
+        .thenIdle(6)
+        .thenExecute(
+            () -> {
+              menu(f).broadcastChanges();
+              command(f, BufferSettingsPackets.DEPOSIT, 0, 8, "", TerminalPackets.fingerprint(key));
+            })
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    f.player.getInventory().isEmpty()
+                        && f.buffer.inventory().total(key) == 9
+                        && !menu(f).view().busy(),
+                    "Paused deposit restores exact nine owned items"))
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  menu(f).view().moved() == 8 && menu(f).view().requested() == 8,
+                  "Completed projection reports actual eight of eight");
+              end(f);
+            })
+        .thenSucceed();
+  }
 }

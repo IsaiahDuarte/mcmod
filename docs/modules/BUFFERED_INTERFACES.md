@@ -454,3 +454,21 @@ nonce rejection/non-consuming samples/stale empty selections and conserved
 scheduled withdrawal/deposit and out-of-range apply/closure. Three packet tests cover bounded round trips,
 detached digests and malformed/oversized inputs. Compilation/headless evidence
 is not graphical, multiplayer or restart evidence; those checks remain open.
+
+
+### Partial inventory feedback
+
+The menu projection now includes nonnegative exact moved units and a requested
+quantum0–64. Completion compares actual delivered units with the accepted menu
+request; an otherwise successful short move reports Partial transfer and Moved
+actual/requested. A full-target preflight reports0/requested and leaves the source
+owned. Configuration edits/reset clear the old operation result. Known cleanup
+uses returned units with request0, retaining its separate lifecycle. This advances the buffer payload negotiation version to2, rejecting older
+layouts before decoding; it does not change persistence/schema or transfer
+semantics. Client and server ship together.
+
+A fifth native settings test reproduces Take64 under rate8 with nine physical
+items: player8/buffer1 and explicit8/64, a Stock goal1 rejects another deposit
+before extraction (0/1), and Paused deposit returns8/8 for exact nine-unit
+conservation. Packet round trips include the added counts. The extended graphical
+fixture is compiled but its launch is [blocked before execution](../evidence/buffer-client-attempt-2026-10-13.md).

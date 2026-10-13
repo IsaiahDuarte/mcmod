@@ -204,5 +204,7 @@
   "gui.factorycore.buffer.status.wrong_resource": "Wrong resource kind",
   "gui.factorycore.buffer.status.handler_fault": "Inventory handler failed",
   "gui.factorycore.buffer.status.rate_limit": "Rate limit reached",
-  "gui.factorycore.buffer.status.overlap": "Overlapping inventory endpoints"
+  "gui.factorycore.buffer.status.overlap": "Overlapping inventory endpoints",
+  "gui.factorycore.buffer.status.partial": "Partial transfer",
+  "gui.factorycore.buffer.result": "%s · Moved %s/%s"
 }

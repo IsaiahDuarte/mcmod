@@ -33,6 +33,9 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
   private boolean active = true, busy, dirty, inventoryTab;
   private int lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE;
   private UUID ticket;
+  private long moved;
+  private int requested;
+  private boolean returning;
   private String status = "ready";
   private BufferSettingsPackets.View view;
 
@@ -77,7 +80,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
     view =
         new BufferSettingsPackets.View(
             id, nonce, revision, "PAUSED", "ALL", 64, 64, List.of(), List.of(), status, false,
-            false, false, 0);
+            false, false, 0, 0, 0);
   }
 
   public UUID session() {
@@ -157,6 +160,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
     draft = deployment == null ? BufferPolicy.DEFAULT : deployment.policy();
     mode = deployment == null ? BufferRegistry.Mode.PAUSED : deployment.mode();
     dirty = false;
+    moved = 0;
+    requested = 0;
     revision++;
   }
 
@@ -214,6 +219,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
       publish();
       return;
     }
+    moved = 0;
+    requested = 0;
     try {
       var terms = new ArrayList<>(draft.filter().terms());
       var filterMode = draft.filter().mode();
@@ -321,6 +328,9 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
         return;
       }
       busy = true;
+      returning = true;
+      moved = 0;
+      requested = 0;
       ticket = operation;
       var admission =
           transfers().progressGuarded(operation, actor(), true, this::finish, this::authorized);
@@ -368,6 +378,9 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
       destination = buffer;
     } else return;
     busy = true;
+    returning = false;
+    moved = 0;
+    requested = (int) amount;
     ticket = UUID.randomUUID();
     long expected = configuration;
     var admission =
@@ -408,7 +421,14 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
         && saved().transfers().contains(result.id())) saved().transfers().retire(result.id());
     if (authorized()) {
       selections = holder.inventory().snapshot().slots();
-      status = result.reason().name().toLowerCase(Locale.ROOT);
+      moved =
+          result.transfer() == null
+              ? 0
+              : returning ? result.transfer().returned() : result.transfer().delivered();
+      status =
+          result.reason() == OperationResult.Reason.OK && requested > moved
+              ? "partial"
+              : result.reason().name().toLowerCase(Locale.ROOT);
       revision++;
       publish();
     }
@@ -461,7 +481,9 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
             editable(),
             busy,
             dirty,
-            staged);
+            staged,
+            moved,
+            requested);
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);

@@ -308,4 +308,6 @@ and Take1 or Take64; shift-click your own stack to deposit. Full destinations an
 Stock goal caps leave unaccepted items owned. Return cleans up known staged items;
 uncertain transfers require administrator recovery. Nearby VIEW access is required;
 settings also require EDIT/DEPLOY and active-mode transfer permissions.
+Partial inventory moves show the actual moved/requested item count; a full goal
+shows zero moved and leaves your stack owned.
 The screen is implemented, but actual client verification is still pending.
