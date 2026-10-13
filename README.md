@@ -2,7 +2,7 @@
 
 A mod under development: unified item/fluid/energy storage, a crafting terminal, segmented factories, recipe-based autocrafting, and Rust/WebAssembly automation alongside a friendly language. Progression starts with wired storage and adds bounded wireless access/links and infinite item capacity.
 
-Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. Initial P2 Storage Drives, item/fluid cells, upgrade modules and physical controllers/gateways/cables are implemented with headless world tests; automatic wired cell availability is implemented, while terminals and automation remain pending. P1 accounting/scheduling foundations and a real Rust/Wasm sandbox probe are locally verified. See [resource contracts](docs/modules/RESOURCE_ACCOUNTING.md), [runtime decision](docs/decisions/0004-wasm-feasibility.md), [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
+Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. Initial P2 Storage Drives, item/fluid cells, upgrade modules and physical controllers/gateways/cables are implemented with headless world tests; automatic wired cell availability is implemented, while terminal frontends and remaining presets remain pending. Automatic hopper buffer Import/Paused controls and bounded server storage search are implemented. P1 accounting/scheduling foundations and a real Rust/Wasm sandbox probe are locally verified. See [resource contracts](docs/modules/RESOURCE_ACCOUNTING.md), [runtime decision](docs/decisions/0004-wasm-feasibility.md), [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
 
 ## Start here
 
@@ -76,3 +76,8 @@ remain unverified.
 Scheduled digital world transfer API and remaining integration limits: [contract](docs/modules/WORLD_STORAGE_TRANSFERS.md).
 
 Physical connector identities, controls, supported providers and unfinished recovery: [connector contract](docs/modules/CONNECTORS.md).
+
+
+The server-side [storage discovery/search contract](docs/modules/STORAGE_SEARCH.md)
+now documents bounded all-key pages and transient exact-count queries. The player
+terminal frontend is still unfinished.

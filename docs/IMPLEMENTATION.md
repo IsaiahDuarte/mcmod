@@ -90,7 +90,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | --- | --- | --- |
 | A01 | P3 | Partial: headless BufferImportGameTests exercise no-code real hopper-to-cell imports, exact components, full cell/buffer/hopper retention and resumption. Import/Paused and owned-cleanup player controls are wired. Actual client/multiplayer/chunk/full-server restart and the complete terminal loop remain pending. |
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
-| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, canonical schema-eight ownership/migration and physical hopper/movement/copy/recipe evidence; explicit buffered item endpoints now have scope, rate, partial staging and recovery evidence; automatic buffer network presets, crafting job claims, all-key search and full server restart/interruption integration remain pending. |
+| A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, canonical schema-eight ownership/migration and physical hopper/movement/copy/recipe evidence; explicit buffered item endpoints now have scope, rate, partial staging and recovery evidence; automatic Import/Paused/owned-cleanup controls have hopper/backpressure/revocation evidence; bounded all-key server discovery/search now has exact component/hold, BigInteger, scope and quota evidence; terminal frontends, remaining presets, crafting job claims and full server restart/interruption integration remain pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Automatic external catalog/selection, permissions UI and actual chunks/restart remain pending. |
 | A05 | P2 | Partial: NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Actual chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
@@ -98,7 +98,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A08 | P4, P5 | Not implemented. |
 | A09 | P5 | Not implemented. |
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
-| A11 | P3, P4, P6 | Not implemented. Terminal flows and R08 presentation/client checks remain pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
+| A11 | P3, P4, P6 | Partial prerequisite: bounded server registry-text search and stable exact-count pages are implemented; physical terminal/client flows and R08 presentation/client checks remain pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
 | A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation and execution-time scheduled physical transfer permissions/private segments are implemented with seven WorldStorageTransfersGameTests. Connector cases additionally verify source/target current grants, denied parent/private-child transfers, config revocation and stale provider handles. Player permissions UI and multiplayer checks remain pending. |
 | A13 | P2, P4, P6, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. Actual chunk unload/world restart, world-scoped provider identity markers now have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
@@ -1651,3 +1651,80 @@ in 33 seconds (7 executed/15 up-to-date tasks); Rust guest verification was
 up-to-date. `./gradlew spotlessApply` and `git diff --check` also passed. No actual
 client/multiplayer/chunk/full-server restart or independent-file interruption pass
 is claimed; those remain required release evidence.
+
+
+## Bounded all-key storage discovery and server search — 2026-10-12
+
+Added owner-thread ledger key pages and an incremental exact-count accumulator.
+The selected design in ADR 0015 retains hash accounting with a derived sorted
+occupied-key index, sixteen-row/128-KiB key pages and no quantity/schema duplication.
+It applies each source/key's full hold once across slot pages; global totals,
+available/reserved and observable FE capacity use BigInteger as ADR 0002 requires.
+Maximal metadata/deleted cursors always advance, and current lease/offline stock
+remain explicit. A 5,000-step generated sequence records seed 0xCA7A106.
+
+WorldStorageCatalog reads at most eight metadata owners and one source page per
+shared sixteen-credit scheduled task. It supports current loaded digital and
+registered item/fluid/FE sources, excludes buffers and rejects oversized supported
+provider windows instead of silently truncating a complete view. Source/root/
+actor/full-topology/grant generation checks precede provider reads/publication.
+WorldStorageSearch collects registry-text-filtered exact variants incrementally
+and provides stable bounded pages behind server-owned IDs. Sixteen searches share
+sixteen MiB, per-session count/page/backing ceilings and 200-tick idle expiry;
+fault/cancellation/close/expiry release retained metadata. Partial/error stock
+never publishes, and a cached result cannot survive actor/grant/topology changes.
+
+Six portable cases and eleven live world scenarios cover identities/holds/large
+aggregates, deletion/mutation/restore, private providers, queued revocation,
+retained-view invalidation, fault reporting, counts/close/expiry, utility units/
+capacity and real shared heavy-metadata quota reclamation. Initial world checks
+exposed a handler fault masked by its own quarantine invalidation; error-only
+failed sessions now preserve that typed reason for the original actor without
+retaining any partial stock. A utility fixture's missing settings import was
+corrected; no expected results/checks were weakened. Prior complete builds passed
+the initial seven, then nine world scenarios; the final metadata-quota-inclusive canonical pass is recorded below.
+
+The first sorted-contents experiment reduced query copying but regressed quantity
+updates. Its raw benchmark is retained separately. The final derived index keeps
+hash lookup on hot quantities and measures type-churn/query tradeoffs against
+the actual prior d36268b ledger in separate temporary JVMs. Final raw measurements
+and their limits are recorded below when available; full server/terminal/D07
+workload evidence remains pending.
+
+Next implement the physical storage terminal, server-owned menu/session/key-token
+boundaries, item inventory deposit/withdrawal through shared accounting, and
+bounded client search/results/screens with progress/staleness/quota feedback.
+All-key server search alone does not satisfy the player loop or complete A11.
+Remaining filters/export/stock, client/multiplayer/restart/interruption, crafting,
+production scripting, power/wireless, assets/onboarding and P7 remain required.
+
+Verification: final `python3 scripts/verify.py` passed: 24 tooling, 177 JVM
+(zero failures/errors/skips), 124 required Minecraft GameTests, formatting/static/
+architecture checks and the JVM build in 33 seconds. Seven tasks executed/fifteen
+were up-to-date, including Rust guest verification. `./gradlew spotlessApply`,
+`./gradlew spotlessApply compileTestJava` and `git diff --check` passed.
+
+[Component evidence](evidence/storage-search-v1-2026-10-12.md) records Apple M1/8-GiB
+macOS 15.3.1 / JDK 21.0.12 workload, baseline d36268b and raw samples. Registry-only
+existing-key mutation medians were 0.167/0.125 µs (old/new); shared 4-KiB prefix
+medians 1.709/1.792 µs. Type churn costs more (0.166/0.375 and 3.791/6.917 µs),
+while bounded first-sixteen pages use 0.625/2.334 µs and about 1.5 KiB allocation
+versus whole copied/sorted baseline 1539.625/191913.417 µs. These are component
+observations with documented noise/tradeoffs, not complete query/server throughput
+or P7 latency evidence. Actual terminal/client/multiplayer/restart/independent-file
+acceptance remains pending. The full A01–A17 goal remains active.
+
+Final diff review found that physical membership alone could include a transiently
+inactive digital ledger: the aggregate would then advertise loaded availability.
+Loaded-only source rows now filter the ledger's actual loaded flag. An additional
+world regression retains a valid physical lease/15 owned items while availability
+is inactive, verifies no loaded search row appears, and preserves the quantities.
+The final verification below supersedes the earlier 124-GameTest checkpoint.
+
+Final availability-regression-inclusive `python3 scripts/verify.py` passed: 24
+tooling tests, 177 JVM tests with zero failures/errors/skips and 125 required
+Minecraft GameTests, plus formatting/static/architecture/build gates. Gradle
+completed in 34 seconds (10 executed/12 up-to-date tasks); Rust guest verification
+was cached. Post-evidence documentation checks and `git diff --check` passed.
+The benchmark source digest still matches the final ResourceLedger; the last
+guard affects platform availability filtering, not the measured ledger code.

@@ -95,3 +95,8 @@ See [implementation evidence](docs/IMPLEMENTATION.md).
 - Added automatic authorized Buffered Interface imports, Import/Paused controls,
   exact full-storage backpressure, translated status and original-owner known
   staging return. Terminal/search and remaining presets remain unfinished.
+
+- Added bounded all-key digital/foreign storage discovery and transient registry-text
+  search with exact component variants, BigInteger totals, deduplicated holds,
+  scope/grant invalidation and visible technical errors. Terminal controls/screens
+  remain unfinished.

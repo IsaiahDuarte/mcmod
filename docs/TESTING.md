@@ -460,3 +460,24 @@ server tick to admit preparation before the next task for that principal; produc
 bounds and FIFO semantics are unchanged. TransferRegistryTest additionally checks
 multiple known owners across restore/delivery/cancellation with exact conservation
 and unresolved-backing visibility, plus unbind/uncertainty index retention.
+
+
+Six CatalogPageTest cases cover exact identity/claims and stable complete paging,
+maximal metadata/deleted cursors, per-backing held-once aggregation and totals
+beyond signed long, no-mutation quota/overflow rejection, registry offline/stale
+leases, and 5,000 generated mutation/restore operations (seed 0xCA7A106).
+Eleven StorageSearchGameTests exercise actual digital/32-slot provider pages with
+foreign/digital holds, exact component variants/filtering, owned-buffer exclusion,
+private-provider no-probe behavior, queued revocation, ready-session actor/grant/
+topology invalidation, typed fault without partial rows, bounded count/close/expiry,
+real fluid/energy units/observable capacity, inactive-ledger exclusion and shared heavy-metadata admission.
+No actual terminal packet/client/full-server restart evidence is claimed.
+
+`./gradlew testClasses` followed by
+`python3 scripts/benchmark_ledger_catalog.py --output docs/evidence/catalog-pages-v1-2026-10-12.txt`
+compares the old production HashMap ledger from d36268b with the current derived
+key index in separate JVMs. It measures existing-key mutation, type churn, full
+copy/sort first-page discovery and new bounded pages, including shared-prefix
+4-KiB metadata. The runner uses temporary old classes without editing the worktree;
+it requires the baseline commit locally (a shallow clone must obtain that history).
+These standalone measurements are not full server/terminal/network throughput.

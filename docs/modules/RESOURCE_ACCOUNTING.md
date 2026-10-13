@@ -252,3 +252,14 @@ byte bounds, cross-wrapper reentrancy and 10,000 generated accounting operations
 
 
 The `(state, changed)` constructor supports the canonical owner’s bounded dirty callback. Restore validates without invoking it. Successful positive reserve and actual consume/release invoke it once; rejected/zero operations do not.
+
+
+Bounded all-key queries now use a derived sorted key index alongside the existing
+hash accounting map. Quantity-only updates retain hash lookup; type creation/last
+extraction updates the index. No additional owned quantity or persistence schema
+is introduced. ResourceLedger.catalog exposes at most sixteen exact rows/128 KiB
+estimated metadata without taking a full snapshot. CatalogCounts incrementally
+sums observed source pages, applies a backing/key's full hold once, and uses
+BigInteger for global totals/available/reserved/known capacities. These advisory
+results authenticate no caller and never replace current transfer preflight.
+See the [storage search contract](STORAGE_SEARCH.md) for limits/lifecycle/examples.

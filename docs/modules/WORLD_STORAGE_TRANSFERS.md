@@ -443,3 +443,13 @@ a new actor or resource permission to extract/deliver. Pausing/replacing a prese
 therefore cannot strand otherwise known same-lease staging. Normal delivery still
 requires its accepted configuration/grants. Unknown pending calls, changed leases
 and incompatible scopes retain owned data; no blind replay/refund is introduced.
+
+
+The [all-key discovery and search service](STORAGE_SEARCH.md) now shares existing
+query admission, queue/byte bounds and sixteen-credit work rather than creating
+a parallel scheduler. One task reads one authorized ledger/provider source page;
+raw source cursors stay server-side. Transient registry-text search sessions
+aggregate exact BigInteger counts with one reservation contribution per backing/
+key, and invalidate on actor/grant/full-topology changes. Source observations are
+advisory; player transfers must still use the existing fresh shared route/staging
+path. Terminal/menu/payload frontends remain the next prerequisite.

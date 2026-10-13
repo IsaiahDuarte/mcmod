@@ -203,3 +203,10 @@ therefore gain no automation authority. Exact reference/canonical revision, leas
 scope and current grants are prerequisites for future dispatch. Invalid/future
 metadata preserves the whole raw authority; slot/staging quantities never reset.
 Fixed buffers-v2 and compressed canonical round-trip coverage accompany the change.
+
+
+All-key search adds no persisted quantities or world schema version. Its sorted
+occupied-key index derives from each validated ledger on restore. Query sessions,
+provider observations, topology/grant stamps and result cursors are transient and
+discarded on restart; canonical ownership/counts/claims/staging remain unchanged.
+Existing world/ledger migration fixture comparisons remain required.

@@ -1,0 +1,24 @@
+platform=macOS-15.3.1-arm64-arm-64bit-Mach-O machine=arm64
+openjdk version "21.0.12" 2026-07-21
+OpenJDK Runtime Environment Homebrew (build 21.0.12)
+OpenJDK 64-Bit Server VM Homebrew (build 21.0.12, mixed mode, sharing)
+baseline_commit=d36268b
+current_ledger_sha256=61e80c43cdc4dcd05f8b0cd7fa45a9c1d6c446d3ef6d7330bee0b311cadd7788
+heap=256MiB initial/512MiB maximum; one process per version; owner-thread samples
+workload=10000 registry-only keys; 2048 same-ID/shared-prefix 4096-byte component keys
+mutation=insert/extract one unit in an existing key; first-page=16 exact stock rows
+warmup=50 copy/sort; 10000 mutation pairs; current additionally 10000 catalog pages
+version=baseline
+baseline_metadata0_mutation_pair samples=20000 median_us=0.166 p95_us=0.459 bytes_per_call=88.0
+baseline_metadata0_copy_sort_first16 samples=200 median_us=1551.583 p95_us=1666.875 bytes_per_call=373440.0
+baseline_metadata4096_mutation_pair samples=20000 median_us=1.667 p95_us=6.041 bytes_per_call=98.7
+baseline_metadata4096_copy_sort_first16 samples=200 median_us=179527.750 p95_us=181779.458 bytes_per_call=71763.2
+consumed=128000
+version=current
+current_metadata0_mutation_pair samples=20000 median_us=0.750 p95_us=1.084 bytes_per_call=88.0
+current_metadata0_copy_sort_first16 samples=200 median_us=1401.375 p95_us=1489.208 bytes_per_call=373440.0
+current_metadata0_catalog_first16 samples=10000 median_us=1.334 p95_us=2.292 bytes_per_call=1527.2
+current_metadata4096_mutation_pair samples=20000 median_us=10.500 p95_us=14.291 bytes_per_call=24.0
+current_metadata4096_copy_sort_first16 samples=200 median_us=192106.542 p95_us=283377.042 bytes_per_call=67676.8
+current_metadata4096_catalog_first16 samples=10000 median_us=17.500 p95_us=18.917 bytes_per_call=1424.0
+consumed=768000

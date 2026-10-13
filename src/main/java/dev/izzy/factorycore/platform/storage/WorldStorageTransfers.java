@@ -234,6 +234,29 @@ public final class WorldStorageTransfers {
     }
   }
 
+  /** Internal read-only queries share transfer admission/credits and authenticated scope. */
+  Submission query(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      ResourceKind kind,
+      Runnable action) {
+    checkThread();
+    var member = networks.membership(origin);
+    if (member.status() != NetworkTopology.Status.VALID)
+      return new Submission(null, OperationResult.Reason.OFFLINE);
+    if (networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
+        != NetworkAuthority.Decision.ALLOWED)
+      return new Submission(null, OperationResult.Reason.DENIED);
+    return enqueue(
+        id,
+        actor,
+        member.scope().network(),
+        member.scope().segment(),
+        WorldStorageCatalog.identity(kind),
+        ticket -> action.run());
+  }
+
   /** Queue one advisory foreign stock page using the shared authority and credit budget. */
   public Submission observe(
       UUID id,
@@ -274,6 +297,20 @@ public final class WorldStorageTransfers {
   }
 
   private WorldStorageRoutes routes;
+  private WorldStorageCatalog catalog;
+  private WorldStorageSearch search;
+
+  public WorldStorageSearch search() {
+    checkThread();
+    if (search == null) search = new WorldStorageSearch(server, networks, this);
+    return search;
+  }
+
+  public WorldStorageCatalog allKeys() {
+    checkThread();
+    if (catalog == null) catalog = new WorldStorageCatalog(server, networks, this);
+    return catalog;
+  }
 
   public WorldStorageRoutes routes() {
     checkThread();

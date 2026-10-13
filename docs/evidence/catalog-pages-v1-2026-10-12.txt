@@ -1,0 +1,28 @@
+platform=macOS-15.3.1-arm64-arm-64bit-Mach-O machine=arm64
+openjdk version "21.0.12" 2026-07-21
+OpenJDK Runtime Environment Homebrew (build 21.0.12)
+OpenJDK 64-Bit Server VM Homebrew (build 21.0.12, mixed mode, sharing)
+baseline_commit=d36268b
+current_ledger_sha256=b8da5d8e9b392a2ab4df618d19e32e836041a4fc5fed1385c1248ee4592c6a2b
+heap=256MiB initial/512MiB maximum; one process per version; owner-thread samples
+workload=10000 registry-only keys; 2048 same-ID/shared-prefix 4096-byte component keys
+mutation=existing-key insert/extract; churn=whole-type removal/recreation; first-page=16 exact stock rows
+warmup=50 copy/sort; 10000 per mutation/churn case; current additionally 10000 catalog pages
+version=baseline
+baseline_metadata0_mutation_pair samples=20000 median_us=0.167 p95_us=0.750 bytes_per_call=88.0
+baseline_metadata0_type_churn samples=20000 median_us=0.166 p95_us=0.250 bytes_per_call=120.0
+baseline_metadata0_copy_sort_first16 samples=200 median_us=1539.625 p95_us=1723.750 bytes_per_call=373440.0
+baseline_metadata4096_mutation_pair samples=20000 median_us=1.709 p95_us=6.208 bytes_per_call=95.3
+baseline_metadata4096_type_churn samples=20000 median_us=3.791 p95_us=5.458 bytes_per_call=124.2
+baseline_metadata4096_copy_sort_first16 samples=200 median_us=191913.417 p95_us=193647.750 bytes_per_call=73852.8
+consumed=248000
+version=current
+current_metadata0_mutation_pair samples=20000 median_us=0.125 p95_us=0.500 bytes_per_call=33.0
+current_metadata0_type_churn samples=20000 median_us=0.375 p95_us=0.708 bytes_per_call=160.0
+current_metadata0_copy_sort_first16 samples=200 median_us=1526.875 p95_us=1764.625 bytes_per_call=373440.0
+current_metadata0_catalog_first16 samples=10000 median_us=0.625 p95_us=1.667 bytes_per_call=1528.0
+current_metadata4096_mutation_pair samples=20000 median_us=1.792 p95_us=5.750 bytes_per_call=131.1
+current_metadata4096_type_churn samples=20000 median_us=6.917 p95_us=8.959 bytes_per_call=134.0
+current_metadata4096_copy_sort_first16 samples=200 median_us=175810.500 p95_us=177442.000 bytes_per_call=71763.2
+current_metadata4096_catalog_first16 samples=10000 median_us=2.334 p95_us=3.500 bytes_per_call=1472.0
+consumed=888000

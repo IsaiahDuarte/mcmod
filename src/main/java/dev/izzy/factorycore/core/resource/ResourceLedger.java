@@ -2,15 +2,29 @@ package dev.izzy.factorycore.core.resource;
 
 import static dev.izzy.factorycore.core.resource.OperationResult.Reason.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Objects;
+import java.util.TreeSet;
 import java.util.UUID;
 
 /** One backing store. All access is confined to its owning thread. */
 public final class ResourceLedger {
   public record Stock(long total, long reserved, long available, boolean loaded) {}
+
+  public record CatalogEntry(ResourceKey key, Stock stock) {}
+
+  public record CatalogPage(List<CatalogEntry> entries, ResourceKey next) {
+    public CatalogPage {
+      entries = List.copyOf(entries);
+    }
+  }
+
+  public static final int CATALOG_PAGE_SIZE = 16;
+  public static final long CATALOG_PAGE_BYTES = 128L * 1024;
 
   private record Claim(UUID owner, ResourceKey key) {}
 
@@ -20,6 +34,7 @@ public final class ResourceLedger {
   private final int catalogLimit;
   private final int reservationLimit;
   private final Map<ResourceKey, Long> contents = new HashMap<>();
+  private final NavigableSet<ResourceKey> catalogKeys = new TreeSet<>();
   private final Map<ResourceKey, Long> reserved = new HashMap<>();
   private final Map<Claim, Long> claims = new HashMap<>();
   private long capacity;
@@ -126,6 +141,30 @@ public final class ResourceLedger {
     return Map.copyOf(contents);
   }
 
+  /** Exclusive exact-key cursor; observations are live, bounded and never reserve resources. */
+  public CatalogPage catalog(ResourceKey after, int limit) {
+    checkThread();
+    if (limit < 1 || limit > CATALOG_PAGE_SIZE || after != null && after.kind() != kind)
+      throw new IllegalArgumentException("Invalid ledger catalog cursor or limit");
+    var iterator = (after == null ? catalogKeys : catalogKeys.tailSet(after, false)).iterator();
+    var entries = new ArrayList<CatalogEntry>();
+    long bytes = 0;
+    ResourceKey last = null;
+    boolean more = false;
+    while (iterator.hasNext()) {
+      var entry = iterator.next();
+      long charge = 128L + 3L * entry.registryId().length() + entry.componentByteCount();
+      if (entries.size() == limit || bytes > CATALOG_PAGE_BYTES - charge) {
+        more = true;
+        break;
+      }
+      last = entry;
+      entries.add(new CatalogEntry(last, stock(last)));
+      bytes += charge;
+    }
+    return new CatalogPage(entries, more ? last : null);
+  }
+
   /**
    * Capture on the owner thread; the immutable result can be serialized away from world mutation.
    */
@@ -200,7 +239,10 @@ public final class ResourceLedger {
     }
     long amount = Math.min(requested, space(key));
     if (amount > 0) {
-      if (!contents.containsKey(key)) serializedBytes += stockEntryBytes(key);
+      if (!contents.containsKey(key)) {
+        serializedBytes += stockEntryBytes(key);
+        catalogKeys.add(key);
+      }
       contents.merge(key, amount, Math::addExact);
       total = Math.addExact(total, amount);
     }
@@ -219,7 +261,10 @@ public final class ResourceLedger {
     long amount = Math.min(requested, available);
     if (amount > 0) {
       subtract(contents, key, amount);
-      if (!contents.containsKey(key)) serializedBytes -= stockEntryBytes(key);
+      if (!contents.containsKey(key)) {
+        serializedBytes -= stockEntryBytes(key);
+        catalogKeys.remove(key);
+      }
       total -= amount;
       if (claim != null) {
         subtract(claims, claim, amount);

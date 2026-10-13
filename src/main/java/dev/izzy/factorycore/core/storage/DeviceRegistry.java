@@ -251,6 +251,29 @@ public final class DeviceRegistry {
         : new ResourceLedger.Stock(stock.total(), stock.reserved(), 0, false);
   }
 
+  /**
+   * Trusted catalog adapter must validate scope before calling; unloaded rows have zero available.
+   */
+  public ResourceLedger.CatalogPage catalog(Handle handle, ResourceKey after, int limit) {
+    checkThread();
+    var invalid = validate(handle);
+    if (invalid != Failure.OK) throw new IllegalStateException("Invalid device handle: " + invalid);
+    var device = devices.get(handle.backing());
+    var page = device.ledger.catalog(after, limit);
+    boolean routed = device.location != null && routing.test(device.location);
+    if (routed) return page;
+    return new ResourceLedger.CatalogPage(
+        page.entries().stream()
+            .map(
+                entry ->
+                    new ResourceLedger.CatalogEntry(
+                        entry.key(),
+                        new ResourceLedger.Stock(
+                            entry.stock().total(), entry.stock().reserved(), 0, false)))
+            .toList(),
+        page.next());
+  }
+
   /** Shares actual insertion's authority and metadata preflight; no reservation is created. */
   public OperationResult simulateInsert(Handle handle, ResourceKey key, long amount) {
     checkThread();

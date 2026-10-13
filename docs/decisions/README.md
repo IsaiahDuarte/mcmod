@@ -47,4 +47,9 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [ADR 0013 — Sided external storage registration](0013-external-connectors.md): leased connectors, explicit backing identity, bounds and unfinished recovery.
 
 - [Owned buffered inventory](0014-buffered-inventory.md): nine-slot transfer/NeoForge
-  inventory boundary; canonical physical ownership and presets remain pending.
+  inventory boundary; canonical physical ownership, authenticated Import/Paused
+  controls and known staged cleanup are implemented; full preset/client verification remains pending.
+
+- [Bounded storage discovery/search](0015-bounded-storage-search.md): derived key
+  pages, shared scheduled all-key observations and bounded transient search
+  sessions with exact aggregates; terminal frontend and full workload evidence pending.

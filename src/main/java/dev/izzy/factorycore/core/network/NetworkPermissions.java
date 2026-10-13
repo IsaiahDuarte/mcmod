@@ -97,6 +97,11 @@ public final class NetworkPermissions {
     return network;
   }
 
+  public long generation() {
+    checkThread();
+    return generation;
+  }
+
   public boolean allows(Actor actor, Permission permission) {
     checkThread();
     Objects.requireNonNull(permission);
