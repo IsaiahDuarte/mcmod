@@ -56,7 +56,8 @@ public final class NetworkContent {
               net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING);
     return state.is(CABLE.get())
         || state.getBlock() instanceof StorageDriveBlock
-        || state.getBlock() instanceof EnergyBankBlock;
+        || state.getBlock() instanceof EnergyBankBlock
+        || state.getBlock() instanceof dev.izzy.factorycore.platform.storage.TerminalBlock;
   }
 
   private NetworkContent() {}

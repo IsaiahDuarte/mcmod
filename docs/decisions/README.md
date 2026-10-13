@@ -57,3 +57,7 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Authenticated player inventory transfers](0016-player-inventory-transfers.md):
   selected-slot/local-owner boundary, shared accounting/rates and context-three
   accepted player evidence; terminal frontend and independent-file validation pending.
+
+- [Physical storage terminal menu](0017-storage-terminal-menu.md): access-only wired
+  shell, server-owned exact selections, bounded projections and guarded player
+  actions; item controls implemented, client verification and other terminal tabs pending.

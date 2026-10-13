@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "factorycore:block/storage_terminal"
+    },
+    "facing=east": {
+      "model": "factorycore:block/storage_terminal",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "factorycore:block/storage_terminal",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "factorycore:block/storage_terminal",
+      "y": 270
+    }
+  }
+}

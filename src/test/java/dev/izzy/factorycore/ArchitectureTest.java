@@ -29,6 +29,14 @@ class ArchitectureTest {
     OPTIONAL_BOUNDARY.check(classes);
     noClasses()
         .that()
+        .resideOutsideOfPackage("..platform.client..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage("net.minecraft.client..", "net.neoforged.neoforge.client..")
+        .allowEmptyShould(false)
+        .check(classes);
+    noClasses()
+        .that()
         .resideInAPackage("..core..")
         .should()
         .dependOnClassesThat()

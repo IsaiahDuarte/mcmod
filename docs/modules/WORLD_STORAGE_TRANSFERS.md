@@ -3,7 +3,8 @@
 Implemented server API: `WorldNetworks.get(server).transfers()` returns the shared
 `WorldStorageTransfers` service. Digital cells/banks, explicit [Buffered Interface endpoints](BUFFERED_INTERFACES.md)
 and [registered foreign connector endpoints](CONNECTORS.md) now share
-this path. Client packets/terminal frontends and general recovery dispatch remain unfinished;
+this path. The physical [item terminal](STORAGE_TERMINAL.md) now provides bounded
+authenticated menu commands; other tabs and general recovery dispatch remain unfinished;
 automatic buffer import and original-owner cleanup controls are implemented below. Explicit scheduled recovery is implemented below.
 
 ## Contract and ownership

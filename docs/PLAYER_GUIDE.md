@@ -5,7 +5,9 @@ modules on Minecraft 1.21.1 / NeoForge 21.1.252. Network Controllers, Gateways a
 ownership. Valid wired networks now activate installed cells after bounded server rebuilding.
 Finite Energy Banks expose real NeoForge energy ports on valid wired networks.
 Buffered Interfaces now import real hopper items into permitted storage without code.
-Terminals, advanced presets and wireless access are still pending; the current build has no player terminal deposit/withdrawal controls.
+Storage Terminals now provide item search/deposit/withdrawal controls. Actual client
+inspection remains pending; advanced presets, crafting, other terminal tabs and
+wireless access are still unfinished.
 
 ## Cells and drives
 
@@ -39,6 +41,7 @@ creative tab. Initial icons reference vanilla textures.
 | Starter Item Cell | 4 iron ingots, 4 redstone dust, 1 chest |
 | Starter Fluid Cell | 7 glass blocks, 1 empty bucket, 1 redstone dust |
 | Storage Drive | 4 iron ingots, 4 redstone dust, 1 hopper |
+| Storage Terminal | 4 iron ingots, 3 glass blocks, 2 redstone dust |
 | Buffered Interface | 4 iron ingots, 2 glass blocks, 2 redstone dust, 1 hopper |
 | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Expansion Module | 4 gold ingots, 2 redstone dust, 1 diamond |
@@ -220,3 +223,30 @@ moves that inventory and invalidates older references/capabilities. Creative
 placement consumes the reference too. Copied stale/placed references cannot
 produce another inventory; conflicting copies leave the contents in recovery
 and block access. Preserve a faulted reference for administrative recovery.
+
+
+## Storage terminal items
+
+Place a terminal beside a cable/controller/drive on your network, then use it
+with an empty hand. You need View permission; deposits additionally need Deposit
+and withdrawals need Withdraw. The terminal is an access point and stores no
+items itself. It unlocks in the recipe book when you obtain glass.
+
+Search matches registry names, for example `iron` or `minecraft:iron_ingot`.
+Click a visible item (or press 1–8 while outside the search field), then Take 1
+or Take 64. Shift-click one of your inventory slots to deposit up to 64 of that
+exact item. Full destinations keep the remainder owned; they never void items.
+Armor, offhand and cursor stacks are excluded from transfers. Home/Next page
+through eight exact item identities at a time. Search again to refresh stock.
+Hover a row for exact total/held/free counts; short labels abbreviate large counts.
+Counts are observations, not reservations, so another user may take stock first.
+
+Leaving the dimension/range, replacing/unloading the block, or losing View
+permission closes the session. Closing cancels undispatched actions. If a move
+already owns known staged items, Return requests their return to the original
+source; free that source's space first. Uncertain writes are frozen and need
+administrator recovery. If all View permission or the original network is gone,
+the terminal cannot provide cleanup; the admin recovery interface remains pending.
+Crafting, sorting, fluid containers, energy actions and job controls are not yet
+implemented in this screen. Its rendering/scales, multiplayer, restart and full
+survival walkthrough remain unverified.

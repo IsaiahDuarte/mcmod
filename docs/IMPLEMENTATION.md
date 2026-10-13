@@ -1775,3 +1775,54 @@ static/architecture/build gates. The canonical Gradle build completed in36 secon
 `./gradlew spotlessApply` and post-evidence docs/acceptance/link checks plus
 `git diff --check` passed. Native menu/client actions, full reconnect/server restart,
 independent player/chunk files and multiplayer remain unverified release work.
+
+
+## Checkpoint — Physical item terminal and authenticated native menu (2026-10-12)
+
+Earliest applicable slice: P3/A01/A03, after bounded all-key search and authenticated
+player endpoints. ADR 0017 selects an access-only shell using the existing TERMINAL
+wire role; no stock/grants/portable lease or world schema change. TerminalBlock,
+TerminalEntity and the common TerminalMenu capture loaded physical identity and a
+random per-open session. Server selections retain exact keys under a view revision;
+commands carry only bounded action/row/own-slot/text/amount and SHA-256 deposit
+identity fingerprint. Shared searches/priority routes/player ports retain authority,
+scheduling, rate and accounting. One action is in flight; stale/closed/replaced/
+remote/revoked sessions cannot perform queued mutations. Known completed operations
+retire; retained staging has explicit owned return and uncertainty remains frozen.
+
+The client-only native item screen provides eight-item pages, registry-text search,
+Home/Next, Take 1/64, shift-deposit, known return, exact decimal count hover, translated
+status/help, focusable buttons and keyboard row selection. Native four-facing
+casing/screen/contact assets, item parent, tooltip, loot, mining tags, creative entry
+and affordable recipe/glass unlock accompany it. Docs/player guide/assets distinguish
+implementation from client evidence. Full component payloads/cursors/topology/actor
+choices never cross the selection boundary; projected icons omit metadata. Rich
+metadata tooltips and display-name/tag search/sorts remain future terminal work.
+
+Verification: `./gradlew compileJava spotlessApply`, `./gradlew compileGameTestJava
+pmdMain spotlessApply`, and `./gradlew spotlessApply test runGameTestServer` passed
+after resolving pinned API differences. Initial world launch failed because native
+GameTest mock login lacked NeoForge payload-channel negotiation. Test-only explicit
+`NetworkRegistry.configureMockConnection` fixes that fixture without weakening the
+production packet boundary. No actual network handshake/client interaction is claimed.
+Three TerminalPacketsTest cases cover real bounded codecs, exact counts beyond long,
+detached/count-normalized fingerprints and invalid/oversized payload rejection.
+The compiled architecture gate now prohibits client dependencies outside the isolated
+client package. Eight native TerminalGameTests cover exact menu deposit/withdraw,
+full main inventory, wrong session/revision/changed source, close/replacement,
+range/revocation, real hopper -> buffer -> cell -> searchable menu -> player inventory,
+and exact recipe/unlock. All conservation/permission assertions pass.
+
+Canonical `python3 scripts/verify.py` passed: 24 tooling tests, 182 JVM tests and
+144 required GameTests, zero failures/errors/skips, plus formatting/static/architecture/
+build gates. Gradle completed in36 seconds (9 executed/13 up-to-date tasks);
+Rust guest verification was up-to-date. Reports: build/test-results/test and
+build/reports/gametest/results.xml. Final model review separated casing/bezel/panel
+front planes to avoid coplanar faces; appearance still requires actual client evidence.
+
+A01/A03/P3 and the full A01–A17 release remain partial. Next verify the physical
+terminal screen/payloads in the actual supported client at required scales and
+continue remaining import/export/stock/filter controls. Manual crafting/fluid/energy/
+job tabs, production crafting/Wasm/DSL, powered/wireless progression, other finished
+assets/onboarding, administrator recovery and all P7 restart/independent-file/
+multiplayer/performance/survival evidence remain open. The full-release goal stays active.

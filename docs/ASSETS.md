@@ -42,9 +42,9 @@ listed tiers and block-item forms must be covered before closing a row.
 Existing models are under [models](../src/main/resources/assets/factorycore/models),
 with [blockstates](../src/main/resources/assets/factorycore/blockstates) and
 [English names](../src/main/resources/assets/factorycore/lang/en_us.json).
-The current nine blockstate families and nineteen item models reference vanilla
+The current ten blockstate families and twenty item models reference vanilla
 textures; custom texture/audio assets remain absent. The initial four-block audit
-has been extended by three bank tiers, the connector and the Buffered Interface.
+has been extended by three bank tiers, the connector, Buffered Interface and Storage Terminal.
 
 The bank family establishes a native-model direction: dark polished-deepslate
 casings, black inset panels, iron/gold/diamond resource symbols, and one/two/three
@@ -72,7 +72,7 @@ and model inventory transforms remain pending real-client inspection.
 | Expansion, Advanced, Infinite modules | Related upgrade icons; discoverable compatible tier/application instructions | P2 | Placeholder: vanilla material icons | Pending |
 | Energy Banks: Starter, Expanded, Advanced + block items | Lightning symbol and tier bars; observable stored/capacity/rate/routing inspection | P2 | Implemented native JSON models and item parents; appearance not yet reviewed in client | Pending |
 | Storage Connector + block item | Connection face, resource/access/priority inspection | P2–P3 | Implemented native six-direction socket model, matching shape, tooltips and translated chat inspection; advanced settings screen remains pending | Pending |
-| Storage Terminal + block item | Recognizable access screen and connection state | P3 | Missing | Pending |
+| Storage Terminal + block item | Recognizable access screen and connection state | P3 | Implemented native four-facing casing/screen/contact JSON and translated access tooltip; rendering pending | Pending |
 | Machine Interface + block item | Port/side/label identification and preset state | P3 | Missing | Pending |
 | Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Implemented native nine-slot top geometry, item parent, tooltip and authorized item/slot/mode/status inspection and Import/Paused/owned-cleanup controls; full preset/inventory screens remain pending | Pending |
 | Crafting Interface + block item | Processing ports and busy/blocked state | P4 | Missing | Pending |
@@ -93,7 +93,7 @@ row. Share navigation and components where appropriate.
 
 | Flow | Required coverage | Stage | Implementation / client evidence |
 | --- | --- | --- | --- |
-| Terminal Items | Search/sort, exact counts, available/reserved/offline, bounded actions, full inventory and stale state | P3 | Missing / Pending |
+| Terminal Items | Search/sort, exact counts, available/reserved/offline, bounded actions, full inventory and stale state | P3 | Item search, Home/Next paging, exact counts, deposit/withdraw/owned-return and typed status implemented; sorting/offline cache missing / Pending |
 | Terminal manual crafting and patterns | Ghost grid, remainders, JEI/manual selection, pattern editing | P4, P6 | Missing / Pending |
 | Crafting jobs | Preview/shortages/cycles, progress, cancellation, busy/cleanup state | P4–P6 | Missing / Pending |
 | Fluids and Energy | Real container/charge actions, units, observable capacities/rates and unsupported errors | P3, P6 | Missing / Pending |
@@ -103,7 +103,7 @@ row. Share navigation and components where appropriate.
 | Wireless setup | Pairing, direction, range, authorization, power loss and reconnection | P6 | Missing / Pending |
 | Device diagnostics and recovery | Safe next actions, preserved evidence, authorized reconciliation and unresolved quarantine | P2–P6 | Partial literal-English messages; workflow missing / Pending |
 | In-game help and progression | First-network diagram, hopper walkthrough, offhand upgrades, factory examples and next unlocks | P3–P6 | Missing; external player guide and recipe unlocks exist / Pending |
-| Shared UI assets and localization | Consistent controls/icons/tooltips/focus, translation keys, readable scales and non-color status cues | P3–P6 | Registered names and bank/connector/buffer tooltips/chat feedback translated; shared screens remain missing / Pending |
+| Shared UI assets and localization | Consistent controls/icons/tooltips/focus, translation keys, readable scales and non-color status cues | P3–P6 | Registered names and bank/connector/buffer tooltips/chat feedback translated; native item terminal screen implemented; other shared screens pending / Pending |
 
 ## Client completion checklist
 
@@ -142,3 +142,14 @@ Translated inspection reports exact item and occupied-slot counts. Headless reci
 hopper and ownership tests passed; actual client appearance/transforms/GUI-scale
 checks remain pending. Import/Paused and owned-cleanup controls now have translated
 tooltips/chat states; export/stock/filter controls and the inventory screen remain pending.
+
+
+Storage Terminal: [editable model](../src/main/resources/assets/factorycore/models/block/storage_terminal.json),
+[item parent](../src/main/resources/assets/factorycore/models/item/storage_terminal.json),
+[four-facing blockstate](../src/main/resources/assets/factorycore/blockstates/storage_terminal.json),
+and [native screen](../src/main/java/dev/izzy/factorycore/platform/client/TerminalScreen.java).
+The dark casing, copper bezel, blue inset screen and three iron contacts reuse
+Minecraft-supplied textures with original repository geometry. The 280×232 item
+screen uses native slots/widgets, translatable search/actions/status/help, focusable
+buttons, keyboard row selection and exact-count hover text. Actual client geometry,
+held transforms, GUI-scale fit, focus and interactions have not yet been verified.

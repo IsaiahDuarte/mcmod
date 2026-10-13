@@ -497,3 +497,15 @@ advance at most sixteen queue cycles without changing production scheduling.
 The helper is deprecated in this pinned version; its narrowly annotated use is
 intentional real PlayerList/connection registration, not a fake authentication bypass.
 Actual terminal/client/multiplayer/full restart/independent files remain pending.
+
+
+TerminalPacketsTest covers count-independent/detached SHA-256 exact identity,
+actual bounded registry-aware command/view round trips, beyond-long decimal counts
+and malformed/oversized inbound rejection. ArchitectureTest now checks common/server
+classes do not depend on client classes. Eight TerminalGameTests use real PlayerList
+bodies plus NeoForge's test-only mock channel setup to exercise physical opening,
+exact deposit/withdraw, stale commands/source, full inventory, queued close/replacement,
+range/revocation, real hopper/buffer/cell/search/menu/player flow and affordable recipe/
+unlock. This headless setup does not simulate a real client handshake or prove
+rendering, GUI-scale interaction, multiplayer or independent-save restart safety.
+See [terminal contract](modules/STORAGE_TERMINAL.md).

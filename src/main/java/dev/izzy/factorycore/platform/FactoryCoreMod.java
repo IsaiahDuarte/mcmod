@@ -16,6 +16,7 @@ public final class FactoryCoreMod {
 
   public FactoryCoreMod(IEventBus bus) {
     StorageContent.register(bus);
+    dev.izzy.factorycore.platform.storage.TerminalContent.register(bus);
     dev.izzy.factorycore.platform.storage.BufferedInterfaceContent.register(bus);
     dev.izzy.factorycore.platform.storage.ConnectorContent.register(bus);
     EnergyBankContent.register(bus);
