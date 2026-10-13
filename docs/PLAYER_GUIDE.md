@@ -5,8 +5,7 @@ modules on Minecraft 1.21.1 / NeoForge 21.1.252. Network Controllers, Gateways a
 ownership. Valid wired networks now activate installed cells after bounded server rebuilding.
 Finite Energy Banks expose real NeoForge energy ports on valid wired networks.
 Buffered Interfaces now import real hopper items into permitted storage without code.
-Storage Terminals now provide item search/deposit/withdrawal controls. Actual client
-inspection remains pending; advanced presets, crafting, other terminal tabs and
+Storage Terminals now provide item search/deposit/withdrawal controls. Automated client checks cover item search/Take1/paging and GUI scales2–4; advanced presets, crafting, other terminal tabs and
 wireless access are still unfinished.
 
 ## Cells and drives
@@ -248,5 +247,5 @@ source; free that source's space first. Uncertain writes are frozen and need
 administrator recovery. If all View permission or the original network is gone,
 the terminal cannot provide cleanup; the admin recovery interface remains pending.
 Crafting, sorting, fluid containers, energy actions and job controls are not yet
-implemented in this screen. Its rendering/scales, multiplayer, restart and full
+implemented in this screen. Manual Shift-click/hover/focus, other resolutions, multiplayer, restart and full
 survival walkthrough remain unverified.

@@ -88,7 +88,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 
 | Criterion | Owning stages | Evidence/status |
 | --- | --- | --- |
-| A01 | P3 | Partial: headless BufferImportGameTests exercise no-code real hopper-to-cell imports, exact components, full cell/buffer/hopper retention and resumption. Import/Paused and owned-cleanup player controls are wired. Actual client/multiplayer/chunk/full-server restart and the complete terminal loop remain pending. |
+| A01 | P3 | Partial: headless BufferImportGameTests exercise no-code real hopper-to-cell imports, exact components, full cell/buffer/hopper retention and resumption. Import/Paused and owned-cleanup player controls are wired. Eight TerminalGameTests now add the physical hopper/buffer/cell/search/menu/player loop, exact deposit/withdraw, stale/full/revoked/closed sessions and recipe evidence. The graphical fixture adds actual search/Take1/paging/deposit-payload and scale2–4 evidence; manual/remaining client, multiplayer, chunks/full-server restart remain pending. |
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
 | A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, canonical schema-eight ownership/migration and physical hopper/movement/copy/recipe evidence; explicit buffered item endpoints now have scope, rate, partial staging and recovery evidence; automatic Import/Paused/owned-cleanup controls have hopper/backpressure/revocation evidence; bounded all-key server discovery/search now has exact component/hold, BigInteger, scope and quota evidence; terminal frontends, remaining presets, crafting job claims and full server restart/interruption integration remain pending. |
 | A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Automatic external catalog/selection, permissions UI and actual chunks/restart remain pending. |
@@ -98,7 +98,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A08 | P4, P5 | Not implemented. |
 | A09 | P5 | Not implemented. |
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
-| A11 | P3, P4, P6 | Partial prerequisite: bounded server registry-text search and stable exact-count pages are implemented; physical terminal/client flows and R08 presentation/client checks remain pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
+| A11 | P3, P4, P6 | Partial prerequisite: bounded server registry-text search and stable exact-count pages are implemented; physical item terminal/menu controls and headless flows are implemented; partial graphical item-screen evidence is [recorded](evidence/terminal-client-v1-2026-10-13.md); remaining R08 checks are pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
 | A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation and execution-time scheduled physical transfer permissions/private segments are implemented with seven WorldStorageTransfersGameTests. Connector cases additionally verify source/target current grants, denied parent/private-child transfers, config revocation and stale provider handles. Player permissions UI and multiplayer checks remain pending. |
 | A13 | P2, P4, P6, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. Actual chunk unload/world restart, world-scoped provider identity markers now have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
@@ -1826,3 +1826,67 @@ continue remaining import/export/stock/filter controls. Manual crafting/fluid/en
 job tabs, production crafting/Wasm/DSL, powered/wireless progression, other finished
 assets/onboarding, administrator recovery and all P7 restart/independent-file/
 multiplayer/performance/survival evidence remain open. The full-release goal stays active.
+
+
+## Checkpoint — Actual graphical terminal and native opening fix (2026-10-13)
+
+Continuation from 7265aba made authoritative progress: an isolated clientTest mod
+and runTerminalClient now exercise the actual supported graphical client/vanilla
+integrated world, instead of relying on menu objects alone. It has bounded stages/
+timeouts, uses its own generated world/reports, and is compiled/static-checked by
+the canonical build while excluded from ordinary runs and the packaged artifact.
+No new dependency versions or gameplay platform/persistence choices were introduced;
+lockfile configuration coverage was regenerated and reviewed.
+
+Actual physical opening exposed a production defect: native initMenu invokes the
+broadcast hook before ServerPlayer assigns containerMenu. The old guard closed the
+previous inventory menu, sending an old-menu close after the new open payload.
+The client received both and immediately dismissed the terminal. The fixed hook
+leaves broadcasts for another current menu passive; current-session execution
+guards remain intact. A ninth TerminalGameTest captures real outgoing close packets
+and requires no close during initialization. Initial embedded-pipeline naming in
+that fixture failed; the corrected adapter uses its actual connection-handler name.
+Existing conservation and permission coverage was preserved.
+
+The graphical run also prompted visible empty-slot borders and search preservation
+across GUI-scale reinitialization. Its production character/Enter, row-number and
+button mouse handlers, real deposit payload, exact hopper conservation and normal
+logout/save are verified at scales2–4. Four original framebuffer captures, full log,
+reproduction, hardware and limits are in [the evidence record](evidence/terminal-client-v1-2026-10-13.md).
+Earlier unsuccessful fixture attempts were not counted as passes; the evidence
+explains onboarding/setup/artifact/normal-logout fixes and the narrow PMD borrowed-
+resource annotations. Graphical test code contains no production mock authentication.
+
+`./gradlew spotlessApply build --write-locks` passed in34 seconds (8 executed/
+18 up-to-date tasks): 182 JVM tests, 145 required GameTests, client-fixture compile/
+PMD plus normal formatting/static/architecture/build gates. Final
+`./gradlew runTerminalClient --write-locks` passed in35 seconds (1 executed/
+8 up-to-date tasks), produced all four captures and normal native shutdown/save.
+Production artifact checks now also exclude clienttesting classes. Final canonical
+verification is recorded below after the complete evidence/documentation update.
+
+A01/A03/A11/A14/P3 and the full A01–A17 goal stay partial/active. Manual Shift gesture,
+hover/focus completeness, additional terminal states/resolutions/OSes, remote
+multiplayer/TCP, actual restart/chunks/independent save interruptions and survival/
+performance remain unverified. Next finish export/stock/filter presets and their
+player controls, then remaining crafting/programming/powered/wireless/onboarding/
+assets/P7 obligations; additional client coverage follows each affected flow.
+
+Final `python3 scripts/verify.py` passed after the evidence/documentation update:
+24 tooling tests, 182 JVM tests, 145 required GameTests, client fixture compile/
+PMD, formatting/static/architecture/packaging/build gates; no failures/errors/skips.
+Gradle completed in35 seconds (11 executed/14 up-to-date tasks); Rust guest gate
+was up-to-date. `git diff --check` passed. No remote CI, additional OS or full
+release acceptance is inferred from these component results.
+
+A final stricter `./gradlew runTerminalClient` artifact check passed in34 seconds
+(3 executed/6 up-to-date tasks): all four named nonempty captures are required.
+Archived evidence now uses this final run. Its log includes an OpenAL Stop invalid-
+name error during shutdown; process exit and UI/network assertions passed, while
+audio teardown/playback remains unverified rather than being claimed error-free.
+
+Post-artifact-gate canonical verification also passed in20 seconds (1 executed/
+24 up-to-date Gradle tasks): 145 GameTests reran; 182 JVM results and Rust guest
+verification were cached. The 24 tooling tests executed. Source hashes match the
+archived graphical evidence; final diff review found no disabled checks or fixture
+classes in the distributed artifact.

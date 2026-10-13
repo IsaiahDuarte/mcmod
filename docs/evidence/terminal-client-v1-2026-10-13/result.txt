@@ -1,0 +1,6 @@
+PASS
+scale-2-all-items.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+scale-3-iron.png framebuffer=2560x1920 gui=854x640 scale=3.0
+scale-4-iron.png framebuffer=2560x1920 gui=640x480 scale=4.0
+scale-4-next-page.png framebuffer=2560x1920 gui=640x480 scale=4.0
+Input: native search Enter, row number key, Take 1/Next/Home mouse handlers; deposit uses real C2S payload. Physical Shift gesture remains unverified.

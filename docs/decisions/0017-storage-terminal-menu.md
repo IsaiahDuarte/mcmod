@@ -1,6 +1,6 @@
 # ADR 0017 — Physical storage terminal and authenticated menu
 
-Status: accepted; P3 item/menu implementation has headless evidence, actual client verification pending.
+Status: accepted; P3 item/menu implementation has headless evidence, partial graphical item evidence recorded; remaining client/release verification pending.
 
 ## Decision
 
@@ -56,3 +56,15 @@ whole catalogs would exceed bounded payloads and weaken stale/permission checks.
 Direct GUI remove/add calls would bypass shared scheduler/staging/accounting.
 Those alternatives are rejected. Menus expose only current authorized observations;
 future wireless access must explicitly replace the physical range/power boundary.
+
+
+## Graphical verification addition
+
+A separately compiled clientTest mod and runTerminalClient prepare only an isolated
+generated world and drive production physical use/screens/payloads. The canonical
+build compiles/static-checks it; actual graphical execution is explicit and never
+silently counted on headless hosts. It is excluded from ordinary runs and packaging.
+The fixture exposed native initMenu's broadcast-before-assignment order; menu hooks
+must not close another current menu during that early sync. An outbound packet
+regression and [graphical evidence](../evidence/terminal-client-v1-2026-10-13.md)
+verify the fix. No persistence/authority/scope change is introduced by verification.

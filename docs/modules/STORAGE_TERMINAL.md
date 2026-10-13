@@ -75,3 +75,20 @@ queued close/replacement, range/revocation, the full vanilla hopper/buffer/cell/
 player loop and starter recipe/unlock. They do not establish real client rendering,
 GUI scales, keyboard/mouse packets, multiplayer, chunks/restart, independent saves,
 survival progression or representative performance. Those are required release evidence.
+
+
+## Graphical client evidence and native initialization
+
+The menu broadcast hook now ignores broadcasts while another menu is current.
+Native ServerPlayer.initMenu synchronizes slots before assigning containerMenu;
+closing on that early broadcast sent a prior-menu close after the open packet and
+immediately dismissed the client screen. Native outgoing-packet regression coverage
+and the actual graphical fixture now verify the corrected lifecycle. Execution
+commands still require this menu to be current; the fix does not widen authority.
+
+The screen preserves search text across native reinitialization and uses explicit
+slot borders. [Graphical evidence](../evidence/terminal-client-v1-2026-10-13.md)
+records actual hopper imports, physical opening, typed search, number-key selection,
+Take1, a real deposit payload, paging, scale2/3/4 captures and normal shutdown.
+This is partial client evidence: Shift gesture, tooltips/focus, other resolutions,
+Return/Take64/denied/full/stale messages and full release acceptance remain pending.

@@ -475,4 +475,43 @@ public final class TerminalGameTests {
         "Recipe-book unlock exists");
     helper.succeed();
   }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void nativeInitializationDoesNotSendCloseForPriorInventoryMenu(
+      GameTestHelper helper) {
+    var f = setup(helper);
+    var closed = new java.util.concurrent.atomic.AtomicInteger();
+    var pipeline = f.player.connection.getConnection().channel().pipeline();
+    pipeline.addBefore(
+        pipeline.context(f.player.connection.getConnection()).name(),
+        "terminal_close_regression",
+        new io.netty.channel.ChannelOutboundHandlerAdapter() {
+          @Override
+          public void write(
+              io.netty.channel.ChannelHandlerContext context,
+              Object message,
+              io.netty.channel.ChannelPromise promise)
+              throws Exception {
+            if (message
+                instanceof net.minecraft.network.protocol.game.ClientboundContainerClosePacket)
+              closed.incrementAndGet();
+            super.write(context, message, promise);
+          }
+        });
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(
+            () -> {
+              open(helper, f);
+              helper.assertTrue(
+                  closed.get() == 0,
+                  "Native initMenu must not emit an old-menu close after opening the terminal");
+              helper.assertTrue(
+                  f.player.containerMenu instanceof TerminalMenu,
+                  "New native menu remains installed");
+              logout(f);
+            })
+        .thenSucceed();
+  }
 }

@@ -509,3 +509,24 @@ range/revocation, real hopper/buffer/cell/search/menu/player flow and affordable
 unlock. This headless setup does not simulate a real client handshake or prove
 rendering, GUI-scale interaction, multiplayer or independent-save restart safety.
 See [terminal contract](modules/STORAGE_TERMINAL.md).
+
+
+## Isolated graphical terminal fixture
+
+Run `./gradlew runTerminalClient` on a desktop. The clientTest source set compiles
+and receives PMD/format checks in the canonical build, but this graphical run is
+explicit and is not counted as passed on a headless CI host. It creates/replaces
+only its generated world under build/client-terminal-run and writes a required
+PASS result plus four screenshots under build/reports/client-terminal. Ordinary
+run/client and run/server worlds and production packaging remain separate.
+See [actual evidence and limits](evidence/terminal-client-v1-2026-10-13.md).
+
+The fixture drives real integrated-player authentication, physical use, native
+screen character/Enter/row-key/button mouse handlers and production payloads.
+It proves search/Take1/paging, exact C2S deposit conservation, GUI-scale2/3/4 layout,
+search retention on reinitialization and normal save/logout. Physical Shift-click,
+hover/focus completeness, remote multiplayer/TCP, restart, survival and the rest
+of the terminal/release remain separate checks. ModMetadataTest additionally
+requires the packaged JAR to exclude clienttesting classes. A ninth
+TerminalGameTest captures actual outgoing close packets during native initMenu;
+it prevents an old-menu close from immediately dismissing the new client screen.

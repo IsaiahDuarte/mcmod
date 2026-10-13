@@ -111,7 +111,8 @@ public final class TerminalMenu extends AbstractContainerMenu {
   @Override
   public void broadcastChanges() {
     super.broadcastChanges();
-    if (terminal == null || !active) return;
+    // Native initMenu broadcasts before assigning containerMenu; never close another menu.
+    if (terminal == null || !active || player().containerMenu != this) return;
     if (!authorized()) {
       player().closeContainer();
       return;

@@ -93,7 +93,7 @@ row. Share navigation and components where appropriate.
 
 | Flow | Required coverage | Stage | Implementation / client evidence |
 | --- | --- | --- | --- |
-| Terminal Items | Search/sort, exact counts, available/reserved/offline, bounded actions, full inventory and stale state | P3 | Item search, Home/Next paging, exact counts, deposit/withdraw/owned-return and typed status implemented; sorting/offline cache missing / Pending |
+| Terminal Items | Search/sort, exact counts, available/reserved/offline, bounded actions, full inventory and stale state | P3 | Item search, Home/Next paging, exact counts, deposit/withdraw/owned-return and typed status implemented; sorting/offline cache missing / Partial graphical evidence at scales2–4; manual Shift/hover/focus and additional states pending |
 | Terminal manual crafting and patterns | Ghost grid, remainders, JEI/manual selection, pattern editing | P4, P6 | Missing / Pending |
 | Crafting jobs | Preview/shortages/cycles, progress, cancellation, busy/cleanup state | P4–P6 | Missing / Pending |
 | Fluids and Energy | Real container/charge actions, units, observable capacities/rates and unsupported errors | P3, P6 | Missing / Pending |
@@ -151,5 +151,7 @@ and [native screen](../src/main/java/dev/izzy/factorycore/platform/client/Termin
 The dark casing, copper bezel, blue inset screen and three iron contacts reuse
 Minecraft-supplied textures with original repository geometry. The 280×232 item
 screen uses native slots/widgets, translatable search/actions/status/help, focusable
-buttons, keyboard row selection and exact-count hover text. Actual client geometry,
-held transforms, GUI-scale fit, focus and interactions have not yet been verified.
+buttons, keyboard row selection and exact-count hover text. [Graphical screen evidence](evidence/terminal-client-v1-2026-10-13.md) now covers
+scales2–4, search, Take1, paging and a real deposit payload. Block geometry/held
+transforms, physical Shift gesture, hover/focus completeness and remaining states
+are still unverified.

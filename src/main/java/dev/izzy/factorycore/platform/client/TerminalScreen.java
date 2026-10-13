@@ -36,6 +36,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   @Override
   protected void init() {
+    String previousSearch = search == null ? "" : search.getValue();
     super.init();
     search =
         addRenderableWidget(
@@ -47,6 +48,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 18,
                 Component.translatable("gui.factorycore.terminal.search")));
     search.setMaxLength(128);
+    search.setValue(previousSearch);
     search.setHint(Component.translatable("gui.factorycore.terminal.search"));
     addRenderableWidget(
         Button.builder(
@@ -115,13 +117,26 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xff282c30);
     graphics.fill(leftPos + 4, topPos + 4, leftPos + 276, topPos + 228, 0xff44484d);
     graphics.fill(leftPos + 8, topPos + 42, leftPos + 272, topPos + 115, 0xff171d22);
-    for (var slot : menu.slots)
+    for (var slot : menu.slots) {
       graphics.fill(
           leftPos + slot.x - 1,
           topPos + slot.y - 1,
           leftPos + slot.x + 17,
           topPos + slot.y + 17,
-          0xff24292f);
+          0xff151b20);
+      graphics.fill(
+          leftPos + slot.x,
+          topPos + slot.y,
+          leftPos + slot.x + 16,
+          topPos + slot.y + 16,
+          0xff59626b);
+      graphics.fill(
+          leftPos + slot.x + 1,
+          topPos + slot.y + 1,
+          leftPos + slot.x + 15,
+          topPos + slot.y + 15,
+          0xff30373e);
+    }
     var rows = menu.view().rows();
     for (int index = 0; index < rows.size(); index++) {
       int x = leftPos + 12 + 32 * index;

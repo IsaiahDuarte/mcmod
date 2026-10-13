@@ -27,6 +27,7 @@ class ModMetadataTest {
       assertFalse(jar.stream().anyMatch(entry -> entry.getName().contains("FakeOptionalApi")));
       assertFalse(jar.stream().anyMatch(entry -> entry.getName().endsWith("Test.class")));
       assertFalse(jar.stream().anyMatch(entry -> entry.getName().contains("/testing/")));
+      assertFalse(jar.stream().anyMatch(entry -> entry.getName().contains("/clienttesting/")));
       assertFalse(jar.stream().anyMatch(entry -> entry.getName().contains("factorycore_tests")));
     }
   }

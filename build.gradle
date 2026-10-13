@@ -15,22 +15,37 @@ repositories {
 }
 
 sourceSets {
+    clientTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
     gameTest {
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
 }
+configurations.clientTestImplementation.extendsFrom(configurations.implementation)
+configurations.clientTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 configurations.gameTestImplementation.extendsFrom(configurations.implementation)
 configurations.gameTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 
 neoForge {
     version = '21.1.252'
     addModdingDependenciesTo(sourceSets.gameTest)
+    addModdingDependenciesTo(sourceSets.clientTest)
     mods {
         factorycore { sourceSet(sourceSets.main) }
         factorycore_tests { sourceSet(sourceSets.gameTest) }
+        factorycore_client_tests { sourceSet(sourceSets.clientTest) }
     }
     runs {
+        terminalClient {
+            client()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/client-terminal-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            systemProperty "factorycore.client.report", file("build/reports/client-terminal/result.txt").absolutePath
+        }
         client {
             client()
             gameDirectory = file('run/client')
@@ -159,4 +174,27 @@ tasks.register('wasmBenchmark', JavaExec) {
     mainClass = 'dev.izzy.factorycore.wasm.WasmBenchmark'
     maxHeapSize = '2g'
     systemProperty 'factorycore.test.guest', file('build/test-guests/probe.wasm').absolutePath
+}
+
+
+// Compile the isolated graphical fixture in the canonical gate; run it explicitly on a desktop.
+tasks.named('check') { dependsOn tasks.named('compileClientTestJava') }
+tasks.named('runTerminalClient', JavaExec) {
+    doFirst {
+        delete file('build/client-terminal-run/saves/factorycore-terminal-verification')
+        delete file('build/reports/client-terminal')
+    }
+    doLast {
+        def result = file('build/reports/client-terminal/result.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) {
+            throw new GradleException('Graphical terminal verification did not complete.')
+        }
+        def captures = ['scale-2-all-items.png', 'scale-3-iron.png', 'scale-4-iron.png', 'scale-4-next-page.png']
+        if (captures.any { name ->
+            def capture = file("build/reports/client-terminal/screenshots/${name}")
+            !capture.isFile() || capture.length() == 0
+        }) {
+            throw new GradleException('Graphical terminal screenshots are missing.')
+        }
+    }
 }
