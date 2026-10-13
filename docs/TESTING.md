@@ -530,3 +530,13 @@ of the terminal/release remain separate checks. ModMetadataTest additionally
 requires the packaged JAR to exclude clienttesting classes. A ninth
 TerminalGameTest captures actual outgoing close packets during native initMenu;
 it prevents an old-menu close from immediately dismissing the new client screen.
+
+
+ResourceFilterTest adds four behavioral cases for exact versus registry identity,
+include/exclude and live membership, immutable bounded definitions, resolver errors
+and5000 generated evaluations (seed0xF117E221). StockTargetTest adds three cases
+for physical resident/known inbound, unit/quanta/long overflow and10000 generated
+plans against BigInteger (seed0x570C221). Three ResourceFilterGameTests check actual
+loaded item/fluid tags and off-thread refusal. They do not prove deployed presets,
+canonical configuration recovery, contention or client controls. See
+[contracts and integration obligations](modules/RESOURCE_FILTERS.md).

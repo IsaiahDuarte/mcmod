@@ -80,8 +80,11 @@ Physical connector identities, controls, supported providers and unfinished reco
 
 The server-side [storage discovery/search contract](docs/modules/STORAGE_SEARCH.md)
 now documents bounded all-key pages and transient exact-count queries. The player
-terminal frontend is still unfinished.
+[physical item terminal](docs/modules/STORAGE_TERMINAL.md) now uses these services;
+crafting/fluid/energy tabs and the remaining frontend/release scope stay unfinished.
 
 The [authenticated player inventory transfer boundary](docs/modules/PLAYER_INVENTORY_TRANSFERS.md)
-now provides server-side selected-slot operations and known cleanup; native terminal
-menus/client controls remain unfinished.
+now provides server-side selected-slot operations and known cleanup. Native item
+terminal menus/client controls have partial [graphical evidence](docs/evidence/terminal-client-v1-2026-10-13.md); full client/release verification remains pending.
+
+Bounded typed selectors and physical stock-deficit planning: [filter/stock contract](docs/modules/RESOURCE_FILTERS.md). These are P3 prerequisites; authenticated persistent preset integration remains unfinished.
