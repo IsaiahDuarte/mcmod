@@ -1728,3 +1728,50 @@ completed in 34 seconds (10 executed/12 up-to-date tasks); Rust guest verificati
 was cached. Post-evidence documentation checks and `git diff --check` passed.
 The benchmark source digest still matches the final ResourceLedger; the last
 guard affects platform availability filtering, not the measured ledger code.
+
+
+## Authenticated player inventory transfer prerequisite — 2026-10-12
+
+Added a typed PLAYER endpoint/factory for exact live PlayerList bodies, stable
+world/player inventory-v1 backing, positive connection nonce and source slot0–35/
+whole36-slot destination. Captured ports recheck actor/body/connection/range/
+dimension; armor/offhand/cursor/crafting slots are excluded. Simulation/actual
+matching-first insertion scan at most two36-slot passes, respect native limits
+and share128 input/output units per identity/tick. Native source key/count and
+known actual results revalidate; unsupported/wrong-kind, stale source, unauthorized
+principal, full/offline/rate/distance/logout requests preserve current owners.
+Local source ownership does not require network WITHDRAW for depositing own items;
+network DEPOSIT/WITHDRAW and catalog VIEW remain separate. Existing shared queues,
+scheduler/preflight/staging/accounting are used; player inventories never become
+global stock/claim rows. Unresolved evidence blocks fresh player-backed transfers.
+
+World schema ten admits context-three PLAYER without rewriting old context-one/two
+bytes or owned tables. Validate principal/derived backing/item kind/slot schema
+before record mutation. Schemas one through nine migrate exactly; future eleven
+preserves raw authority. Explicit original-owner progress borrows current same-
+player connection for existing known staging without extracting refills or changing
+accepted context. Logout unbinds only matching bodies/native references, retaining
+canonical evidence. Unknown pending calls remain frozen; independent native player
+files/crash atomicity/reconciliation are still unverified D03/P7 work.
+
+Two fixed/migration/compressed persistence cases and eleven real mock-login world
+cases cover the boundary and failures. Initial checks found one future-envelope
+array still using ten (now current; changed to eleven) and an incorrect rate-fixture
+slot expectation. The latter was corrected to the required matching-first layout:
+returning64 fills the17-item matching stack with47, then adds17 to an empty slot,
+without weakening conservation/rate assertions. Later world builds passed all
+eleven cases; final logout-hook-inclusive canonical verification is recorded below.
+
+Next implement physical terminal/meta/menu ownership, authenticated client command
+and server-owned selection revisions/tokens, native inventory controls and bounded
+search UI/status/assets. This is a transfer prerequisite, not a completed player
+terminal/demo/release. All A01–A17 work including remaining presets, crafting,
+production scripting, power/wireless, onboarding/assets and P7 remains active.
+
+Verification: final `python3 scripts/verify.py` passed: 24 tooling tests, 179 JVM
+tests (zero failures/errors/skips), 136 required Minecraft GameTests and formatting/
+static/architecture/build gates. The canonical Gradle build completed in36 seconds
+(11 executed/11 up-to-date tasks); Rust guest verification was up-to-date.
+`./gradlew spotlessApply` and post-evidence docs/acceptance/link checks plus
+`git diff --check` passed. Native menu/client actions, full reconnect/server restart,
+independent player/chunk files and multiplayer remain unverified release work.

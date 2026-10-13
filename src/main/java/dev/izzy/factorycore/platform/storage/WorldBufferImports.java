@@ -268,6 +268,7 @@ public final class WorldBufferImports {
       TransferRegistry.Stored record, Entry entry, BufferRegistry.Deployment deployment) {
     var context = record.context();
     return context != null
+        && context.destination().type() != TransferContext.Type.PLAYER
         && record.transfer().owner().equals(deployment.principal())
         && context.network().equals(deployment.network())
         && context.segment().equals(deployment.segment())

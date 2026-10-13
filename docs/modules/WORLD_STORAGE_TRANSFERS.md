@@ -453,3 +453,13 @@ aggregate exact BigInteger counts with one reservation contribution per backing/
 key, and invalidate on actor/grant/full-topology changes. Source observations are
 advisory; player transfers must still use the existing fresh shared route/staging
 path. Terminal/menu/payload frontends remain the next prerequisite.
+
+
+[Authenticated player inventory endpoints](PLAYER_INVENTORY_TRANSFERS.md) now join
+the same scheduled ResourcePort/accounting path. They use an exact live PlayerList
+body/connection, original principal, same dimension/local range and selected main
+slots, with shared 128-item input/output allowances. Local player ownership does
+not add a network WITHDRAW requirement to depositing own items; network targets
+still require DEPOSIT and withdrawals still require WITHDRAW. Player backings
+never enter catalogs/claim registration, and unresolved canonical evidence blocks
+fresh operations. Terminal menus/client packet boundaries remain missing.

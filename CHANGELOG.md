@@ -100,3 +100,7 @@ See [implementation evidence](docs/IMPLEMENTATION.md).
   search with exact component variants, BigInteger totals, deduplicated holds,
   scope/grant invalidation and visible technical errors. Terminal controls/screens
   remain unfinished.
+
+- Added explicit authenticated player-inventory transfer/known-cleanup endpoints,
+  shared rates and accepted player context persistence (world ten/context three).
+  Terminal menus/client controls and independent-file crash verification remain pending.

@@ -6,7 +6,9 @@ import java.util.Set;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 
-/** Context schema one, or two for buffers; absent legacy contexts never synthesize endpoints. */
+/**
+ * Context schemas one/two/three for legacy/buffer/player unions; absent data invents no endpoint.
+ */
 final class TransferContextCodec {
   private TransferContextCodec() {}
 
@@ -14,10 +16,13 @@ final class TransferContextCodec {
     var tag = new CompoundTag();
     tag.putInt(
         "Schema",
-        context.source().type() == TransferContext.Type.BUFFER
-                || context.destination().type() == TransferContext.Type.BUFFER
-            ? 2
-            : 1);
+        context.source().type() == TransferContext.Type.PLAYER
+                || context.destination().type() == TransferContext.Type.PLAYER
+            ? 3
+            : context.source().type() == TransferContext.Type.BUFFER
+                    || context.destination().type() == TransferContext.Type.BUFFER
+                ? 2
+                : 1);
     tag.putUUID("World", context.world());
     tag.putUUID("Network", context.network());
     tag.putUUID("Segment", context.segment());
@@ -51,7 +56,7 @@ final class TransferContextCodec {
             .equals(tag.getAllKeys())
         || !tag.contains("Schema", Tag.TAG_INT)
         || tag.getInt("Schema") < 1
-        || tag.getInt("Schema") > 2)
+        || tag.getInt("Schema") > 3)
       throw new IllegalArgumentException("Unsupported transfer context");
     for (var field : new String[] {"World", "Network", "Segment"})
       if (!tag.hasUUID(field))
@@ -72,8 +77,11 @@ final class TransferContextCodec {
     boolean buffered =
         context.source().type() == TransferContext.Type.BUFFER
             || context.destination().type() == TransferContext.Type.BUFFER;
-    if ((tag.getInt("Schema") == 2) != buffered)
-      throw new IllegalArgumentException("Buffer endpoint requires context schema two exclusively");
+    boolean player =
+        context.source().type() == TransferContext.Type.PLAYER
+            || context.destination().type() == TransferContext.Type.PLAYER;
+    if (tag.getInt("Schema") != (player ? 3 : buffered ? 2 : 1))
+      throw new IllegalArgumentException("Endpoint union does not match its context schema");
     return context;
   }
 

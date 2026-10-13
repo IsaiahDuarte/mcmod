@@ -89,6 +89,15 @@ public final class DeviceSavedData extends SavedData {
         var context = record.context();
         if (!state.world().equals(context.world()) || !networks.containsKey(context.network()))
           throw new IllegalArgumentException("Transfer context has unknown world/network");
+        for (var endpoint :
+            new dev.izzy.factorycore.core.resource.TransferContext.Endpoint[] {
+              context.source(), context.destination()
+            })
+          if (endpoint.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.PLAYER
+              && (registry.containsBacking(endpoint.backing())
+                  || nodes.contains(endpoint.backing())
+                  || networks.containsKey(endpoint.backing())))
+            throw new IllegalArgumentException("Player inventory collides with owned identity");
       }
     for (var claim : claimStates)
       if (registry.containsBacking(claim.backing())
@@ -305,7 +314,7 @@ public final class DeviceSavedData extends SavedData {
     try {
       require(tag, "Schema", Tag.TAG_INT);
       int schema = tag.getInt("Schema");
-      if ((schema < 1 || schema > 9) || !tag.hasUUID("World"))
+      if ((schema < 1 || schema > 10) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
       NetworkStateCodec.fields(tag, worldFields(schema));
       var networkStates =
@@ -369,6 +378,17 @@ public final class DeviceSavedData extends SavedData {
                                   == dev.izzy.factorycore.core.resource.TransferContext.Type
                                       .BUFFER)))
         throw new IllegalArgumentException("Buffer transfer requires world schema nine");
+      if (schema < 10
+          && transferStates.stream()
+              .anyMatch(
+                  record ->
+                      record.context() != null
+                          && (record.context().source().type()
+                                  == dev.izzy.factorycore.core.resource.TransferContext.Type.PLAYER
+                              || record.context().destination().type()
+                                  == dev.izzy.factorycore.core.resource.TransferContext.Type
+                                      .PLAYER)))
+        throw new IllegalArgumentException("Player transfer requires world schema ten");
       var loaded =
           new DeviceSavedData(
               new DeviceRegistry.State(tag.getUUID("World"), records),
@@ -383,7 +403,7 @@ public final class DeviceSavedData extends SavedData {
               schema < 8 ? List.of() : BufferStateCodec.deployments(tag.getCompound("Buffers")),
               null,
               "");
-      if (schema < 9) loaded.setDirty();
+      if (schema < 10) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
@@ -406,7 +426,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 9);
+    tag.putInt("Schema", 10);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {

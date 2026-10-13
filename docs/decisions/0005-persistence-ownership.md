@@ -187,3 +187,13 @@ schema one unchanged; migration from schema eight changes only the world version
 No new owned table or independent save boundary is introduced. Unknown/future/
 malformed contexts preserve raw recovery data. Actual restart/interrupted saves
 and automatic preset dispatch remain owning-stage work.
+
+
+## Player context extension — 2026-10-12
+
+World schema ten permits the PLAYER context-three endpoint selected in ADR 0016.
+Actor/backing/connection/slot fields remain accepted evidence, without another
+inventory copy or authority credential. Old context-one/two bytes and all tables
+are preserved. Typed pending-call quarantine and explicit original-owner progress
+remain mandatory; native player files are an independent save boundary whose full
+interruption/reconciliation guarantees must still be verified before release.

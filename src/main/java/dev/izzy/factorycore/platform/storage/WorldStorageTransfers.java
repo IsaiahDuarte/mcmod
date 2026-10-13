@@ -340,7 +340,34 @@ public final class WorldStorageTransfers {
     return executing != null;
   }
 
-  public sealed interface Endpoint permits Digital, External, Buffered {}
+  public sealed interface Endpoint permits Digital, External, Buffered, PlayerInventory {}
+
+  public record PlayerInventory(UUID principal, UUID backing, long connection, int slot)
+      implements Endpoint {
+    public PlayerInventory {
+      Objects.requireNonNull(principal);
+      Objects.requireNonNull(backing);
+      if (connection <= 0 || slot < -1 || slot >= 36)
+        throw new IllegalArgumentException("Invalid player inventory endpoint");
+    }
+  }
+
+  private WorldPlayerInventories players;
+
+  private WorldPlayerInventories players() {
+    if (players == null) players = new WorldPlayerInventories(server);
+    return players;
+  }
+
+  public PlayerInventory inventory(net.minecraft.server.level.ServerPlayer player, int slot) {
+    checkThread();
+    return players().endpoint(player, slot);
+  }
+
+  public void playerDisconnected(net.minecraft.server.level.ServerPlayer player) {
+    checkThread();
+    if (players != null) players.disconnected(player);
+  }
 
   public record Buffered(NodeRegistry.Handle handle, long configuration) implements Endpoint {
     public Buffered {
@@ -487,14 +514,19 @@ public final class WorldStorageTransfers {
     long quantum = key.kind() == ResourceKind.ITEM ? 128 : 1000;
     if (amount > quantum)
       throw new IllegalArgumentException("World transfer exceeds bounded quantum");
-    if (source instanceof Buffered || destination instanceof Buffered) {
+    if (source instanceof Buffered
+        || destination instanceof Buffered
+        || source instanceof PlayerInventory
+        || destination instanceof PlayerInventory) {
       if (key.kind() != ResourceKind.ITEM)
         return new Submission(null, OperationResult.Reason.WRONG_RESOURCE);
     }
     if (source instanceof External
         || destination instanceof External
         || source instanceof Buffered
-        || destination instanceof Buffered) {
+        || destination instanceof Buffered
+        || source instanceof PlayerInventory
+        || destination instanceof PlayerInventory) {
       try {
         var codec =
             new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
@@ -739,10 +771,17 @@ public final class WorldStorageTransfers {
       return;
     }
     Endpoint source =
-        returning && context.source().type() == TransferContext.Type.BUFFER
-            ? recoverOwnedBufferSource(context.world(), context.source())
-            : recover(context.world(), context.source());
-    Endpoint destination = returning ? null : recover(context.world(), context.destination());
+        context.source().type() == TransferContext.Type.PLAYER
+            ? players().recover(context.source(), actor.id())
+            : returning && context.source().type() == TransferContext.Type.BUFFER
+                ? recoverOwnedBufferSource(context.world(), context.source())
+                : recover(context.world(), context.source());
+    Endpoint destination =
+        returning
+            ? null
+            : context.destination().type() == TransferContext.Type.PLAYER
+                ? players().recover(context.destination(), actor.id())
+                : recover(context.world(), context.destination());
     if (source == null || !returning && destination == null) {
       completion.accept(new Result(id, OperationResult.Reason.OFFLINE, snapshot));
       return;
@@ -750,6 +789,13 @@ public final class WorldStorageTransfers {
     if (!compatible(source, snapshot.key())
         || !returning && !compatible(destination, snapshot.key())) {
       completion.accept(new Result(id, OperationResult.Reason.WRONG_RESOURCE, snapshot));
+      return;
+    }
+    if (returning
+        && source instanceof PlayerInventory player
+        && !players()
+            .allowed(actor, context.origin(), player, NetworkPermissions.Permission.DEPOSIT)) {
+      completion.accept(new Result(id, OperationResult.Reason.DENIED, snapshot));
       return;
     }
     if (!returning
@@ -768,11 +814,11 @@ public final class WorldStorageTransfers {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, snapshot));
       return;
     }
-    var input = bounded(port(source), snapshot.key());
+    var input = bounded(port(source, context.origin()), snapshot.key());
     var output =
         returning
             ? unavailable(snapshot.destination())
-            : bounded(port(destination), snapshot.key());
+            : bounded(port(destination, context.origin()), snapshot.key());
     saved.transfers().unbind(id);
     saved
         .transfers()
@@ -800,7 +846,7 @@ public final class WorldStorageTransfers {
   }
 
   private boolean compatible(Endpoint endpoint, ResourceKey key) {
-    if (endpoint instanceof Buffered) {
+    if (endpoint instanceof Buffered || endpoint instanceof PlayerInventory) {
       if (key.kind() != ResourceKind.ITEM) return false;
       try {
         new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(server.registryAccess())
@@ -984,18 +1030,33 @@ public final class WorldStorageTransfers {
     var input =
         claimed
             ? networks.connectors().claimedPort(((External) source).handle(), actor.id())
-            : port(source);
-    var output = port(destination);
+            : port(source, origin);
+    var output = port(destination, origin);
     if (input.backingId().equals(output.backingId())) {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, null));
       return;
     }
+    for (var endpoint : new Endpoint[] {source, destination})
+      if (endpoint instanceof PlayerInventory player
+          && saved.transfers().unresolved(player.backing()) != null) {
+        completion.accept(new Result(id, OperationResult.Reason.RESERVED, null));
+        return;
+      }
     var admission =
-        destination instanceof Digital digital
-            ? new Port(digital.handle()).admit(key, amount)
-            : destination instanceof Buffered buffer
-                ? new BufferPort(buffer).admit(key, amount)
-                : networks.connectors().limit(((External) destination).handle(), true, amount);
+        destination instanceof PlayerInventory player
+            ? players().port(player, origin).admit(key, amount)
+            : destination instanceof Digital digital
+                ? new Port(digital.handle()).admit(key, amount)
+                : destination instanceof Buffered buffer
+                    ? new BufferPort(buffer).admit(key, amount)
+                    : networks.connectors().limit(((External) destination).handle(), true, amount);
+    if (source instanceof PlayerInventory player) {
+      var available = players().port(player, origin).available(key, amount);
+      if (available.amount() == 0 && amount > 0) {
+        completion.accept(new Result(id, available.reason(), null));
+        return;
+      }
+    }
     if (source instanceof Buffered buffer) {
       var available = new BufferPort(buffer).available(key, amount);
       if (available.amount() == 0 && amount > 0) {
@@ -1071,6 +1132,13 @@ public final class WorldStorageTransfers {
   }
 
   private dev.izzy.factorycore.core.resource.TransferContext.Endpoint reference(Endpoint endpoint) {
+    if (endpoint instanceof PlayerInventory player)
+      return new TransferContext.Endpoint(
+          TransferContext.Type.PLAYER,
+          player.principal(),
+          player.backing(),
+          player.connection(),
+          player.slot() < 0 ? 37 : player.slot() + 1);
     if (endpoint instanceof Buffered buffer)
       return new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
           dev.izzy.factorycore.core.resource.TransferContext.Type.BUFFER,
@@ -1094,7 +1162,8 @@ public final class WorldStorageTransfers {
         handle.generation());
   }
 
-  private ResourcePort port(Endpoint endpoint) {
+  private ResourcePort port(Endpoint endpoint, NodeRegistry.Position origin) {
+    if (endpoint instanceof PlayerInventory player) return players().port(player, origin);
     if (endpoint instanceof Buffered buffer) return new BufferPort(buffer);
     return endpoint instanceof Digital digital
         ? new Port(digital.handle())
@@ -1203,6 +1272,9 @@ public final class WorldStorageTransfers {
       Endpoint endpoint,
       ResourceKey key,
       NetworkPermissions.Permission operation) {
+    if (endpoint instanceof PlayerInventory player)
+      return key.kind() == ResourceKind.ITEM && players().allowed(actor, origin, player, operation);
+
     if (endpoint instanceof Buffered buffer) return allowed(actor, origin, buffer, key, operation);
     return endpoint instanceof Digital digital
         ? allowed(actor, origin, digital.handle(), key, operation)

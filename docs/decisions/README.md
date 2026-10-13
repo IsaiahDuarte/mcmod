@@ -53,3 +53,7 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Bounded storage discovery/search](0015-bounded-storage-search.md): derived key
   pages, shared scheduled all-key observations and bounded transient search
   sessions with exact aggregates; terminal frontend and full workload evidence pending.
+
+- [Authenticated player inventory transfers](0016-player-inventory-transfers.md):
+  selected-slot/local-owner boundary, shared accounting/rates and context-three
+  accepted player evidence; terminal frontend and independent-file validation pending.

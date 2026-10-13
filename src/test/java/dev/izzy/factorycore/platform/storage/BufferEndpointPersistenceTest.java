@@ -84,7 +84,7 @@ class BufferEndpointPersistenceTest {
     assertTrue(restored.isDirty());
     assertEquals(23, restored.buffers().snapshot().getFirst().slots().getFirst().count());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(9, migrated.getInt("Schema"));
+    assertEquals(10, migrated.getInt("Schema"));
     migrated.putInt("Schema", 8);
     assertEquals(original, migrated);
     var unsupported = original.copy();

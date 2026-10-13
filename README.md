@@ -81,3 +81,7 @@ Physical connector identities, controls, supported providers and unfinished reco
 The server-side [storage discovery/search contract](docs/modules/STORAGE_SEARCH.md)
 now documents bounded all-key pages and transient exact-count queries. The player
 terminal frontend is still unfinished.
+
+The [authenticated player inventory transfer boundary](docs/modules/PLAYER_INVENTORY_TRANSFERS.md)
+now provides server-side selected-slot operations and known cleanup; native terminal
+menus/client controls remain unfinished.

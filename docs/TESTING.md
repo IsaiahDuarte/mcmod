@@ -481,3 +481,19 @@ copy/sort first-page discovery and new bounded pages, including shared-prefix
 4-KiB metadata. The runner uses temporary old classes without editing the worktree;
 it requires the baseline commit locally (a shallow clone must obtain that history).
 These standalone measurements are not full server/terminal/network throughput.
+
+
+PlayerEndpointPersistenceTest adds two cases freezing transfer-player-context-v3,
+principal/derived backing/nonce/selected slot, old union bytes, bad actor/kind/
+whole-source/version rejection, exact nonempty schema-nine migration to ten and
+compressed owned staging reload. Migration/future envelope tests advance to ten/
+eleven while their exact prior-table comparisons remain intact. Eleven
+PlayerInventoryGameTests use the real pinned PlayerList mock-login helper for
+native deposits, full/partial main inventory, equipment/cursor exclusion, stale
+keys/other actors, deposit-only permissions, shared 128-item directions, queued
+revocation/range, blocked owned cleanup after revocation, catalog exclusion,
+logout and pending non-replay/fresh-extraction blocking. Same-tick rate fixtures
+advance at most sixteen queue cycles without changing production scheduling.
+The helper is deprecated in this pinned version; its narrowly annotated use is
+intentional real PlayerList/connection registration, not a fake authentication bypass.
+Actual terminal/client/multiplayer/full restart/independent files remain pending.

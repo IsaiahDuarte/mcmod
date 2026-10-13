@@ -41,6 +41,7 @@ public final class WorldStorageCatalog {
       Objects.requireNonNull(principal);
       Objects.requireNonNull(kind);
       if (offset < 0
+          || current instanceof WorldStorageTransfers.PlayerInventory
           || current instanceof WorldStorageTransfers.Buffered
           || current == null && (afterKey != null || offset != 0)
           || afterKey != null && afterKey.kind() != kind

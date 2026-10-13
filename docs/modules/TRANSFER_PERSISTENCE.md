@@ -148,7 +148,7 @@ snapshot IDs or unknown world/network quarantine and preserve the entire world
 file. Global versions one/two/three still add missing tables. Version four migrates
 its entry-schema-one records into schema two without changing a single quantity,
 owner, key, endpoint ID, diagnostic or pending intent. No legacy context is guessed.
-Versions five/six/seven/eight/nine use entry schema two; schema six adds canonical foreign claims and seven adds routing preferences. Global schema ten/future versions reject; schema nine adds buffer context schema two.
+Versions five/six/seven/eight/nine/ten use entry schema two; schema six adds canonical foreign claims and seven adds routing preferences. Global schema eleven/future versions reject; schema nine adds buffer context schema two and ten adds player context schema three.
 Old binaries reject the new format, so downgrade without a matching backup is
 unsupported. Fixed schema-one/two/three/four fixtures continue to assert exact
 owned-data preservation after stripping only the declared format-version changes.
@@ -188,3 +188,14 @@ The index derives from canonical records on restore and journal transitions, has
 at most 2,048 backing/record references, and releases entries only when known
 completion has neither staged quantity nor pending call. Unbinding native handlers
 does not remove canonical unresolved evidence.
+
+
+World schema ten accepts PLAYER endpoints in context schema three. It retains
+original principal, derived world/player backing, connection nonce and selected
+main-inventory slot/window. Operation owner/kind/backing/slot validation precedes
+canonical record admission. Old context-one/two bytes/tables stay unchanged.
+Explicit original-owner progress can borrow the current same-player connection
+for known staging, retaining original context and never re-extracting refills.
+Logout releases live references and uncertainty remains frozen. Player file/world
+independent-save crash guarantees remain pending; the [player contract](PLAYER_INVENTORY_TRANSFERS.md)
+distinguishes current evidence from those release requirements.

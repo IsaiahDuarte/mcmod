@@ -185,6 +185,13 @@ public final class WorldNetworks {
     SERVERS.remove(event.getServer());
   }
 
+  public static void playerLeft(
+      net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) {
+    if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)) return;
+    var runtime = SERVERS.get(player.serverLevel().getServer());
+    if (runtime != null && runtime.transfers != null) runtime.transfers.playerDisconnected(player);
+  }
+
   // Minecraft owns the borrowed level; the coordinator never closes worlds or chunk caches.
   @SuppressWarnings("PMD.CloseResource")
   public static void changed(net.minecraft.world.level.Level level, BlockPos position) {

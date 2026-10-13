@@ -5,7 +5,7 @@ modules on Minecraft 1.21.1 / NeoForge 21.1.252. Network Controllers, Gateways a
 ownership. Valid wired networks now activate installed cells after bounded server rebuilding.
 Finite Energy Banks expose real NeoForge energy ports on valid wired networks.
 Buffered Interfaces now import real hopper items into permitted storage without code.
-Terminals, advanced presets and wireless access are still pending; the current build has no player deposit/withdrawal endpoint.
+Terminals, advanced presets and wireless access are still pending; the current build has no player terminal deposit/withdrawal controls.
 
 ## Cells and drives
 
@@ -91,7 +91,7 @@ cell removal keeps its exact reference in a labeled recovery item. Automatic
 repair and administrative reconciliation are pending; keep these items and
 back up the world rather than discarding them.
 
-The canonical world registry now uses schema nine. Existing schema-one through eight worlds
+The canonical world registry now uses schema ten. Existing schema-one through nine worlds
 migrate while preserving cell identities, contents and reservations. Unknown
 or malformed registry data remains unavailable with its original data preserved;
 keep `world/data/factorycore_devices.dat` for recovery. Network grants, buffers, presets and owned transfer staging

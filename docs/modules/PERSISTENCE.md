@@ -85,7 +85,7 @@ performs 2,000 stock/claim operations with a save/reload after each operation,
 replay seed `0x5A7E001`. This is portable recovery evidence, not a world crash or
 external-inventory atomicity guarantee.
 
-The world envelope now targets schema nine, retaining schema-five [accepted transfer context](TRANSFER_PERSISTENCE.md).
+The world envelope now targets schema ten, retaining schema-five [accepted transfer context](TRANSFER_PERSISTENCE.md).
 Ledger/component formats remain unchanged. Version-one through four world fixtures
 preserve their exact data; missing legacy context is never invented.
 
@@ -167,7 +167,7 @@ Runtime insertions preflight the same metadata charge before consuming input.
 Snapshots capture buffer slots in the same canonical save as staging and grants;
 loaded bindings are not persisted. Restored inventory never automatically serves
 a transfer or releases resources. Schemas one through seven add empty buffers
-and retain all old ownership/journal/rotation evidence; schema nine adds buffer transfer contexts below; schema ten is future.
+and retain all old ownership/journal/rotation evidence; schema nine adds buffer transfer contexts below; schema ten adds player contexts below; eleven is future.
 
 Compressed save/reload, exact nonempty schema-seven migration, sparse fixed-slot
 fixtures, strict rejection, quota/no-orphan admission and lease movement/copy
@@ -210,3 +210,18 @@ occupied-key index derives from each validated ledger on restore. Query sessions
 provider observations, topology/grant stamps and result cursors are transient and
 discarded on restart; canonical ownership/counts/claims/staging remain unchanged.
 Existing world/ledger migration fixture comparisons remain required.
+
+
+## Player inventory endpoint extension — world schema ten
+
+Current writes use world schema ten. PLAYER operations use nested context schema
+three; prior contexts one/two and all owned tables remain unchanged. Source/player
+principal must match the operation owner and its backing must derive from the
+world/player/inventory-v1 domain without aliasing canonical stock/nodes. Positive
+connection nonce and configuration 1–36 selected source slots or 37 whole destination
+are accepted evidence, not authority or a copied inventory. Schemas one through
+nine migrate without changing quantities; player contexts in older envelopes reject.
+Future world schema eleven/unknown unions preserve raw data. Fixed context-three
+and compressed known staging tests accompany the change. Player files save
+independently; full interrupted-file certainty/reconciliation remains unverified.
+See [player inventory contract](PLAYER_INVENTORY_TRANSFERS.md).
