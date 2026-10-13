@@ -22,6 +22,8 @@ public final class BufferedInterfaceItem extends BlockItem {
     tooltip.add(Component.translatable("tooltip.factorycore.buffer_move"));
     tooltip.add(Component.translatable("tooltip.factorycore.buffer_import"));
     tooltip.add(Component.translatable("tooltip.factorycore.buffer_cleanup"));
+    tooltip.add(Component.translatable("tooltip.factorycore.buffer_filter"));
+    tooltip.add(Component.translatable("tooltip.factorycore.buffer_rate"));
   }
 
   @Override

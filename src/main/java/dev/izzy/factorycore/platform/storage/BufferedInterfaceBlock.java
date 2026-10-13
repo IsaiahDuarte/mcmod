@@ -85,6 +85,76 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
             ? InteractionResult.CONSUME
             : InteractionResult.FAIL;
       }
+      if (!player.getOffhandItem().isEmpty()) {
+        if (!(player instanceof ServerPlayer server)
+            || server.server.getPlayerList().getPlayer(server.getUUID()) != server)
+          return InteractionResult.FAIL;
+        var current = DeviceSavedData.get(server.server).buffers().deployment(buffer.handle().id());
+        var mode = current == null ? BufferRegistry.Mode.PAUSED : current.mode();
+        var policy =
+            current == null
+                ? dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT
+                : current.policy();
+        var sample = player.getOffhandItem();
+        if (player.isShiftKeyDown() && sample.is(net.minecraft.world.item.Items.CLOCK)) {
+          int rate =
+              switch (policy.rate()) {
+                case 64 -> 32;
+                case 32 -> 16;
+                case 16 -> 8;
+                case 8 -> 4;
+                case 4 -> 1;
+                default -> 64;
+              };
+          policy = new dev.izzy.factorycore.core.storage.BufferPolicy(policy.filter(), rate);
+        } else if (player.isShiftKeyDown() && sample.is(net.minecraft.world.item.Items.PAPER)) {
+          policy =
+              new dev.izzy.factorycore.core.storage.BufferPolicy(
+                  dev.izzy.factorycore.core.resource.ResourceFilter.all(
+                      dev.izzy.factorycore.core.resource.ResourceKind.ITEM),
+                  policy.rate());
+        } else {
+          dev.izzy.factorycore.core.resource.ResourceFilter.Term term;
+          var key =
+              new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                      server.registryAccess())
+                  .itemKey(sample);
+          var filterMode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE;
+          if (sample.is(net.minecraft.world.item.Items.NAME_TAG)
+              && sample.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+            String text = sample.getHoverName().getString();
+            term =
+                text.startsWith("#")
+                    ? new dev.izzy.factorycore.core.resource.ResourceFilter.Tag(text.substring(1))
+                    : new dev.izzy.factorycore.core.resource.ResourceFilter.Registry(text);
+            if (player.isShiftKeyDown())
+              filterMode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.EXCLUDE;
+          } else
+            term =
+                player.isShiftKeyDown()
+                    ? new dev.izzy.factorycore.core.resource.ResourceFilter.Exact(key)
+                    : new dev.izzy.factorycore.core.resource.ResourceFilter.Registry(
+                        key.registryId());
+          policy =
+              new dev.izzy.factorycore.core.storage.BufferPolicy(
+                  new dev.izzy.factorycore.core.resource.ResourceFilter(
+                      dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+                      filterMode,
+                      List.of(term)),
+                  policy.rate());
+        }
+        buffer.configure(actor, mode, policy);
+        player.displayClientMessage(
+            Component.translatable(
+                "message.factorycore.buffer_policy",
+                policy.rate(),
+                Component.translatable(
+                    "status.factorycore.buffer_filter."
+                        + policy.filter().mode().name().toLowerCase(java.util.Locale.ROOT)),
+                policy.filter().terms().size()),
+            false);
+        return InteractionResult.CONSUME;
+      }
       if (player.isShiftKeyDown() && player.getOffhandItem().isEmpty()) {
         var current =
             DeviceSavedData.get(buffer.serverLevel().getServer())
@@ -116,6 +186,23 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
       long occupied = slots.stream().filter(slot -> slot.key() != null).count();
       player.displayClientMessage(
           Component.translatable("message.factorycore.buffer_status", items, occupied), false);
+      var deployment =
+          DeviceSavedData.get(buffer.serverLevel().getServer())
+              .buffers()
+              .deployment(buffer.handle().id());
+      var policy =
+          deployment == null
+              ? dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT
+              : deployment.policy();
+      player.displayClientMessage(
+          Component.translatable(
+              "message.factorycore.buffer_policy",
+              policy.rate(),
+              Component.translatable(
+                  "status.factorycore.buffer_filter."
+                      + policy.filter().mode().name().toLowerCase(java.util.Locale.ROOT)),
+              policy.filter().terms().size()),
+          false);
       var status = WorldNetworks.get(buffer.serverLevel().getServer()).imports().status(buffer);
       player.displayClientMessage(
           Component.translatable(

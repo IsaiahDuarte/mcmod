@@ -185,6 +185,12 @@ public final class WorldNetworks {
     SERVERS.remove(event.getServer());
   }
 
+  public static void tagsReloaded(net.neoforged.neoforge.event.OnDatapackSyncEvent event) {
+    if (event.getPlayer() != null) return;
+    var runtime = SERVERS.get(event.getPlayerList().getServer());
+    if (runtime != null && runtime.imports != null) runtime.imports.tagsReloaded();
+  }
+
   public static void playerLeft(
       net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) {
     if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)) return;

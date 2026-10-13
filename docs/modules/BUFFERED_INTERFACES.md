@@ -2,7 +2,7 @@
 
 P3 prerequisite component: `ItemBuffer` and `BufferedItemHandler` implement the
 selected nine-slot owned inventory and its NeoForge automation view. The canonical world table/structural lease now exists. The physical block and hopper inventory path are implemented with headless world
-evidence. Automatic Import and Paused controls are implemented; export/stock/filter presets and the inventory screen remain missing;
+evidence. Automatic filtered Import and Paused controls are implemented; export/stock and full settings/inventory screens remain missing;
 the hopper-to-storage-to-terminal loop is not yet A01.
 See [ownership decision](../decisions/0014-buffered-inventory.md).
 
@@ -290,3 +290,78 @@ controls, queued removal/movement and owned return after pause/grant revocation.
 These are headless live world checks, not actual chunks/server restart, independent
 file interruption or client/multiplayer evidence. All-key search, terminal player
 operations, remaining presets and inventory screens are the next player-path work.
+
+## Filtered Import and network rate policy
+
+[ADR 0018](../decisions/0018-buffer-filter-policy.md) adds canonical BufferPolicy to
+one existing deployment. It contains an item [ResourceFilter](RESOURCE_FILTERS.md)
+and a1–64 items/tick network rate, separately for insertion/extraction. Default
+ALL/64 remains byte-compatible buffers-v2. Any nondefault policy writes buffers-v3;
+each deployment then has Policy `{Schema:1, Rate:int, Mode:string, Terms:list}`.
+Terms are strict REGISTRY/TAG `{Type,Id}` or EXACT `{Type,Id,Components:byte-array}`.
+Kind is implicitly ITEM. Missing/extra/type-invalid/future fields reject and retain
+the full raw canonical world tag. Buffers-v1/v2 supply the explicit default; all
+world-ten/physical-reference-one ownership and prior slots remain unchanged.
+
+Policy metadata shares the existing16MiB budget with slots. Nondefaults charge
+128+filter.bytes(); default fixed values fit the existing owner overhead. Restore
+and replacement preflight both charges; rejection leaves old authority/revision/
+dirty state intact. Mode-only edits preserve selection/rate. Movement does not
+renew saved deployment authority, and accepted endpoint context remains immutable.
+
+Automatic preparation still visits at most eight entries and scans nine owned
+slots. Registry selection accepts component variants without merging their keys;
+exact selection preserves all components. Current native tag membership is read
+on the owner thread and rechecked in queued route/delivery guards. Tag rebinding
+wakes only loaded entries, bounded by256. Empty/no-match rules sleep until activity,
+configuration or tag wake; excluded items remain buffered and can cause backpressure.
+Priority routing and all existing permission/scope/queue/staging checks remain.
+
+Every network buffer port shares configured per-backing/per-actual-tick input and
+output counters, including explicit moves and known return. Configuration changes
+never reset spent amounts; lowering the rate clamps remaining allowance to zero.
+A partial return preserves owned staging for another tick. Automatic filter changes
+cannot adopt/re-extract old staging; uncertainty never replays. Native hopper/
+IItemHandler admission remains ordinary physical access and is not filtered/rate-
+limited by this network policy. Independently authorized explicit moves do not
+inherit automatic selection filters, but do share the network rate.
+
+Basic controls use an empty main hand and authenticated native ServerPlayer:
+
+| Offhand / action | Result |
+| --- | --- |
+| Item sample / use | Allow that registry type, ignoring components. |
+| Item sample / sneak-use | Allow exact components; clock/paper/redstone special controls take precedence. |
+| Renamed name tag `minecraft:iron_ingot` or `#minecraft:logs` / use | Allow that ID or current tag. |
+| Renamed name tag / sneak-use | Exclude that ID/tag. |
+| Clock / sneak-use | Cycle64→32→16→8→4→1→64 items/tick. |
+| Paper / sneak-use | Clear to ALL, retaining rate. |
+| Empty offhand / sneak-use | Existing Import/Paused toggle, retaining policy. |
+| Redstone / sneak-use | Existing original-owner known-staging cleanup. |
+
+Tools/samples are not consumed. Edits retain mode and need current EDIT/DEPLOY;
+active Import additionally needs VIEW/WITHDRAW/DEPOSIT. Inspection reports policy
+mode/rule count/rate; a full multi-rule editor and richer rule inspection remain
+pending. Tag/ID syntax is validated, missing tags match nothing, and malformed
+samples leave configuration unchanged. Physical client interaction/tooltip wrapping
+has not yet been verified for these new controls.
+
+Evidence: two BufferRegistryTest cases verify shared policy quota, pause/restore/
+reclamation and failure without authority/revision/dirty mutation. Two policy-codec
+cases freeze policy-v1 SNBT and strict term/type/version bounds, buffers-v2 equality
+and actual compressed buffers-v3 round trips. BufferPersistenceTest requires world-
+ten compressed policy/owned-slot reload and full invalid policy raw preservation.
+Seven BufferPolicyGameTests exercise actual registry/exact imports, rejected stock,
+queued replacement/revocation, shared configured rate, real sample/clock/paper/tag
+controls, native tag rebinding wake and known partial cleanup after exclusion.
+The isolated test item avoids changing vanilla membership. Full restart/independent
+files, client/multiplayer/performance and export/stock/settings screens remain open.
+
+The public server-thread overload `configure(actor, mode, policy)` returns the new
+immutable deployment after authenticating current EDIT/DEPLOY and active resource
+grants. It accepts IMPORT/PAUSED and a validated item BufferPolicy; the mode-only
+overload retains the existing policy. Offline/stale holders, denial and shared
+metadata exhaustion throw IllegalStateException without new authority; invalid
+policy values fail construction, and revision overflow throws ArithmeticException.
+No configuration call consumes samples or moves resources. Native callers must
+derive actors from authenticated bodies; portable provenance supplies no grants.

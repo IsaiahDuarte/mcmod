@@ -61,3 +61,7 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Physical storage terminal menu](0017-storage-terminal-menu.md): access-only wired
   shell, server-owned exact selections, bounded projections and guarded player
   actions; item controls implemented, client verification and other terminal tabs pending.
+
+- [Canonical buffer selection/rates](0018-buffer-filter-policy.md): nested buffers-v3,
+  shared metadata/rate budgets, guarded filtered Import and basic physical controls;
+  export/stock/full editor and release verification remain pending.

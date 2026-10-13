@@ -15,6 +15,7 @@ import net.neoforged.fml.common.Mod;
 public final class GameTestMod {
   public GameTestMod(net.neoforged.bus.api.IEventBus bus) throws ParserConfigurationException {
     ConnectorFixture.register(bus);
+    PolicyFixture.register(bus);
     if (!Boolean.getBoolean("neoforge.gameTestServer")) return;
     var xml = new JUnitLikeTestReporter(new File(System.getProperty("factorycore.test.report")));
     var log = new LogTestReporter();

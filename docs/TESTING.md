@@ -540,3 +540,18 @@ plans against BigInteger (seed0x570C221). Three ResourceFilterGameTests check ac
 loaded item/fluid tags and off-thread refusal. They do not prove deployed presets,
 canonical configuration recovery, contention or client controls. See
 [contracts and integration obligations](modules/RESOURCE_FILTERS.md).
+
+
+BufferPolicyCodecTest freezes policy-v1 SNBT/strict fields and compressed buffers-v3
+round trips while requiring byte-identical legacy buffers-v2 defaults. BufferRegistryTest
+adds combined metadata admission, pause/restore/reclamation and rejection without
+changed authority/revision/dirty state. BufferPersistenceTest adds actual compressed
+world-ten owned-slot/policy reload and full malformed/future policy preservation;
+its future nested fixture advances3→4 because3 is now supported. Seven native
+BufferPolicyGameTests cover filtered variants/backpressure, queued replacement/
+resource revocation, configured same-tick rates, authenticated physical controls,
+actual tag rebinding wake and retained staged cleanup under a reduced rate. The tag
+fixture uses the public registry rebinding API and a test-only item, preserving
+all vanilla memberships; no production class or tag is packaged from gameTest.
+See [policy contract](modules/BUFFERED_INTERFACES.md). Actual client/restart/
+independent-file/multiplayer/performance and export/stock remain separate checks.

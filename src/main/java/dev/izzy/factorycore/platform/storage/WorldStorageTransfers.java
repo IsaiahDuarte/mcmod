@@ -1207,6 +1207,11 @@ public final class WorldStorageTransfers {
       owner = physical(endpoint);
     }
 
+    private int rate() {
+      var deployment = saved.buffers().deployment(backingId());
+      return deployment == null ? 64 : deployment.policy().rate();
+    }
+
     private boolean current() {
       try {
         return owner != null && physical(endpoint) == owner;
@@ -1217,7 +1222,7 @@ public final class WorldStorageTransfers {
 
     OperationResult available(ResourceKey key, long amount) {
       if (!current()) return new OperationResult(0, OperationResult.Reason.OFFLINE);
-      long rate = 64 - bufferBudget(backingId()).extracted;
+      long rate = Math.max(0, rate() - bufferBudget(backingId()).extracted);
       if (rate == 0 && amount > 0) return new OperationResult(0, OperationResult.Reason.RATE_LIMIT);
       long available = Math.min(Math.min(rate, amount), owner.inventory().total(key));
       return new OperationResult(
@@ -1229,7 +1234,7 @@ public final class WorldStorageTransfers {
 
     OperationResult admit(ResourceKey key, long amount) {
       if (!current()) return new OperationResult(0, OperationResult.Reason.OFFLINE);
-      long rate = 64 - bufferBudget(backingId()).inserted;
+      long rate = Math.max(0, rate() - bufferBudget(backingId()).inserted);
       if (rate == 0 && amount > 0) return new OperationResult(0, OperationResult.Reason.RATE_LIMIT);
       return owner.inventory().admitInsert(key, Math.min(amount, rate));
     }
@@ -1250,7 +1255,8 @@ public final class WorldStorageTransfers {
       OperationResult.requireQuantity(amount);
       if (!current()) return 0;
       var budget = bufferBudget(backingId());
-      long accepted = owner.inventory().insert(key, Math.min(amount, 64 - budget.inserted));
+      long accepted =
+          owner.inventory().insert(key, Math.min(amount, Math.max(0, rate() - budget.inserted)));
       budget.inserted += accepted;
       return accepted;
     }
@@ -1260,7 +1266,8 @@ public final class WorldStorageTransfers {
       OperationResult.requireQuantity(amount);
       if (!current()) return 0;
       var budget = bufferBudget(backingId());
-      long extracted = owner.inventory().extract(key, Math.min(amount, 64 - budget.extracted));
+      long extracted =
+          owner.inventory().extract(key, Math.min(amount, Math.max(0, rate() - budget.extracted)));
       budget.extracted += extracted;
       return extracted;
     }

@@ -249,3 +249,28 @@ the terminal cannot provide cleanup; the admin recovery interface remains pendin
 Crafting, sorting, fluid containers, energy actions and job controls are not yet
 implemented in this screen. Manual Shift-click/hover/focus, other resolutions, multiplayer, restart and full
 survival walkthrough remain unverified.
+
+
+## Buffered import filters and rates
+
+Keep your main hand empty and use the buffer with an item sample in your offhand
+to allow that item type. Sneak-use a sample to allow its exact components. The
+sample is not consumed, and changing selection keeps the current Import/Paused
+mode. Empty-offhand sneak-use still toggles Import/Paused.
+
+For an ID/tag rule, rename a name tag in an anvil to `minecraft:iron_ingot` or
+`#minecraft:logs`, hold it in the offhand and use the buffer. Sneak-use that name
+tag to exclude the ID/tag. Missing tags match nothing; invalid names leave the
+old configuration intact. Only matching items drain automatically; other hopper
+items stay buffered and may back up the input. Registry/tag matching does not
+merge component variants in storage.
+
+Sneak-use with an offhand clock to cycle the shared network rate through64,32,16,
+8,4,1 items/tick. Sneak-use with paper to clear selection while keeping rate.
+Clock/paper/redstone sneak controls take precedence over exact sample selection;
+redstone remains known-staging cleanup. Rates apply to network moves and returns,
+independently each way; ordinary hopper access remains physical inventory access.
+Inspect with an empty offhand to see rate/filter mode/rule count. You need Edit/
+Deploy and the relevant active Import grants. New controls have headless native
+evidence, with actual client help/interaction checks pending. Multiple rules,
+export/stock and the complete settings screen remain unfinished.

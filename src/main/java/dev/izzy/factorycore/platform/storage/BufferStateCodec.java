@@ -46,7 +46,11 @@ final class BufferStateCodec {
     }
     root.put("Buffers", records);
     if (!deployments.isEmpty()) {
-      root.putInt("Schema", 2);
+      boolean policies =
+          deployments.stream()
+              .anyMatch(
+                  d -> !d.policy().equals(dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT));
+      root.putInt("Schema", policies ? 3 : 2);
       var encoded = new ListTag();
       for (var deployment : deployments) {
         var entry = new CompoundTag();
@@ -57,6 +61,7 @@ final class BufferStateCodec {
         entry.putUUID("Network", deployment.network());
         entry.putUUID("Segment", deployment.segment());
         entry.putString("Mode", deployment.mode().name());
+        if (policies) entry.put("Policy", BufferPolicyCodec.encode(deployment.policy()));
         encoded.add(entry);
       }
       root.put("Deployments", encoded);
@@ -67,11 +72,11 @@ final class BufferStateCodec {
   static List<ItemBuffer.State> decode(CompoundTag root) {
     NetworkStateCodec.fields(
         root,
-        root.getInt("Schema") == 2
+        root.getInt("Schema") >= 2
             ? Set.of("Schema", "Buffers", "Deployments")
             : Set.of("Schema", "Buffers"));
     if (!root.contains("Schema", Tag.TAG_INT)
-        || (root.getInt("Schema") != 1 && root.getInt("Schema") != 2)
+        || (root.getInt("Schema") < 1 || root.getInt("Schema") > 3)
         || !root.contains("Buffers", Tag.TAG_LIST))
       throw new IllegalArgumentException("Unsupported buffer schema");
     var records = root.getList("Buffers", Tag.TAG_COMPOUND);
@@ -118,13 +123,16 @@ final class BufferStateCodec {
         throw new IllegalArgumentException("Buffer metadata byte limit");
       states.add(state);
     }
-    deployments(root);
+    long policyBytes = deployments(root).stream().mapToLong(d -> d.policy().bytes()).sum();
+    if (bytes > BufferRegistry.MAX_BYTES - policyBytes)
+      throw new IllegalArgumentException("Combined buffer metadata limit");
     return List.copyOf(states);
   }
 
   static List<BufferRegistry.Deployment> deployments(CompoundTag root) {
     if (root.getInt("Schema") == 1) return List.of();
-    if (root.getInt("Schema") != 2 || !root.contains("Deployments", Tag.TAG_LIST))
+    if ((root.getInt("Schema") != 2 && root.getInt("Schema") != 3)
+        || !root.contains("Deployments", Tag.TAG_LIST))
       throw new IllegalArgumentException("Unsupported buffer deployments");
     var entries = root.getList("Deployments", Tag.TAG_COMPOUND);
     if (entries.size() != ((ListTag) root.get("Deployments")).size()
@@ -132,12 +140,29 @@ final class BufferStateCodec {
       throw new IllegalArgumentException("Invalid deployment list");
     var result = new ArrayList<BufferRegistry.Deployment>();
     var owners = new java.util.HashSet<UUID>();
+    long policyBytes = 0;
     for (int index = 0; index < entries.size(); index++) {
       var entry = entries.getCompound(index);
       NetworkStateCodec.fields(
           entry,
-          Set.of(
-              "Backing", "Revision", "LeaseGeneration", "Principal", "Network", "Segment", "Mode"));
+          root.getInt("Schema") == 3
+              ? Set.of(
+                  "Backing",
+                  "Revision",
+                  "LeaseGeneration",
+                  "Principal",
+                  "Network",
+                  "Segment",
+                  "Mode",
+                  "Policy")
+              : Set.of(
+                  "Backing",
+                  "Revision",
+                  "LeaseGeneration",
+                  "Principal",
+                  "Network",
+                  "Segment",
+                  "Mode"));
       for (var field : new String[] {"Backing", "Principal", "Network", "Segment"})
         if (!entry.hasUUID(field))
           throw new IllegalArgumentException("Malformed deployment identity");
@@ -146,6 +171,15 @@ final class BufferStateCodec {
           || !entry.contains("Mode", Tag.TAG_STRING)
           || !owners.add(entry.getUUID("Backing")))
         throw new IllegalArgumentException("Malformed/duplicate deployment");
+      var policy = dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT;
+      if (root.getInt("Schema") == 3) {
+        if (!entry.contains("Policy", Tag.TAG_COMPOUND))
+          throw new IllegalArgumentException("Missing buffer policy");
+        policy = BufferPolicyCodec.decode(entry.getCompound("Policy"));
+      }
+      policyBytes += policy.bytes();
+      if (policyBytes > BufferRegistry.MAX_BYTES)
+        throw new IllegalArgumentException("Buffer policy metadata limit");
       result.add(
           new BufferRegistry.Deployment(
               entry.getUUID("Backing"),
@@ -154,7 +188,8 @@ final class BufferStateCodec {
               entry.getUUID("Principal"),
               entry.getUUID("Network"),
               entry.getUUID("Segment"),
-              BufferRegistry.Mode.valueOf(entry.getString("Mode"))));
+              BufferRegistry.Mode.valueOf(entry.getString("Mode")),
+              policy));
     }
     return List.copyOf(result);
   }

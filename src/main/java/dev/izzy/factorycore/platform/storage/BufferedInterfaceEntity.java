@@ -112,6 +112,20 @@ public final class BufferedInterfaceEntity extends BlockEntity {
   public BufferRegistry.Deployment configure(
       NetworkPermissions.Actor actor, BufferRegistry.Mode mode) {
     validatePlaced();
+    var previous = authority().buffers().deployment(state.lease().id());
+    return configure(
+        actor,
+        mode,
+        previous == null
+            ? dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT
+            : previous.policy());
+  }
+
+  public BufferRegistry.Deployment configure(
+      NetworkPermissions.Actor actor,
+      BufferRegistry.Mode mode,
+      dev.izzy.factorycore.core.storage.BufferPolicy policy) {
+    validatePlaced();
     var networks = WorldNetworks.get(serverLevel().getServer());
     var member = networks.membership(position());
     if (member.status() != NetworkTopology.Status.VALID)
@@ -141,7 +155,8 @@ public final class BufferedInterfaceEntity extends BlockEntity {
                 actor.id(),
                 member.scope().network(),
                 member.scope().segment(),
-                mode);
+                mode,
+                policy);
     authority().transfers().unbindBacking(state.lease().id());
     state = new BufferData.State(state.lease(), state.principal(), deployment.revision());
     write();

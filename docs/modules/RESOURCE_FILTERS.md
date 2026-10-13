@@ -1,11 +1,12 @@
 # Resource selectors and stock-goal planning
 
 P3 prerequisite implementation, not a deployed preset or player settings screen.
-The existing physical buffer still supports unfiltered Import/Paused only. These
+The physical buffer now consumes these selectors in guarded Import/Paused policy;
+[canonical integration](BUFFERED_INTERFACES.md) records save/rate/player controls. These
 shared components are intended for export/stock controls and later SDK/crafting
-frontends; persistence, authenticated editing and scheduled preset consumption
-remain the next integration work. No saved schema or gameplay behavior changes
-in this checkpoint.
+frontends; export/stock and full multi-rule settings remain dependent integration work.
+The original selector/planner checkpoint introduced no schema change; later
+buffer integration uses nested buffers-v3 under world schema ten.
 
 ## Immutable filter contract
 

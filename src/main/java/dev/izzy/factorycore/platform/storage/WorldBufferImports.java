@@ -97,6 +97,20 @@ public final class WorldBufferImports {
         entry != null && entry.owner == owner && (entry.request != null || entry.scheduled));
   }
 
+  /** Native tag rebinding is complete; metadata-only wake of at most 256 loaded holders. */
+  public void tagsReloaded() {
+    checkThread();
+    for (var backing : entries.keySet()) wake(backing);
+  }
+
+  private boolean matches(
+      BufferRegistry.Deployment deployment, dev.izzy.factorycore.core.resource.ResourceKey key) {
+    return deployment
+        .policy()
+        .filter()
+        .matches(key, new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server));
+  }
+
   private void wake(UUID backing) {
     var entry = entries.get(backing);
     if (entry == null) return;
@@ -219,6 +233,10 @@ public final class WorldBufferImports {
         retry(entry, OperationResult.Reason.RESERVED);
         return;
       }
+      if (!matches(deployment, unresolved.transfer().key())) {
+        retry(entry, OperationResult.Reason.DENIED);
+        return;
+      }
       entry.request = unresolved.id();
       entry.progress = true;
       var admission =
@@ -230,7 +248,9 @@ public final class WorldBufferImports {
                   false,
                   result ->
                       finish(entry, unresolved.id(), result, unresolved.transfer().delivered()),
-                  () -> validate(entry, deployment) == OperationResult.Reason.OK);
+                  () ->
+                      validate(entry, deployment) == OperationResult.Reason.OK
+                          && matches(deployment, unresolved.transfer().key()));
       admitted(entry, admission);
       return;
     }
@@ -238,7 +258,7 @@ public final class WorldBufferImports {
     for (int offset = 0; offset < ItemBuffer.SLOTS; offset++) {
       int index = (entry.slot + offset) % ItemBuffer.SLOTS;
       var slot = inventory.slot(index);
-      if (slot.key() == null) continue;
+      if (slot.key() == null || !matches(deployment, slot.key())) continue;
       entry.slot = (index + 1) % ItemBuffer.SLOTS;
       var id = UUID.randomUUID();
       entry.request = id;
@@ -253,10 +273,12 @@ public final class WorldBufferImports {
                   entry.owner.position(),
                   new WorldStorageTransfers.Buffered(entry.owner.handle(), deployment.revision()),
                   slot.key(),
-                  Math.min(64, inventory.total(slot.key())),
+                  Math.min(deployment.policy().rate(), inventory.total(slot.key())),
                   WorldStorageRoutes.Direction.TO_STORAGE,
                   result -> finish(entry, id, result.move(), 0),
-                  () -> validate(entry, deployment) == OperationResult.Reason.OK,
+                  () ->
+                      validate(entry, deployment) == OperationResult.Reason.OK
+                          && matches(deployment, slot.key()),
                   () -> saved.transfers().unresolved(entry.backing) == null);
       admitted(entry, admission);
       return;

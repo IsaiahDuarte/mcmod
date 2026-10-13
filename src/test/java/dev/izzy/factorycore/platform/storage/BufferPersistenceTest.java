@@ -253,11 +253,67 @@ class BufferPersistenceTest {
       if (mode == 4) entry.putUUID("Segment", new UUID(0, 999));
       if (mode == 5) list.add(entry.copy());
       if (mode == 6) entry.putString("Mode", "FUTURE");
-      if (mode == 7) table.putInt("Schema", 3);
+      if (mode == 7) table.putInt("Schema", 4);
       if (mode == 8) entry.putInt("Revision", 2);
       var rejected = DeviceSavedData.load(invalid, registries);
       assertThrows(IllegalStateException.class, rejected::buffers);
       assertEquals(invalid, rejected.save(new CompoundTag(), registries));
+    }
+  }
+
+  @Test
+  void canonicalPolicyThreeDiskReloadAndInvalidPolicyPreserveOwnedTables() throws Exception {
+    var original = fixture("registry-v8");
+    var saved = DeviceSavedData.load(original, registries);
+    var handle =
+        new NodeRegistry.Handle(
+            saved.registry().world(), new UUID(0, 601), 3, NodeRegistry.Kind.BUFFERED_INTERFACE);
+    var owner = new Object();
+    saved.buffers().bind(handle, saved.nodes().definition(handle).position(), owner);
+    var policy =
+        new dev.izzy.factorycore.core.storage.BufferPolicy(
+            new dev.izzy.factorycore.core.resource.ResourceFilter(
+                dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+                dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE,
+                java.util.List.of(
+                    new dev.izzy.factorycore.core.resource.ResourceFilter.Tag("minecraft:logs"))),
+            8);
+    var deployment =
+        saved
+            .buffers()
+            .configure(
+                handle,
+                owner,
+                1,
+                new UUID(0, 9),
+                new UUID(0, 101),
+                new UUID(0, 102),
+                BufferRegistry.Mode.IMPORT,
+                policy);
+    var encoded = saved.save(new CompoundTag(), registries);
+    assertEquals(10, encoded.getInt("Schema"));
+    assertEquals(3, encoded.getCompound("Buffers").getInt("Schema"));
+    var path = directory.resolve("canonical-policy.dat");
+    NbtIo.writeCompressed(encoded, path);
+    var restored =
+        DeviceSavedData.load(NbtIo.readCompressed(path, NbtAccounter.unlimitedHeap()), registries);
+    assertEquals("", restored.diagnostic());
+    assertEquals(deployment, restored.buffers().deployment(handle.id()));
+    assertEquals(saved.buffers().snapshot(), restored.buffers().snapshot());
+    assertEquals(saved.buffers().bytes(), restored.buffers().bytes());
+    assertFalse(restored.buffers().usable(handle, owner));
+    for (int mode = 0; mode < 4; mode++) {
+      var bad = encoded.copy();
+      var table = bad.getCompound("Buffers");
+      var entry = table.getList("Deployments", Tag.TAG_COMPOUND).getCompound(0);
+      if (mode == 0) entry.getCompound("Policy").putInt("Schema", 2);
+      if (mode == 1) entry.getCompound("Policy").putInt("Rate", 0);
+      if (mode == 2) entry.getCompound("Policy").putString("Mode", "UNKNOWN");
+      if (mode == 3) entry.remove("Policy");
+      var rejected = DeviceSavedData.load(bad, registries);
+      assertFalse(rejected.diagnostic().isEmpty());
+      assertEquals(bad, rejected.save(new CompoundTag(), registries));
+      assertFalse(rejected.isDirty());
     }
   }
 }

@@ -210,4 +210,100 @@ class BufferRegistryTest {
         IllegalArgumentException.class,
         () -> new BufferRegistry(nodes, buffers.snapshot(), List.of(future), () -> {}));
   }
+
+  @Test
+  void policiesShareMetadataAdmissionRetainAcrossPauseAndReclaimOnClear() {
+    var nodes = new NodeRegistry(WORLD, List.of(), () -> {});
+    var buffers = new BufferRegistry(nodes, List.of(), () -> {});
+    var handle = create(nodes, buffers, 1);
+    var owner = new Object();
+    buffers.bind(handle, position(1), owner);
+    var actor = new UUID(0, 9);
+    var root = new UUID(0, 10);
+    var filter =
+        new dev.izzy.factorycore.core.resource.ResourceFilter(
+            dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+            dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE,
+            List.of(
+                new dev.izzy.factorycore.core.resource.ResourceFilter.Exact(
+                    new dev.izzy.factorycore.core.resource.ResourceKey(
+                        dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+                        "test:sample",
+                        new byte[60000]))));
+    var policy = new BufferPolicy(filter, 16);
+    long before = buffers.bytes();
+    var deployed =
+        buffers.configure(handle, owner, 1, actor, root, root, BufferRegistry.Mode.IMPORT, policy);
+    assertEquals(before + policy.bytes(), buffers.bytes());
+    var paused =
+        buffers.configure(
+            handle, owner, deployed.revision(), actor, root, root, BufferRegistry.Mode.PAUSED);
+    assertEquals(policy, paused.policy());
+    assertEquals(before + policy.bytes(), buffers.bytes());
+    var restored =
+        new BufferRegistry(
+            new NodeRegistry(WORLD, nodes.snapshot(), () -> {}),
+            buffers.snapshot(),
+            buffers.deployments(),
+            () -> {});
+    assertEquals(buffers.bytes(), restored.bytes());
+    assertEquals(paused, restored.deployment(handle.id()));
+    assertFalse(restored.usable(handle, owner));
+    buffers.configure(
+        handle,
+        owner,
+        paused.revision(),
+        actor,
+        root,
+        root,
+        BufferRegistry.Mode.PAUSED,
+        BufferPolicy.DEFAULT);
+    assertEquals(before, buffers.bytes());
+  }
+
+  @Test
+  void policyQuotaFailureDoesNotReplaceAuthorityOrAdvanceRevision() {
+    var nodes = new NodeRegistry(WORLD, List.of(), () -> {});
+    int[] dirty = {0};
+    var buffers = new BufferRegistry(nodes, List.of(), () -> dirty[0]++);
+    var key =
+        new dev.izzy.factorycore.core.resource.ResourceKey(
+            dev.izzy.factorycore.core.resource.ResourceKind.ITEM, "test:large", new byte[65536]);
+    var policy =
+        new BufferPolicy(
+            new dev.izzy.factorycore.core.resource.ResourceFilter(
+                dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+                dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE,
+                java.util.Collections.nCopies(
+                    3, new dev.izzy.factorycore.core.resource.ResourceFilter.Exact(key))),
+            8);
+    var actor = new UUID(0, 9);
+    var root = new UUID(0, 10);
+    boolean rejected = false;
+    for (int i = 1; i < BufferRegistry.MAX_BUFFERS; i++) {
+      var handle = create(nodes, buffers, i);
+      var owner = new Object();
+      buffers.bind(handle, position(i), owner);
+      long before = buffers.bytes();
+      int changes = dirty[0];
+      try {
+        buffers.configure(handle, owner, 1, actor, root, root, BufferRegistry.Mode.IMPORT, policy);
+      } catch (IllegalStateException full) {
+        assertEquals(before, buffers.bytes());
+        assertEquals(changes, dirty[0]);
+        assertNull(buffers.deployment(handle.id()));
+        rejected = true;
+        break;
+      }
+    }
+    assertTrue(rejected);
+    assertTrue(buffers.bytes() <= BufferRegistry.MAX_BYTES);
+    var restored =
+        new BufferRegistry(
+            new NodeRegistry(WORLD, nodes.snapshot(), () -> {}),
+            buffers.snapshot(),
+            buffers.deployments(),
+            () -> {});
+    assertEquals(buffers.bytes(), restored.bytes());
+  }
 }

@@ -29,13 +29,34 @@ public final class BufferRegistry {
       UUID principal,
       UUID network,
       UUID segment,
-      Mode mode) {
+      Mode mode,
+      BufferPolicy policy) {
+    public Deployment(
+        UUID backing,
+        long revision,
+        long leaseGeneration,
+        UUID principal,
+        UUID network,
+        UUID segment,
+        Mode mode) {
+      this(
+          backing,
+          revision,
+          leaseGeneration,
+          principal,
+          network,
+          segment,
+          mode,
+          BufferPolicy.DEFAULT);
+    }
+
     public Deployment {
       Objects.requireNonNull(backing);
       Objects.requireNonNull(principal);
       Objects.requireNonNull(network);
       Objects.requireNonNull(segment);
       Objects.requireNonNull(mode);
+      Objects.requireNonNull(policy);
       if (revision <= 0 || leaseGeneration <= 0)
         throw new IllegalArgumentException("Invalid buffer deployment generation");
     }
@@ -91,11 +112,15 @@ public final class BufferRegistry {
       throw new IllegalArgumentException("Buffer lease has no owned inventory");
     var generations = new HashMap<UUID, Long>();
     for (var node : nodes.snapshot()) generations.put(node.id(), node.generation());
-    for (var deployment : restoredDeployments)
+    for (var deployment : restoredDeployments) {
       if (!buffers.containsKey(deployment.backing())
           || generations.getOrDefault(deployment.backing(), 0L) < deployment.leaseGeneration()
           || deployments.putIfAbsent(deployment.backing(), deployment) != null)
         throw new IllegalArgumentException("Deployment has no unique buffer owner");
+      if (bytes > MAX_BYTES - deployment.policy().bytes())
+        throw new IllegalArgumentException("Buffer policy metadata limit");
+      bytes += deployment.policy().bytes();
+    }
   }
 
   public void stackLimit(ToIntFunction<ResourceKey> resolver) {
@@ -184,15 +209,42 @@ public final class BufferRegistry {
       UUID segment,
       Mode mode) {
     checkThread();
+    var previous = deployments.get(handle.id());
+    return configure(
+        handle,
+        owner,
+        referenceRevision,
+        principal,
+        network,
+        segment,
+        mode,
+        previous == null ? BufferPolicy.DEFAULT : previous.policy());
+  }
+
+  public Deployment configure(
+      NodeRegistry.Handle handle,
+      Object owner,
+      long referenceRevision,
+      UUID principal,
+      UUID network,
+      UUID segment,
+      Mode mode,
+      BufferPolicy policy) {
+    checkThread();
     if (!usable(handle, owner)) throw new IllegalStateException("Buffer is not currently bound");
     if (referenceRevision <= 0) throw new IllegalArgumentException("Invalid reference revision");
     var previous = deployments.get(handle.id());
+    java.util.Objects.requireNonNull(policy);
+    long oldCharge = previous == null ? 0 : previous.policy().bytes();
+    long delta = policy.bytes() - oldCharge;
+    if (delta > MAX_BYTES - bytes) throw new IllegalStateException("Buffer policy metadata limit");
     long revision =
         Math.incrementExact(
             Math.max(referenceRevision, previous == null ? 0 : previous.revision()));
     var deployment =
         new Deployment(
-            handle.id(), revision, handle.generation(), principal, network, segment, mode);
+            handle.id(), revision, handle.generation(), principal, network, segment, mode, policy);
+    bytes += delta;
     deployments.put(handle.id(), deployment);
     changed.run();
     activity.accept(handle.id());
