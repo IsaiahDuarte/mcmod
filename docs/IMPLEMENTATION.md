@@ -2035,3 +2035,36 @@ review moved cursor revision cleanup into the common mode step so switching to
 Import cannot retain an old export cursor. No checks were disabled; byte fixtures/
 conservation assertions remain. `git diff --check` and doc/acceptance/link checks
 passed. New-control client, full editor and the listed release checks stay open.
+
+
+## Buffer settings and inventory menu checkpoint — 2026-10-13
+
+P3/A01/A03/A04/A12 partial evidence: normal authenticated nearby empty-hand use
+opens native Settings/Inventory tabs. Server-owned drafts configure mode,
+ALL/INCLUDE/EXCLUDE, sixteen registry/tag/exact rules, rate1–64 and goal0–576;
+Apply uses canonical deployment, Reset discards, external configuration changes
+invalidate stale edits. Exact samples do not consume items. Inventory Take1/Take64,
+shift-deposit payloads and known staging Return use guarded shared transfer paths.
+Opening nonce, captured lease/scope, current physical VIEW, edit/deploy checks,
+bounded projections, selection revisions and menu-close cancellation are enforced.
+No persistence schema change was needed.
+
+Four BufferSettingsGameTests exercise actual physical menu opening, draft/apply/
+reset/external invalidation, wrong nonce, ghost sample conservation, stale empty
+selection, scheduled exact round trip and out-of-range apply/closure. Three
+BufferSettingsPacketsTest cases cover real bounded codecs, detached SHA256
+selection digests and oversized/malformed inputs. The native screen and translated
+help are implemented; no actual settings-screen client run is claimed.
+
+Verification: `./gradlew spotlessApply build --console=plain` passed (35s;
+12 executed/14 up-to-date tasks;199 JVM and165 GameTests before the final range
+regression). `python3 scripts/verify.py` then passed with24 tooling tests and cached
+JVM/static/Rust tasks. Final `python3 scripts/verify.py` passed (20s Gradle;5 executed/20 up-to-date tasks),
+with24 tooling tests,199 cached JVM tests and166 freshly executed required GameTests.
+Formatting/static checks passed; Rust guest checks were up-to-date. No test expectations, limits or verification gates were weakened.
+
+Next: actual buffer Settings/Inventory client interactions at supported GUI scales,
+including rule paging, ghost samples and shift gestures; then remaining machine
+interface bindings/labels and P3 integration. P1/P2/P3 and full A01–A17 remain
+partial; crafting, programming, power/wireless progression, finished assets/
+onboarding and P7 verification remain required.

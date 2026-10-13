@@ -2,7 +2,7 @@
 
 P3 prerequisite component: `ItemBuffer` and `BufferedItemHandler` implement the
 selected nine-slot owned inventory and its NeoForge automation view. The canonical world table/structural lease now exists. The physical block and hopper inventory path are implemented with headless world
-evidence. Automatic filtered Import/Export/Stock and Paused controls are implemented; full settings/inventory screens remain missing;
+evidence. Automatic filtered Import/Export/Stock and Paused controls are implemented; native settings/inventory screens are implemented with headless authority evidence; actual client interaction remains pending;
 the hopper-to-storage-to-terminal loop is not yet A01.
 See [ownership decision](../decisions/0014-buffered-inventory.md).
 
@@ -416,6 +416,41 @@ live deficit caps, saved known inbound without re-extracting refill, queued paus
 zero-goal behavior and competing goals with reserved supply. Policy codec and
 canonical persistence tests add policy-v2/table-v4 compressed round trips and
 strict old/new unions/future raw preservation. Native compass/chest tests extend
-the real authenticated control case. The complete multi-rule settings screen,
-actual new-control client interactions, external provider/version restart/chunks,
+the real authenticated control case. Actual multi-rule settings/client interactions, external provider/version restart/chunks,
 independent saves, multiplayer and representative performance remain required.
+
+
+## Authenticated settings and inventory menu
+
+Normal empty-hand use with an empty offhand opens a two-tab native menu for an
+actual authenticated nearby player with VIEW permission. Existing offhand tools
+remain shortcuts. Each opening captures an opaque nonce, structural lease and
+full segment scope. Closing, moving out of range, losing VIEW or changing that
+scope invalidates the menu; passive native initialization never closes the prior
+inventory menu.
+
+Settings edits are server-owned drafts: mode, ALL/INCLUDE/EXCLUDE, up to sixteen
+registry/tag/exact rules, network rate1–64 items/tick and Stock goal0–576 items.
+EDIT and DEPLOY are checked per edit; Apply uses the canonical configure path
+and its additional active-mode permissions. Reset discards the draft. External
+configuration changes invalidate the draft before publication. Exact sampling
+hashes the server's actual own-inventory stack and copies its identity without
+consuming it. Invalid input or metadata admission leaves canonical state intact.
+
+The inventory tab projects nine bounded display rows, not virtual container
+stacks. Take1/Take64 and own-inventory shift deposits use shared guarded scheduled
+BUFFER/PLAYER transfers, current authority and exact server selections. Only one
+operation is admitted per menu; unresolved ownership blocks fresh moves. Return
+can progress known original-owner staging, never extract again. Close cancels
+queued work while preserving owned staging. Ordinary own-inventory cursor moves
+remain vanilla. Client commands carry menu/session/revision, bounded fields and
+a32-byte identity digest; they carry no root, principal or resource components.
+Rules and display names are bounded to128/96 characters. Inventory changes
+advance the displayed selection revision. Polling is at most once per five ticks,
+commands at most once per two ticks.
+
+Four native settings GameTests cover draft/apply/reset/external invalidation,
+nonce rejection/non-consuming samples/stale empty selections and conserved
+scheduled withdrawal/deposit and out-of-range apply/closure. Three packet tests cover bounded round trips,
+detached digests and malformed/oversized inputs. Compilation/headless evidence
+is not graphical, multiplayer or restart evidence; those checks remain open.

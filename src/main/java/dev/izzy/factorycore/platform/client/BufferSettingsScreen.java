@@ -1,0 +1,472 @@
+package dev.izzy.factorycore.platform.client;
+
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.storage.*;
+import java.util.*;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.*;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.lwjgl.glfw.GLFW;
+
+/**
+ * Two compact native tabs; ghost samples never become container stacks or mutate held inventory.
+ */
+public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSettingsMenu> {
+  private EditBox id, rate, target;
+  private Button mode,
+      filter,
+      apply,
+      reset,
+      addId,
+      addTag,
+      setRate,
+      setTarget,
+      previous,
+      next,
+      remove,
+      clear,
+      takeOne,
+      takeStack,
+      returning,
+      exact;
+  private int rulePage, selectedRule, selectedSlot;
+  private boolean sample;
+  private long shown;
+
+  public BufferSettingsScreen(BufferSettingsMenu menu, Inventory inventory, Component title) {
+    super(menu, inventory, title);
+    imageWidth = 320;
+    imageHeight = 232;
+    inventoryLabelX = 79;
+    inventoryLabelY = 91;
+  }
+
+  @Override
+  protected void init() {
+    String value = id == null ? "" : id.getValue();
+    super.init();
+    button(
+        "settings",
+        174,
+        5,
+        65,
+        () -> {
+          menu.inventoryTab(false);
+          sample = false;
+          sync();
+        });
+    button(
+        "inventory",
+        243,
+        5,
+        67,
+        () -> {
+          menu.inventoryTab(true);
+          sync();
+        });
+    mode =
+        button("mode", 10, 23, 78, () -> send(BufferSettingsPackets.MODE, 0, 0, "", new byte[32]));
+    filter =
+        button(
+            "filter",
+            92,
+            23,
+            110,
+            () -> send(BufferSettingsPackets.FILTER, 0, 0, "", new byte[32]));
+    apply =
+        button(
+            "apply", 206, 23, 48, () -> send(BufferSettingsPackets.APPLY, 0, 0, "", new byte[32]));
+    reset =
+        button(
+            "reset", 258, 23, 52, () -> send(BufferSettingsPackets.RESET, 0, 0, "", new byte[32]));
+    rate = box(36, 48, 35, "rate", 2);
+    target = box(155, 48, 45, "target", 3);
+    setRate = button("set", 75, 47, 35, () -> number(rate, BufferSettingsPackets.RATE));
+    setTarget = button("set", 204, 47, 36, () -> number(target, BufferSettingsPackets.TARGET));
+    id = box(10, 73, 196, "id", 256);
+    id.setValue(value);
+    addId =
+        button(
+            "id",
+            210,
+            72,
+            48,
+            () -> send(BufferSettingsPackets.REGISTRY, 0, 0, id.getValue(), new byte[32]));
+    addTag =
+        button(
+            "tag",
+            262,
+            72,
+            48,
+            () -> send(BufferSettingsPackets.TAG, 0, 0, id.getValue(), new byte[32]));
+    previous =
+        button(
+            "previous",
+            10,
+            170,
+            52,
+            () -> {
+              rulePage = Math.max(0, rulePage - 1);
+              sync();
+            });
+    next =
+        button(
+            "next",
+            66,
+            170,
+            52,
+            () -> {
+              rulePage++;
+              sync();
+            });
+    remove =
+        button(
+            "remove",
+            202,
+            170,
+            52,
+            () -> send(BufferSettingsPackets.REMOVE, selectedRule, 0, "", new byte[32]));
+    clear =
+        button(
+            "clear", 258, 170, 52, () -> send(BufferSettingsPackets.CLEAR, 0, 0, "", new byte[32]));
+    exact =
+        button(
+            "sample",
+            245,
+            47,
+            65,
+            () -> {
+              menu.inventoryTab(true);
+              sample = true;
+              sync();
+            });
+    takeOne =
+        button(
+            "take_one",
+            10,
+            186,
+            72,
+            () -> send(BufferSettingsPackets.TAKE, selectedSlot, 1, "", new byte[32]));
+    takeStack =
+        button(
+            "take_stack",
+            86,
+            186,
+            72,
+            () -> send(BufferSettingsPackets.TAKE, selectedSlot, 64, "", new byte[32]));
+    returning =
+        button(
+            "return",
+            162,
+            186,
+            72,
+            () -> send(BufferSettingsPackets.RETURN, 0, 0, "", new byte[32]));
+    sync();
+  }
+
+  private EditBox box(int x, int y, int width, String label, int limit) {
+    var box =
+        addRenderableWidget(
+            new EditBox(
+                font,
+                leftPos + x,
+                topPos + y,
+                width,
+                16,
+                Component.translatable("gui.factorycore.buffer." + label)));
+    box.setMaxLength(limit);
+    return box;
+  }
+
+  private Button button(String key, int x, int y, int width, Runnable action) {
+    return addRenderableWidget(
+        Button.builder(Component.translatable("gui.factorycore.buffer." + key), b -> action.run())
+            .bounds(leftPos + x, topPos + y, width, 18)
+            .tooltip(
+                Tooltip.create(Component.translatable("gui.factorycore.buffer." + key + ".help")))
+            .build());
+  }
+
+  private void number(EditBox box, int action) {
+    try {
+      int value = Integer.parseInt(box.getValue());
+      if (value < 0 || value > 576) throw new NumberFormatException();
+      send(action, 0, value, "", new byte[32]);
+    } catch (NumberFormatException invalid) {
+      minecraft.player.displayClientMessage(
+          Component.translatable("gui.factorycore.buffer.status.invalid"), true);
+    }
+  }
+
+  private void send(int action, int selection, int value, String text, byte[] fingerprint) {
+    PacketDistributor.sendToServer(
+        new BufferSettingsPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.view().revision(),
+            action,
+            selection,
+            value,
+            text,
+            fingerprint));
+  }
+
+  @Override
+  protected void containerTick() {
+    super.containerTick();
+    sync();
+  }
+
+  private void sync() {
+    var view = menu.view();
+    boolean inventory = menu.inventoryTab();
+    mode.setMessage(
+        Component.translatable(
+            "status.factorycore.buffer_mode." + view.mode().toLowerCase(Locale.ROOT)));
+    filter.setMessage(
+        Component.translatable(
+            "status.factorycore.buffer_filter." + view.filter().toLowerCase(Locale.ROOT)));
+    mode.active = view.editable() && !view.busy();
+    filter.active = mode.active;
+    apply.active = mode.active && view.dirty();
+    reset.active = mode.active && view.dirty();
+    for (var widget :
+        List.of(
+            rate, target, id, setRate, setTarget, addId, addTag, previous, next, remove, clear)) {
+      widget.visible = !inventory;
+      widget.active = view.editable() && !view.busy();
+    }
+    rulePage = Math.min(rulePage, Math.max(0, (view.rules().size() - 1) / 6));
+    previous.active = !inventory && rulePage > 0;
+    next.active = !inventory && (rulePage + 1) * 6 < view.rules().size();
+    remove.active =
+        !inventory && view.editable() && !view.busy() && selectedRule < view.rules().size();
+    takeOne.visible = inventory;
+    takeStack.visible = inventory;
+    returning.visible = inventory;
+    exact.visible = true;
+    boolean selected =
+        selectedSlot < view.slots().size() && view.slots().get(selectedSlot).count() > 0;
+    takeOne.active = inventory && !view.busy() && selected;
+    takeStack.active = takeOne.active;
+    returning.active =
+        inventory && !view.busy() && view.staged() > 0 && !view.status().equals("uncertain");
+    exact.active = view.editable() && !view.busy();
+    if (shown != view.revision()) {
+      if (!rate.isFocused()) rate.setValue(Integer.toString(view.rate()));
+      if (!target.isFocused()) target.setValue(Integer.toString(view.target()));
+      shown = view.revision();
+    }
+  }
+
+  @Override
+  protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
+    graphics.fill(leftPos, topPos, leftPos + 320, topPos + 232, 0xff282c30);
+    graphics.fill(leftPos + 4, topPos + 4, leftPos + 316, topPos + 228, 0xff44484d);
+    if (menu.inventoryTab()) {
+      for (var slot : menu.slots) {
+        graphics.fill(
+            leftPos + slot.x - 1,
+            topPos + slot.y - 1,
+            leftPos + slot.x + 17,
+            topPos + slot.y + 17,
+            0xff151b20);
+        graphics.fill(
+            leftPos + slot.x,
+            topPos + slot.y,
+            leftPos + slot.x + 16,
+            topPos + slot.y + 16,
+            0xff59626b);
+        graphics.fill(
+            leftPos + slot.x + 1,
+            topPos + slot.y + 1,
+            leftPos + slot.x + 15,
+            topPos + slot.y + 15,
+            0xff30373e);
+      }
+      for (var row : menu.view().slots()) {
+        int x = leftPos + 79 + row.slot() * 18;
+        graphics.fill(
+            x - 1,
+            topPos + 52,
+            x + 17,
+            topPos + 71,
+            row.slot() == selectedSlot ? 0xffbb8659 : 0xff20262c);
+        if (row.count() > 0) {
+          var id = ResourceLocation.tryParse(row.icon());
+          var item =
+              id == null || !BuiltInRegistries.ITEM.containsKey(id)
+                  ? Items.BARRIER
+                  : BuiltInRegistries.ITEM.get(id);
+          graphics.renderItem(item.getDefaultInstance(), x, topPos + 53);
+          graphics.renderItemDecorations(
+              font, item.getDefaultInstance(), x, topPos + 53, Integer.toString(row.count()));
+        }
+      }
+    } else {
+      graphics.fill(leftPos + 10, topPos + 96, leftPos + 310, topPos + 167, 0xff171d22);
+      for (int i = 0; i < 6; i++) {
+        int index = rulePage * 6 + i;
+        if (index >= menu.view().rules().size()) break;
+        if (index == selectedRule)
+          graphics.fill(
+              leftPos + 10, topPos + 97 + i * 11, leftPos + 310, topPos + 108 + i * 11, 0xff77583b);
+        graphics.drawString(
+            font,
+            font.plainSubstrByWidth(menu.view().rules().get(index), 294),
+            leftPos + 13,
+            topPos + 98 + i * 11,
+            0xffffff,
+            false);
+      }
+    }
+  }
+
+  @Override
+  protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
+    graphics.drawString(font, title, 8, 8, 0xffffff, false);
+    var view = menu.view();
+    if (menu.inventoryTab()) {
+      graphics.drawString(
+          font, Component.translatable("gui.factorycore.buffer.contents"), 10, 47, 0xffffff, false);
+      graphics.drawString(font, playerInventoryTitle, 79, 91, 0xffffff, false);
+      graphics.drawString(
+          font,
+          Component.translatable(
+              sample
+                  ? "gui.factorycore.buffer.sample.help"
+                  : "gui.factorycore.buffer.deposit.help"),
+          10,
+          207,
+          0xe4bc83,
+          false);
+    } else {
+      graphics.drawString(
+          font, Component.translatable("gui.factorycore.buffer.rate"), 10, 52, 0xffffff, false);
+      graphics.drawString(
+          font, Component.translatable("gui.factorycore.buffer.target"), 118, 52, 0xffffff, false);
+      graphics.drawString(
+          font,
+          Component.translatable(
+              "gui.factorycore.buffer.page",
+              rulePage + 1,
+              Math.max(1, (view.rules().size() + 5) / 6)),
+          124,
+          175,
+          0xffffff,
+          false);
+      graphics.drawString(
+          font,
+          Component.translatable(
+              view.dirty() ? "gui.factorycore.buffer.draft" : "gui.factorycore.buffer.saved"),
+          10,
+          205,
+          0xe4bc83,
+          false);
+    }
+    graphics.drawString(
+        font,
+        font.plainSubstrByWidth(
+            Component.translatable("gui.factorycore.buffer.status." + view.status()).getString(),
+            300),
+        10,
+        219,
+        0xc9dbed,
+        false);
+  }
+
+  @Override
+  public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
+    super.render(graphics, mouseX, mouseY, partial);
+    renderTooltip(graphics, mouseX, mouseY);
+    if (!menu.inventoryTab()
+        && mouseX >= leftPos + 10
+        && mouseX < leftPos + 310
+        && mouseY >= topPos + 97
+        && mouseY < topPos + 163) {
+      int index = rulePage * 6 + (mouseY - topPos - 97) / 11;
+      if (index < menu.view().rules().size())
+        graphics.renderTooltip(
+            font, Component.literal(menu.view().rules().get(index)), mouseX, mouseY);
+    }
+  }
+
+  @Override
+  public boolean mouseClicked(double x, double y, int button) {
+    if (button == 0
+        && menu.inventoryTab()
+        && x >= leftPos + 79
+        && x < leftPos + 241
+        && y >= topPos + 52
+        && y < topPos + 72) {
+      selectedSlot = ((int) x - leftPos - 79) / 18;
+      return true;
+    }
+    if (button == 0
+        && !menu.inventoryTab()
+        && x >= leftPos + 10
+        && x < leftPos + 310
+        && y >= topPos + 97
+        && y < topPos + 163) {
+      selectedRule = rulePage * 6 + ((int) y - topPos - 97) / 11;
+      return true;
+    }
+    var slot = getSlotUnderMouse();
+    if (menu.inventoryTab()
+        && button == 0
+        && slot != null
+        && slot.container == minecraft.player.getInventory()
+        && slot.hasItem()
+        && (sample || hasShiftDown())
+        && x >= leftPos + slot.x
+        && x < leftPos + slot.x + 16
+        && y >= topPos + slot.y
+        && y < topPos + slot.y + 16) {
+      try {
+        var key =
+            new PlatformResourceCodec(minecraft.level.registryAccess()).itemKey(slot.getItem());
+        send(
+            sample ? BufferSettingsPackets.EXACT : BufferSettingsPackets.DEPOSIT,
+            slot.getContainerSlot(),
+            sample ? 0 : Math.min(64, slot.getItem().getCount()),
+            "",
+            TerminalPackets.fingerprint(key));
+        if (sample) {
+          sample = false;
+          menu.inventoryTab(false);
+          sync();
+        }
+      } catch (IllegalArgumentException invalid) {
+        minecraft.player.displayClientMessage(
+            Component.translatable("gui.factorycore.buffer.status.unsupported"), true);
+      }
+      return true;
+    }
+    return super.mouseClicked(x, y, button);
+  }
+
+  @Override
+  public boolean keyPressed(int key, int scan, int modifiers) {
+    if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+      if (rate.isFocused()) {
+        number(rate, BufferSettingsPackets.RATE);
+        return true;
+      }
+      if (target.isFocused()) {
+        number(target, BufferSettingsPackets.TARGET);
+        return true;
+      }
+      if (id.isFocused()) {
+        send(BufferSettingsPackets.REGISTRY, 0, 0, id.getValue(), new byte[32]);
+        return true;
+      }
+    }
+    return super.keyPressed(key, scan, modifiers);
+  }
+}

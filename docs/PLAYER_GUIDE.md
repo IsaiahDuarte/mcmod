@@ -292,3 +292,20 @@ still apply. Old staged operations remain under their original owner after edits
 redstone cleanup returns known resources to the recorded source when valid.
 A full settings screen and actual client verification of these controls remain
 pending; the current native controls have headless behavior evidence.
+
+
+## Buffer settings screen
+
+With both hands empty, use a Buffered Interface to open Settings. Choose a mode,
+filter, rate and stock goal; type an item ID or tag and add it, or choose Sample
+and click your item to copy an exact rule without consuming it. Select a rule to
+remove it. Changes stay in a draft until Apply; Reset discards the draft. Up to
+sixteen rules are supported. Rate is network items per tick in each direction;
+Goal is the total matching physical stock, not a reservation.
+
+Inventory shows the nine buffer slots and your inventory. Select a buffer slot
+and Take1 or Take64; shift-click your own stack to deposit. Full destinations and
+Stock goal caps leave unaccepted items owned. Return cleans up known staged items;
+uncertain transfers require administrator recovery. Nearby VIEW access is required;
+settings also require EDIT/DEPLOY and active-mode transfer permissions.
+The screen is implemented, but actual client verification is still pending.

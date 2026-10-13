@@ -141,7 +141,7 @@ are wired into the creative tab and recipe. Original editable JSON uses the same
 Translated inspection reports exact item and occupied-slot counts. Headless recipe,
 hopper and ownership tests passed; actual client appearance/transforms/GUI-scale
 checks remain pending. Import/Paused and owned-cleanup controls now have translated
-tooltips/chat states; basic registry/exact/tag include/exclude and shared rate controls now have translated tooltips/chat with headless native evidence; basic Export/Stock and compass/chest controls now have translated inspection/help and headless evidence; full settings/inventory screens and actual new-control client checks remain pending.
+tooltips/chat states; basic registry/exact/tag include/exclude and shared rate controls now have translated tooltips/chat with headless native evidence; basic Export/Stock and compass/chest controls now have translated inspection/help and headless evidence; native [settings/inventory screen](../src/main/java/dev/izzy/factorycore/platform/client/BufferSettingsScreen.java) and translated draft/rule/inventory controls are implemented; actual new-control client checks remain pending.
 
 
 Storage Terminal: [editable model](../src/main/resources/assets/factorycore/models/block/storage_terminal.json),

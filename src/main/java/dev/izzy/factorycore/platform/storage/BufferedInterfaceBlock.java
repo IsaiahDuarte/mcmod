@@ -253,6 +253,13 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
                   "status.factorycore.buffer_reason."
                       + status.reason().name().toLowerCase(java.util.Locale.ROOT))),
           false);
+      if (player instanceof ServerPlayer server && buffer.canUse(server))
+        server.openMenu(
+            buffer,
+            b -> {
+              b.writeBlockPos(position);
+              b.writeUUID(buffer.sessionForOpen());
+            });
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
       player.displayClientMessage(

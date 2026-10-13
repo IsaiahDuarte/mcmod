@@ -27,7 +27,49 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /** Loaded physical holder of one canonical inventory; no stock is saved into chunk/item NBT. */
-public final class BufferedInterfaceEntity extends BlockEntity {
+public final class BufferedInterfaceEntity extends BlockEntity
+    implements net.minecraft.world.MenuProvider {
+  private UUID opening;
+
+  public boolean canUse(net.minecraft.server.level.ServerPlayer player) {
+    try {
+      validatePlaced();
+    } catch (IllegalStateException | IllegalArgumentException invalid) {
+      return false;
+    }
+    return player.isAlive()
+        && player.serverLevel() == level
+        && player.server.getPlayerList().getPlayer(player.getUUID()) == player
+        && player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(worldPosition)) <= 64
+        && WorldNetworks.get(player.server)
+                .authorize(
+                    new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
+                    position(),
+                    NetworkPermissions.Permission.VIEW)
+            == NetworkAuthority.Decision.ALLOWED;
+  }
+
+  UUID sessionForOpen() {
+    return opening;
+  }
+
+  @Override
+  public net.minecraft.network.chat.Component getDisplayName() {
+    return net.minecraft.network.chat.Component.translatable(
+        "block.factorycore.buffered_interface");
+  }
+
+  @Override
+  public net.minecraft.world.inventory.AbstractContainerMenu createMenu(
+      int id,
+      net.minecraft.world.entity.player.Inventory inventory,
+      net.minecraft.world.entity.player.Player player) {
+    if (!(player instanceof net.minecraft.server.level.ServerPlayer server) || !canUse(server))
+      return null;
+    opening = UUID.randomUUID();
+    return new BufferSettingsMenu(id, inventory, this, opening);
+  }
+
   private Tag data;
   private BufferData.State state;
   private String diagnostic = "";

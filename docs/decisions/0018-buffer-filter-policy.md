@@ -73,3 +73,17 @@ goals require buffers-v4/policy-v2; older Import/Paused encodings stay byte-stab
 Basic compass/chest controls retain other policy settings; full editor/client and
 release verification remain pending. No wider persistence or authority override
 is introduced by these modes.
+
+
+## Settings presentation extension
+
+A native two-tab menu now owns a separate transient draft and applies through the
+same canonical configuration API. It uses the existing shared transfer service
+for inventory actions; direct client-controlled buffer handlers and client-authored
+identity NBT are rejected alternatives. An opaque opening nonce, displayed
+revision, authenticated body/range/VIEW and captured structural/full-scope checks
+bind commands to current authority. Draft edits require EDIT/DEPLOY; deployment
+retains active-mode grants. Strict bounded display projections do not expose
+canonical components or topology. No new persistence schema is needed because
+only Apply writes the existing policy. Actual graphical interaction remains
+unverified; this extension does not finish A01 or P3.

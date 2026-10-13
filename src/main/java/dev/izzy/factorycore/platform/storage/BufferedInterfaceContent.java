@@ -34,12 +34,26 @@ public final class BufferedInterfaceContent {
                   BlockEntityType.Builder.of(BufferedInterfaceEntity::new, BLOCK.get())
                       .build(null));
 
+  private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
+      DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
+  public static final DeferredHolder<
+          net.minecraft.world.inventory.MenuType<?>,
+          net.minecraft.world.inventory.MenuType<BufferSettingsMenu>>
+      MENU =
+          MENUS.register(
+              "buffer_settings",
+              () ->
+                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
+                      BufferSettingsMenu::new));
+
   private BufferedInterfaceContent() {}
 
   public static void register(IEventBus bus) {
     BLOCKS.register(bus);
     ITEMS.register(bus);
     ENTITIES.register(bus);
+    MENUS.register(bus);
+    bus.addListener(BufferSettingsPackets::register);
     bus.addListener(BufferedInterfaceContent::capabilities);
   }
 
