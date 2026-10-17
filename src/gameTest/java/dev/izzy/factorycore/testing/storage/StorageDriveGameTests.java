@@ -490,6 +490,252 @@ public final class StorageDriveGameTests {
     helper.succeed();
   }
 
+  @GameTest(template = "empty")
+  public static void operatorRepairsOnlyCanonicalCellAndOldCloneStaysStale(GameTestHelper helper)
+      throws IOException {
+    var original = drive(helper, FIRST);
+    var registry = registry(helper);
+    var input = new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM));
+    input.set(
+        DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("Retained name"));
+    original.installCell(input);
+    var old = CellHandleData.read(original.cell(0));
+    activate(helper, original);
+    registry.insert(old, IRON, 100);
+    registry.reserve(old, UUID.randomUUID(), IRON, 60);
+    var oldChunk = original.saveWithFullMetadata(helper.getLevel().registryAccess());
+    var clone = drive(helper, SECOND);
+    clone.loadWithComponents(oldChunk, helper.getLevel().registryAccess());
+    clone.onLoad();
+    var before = registry.evidence(old.backing());
+    helper.assertTrue(before.conflict(), "Actual copied drive quarantines canonical ownership");
+    var console = helper.getLevel().getServer().createCommandSourceStack();
+    var repair = "factorycore recovery cell repair " + old.backing() + " " + old.generation();
+    helper.assertTrue(
+        cellCommand(console.withPermission(0), repair) < 1,
+        "Ordinary command source cannot repair");
+    helper.assertTrue(
+        cellCommand(console, "factorycore recovery cell show " + old.backing()) == 1,
+        "Real console can inspect conflicted metadata");
+    helper.assertTrue(
+        cellCommand(console, "factorycore recovery cell list") > 0,
+        "Real console can page device metadata");
+    helper.assertTrue(cellCommand(console, repair + "0") == 0, "Wrong expected generation rejects");
+    rejects(
+        helper,
+        () -> {
+          try {
+            clone.repairCellConflict(old);
+          } catch (IOException unexpected) {
+            throw new AssertionError(unexpected);
+          }
+        });
+    helper.assertTrue(
+        before.equals(registry.evidence(old.backing())), "Rejected selections preserve evidence");
+    var mismatched = oldChunk.copy();
+    var wrongTier = new ItemStack(StorageContent.cell(CellTier.EXPANDED_ITEM));
+    wrongTier.applyComponents(original.cell(0).getComponentsPatch());
+    mismatched
+        .getList("CellSlots", net.minecraft.nbt.Tag.TAG_COMPOUND)
+        .getCompound(0)
+        .put("Stack", wrongTier.save(helper.getLevel().registryAccess()));
+    original.loadWithComponents(mismatched, helper.getLevel().registryAccess());
+    original.onLoad();
+    rejects(
+        helper,
+        () -> {
+          try {
+            original.repairCellConflict(old);
+          } catch (IOException unexpected) {
+            throw new AssertionError(unexpected);
+          }
+        });
+    helper.assertTrue(
+        before.equals(registry.evidence(old.backing())),
+        "Wrong native cell tier cannot repair canonical stock");
+    original.loadWithComponents(oldChunk, helper.getLevel().registryAccess());
+    original.onLoad();
+    helper.assertTrue(cellCommand(console, repair) == 1, "Operator repairs exact original holder");
+    var current = CellHandleData.read(original.cell(0));
+    helper.assertTrue(
+        current.generation() == old.generation() + 1
+            && registry.validate(old) == DeviceRegistry.Failure.STALE
+            && CellHandleData.read(clone.cell(0)).equals(old),
+        "All old references stale, clone unchanged");
+    helper.assertTrue(
+        before.ledger().equals(registry.evidence(old.backing()).ledger())
+            && registry.stock(current, IRON).total() == 100
+            && registry.stock(current, IRON).reserved() == 60
+            && !registry.stock(current, IRON).loaded(),
+        "Repair preserves all contents and claims offline");
+    helper.assertTrue(
+        original.cell(0).getHoverName().getString().equals("Retained name"),
+        "Other cell components preserved");
+    var directory =
+        console
+            .getServer()
+            .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+            .resolve("factorycore-device-recovery");
+    try (var files = java.nio.file.Files.list(directory)) {
+      helper.assertTrue(
+          files.anyMatch(
+              file -> file.getFileName().toString().startsWith(old.backing().toString())),
+          "Immutable before-state exists before successful command returns");
+    }
+    clone.onLoad();
+    helper.assertTrue(
+        registry.validate(current) == DeviceRegistry.Failure.OK && !clone.diagnostic().isEmpty(),
+        "Stale clone reload cannot requarantine repaired backing");
+    var reloadedRegistry = DeviceRegistry.restore(registry.snapshot(), () -> {}, UUID::randomUUID);
+    helper.assertTrue(
+        reloadedRegistry.evidence(old.backing()).ledger().equals(before.ledger())
+            && reloadedRegistry.validate(old) == DeviceRegistry.Failure.STALE,
+        "Canonical reload retains repair and exact claims");
+    var repairedChunk = original.saveWithFullMetadata(helper.getLevel().registryAccess());
+    original.loadWithComponents(repairedChunk, helper.getLevel().registryAccess());
+    original.onLoad();
+    helper.assertTrue(
+        CellHandleData.read(original.cell(0)).equals(current) && original.diagnostic().isEmpty(),
+        "Physical reference round trip matches rotated canonical lease");
+    activate(helper, original);
+    helper.assertTrue(
+        registry.extract(current, IRON, 100, null).amount() == 40,
+        "Revalidated current holder can extract only unreserved stock");
+    helper.assertTrue(cellCommand(console, repair) == 0, "Old command cannot repeat repair");
+    original.loadWithComponents(oldChunk, helper.getLevel().registryAccess());
+    original.onLoad();
+    helper.assertTrue(
+        !original.diagnostic().isEmpty() && registry.stock(current, IRON).available() == 0,
+        "Old independent chunk snapshot stays inert against repaired canonical generation");
+
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty")
+  public static void failedAuditKeepsCanonicalAndPhysicalConflictUnchanged(GameTestHelper helper)
+      throws IOException {
+    var original = drive(helper, FIRST);
+    original.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    var registry = registry(helper);
+    var old = CellHandleData.read(original.cell(0));
+    activate(helper, original);
+    registry.insert(old, IRON, 17);
+    var clone = drive(helper, SECOND);
+    clone.loadWithComponents(
+        original.saveWithFullMetadata(helper.getLevel().registryAccess()),
+        helper.getLevel().registryAccess());
+    clone.onLoad();
+    var before = registry.evidence(old.backing());
+    var directory =
+        helper
+            .getLevel()
+            .getServer()
+            .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+            .resolve("factorycore-device-recovery");
+    java.nio.file.Files.createDirectories(directory);
+    var blocker =
+        java.nio.file.Files.createDirectory(directory.resolve("unexpected-" + UUID.randomUUID()));
+    boolean refused = false;
+    try {
+      original.repairCellConflict(old);
+    } catch (IOException expected) {
+      refused = true;
+    } finally {
+      java.nio.file.Files.delete(blocker);
+    }
+    helper.assertTrue(
+        refused
+            && before.equals(registry.evidence(old.backing()))
+            && CellHandleData.read(original.cell(0)).equals(old),
+        "Audit failure changes neither canonical nor physical authority");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty")
+  public static void unresolvedCellTransferPreventsLeaseRepair(GameTestHelper helper)
+      throws IOException {
+    var original = drive(helper, FIRST);
+    original.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    var registry = registry(helper);
+    var old = CellHandleData.read(original.cell(0));
+    activate(helper, original);
+    registry.insert(old, IRON, 100);
+    var source =
+        new dev.izzy.factorycore.core.resource.ResourcePort() {
+          public UUID backingId() {
+            return old.backing();
+          }
+
+          public long simulateInsert(ResourceKey key, long offered) {
+            return registry.simulateInsert(old, key, offered).amount();
+          }
+
+          public long insert(ResourceKey key, long offered) {
+            return registry.insert(old, key, offered).amount();
+          }
+
+          public long extract(ResourceKey key, long requested) {
+            return registry.extract(old, key, requested, null).amount();
+          }
+        };
+    var destination =
+        new dev.izzy.factorycore.core.resource.ResourcePort() {
+          private final UUID id = UUID.randomUUID();
+
+          public UUID backingId() {
+            return id;
+          }
+
+          public long simulateInsert(ResourceKey key, long offered) {
+            return offered;
+          }
+
+          public long insert(ResourceKey key, long offered) {
+            return 0;
+          }
+
+          public long extract(ResourceKey key, long requested) {
+            return 0;
+          }
+        };
+    var transfers = DeviceSavedData.get(helper.getLevel().getServer()).transfers();
+    var id = UUID.randomUUID();
+    transfers.start(id, UUID.randomUUID(), IRON, source, destination, 3, 3, () -> true);
+    helper.assertTrue(
+        transfers.get(id).staged() == 3 && registry.stock(old, IRON).total() == 97,
+        "Actual accepted transfer owns three extracted units");
+    var clone = drive(helper, SECOND);
+    clone.loadWithComponents(
+        original.saveWithFullMetadata(helper.getLevel().registryAccess()),
+        helper.getLevel().registryAccess());
+    clone.onLoad();
+    var before = registry.evidence(old.backing());
+    var transferBefore = transfers.get(id);
+    rejects(
+        helper,
+        () -> {
+          try {
+            original.repairCellConflict(old);
+          } catch (IOException unexpected) {
+            throw new AssertionError(unexpected);
+          }
+        });
+    helper.assertTrue(
+        before.equals(registry.evidence(old.backing()))
+            && transferBefore.equals(transfers.get(id))
+            && CellHandleData.read(original.cell(0)).equals(old),
+        "Unresolved ownership blocks lease rotation without changing resources or staging");
+    helper.succeed();
+  }
+
+  private static int cellCommand(net.minecraft.commands.CommandSourceStack source, String command) {
+    try {
+      return source.getServer().getCommands().getDispatcher().execute(command, source);
+    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException denied) {
+      return -1;
+    }
+  }
+
   private static StorageDriveEntity drive(GameTestHelper helper, BlockPos position) {
     var root = new BlockPos(1, 0, 1);
     if (!(helper.getLevel().getBlockEntity(helper.absolutePos(root))

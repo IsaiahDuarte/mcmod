@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.izzy.factorycore.core.storage.DeviceRegistryTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-17T21:21:42.291Z" hostname="Izzys-MacBook-Pro.local" time="0.137">
+  <properties/>
+  <testcase name="encodedByteAccountingStaysExactThroughGeneratedClaimsAndPartialExtraction()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.016"/>
+  <testcase name="metadataPagesAreBoundedStableAndDoNotCopyOrMutateStock()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.001"/>
+  <testcase name="conflictingLiveCopyIsQuarantinedAcrossReloadAndNeverAddsStock()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.001"/>
+  <testcase name="movingDeviceConsumesPortableGenerationAndRetainsExactStockAndReservations()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.001"/>
+  <testcase name="simulationPreservesStockClaimsAndDirtyStateAndRechecksRouting()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.0"/>
+  <testcase name="unloadReloadDoesNotReactivateRoutingOrReleaseClaimsAndUpgradeKeepsHandle()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.001"/>
+  <testcase name="currentRoutingDeniesQueuedWritesAndPreservesOfflineClaims()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.0"/>
+  <testcase name="diskMetadataBudgetRejectsBeforeTakingNewStockAndFreesOnRemoval()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.024"/>
+  <testcase name="conflictRepairRejectsForeignUnknownStalePortableAndOverflowWithoutMutation()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.001"/>
+  <testcase name="conflictRepairPreservesEvidenceClaimsAndLocationWhileInvalidatingEveryOldCopy()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.002"/>
+  <testcase name="deviceAndWorldEntryLimitsRejectWithoutDroppingExistingOwners()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.088"/>
+  <testcase name="duplicateSavedOwnersPlacementAndGenerationOverflowCannotBecomeLive()" classname="dev.izzy.factorycore.core.storage.DeviceRegistryTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -399,6 +399,29 @@ admits512 files,512KiB each and32MiB total. Keep full world/provider backups and
 archive existing files outside that directory when it fills; do not overwrite
 corrupt evidence or treat audit files as resource-restoration instructions.
 Commands throttle recovery requests; wait one second before retrying. Slow storage
-can delay these explicit recovery commands. Conflicting physical owners and
-unknown foreign outcomes still need backup/manual investigation; no general
-ownership-conflict reconciliation command exists yet.
+can delay these explicit recovery commands. Unknown foreign outcomes still need backup/manual investigation.
+
+
+Operators can inspect digital cell ownership with `/factorycore recovery cell list`
+(up to16 metadata rows; append the printed cursor for the next page) or
+`/factorycore recovery cell show <backing-UUID>`. Rows include the current
+generation, conflict flag, exact total and canonical dimension/position/slot.
+These commands read no providers and load no chunks. The displayed drive slot
+is zero-based (0–3).
+
+For a duplicated placed cell, preserve a full backup, load the original canonical
+drive normally, inspect its UUID/generation, then use
+`/factorycore recovery cell repair <backing-UUID> <generation>`. Only the existing
+canonical slot with the exact matching cell can be repaired. The command archives
+the complete ledger, claims and physical cell in factorycore-device-recovery
+before rotating its lease. Stock and reservations stay unchanged; copied old
+references become inert. Valid network membership must be rebuilt before use.
+
+Repair refuses unresolved transfers, wrong/stale/missing references, incompatible
+cell tiers, unreadable drives and other device kinds. It cannot select a different
+survivor or fix an interrupted canonical/chunk save mismatch. Investigate retained
+evidence/backups in those cases; never replace quantities by guessing. Device
+archives have independent limits of512 files,9MiB/file and32MiB total. Archive
+outside that directory to free quota; no command deletes audits. An evidence write
+failure leaves ownership untouched. Explicit repairs are throttled to one attempt
+per second per server and may be delayed by storage IO.

@@ -34,6 +34,7 @@ public final class DeviceRegistry {
     STALE,
     CONFLICT,
     OFFLINE,
+    NOT_CONFLICTED,
     LIMIT
   }
 
@@ -107,6 +108,56 @@ public final class DeviceRegistry {
     var device = devices.get(handle.backing());
     return new Definition(
         device.ledger.kind(), device.ledger.capacity(), device.ledger.infinite(), device.location);
+  }
+
+  public record Ownership(Handle handle, Definition definition, boolean conflict, long total) {}
+
+  /** Trusted owner-thread metadata inspection, including conflicted leases; null means unknown. */
+  public Ownership ownership(UUID backing) {
+    checkThread();
+    var device = devices.get(Objects.requireNonNull(backing));
+    return device == null
+        ? null
+        : new Ownership(
+            new Handle(world, backing, device.generation),
+            new Definition(
+                device.ledger.kind(),
+                device.ledger.capacity(),
+                device.ledger.infinite(),
+                device.location),
+            device.conflict,
+            device.ledger.total());
+  }
+
+  /** Detached single-device evidence, including conflicts; does not authorize repair. */
+  public Stored evidence(UUID backing) {
+    checkThread();
+    var device = devices.get(Objects.requireNonNull(backing));
+    if (device == null) throw new IllegalArgumentException("Unknown backing");
+    return new Stored(
+        device.ledger.persistentState(), device.generation, device.location, device.conflict);
+  }
+
+  /**
+   * Trusted recovery only: caller must preserve evidence and validate the loaded canonical holder
+   * and absence of unresolved transfers first. Keeps all stock/claims, consumes the conflicted
+   * generation and leaves routing offline. Cannot choose a new owner location.
+   */
+  public LeaseResult repairConflict(Handle expected, Location retained) {
+    checkThread();
+    Objects.requireNonNull(retained);
+    var invalid = validate(expected);
+    if (invalid != Failure.CONFLICT)
+      return result(invalid == Failure.OK ? Failure.NOT_CONFLICTED : invalid, null);
+    var device = devices.get(expected.backing());
+    if (!retained.equals(device.location) || !expected.backing().equals(placements.get(retained)))
+      return result(Failure.OFFLINE, null);
+    if (device.generation == Long.MAX_VALUE) return result(Failure.LIMIT, null);
+    device.generation++;
+    device.conflict = false;
+    device.ledger.setLoaded(false);
+    changed.run();
+    return result(Failure.OK, device);
   }
 
   private static final class Device {

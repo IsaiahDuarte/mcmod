@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.izzy.factorycore.platform.storage.DeviceRecoveryAuditTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-17T21:21:42.633Z" hostname="Izzys-MacBook-Pro.local" time="0.019">
+  <properties/>
+  <testcase name="binaryAuditSupportsLedgerBeyondTransferSnbtLimit()" classname="dev.izzy.factorycore.platform.storage.DeviceRecoveryAuditTest" time="0.009"/>
+  <testcase name="binaryEvidenceRetainsFullLedgerClaimsLocationAndPhysicalReferenceWithoutOverwrite()" classname="dev.izzy.factorycore.platform.storage.DeviceRecoveryAuditTest" time="0.008"/>
+  <testcase name="oversizedPhysicalDataAndBlockedDirectoryRejectWithoutReplacingEvidence()" classname="dev.izzy.factorycore.platform.storage.DeviceRecoveryAuditTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

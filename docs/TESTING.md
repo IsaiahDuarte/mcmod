@@ -791,3 +791,16 @@ retirement and denied other-owner/uncertain work without audit mutation. Require
 dedicated seed/restore runs also execute operator list/show on accepted uncertain
 records. These are server/command checks; they do not prove graphical chat layout,
 remote multiplayer or full administrator reconciliation.
+
+
+## Canonical cell conflict repair checks
+
+DeviceRegistryTest adds exact ledger/claim preservation, generation consumption,
+wrong-holder/no-mutation, stale clones, offline reload and foreign/unknown/stale/
+portable/unconflicted/overflow refusals. DeviceRecoveryAuditTest checks complete
+binary before-state/stack components, reuse, corrupt overwrite refusal, oversized
+physical data and blocked output. StorageDriveGameTests adds actual dispatcher
+permission/metadata/repair, copied native drive, unchanged failed audit, matching
+saved references, current-holder reactivation and unresolved real staging refusal.
+These checks do not prove interrupted independent saves, other ownership kinds,
+remote multiplayer or graphical chat layout.

@@ -101,7 +101,7 @@ row. Share navigation and components where appropriate.
 | Permissions and gateway policies | Authorized view/edit/ownership transfer, inherited limits and revocation feedback | P2–P6 | Missing / Pending |
 | Friendly editor and deployment | Highlighting, completion, errors, undo, templates, draft/deployed, logs/quotas, bounded Wasm upload | P5–P6 | Missing / Pending |
 | Wireless setup | Pairing, direction, range, authorization, power loss and reconnection | P6 | Missing / Pending |
-| Device diagnostics and recovery | Safe next actions, preserved evidence, authorized reconciliation and unresolved quarantine | P2–P6 | Partial literal-English messages; workflow missing / Pending |
+| Device diagnostics and recovery | Safe next actions, preserved evidence, authorized reconciliation and unresolved quarantine | P2–P6 | Partial translated operator inspection/known cleanup/canonical cell repair; broader reconciliation missing / Native command behavior checked, graphical walkthrough pending |
 | In-game help and progression | First-network diagram, hopper walkthrough, offhand upgrades, factory examples and next unlocks | P3–P6 | Missing; external player guide and recipe unlocks exist / Pending |
 | Shared UI assets and localization | Consistent controls/icons/tooltips/focus, translation keys, readable scales and non-color status cues | P3–P6 | Registered names and bank/connector/buffer tooltips/chat feedback translated; native item terminal screen implemented; other shared screens pending / Pending |
 
@@ -184,3 +184,9 @@ The earlier no-display attempt remains historical rather than a current blocker.
 Machine preset Binding/Presets tabs, bounded rules, sample selection and Stock deployment now have [graphical evidence](evidence/machine-preset-client-v1-2026-10-17.md) at scales2–4. Selected tanks, multiport/preview and full device state visuals remain open.
 
 The machine panel now fits a427×240 GUI without clipping: [default-window restart evidence](evidence/world-restart-v1-2026-10-17.md). The rules remain bounded to sixteen; four render per page.
+
+
+Operator recovery now includes translated transfer inspection/cleanup and canonical
+cell conflict inspection/repair feedback. Native command checks cover permission,
+formatting and safe refusal; real chat layout/accessibility and a full recovery
+walkthrough remain Pending. These commands do not finish the recovery asset row.

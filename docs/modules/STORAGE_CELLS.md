@@ -67,8 +67,10 @@ NBT read/allocation limits still apply; this parser does not claim to bound an
 already decoded malformed outer tag.
 
 Registry/lease failures become action messages and leave inputs unconsumed.
-Diagnostics disable drive actions; ownership reconciliation remains a later
-explicit administrative operation. There is no migration from a released prior
+Diagnostics disable normal drive actions. Explicit operator repair now supports
+a conflicted cell only at its loaded original canonical slot with a matching
+reference/tier and no unresolved transfer; see [ownership recovery](DEVICE_OWNERSHIP.md)
+and [ADR0023](../decisions/0023-canonical-cell-repair.md). Other cases remain inert. There is no migration from a released prior
 drive format; version zero/future schemas retain their source for recovery.
 
 Example: install a Starter Item Cell, obtain its exact slot lease, then remove
@@ -93,6 +95,14 @@ Block-entity lifecycle calls are not an actual chunk-unload experiment. Canonica
 registry disk tests separately verify orderly nonempty SavedData recovery. Full
 world restart with installed drives/player leases, interruption at independent
 chunk/player saves, client visuals, multiplayer, survival progression and
-administrative repair remain pending. The single registry prevents a second
+broader administrative reconciliation remain pending. The single registry prevents a second
 ledger owner; abrupt save-order loss can strand references and is not claimed
 as solved. Full A02/A03/A13/A14 and D03/D06 remain incomplete.
+
+
+Three additional native cases cover actual operator dispatcher inspection/repair,
+wrong generation/holder/tier, cloned-reference invalidation, full claim/component
+preservation, failed audit without authority changes and unresolved transfer refusal.
+A repaired physical reference reloads with the consumed generation; replaying the
+old chunk snapshot stays inert. This is controlled snapshot replay, not an injected
+hard-crash/independent filesystem-save experiment.

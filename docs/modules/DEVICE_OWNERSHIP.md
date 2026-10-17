@@ -127,3 +127,30 @@ The shared world catalog checks current scope/visibility/physical leases before
 publishing rows and binds its server-only cursor to actor/root/segment/exact key.
 Do not send raw registry cursors to clients. Persistence now uses schema ten with
 unchanged ownership/component contracts; full snapshots are still save operations.
+
+## Explicit canonical cell conflict repair
+
+`ownership(backingUUID)` returns immutable handle/definition/conflict/aggregate
+unit total, including unavailable owners; unknown IDs return null. It reads no
+catalog or provider. `evidence(backingUUID)` copies exactly one immutable Stored
+ledger/claims/lease/location for an audit; unknown IDs throw IllegalArgumentException.
+Neither changes authority. Both require the owner thread and are trusted APIs,
+not permission-filtered player views.
+
+`repairConflict(expectedHandle, retainedLocation)` is trusted recovery infrastructure.
+Callers must first preserve evidence, validate the loaded physical holder/tier and
+exclude unresolved transfers. Success increments generation, clears conflict,
+keeps the exact ledger/claims/location and leaves availability false. Stale copies
+cannot be reused or cause another conflict. FOREIGN_WORLD/UNKNOWN/STALE retain
+normal meaning; NOT_CONFLICTED rejects a valid nonconflicted or portable lease;
+OFFLINE rejects any location other than the canonical holder; LIMIT rejects
+Long.MAX_VALUE generation. Rejections do not dirty or change state.
+
+The platform adapter `StorageDriveEntity.repairCellConflict(expected)` implements
+those preconditions and evidence preservation for item/fluid cells only. It updates
+only the exact canonical slot, then requests normal network revalidation. Other
+slot diagnostics are rechecked. The operator command is documented in the
+[player guide](../PLAYER_GUIDE.md); format/limits and interrupted independent-save
+behavior are in [ADR0023](../decisions/0023-canonical-cell-repair.md). Unknown external
+outcomes and ownership conflicts involving unresolved transfers remain blocked.
+This is partial recovery support, not full A13 completion.

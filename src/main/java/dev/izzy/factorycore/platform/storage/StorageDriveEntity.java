@@ -84,6 +84,58 @@ public final class StorageDriveEntity extends BlockEntity {
     return portable;
   }
 
+  /** Operator recovery adapter. Never relocates a backing or resolves pending transfer evidence. */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
+  public java.nio.file.Path repairCellConflict(DeviceRegistry.Handle expected)
+      throws java.io.IOException {
+    if (!(level instanceof ServerLevel server)
+        || isRemoved()
+        || rejected != null
+        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
+            == null
+        || server.getBlockEntity(worldPosition) != this)
+      throw new IllegalStateException("Canonical drive must be loaded and readable");
+    var saved = DeviceSavedData.get(server.getServer());
+    var registry = saved.registry();
+    var owner = registry.ownership(expected.backing());
+    if (owner == null
+        || !owner.handle().equals(expected)
+        || !owner.conflict()
+        || expected.generation() == Long.MAX_VALUE
+        || saved.transfers().unresolved(expected.backing()) != null)
+      throw new IllegalStateException("Expected conflict cannot be repaired");
+    var retained = owner.definition().location();
+    int slot = retained.slot();
+    checkSlot(slot);
+    var stack = cells[slot];
+    if (!retained.equals(location(slot))
+        || !expected.equals(CellHandleData.read(stack))
+        || stack.getCount() != 1
+        || !(stack.getItem() instanceof CellItem item)
+        || item.tier().kind() != owner.definition().kind()
+        || item.tier().capacity() != owner.definition().capacity()
+        || item.tier().infinite() != owner.definition().infinite())
+      throw new IllegalStateException("Exact canonical cell reference required");
+    var replacement = stack.copy();
+    CellHandleData.write(
+        replacement,
+        new DeviceRegistry.Handle(expected.world(), expected.backing(), expected.generation() + 1));
+    var path =
+        DeviceRecoveryAudit.preserve(
+            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            registry.evidence(expected.backing()),
+            stack.save(server.registryAccess()));
+    var repaired = registry.repairConflict(expected, retained);
+    if (repaired.failure() != DeviceRegistry.Failure.OK)
+      throw new IllegalStateException("Conflict repair refused: " + repaired.failure());
+    cells[slot] = replacement;
+    setChanged();
+    diagnostic = "";
+    onLoad(); // Recheck every slot; other faulty references keep their diagnostic.
+    return path;
+  }
+
   public List<ItemStack> ejectForBreak() {
     if (!(level instanceof ServerLevel)) return List.of();
     var dropped = new ArrayList<ItemStack>(4);

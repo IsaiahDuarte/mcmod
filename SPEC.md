@@ -356,3 +356,12 @@ A separate loaded-child/root-unload experiment now adds partial A03/A04/A05/A12/
 Required dedicated-server restart checks now exercise accepted known staged delivery/return and a post-insert uncertain provider call through shared native services. They verify exact known conservation, preserved contexts/provider data and no uncertain replay/refund. This adds partial A03/A13/A14 evidence; independent save ordering, in-call interruptions and the administrative recovery workflow remain unfinished.
 
 R09/A13 now has a supported command slice for operator inspection, original-owner known cleanup and audited empty-record retirement. It preserves before-state evidence and routes cleanup through shared scheduling; execute-as/other-owner/uncertain mutation is denied. Full ownership-conflict reconciliation and independent-save recovery remain unfinished.
+
+
+Partial A12/A13 ownership recovery: operators can inspect item/fluid cell leases
+and repair a conflict only at its loaded original canonical drive slot with the
+expected generation, exact matching reference/tier and no unresolved transfer.
+Before-state ledger/claims/physical stack evidence is preserved before rotating
+the lease; old copies become stale and quantities/claims do not change. Wrong or
+unavailable holders and independent-save mismatches remain inert. This does not
+complete bank/buffer/node reconciliation or uncertain external recovery.

@@ -1,0 +1,548 @@
+test_build_dispatches_real_required_command (test_verify.RepositoryVerificationTests.test_build_dispatches_real_required_command) ... ok
+test_checked_probe_source_is_allowed_but_missing_guest_gate_fails (test_verify.RepositoryVerificationTests.test_checked_probe_source_is_allowed_but_missing_guest_gate_fails) ... ok
+test_conflict_marker_fails (test_verify.RepositoryVerificationTests.test_conflict_marker_fails) ... ok
+test_duplicate_acceptance_criterion_fails (test_verify.RepositoryVerificationTests.test_duplicate_acceptance_criterion_fails) ... ok
+test_empty_acceptance_tables_fail (test_verify.RepositoryVerificationTests.test_empty_acceptance_tables_fail) ... ok
+test_empty_tooling_suite_is_not_a_pass (test_verify.RepositoryVerificationTests.test_empty_tooling_suite_is_not_a_pass) ... ok
+test_examples_and_external_links_do_not_require_local_files (test_verify.RepositoryVerificationTests.test_examples_and_external_links_do_not_require_local_files) ... ok
+test_failing_build_is_not_a_pass (test_verify.RepositoryVerificationTests.test_failing_build_is_not_a_pass) ... ok
+test_failing_tooling_suite_is_not_a_pass (test_verify.RepositoryVerificationTests.test_failing_tooling_suite_is_not_a_pass) ... ok
+test_java_source_fails_when_required_build_is_missing (test_verify.RepositoryVerificationTests.test_java_source_fails_when_required_build_is_missing) ... ok
+test_java_source_is_allowed_with_required_build_files (test_verify.RepositoryVerificationTests.test_java_source_is_allowed_with_required_build_files) ... ok
+test_link_outside_repository_fails (test_verify.RepositoryVerificationTests.test_link_outside_repository_fails) ... ok
+test_missing_build_tool_is_not_a_pass (test_verify.RepositoryVerificationTests.test_missing_build_tool_is_not_a_pass) ... ok
+test_missing_local_file_fails (test_verify.RepositoryVerificationTests.test_missing_local_file_fails) ... ok
+test_missing_required_document_fails (test_verify.RepositoryVerificationTests.test_missing_required_document_fails) ... ok
+test_real_subprocess_runs_in_repository_and_propagates_failure (test_verify.RepositoryVerificationTests.test_real_subprocess_runs_in_repository_and_propagates_failure) ... ok
+test_rust_source_requires_its_own_real_verification (test_verify.RepositoryVerificationTests.test_rust_source_requires_its_own_real_verification) ... ok
+test_skipped_required_tooling_suite_is_not_a_pass (test_verify.RepositoryVerificationTests.test_skipped_required_tooling_suite_is_not_a_pass) ... ok
+test_title_inside_example_does_not_satisfy_document_title (test_verify.RepositoryVerificationTests.test_title_inside_example_does_not_satisfy_document_title) ... ok
+test_unclosed_fence_cannot_hide_broken_documentation (test_verify.RepositoryVerificationTests.test_unclosed_fence_cannot_hide_broken_documentation) ... ok
+test_untracked_acceptance_criterion_fails (test_verify.RepositoryVerificationTests.test_untracked_acceptance_criterion_fails) ... ok
+test_valid_docs_with_relative_file_links_pass (test_verify.RepositoryVerificationTests.test_valid_docs_with_relative_file_links_pass) ... ok
+test_empty_missing_ignored_or_filtered_suite_fails (test_verify_guest.GuestVerificationTests.test_empty_missing_ignored_or_filtered_suite_fails) ... ok
+test_nonempty_native_suite_and_empty_doc_suite_pass (test_verify_guest.GuestVerificationTests.test_nonempty_native_suite_and_empty_doc_suite_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.299s
+
+OK
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.2.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :createMinecraftArtifacts UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jarJar NO-SOURCE
+> Task :jar UP-TO-DATE
+> Task :assemble UP-TO-DATE
+> Task :compileClientTestJava
+> Task :processClientTestResources UP-TO-DATE
+> Task :clientTestClasses
+> Task :compileGameTestJava
+> Task :processGameTestResources UP-TO-DATE
+> Task :gameTestClasses
+> Task :compileTestJava
+> Task :processTestResources UP-TO-DATE
+> Task :testClasses
+> Task :downloadAssets UP-TO-DATE
+> Task :writeGameTestServerLegacyClasspath UP-TO-DATE
+> Task :prepareGameTestServerRun UP-TO-DATE
+> Task :pmdClientTest
+> Task :pmdGameTest
+> Task :pmdMain
+> Task :pmdTest
+
+> Task :runGameTestServer
+WARN StatusConsoleListener Advanced terminal features are not available in this environment
+[17:20:54] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeserverdev, --gameDir, ., --fml.fmlVersion, 4.0.44, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.252, --fml.neoFormVersion, 20240808.144430]
+[17:20:54] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: JVM identified as Homebrew OpenJDK 64-Bit Server VM 21.0.12
+[17:20:54] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.12 by Homebrew; OS Mac OS X arch aarch64 version 15.3.1
+[17:20:54] [main/INFO] [ne.ne.fm.lo.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserverdev
+[17:20:54] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/Users/izzy/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%2394!/ Service=ModLauncher Env=SERVER
+[17:20:54] [main/INFO] [ne.ne.fm.lo.mo.lo.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
+[17:20:54] [main/INFO] [ne.ne.fm.lo.mo.ModDiscoverer/]:
+     Mod List:
+		Name Version (Mod Id)
+
+		Factory Core 0.1.0-dev (factorycore)
+		Factory Core Required GameTests 0.1.0-dev (factorycore_tests)
+		Minecraft 1.21.1 (minecraft)
+		NeoForge 21.1.252 (neoforge)
+[17:20:55] [main/INFO] [cp.mo.mo.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserverdev' with arguments [--gameDir, .]
+[17:20:56] [main/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.3).
+[17:20:59] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[17:20:59] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
+[17:20:59] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[17:20:59] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[17:20:59] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[17:20:59] [modloading-worker-0/INFO] [ne.ne.ne.co.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.252, for MC 1.21.1
+[17:20:59] [main/INFO] [mojang/YggdrasilAuthenticationService]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[17:20:59] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23126!/assets/.mcassetsroot' uses unexpected schema
+[17:20:59] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23126!/data/.mcassetsroot' uses unexpected schema
+[17:20:59] [main/INFO] [ne.ne.ne.ga.GameTestHooks/]: Enabled Gametest Namespaces: [factorycore_tests]
+[17:21:00] [main/INFO] [minecraft/RecipeManager]: Loaded 1305 recipes
+[17:21:00] [main/INFO] [minecraft/AdvancementTree]: Loaded 1414 advancements
+[17:21:00] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[17:21:00] [worldgen/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 2%
+[17:21:00] [Server thread/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 170 ms
+[17:21:00] [Server thread/INFO] [minecraft/GameTestServer]: Started game test server
+[17:21:00] [Server thread/INFO] [ne.ne.ne.se.pe.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
+[17:21:00] [Server thread/INFO] [minecraft/GameTestServer]: 210 tests are now running at position 12207012, -59, 3043427!
+[17:21:01] [Server thread/INFO] [minecraft/GameTestRunner]: Running test batch 'defaultBatch:0' (50 tests)...
+[17:21:01] [Server thread/INFO] [minecraft/GameTestServer]: [                                                                                                                                                                                                                  ]
+[17:21:01] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 2 at (-0.5, -60.0, 4.5)
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:01] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 3 at (5.5, -60.0, 9.5)
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:01] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 4 at (5.5, -60.0, -8.5)
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Diamonds!]
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Acquire Hardware]
+[17:21:01] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed cleanup fixture
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:01] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:01] [Server thread/INFO] [minecraft/GameTestServer]: [+_++__+   ++_++   +_++_   _++++   ++_++                                                                                                                                                                           ]
+[17:21:01] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 8 at (-8.5, -60.0, -8.5)
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:01] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:01] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Terminal fixture complete
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:01] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 10 at (-9.5, -60.0, 10.5)
+[17:21:01] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Buffer settings fixture complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 11 at (3.5, -60.0, -4.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 12 at (-7.5, -60.0, 3.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++__++++++_+++++++++_++++++++_++++_+++_+++++++__                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Acquire Hardware]
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Buffer settings fixture complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++_+++++++_+++++++++++++++++++++++_+++_+++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++_+++++++++++++++++++++++++++++++_+++_+++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++_+++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++_+++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++_+++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++_+++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++_+++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++_+++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++_+++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++++++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++++++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++++++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+_++++++++++++++++++++++++++++++++++++++++++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestRunner]: Running test batch 'defaultBatch:1' (50 tests)...
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++                                                                                                                                                                ]
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 14 at (-5.5, -60.0, 3.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 15 at (-1.5, -60.0, 5.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 16 at (-0.5, -60.0, 6.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 17 at (-7.5, -60.0, 0.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 18 at (5.5, -60.0, 3.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 19 at (7.5, -60.0, 1.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Disconnect queued inventory request
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Acquire Hardware]
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Recovery command fixture complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Acquire Hardware]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++++_++ +++_+++   +++_+   _+++_   +       _                                                                                                                       ]
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Terminal fixture complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 24 at (5.5, -60.0, 8.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Buffer settings fixture complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Acquire Hardware]
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 25 at (-2.5, -60.0, -1.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 26 at (4.5, -60.0, -5.5)
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Buffer settings fixture complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Recovery denial complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Recovery denial complete
+[17:21:02] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++_+_+++_+__+++_++++__++++                                                                                                                  ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++_+_+++++__+++_++++__+++++_++                                                                                                              ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++_++++++++__+++++_++                                                                                                              ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++__++++++++                                                                                                              ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++__++++++++                                                                                                              ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++__++++++++                                                                                                              ]
+[17:21:02] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++_++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++_++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++_++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++_++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++_++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++_++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++_++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++_++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++++++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestRunner]: Running test batch 'defaultBatch:2' (50 tests)...
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++                                                                                                              ]
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 30 at (-3.5, -60.0, 6.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 31 at (-1.5, -60.0, -5.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 32 at (3.5, -60.0, 3.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 33 at (3.5, -60.0, -9.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 34 at (2.5, -60.0, 6.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 35 at (-5.5, -60.0, 6.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 36 at (-8.5, -60.0, -6.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 42 at (-2.5, -60.0, 0.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 43 at (9.5, -60.0, 10.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Diamonds!]
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed revoked fixture
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Stone Age]
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Preset cleanup fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Buffer settings fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++_+_+_+____++_++++_+++_++  +_+++                                                                           ]
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Terminal fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Bring Home the Beacon]
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Bring Home the Beacon]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+_+++__+_+++++++_+++_++  +_+++   _++                                                                     ]
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Terminal fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Terminal fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 47 at (0.5, -60.0, -5.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 48 at (-0.5, -60.0, -1.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 49 at (2.5, -60.0, -0.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed guest fixture
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++_++++++++++++++_+++++_+++_++_++_++_+__+_                                                            ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++_++_++++++++                                                            ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++_++++++++                                                            ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++                                                            ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++                                                            ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++                                                            ]
+[17:21:03] [Server thread/INFO] [minecraft/GameTestRunner]: Running test batch 'defaultBatch:3' (50 tests)...
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++                                                            ]
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 52 at (3.5, -60.0, -3.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 53 at (8.5, -60.0, -1.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 54 at (-6.5, -60.0, 6.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 55 at (-0.5, -60.0, 7.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 56 at (-9.5, -60.0, 0.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 57 at (9.5, -60.0, -8.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 62 at (-8.5, -60.0, 1.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Terminal fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:03] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ __+++++   +++_+   ++++_                                   ]
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 64 at (1.5, -60.0, 3.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 66 at (-2.5, -60.0, 0.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 67 at (-0.5, -60.0, 10.5)
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:03] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:03] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:04] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 74 at (-3.5, -60.0, -4.5)
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ +_+++++ __+++++ _+++++_   ++_++   ++_++                   ]
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Acquire Hardware]
+[17:21:04] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:04] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Terminal fixture complete
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:04] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Terminal fixture complete
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++_   +++++   ++_++                   ]
+[17:21:04] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 75 at (-6.5, -60.0, 9.5)
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:04] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 81 at (5.5, -60.0, 10.5)
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 1a6424b3-b73f-477a-a1b6-4af067d52f5f | generation 2 | conflict=true | ITEM total=100 | minecraft:overworld 12207057, -59, 3043716 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Repair supports only the loaded original drive slot, matching cell and generation, with no unresolved transfers. Preserve backups. Other holders stay inert; uncertain transfers require investigation.
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 80508b26-c88e-4c8f-aac7-9c5a729ef3fd | generation 2 | conflict=false | ITEM total=7 | minecraft:overworld 12207025, -59, 3043572 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 8189c955-3840-49a4-bd47-fded46b2a811 | generation 2 | conflict=false | ENERGY total=3000 | minecraft:overworld 12207091, -59, 3043501 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 81db31c1-ee89-4fdf-899c-8ef7485da818 | generation 2 | conflict=false | ITEM total=7 | minecraft:overworld 12207024, -59, 3043537 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 83f6cf66-d50e-457d-afbd-53546077a3a0 | generation 2 | conflict=false | ENERGY total=100000 | minecraft:overworld 12207014, -59, 3043525 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 84ad5e72-f99f-4d38-9f43-89144aa4509e | generation 2 | conflict=false | ITEM total=0 | minecraft:overworld 12207025, -59, 3043669 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 89edb8ea-1099-4372-bd24-7dddb9bdaf1c | generation 2 | conflict=false | ITEM total=64 | minecraft:overworld 12207080, -59, 3043573 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 8c4de30c-2954-4395-a614-bf9e000a3d1f | generation 2 | conflict=true | ITEM total=100 | minecraft:overworld 12207090, -59, 3043632 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 8d582d39-e78e-460a-a3cd-2af67dbbd711 | generation 2 | conflict=false | ITEM total=0 | minecraft:overworld 12207025, -59, 3043453 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 91b6c954-3620-46a3-ace9-c726930d7239 | generation 2 | conflict=false | ITEM total=64 | minecraft:overworld 12207036, -59, 3043692 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 942c7ecd-680c-48c0-ac30-174f784b4bde | generation 2 | conflict=false | ITEM total=100 | minecraft:overworld 12207059, -59, 3043512 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 9431bfea-54c5-4c4d-af95-7974752e34ee | generation 2 | conflict=false | ITEM total=64 | minecraft:overworld 12207025, -59, 3043584 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 9444347c-4d68-4ddd-9973-f700d8598459 | generation 2 | conflict=false | ITEM total=16 | minecraft:overworld 12207047, -59, 3043572 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 951dfc8b-f509-4f5d-92b8-9ff73b74bebe | generation 2 | conflict=false | FLUID total=1000 | minecraft:overworld 12207091, -59, 3043477 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 95b0c3fb-cc60-49ee-964f-6ad1762f2add | generation 2 | conflict=false | ITEM total=61 | minecraft:overworld 12207014, -59, 3043680 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 97ba03c6-e601-4cd8-a22c-db86875a4e33 | generation 2 | conflict=false | ITEM total=0 | minecraft:overworld 12207046, -59, 3043548 slot=2
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 9961cc36-1fdc-456e-8dd8-0506342505a2 | generation 2 | conflict=false | ITEM total=16 | minecraft:overworld 12207025, -59, 3043656 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: 16 records. Next cursor: 9961cc36-1fdc-456e-8dd8-0506342505a2
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 1a6424b3-b73f-477a-a1b6-4af067d52f5f | generation 2 | conflict=true | ITEM total=100 | minecraft:overworld 12207057, -59, 3043716 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell repair/inspection refused: check backing, generation, conflict, loaded original slot and unresolved transfers. No resources were moved.
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 1a6424b3-b73f-477a-a1b6-4af067d52f5f | generation 2 | conflict=true | ITEM total=100 | minecraft:overworld 12207057, -59, 3043716 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 1a6424b3-b73f-477a-a1b6-4af067d52f5f repaired at its original holder, generation 3. Clones are stale. Before-state evidence: 1a6424b3-b73f-477a-a1b6-4af067d52f5f-a0a43cb7d401989b12704b269b1a39140711b455d789cbf02bae61dee8372ce1.nbt
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell 1a6424b3-b73f-477a-a1b6-4af067d52f5f | generation 3 | conflict=false | ITEM total=60 | minecraft:overworld 12207057, -59, 3043716 slot=0
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Cell repair/inspection refused: check backing, generation, conflict, loaded original slot and unresolved transfers. No resources were moved.
+[17:21:04] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Policy controls fixture complete
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_++++++_+__++__+          ]
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Bring Home the Beacon]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_++++++_+++++_++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_++++++_+++++_++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_++++++++++++_++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_+++++++++++++++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_+++++++++++++++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_+++++++++++++++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_+++++++++++++++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_+++++++++++++++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++_+++++++++++++++          ]
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Acquire Hardware]
+[17:21:04] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Terminal fixture complete
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++++++++++++++++++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++++++++++++++++++++++++++++++++++++++++++++++          ]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestRunner]: Running test batch 'defaultBatch:4' (10 tests)...
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++          ]
+[17:21:04] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 82 at (-3.5, -60.0, -3.5)
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_         ]
+[17:21:04] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:04] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 89 at (10.5, -60.0, 4.5)
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:04] [Server thread/INFO] [minecraft/PlayerList]: test-mock-player[embedded] logged in with entity id 90 at (5.5, -60.0, 10.5)
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player joined the game
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player has made the advancement [Acquire Hardware]
+[17:21:04] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Completed player inventory fixture
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:04] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: test-mock-player lost connection: Machine settings fixture complete
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: test-mock-player left the game
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++_]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++]
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: ========= 210 GAME TESTS COMPLETE IN 3.511 s ======================
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: All 210 required tests passed :)
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: ====================================================
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[Test Level]'/minecraft:overworld
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_nether
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_end
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[17:21:04] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+[17:21:04] [Server thread/INFO] [minecraft/GameTestServer]: Game test server shutting down
+
+> Task :writeStagingRecoveryServerLegacyClasspath UP-TO-DATE
+> Task :prepareStagingRecoveryServerRun UP-TO-DATE
+> Task :writeStagingSeedServerLegacyClasspath UP-TO-DATE
+> Task :prepareStagingSeedServerRun UP-TO-DATE
+
+> Task :runStagingSeedServer
+WARN StatusConsoleListener Advanced terminal features are not available in this environment
+[17:21:10] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeserverdev, --gameDir, ., --fml.fmlVersion, 4.0.44, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.252, --fml.neoFormVersion, 20240808.144430, --nogui]
+[17:21:10] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: JVM identified as Homebrew OpenJDK 64-Bit Server VM 21.0.12
+[17:21:10] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.12 by Homebrew; OS Mac OS X arch aarch64 version 15.3.1
+[17:21:10] [main/INFO] [ne.ne.fm.lo.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserverdev
+[17:21:10] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/Users/izzy/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%2394!/ Service=ModLauncher Env=SERVER
+[17:21:11] [main/INFO] [ne.ne.fm.lo.mo.lo.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
+[17:21:11] [main/INFO] [ne.ne.fm.lo.mo.ModDiscoverer/]:
+     Mod List:
+		Name Version (Mod Id)
+
+		Factory Core 0.1.0-dev (factorycore)
+		Factory Core Verification Fixture 0.1.0-dev (factorycore_client_tests)
+		Minecraft 1.21.1 (minecraft)
+		NeoForge 21.1.252 (neoforge)
+[17:21:11] [main/INFO] [cp.mo.mo.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserverdev' with arguments [--gameDir, ., --nogui]
+[17:21:12] [main/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.3).
+[17:21:14] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[17:21:14] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
+[17:21:14] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[17:21:14] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[17:21:14] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[17:21:14] [modloading-worker-0/INFO] [ne.ne.ne.co.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.252, for MC 1.21.1
+[17:21:14] [main/INFO] [mojang/YggdrasilAuthenticationService]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[17:21:14] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23126!/assets/.mcassetsroot' uses unexpected schema
+[17:21:14] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23126!/data/.mcassetsroot' uses unexpected schema
+[17:21:15] [main/INFO] [minecraft/Main]: No existing world data, creating new world
+[17:21:15] [main/INFO] [minecraft/RecipeManager]: Loaded 1304 recipes
+[17:21:15] [main/INFO] [minecraft/AdvancementTree]: Loaded 1413 advancements
+[17:21:15] [Server thread/INFO] [minecraft/DedicatedServer]: Starting minecraft server version 1.21.1
+[17:21:15] [Server thread/INFO] [minecraft/DedicatedServer]: Loading properties
+[17:21:15] [Server thread/INFO] [minecraft/DedicatedServer]: Default game type: SURVIVAL
+[17:21:15] [Server thread/INFO] [minecraft/MinecraftServer]: Generating keypair
+[17:21:15] [Server thread/INFO] [minecraft/DedicatedServer]: Starting Minecraft server on 127.0.0.1:0
+[17:21:15] [Server thread/INFO] [minecraft/ServerConnectionListener]: Using default channel type
+[17:21:15] [Server thread/WARN] [minecraft/DedicatedServer]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[17:21:15] [Server thread/WARN] [minecraft/DedicatedServer]: The server will make no attempt to authenticate usernames. Beware.
+[17:21:15] [Server thread/WARN] [minecraft/DedicatedServer]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[17:21:15] [Server thread/WARN] [minecraft/DedicatedServer]: To change this, set "online-mode" to "true" in the server.properties file.
+[17:21:15] [Server thread/INFO] [minecraft/DedicatedServer]: Preparing level "world"
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[17:21:16] [worldgen/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 2%
+[17:21:16] [Server thread/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 129 ms
+[17:21:16] [Server thread/INFO] [minecraft/DedicatedServer]: Done (0.408s)! For help, type "help"
+[17:21:16] [LanServerPinger #1/WARN] [minecraft/LanServerPinger]: LanServerPinger: No route to host
+[17:21:16] [Server thread/INFO] [ne.ne.ne.ga.GameTestHooks/]: Enabled Gametest Namespaces: []
+[17:21:16] [Server thread/INFO] [ne.ne.ne.se.pe.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
+FACTORYCORE_STAGING_SEEDED known=5 return=5 uncertain=DELIVER8
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: e4f1f045-f9f2-44c8-a09c-21ed4f3b58f8 owner=2b5c9e37-63f2-4d6b-8400-aba0b1386c9e state=QUARANTINED ITEM minecraft:emerald staged=8 pending=DELIVER
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: fbdc16d4-abbd-4283-9cb3-a1041a500203 owner=2b5c9e37-63f2-4d6b-8400-aba0b1386c9e state=STAGED ITEM minecraft:lapis_lazuli staged=5 pending=NONE
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: 131f3359-36b5-4712-b147-c1c4229eac38 owner=2b5c9e37-63f2-4d6b-8400-aba0b1386c9e state=STAGED ITEM minecraft:diamond staged=5 pending=NONE
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: 3 records. Next cursor: —
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: e4f1f045-f9f2-44c8-a09c-21ed4f3b58f8 owner=2b5c9e37-63f2-4d6b-8400-aba0b1386c9e state=QUARANTINED ITEM minecraft:emerald staged=8 pending=DELIVER
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: Delivered=0 returned=0 pending offered=8 reason=UNCERTAIN
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: IllegalStateException: Injected post-insert uncertainty
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: Network=4a886341-754c-4396-a4e5-3e96ca5d8a2e segment=4a886341-754c-4396-a4e5-3e96ca5d8a2e origin=minecraft:overworld/10, 65, 10 source device=5b562ad8-2707-433b-944a-724a8db98aab destination device=a5b01ec9-b502-4613-a1f7-3af33de026e6
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: Uncertain external outcome. No replay or refund is permitted. Preserve backups and inspect the provider; keep this record quarantined.
+FACTORYCORE_STAGING_SERVER_PASS mode=seed
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[17:21:16] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[17:21:17] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[17:21:17] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[17:21:17] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[17:21:17] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[17:21:17] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[17:21:17] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[17:21:17] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+
+> Task :runStagingRecoveryServer
+WARN StatusConsoleListener Advanced terminal features are not available in this environment
+[17:21:23] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeserverdev, --gameDir, ., --fml.fmlVersion, 4.0.44, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.252, --fml.neoFormVersion, 20240808.144430, --nogui]
+[17:21:23] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: JVM identified as Homebrew OpenJDK 64-Bit Server VM 21.0.12
+[17:21:23] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.12 by Homebrew; OS Mac OS X arch aarch64 version 15.3.1
+[17:21:23] [main/INFO] [ne.ne.fm.lo.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserverdev
+[17:21:23] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/Users/izzy/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%2394!/ Service=ModLauncher Env=SERVER
+[17:21:23] [main/INFO] [ne.ne.fm.lo.mo.lo.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
+[17:21:23] [main/INFO] [ne.ne.fm.lo.mo.ModDiscoverer/]:
+     Mod List:
+		Name Version (Mod Id)
+
+		Factory Core 0.1.0-dev (factorycore)
+		Factory Core Verification Fixture 0.1.0-dev (factorycore_client_tests)
+		Minecraft 1.21.1 (minecraft)
+		NeoForge 21.1.252 (neoforge)
+[17:21:24] [main/INFO] [cp.mo.mo.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserverdev' with arguments [--gameDir, ., --nogui]
+[17:21:24] [main/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.3).
+[17:21:27] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[17:21:27] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
+[17:21:27] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[17:21:27] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[17:21:27] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[17:21:27] [modloading-worker-0/INFO] [ne.ne.ne.co.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.252, for MC 1.21.1
+[17:21:27] [main/INFO] [mojang/YggdrasilAuthenticationService]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[17:21:27] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23126!/assets/.mcassetsroot' uses unexpected schema
+[17:21:27] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23126!/data/.mcassetsroot' uses unexpected schema
+[17:21:28] [main/INFO] [minecraft/RecipeManager]: Loaded 1304 recipes
+[17:21:28] [main/INFO] [minecraft/AdvancementTree]: Loaded 1413 advancements
+[17:21:28] [Server thread/INFO] [minecraft/DedicatedServer]: Starting minecraft server version 1.21.1
+[17:21:28] [Server thread/INFO] [minecraft/DedicatedServer]: Loading properties
+[17:21:28] [Server thread/INFO] [minecraft/DedicatedServer]: Default game type: SURVIVAL
+[17:21:28] [Server thread/INFO] [minecraft/MinecraftServer]: Generating keypair
+[17:21:28] [Server thread/INFO] [minecraft/DedicatedServer]: Starting Minecraft server on 127.0.0.1:0
+[17:21:28] [Server thread/INFO] [minecraft/ServerConnectionListener]: Using default channel type
+[17:21:28] [Server thread/WARN] [minecraft/DedicatedServer]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[17:21:28] [Server thread/WARN] [minecraft/DedicatedServer]: The server will make no attempt to authenticate usernames. Beware.
+[17:21:28] [Server thread/WARN] [minecraft/DedicatedServer]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[17:21:28] [Server thread/WARN] [minecraft/DedicatedServer]: To change this, set "online-mode" to "true" in the server.properties file.
+[17:21:28] [Server thread/INFO] [minecraft/DedicatedServer]: Preparing level "world"
+[17:21:28] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[17:21:29] [worldgen/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[17:21:29] [Server thread/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 146 ms
+[17:21:29] [Server thread/INFO] [minecraft/DedicatedServer]: Done (0.240s)! For help, type "help"
+[17:21:29] [LanServerPinger #1/WARN] [minecraft/LanServerPinger]: LanServerPinger: No route to host
+[17:21:29] [Server thread/INFO] [ne.ne.ne.ga.GameTestHooks/]: Enabled Gametest Namespaces: []
+[17:21:29] [Server thread/INFO] [ne.ne.ne.se.pe.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
+FACTORYCORE_STAGING_RECOVERED deliver=12+8 return=17+3 uncertainCallsUnchanged=true
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: e4f1f045-f9f2-44c8-a09c-21ed4f3b58f8 owner=2b5c9e37-63f2-4d6b-8400-aba0b1386c9e state=QUARANTINED ITEM minecraft:emerald staged=8 pending=DELIVER
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: 1 records. Next cursor: —
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: e4f1f045-f9f2-44c8-a09c-21ed4f3b58f8 owner=2b5c9e37-63f2-4d6b-8400-aba0b1386c9e state=QUARANTINED ITEM minecraft:emerald staged=8 pending=DELIVER
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: Delivered=0 returned=0 pending offered=8 reason=UNCERTAIN
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: IllegalStateException: Injected post-insert uncertainty
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: Network=4a886341-754c-4396-a4e5-3e96ca5d8a2e segment=4a886341-754c-4396-a4e5-3e96ca5d8a2e origin=minecraft:overworld/10, 65, 10 source device=5b562ad8-2707-433b-944a-724a8db98aab destination device=a5b01ec9-b502-4613-a1f7-3af33de026e6
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: Uncertain external outcome. No replay or refund is permitted. Preserve backups and inspect the provider; keep this record quarantined.
+FACTORYCORE_STAGING_SERVER_PASS mode=restore
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[17:21:29] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+
+> Task :spotlessInternalRegisterDependencies UP-TO-DATE
+> Task :spotlessJava
+> Task :spotlessJavaCheck
+> Task :spotlessCheck
+> Task :writeNeoForgeTestClasspath UP-TO-DATE
+> Task :prepareNeoForgeTestFiles UP-TO-DATE
+> Task :verifyRustGuest UP-TO-DATE
+> Task :test
+> Task :check
+> Task :build
+
+BUILD SUCCESSFUL in 1m 1s
+31 actionable tasks: 13 executed, 18 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.2.1/userguide/configuration_cache_enabling.html
+PASS: documentation, acceptance tracking, tooling, and JVM build/checks.
+Client/server startup and product acceptance require separate recorded evidence.

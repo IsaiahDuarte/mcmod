@@ -25,17 +25,22 @@ final class RecoveryAudit {
     envelope.putUUID("World", namespace);
     envelope.put("Transfers", TransferStateCodec.encode(List.of(record)));
     byte[] bytes = (envelope + "\n").getBytes(StandardCharsets.UTF_8);
-    if (bytes.length > MAX_FILE_BYTES) throw new IOException("Recovery audit record size limit");
+    return preserve(
+        world.resolve("factorycore-recovery"), record.id(), bytes, MAX_FILE_BYTES, ".snbt");
+  }
+
+  static Path preserve(Path folder, UUID id, byte[] bytes, int fileLimit, String extension)
+      throws IOException {
+    if (bytes.length > fileLimit) throw new IOException("Recovery audit record size limit");
     String digest;
     try {
       digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
     } catch (NoSuchAlgorithmException unavailable) {
       throw new IllegalStateException(unavailable);
     }
-    var folder = world.resolve("factorycore-recovery");
     Files.createDirectories(folder);
     if (Files.isSymbolicLink(folder)) throw new IOException("Recovery audit directory is a link");
-    var target = folder.resolve(record.id() + "-" + digest + ".snbt");
+    var target = folder.resolve(id + "-" + digest + extension);
     if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
       verify(target, bytes);
       return target;
@@ -48,7 +53,7 @@ final class RecoveryAudit {
         if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
           throw new IOException("Unexpected recovery audit entry");
         long size = Files.size(path);
-        if (size > MAX_FILE_BYTES || size > MAX_TOTAL_BYTES - total)
+        if (size > fileLimit || size > MAX_TOTAL_BYTES - total)
           throw new IOException("Recovery audit byte quota");
         total += size;
       }

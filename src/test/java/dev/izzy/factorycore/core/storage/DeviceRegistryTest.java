@@ -239,6 +239,92 @@ class DeviceRegistryTest {
     }
   }
 
+  @Test
+  void conflictRepairPreservesEvidenceClaimsAndLocationWhileInvalidatingEveryOldCopy() {
+    var dirty = new AtomicLong();
+    var registry = registry(dirty::incrementAndGet);
+    var old = placed(registry);
+    registry.insert(old, KEY, 100);
+    registry.reserve(old, JOB, KEY, 60);
+    registry.attach(old, SECOND);
+    var before = registry.evidence(old.backing());
+    long changes = dirty.get();
+    assertEquals(100, registry.ownership(old.backing()).total());
+    assertTrue(registry.ownership(old.backing()).conflict());
+    assertEquals(changes, dirty.get(), "Inspection never changes authority");
+    assertEquals(DeviceRegistry.Failure.OFFLINE, registry.repairConflict(old, SECOND).failure());
+    assertEquals(before, registry.evidence(old.backing()));
+    assertEquals(changes, dirty.get());
+    var repaired = registry.repairConflict(old, FIRST);
+    assertEquals(DeviceRegistry.Failure.OK, repaired.failure());
+    var current = repaired.handle();
+    assertEquals(old.generation() + 1, current.generation());
+    assertEquals(DeviceRegistry.Failure.STALE, registry.attach(old, FIRST).failure());
+    assertEquals(DeviceRegistry.Failure.STALE, registry.attach(old, SECOND).failure());
+    assertEquals(before.ledger(), registry.evidence(old.backing()).ledger());
+    assertEquals(FIRST, registry.definition(current).location());
+    assertEquals(new ResourceLedger.Stock(100, 60, 0, false), registry.stock(current, KEY));
+    assertEquals(changes + 1, dirty.get());
+    assertEquals(
+        DeviceRegistry.Failure.NOT_CONFLICTED, registry.repairConflict(current, FIRST).failure());
+    assertEquals(changes + 1, dirty.get());
+    var restored = DeviceRegistry.restore(registry.snapshot(), () -> {}, UUID::randomUUID);
+    assertEquals(DeviceRegistry.Failure.STALE, restored.validate(old));
+    assertEquals(before.ledger(), restored.evidence(old.backing()).ledger());
+    assertFalse(restored.stock(current, KEY).loaded());
+    restored.availability(current, FIRST, true);
+    assertEquals(40, restored.extract(current, KEY, 100, null).amount());
+    assertEquals(60, restored.extract(current, KEY, 100, JOB).amount());
+    assertEquals(100, before.ledger().contents().get(KEY), "Evidence remains detached");
+  }
+
+  @Test
+  void conflictRepairRejectsForeignUnknownStalePortableAndOverflowWithoutMutation() {
+    var registry = registry(() -> {});
+    var current = placed(registry);
+    registry.attach(current, SECOND);
+    var before = registry.snapshot();
+    assertEquals(
+        DeviceRegistry.Failure.FOREIGN_WORLD,
+        registry
+            .repairConflict(
+                new DeviceRegistry.Handle(
+                    UUID.randomUUID(), current.backing(), current.generation()),
+                FIRST)
+            .failure());
+    assertEquals(
+        DeviceRegistry.Failure.UNKNOWN,
+        registry
+            .repairConflict(new DeviceRegistry.Handle(WORLD, UUID.randomUUID(), 1), FIRST)
+            .failure());
+    assertEquals(
+        DeviceRegistry.Failure.STALE,
+        registry
+            .repairConflict(new DeviceRegistry.Handle(WORLD, current.backing(), 1), FIRST)
+            .failure());
+    assertEquals(before, registry.snapshot());
+    var stored = before.devices().getFirst();
+    var end =
+        DeviceRegistry.restore(
+            new DeviceRegistry.State(
+                WORLD,
+                List.of(new DeviceRegistry.Stored(stored.ledger(), Long.MAX_VALUE, FIRST, true))),
+            () -> {},
+            UUID::randomUUID);
+    var overflowBefore = end.snapshot();
+    assertEquals(
+        DeviceRegistry.Failure.LIMIT,
+        end.repairConflict(
+                new DeviceRegistry.Handle(WORLD, current.backing(), Long.MAX_VALUE), FIRST)
+            .failure());
+    assertEquals(overflowBefore, end.snapshot());
+    var portable = registry.create(ResourceKind.ITEM, 100, false, 8, 8).handle();
+    assertEquals(
+        DeviceRegistry.Failure.NOT_CONFLICTED, registry.repairConflict(portable, FIRST).failure());
+    assertNull(registry.ownership(UUID.randomUUID()));
+    assertThrows(IllegalArgumentException.class, () -> registry.evidence(UUID.randomUUID()));
+  }
+
   private static ResourceKey giantKey(int id) {
     return new ResourceKey(ResourceKind.ITEM, "test:large_" + id, new byte[65536]);
   }
