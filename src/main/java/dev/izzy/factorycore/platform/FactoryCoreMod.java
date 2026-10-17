@@ -23,6 +23,9 @@ public final class FactoryCoreMod {
     EnergyBankContent.register(bus);
     NetworkContent.register(bus);
     NeoForge.EVENT_BUS.addListener(DeviceSavedData::serverStarted);
+    NeoForge.EVENT_BUS.addListener(
+        dev.izzy.factorycore.platform.storage.RecoveryCommands::register);
+    NeoForge.EVENT_BUS.addListener(dev.izzy.factorycore.platform.storage.RecoveryCommands::stopped);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::postTick);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::stopped);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::playerLeft);

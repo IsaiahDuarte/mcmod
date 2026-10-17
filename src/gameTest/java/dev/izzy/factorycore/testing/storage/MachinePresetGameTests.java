@@ -864,4 +864,199 @@ public final class MachinePresetGameTests {
             })
         .thenSucceed();
   }
+
+  private static int command(net.minecraft.commands.CommandSourceStack source, String command) {
+    try {
+      return source.getServer().getCommands().getDispatcher().execute(command, source);
+    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException denied) {
+      return -1;
+    }
+  }
+
+  @SuppressWarnings("removal")
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void recoveryCommandsPreserveEvidenceAndOnlyOriginalPlayerCanReturn(
+      GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    var player = h.makeMockServerPlayerInLevel();
+    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
+        player.connection.getConnection());
+    player.moveTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(ROOT)));
+    var actor = new NetworkPermissions.Actor(player.getUUID(), false);
+    NetworkNodeEntity root = h.getBlockEntity(ROOT);
+    f.saved
+        .network(root.handle().id())
+        .setGrants(f.actor, player.getUUID(), EnumSet.allOf(NetworkPermissions.Permission.class));
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 15);
+              var handle = f.runtime.connectors().bind(f.machine).handle();
+              id[0] = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id[0],
+                      actor.id(),
+                      f.key,
+                      digital(f),
+                      rejecting(handle.backing()),
+                      12,
+                      12,
+                      () -> true,
+                      context(f, handle, false));
+              f.saved.transfers().unbind(id[0]);
+              var ordinary = player.createCommandSourceStack().withPermission(0);
+              var operator = player.createCommandSourceStack().withPermission(2);
+              h.assertTrue(
+                  command(ordinary, "factorycore recovery show " + id[0]) < 1
+                      && command(operator, "factorycore recovery show " + id[0]) == 1,
+                  "Operator inspection is gated while actual command syntax resolves");
+              h.assertTrue(
+                  command(ordinary, "factorycore recovery list") < 1
+                      && command(operator, "factorycore recovery list") > 0,
+                  "Only operator source can page world recovery metadata");
+              var console = player.server.createCommandSourceStack();
+              h.assertTrue(
+                  command(console, "factorycore recovery return " + id[0]) < 1,
+                  "Console cannot impersonate an original player for cleanup");
+              h.assertTrue(
+                  command(console.withEntity(player), "factorycore recovery return " + id[0]) < 1,
+                  "execute-as cannot turn console authority into the original player");
+              h.assertTrue(
+                  command(ordinary, "factorycore recovery return " + id[0]) == 1,
+                  "Authenticated original owner queues known return");
+              var folder =
+                  player
+                      .server
+                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .resolve("factorycore-recovery");
+              boolean evidence = false;
+              try (var paths = java.nio.file.Files.list(folder)) {
+                evidence =
+                    paths.anyMatch(path -> path.getFileName().toString().startsWith(id[0] + "-"));
+              } catch (java.io.IOException failure) {
+                throw new IllegalStateException(failure);
+              }
+              h.assertTrue(
+                  evidence && f.saved.transfers().get(id[0]).staged() == 12,
+                  "Before-state evidence exists before scheduled resource mutation");
+              h.assertTrue(
+                  command(operator, "factorycore recovery retire " + id[0]) == 0,
+                  "Live staging cannot retire");
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.transfers().get(id[0]).state() == StagedTransfer.State.COMPLETE,
+                    "Known command cleanup completes"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  f.saved.registry().stock(f.cell, f.key).total() == 15
+                      && f.saved.transfers().contains(id[0])
+                      && f.saved.transfers().get(id[0]).returned() == 12,
+                  "Cleanup conserves stock and retains completed record as evidence");
+              h.assertTrue(
+                  command(
+                              player.createCommandSourceStack().withPermission(2),
+                              "factorycore recovery retire " + id[0])
+                          == 1
+                      && !f.saved.transfers().contains(id[0])
+                      && f.saved.registry().stock(f.cell, f.key).total() == 15,
+                  "Operator explicitly retires only empty completion after preserving its evidence");
+              player.connection.disconnect(
+                  net.minecraft.network.chat.Component.literal(
+                      "Recovery command fixture complete"));
+            })
+        .thenSucceed();
+  }
+
+  @SuppressWarnings("removal")
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void recoveryCommandDeniesOtherOwnersAndUncertaintyWithoutAuditMutation(
+      GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    var owner = h.makeMockServerPlayerInLevel();
+    var other = h.makeMockServerPlayerInLevel();
+    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
+        owner.connection.getConnection());
+    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
+        other.connection.getConnection());
+    var actor = new NetworkPermissions.Actor(owner.getUUID(), false);
+    NetworkNodeEntity root = h.getBlockEntity(ROOT);
+    f.saved
+        .network(root.handle().id())
+        .setGrants(f.actor, owner.getUUID(), EnumSet.allOf(NetworkPermissions.Permission.class));
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 15);
+              var handle = f.runtime.connectors().bind(f.machine).handle();
+              var id = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id,
+                      actor.id(),
+                      f.key,
+                      digital(f),
+                      new ResourcePort() {
+                        public UUID backingId() {
+                          return handle.backing();
+                        }
+
+                        public long simulateInsert(ResourceKey key, long n) {
+                          return n;
+                        }
+
+                        public long insert(ResourceKey key, long n) {
+                          throw new IllegalStateException("Injected command uncertainty");
+                        }
+
+                        public long extract(ResourceKey key, long n) {
+                          throw new AssertionError("Cannot extract target");
+                        }
+                      },
+                      8,
+                      8,
+                      () -> true,
+                      context(f, handle, false));
+              var before = f.saved.transfers().get(id);
+              h.assertTrue(
+                  command(
+                          other.createCommandSourceStack().withPermission(2),
+                          "factorycore recovery return " + id)
+                      == 0,
+                  "An operator cannot adopt another principal's transfer");
+              h.assertTrue(
+                  command(owner.createCommandSourceStack(), "factorycore recovery return " + id)
+                          == 0
+                      && before.equals(f.saved.transfers().get(id))
+                      && before.pending() == StagedTransfer.PendingCall.DELIVER
+                      && f.saved.registry().stock(f.cell, f.key).total() == 7,
+                  "Original owner cannot replay/refund uncertainty or change accepted accounting");
+              var folder =
+                  owner
+                      .server
+                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .resolve("factorycore-recovery");
+              if (java.nio.file.Files.exists(folder))
+                try (var paths = java.nio.file.Files.list(folder)) {
+                  h.assertTrue(
+                      paths.noneMatch(path -> path.getFileName().toString().startsWith(id + "-")),
+                      "Denied uncertainty writes no cleanup audit");
+                } catch (java.io.IOException failure) {
+                  throw new IllegalStateException(failure);
+                }
+              owner.connection.disconnect(
+                  net.minecraft.network.chat.Component.literal("Recovery denial complete"));
+              other.connection.disconnect(
+                  net.minecraft.network.chat.Component.literal("Recovery denial complete"));
+            })
+        .thenSucceed();
+  }
 }

@@ -83,6 +83,14 @@ final class StagingServerVerification {
               output, "Expected native observations; never installed into world authority");
         }
       }
+      var console = event.getServer().createCommandSourceStack();
+      var dispatcher = event.getServer().getCommands().getDispatcher();
+      require(
+          dispatcher.execute("factorycore recovery list", console) == (restoring ? 1 : 3)
+              && dispatcher.execute(
+                      "factorycore recovery show " + expected.getProperty("staged.2"), console)
+                  == 1,
+          "Dedicated operator console inspects actual persisted uncertainty without resource calls");
       Files.writeString(
           report,
           "PASS\nmode="

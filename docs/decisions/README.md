@@ -74,3 +74,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 
 - [Bounded machine preset dispatch](0021-machine-preset-dispatch.md): shared scheduled
   item/mB/FE Import/Export/Stock and canonical configuration fences; player authoring/release checks pending.
+
+- [0022 — Recovery inspection and audited known cleanup](0022-recovery-inspection.md)

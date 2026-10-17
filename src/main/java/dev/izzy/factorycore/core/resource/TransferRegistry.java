@@ -39,7 +39,7 @@ public final class TransferRegistry {
   }
 
   private final Thread thread = Thread.currentThread();
-  private final Map<UUID, Entry> entries = new HashMap<>();
+  private final java.util.NavigableMap<UUID, Entry> entries = new java.util.TreeMap<>();
   private final Map<UUID, java.util.Set<UUID>> byBacking = new HashMap<>();
   private final Map<UUID, java.util.SortedSet<UUID>> unresolved = new HashMap<>();
   private final Map<UUID, java.util.SortedSet<UUID>> unresolvedDevices = new HashMap<>();
@@ -301,6 +301,27 @@ public final class TransferRegistry {
   public StagedTransfer.Snapshot get(UUID id) {
     checkThread();
     return entry(id).saved;
+  }
+
+  public record Page(List<Stored> records, UUID after) {
+    public Page {
+      records = List.copyOf(records);
+    }
+  }
+
+  /** Bounded UUID-ordered metadata page, excluding after; no provider reads or authority grant. */
+  public Page page(UUID after, int limit) {
+    checkThread();
+    if (limit < 1 || limit > 16) throw new IllegalArgumentException("Transfer page limit");
+    var values = (after == null ? entries : entries.tailMap(after, false)).entrySet().iterator();
+    var records = new java.util.ArrayList<Stored>();
+    UUID last = null;
+    while (records.size() < limit && values.hasNext()) {
+      var value = values.next();
+      last = value.getKey();
+      records.add(new Stored(last, value.getValue().saved, value.getValue().context));
+    }
+    return new Page(records, values.hasNext() ? last : null);
   }
 
   public List<Stored> snapshot() {

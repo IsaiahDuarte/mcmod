@@ -777,3 +777,17 @@ All fixture classes/resources remain excluded from production packaging.
 
 The graphical restart fixture uses the same provider/checks. Its new staging steps
 need their own successful desktop run; a headless pass cannot substitute for that.
+
+
+## Recovery command verification
+
+TransferRegistryTest adds detached exclusive metadata paging/order/limits.
+RecoveryAuditTest checks exact envelope round-trip, content-addressed reuse,
+refused corrupt overwrite, file quota and unexpected-entry preservation. Two
+MachinePresetGameTests drive the actual command dispatcher with registered player
+bodies: operator-only list/show, console/execute-as denial, before-state evidence
+before queued original-owner return, exact conservation, explicit empty completion
+retirement and denied other-owner/uncertain work without audit mutation. Required
+dedicated seed/restore runs also execute operator list/show on accepted uncertain
+records. These are server/command checks; they do not prove graphical chat layout,
+remote multiplayer or full administrator reconciliation.

@@ -388,4 +388,30 @@ class TransferRegistryTest {
     assertEquals(20, source.stock);
     assertTrue(loaded.snapshot().isEmpty());
   }
+
+  @Test
+  void metadataPagesAreOrderedDetachedAndExclusiveWithoutDroppingUnresolvedOwners() {
+    var first = new UUID(0, 1);
+    var second = new UUID(0, 2);
+    var third = new UUID(0, 3);
+    var registry =
+        new TransferRegistry(
+            List.of(
+                new TransferRegistry.Stored(third, empty(KEY)),
+                new TransferRegistry.Stored(first, empty(KEY)),
+                new TransferRegistry.Stored(second, empty(KEY))),
+            () -> {});
+    var page = registry.page(null, 2);
+    assertEquals(
+        List.of(first, second), page.records().stream().map(TransferRegistry.Stored::id).toList());
+    assertEquals(second, page.after());
+    assertThrows(UnsupportedOperationException.class, () -> page.records().clear());
+    registry.retire(first);
+    assertEquals(2, page.records().size());
+    var next = registry.page(page.after(), 2);
+    assertEquals(List.of(third), next.records().stream().map(TransferRegistry.Stored::id).toList());
+    assertNull(next.after());
+    assertTrue(registry.page(third, 2).records().isEmpty());
+    assertThrows(IllegalArgumentException.class, () -> registry.page(null, 17));
+  }
 }

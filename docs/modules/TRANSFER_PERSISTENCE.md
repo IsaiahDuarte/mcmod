@@ -225,3 +225,28 @@ subject to desktop verification. Independent chunk/player/controller save orderi
 in-call interruption/crashes and administrative reconciliation remain open.
 
 Actual accepted known/uncertain staging now has a required [two-JVM dedicated recovery record](../evidence/staged-server-v1-2026-10-17.md). The graphical variant remains separately unverified while no display is active; independent-save/interruption/administration gates remain open.
+
+
+## Operator inspection and audited owner cleanup
+
+[ADR0022](../decisions/0022-recovery-inspection.md) defines the supported command
+slice. Operator-only list/show return bounded metadata, exact counts and safe
+next steps without raw component chat or provider/chunk reads. `TransferRegistry.page`
+accepts an exclusive UUID cursor and limit1–16; it returns copied immutable rows
+and a next cursor only when more exist. It grants no authority and stays on the
+registry owner thread. A navigable entry index avoids copying/sorting all records
+for each page; existing snapshot semantics remain unchanged.
+
+Known return requires the actual registered original player as both command
+source and entity; execute-as cannot adopt owner authority. The shared scheduled
+progress path still validates accepted root/segment/endpoints and never extracts.
+Before queueing it preserves a complete immutable audit snapshot. Owner cleanup
+may work after grant revocation under its existing cleanup exemption. A completed
+record remains until an operator explicitly archives/retires it. Uncertain or
+live records cannot retire. IO/quota/corruption failure blocks mutation. World12,
+transfer-entry2 and context3 do not change; only the standalone audit envelope is
+new schema1. Audit ownership/quotas/latency limits are documented in the ADR and
+[player workflow](../PLAYER_GUIDE.md#recovery-commands).
+
+This is not full ownership-conflict reconciliation or an independent-save/crash
+transaction guarantee. No uncertain evidence is deleted or refunded.

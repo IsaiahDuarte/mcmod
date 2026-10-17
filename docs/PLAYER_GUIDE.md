@@ -368,3 +368,37 @@ ports remain pending.
 See [binding contract](modules/MACHINE_INTERFACES.md) for current limits.
 
 The compact machine editor fits Minecraft’s minimum240-pixel GUI height. Rules show four at a time; Prev/Next selects across all sixteen supported rules.
+
+
+## Recovery commands
+
+Operators (permission level2) and server console can use
+`/factorycore recovery list` for up to16 transfer records. Continue with
+`/factorycore recovery list <next-UUID>` using the printed cursor.
+`/factorycore recovery show <transfer-UUID>` reports the original owner, exact
+counts, root/segment, origin/device IDs and a safe next action. It reads metadata;
+it does not contact providers or load chunks.
+
+The original logged-in owner can request `/factorycore recovery return <UUID>`
+for known staged remainder. Use your own command source; console or `execute as`
+cannot impersonate another owner, even for operators. Cleanup returns only existing
+staging to its original source. The accepted current scope/endpoints must validate;
+unload, movement, full source, rate/access limits or changed bindings can block it.
+This global recovery command does not require standing at the original menu.
+It does not grant new extraction or resource access after permission revocation.
+
+Before queuing, the command writes exact before-state evidence under the world's
+`factorycore-recovery` directory and prints the file name/admission result. The
+later message reports cumulative returned units. The record remains available
+for inspection. An operator may explicitly `/factorycore recovery retire <UUID>`
+only after it is known complete and empty; this archives its completed state
+before freeing record quota. Uncertain/live records cannot retire, replay or refund.
+
+If evidence cannot be written, no cleanup/removal is admitted. The audit directory
+admits512 files,512KiB each and32MiB total. Keep full world/provider backups and
+archive existing files outside that directory when it fills; do not overwrite
+corrupt evidence or treat audit files as resource-restoration instructions.
+Commands throttle recovery requests; wait one second before retrying. Slow storage
+can delay these explicit recovery commands. Conflicting physical owners and
+unknown foreign outcomes still need backup/manual investigation; no general
+ownership-conflict reconciliation command exists yet.
