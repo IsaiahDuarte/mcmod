@@ -786,4 +786,82 @@ public final class MachinePresetGameTests {
                     "Thirty-five units remain conserved after explicit cleanup and resumed automation"))
         .thenSucceed();
   }
+
+  @SuppressWarnings("removal")
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void authenticatedMenuReturnsOnlyOriginalOwnersKnownStaging(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    var player = h.makeMockServerPlayerInLevel();
+    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
+        player.connection.getConnection());
+    player.moveTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(ROOT)));
+    player.getInventory().clearContent();
+    var actor = new NetworkPermissions.Actor(player.getUUID(), false);
+    NetworkNodeEntity root = h.getBlockEntity(ROOT);
+    var grants = f.saved.network(root.handle().id());
+    grants.setGrants(f.actor, player.getUUID(), EnumSet.allOf(NetworkPermissions.Permission.class));
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 15);
+              f.machine.deployPreset(actor, MachinePresets.Mode.STOCK, exact(f), 12);
+              var handle = f.runtime.connectors().bind(f.machine).handle();
+              id[0] = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id[0],
+                      actor.id(),
+                      f.key,
+                      digital(f),
+                      rejecting(handle.backing()),
+                      12,
+                      12,
+                      () -> true,
+                      context(f, handle, false));
+              f.saved.transfers().unbind(id[0]);
+              f.machine.deployPreset(actor, MachinePresets.Mode.PAUSED, exact(f), 12);
+              grants.setGrants(
+                  f.actor, player.getUUID(), Set.of(NetworkPermissions.Permission.VIEW));
+              h.useBlock(MACHINE, player);
+              h.assertTrue(
+                  player.containerMenu instanceof MachineSettingsMenu,
+                  "Actual original owner opens physical menu");
+              var menu = (MachineSettingsMenu) player.containerMenu;
+              menu.broadcastChanges();
+              h.assertTrue(
+                  menu.presetView().cleanup()
+                      && menu.presetView().staged() == 12
+                      && !menu.presetView().editable(),
+                  "VIEW-only original owner can recover known staging without DEPLOY");
+              menu.presetCommand(
+                  player,
+                  new MachinePresetPackets.Command(
+                      menu.containerId,
+                      menu.session(),
+                      menu.presetView().revision(),
+                      MachinePresetPackets.RETURN,
+                      0,
+                      "",
+                      new byte[32]));
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    !f.saved.transfers().contains(id[0]),
+                    "Menu cleanup retires only completed known operation"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  f.saved.registry().stock(f.cell, f.key).total() == 15
+                      && resident(h, ResourceKind.ITEM) == 0,
+                  "Menu return restores all original stock without fresh extraction");
+              player.closeContainer();
+              player.connection.disconnect(
+                  net.minecraft.network.chat.Component.literal("Preset cleanup fixture complete"));
+            })
+        .thenSucceed();
+  }
 }

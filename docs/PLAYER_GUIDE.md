@@ -326,6 +326,27 @@ values; Cancel discards local edits. Enter in a field also saves. Changing resou
 resets the draft window/rate to that resource’s defaults. Slots start at zero;
 fluid/energy bind the whole selected capability. A stale form reloads current
 server values before retry.
-Automatic machine presets now run through the trusted server API; their player
-authoring controls and selected-tank adapters remain pending.
+Open Presets to author Paused, Import (machine → storage), Export (storage →
+machine), or Stock (fill matching resident units to a goal). Binding settings must
+be saved first. The preset draft is kept by the server and changes no automation
+until Deploy. Set goal updates the draft; Deploy also uses the current typed goal.
+Goals use items, mB or FE according to the saved binding. Zero Stock stops filling.
+
+All matches the resource kind; Allow selected and Block selected apply up to16
+registry IDs, tags or exact samples. Enter a namespaced ID, then Add ID or Add tag.
+Copy sample uses the displayed slot in your own main inventory: exact items keep
+components, fluid samples read a filled container, and FE needs no sample item.
+Nothing is consumed. Cycle the slot button to choose another occupied slot.
+Prev/Next select a rule; Remove/Clear edit the draft. Hover a row for its full name.
+Reset reloads the saved preset; Cancel discards the unsaved draft.
+
+Deployment requires current view, edit and deployment grants; active modes also
+need deposit and withdrawal grants. A changed binding/deployment reloads the draft
+before accepting another edit. Binding edits pause the preset. Review the selected
+provider side, access and rate in Binding if work is blocked; the Return staged
+button tooltip explains the latest runtime reason. Return staged recovers only
+your known staging to its original source, even after edit/deploy revocation while
+VIEW remains. An unavailable source can block recovery; uncertain provider calls
+never replay or fabricate refunds. Selected-tank adapters and coordinated disjoint
+ports remain pending.
 See [binding contract](modules/MACHINE_INTERFACES.md) for current limits.

@@ -4,7 +4,7 @@
 
 This file is the authoritative product contract for the first playable release. It consolidates user requirements and design defaults chosen under delegated authority. All requirements below apply unless explicitly marked **Later** or assigned to a decision gate in [IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 
-The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Automatic wired membership, cell availability, physical finite energy banks and explicit connector/transfer primitives, bounded scheduled external stock observations and principal-owned utility holds are implemented; bounded all-key digital/foreign discovery and registry-text search are implemented; crafting-job reservations and advanced presets remain unimplemented; physical item terminal/menu controls have headless and partial graphical evidence; remaining client checks are pending; filtered buffer Import and configurable shared network rates are implemented with native control evidence; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
+The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Automatic wired membership, cell availability, physical finite energy banks and explicit connector/transfer primitives, bounded scheduled external stock observations and principal-owned utility holds are implemented; bounded all-key digital/foreign discovery and registry-text search are implemented; crafting-job reservations and advanced coordination remain unimplemented; physical item terminal/menu controls have headless and partial graphical evidence; remaining client checks are pending; filtered buffer Import and configurable shared network rates are implemented with native control evidence; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
 
 ## R01 — Release scope
 
@@ -338,3 +338,11 @@ Primary research starting points, to verify during implementation decision gates
 - JEI: https://github.com/mezz/JustEnoughItems
 - NeoForge documentation: https://docs.neoforged.net/
 - Mekanism: https://github.com/mekanism/Mekanism
+
+
+Machine preset acceptance evidence is partial: the authenticated physical editor
+now drafts mode/filters/goal and deploys through shared authorization/scheduling.
+Actual client Stock fills only the selected item window with exact conservation;
+headless cases cover typed samples and original-owner known return. This adds
+A04/A12/A13/A14 evidence without completing selected tanks, multiport coordination,
+actual restart, multiplayer or the first-playable acceptance set.

@@ -51,5 +51,6 @@ public final class MachineInterfaceContent {
     ENTITIES.register(bus);
     MENUS.register(bus);
     bus.addListener(MachineSettingsPackets::register);
+    bus.addListener(MachinePresetPackets::register);
   }
 }

@@ -646,3 +646,19 @@ strict malformed marks and schema1 migration; future nested-table tests now use3
 because2 is implemented. World12, reference schema2 and context ABI3 are unchanged.
 Actual player preset UI, client dispatch, independent saves/restart, multiplayer,
 selected tanks and representative performance remain separate required checks.
+
+
+## Machine preset editor checks
+
+MachinePresetPacketsTest covers bounded real command/view codecs, detached sample
+digests, malformed commands and overlong rule lists. TransferRegistryTest adds
+separate device/backing identity and restored/unbound/uncertain index behavior.
+MachineSettingsGameTests adds server draft isolation, explicit publication, nonce/
+revision/configuration rejection, copied bucket/canonical FE samples and current
+DEPLOY revocation. MachinePresetGameTests adds actual authenticated VIEW-only
+original-owner staged return through the physical menu and shared scheduler.
+
+`./gradlew runTerminalClient` now requires20 captures and the prior terminal/buffer/
+binding checks plus preset Stock authoring, exact sample/goal/Deploy and selected
+slot conservation. It does not prove physical Shift, remote multiplayer, restart,
+independent saves or complete release acceptance.

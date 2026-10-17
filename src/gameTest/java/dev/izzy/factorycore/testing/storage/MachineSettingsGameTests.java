@@ -187,4 +187,249 @@ public final class MachineSettingsGameTests {
             })
         .thenSucceed();
   }
+
+  private static void preset(Fixture f, MachineSettingsMenu m, int action, String text) {
+    byte[] digest = new byte[32];
+    var stack = f.player.getInventory().getItem(9);
+    if (!stack.isEmpty())
+      digest =
+          TerminalPackets.fingerprint(
+              new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                      f.player.registryAccess())
+                  .itemKey(stack));
+    m.presetCommand(
+        f.player,
+        new MachinePresetPackets.Command(
+            m.containerId, m.session(), m.presetView().revision(), action, 9, text, digest));
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void presetDraftSamplesDoNotDeployOrConsumeUntilExplicitSave(GameTestHelper h) {
+    var f = setup(h);
+    MachineSettingsMenu[] menu = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.machine.canUse(f.player), "Wired owner ready"))
+        .thenExecute(
+            () -> {
+              menu[0] = open(h, f);
+              f.player
+                  .getInventory()
+                  .setItem(9, new ItemStack(net.minecraft.world.item.Items.IRON_INGOT, 7));
+              preset(f, menu[0], MachinePresetPackets.SAMPLE, "");
+              h.assertTrue(
+                  menu[0].presetView().dirty()
+                      && menu[0].presetView().rules().size() == 1
+                      && f.player.getInventory().getItem(9).getCount() == 7
+                      && DeviceSavedData.get(f.player.server)
+                              .machinePresets()
+                              .get(f.machine.handle().id())
+                          == null,
+                  "Authenticated exact sample changes only the server draft and consumes nothing");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              preset(f, menu[0], MachinePresetPackets.MODE, "");
+              h.assertTrue(
+                  menu[0].presetView().mode()
+                      == dev.izzy.factorycore.core.storage.MachinePresets.Mode.IMPORT,
+                  "Mode remains an unsaved draft");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              preset(f, menu[0], MachinePresetPackets.DEPLOY, "8");
+              var saved =
+                  DeviceSavedData.get(f.player.server)
+                      .machinePresets()
+                      .get(f.machine.handle().id());
+              h.assertTrue(
+                  saved != null
+                      && saved.target() == 8
+                      && saved.filter().terms().size() == 1
+                      && saved.authority().principal().equals(f.player.getUUID())
+                      && menu[0].presetView().status().equals("applied")
+                      && !menu[0].presetView().dirty(),
+                  "Explicit deploy saves exact filter and typed goal under authenticated principal");
+              end(f);
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void presetBadGoalAndStaleNonceRevisionCannotPublish(GameTestHelper h) {
+    var f = setup(h);
+    MachineSettingsMenu[] menu = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.machine.canUse(f.player), "Wired owner ready"))
+        .thenExecute(
+            () -> {
+              var m = menu[0] = open(h, f);
+              m.presetCommand(
+                  f.player,
+                  new MachinePresetPackets.Command(
+                      m.containerId,
+                      UUID.randomUUID(),
+                      m.presetView().revision(),
+                      MachinePresetPackets.MODE,
+                      0,
+                      "",
+                      new byte[32]));
+              h.assertTrue(!m.presetView().dirty(), "Wrong nonce does not mutate draft");
+              preset(f, m, MachinePresetPackets.GOAL, "-1");
+              h.assertTrue(
+                  m.presetView().goal() == 64 && m.presetView().status().equals("invalid"),
+                  "Negative goal leaves draft unchanged");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              var m = menu[0];
+              m.presetCommand(
+                  f.player,
+                  new MachinePresetPackets.Command(
+                      m.containerId,
+                      m.session(),
+                      m.presetView().revision() - 1,
+                      MachinePresetPackets.DEPLOY,
+                      0,
+                      "8",
+                      new byte[32]));
+              h.assertTrue(
+                  m.presetView().status().equals("stale")
+                      && DeviceSavedData.get(f.player.server)
+                              .machinePresets()
+                              .get(f.machine.handle().id())
+                          == null,
+                  "Stale revision cannot deploy");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              var m = menu[0];
+              f.machine.configure(
+                  new NetworkPermissions.Actor(f.player.getUUID(), false),
+                  new ConnectorSettings(
+                      ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 1, 8));
+              preset(f, m, MachinePresetPackets.DEPLOY, "8");
+              h.assertTrue(
+                  m.presetView().status().equals("stale")
+                      && !m.presetView().dirty()
+                      && DeviceSavedData.get(f.player.server)
+                              .machinePresets()
+                              .get(f.machine.handle().id())
+                          == null,
+                  "Changed physical configuration reloads draft before accepting deployment");
+              end(f);
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void presetUtilitySamplesUseCopiedContainerAndCanonicalEnergy(GameTestHelper h) {
+    var f = setup(h);
+    MachineSettingsMenu[] menu = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.machine.canUse(f.player), "Wired owner ready"))
+        .thenExecute(
+            () -> {
+              f.machine.configure(
+                  new NetworkPermissions.Actor(f.player.getUUID(), false),
+                  new ConnectorSettings(
+                      ResourceKind.FLUID, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 1000));
+              f.player
+                  .getInventory()
+                  .setItem(9, new ItemStack(net.minecraft.world.item.Items.WATER_BUCKET));
+              menu[0] = open(h, f);
+              preset(f, menu[0], MachinePresetPackets.SAMPLE, "");
+              h.assertTrue(
+                  menu[0].presetView().rules().getFirst().contains("minecraft:water")
+                      && f.player
+                          .getInventory()
+                          .getItem(9)
+                          .is(net.minecraft.world.item.Items.WATER_BUCKET),
+                  "Fluid sample copies contained water without draining original bucket");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              f.machine.configure(
+                  new NetworkPermissions.Actor(f.player.getUUID(), false),
+                  new ConnectorSettings(
+                      ResourceKind.ENERGY, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 1000));
+              preset(f, menu[0], MachinePresetPackets.SAMPLE, "");
+              h.assertTrue(
+                  menu[0].presetView().status().equals("stale"),
+                  "Kind change discards incompatible fluid draft");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              f.player.getInventory().clearContent();
+              preset(f, menu[0], MachinePresetPackets.SAMPLE, "");
+              h.assertTrue(
+                  menu[0].presetView().rules().size() == 1
+                      && menu[0]
+                          .presetView()
+                          .rules()
+                          .getFirst()
+                          .contains(
+                              dev.izzy.factorycore.core.resource.ResourceKey.ENERGY.registryId()),
+                  "FE sample uses canonical energy identity without an inventory item");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              preset(f, menu[0], MachinePresetPackets.TAG, "minecraft:water");
+              h.assertTrue(
+                  menu[0].presetView().status().equals("invalid")
+                      && menu[0].presetView().rules().size() == 1,
+                  "Unsupported energy tags reject without changing valid draft");
+              end(f);
+            })
+        .thenSucceed();
+  }
+
+  @SuppressWarnings("removal")
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void presetDeploymentRechecksCurrentDeployGrant(GameTestHelper h) {
+    var owner = setup(h);
+    var guest = h.makeMockServerPlayerInLevel();
+    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
+        guest.connection.getConnection());
+    guest.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    guest.getInventory().clearContent();
+    var f = new Fixture(guest, owner.machine, owner.root);
+    var actor = new NetworkPermissions.Actor(owner.player.getUUID(), false);
+    var grants = DeviceSavedData.get(guest.server).network(owner.root.handle().id());
+    grants.setGrants(actor, guest.getUUID(), EnumSet.allOf(NetworkPermissions.Permission.class));
+    MachineSettingsMenu[] menu = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.machine.canUse(guest), "Granted editor ready"))
+        .thenExecute(
+            () -> {
+              menu[0] = open(h, f);
+              preset(f, menu[0], MachinePresetPackets.MODE, "");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              grants.setGrants(
+                  actor,
+                  guest.getUUID(),
+                  Set.of(NetworkPermissions.Permission.VIEW, NetworkPermissions.Permission.EDIT));
+              preset(f, menu[0], MachinePresetPackets.DEPLOY, "8");
+              h.assertTrue(
+                  menu[0].presetView().status().equals("denied")
+                      && !menu[0].presetView().editable()
+                      && DeviceSavedData.get(guest.server)
+                              .machinePresets()
+                              .get(f.machine.handle().id())
+                          == null,
+                  "Revoked DEPLOY blocks publication while retaining view and draft");
+              end(f);
+              end(owner);
+            })
+        .thenSucceed();
+  }
 }

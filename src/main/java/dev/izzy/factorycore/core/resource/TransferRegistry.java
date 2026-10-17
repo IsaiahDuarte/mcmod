@@ -42,6 +42,7 @@ public final class TransferRegistry {
   private final Map<UUID, Entry> entries = new HashMap<>();
   private final Map<UUID, java.util.Set<UUID>> byBacking = new HashMap<>();
   private final Map<UUID, java.util.SortedSet<UUID>> unresolved = new HashMap<>();
+  private final Map<UUID, java.util.SortedSet<UUID>> unresolvedDevices = new HashMap<>();
   private final Runnable changed;
   private long bytes;
   private boolean executing;
@@ -282,6 +283,16 @@ public final class TransferRegistry {
     return new Stored(id, entry.saved, entry.context);
   }
 
+  /** First unresolved operation mentioning a device; no inventory scan or resource authority. */
+  public Stored unresolvedDevice(UUID device) {
+    checkThread();
+    var ids = unresolvedDevices.get(Objects.requireNonNull(device));
+    if (ids == null) return null;
+    var id = ids.first();
+    var value = entry(id);
+    return new Stored(id, value.saved, value.context);
+  }
+
   public TransferContext context(UUID id) {
     checkThread();
     return entry(id).context;
@@ -318,6 +329,10 @@ public final class TransferRegistry {
         && snapshot.staged() == 0) return;
     for (var backing : List.of(snapshot.source(), snapshot.destination()))
       unresolved.computeIfAbsent(backing, ignored -> new java.util.TreeSet<>()).add(id);
+    var context = entry(id).context;
+    if (context != null)
+      for (var device : List.of(context.source().device(), context.destination().device()))
+        unresolvedDevices.computeIfAbsent(device, ignored -> new java.util.TreeSet<>()).add(id);
   }
 
   private void removeUnresolved(UUID id, StagedTransfer.Snapshot snapshot) {
@@ -328,6 +343,15 @@ public final class TransferRegistry {
         if (ids.isEmpty()) unresolved.remove(backing);
       }
     }
+    var context = entry(id).context;
+    if (context != null)
+      for (var device : List.of(context.source().device(), context.destination().device())) {
+        var ids = unresolvedDevices.get(device);
+        if (ids != null) {
+          ids.remove(id);
+          if (ids.isEmpty()) unresolvedDevices.remove(device);
+        }
+      }
   }
 
   private Entry entry(UUID id) {

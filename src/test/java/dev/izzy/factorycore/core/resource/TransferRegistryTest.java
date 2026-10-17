@@ -336,4 +336,56 @@ class TransferRegistryTest {
     assertNull(restored.unresolved(target.id));
     assertEquals(100, source.stock + target.stock);
   }
+
+  @Test
+  void deviceIndexSurvivesUnbindAndRestoreWithoutConfusingBackingIdentity() {
+    var registry = new TransferRegistry(List.of(), () -> {});
+    var source = new Port(UUID.randomUUID(), 20);
+    var destination = new Port(UUID.randomUUID(), 0);
+    destination.acceptance = 0;
+    UUID device = UUID.randomUUID(), id = UUID.randomUUID(), owner = UUID.randomUUID();
+    var context =
+        new TransferContext(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new dev.izzy.factorycore.core.network.NodeRegistry.Position("minecraft:overworld", 0),
+            new TransferContext.Endpoint(TransferContext.Type.DIGITAL, source.id, source.id, 1, 0),
+            new TransferContext.Endpoint(
+                TransferContext.Type.EXTERNAL, device, destination.id, 1, 1));
+    registry.start(id, owner, KEY, source, destination, 12, 12, () -> true, context);
+    assertEquals(id, registry.unresolvedDevice(device).id());
+    assertNull(registry.unresolved(device));
+    assertNull(registry.unresolvedDevice(destination.id));
+    var known = registry.get(id);
+    var pending =
+        new StagedTransfer.Snapshot(
+            known.owner(),
+            known.key(),
+            known.source(),
+            known.destination(),
+            known.staged(),
+            known.delivered(),
+            known.returned(),
+            StagedTransfer.State.QUARANTINED,
+            OperationResult.Reason.UNCERTAIN,
+            "Unknown insert",
+            StagedTransfer.PendingCall.DELIVER,
+            12);
+    var uncertain =
+        new TransferRegistry(List.of(new TransferRegistry.Stored(id, pending, context)), () -> {});
+    assertEquals(id, uncertain.unresolvedDevice(device).id());
+    assertEquals(
+        StagedTransfer.PendingCall.DELIVER,
+        uncertain.unresolvedDevice(device).transfer().pending());
+    registry.unbind(id);
+    var loaded = new TransferRegistry(registry.snapshot(), () -> {});
+    assertEquals(12, loaded.unresolvedDevice(device).transfer().staged());
+    loaded.bind(id, source, destination, () -> true);
+    assertEquals(12, loaded.cancel(id).amount());
+    assertNull(loaded.unresolvedDevice(device));
+    loaded.retire(id);
+    assertEquals(20, source.stock);
+    assertTrue(loaded.snapshot().isEmpty());
+  }
 }

@@ -2,7 +2,7 @@
 
 Implemented P3 binding prerequisite; see [ADR 0019](../decisions/0019-local-machine-bindings.md).
 Automatic machine preset runtime is implemented through a trusted server API.
-Player preset authoring, selected-tank adapters, multiport coordination, processing
+Player preset authoring is implemented. Selected-tank adapters, multiport coordination, processing
 jobs and complete release verification remain unfinished.
 
 ## Player controls
@@ -111,7 +111,7 @@ actual run evidence is recorded separately when completed.
 
 [ADR 0020](../decisions/0020-machine-preset-authority.md) defines world12
 MachinePresets schema1. This was the original authority prerequisite. The runtime extension below now
-attaches automatic machine Import/Export/Stock; player preset controls remain open.
+attaches automatic machine Import/Export/Stock; player controls are described below.
 
 On the server thread, after establishing current machine membership, call
 `machine.deployPreset(actor, MachinePresets.Mode.IMPORT,
@@ -194,5 +194,47 @@ owners, up to4096/512KiB, in addition to deployment/selector budgets.
 Nineteen runtime GameTests and core/compressed-disk regressions cover the stated
 boundaries. See
 [working runtime examples](../../src/gameTest/java/dev/izzy/factorycore/testing/storage/MachinePresetGameTests.java).
-The program UI, live preset client flows, actual restart/independent saves,
+Actual restart/independent saves,
 multiplayer, selected tanks and performance remain required release evidence.
+
+
+## Player preset drafts and cleanup
+
+The existing physical menu now has Binding/Presets tabs. The server owns a bounded
+per-opening draft (sixteen terms, existing256KiB filter ceiling); close discards it.
+Mode/filter/goal/registry/tag/exact sample/remove/clear/reset commands change only
+that draft. Deploy writes the existing canonical registry through `deployPreset`.
+The typed deployment goal is validated before publication. Binding still uses its
+separate complete-form Apply; unsaved binding changes do not alter preset scope.
+No persistence or ABI schema changes are needed.
+
+`MachinePresetPackets` version1 commands contain only menu/nonce/draft revision,
+action0–10, selection0–35, text≤256 and a32-byte exact identity fingerprint. The
+server reads sample slots from the authenticated player's main inventory; fluid
+inspection uses a one-item copy, and FE selects the canonical identity. Samples
+consume nothing. Display packets contain at most16 bounded human-readable rules,
+exact long goal/staging counts and status, never raw component data or authority.
+
+Commands revalidate current body/menu, physical range/VIEW, structural lease,
+face and full scope. Draft editing/deployment also requires live EDIT/DEPLOY;
+active deployment rechecks WITHDRAW/DEPOSIT. Wrong nonce/revision cannot publish.
+External canonical/configuration changes reload the draft before another action.
+Commands admit at most one per two ticks; changed display state polls every five.
+Known-owner Return uses guarded scheduled progress, checks accepted origin/root/
+segment and actual principal, and cancels queued work when the menu closes.
+Uncertain records remain non-replayable. Only known complete empty records retire.
+
+The transfer registry maintains a separate UUID-sorted unresolved-device index,
+including restored/unbound/uncertain contexts. It grants no authority and never
+aliases the backing index. The UI conservatively considers the first record;
+another principal's earlier unresolved record can block later cleanup discovery.
+No all-record or provider scan occurs during menu polling. All mutable state stays
+on the Minecraft server thread; the client projection owns no resources.
+
+Native tests cover draft isolation/deployment, wrong nonce/stale revision/config,
+non-consuming item/fluid/FE samples, unsupported tags, current DEPLOY revocation
+and actual VIEW-only original-owner return. Packet/core tests cover bounded codecs,
+detached fingerprints and restored device indexing. The isolated graphical fixture
+covers actual Stock authoring/deployment and selected-slot conservation at scales2–4.
+See the [graphical evidence record](../evidence/machine-preset-client-v1-2026-10-17.md). This remains partial A04/A12/A13/A14;
+restart, independent saves, multiplayer, broader recovery and performance are open.

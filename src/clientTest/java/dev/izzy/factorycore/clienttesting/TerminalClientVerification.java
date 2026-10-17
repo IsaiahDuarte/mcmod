@@ -80,7 +80,7 @@ public final class TerminalClientVerification {
   private void tick(ClientTickEvent.Post event) {
     Minecraft client = Minecraft.getInstance();
     ticks++;
-    if (stage == 60) return;
+    if (stage == 70) return;
     if (failure.get() != null)
       throw new IllegalStateException("Graphical terminal fixture failed", failure.get());
     if (ticks - entered > 1200)
@@ -692,18 +692,61 @@ public final class TerminalClientVerification {
       next();
       return;
     }
-    if (stage == 48 && checked.get()) {
+    if (stage == 48 && checked.get() && client.screen == null) {
+      client.gameMode.useItemOn(
+          client.player,
+          InteractionHand.MAIN_HAND,
+          new BlockHitResult(Vec3.atCenterOf(location), Direction.NORTH, location, false));
+      next();
+      return;
+    }
+    if (stage == 50 && client.screen == null) {
+      client.gameMode.useItemOn(
+          client.player,
+          InteractionHand.MAIN_HAND,
+          new BlockHitResult(Vec3.atCenterOf(location), Direction.NORTH, location, false));
+      next();
+      return;
+    }
+    if (stage == 59 && !checked.get()) {
+      var server = client.getSingleplayerServer();
+      var principal = client.player.getUUID();
+      server.execute(
+          () -> {
+            try {
+              var player = server.getPlayerList().getPlayer(principal);
+              var chest =
+                  (net.minecraft.world.level.block.entity.ChestBlockEntity)
+                      player.serverLevel().getBlockEntity(location.south());
+              if (chest.getItem(2).getCount() != 8) return;
+              check(
+                  chest.getItem(0).isEmpty() && chest.getItem(1).isEmpty(),
+                  "Stock respects selected machine window");
+              check(
+                  DeviceSavedData.get(server).registry().stock(cell, key).total() == 6
+                      && player.getInventory().getItem(9).getCount() == 2
+                      && fixtureBuffer.inventory().total(key) == 9,
+                  "Actual client Stock conserves cell6 + machine8 + buffer9 + sample2 =25");
+              checked.set(true);
+            } catch (RuntimeException error) {
+              failure.set(error);
+            }
+          });
+      return;
+    }
+    if (stage == 59 && checked.get()) {
+      capture(client, "machine-preset-scale-4-stock.png");
       try {
         Files.writeString(
             report,
             "PASS\n"
                 + evidence
-                + "Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
-                + "Conservation: named cell14 + buffer9 + original sample2 =25. Machine smelter: READ_ONLY, priority-7, first2/count1/rate8 persisted.\n");
+                + "Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
+                + "Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample.\n");
       } catch (IOException error) {
         throw new IllegalStateException(error);
       }
-      stage = 60;
+      stage = 70;
       client.level.disconnect();
       client.disconnect();
       client.stop();
@@ -746,6 +789,59 @@ public final class TerminalClientVerification {
         fillMachine(screen);
         checked.set(false);
         click(screen, "Apply & Close");
+        next();
+      }
+      case 49 -> {
+        click(screen, "Withdraw only");
+        click(screen, "Deposit only");
+        click(screen, "Apply & Close");
+        next();
+      }
+      case 51 -> {
+        click(screen, "Presets");
+        next();
+      }
+      case 52 -> {
+        click(screen, "Paused");
+        next();
+      }
+      case 53 -> {
+        click(screen, "Import");
+        next();
+      }
+      case 54 -> {
+        click(screen, "Export");
+        next();
+      }
+      case 55 -> {
+        check(
+            screen.getMenu().presetView().mode()
+                == dev.izzy.factorycore.core.storage.MachinePresets.Mode.STOCK,
+            "Actual mode commands author Stock draft");
+        click(screen, "Copy sample");
+        next();
+      }
+      case 56 -> {
+        check(
+            screen.getMenu().presetView().rules().size() == 1,
+            "Actual own named sample creates exact rule");
+        edit(screen, 5, "8", true);
+        client.options.guiScale().set(2);
+        client.resizeDisplay();
+        next();
+      }
+      case 57 -> {
+        capture(client, "machine-preset-scale-2-draft.png");
+        client.options.guiScale().set(3);
+        client.resizeDisplay();
+        next();
+      }
+      case 58 -> {
+        capture(client, "machine-preset-scale-3-draft.png");
+        client.options.guiScale().set(4);
+        client.resizeDisplay();
+        click(screen, "Deploy");
+        checked.set(false);
         next();
       }
       default -> {}
@@ -878,7 +974,9 @@ public final class TerminalClientVerification {
 
   private static void click(Screen screen, String text) {
     for (var child : screen.children())
-      if (child instanceof Button button && button.getMessage().getString().equals(text)) {
+      if (child instanceof Button button
+          && button.visible
+          && button.getMessage().getString().equals(text)) {
         check(button.active, "Action enabled: " + text);
         screen.mouseClicked(
             button.getX() + button.getWidth() / 2.0, button.getY() + button.getHeight() / 2.0, 0);

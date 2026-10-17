@@ -2,8 +2,9 @@ package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
-import java.util.Locale;
+import java.util.*;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -19,16 +20,34 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   private ResourceKind kind = ResourceKind.ITEM;
   private ConnectorSettings.Access access = ConnectorSettings.Access.READ_WRITE;
   private long shown = -1;
-  private boolean invalid;
+  private boolean invalid, presets;
+  private final List<AbstractWidget> bindingWidgets = new ArrayList<>(),
+      presetWidgets = new ArrayList<>();
+  private EditBox goal, rule;
+  private Button mode,
+      filter,
+      sample,
+      copy,
+      deploy,
+      resetPreset,
+      returnStaged,
+      remove,
+      clear,
+      presetCancel;
+  private long presetShown = -1;
+  private int selectedRule, selectedSlot;
+  private MachineSettingsPackets.Form lastForm;
 
   public MachineSettingsScreen(MachineSettingsMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
     imageWidth = 300;
-    imageHeight = 218;
+    imageHeight = 272;
   }
 
   @Override
   protected void init() {
+    String goalDraft = goal == null ? null : goal.getValue();
+    String ruleDraft = rule == null ? "" : rule.getValue();
     String[] draft =
         label == null
             ? null
@@ -40,6 +59,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
               rate.getValue()
             };
     super.init();
+    bindingWidgets.clear();
+    presetWidgets.clear();
     label = box(10, 43, 280, 64, "label");
     priority = box(80, 96, 65, 5, "priority");
     firstSlot = box(225, 96, 65, 10, "first");
@@ -73,6 +94,70 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     apply = button("apply", 10, 174, 88, this::apply);
     button("reset", 106, 174, 88, () -> load(menu.view().form()));
     button("cancel", 202, 174, 88, this::onClose);
+    for (var child : children())
+      if (child instanceof AbstractWidget widget) bindingWidgets.add(widget);
+    presetButton(
+        "binding",
+        158,
+        6,
+        63,
+        () -> {
+          presets = false;
+          sync();
+        });
+    presetButton(
+        "presets",
+        225,
+        6,
+        65,
+        () -> {
+          presets = true;
+          sync();
+        });
+    mode = presetButton("mode", 10, 30, 130, () -> sendPreset(MachinePresetPackets.MODE));
+    filter = presetButton("filter", 150, 30, 140, () -> sendPreset(MachinePresetPackets.FILTER));
+    goal = presetBox(64, 61, 120, 19, "goal");
+    presetButton("set", 190, 60, 100, () -> sendPreset(MachinePresetPackets.GOAL));
+    rule = presetBox(10, 88, 170, 256, "rule");
+    presetButton("registry", 184, 87, 50, () -> sendPreset(MachinePresetPackets.REGISTRY));
+    presetButton("tag", 238, 87, 52, () -> sendPreset(MachinePresetPackets.TAG));
+    presetButton(
+        "previous",
+        10,
+        172,
+        48,
+        () -> {
+          selectedRule = Math.max(0, selectedRule - 1);
+          sync();
+        });
+    presetButton(
+        "next",
+        62,
+        172,
+        48,
+        () -> {
+          selectedRule = Math.min(menu.presetView().rules().size() - 1, selectedRule + 1);
+          sync();
+        });
+    remove = presetButton("remove", 177, 172, 55, () -> sendPreset(MachinePresetPackets.REMOVE));
+    clear = presetButton("clear", 236, 172, 54, () -> sendPreset(MachinePresetPackets.CLEAR));
+    sample =
+        presetButton(
+            "sample",
+            10,
+            195,
+            175,
+            () -> {
+              selectedSlot = (selectedSlot + 1) % 36;
+              sync();
+            });
+    copy = presetButton("copy", 190, 195, 100, () -> sendPreset(MachinePresetPackets.SAMPLE));
+    returnStaged =
+        presetButton("return", 190, 216, 100, () -> sendPreset(MachinePresetPackets.RETURN));
+    presetCancel = presetButton("cancel", 10, 236, 88, this::onClose);
+    resetPreset = presetButton("reset", 106, 236, 88, () -> sendPreset(MachinePresetPackets.RESET));
+    deploy = presetButton("deploy", 202, 236, 88, () -> sendPreset(MachinePresetPackets.DEPLOY));
+    presetShown = -1;
     if (draft == null) load(menu.view().form());
     else {
       label.setValue(draft[0]);
@@ -82,6 +167,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
       rate.setValue(draft[4]);
     }
     sync();
+    if (goalDraft != null) goal.setValue(goalDraft);
+    rule.setValue(ruleDraft);
   }
 
   private EditBox box(int x, int y, int width, int length, String key) {
@@ -129,7 +216,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   private void sync() {
     var view = menu.view();
     if (shown != view.generation()) {
-      load(view.form());
+      if (!view.form().equals(lastForm)) load(view.form());
+      lastForm = view.form();
       shown = view.generation();
     }
     kindButton.setMessage(
@@ -144,6 +232,97 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     count.setEditable(view.editable() && kind == ResourceKind.ITEM);
     kindButton.active = view.editable();
     accessButton.active = view.editable();
+    for (var widget : bindingWidgets) widget.visible = !presets;
+    var preset = menu.presetView();
+    for (var widget : presetWidgets) {
+      widget.visible = presets;
+      widget.active = preset.editable() && !preset.busy();
+    }
+    if (presetShown != preset.revision()) {
+      goal.setValue(Long.toString(preset.goal()));
+      presetShown = preset.revision();
+    }
+    mode.setMessage(
+        Component.translatable(
+            "status.factorycore.buffer_mode." + preset.mode().name().toLowerCase(Locale.ROOT)));
+    filter.setMessage(
+        Component.translatable(
+            "gui.factorycore.preset.filter." + preset.filter().name().toLowerCase(Locale.ROOT)));
+    if (minecraft != null && minecraft.player != null) {
+      var inventory = minecraft.player.getInventory();
+      for (int i = 0; i < 36 && inventory.getItem(selectedSlot).isEmpty(); i++)
+        selectedSlot = (selectedSlot + 1) % 36;
+      var stack = inventory.getItem(selectedSlot);
+      String name = stack.isEmpty() ? "—" : stack.getHoverName().getString();
+      sample.setMessage(
+          Component.literal(font.plainSubstrByWidth((selectedSlot + 1) + ": " + name, 163)));
+      sample.setTooltip(Tooltip.create(Component.literal(name)));
+      copy.active &= !stack.isEmpty() || preset.kind() == ResourceKind.ENERGY;
+    }
+    goal.setTooltip(
+        Tooltip.create(
+            Component.translatable("gui.factorycore.preset.goal.help")
+                .append(" ")
+                .append(
+                    Component.translatable(
+                        "gui.factorycore.machine.units."
+                            + preset.kind().name().toLowerCase(Locale.ROOT)))));
+    returnStaged.setTooltip(
+        Tooltip.create(
+            Component.translatable("status.factorycore.buffer_reason." + preset.reason())));
+    selectedRule = Math.max(0, Math.min(selectedRule, preset.rules().size() - 1));
+    remove.active &= !preset.rules().isEmpty();
+    clear.active &= !preset.rules().isEmpty();
+    presetCancel.active = true;
+    returnStaged.active = preset.cleanup() && !preset.busy();
+  }
+
+  private EditBox presetBox(int x, int y, int width, int length, String key) {
+    var field = box(x, y, width, length, key);
+    field.setTooltip(
+        Tooltip.create(Component.translatable("gui.factorycore.preset." + key + ".help")));
+    presetWidgets.add(field);
+    return field;
+  }
+
+  private Button presetButton(String key, int x, int y, int width, Runnable action) {
+    var widget =
+        addRenderableWidget(
+            Button.builder(
+                    Component.translatable("gui.factorycore.preset." + key), b -> action.run())
+                .bounds(leftPos + x, topPos + y, width, 18)
+                .tooltip(
+                    Tooltip.create(
+                        Component.translatable("gui.factorycore.preset." + key + ".help")))
+                .build());
+    if (!key.equals("binding") && !key.equals("presets")) presetWidgets.add(widget);
+    return widget;
+  }
+
+  private void sendPreset(int action) {
+    String text =
+        switch (action) {
+          case MachinePresetPackets.GOAL, MachinePresetPackets.DEPLOY -> goal.getValue();
+          case MachinePresetPackets.REGISTRY, MachinePresetPackets.TAG -> rule.getValue();
+          default -> "";
+        };
+    byte[] fingerprint = new byte[32];
+    if (action == MachinePresetPackets.SAMPLE && minecraft != null && minecraft.player != null) {
+      var stack = minecraft.player.getInventory().getItem(selectedSlot);
+      if (!stack.isEmpty())
+        fingerprint =
+            TerminalPackets.fingerprint(
+                new PlatformResourceCodec(minecraft.player.registryAccess()).itemKey(stack));
+    }
+    PacketDistributor.sendToServer(
+        new MachinePresetPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.presetView().revision(),
+            action,
+            action == MachinePresetPackets.REMOVE ? selectedRule : selectedSlot,
+            text,
+            fingerprint));
   }
 
   private void apply() {
@@ -171,7 +350,10 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   public boolean keyPressed(int key, int scan, int modifiers) {
     if ((key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER)
         && getFocused() instanceof EditBox) {
-      apply();
+      if (presets)
+        sendPreset(
+            getFocused() == rule ? MachinePresetPackets.REGISTRY : MachinePresetPackets.GOAL);
+      else apply();
       return true;
     }
     return super.keyPressed(key, scan, modifiers);
@@ -179,13 +361,17 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
 
   @Override
   protected void renderBg(GuiGraphics g, float partial, int mouseX, int mouseY) {
-    g.fill(leftPos, topPos, leftPos + 300, topPos + 218, 0xff282c30);
-    g.fill(leftPos + 4, topPos + 4, leftPos + 296, topPos + 214, 0xff44484d);
+    g.fill(leftPos, topPos, leftPos + 300, topPos + imageHeight, 0xff282c30);
+    g.fill(leftPos + 4, topPos + 4, leftPos + 296, topPos + imageHeight - 4, 0xff44484d);
   }
 
   @Override
   protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
     g.drawString(font, title, 10, 10, 0xffffff, false);
+    if (presets) {
+      renderPresets(g);
+      return;
+    }
     text(g, "label", 10, 30);
     text(g, "priority", 10, 100);
     text(g, "first", 160, 100);
@@ -214,6 +400,50 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
         false);
   }
 
+  private void renderPresets(GuiGraphics g) {
+    var view = menu.presetView();
+    g.drawString(
+        font, Component.translatable("gui.factorycore.preset.goal"), 10, 65, 0xffffff, false);
+    int start = selectedRule / 5 * 5;
+    g.fill(10, 111, 290, 169, 0xff282c30);
+    for (int i = start; i < Math.min(start + 5, view.rules().size()); i++) {
+      int y = 114 + (i - start) * 11;
+      if (i == selectedRule) g.fill(11, y - 1, 289, y + 9, 0xff535e68);
+      g.drawString(font, font.plainSubstrByWidth(view.rules().get(i), 274), 13, y, 0xffffff, false);
+    }
+    g.drawString(
+        font,
+        (view.rules().isEmpty() ? 0 : selectedRule + 1) + "/" + view.rules().size(),
+        120,
+        177,
+        0xffffff,
+        false);
+    g.drawString(
+        font,
+        font.plainSubstrByWidth(
+            Component.translatable(
+                        "status.factorycore.buffer_mode."
+                            + view.running().name().toLowerCase(Locale.ROOT))
+                    .getString()
+                + " · "
+                + Component.translatable("gui.factorycore.preset.staged", view.staged())
+                    .getString(),
+            173),
+        10,
+        221,
+        0xd3e5ed,
+        false);
+    g.drawString(
+        font,
+        font.plainSubstrByWidth(
+            Component.translatable("gui.factorycore.preset.status." + view.status()).getString(),
+            280),
+        10,
+        258,
+        0xe4bc83,
+        false);
+  }
+
   private void text(GuiGraphics g, String key, int x, int y) {
     g.drawString(
         font, Component.translatable("gui.factorycore.machine." + key), x, y, 0xffffff, false);
@@ -223,5 +453,15 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   public void render(GuiGraphics g, int x, int y, float partial) {
     super.render(g, x, y, partial);
     renderTooltip(g, x, y);
+    if (presets
+        && x >= leftPos + 10
+        && x < leftPos + 290
+        && y >= topPos + 114
+        && y < topPos + 169) {
+      int index = selectedRule / 5 * 5 + (y - topPos - 114) / 11;
+      if (index < menu.presetView().rules().size())
+        g.renderTooltip(
+            font, font.split(Component.literal(menu.presetView().rules().get(index)), 280), x, y);
+    }
   }
 }

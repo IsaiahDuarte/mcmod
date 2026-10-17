@@ -189,7 +189,7 @@ tasks.named('runTerminalClient', JavaExec) {
         if (!result.isFile() || !result.text.startsWith('PASS\n')) {
             throw new GradleException('Graphical terminal verification did not complete.')
         }
-        def captures = ['scale-2-all-items.png', 'scale-3-iron.png', 'scale-4-iron.png', 'scale-4-next-page.png', 'buffer-scale-2-settings.png', 'buffer-scale-2-rules-page-1.png', 'buffer-scale-2-rules-page-2.png', 'buffer-scale-2-stock.png', 'buffer-scale-2-full.png', 'buffer-scale-3-inventory.png', 'buffer-scale-3-settings.png', 'buffer-scale-4-settings.png', 'buffer-scale-4-inventory.png', 'machine-scale-2-draft.png', 'machine-scale-3-draft.png', 'machine-scale-4-draft.png', 'machine-scale-4-reopened.png']
+        def captures = ['scale-2-all-items.png', 'scale-3-iron.png', 'scale-4-iron.png', 'scale-4-next-page.png', 'buffer-scale-2-settings.png', 'buffer-scale-2-rules-page-1.png', 'buffer-scale-2-rules-page-2.png', 'buffer-scale-2-stock.png', 'buffer-scale-2-full.png', 'buffer-scale-3-inventory.png', 'buffer-scale-3-settings.png', 'buffer-scale-4-settings.png', 'buffer-scale-4-inventory.png', 'machine-scale-2-draft.png', 'machine-scale-3-draft.png', 'machine-scale-4-draft.png', 'machine-scale-4-reopened.png', 'machine-preset-scale-2-draft.png', 'machine-preset-scale-3-draft.png', 'machine-preset-scale-4-stock.png']
         if (captures.any { name ->
             def capture = file("build/reports/client-terminal/screenshots/${name}")
             !capture.isFile() || capture.length() == 0
