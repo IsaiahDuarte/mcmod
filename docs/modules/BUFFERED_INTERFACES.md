@@ -472,3 +472,38 @@ items: player8/buffer1 and explicit8/64, a Stock goal1 rejects another deposit
 before extraction (0/1), and Paused deposit returns8/8 for exact nine-unit
 conservation. Packet round trips include the added counts. The extended graphical
 fixture is compiled but its launch is [blocked before execution](../evidence/buffer-client-attempt-2026-10-13.md).
+
+## Audited canonical conflict repair
+
+Operator `/factorycore recovery buffer list [after]`, `show <backing>` and
+`repair <backing> <expected-generation>` support only the loaded original canonical
+Buffered Interface with its exact raw/parsed reference. List examines at most16
+structural handles and filters buffers; follow a nonempty cursor even after zero
+matching rows. Inspection reads only canonical metadata/nine owned slots and no
+providers. Show includes original accepted deployer/mode/revision/lease/rate/target.
+
+`BufferRegistry.evidence(id)` returns detached nine-slot state, including conflicts
+and unbound owners; unknown IDs throw IllegalArgumentException. The trusted
+`repairConflict(expected, retainedPosition)` delegates structural lease repair and
+removes the old transient binding on success. Inventory, accepted deployment and
+byte charge remain unchanged. The physical `BufferedInterfaceEntity.repairConflict`
+checks the actual loaded holder/raw reference, canonical conflict/generation/location
+and absence of unresolved transfers, preserves the complete before-state archive,
+then installs the new lease and binds its inventory. Both require the owner thread.
+
+The accepted deployment retains its old lease generation; the repaired holder
+cannot execute it. Old queued work/cached handlers reject. Its original principal,
+scope, policy, revision and mode remain evidence, not authority for the new lease.
+A currently authorized player opens Settings and reapplies through normal current
+EDIT/DEPLOY/transfer-grant checks to publish a new accepted deployment. The repair
+operator does not become the deployer. Local hopper access to the repaired owned
+slots retains existing physical ownership behavior, independent of active presets.
+
+World12/reference1/canonical buffer schemas are unchanged. Audit schema3 retains
+one structural record, exact owned slots/admitted limits/components, optional full
+deployment and native block state/reference NBT in the shared device archive.
+[ADR0024](../decisions/0024-buffer-conflict-repair.md) documents fields, bounded
+9MiB/file/512-file/32MiB quotas, shared20-tick repair throttle and alternatives.
+IO failure changes neither lease, binding, deployment nor inventory. Unsupported,
+stale/missing holders, different survivor locations and unresolved transfers remain
+unavailable for investigation; no hard-crash or independent-save atomicity is claimed.

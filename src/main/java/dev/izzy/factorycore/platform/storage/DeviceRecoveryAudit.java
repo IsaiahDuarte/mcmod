@@ -17,7 +17,7 @@ final class DeviceRecoveryAudit {
       throws IOException {
     var envelope = envelope(namespace, owner, 1);
     envelope.put("Stack", stack.copy());
-    return write(world, owner, envelope);
+    return write(world, owner.ledger().id(), envelope);
   }
 
   static Path preserveBank(
@@ -31,7 +31,38 @@ final class DeviceRecoveryAudit {
     envelope.putString("HolderKind", "ENERGY_BANK");
     envelope.put("BlockState", blockState.copy());
     envelope.put("BlockEntity", blockEntity.copy());
-    return write(world, owner, envelope);
+    return write(world, owner.ledger().id(), envelope);
+  }
+
+  static Path preserveBuffer(
+      Path world,
+      UUID namespace,
+      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
+      dev.izzy.factorycore.core.storage.ItemBuffer.State inventory,
+      dev.izzy.factorycore.core.storage.BufferRegistry.Deployment deployment,
+      CompoundTag blockState,
+      CompoundTag blockEntity)
+      throws IOException {
+    if (!owner.conflict()
+        || owner.position() == null
+        || owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.BUFFERED_INTERFACE
+        || !owner.id().equals(inventory.backing())
+        || deployment != null && !deployment.backing().equals(owner.id()))
+      throw new IllegalArgumentException("Expected canonical buffer conflict evidence");
+    var envelope = new CompoundTag();
+    envelope.putInt("Schema", 3);
+    envelope.putInt("WorldSchema", 12);
+    envelope.putUUID("World", namespace);
+    envelope.putString("HolderKind", "BUFFERED_INTERFACE");
+    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put(
+        "Buffers",
+        BufferStateCodec.encode(
+            java.util.List.of(inventory),
+            deployment == null ? java.util.List.of() : java.util.List.of(deployment)));
+    envelope.put("BlockState", blockState.copy());
+    envelope.put("BlockEntity", blockEntity.copy());
+    return write(world, owner.id(), envelope);
   }
 
   private static CompoundTag envelope(UUID namespace, DeviceRegistry.Stored owner, int schema) {
@@ -52,15 +83,14 @@ final class DeviceRecoveryAudit {
     return envelope;
   }
 
-  private static Path write(Path world, DeviceRegistry.Stored owner, CompoundTag envelope)
-      throws IOException {
+  private static Path write(Path world, UUID id, CompoundTag envelope) throws IOException {
     var bytes = new ByteArrayOutputStream();
     try (var output = new DataOutputStream(new BoundedOutput(bytes))) {
       NbtIo.write(envelope, output);
     }
     return RecoveryAudit.preserve(
         world.resolve("factorycore-device-recovery"),
-        owner.ledger().id(),
+        id,
         bytes.toByteArray(),
         MAX_FILE_BYTES,
         ".nbt");

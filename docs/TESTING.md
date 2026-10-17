@@ -816,3 +816,25 @@ remaining100FE same-tick input allowance,800 unreserved extraction, cached clone
 capabilities, repaired physical/canonical reload, old snapshot inertness, failed
 audit no-mutation and a real400-ledger/100-staged unresolved transfer blocking repair.
 They do not prove interrupted independent filesystem saves or real client/multiplayer.
+
+## Canonical Buffered Interface repair checks
+
+Two NodeRegistryTest cases cover the trusted transition for every structural kind,
+including restricted gateway policy/position preservation, consumed generation,
+wrong/stale/foreign/unknown/portable/nonconflicted/overflow refusal and immutable
+inspection. They do not prove other physical node adapters can safely repair.
+Two BufferRegistryTest cases preserve exact slots, accepted deployment and charge,
+remove only a successful old binding, leave deployment accepted on the old lease,
+restore unbound state and establish a new generation only on explicit configure.
+Two BufferRecoveryAuditTest cases round-trip standalone schema3 (deployed and
+undeployed), components/limits/policy/principals/raw physical data and refuse corrupt
+or mismatched evidence, while existing cell/bank format checks remain unchanged.
+
+Three native BufferImportGameTests exercise real console command gates and copied
+holders, queued pre-conflict work, exact19-unit slot preservation, stale handlers,
+physical/canonical reload and old chunk replay. A registered ordinary player opens
+the native settings menu; Apply refuses revoked DEPLOY and then explicitly reapplies
+when restored, resuming shared Import with19 total units conserved. Failed audit
+retains exact inventory/deployment/reference; a real16-buffer/3-staged unresolved
+transfer blocks repair unchanged. Headless native menu requests do not prove a real
+client screen/remote multiplayer or interrupted independent filesystem saves.

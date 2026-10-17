@@ -82,6 +82,127 @@ class BufferRegistryTest {
   }
 
   @Test
+  void conflictRepairRetainsSlotsPolicyPrincipalAndChargeWithoutRenewingDeployment() {
+    var nodes = new NodeRegistry(WORLD, List.of(), () -> {});
+    int[] dirty = {0};
+    var buffers = new BufferRegistry(nodes, List.of(), () -> dirty[0]++);
+    buffers.stackLimit(key -> 64);
+    var old = create(nodes, buffers, 1);
+    var owner = new Object();
+    buffers.bind(old, position(1), owner);
+    buffers.inventory(old, owner).insertSlot(8, KEY, 23, false);
+    var policy =
+        new BufferPolicy(
+            dev.izzy.factorycore.core.resource.ResourceFilter.all(ResourceKind.ITEM), 3, 17);
+    var actor = UUID.randomUUID();
+    var root = UUID.randomUUID();
+    var deployment =
+        buffers.configure(old, owner, 1, actor, root, root, BufferRegistry.Mode.STOCK, policy);
+    var inventory = buffers.evidence(old.id());
+    long bytes = buffers.bytes();
+    int changes = dirty[0];
+    nodes.attach(old, position(2));
+    assertEquals(NodeRegistry.Failure.OFFLINE, buffers.repairConflict(old, position(2)).failure());
+    assertTrue(buffers.boundTo(old, owner));
+    assertEquals(inventory, buffers.evidence(old.id()));
+    var current = buffers.repairConflict(old, position(1)).handle();
+    assertNotNull(current);
+    assertFalse(buffers.boundTo(old, owner));
+    assertFalse(buffers.usable(current, owner));
+    assertEquals(changes, dirty[0], "Owned slots and deployment did not change");
+    assertEquals(inventory, buffers.evidence(old.id()));
+    assertEquals(deployment, buffers.deployment(old.id()));
+    assertNotEquals(current.generation(), deployment.leaseGeneration());
+    assertEquals(bytes, buffers.bytes());
+    var replacement = new Object();
+    assertTrue(buffers.bind(current, position(1), replacement));
+    assertFalse(buffers.usable(old, owner));
+    assertFalse(buffers.bind(old, position(1), owner));
+    assertEquals(23, buffers.inventory(current, replacement).total(KEY));
+    var restored =
+        new BufferRegistry(
+            new NodeRegistry(WORLD, nodes.snapshot(), () -> {}),
+            buffers.snapshot(),
+            buffers.deployments(),
+            () -> {});
+    assertEquals(inventory, restored.evidence(old.id()));
+    assertEquals(deployment, restored.deployment(old.id()));
+    assertEquals(bytes, restored.bytes());
+    assertFalse(restored.usable(current, replacement));
+    var reapplied =
+        buffers.configure(
+            current,
+            replacement,
+            deployment.revision(),
+            actor,
+            root,
+            root,
+            BufferRegistry.Mode.STOCK,
+            policy);
+    assertEquals(current.generation(), reapplied.leaseGeneration());
+    assertEquals(deployment.revision() + 1, reapplied.revision());
+    assertEquals(actor, reapplied.principal());
+    assertEquals(policy, reapplied.policy());
+    assertEquals(inventory, buffers.evidence(old.id()));
+  }
+
+  @Test
+  void failedBufferRecoveryKeepsBindingInventoryDeploymentAndAccounting() {
+    var nodes = new NodeRegistry(WORLD, List.of(), () -> {});
+    var buffers = new BufferRegistry(nodes, List.of(), () -> {});
+    buffers.stackLimit(key -> 64);
+    var old = create(nodes, buffers, 1);
+    var owner = new Object();
+    buffers.bind(old, position(1), owner);
+    buffers.inventory(old, owner).insert(KEY, 19);
+    var before = buffers.evidence(old.id());
+    long bytes = buffers.bytes();
+    assertEquals(
+        NodeRegistry.Failure.NOT_CONFLICTED, buffers.repairConflict(old, position(1)).failure());
+    nodes.attach(old, position(2));
+    assertEquals(
+        NodeRegistry.Failure.FOREIGN_WORLD,
+        buffers
+            .repairConflict(
+                new NodeRegistry.Handle(UUID.randomUUID(), old.id(), old.generation(), old.kind()),
+                position(1))
+            .failure());
+    assertEquals(
+        NodeRegistry.Failure.STALE,
+        buffers
+            .repairConflict(
+                new NodeRegistry.Handle(WORLD, old.id(), old.generation() + 1, old.kind()),
+                position(1))
+            .failure());
+    assertEquals(
+        NodeRegistry.Failure.UNKNOWN,
+        buffers
+            .repairConflict(
+                new NodeRegistry.Handle(WORLD, UUID.randomUUID(), 1, old.kind()), position(1))
+            .failure());
+    assertEquals(before, buffers.evidence(old.id()));
+    assertTrue(buffers.boundTo(old, owner));
+    assertEquals(bytes, buffers.bytes());
+    assertThrows(IllegalArgumentException.class, () -> buffers.evidence(UUID.randomUUID()));
+    var exhausted =
+        new NodeRegistry(
+            WORLD,
+            List.of(
+                new NodeRegistry.Stored(
+                    old.id(), old.kind(), Long.MAX_VALUE, position(1), true, null)),
+            () -> fail("Overflow dirtied authority"));
+    var restored =
+        new BufferRegistry(exhausted, List.of(before), () -> fail("Overflow changed stock"));
+    assertEquals(
+        NodeRegistry.Failure.LIMIT,
+        restored
+            .repairConflict(
+                new NodeRegistry.Handle(WORLD, old.id(), Long.MAX_VALUE, old.kind()), position(1))
+            .failure());
+    assertEquals(before, restored.evidence(old.id()));
+  }
+
+  @Test
   void metadataQuotaRejectsBeforeSlotMutationAndExtractionReclaimsCapacity() {
     var nodes = new NodeRegistry(WORLD, List.of(), () -> {});
     var buffers = new BufferRegistry(nodes, List.of(), () -> {});

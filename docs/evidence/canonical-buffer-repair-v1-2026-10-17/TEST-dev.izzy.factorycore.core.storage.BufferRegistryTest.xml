@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.izzy.factorycore.core.storage.BufferRegistryTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-17T21:37:11.880Z" hostname="Izzys-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="ownershipMovementAndUnloadedRestoreRetainOneExactSlotInventory()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.002"/>
+  <testcase name="conflictRepairRetainsSlotsPolicyPrincipalAndChargeWithoutRenewingDeployment()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.001"/>
+  <testcase name="deploymentsReplaceOneOwnerWithIncreasingRevisionAndRestoreOffline()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.001"/>
+  <testcase name="copiedPlacedLeaseQuarantinesAccessWithoutDroppingCanonicalContents()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.0"/>
+  <testcase name="failedBufferRecoveryKeepsBindingInventoryDeploymentAndAccounting()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.001"/>
+  <testcase name="movementDoesNotRenewDeploymentAuthorityAndFutureLeaseRejects()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.0"/>
+  <testcase name="policyQuotaFailureDoesNotReplaceAuthorityOrAdvanceRevision()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.002"/>
+  <testcase name="policiesShareMetadataAdmissionRetainAcrossPauseAndReclaimOnClear()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.0"/>
+  <testcase name="missingDuplicateOrUnownedInventoriesRejectAndCountCeilingPreflightsCreation()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.002"/>
+  <testcase name="metadataQuotaRejectsBeforeSlotMutationAndExtractionReclaimsCapacity()" classname="dev.izzy.factorycore.core.storage.BufferRegistryTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

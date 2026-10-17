@@ -100,7 +100,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Partial prerequisite: bounded server registry-text search and stable exact-count pages are implemented; physical item terminal/menu controls and headless flows are implemented; partial graphical item-screen evidence is [recorded](evidence/terminal-client-v1-2026-10-13.md); remaining R08 checks are pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
 | A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation and execution-time scheduled physical transfer permissions/private segments are implemented with seven WorldStorageTransfersGameTests. Connector cases additionally verify source/target current grants, denied parent/private-child transfers, config revocation and stale provider handles. Player permissions UI and multiplayer checks remain pending. |
-| A13 | P2, P4, P6, P7 | Partial: [audited canonical cell/bank conflict repair](decisions/0023-canonical-cell-repair.md) now supports exact original holders without unresolved transfers, preserving quantities/claims and bank rate spending; buffer/node kinds and independent-save mismatches remain open. operator inspection, audited original-owner known cleanup and empty completed-record retirement now have server command/native evidence; full ownership reconciliation remains open. required dedicated two-JVM recovery now preserves accepted known/uncertain staging and verifies delivery/return without replay; independent saves/administration remain open. a separate-JVM orderly integrated-server reopen now preserves complete canonical/physical state and resumes item Stock (see 2026-10-17 restart evidence); a native one-chunk unload/reload also preserves ownership and stops offline mutations; independent saves/interrupted calls remain open. Exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. World-scoped provider identity markers have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
+| A13 | P2, P4, P6, P7 | Partial: [audited canonical cell/bank conflict repair](decisions/0023-canonical-cell-repair.md) and [buffer repair](decisions/0024-buffer-conflict-repair.md) now support exact original holders without unresolved transfers, preserving owned quantities/configuration and bank rate spending; repaired buffer presets need authorized reapply. Other structural kinds and independent-save mismatches remain open. operator inspection, audited original-owner known cleanup and empty completed-record retirement now have server command/native evidence; full ownership reconciliation remains open. required dedicated two-JVM recovery now preserves accepted known/uncertain staging and verifies delivery/return without replay; independent saves/administration remain open. a separate-JVM orderly integrated-server reopen now preserves complete canonical/physical state and resumes item Stock (see 2026-10-17 restart evidence); a native one-chunk unload/reload also preserves ownership and stops offline mutations; independent saves/interrupted calls remain open. Exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. World-scoped provider identity markers have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
@@ -2589,3 +2589,57 @@ Next: buffer/structural ownership recovery and independent-save/interruption
 boundaries, then selected tanks/coordinated ports and remaining P1/P2 integration.
 Crafting, production scripting, powered/wireless progression, finished presentation/
 onboarding, remote multiplayer and P7 remain unfinished. Full goal stays active.
+
+## Audited canonical buffer repair checkpoint — 2026-10-17
+
+P2/P3/R09/A03/A12/A13 adds operator `/factorycore recovery buffer list [after]`,
+`show <backing>` and `repair <backing> <expected-generation>`. Pages examine at most16
+structural handles and filter buffer kinds; empty matching pages retain a next
+cursor. Show reports exact owned total and accepted original deployment metadata
+without providers/chunk loading. Repair requires the loaded original holder with
+its exact raw/parsed reference and no unresolved transfer.
+
+The reusable trusted NodeRegistry transition consumes the conflicted generation,
+retains ID/kind/position/policy and changes no permission network record. Public
+physical exposure is limited to Buffered Interfaces. BufferRegistry removes old
+binding only on success; slots, accepted deployment and metadata charge remain
+unchanged. The physical adapter audits first, rotates and binds the new lease.
+Old handlers/queued work become stale. The original deployment still accepts its
+old lease, so it stays inactive until a currently authorized player explicitly
+reapplies. Operator repair never adopts the deployer or bypasses revoked grants.
+Local hopper access retains existing physical ownership behavior.
+
+[ADR0024](decisions/0024-buffer-conflict-repair.md) records scope, typed failures,
+owner-thread ownership and alternatives. Standalone audit schema3 preserves one
+structural record, exact nine-slot state/admitted limits/components, optional full
+deployment and native physical state/reference. Existing cell1/bank2 audit formats,
+world12 and buffer reference1 remain unchanged. Shared9MiB/file/512-file/32MiB
+archive limits and20-tick cell/bank/buffer throttle remain bounded. No import path,
+background thread, crash atomicity or IO latency claim is introduced.
+
+Four core and two audit cases raise227→233 JVM tests. Three native cases raise
+213→216 GameTests, including real console permission/kind/generation/holder checks,
+exact19-unit retention, distinct physical principal/accepted deployer, retained
+policy, old queued-work/handler refusal, physical/canonical reload and stale chunk
+replay. A registered ordinary player opens the actual settings menu: revoked DEPLOY
+refuses Apply, restored grants permit fresh Apply under the retained original
+principal/policy and shared Import conserves buffer0/cell19. Audit failure retains
+all canonical/physical evidence; known16-buffer/3-staged ownership blocks repair.
+[Evidence](evidence/canonical-buffer-repair-v1-2026-10-17.md) archives the final
+log, exact schema3 before-state NBT and core/audit/dedicated reports.
+
+`./gradlew spotlessApply compileJava` and
+`./gradlew spotlessApply test runGameTestServer` passed. First canonical verification
+passed native checks but flagged the new borrowed-server throttle helper in PMD;
+a narrow resource-ownership annotation fixed it without changing rules/assertions.
+Final `python3 scripts/verify.py` passed24 tooling,233 executed JVM,216 required
+GameTests and dedicated seed40326/restore40340. Gradle59s,31 tasks:10 executed/
+21 up-to-date; Rust checks up-to-date. Formatting/static/architecture/packaging passed,
+final log has no ERROR, and final docs/checksums/`git diff --check` passed.
+
+Next: other physical structural holders, ownership conflicts combined with known
+accepted staging, and independent-save/interruption reconciliation. Selected tanks/
+coordinated ports, remaining P1/P2 integration, crafting, production scripting,
+powered/wireless progression, finished presentation/onboarding, multiplayer and P7
+remain unfinished. This is verified recovery progress, not full D03/A13 or release
+completion. Full goal stays active.

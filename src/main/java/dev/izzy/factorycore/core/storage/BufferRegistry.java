@@ -186,6 +186,29 @@ public final class BufferRegistry {
     return buffers.get(handle.id());
   }
 
+  /** Detached nine-slot evidence, including conflicted/unbound owners; never resource authority. */
+  public ItemBuffer.State evidence(UUID backing) {
+    checkThread();
+    var buffer = buffers.get(Objects.requireNonNull(backing));
+    if (buffer == null) throw new IllegalArgumentException("Unknown buffer");
+    return buffer.snapshot();
+  }
+
+  /**
+   * Trusted audited physical recovery. Keeps inventory and accepted deployment unchanged; its old
+   * lease generation cannot authorize automatic work after rotation. No new binding is installed.
+   */
+  public NodeRegistry.Result repairConflict(
+      NodeRegistry.Handle expected, NodeRegistry.Position retained) {
+    checkThread();
+    if (expected.kind() != NodeRegistry.Kind.BUFFERED_INTERFACE
+        || !buffers.containsKey(expected.id()))
+      return new NodeRegistry.Result(NodeRegistry.Failure.UNKNOWN, null);
+    var result = nodes.repairConflict(expected, retained);
+    if (result.failure() == NodeRegistry.Failure.OK) bindings.remove(expected.id());
+    return result;
+  }
+
   public List<ItemBuffer.State> snapshot() {
     checkThread();
     return buffers.values().stream().map(ItemBuffer::snapshot).toList();

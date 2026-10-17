@@ -136,6 +136,60 @@ public final class BufferedInterfaceEntity extends BlockEntity
     WorldNetworks.changed(level, worldPosition);
   }
 
+  /**
+   * Trusted operator recovery; stock/deployment survive and old automation needs explicit reapply.
+   */
+  public java.nio.file.Path repairConflict(NodeRegistry.Handle expected)
+      throws java.io.IOException {
+    serverLevel();
+    if (isRemoved()
+        || !physicallyCurrent()
+        || state == null
+        || !expected.equals(state.lease())
+        || !state.equals(BufferData.read(data)))
+      throw new IllegalStateException("Exact loaded buffer reference required");
+    var saved = authority();
+    var owner = saved.nodes().evidence(expected.id());
+    if (owner == null
+        || owner.kind() != NodeRegistry.Kind.BUFFERED_INTERFACE
+        || !owner.conflict()
+        || saved.nodes().validate(expected) != NodeRegistry.Failure.CONFLICT
+        || !position().equals(owner.position())
+        || expected.generation() == Long.MAX_VALUE
+        || saved.transfers().unresolved(expected.id()) != null)
+      throw new IllegalStateException("Canonical buffer conflict cannot be repaired");
+    var next =
+        new BufferData.State(
+            new NodeRegistry.Handle(
+                expected.world(), expected.id(), expected.generation() + 1, expected.kind()),
+            state.principal(),
+            state.configuration());
+    var nextData = BufferData.write(next);
+    var path =
+        DeviceRecoveryAudit.preserveBuffer(
+            serverLevel()
+                .getServer()
+                .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            owner,
+            saved.buffers().evidence(expected.id()),
+            saved.buffers().deployment(expected.id()),
+            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            saveWithFullMetadata(serverLevel().registryAccess()));
+    var repaired = saved.buffers().repairConflict(expected, position());
+    if (repaired.failure() != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Buffer conflict repair refused: " + repaired.failure());
+    WorldNetworks.bufferInvalidated(level, this);
+    saved.transfers().unbindBacking(expected.id());
+    handler = null;
+    state = next;
+    data = nextData;
+    diagnostic = "";
+    setChanged();
+    onLoad();
+    return path;
+  }
+
   public void validatePlaced() {
     if (state == null
         || !diagnostic.isEmpty()

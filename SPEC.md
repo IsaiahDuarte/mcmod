@@ -364,7 +364,7 @@ expected generation, exact matching reference/tier and no unresolved transfer.
 Before-state ledger/claims/physical stack evidence is preserved before rotating
 the lease; old copies become stale and quantities/claims do not change. Wrong or
 unavailable holders and independent-save mismatches remain inert. This does not
-complete buffer/node reconciliation or uncertain external recovery.
+complete structural-node reconciliation or uncertain external recovery.
 
 
 Canonical ownership recovery also supports finite energy banks at their exact
@@ -372,3 +372,12 @@ loaded original holder, preserving FE/claims and same-tick rate spending while
 rotating the lease and invalidating clones. It rejects unresolved transfers and
 stale/unsupported holders and writes full physical/canonical evidence first.
 This extends partial A12/A13 support; independent-save mismatches stay inert.
+
+
+Partial A12/A13 recovery now also supports a conflicted Buffered Interface at its
+loaded exact original canonical holder. It audits and preserves slots/components
+and the accepted original deployment before rotating the lease. Old handlers and
+queued work become stale. The retained preset needs explicit reapply by a currently
+authorized player; operator repair never adopts the deployer. Unresolved staging
+and stale/missing original holders remain blocked; other physical structural kinds
+and interrupted independent-save recovery are unfinished.

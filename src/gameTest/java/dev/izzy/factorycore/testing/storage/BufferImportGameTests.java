@@ -106,6 +106,340 @@ public final class BufferImportGameTests {
         "Bounded fixture visits admitted import preparation before the next principal task");
   }
 
+  @SuppressWarnings("removal")
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void auditedBufferRepairRetainsInventoryAndRequiresAuthorizedPresetReapply(
+      GameTestHelper h) {
+    var f = setup(h);
+    var old = f.buffer.handle();
+    var player = h.makeMockServerPlayerInLevel();
+    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
+        player.connection.getConnection());
+    player.moveTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(BUFFER)));
+    h.assertTrue(!player.hasPermissions(2), "Recovery deployer has ordinary player grants");
+    var deployer = new NetworkPermissions.Actor(player.getUUID(), false);
+    var policy =
+        new dev.izzy.factorycore.core.storage.BufferPolicy(
+            ResourceFilter.all(ResourceKind.ITEM), 3, 17);
+    BufferRegistry.Deployment[] accepted = {null};
+    BufferData.State[] originalReference = {null};
+    dev.izzy.factorycore.core.storage.ItemBuffer.State[] inventory = {null};
+    net.minecraft.nbt.CompoundTag[] originalChunk = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenIdle(50)
+        .thenExecute(
+            () -> {
+              f.saved
+                  .network(f.root.handle().id())
+                  .setGrants(
+                      f.actor,
+                      deployer.id(),
+                      java.util.EnumSet.allOf(NetworkPermissions.Permission.class));
+              accepted[0] = f.buffer.configure(deployer, BufferRegistry.Mode.IMPORT, policy);
+              originalReference[0] = f.buffer.reference();
+              var stale = f.buffer.capability();
+              h.assertTrue(
+                  stale.insertItem(8, named(19), false).isEmpty(),
+                  "Seed exact named physical stock");
+              inventory[0] = f.saved.buffers().evidence(old.id());
+              queuePreparation(h, f);
+              originalChunk[0] = f.buffer.saveWithFullMetadata(h.getLevel().registryAccess());
+              var clone = recoveryCopy(h, originalChunk[0]);
+              h.assertTrue(
+                  f.saved.nodes().validate(old) == NodeRegistry.Failure.CONFLICT
+                      && f.buffer.capability() == null
+                      && clone.capability() == null,
+                  "Real copied holder quarantines canonical buffer");
+              var console = h.getLevel().getServer().createCommandSourceStack();
+              var repair =
+                  "factorycore recovery buffer repair " + old.id() + " " + old.generation();
+              h.assertTrue(
+                  recoveryCommand(console.withPermission(0), repair) < 1,
+                  "Only operator can repair");
+              h.assertTrue(
+                  recoveryCommand(console, "factorycore recovery buffer show " + old.id()) == 1,
+                  "Inspect original authority and count");
+              h.assertTrue(
+                  recoveryCommand(console, "factorycore recovery buffer list") >= 0,
+                  "Metadata page command executes");
+              h.assertTrue(
+                  recoveryCommand(
+                          console, "factorycore recovery buffer show " + f.root.handle().id())
+                      == 0,
+                  "Structural root cannot be reinterpreted as buffer");
+              h.assertTrue(
+                  recoveryCommand(console, repair + "0") == 0, "Wrong expected generation rejects");
+              rejectRepair(h, clone, old);
+              h.assertTrue(
+                  recoveryCommand(console, repair) == 1, "Repair exact original loaded holder");
+              var current = f.buffer.handle();
+              h.assertTrue(
+                  current.generation() == old.generation() + 1
+                      && f.saved.nodes().validate(old) == NodeRegistry.Failure.STALE,
+                  "Consumes every old copied lease");
+              h.assertTrue(
+                  inventory[0].equals(f.saved.buffers().evidence(old.id()))
+                      && accepted[0].equals(f.saved.buffers().deployment(old.id())),
+                  "Exact slots and accepted original deployment retained");
+              h.assertTrue(
+                  f.buffer.reference().principal().equals(originalReference[0].principal())
+                      && f.buffer.reference().configuration()
+                          == originalReference[0].configuration()
+                      && !current.equals(old)
+                      && accepted[0].leaseGeneration() == old.generation(),
+                  "Repair does not publish a deployment under the new lease or operator identity");
+              h.assertTrue(
+                  stale.getStackInSlot(8).isEmpty()
+                      && stale.extractItem(8, 1, false).isEmpty()
+                      && stale.insertItem(0, named(1), false).getCount() == 1
+                      && f.buffer.capability().getStackInSlot(8).getCount() == 19,
+                  "Old cached handler inert while current holder owns19 items");
+              var repairedChunk = f.buffer.saveWithFullMetadata(h.getLevel().registryAccess());
+              f.buffer.loadWithComponents(repairedChunk, h.getLevel().registryAccess());
+              f.buffer.onLoad();
+              h.assertTrue(
+                  f.buffer.handle().equals(current)
+                      && f.buffer.capability().getStackInSlot(8).getCount() == 19,
+                  "Repaired physical reference reload preserves ownership");
+              clone.loadWithComponents(originalChunk[0], h.getLevel().registryAccess());
+              clone.onLoad();
+              h.assertTrue(
+                  f.saved.nodes().validate(current) == NodeRegistry.Failure.OK
+                      && clone.capability() == null,
+                  "Stale clone cannot requarantine new generation");
+              var canonical = f.saved.nodes().snapshot();
+              var restoredNodes = new NodeRegistry(current.world(), canonical, () -> {});
+              var restoredBuffers =
+                  new BufferRegistry(
+                      restoredNodes,
+                      f.saved.buffers().snapshot(),
+                      f.saved.buffers().deployments(),
+                      () -> {});
+              h.assertTrue(
+                  restoredBuffers.evidence(old.id()).equals(inventory[0])
+                      && restoredBuffers.deployment(old.id()).equals(accepted[0])
+                      && restoredNodes.validate(old) == NodeRegistry.Failure.STALE,
+                  "Canonical restore retains stock and inactive accepted lease");
+            })
+        .thenIdle(30)
+        .thenExecute(
+            () -> {
+              ready(h, f);
+              exact(h, f, 19, 0);
+              h.assertTrue(
+                  accepted[0].equals(f.saved.buffers().deployment(old.id())),
+                  "Queued old work and retained old deployment never extract");
+              var grants = java.util.EnumSet.allOf(NetworkPermissions.Permission.class);
+              grants.remove(NetworkPermissions.Permission.DEPLOY);
+              f.saved.network(f.root.handle().id()).setGrants(f.actor, deployer.id(), grants);
+              h.useBlock(BUFFER, player);
+              h.assertTrue(
+                  player.containerMenu instanceof BufferSettingsMenu,
+                  "Physical use opens recovered buffer settings");
+              var menu = (BufferSettingsMenu) player.containerMenu;
+              menu.broadcastChanges();
+              menu.command(
+                  player,
+                  new BufferSettingsPackets.Command(
+                      menu.containerId,
+                      menu.session(),
+                      menu.view().revision(),
+                      BufferSettingsPackets.APPLY,
+                      0,
+                      0,
+                      "",
+                      new byte[32]));
+              h.assertTrue(
+                  menu.view().status().equals("denied")
+                      && accepted[0].equals(f.saved.buffers().deployment(old.id())),
+                  "Native Apply cannot bypass current revoked DEPLOY grant");
+              f.saved
+                  .network(f.root.handle().id())
+                  .setGrants(
+                      f.actor,
+                      deployer.id(),
+                      java.util.EnumSet.allOf(NetworkPermissions.Permission.class));
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              var menu = (BufferSettingsMenu) player.containerMenu;
+              menu.broadcastChanges();
+              menu.command(
+                  player,
+                  new BufferSettingsPackets.Command(
+                      menu.containerId,
+                      menu.session(),
+                      menu.view().revision(),
+                      BufferSettingsPackets.APPLY,
+                      0,
+                      0,
+                      "",
+                      new byte[32]));
+              h.assertTrue(
+                  menu.view().status().equals("applied"),
+                  "Native Apply republishes recovered policy");
+              var reapplied = f.saved.buffers().deployment(old.id());
+              h.assertTrue(
+                  reapplied.principal().equals(deployer.id())
+                      && reapplied.policy().equals(policy)
+                      && reapplied.leaseGeneration() == f.buffer.handle().generation()
+                      && reapplied.revision() == accepted[0].revision() + 1,
+                  "Explicit authenticated reapply preserves intended policy/principal");
+            })
+        .thenWaitUntil(() -> exact(h, f, 0, 19))
+        .thenExecute(
+            () -> {
+              player.closeContainer();
+              var current = f.buffer.handle();
+              var before = f.saved.buffers().evidence(old.id());
+              f.buffer.loadWithComponents(originalChunk[0], h.getLevel().registryAccess());
+              f.buffer.onLoad();
+              rejectRepair(h, f.buffer, current);
+              h.assertTrue(
+                  f.buffer.capability() == null
+                      && before.equals(f.saved.buffers().evidence(old.id()))
+                      && f.saved.nodes().validate(current) == NodeRegistry.Failure.OK,
+                  "Old original chunk snapshot stays inert without stock/lease changes");
+              player.connection.disconnect(Component.literal("Buffer recovery fixture complete"));
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void failedBufferAuditPreservesSlotsDeploymentAndReference(GameTestHelper h) {
+    var f = setup(h);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.buffer.configure(f.actor, BufferRegistry.Mode.PAUSED);
+              f.buffer.capability().insertItem(8, named(19), false);
+              var raw = f.buffer.saveWithFullMetadata(h.getLevel().registryAccess());
+              recoveryCopy(h, raw);
+              var old = f.buffer.handle();
+              var node = f.saved.nodes().evidence(old.id());
+              var inventory = f.saved.buffers().evidence(old.id());
+              var deployment = f.saved.buffers().deployment(old.id());
+              var folder =
+                  h.getLevel()
+                      .getServer()
+                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .resolve("factorycore-device-recovery");
+              try {
+                java.nio.file.Files.createDirectories(folder);
+                var blocker =
+                    java.nio.file.Files.createDirectory(
+                        folder.resolve("unexpected-buffer-" + UUID.randomUUID()));
+                boolean refused = false;
+                try {
+                  f.buffer.repairConflict(old);
+                } catch (java.io.IOException expected) {
+                  refused = true;
+                } finally {
+                  java.nio.file.Files.delete(blocker);
+                }
+                h.assertTrue(refused, "Evidence failure blocks buffer repair");
+              } catch (java.io.IOException failure) {
+                throw new AssertionError(failure);
+              }
+              h.assertTrue(
+                  node.equals(f.saved.nodes().evidence(old.id()))
+                      && inventory.equals(f.saved.buffers().evidence(old.id()))
+                      && deployment.equals(f.saved.buffers().deployment(old.id()))
+                      && old.equals(f.buffer.handle())
+                      && raw.equals(f.buffer.saveWithFullMetadata(h.getLevel().registryAccess())),
+                  "Audit failure changes no canonical or physical evidence");
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void unresolvedBufferStagingPreventsLeaseRepair(GameTestHelper h) {
+    var f = setup(h);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.buffer.capability().insertItem(8, named(19), false);
+              var destination =
+                  new ResourcePort() {
+                    private final UUID id = UUID.randomUUID();
+
+                    public UUID backingId() {
+                      return id;
+                    }
+
+                    public long simulateInsert(ResourceKey key, long amount) {
+                      return amount;
+                    }
+
+                    public long extract(ResourceKey key, long amount) {
+                      return 0;
+                    }
+
+                    public long insert(ResourceKey key, long amount) {
+                      return 0;
+                    }
+                  };
+              var id = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id, f.actor.id(), f.key, f.buffer.inventory(), destination, 3, 3, () -> true);
+              exact(h, f, 16, 0);
+              h.assertTrue(
+                  f.saved.transfers().get(id).staged() == 3,
+                  "Real extracted remainder owns3 items");
+              recoveryCopy(h, f.buffer.saveWithFullMetadata(h.getLevel().registryAccess()));
+              var old = f.buffer.handle();
+              var node = f.saved.nodes().evidence(old.id());
+              var before = f.saved.buffers().evidence(old.id());
+              var transfer = f.saved.transfers().get(id);
+              rejectRepair(h, f.buffer, old);
+              h.assertTrue(
+                  node.equals(f.saved.nodes().evidence(old.id()))
+                      && before.equals(f.saved.buffers().evidence(old.id()))
+                      && transfer.equals(f.saved.transfers().get(id))
+                      && old.equals(f.buffer.handle()),
+                  "Unresolved16+3 ownership blocks repair unchanged");
+            })
+        .thenSucceed();
+  }
+
+  private static BufferedInterfaceEntity recoveryCopy(
+      GameTestHelper h, net.minecraft.nbt.CompoundTag raw) {
+    var position = new BlockPos(3, 1, 3);
+    h.setBlock(position, BufferedInterfaceContent.BLOCK.get());
+    BufferedInterfaceEntity clone = h.getBlockEntity(position);
+    clone.loadWithComponents(raw, h.getLevel().registryAccess());
+    clone.onLoad();
+    return clone;
+  }
+
+  private static void rejectRepair(
+      GameTestHelper h, BufferedInterfaceEntity buffer, NodeRegistry.Handle expected) {
+    boolean refused = false;
+    try {
+      buffer.repairConflict(expected);
+    } catch (IllegalArgumentException | IllegalStateException rejected) {
+      refused = true;
+    } catch (java.io.IOException failure) {
+      throw new AssertionError(failure);
+    }
+    h.assertTrue(refused, "Unsupported buffer repair must refuse");
+  }
+
+  private static int recoveryCommand(
+      net.minecraft.commands.CommandSourceStack source, String command) {
+    try {
+      return source.getServer().getCommands().getDispatcher().execute(command, source);
+    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException rejected) {
+      return -1;
+    }
+  }
+
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void actualHopperAutomaticallyImportsExactComponentsWithoutCode(
       GameTestHelper helper) {

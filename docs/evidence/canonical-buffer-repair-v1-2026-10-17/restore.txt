@@ -1,0 +1,5 @@
+PASS
+mode=restore pid=40340
+Three accepted native operations: known delivery, known return, post-insert uncertainty.
+Canonical restore equal; delivery12+8=20; return17+3=20; uncertain delivery/refund rejected with unchanged native calls.
+Trusted synthetic program principal; no connected-player/session/UI claim.

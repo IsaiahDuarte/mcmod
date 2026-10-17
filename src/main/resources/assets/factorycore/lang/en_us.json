@@ -338,5 +338,10 @@
   "command.factorycore.recovery.device.row": "Storage %s | generation %s | conflict=%s | %s total=%s | %s",
   "command.factorycore.recovery.device.refused": "Storage repair/inspection refused: check backing, generation, conflict, loaded original holder and unresolved transfers. No resources were moved.",
   "command.factorycore.recovery.bank.help": "Repair supports only the loaded original bank, matching reference/tier/generation, with no unresolved transfers. Preserve backups. Old clones stay inert; uncertain transfers require investigation.",
-  "command.factorycore.recovery.bank.repaired": "Energy Bank %s repaired at its original holder, generation %s. Clones are stale. Before-state evidence: %s"
+  "command.factorycore.recovery.bank.repaired": "Energy Bank %s repaired at its original holder, generation %s. Clones are stale. Before-state evidence: %s",
+  "command.factorycore.recovery.buffer.row": "Buffer %s | generation %s | conflict=%s | items=%s | %s",
+  "command.factorycore.recovery.buffer.deployment": "Accepted deployer=%s mode=%s revision=%s lease=%s rate=%s items/tick target=%s items",
+  "command.factorycore.recovery.buffer.help": "Repair requires the loaded original buffer and exact generation/reference, with no unresolved transfers. Stock and deployment are preserved; an authorized player must reapply the preset after repair. Preserve backups for unsupported cases.",
+  "command.factorycore.recovery.buffer.refused": "Buffer recovery refused: check UUID, expected generation, conflict, original loaded holder/reference and unresolved transfers. No stock or deployment was changed.",
+  "command.factorycore.recovery.buffer.repaired": "Buffer %s repaired at its original holder, generation %s. Old copies are stale. Preset remains inactive until an authorized player reapplies it. Before-state evidence: %s"
 }

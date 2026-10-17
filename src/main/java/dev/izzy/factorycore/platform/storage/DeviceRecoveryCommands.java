@@ -63,6 +63,18 @@ final class DeviceRecoveryCommands {
                                             bank)))));
   }
 
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
+  static boolean admitRepair(CommandSourceStack source) {
+    var server = source.getServer();
+    var previous = REPAIRS.get(server);
+    if (previous != null && server.getTickCount() - previous < 20) {
+      source.sendFailure(Component.translatable("command.factorycore.recovery.rate"));
+      return false;
+    }
+    REPAIRS.put(server, server.getTickCount());
+    return true;
+  }
+
   private static boolean matches(DeviceRegistry.Ownership owner, boolean bank) {
     return (owner.definition().kind() == dev.izzy.factorycore.core.resource.ResourceKind.ENERGY)
         == bank;
@@ -149,12 +161,7 @@ final class DeviceRecoveryCommands {
       if (level == null
           || level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null)
         throw new IllegalStateException("Canonical holder unavailable");
-      var previous = REPAIRS.get(server);
-      if (previous != null && server.getTickCount() - previous < 20) {
-        source.sendFailure(Component.translatable("command.factorycore.recovery.rate"));
-        return 0;
-      }
-      REPAIRS.put(server, server.getTickCount());
+      if (!admitRepair(source)) return 0;
       var holder = level.getBlockEntity(pos);
       var path =
           bank && holder instanceof EnergyBankEntity energyBank

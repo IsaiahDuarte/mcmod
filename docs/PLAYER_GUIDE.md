@@ -443,3 +443,23 @@ archives use binary audit schema2, while existing cell files remain schema1.
 Neither command chooses another survivor or resolves interrupted independent-save
 mismatches, unsupported raw data or uncertain external outcomes. Preserve backups
 and retained evidence for those cases.
+
+Buffered Interfaces have operator `/factorycore recovery buffer list [after-UUID]`,
+`show <backing-UUID>` and `repair <backing-UUID> <generation>` commands. Show reports
+the canonical position/count and original accepted preset principal/settings.
+Repair requires the loaded original holder with the exact reference and no unresolved
+transfer. It preserves all nine slots, item components and preset evidence, archives
+the before-state, and rotates the lease so old copies/handlers stay inert.
+
+After repair, the old preset stays inactive. An authorized player opens the recovered
+buffer's Settings and presses Apply to republish under current permissions. If DEPLOY
+or required transfer grants were revoked, Apply remains denied. The operator repair
+does not adopt the original deployer's identity. Local hopper access to the real
+owned buffer inventory can resume without an active preset, as usual.
+
+Buffer archives use standalone binary schema3 and share the device-audit quotas
+and20-tick server repair throttle with cells/banks. List pages examine at most16
+structural IDs and may show zero matches with a continuation cursor. Missing/stale
+original references, unsupported data, independent-save mismatches and unresolved
+staging still require backup/evidence investigation. No command guesses quantities,
+replays unknown provider calls, deletes evidence or chooses another survivor.

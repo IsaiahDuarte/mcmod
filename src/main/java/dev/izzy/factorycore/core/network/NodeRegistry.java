@@ -27,7 +27,9 @@ public final class NodeRegistry {
     STALE,
     CONFLICT,
     OCCUPIED,
-    LIMIT
+    LIMIT,
+    NOT_CONFLICTED,
+    OFFLINE
   }
 
   public record Position(String dimension, long block) {
@@ -135,6 +137,33 @@ public final class NodeRegistry {
     if (failure != Failure.OK)
       throw new IllegalStateException("Invalid structural lease: " + failure);
     return nodes.get(handle.id());
+  }
+
+  /** Trusted owner-thread inspection, including conflicts; unknown IDs return null. */
+  public Stored evidence(UUID id) {
+    checkThread();
+    return nodes.get(Objects.requireNonNull(id));
+  }
+
+  /**
+   * Trusted recovery: caller must audit and validate the loaded original holder and dependent owned
+   * state first. Consumes the conflicted lease without moving ownership or changing policy.
+   */
+  public Result repairConflict(Handle expected, Position retained) {
+    Objects.requireNonNull(retained);
+    var failure = validate(expected);
+    if (failure != Failure.CONFLICT)
+      return new Result(failure == Failure.OK ? Failure.NOT_CONFLICTED : failure, null);
+    var node = nodes.get(expected.id());
+    if (!retained.equals(node.position()) || !expected.id().equals(positions.get(retained)))
+      return new Result(Failure.OFFLINE, null);
+    if (node.generation() == Long.MAX_VALUE) return new Result(Failure.LIMIT, null);
+    var repaired =
+        new Stored(
+            node.id(), node.kind(), node.generation() + 1, node.position(), false, node.policy());
+    put(repaired);
+    changed.run();
+    return new Result(Failure.OK, handle(repaired));
   }
 
   public Result attach(Handle handle, Position position) {

@@ -115,3 +115,22 @@ remain unchanged, and older binaries reject/preserve unknown CONNECTOR records.
 Compressed disk tests preserve connector identity through movement/reload without
 inventing a NetworkPermissions entry. Global schema/reference versions remain
 four/one; unknown fields/versions still preserve full recovery data.
+
+## Trusted conflict transition
+
+`NodeRegistry.evidence(id)` returns the immutable canonical record, including
+conflicts, or null for unknown IDs. It grants no routing/permission authority and
+requires the owner thread. `repairConflict(expected, retainedPosition)` is trusted
+infrastructure: callers must first preserve evidence, validate the loaded original
+physical holder and reconcile dependent owned state. Success consumes generation,
+clears conflict and preserves ID/kind/position/gateway policy; permission network
+records are untouched. Old references stay stale. NOT_CONFLICTED rejects valid
+nonconflicted/portable references, OFFLINE rejects a different canonical position,
+LIMIT rejects exhausted generation, and other validation failures retain their
+meaning. Rejections do not dirty or change canonical state.
+
+The initial public command exposes Buffered Interfaces only, through their
+inventory-aware adapter and [ADR0024](../decisions/0024-buffer-conflict-repair.md).
+Core coverage of all node kinds does not establish safe physical recovery for
+controllers, gateways, connectors or Machine Interfaces. Those holder/evidence/
+configuration integrations and independent-save interruption remain unfinished.
