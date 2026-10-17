@@ -100,7 +100,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Partial prerequisite: bounded server registry-text search and stable exact-count pages are implemented; physical item terminal/menu controls and headless flows are implemented; partial graphical item-screen evidence is [recorded](evidence/terminal-client-v1-2026-10-13.md); remaining R08 checks are pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
 | A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation and execution-time scheduled physical transfer permissions/private segments are implemented with seven WorldStorageTransfersGameTests. Connector cases additionally verify source/target current grants, denied parent/private-child transfers, config revocation and stale provider handles. Player permissions UI and multiplayer checks remain pending. |
-| A13 | P2, P4, P6, P7 | Partial: a separate-JVM orderly integrated-server reopen now preserves complete canonical/physical state and resumes item Stock (see 2026-10-17 restart evidence); independent saves/interrupted calls remain open. exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. Actual chunk unload/world restart, world-scoped provider identity markers now have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
+| A13 | P2, P4, P6, P7 | Partial: a separate-JVM orderly integrated-server reopen now preserves complete canonical/physical state and resumes item Stock (see 2026-10-17 restart evidence); a native one-chunk unload/reload also preserves ownership and stops offline mutations; independent saves/interrupted calls remain open. Exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. World-scoped provider identity markers have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
@@ -2324,3 +2324,36 @@ multiplayer and representative performance remain open. P1/P2/P3 remain partial;
 crafting, production scripting, power/wireless, assets/onboarding and P7 still
 prevent full release completion. Next: actual chunk lifecycle and independent-save/
 recovery prerequisites, then selected tanks/coordinated ports and crafting.
+
+
+## Native one-chunk lifecycle checkpoint — 2026-10-17
+
+P2/P3/A03/A04/A12/A13/A14 extends the actual restart fixture with a native
+vanilla distance-driven unload/reload. The second JVM disables spawn retention
+only in its generated fixture world and teleports the real player1024 blocks away.
+Native events plus getChunkNow absence and removed holders prove actual unload.
+For40 ticks, digital stock is unavailable, item/fluid/FE ownership and holds remain,
+cached capabilities reject mutation, complete canonical state is unchanged and
+no probe reloads the chunk. Returning creates fresh physical holders with the
+same leases/provider backing and validated original preset authority. Old
+capabilities remain inert. A real one-item chest removal then triggers saved
+Stock, conserving cell2 + machine8 + buffer9 + player6 =25. No production lifecycle
+method or synthetic event is used to imitate the transition.
+
+`./gradlew spotlessApply runTerminalRestartClient --console=plain` passed69s,
+5 executed/10 up-to-date tasks. Seed PID34423 exited before restart PID34481;
+observed departure45/unload51/return91/reload92/completion113 server ticks included
+one native unload and one native load. No ERROR appears in the final combined log.
+[Evidence](evidence/chunk-lifecycle-v1-2026-10-17.md) archives expected/observed state,
+results, native screen, log and checksums. This is a small functional experiment,
+not representative performance evidence. `python3 scripts/verify.py` passed24
+tooling,217 cached JVM and205 freshly executed required GameTests; Gradle20s,
+4 executed/21 up-to-date tasks. Formatting/static/architecture checks passed,
+Rust guest checks were up-to-date, and `git diff --check` passed.
+
+This is one network contained within one chunk. Root/branch split across chunks,
+staged/queued unload, independent player/chunk/controller saves and uncertain
+external-write administration remain required recovery work. Next: cross-chunk
+root suspension and staged unload/save-order prerequisites, then remaining
+selected-tank/coordinated-port work and crafting. Full A01–A17 remains active;
+P1/P2/P3 partial, production crafting/scripting/power/wireless/onboarding/P7 unfinished.

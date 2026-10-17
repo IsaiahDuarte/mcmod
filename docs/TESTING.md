@@ -690,3 +690,23 @@ not replace independent chunk/player save-order injection, uncertain external
 write recovery, real remote multiplayer, crash/power-loss, dedicated-server
 restart, or separate-world namespace checks. Actual run evidence is recorded in
 the implementation plan; source compilation alone is not a passed restart check.
+
+## Native chunk lifecycle extension
+
+The separate-process restart fixture additionally requires a genuine unload/load
+cycle in its second JVM. After the initial Stock replenishment it captures all
+physical leases, cached buffer/bank/machine capabilities and canonical state,
+disables spawn-chunk retention only in the generated fixture world, and teleports
+the real player1024 blocks away. It observes native NeoForge ChunkEvent.Unload/
+Load events; it never posts a synthetic event or invokes block-entity lifecycle
+methods to simulate unload.
+
+Require `getChunkNow(0,0)==null`, removed old holders, no available item/fluid/FE
+stock, retained exact quantities/holds, and rejected cached extraction/insertion.
+Repeat offline probes for at least40 server ticks and require no chunk reload or
+canonical accounting change. Return normally, require fresh physical objects with
+the same leases/provider backing/full canonical state, and keep old capabilities
+inert. A real one-item removal must then trigger saved Stock through shared
+scheduling, conserving25 units. This does not test independent save-order
+interruptions, split networks across chunk boundaries, orphan jobs or unknown-call
+recovery; those remain separate required scenarios.

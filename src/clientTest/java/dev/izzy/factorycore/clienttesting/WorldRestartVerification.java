@@ -36,6 +36,8 @@ final class WorldRestartVerification {
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean initial = new AtomicBoolean(), replenished = new AtomicBoolean();
   private int stage, ticks, entered;
+  private final ChunkLifecycleVerification chunks = new ChunkLifecycleVerification();
+  private final AtomicBoolean chunksDone = new AtomicBoolean();
 
   WorldRestartVerification() {
     try {
@@ -50,6 +52,7 @@ final class WorldRestartVerification {
   }
 
   void register() {
+    chunks.register();
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
@@ -136,7 +139,19 @@ final class WorldRestartVerification {
           });
       return;
     }
-    if (stage == 2 && replenished.get() && ticks - entered > 30 && client.screen == null) {
+    if (stage == 2 && replenished.get() && !chunksDone.get()) {
+      server.execute(
+          () -> {
+            if (chunksDone.get()) return;
+            try {
+              if (chunks.tick(server.getPlayerList().getPlayer(principal))) chunksDone.set(true);
+            } catch (RuntimeException error) {
+              failure.set(error);
+            }
+          });
+      return;
+    }
+    if (stage == 2 && chunksDone.get() && ticks - entered > 30 && client.screen == null) {
       client.gameMode.useItemOn(
           client.player,
           InteractionHand.MAIN_HAND,
@@ -194,7 +209,8 @@ final class WorldRestartVerification {
                 + "\nFresh JVM opened existing world without seeding or restoring from expected state.\n"
                 + "Full canonical SavedData matched before mutation; physical/player resources and provider identity matched.\n"
                 + "1200mB water:400 held/800 available;300mB lava;500FE. Native Stock editor retained goal8/exact rule.\n"
-                + "After real chest removal3, resumed Stock conserved cell3 + machine8 + buffer9 + player5 =25.\n");
+                + "After real chest removal3, resumed Stock conserved cell3 + machine8 + buffer9 + player5 =25.\n"
+                + "Native chunk unload/reload retained leases/state, rejected cached offline capabilities and resumed Stock: cell2 + machine8 + buffer9 + player6 =25.\n");
       } catch (IOException error) {
         throw new IllegalStateException(error);
       }

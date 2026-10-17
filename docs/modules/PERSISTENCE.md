@@ -235,3 +235,10 @@ state, physical/provider identity, mixed fluid stock and a retained400mB hold,
 500FE and resumed item Stock without redeployment. This narrows earlier restart
 limitations for that fixture only. Independent save-order injection, forced chunk
 unload, interrupted calls, dedicated-server/multiplayer and full acceptance remain open.
+
+
+A [native distance-driven one-chunk lifecycle experiment](../evidence/chunk-lifecycle-v1-2026-10-17.md)
+now additionally verifies real removal/reconstruction, unchanged canonical state/
+leases, retained quantities/holds, unavailable stock and inert cached capabilities
+while offline, and resumed saved Stock afterward. It does not prove split-chunk
+networks, staged unload or independent save-order/interrupt recovery.

@@ -3,7 +3,8 @@
 Status: selected D03 design; ledger schema, owner registry and SavedData adapter
 locally implemented in P2. Physical cell/drive lease tests and a small nonempty
 orderly integrated-server restart now have local evidence. Independent save ordering,
-actual chunk unload and interrupted transfers remain unvalidated.
+split-chunk lifecycle and interrupted transfers remain unvalidated; a native
+one-chunk unload/reload now has scoped evidence.
 
 ## Decision and boundaries
 
@@ -201,3 +202,5 @@ remain mandatory; native player files are an independent save boundary whose ful
 interruption/reconciliation guarantees must still be verified before release.
 
 The [separate-JVM restart experiment](../evidence/world-restart-v1-2026-10-17.md) now checks complete canonical state, physical references, provider identity, mixed fluid reservations, finite FE and resumed item Stock after normal exit/reopen. This is scoped orderly-save evidence, not interrupted-write or independent-save proof.
+
+The [native chunk lifecycle experiment](../evidence/chunk-lifecycle-v1-2026-10-17.md) adds actual distance-driven unload/reload in one chunk, including offline nonloading probes, retained claims/leases and resumed Stock. Cross-chunk and independent-save interruption coverage is still required.

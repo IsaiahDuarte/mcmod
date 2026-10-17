@@ -348,3 +348,5 @@ A04/A12/A13/A14 evidence without completing selected tanks, multiport coordinati
 actual restart, multiplayer or the first-playable acceptance set.
 
 Orderly restart now has a small actual two-JVM integrated-world experiment for canonical/physical identity, item/fluid/FE quantities, retained reservations and resumed Stock. This is partial A13 evidence; interrupted external writes, independent saves, job recovery and complete release acceptance remain unverified.
+
+A native distance-driven one-chunk unload/reload now has partial A03/A04/A12/A13/A14 evidence: resources/holds and leases persist, cached offline capabilities reject mutation without loading chunks, and saved Stock resumes. Split networks, queued/staged unload and independent save-order recovery remain unverified.
