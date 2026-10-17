@@ -34,7 +34,7 @@ class MachinePersistenceTest {
   }
 
   @Test
-  void schemaElevenCanonicalLeaseAndLabelPolicySurviveCompressedDisk() throws Exception {
+  void canonicalMachineLeaseAndLabelPolicySurviveCompressedDisk() throws Exception {
     var registries = RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY);
     var saved = fresh();
     var lease =
@@ -50,7 +50,7 @@ class MachinePersistenceTest {
             "",
             "smelter");
     var encoded = saved.save(new CompoundTag(), registries);
-    assertEquals(11, encoded.getInt("Schema"));
+    assertEquals(12, encoded.getInt("Schema"));
     var data = ConnectorData.write(state);
     assertEquals(2, data.getInt("Schema"));
     var container = new CompoundTag();
@@ -76,11 +76,12 @@ class MachinePersistenceTest {
     saved.createForeignNode(
         new NodeRegistry.Position("minecraft:overworld", 42), NodeRegistry.Kind.MACHINE_INTERFACE);
     var tag = saved.save(new CompoundTag(), registries);
+    tag.remove("MachinePresets");
     tag.putInt("Schema", 10);
     var old = DeviceSavedData.load(tag, registries);
     assertFalse(old.diagnostic().isEmpty());
     assertEquals(tag, old.save(new CompoundTag(), registries));
-    tag.putInt("Schema", 12);
+    tag.putInt("Schema", 13);
     var future = DeviceSavedData.load(tag, registries);
     assertFalse(future.diagnostic().isEmpty());
     assertEquals(tag, future.save(new CompoundTag(), registries));

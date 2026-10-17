@@ -10,6 +10,7 @@ import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankAccess;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
+import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.core.storage.RouteCursors;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,6 +47,7 @@ public final class DeviceSavedData extends SavedData {
   private final ExternalClaims externalClaims;
   private final RouteCursors routeCursors;
   private final BufferRegistry buffers;
+  private final MachinePresets machinePresets;
   private final CompoundTag rejected;
   private final String diagnostic;
 
@@ -58,6 +60,7 @@ public final class DeviceSavedData extends SavedData {
       List<RouteCursors.Cursor> cursorStates,
       List<ItemBuffer.State> bufferStates,
       List<BufferRegistry.Deployment> deploymentStates,
+      List<MachinePresets.Deployment> machineStates,
       CompoundTag rejected,
       String diagnostic) {
     externalClaims = state == null ? null : new ExternalClaims(claimStates, this::setDirty);
@@ -79,6 +82,18 @@ public final class DeviceSavedData extends SavedData {
         state == null
             ? null
             : new BufferRegistry(nodes, bufferStates, deploymentStates, this::setDirty);
+    machinePresets =
+        state == null ? null : new MachinePresets(nodes, machineStates, this::setDirty);
+    for (var preset : machineStates) {
+      var authority = preset.authority();
+      if (!networks.containsKey(authority.network())
+          || !nodes.contains(authority.network())
+          || nodes.kind(authority.network()) != NodeRegistry.Kind.CONTROLLER
+          || (!authority.segment().equals(authority.network())
+              && (!nodes.contains(authority.segment())
+                  || nodes.kind(authority.segment()) != NodeRegistry.Kind.GATEWAY)))
+        throw new IllegalArgumentException("Machine deployment has unknown network/segment");
+    }
     for (var node : nodeStates) {
       if (registry.containsBacking(node.id())
           || (node.kind() == NodeRegistry.Kind.CONTROLLER) != networks.containsKey(node.id()))
@@ -179,6 +194,7 @@ public final class DeviceSavedData extends SavedData {
         List.of(),
         List.of(),
         List.of(),
+        List.of(),
         null,
         "");
   }
@@ -197,6 +213,11 @@ public final class DeviceSavedData extends SavedData {
   public RouteCursors routeCursors() {
     registry().world();
     return routeCursors;
+  }
+
+  public MachinePresets machinePresets() {
+    registry().world();
+    return machinePresets;
   }
 
   public BufferRegistry buffers() {
@@ -320,7 +341,7 @@ public final class DeviceSavedData extends SavedData {
     try {
       require(tag, "Schema", Tag.TAG_INT);
       int schema = tag.getInt("Schema");
-      if ((schema < 1 || schema > 11) || !tag.hasUUID("World"))
+      if ((schema < 1 || schema > 12) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
       NetworkStateCodec.fields(tag, worldFields(schema));
       var networkStates =
@@ -407,15 +428,19 @@ public final class DeviceSavedData extends SavedData {
               schema < 7 ? List.of() : RouteCursorCodec.decode(tag.getCompound("RouteCursors")),
               schema < 8 ? List.of() : BufferStateCodec.decode(tag.getCompound("Buffers")),
               schema < 8 ? List.of() : BufferStateCodec.deployments(tag.getCompound("Buffers")),
+              schema < 12
+                  ? List.of()
+                  : MachinePresetCodec.decode(tag.getCompound("MachinePresets")),
               null,
               "");
-      if (schema < 11) loaded.setDirty();
+      if (schema < 12) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
           invalid.getMessage() == null ? invalid.getClass().getSimpleName() : invalid.getMessage();
       return new DeviceSavedData(
           null,
+          List.of(),
           List.of(),
           List.of(),
           List.of(),
@@ -432,7 +457,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 11);
+    tag.putInt("Schema", 12);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {
@@ -451,6 +476,7 @@ public final class DeviceSavedData extends SavedData {
     }
     tag.put("Devices", devices);
     tag.put("Nodes", NodeStateCodec.encode(nodes.snapshot()));
+    tag.put("MachinePresets", MachinePresetCodec.encode(machinePresets.snapshot()));
     tag.put("Transfers", TransferStateCodec.encode(transfers.snapshot()));
     tag.put("ExternalClaims", ExternalClaimsCodec.encode(externalClaims.snapshot()));
     tag.put("RouteCursors", RouteCursorCodec.encode(routeCursors.snapshot()));
@@ -470,6 +496,7 @@ public final class DeviceSavedData extends SavedData {
     if (schema >= 6) fields.add("ExternalClaims");
     if (schema >= 7) fields.add("RouteCursors");
     if (schema >= 8) fields.add("Buffers");
+    if (schema >= 12) fields.add("MachinePresets");
     return fields;
   }
 

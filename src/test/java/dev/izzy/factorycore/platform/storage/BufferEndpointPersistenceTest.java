@@ -84,7 +84,13 @@ class BufferEndpointPersistenceTest {
     assertTrue(restored.isDirty());
     assertEquals(23, restored.buffers().snapshot().getFirst().slots().getFirst().count());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(11, migrated.getInt("Schema"));
+    assertEquals(12, migrated.getInt("Schema"));
+    assertTrue(
+        migrated
+            .getCompound("MachinePresets")
+            .getList("Deployments", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .isEmpty());
+    migrated.remove("MachinePresets");
     migrated.putInt("Schema", 8);
     assertEquals(original, migrated);
     var unsupported = original.copy();

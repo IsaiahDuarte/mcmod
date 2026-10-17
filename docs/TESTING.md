@@ -608,3 +608,22 @@ includes actual buffer and machine controls; its
 [successful evidence](evidence/settings-client-v1-2026-10-17.md) supersedes the
 no-display prerequisite as the latest observed client run. Physical Shift,
 complete accessibility, multiplayer/restart and machine presets remain unverified.
+
+
+## Machine preset deployment authority
+
+Four MachinePresetsTest cases cover immutable authority/freshness, pause/restore,
+movement,256-owner/16MiB admission with no prior-state/dirty mutation, reclaim,
+future/duplicate leases and revision overflow. Three MachinePresetPersistenceTest
+cases exercise a fixed schema1 filter fixture, compressed canonical scope/goal
+round trips, empty-table migration and strict malformed/future/raw rejection.
+Four MachinePresetAuthorityGameTests exercise actual physical configuration and
+old chunk replay, selected-face rotation, grant revocation/regrant/principal replacement and new roots.
+They do not run an automatic preset or claim staged-resource recovery evidence.
+
+World migration assertions advance11→12 and strip only the newly added empty
+MachinePresets table when comparing unchanged legacy content. Future-world tests
+advance12→13. The legacy selected filter/stock/resource assertions remain intact;
+new malformed table cases retain whole-world raw preservation. Binding reference
+schema2, buffer policy versions and transfer context formats are unchanged.
+See [authority contract](modules/MACHINE_INTERFACES.md) for remaining integration.

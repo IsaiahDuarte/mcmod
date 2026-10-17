@@ -59,7 +59,7 @@ class RouteCursorPersistenceTest {
     assertTrue(restored.isDirty());
     assertTrue(restored.routeCursors().snapshot().isEmpty());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(11, migrated.getInt("Schema"));
+    assertEquals(12, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")
@@ -68,6 +68,7 @@ class RouteCursorPersistenceTest {
     assertTrue(migrated.getCompound("RouteCursors").getList("Cursors", Tag.TAG_COMPOUND).isEmpty());
     migrated.remove("RouteCursors");
     migrated.remove("Buffers");
+    migrated.remove("MachinePresets");
     migrated.putInt("Schema", 6);
     assertEquals(original, migrated);
   }

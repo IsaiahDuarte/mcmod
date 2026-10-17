@@ -71,8 +71,9 @@ class BufferPersistenceTest {
     assertTrue(restored.isDirty());
     assertTrue(restored.buffers().snapshot().isEmpty());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(11, migrated.getInt("Schema"));
+    assertEquals(12, migrated.getInt("Schema"));
     migrated.remove("Buffers");
+    migrated.remove("MachinePresets");
     migrated.putInt("Schema", 7);
     assertEquals(original, migrated);
   }
@@ -291,7 +292,7 @@ class BufferPersistenceTest {
                 BufferRegistry.Mode.IMPORT,
                 policy);
     var encoded = saved.save(new CompoundTag(), registries);
-    assertEquals(11, encoded.getInt("Schema"));
+    assertEquals(12, encoded.getInt("Schema"));
     assertEquals(3, encoded.getCompound("Buffers").getInt("Schema"));
     var path = directory.resolve("canonical-policy.dat");
     NbtIo.writeCompressed(encoded, path);
@@ -344,7 +345,7 @@ class BufferPersistenceTest {
                 BufferRegistry.Mode.STOCK,
                 policy);
     var encoded = saved.save(new CompoundTag(), registries);
-    assertEquals(11, encoded.getInt("Schema"));
+    assertEquals(12, encoded.getInt("Schema"));
     assertEquals(4, encoded.getCompound("Buffers").getInt("Schema"));
     var path = directory.resolve("world-stock.dat");
     NbtIo.writeCompressed(encoded, path);

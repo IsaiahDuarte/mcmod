@@ -1,0 +1,1 @@
+{Schema:1,Deployments:[{Node:[I;0,0,0,3],Lease:1L,Revision:2L,Configuration:1L,Face:"NORTH",Principal:[I;0,0,0,9],Network:[I;0,0,0,1],Segment:[I;0,0,0,1],Permissions:4L,Mode:"STOCK",Target:9223372036854775807L,Filter:{Kind:"FLUID",Mode:"INCLUDE",Terms:[{Type:"EXACT",Id:"minecraft:water",Components:[B;1B,2B]},{Type:"TAG",Id:"minecraft:water"}]}}]}

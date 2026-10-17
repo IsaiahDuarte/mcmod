@@ -94,7 +94,7 @@ class ExternalClaimsPersistenceTest {
     assertEquals("", restored.diagnostic());
     assertTrue(restored.isDirty());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(11, migrated.getInt("Schema"));
+    assertEquals(12, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")
@@ -109,6 +109,7 @@ class ExternalClaimsPersistenceTest {
     migrated.remove("ExternalClaims");
     migrated.remove("RouteCursors");
     migrated.remove("Buffers");
+    migrated.remove("MachinePresets");
     migrated.putInt("Schema", 5);
     assertEquals(original, migrated);
   }

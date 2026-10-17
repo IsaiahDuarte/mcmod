@@ -68,3 +68,6 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 
 - [Local machine bindings](0019-local-machine-bindings.md): distinct schema11 leases,
   local labels and shared sided resource routes; presets/editor/release checks pending.
+
+- [Canonical machine preset authority](0020-machine-preset-authority.md): bounded
+  world12 deployment records and freshness/permission guards; automatic dispatch/UI pending.

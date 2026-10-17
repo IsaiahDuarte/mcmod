@@ -66,7 +66,7 @@ class DeviceSavedDataTest {
     assertEquals(7, loaded.registry().stock(handle, ResourceKey.ENERGY).reserved());
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(11, migrated.getInt("Schema"));
+    assertEquals(12, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")
@@ -123,7 +123,7 @@ class DeviceSavedDataTest {
   void incompatibleOrWrongTypedRegistryIsQuarantinedAndOriginalTagsArePreserved() {
     var saved = DeviceSavedData.open(storage(), file());
     CompoundTag original = saved.save(new CompoundTag(), registries);
-    for (int schema : new int[] {0, 12}) {
+    for (int schema : new int[] {0, 13}) {
       var future = original.copy();
       future.putInt("Schema", schema);
       var rejected = DeviceSavedData.load(future, registries);

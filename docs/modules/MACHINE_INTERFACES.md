@@ -58,7 +58,8 @@ that wait. Rates/claims/staging and known recovery use the existing
 
 ## Persistence and verification
 
-Canonical world schema11 owns the distinct lease. Machine reference schema2 owns
+World schema11 introduced the distinct lease; current schema12 also stores
+canonical preset authority. Machine reference schema2 owns
 label, settings, configuration and fault; ordinary connector schema1 bytes remain
 unchanged. Movement advances lease generation; wrong casing, clones, stale/future
 metadata remain inert/preserved. Recovery derives EXTERNAL kind from canonical
@@ -103,3 +104,48 @@ rejection, range/closed-session rejection and live EDIT/VIEW revocation. Two pac
 cases cover real bounded codecs and malformed fields/enum rejection. The graphical
 fixture includes Reset/Cancel/Apply, form typing and draft retention at scales2–4;
 actual run evidence is recorded separately when completed.
+
+
+## Canonical preset authority prerequisite
+
+[ADR 0020](../decisions/0020-machine-preset-authority.md) defines world12
+MachinePresets schema1. This stores intent and guards only: no automatic machine
+Import/Export/Stock dispatcher or player preset controls are attached yet.
+
+On the server thread, after establishing current machine membership, call
+`machine.deployPreset(actor, MachinePresets.Mode.IMPORT,
+ResourceFilter.all(ResourceKind.ITEM), 64)` to record an item preset. The port's
+current kind must match the filter; target uses that kind's item/mB/FE units and
+accepts0..Long.MAX_VALUE. The API requires VIEW/EDIT/DEPLOY; active modes also
+require WITHDRAW/DEPOSIT. Actor data must come from an authenticated frontend or
+trusted program context, never a client principal field. Missing authority/scope
+throws IllegalStateException; invalid kind/goal/selector throws
+IllegalArgumentException; revision overflow throws ArithmeticException. No provider
+resource method is called. The shared port settings still own rates/access/windows.
+
+`presetAuthorized(capturedDeployment)` checks the entire canonical record,
+physical lease/configuration/selected face, root/segment, current grant generation and current
+rights for the original principal. It is a necessary guard, not proof of provider
+availability or a resource reservation. Resource mutation must additionally use
+fresh guarded shared transfers. Mode PAUSED never authorizes work. Unrelated grant
+changes conservatively invalidate a saved generation until explicit redeployment;
+regrant does not silently resume old intent. Replacing a deployment advances its
+revision and does not adopt old staged resources. Binding or label edits pause
+canonical intent; old chunk NBT cannot undo that pause. A different provider face is ineligible until the orientation matches the saved
+intent or that face is explicitly redeployed, even when the port generation is
+unchanged. Structural movement leaves
+old deployment identity inactive until an explicit redeployment.
+
+The portable registry admits256 owners/16MiB of charged metadata, including paused
+records. Filter bounds remain sixteen terms/256KiB. Removal reclaims only metadata,
+never resource ownership. Loading validates canonical machine/root/gateway kinds and named portable faces,
+allows only past/current structural generations and preserves rejected raw worlds.
+World1–11 migration adds an empty table; machine/connector reference bytes remain
+unchanged. Independent save interruption and actual restart remain unverified.
+
+Compiled examples are in
+[MachinePresetAuthorityGameTests](../../src/gameTest/java/dev/izzy/factorycore/testing/storage/MachinePresetAuthorityGameTests.java).
+They exercise original-principal authorization, old chunk replay, revocation,
+regrant, replacement and a new root. Core/persistence suites also cover quotas,
+overflow, strict fixed fixtures and compressed disk round trips. These prove no
+automatic transfer, throughput, client preset flow or full release acceptance.

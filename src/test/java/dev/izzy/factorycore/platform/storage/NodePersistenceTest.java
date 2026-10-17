@@ -88,7 +88,7 @@ class NodePersistenceTest {
     assertEquals("", loaded.diagnostic());
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(11, migrated.getInt("Schema"));
+    assertEquals(12, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")
@@ -109,6 +109,7 @@ class NodePersistenceTest {
     migrated.remove("ExternalClaims");
     migrated.remove("RouteCursors");
     migrated.remove("Buffers");
+    migrated.remove("MachinePresets");
     migrated.putInt("Schema", 3);
     assertEquals(original, migrated);
     var root =
@@ -188,7 +189,7 @@ class NodePersistenceTest {
         IllegalStateException.class, () -> loaded.createController(new UUID(0, 501), POSITION));
     assertFalse(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(11, migrated.getInt("Schema"));
+    assertEquals(12, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")
@@ -209,6 +210,7 @@ class NodePersistenceTest {
     migrated.remove("ExternalClaims");
     migrated.remove("RouteCursors");
     migrated.remove("Buffers");
+    migrated.remove("MachinePresets");
     migrated.putInt("Schema", 3);
     assertEquals(tag, migrated);
   }

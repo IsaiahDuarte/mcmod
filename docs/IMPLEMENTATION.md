@@ -2174,3 +2174,37 @@ independent saves, machine presets/selected tanks/multiport coordination,
 crafting/production programming, powered wireless, finished onboarding and P7
 remain required. The full A01–A17 goal stays active and incomplete. Next independent
 prerequisite is authenticated machine preset deployment and shared scheduled routes.
+
+
+## Canonical machine preset authority checkpoint — 2026-10-17
+
+Previous turn was committed verified progress (afb73e9). This slice implements
+P3/A04/A12/A13's deployment prerequisite, not automatic machine execution.
+MachinePresets stores bounded canonical mode/filter/goal, original principal,
+structural/configuration generation, selected face, revision, root/segment and grant generation.
+Native deployment requires current permissions; captured-record guards reject
+changed records, revoked/regranted grants, new principals/roots and stale handles.
+Physical binding edits pause intent, so loading old chunk settings cannot reactivate
+it. Shared resource/claim/transfer ownership remains unchanged and unadopted.
+
+World12 adds strict MachinePresets schema1 with256-owner/16MiB charges. Legacy
+world1–11 migration adds an empty table and preserves other fields. Tests compare
+legacy bytes after removing only that new empty table; future fixtures move12→13.
+The new fixed selector fixture/compressed round trips and malformed/future whole
+raw preservation checks are retained. Four core, three persistence and four
+native cases cover admission/reclaim/overflow, immutable identity and real old
+chunks/grants/root changes and provider-face rotation. Final review added an
+explicit portable face guard so rotating a binding cannot silently retarget intent. An initial migration comparison needed to account for
+the newly required empty table; its prior owned-resource assertions remain.
+
+[ADR 0020](decisions/0020-machine-preset-authority.md) records alternatives, units,
+limits, recovery and remaining integration. `./gradlew spotlessApply build
+--console=plain` passed in33s (7 executed/19 up-to-date tasks). Final
+`python3 scripts/verify.py` passed:24 tooling,211 cached JVM and181 freshly run
+required GameTests; Gradle20s,3 executed/22 up-to-date tasks. Formatting/static
+checks passed; Rust guest checks were up-to-date. `git diff --check` passed.
+No new player flow/assets or actual client/preset execution pass is claimed here.
+Next: bounded machine preset observation/dispatch, priority routing, live goal/
+known-inbound admission and original-owner staged progress, then player controls.
+Machine presets remain incomplete; the full A01–A17 goal stays active, including
+crafting/programming, power/wireless, finished onboarding and P7 verification.
