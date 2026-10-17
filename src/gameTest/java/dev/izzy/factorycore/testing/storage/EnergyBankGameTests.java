@@ -382,6 +382,276 @@ public final class EnergyBankGameTests {
         .thenSucceed();
   }
 
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void operatorBankRepairPreservesFeClaimsAndSameTickRate(GameTestHelper helper) {
+    var bank = setup(helper);
+    var old = bank.handle();
+    var registry = registry(helper);
+    var claims = UUID.randomUUID();
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper))
+        .thenIdle(25)
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  bank.receiveEnergy(900, false) == 900, "Seed via real FE capability");
+              registry.reserve(old, claims, ResourceKey.ENERGY, 200);
+              var physical = bank.saveWithFullMetadata(helper.getLevel().registryAccess());
+              var clone = copyBank(helper, physical);
+              var cachedClone =
+                  helper
+                      .getLevel()
+                      .getCapability(
+                          Capabilities.EnergyStorage.BLOCK, clone.getBlockPos(), Direction.NORTH);
+              var before = registry.evidence(old.backing());
+              helper.assertTrue(
+                  before.conflict()
+                      && bank.receiveEnergy(1, false) == 0
+                      && bank.extractEnergy(1, false) == 0,
+                  "Actual copied bank quarantines FE capabilities");
+              var console = helper.getLevel().getServer().createCommandSourceStack();
+              var repair =
+                  "factorycore recovery bank repair " + old.backing() + " " + old.generation();
+              helper.assertTrue(
+                  bankCommand(console.withPermission(0), repair) < 1,
+                  "Operator permission required");
+              helper.assertTrue(
+                  bankCommand(console, "factorycore recovery bank show " + old.backing()) == 1,
+                  "Real console inspects conflicted bank metadata");
+              helper.assertTrue(
+                  bankCommand(console, "factorycore recovery cell show " + old.backing()) == 0,
+                  "Cell inspection cannot reinterpret a bank");
+              helper.assertTrue(
+                  bankCommand(console, "factorycore recovery bank list") >= 0,
+                  "Bank metadata page is executable");
+              helper.assertTrue(
+                  bankCommand(console, repair + "0") == 0, "Stale expected generation refused");
+              rejectBankRepair(helper, clone, old);
+              helper.assertTrue(
+                  before.equals(registry.evidence(old.backing())),
+                  "Wrong holder keeps all evidence");
+              helper.assertTrue(
+                  bankCommand(console, repair) == 1, "Operator repairs exact original bank");
+              var current = bank.handle();
+              helper.assertTrue(
+                  current.generation() == old.generation() + 1
+                      && before.ledger().equals(registry.evidence(old.backing()).ledger())
+                      && !registry.stock(current, ResourceKey.ENERGY).loaded(),
+                  "Rotation preserves all FE and claims offline");
+              helper.assertTrue(
+                  registry.validate(old) == DeviceRegistry.Failure.STALE
+                      && clone.handle().equals(old)
+                      && cachedClone.receiveEnergy(1, false) == 0
+                      && cachedClone.extractEnergy(1, false) == 0,
+                  "Old clone and cached capability stay inert");
+              var directory =
+                  console
+                      .getServer()
+                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .resolve("factorycore-device-recovery");
+              try (var files = java.nio.file.Files.list(directory)) {
+                helper.assertTrue(
+                    files.anyMatch(
+                        file -> file.getFileName().toString().startsWith(old.backing().toString())),
+                    "Before-state audit exists when successful command returns");
+              } catch (java.io.IOException failure) {
+                throw new AssertionError(failure);
+              }
+              var runtime = WorldNetworks.get(console.getServer());
+              for (int attempt = 0;
+                  attempt < 128 && !registry.stock(current, ResourceKey.ENERGY).loaded();
+                  attempt++) runtime.tick();
+              helper.assertTrue(
+                  bank.receiveEnergy(500, false) == 100,
+                  "Repair does not erase 900 FE input spending earlier in this tick");
+              helper.assertTrue(
+                  bank.extractEnergy(1000, false) == 800
+                      && registry.stock(current, ResourceKey.ENERGY).total() == 200
+                      && registry.stock(current, ResourceKey.ENERGY).reserved() == 200,
+                  "Unreserved physical extraction preserves exact original claim");
+              var canonical = registry.evidence(current.backing());
+              var repairedPhysical = bank.saveWithFullMetadata(helper.getLevel().registryAccess());
+              bank.loadWithComponents(repairedPhysical, helper.getLevel().registryAccess());
+              bank.onLoad();
+              helper.assertTrue(
+                  current.equals(bank.handle()) && bank.diagnostic().isEmpty(),
+                  "Repaired physical reference reloads");
+              var restored =
+                  DeviceRegistry.restore(registry.snapshot(), () -> {}, UUID::randomUUID);
+              helper.assertTrue(
+                  restored.evidence(current.backing()).equals(canonical)
+                      && restored.validate(old) == DeviceRegistry.Failure.STALE,
+                  "Canonical reload retains FE, claims and consumed generation");
+              clone.loadWithComponents(physical, helper.getLevel().registryAccess());
+              clone.onLoad();
+              helper.assertTrue(
+                  registry.validate(current) == DeviceRegistry.Failure.OK
+                      && clone.receiveEnergy(1, false) == 0,
+                  "Stale cloned chunk cannot quarantine new generation");
+              bank.loadWithComponents(physical, helper.getLevel().registryAccess());
+              bank.onLoad();
+              rejectBankRepair(helper, bank, current);
+              helper.assertTrue(
+                  !bank.diagnostic().isEmpty()
+                      && registry.stock(current, ResourceKey.ENERGY).available() == 0
+                      && canonical.equals(registry.evidence(current.backing())),
+                  "Old canonical chunk snapshot is inert without changing ledger");
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void failedBankAuditKeepsPhysicalAndCanonicalConflict(GameTestHelper helper) {
+    var bank = setup(helper);
+    var old = bank.handle();
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper))
+        .thenExecute(
+            () -> {
+              bank.receiveEnergy(73, false);
+              copyBank(helper, bank.saveWithFullMetadata(helper.getLevel().registryAccess()));
+              var before = registry(helper).evidence(old.backing());
+              var raw = bank.saveWithFullMetadata(helper.getLevel().registryAccess());
+              var folder =
+                  helper
+                      .getLevel()
+                      .getServer()
+                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .resolve("factorycore-device-recovery");
+              try {
+                java.nio.file.Files.createDirectories(folder);
+                var blocker =
+                    java.nio.file.Files.createDirectory(
+                        folder.resolve("unexpected-bank-" + UUID.randomUUID()));
+                boolean rejected = false;
+                try {
+                  bank.repairConflict(old);
+                } catch (java.io.IOException expected) {
+                  rejected = true;
+                } finally {
+                  java.nio.file.Files.delete(blocker);
+                }
+                helper.assertTrue(rejected, "Audit output failure blocks bank repair");
+              } catch (java.io.IOException failure) {
+                throw new AssertionError(failure);
+              }
+              helper.assertTrue(
+                  before.equals(registry(helper).evidence(old.backing()))
+                      && old.equals(bank.handle())
+                      && raw.equals(bank.saveWithFullMetadata(helper.getLevel().registryAccess())),
+                  "Audit failure preserves exact FE and physical evidence");
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void unresolvedEnergyTransferPreventsBankRepair(GameTestHelper helper) {
+    var bank = setup(helper);
+    var old = bank.handle();
+    var registry = registry(helper);
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper))
+        .thenExecute(
+            () -> {
+              bank.receiveEnergy(500, false);
+              var source =
+                  new dev.izzy.factorycore.core.resource.ResourcePort() {
+                    public UUID backingId() {
+                      return old.backing();
+                    }
+
+                    public long simulateInsert(ResourceKey key, long offered) {
+                      return registry.simulateInsert(old, key, offered).amount();
+                    }
+
+                    public long extract(ResourceKey key, long requested) {
+                      return registry.extract(old, key, requested, null).amount();
+                    }
+
+                    public long insert(ResourceKey key, long offered) {
+                      return registry.insert(old, key, offered).amount();
+                    }
+                  };
+              var destination =
+                  new dev.izzy.factorycore.core.resource.ResourcePort() {
+                    private final UUID id = UUID.randomUUID();
+
+                    public UUID backingId() {
+                      return id;
+                    }
+
+                    public long simulateInsert(ResourceKey key, long offered) {
+                      return offered;
+                    }
+
+                    public long extract(ResourceKey key, long requested) {
+                      return 0;
+                    }
+
+                    public long insert(ResourceKey key, long offered) {
+                      return 0;
+                    }
+                  };
+              var records = DeviceSavedData.get(helper.getLevel().getServer()).transfers();
+              var id = UUID.randomUUID();
+              records.start(
+                  id,
+                  UUID.randomUUID(),
+                  ResourceKey.ENERGY,
+                  source,
+                  destination,
+                  100,
+                  100,
+                  () -> true);
+              helper.assertTrue(
+                  records.get(id).staged() == 100 && bank.getEnergyStored() == 400,
+                  "Real extraction retains100 FE in owned staging");
+              copyBank(helper, bank.saveWithFullMetadata(helper.getLevel().registryAccess()));
+              var before = registry.evidence(old.backing());
+              var transfer = records.get(id);
+              rejectBankRepair(helper, bank, old);
+              helper.assertTrue(
+                  before.equals(registry.evidence(old.backing()))
+                      && transfer.equals(records.get(id))
+                      && old.equals(bank.handle()),
+                  "Unresolved FE transfer blocks rotation with exact400+100 conserved");
+            })
+        .thenSucceed();
+  }
+
+  private static EnergyBankEntity copyBank(GameTestHelper helper, CompoundTag physical) {
+    var position = new BlockPos(3, 1, 3);
+    helper.setBlock(position, EnergyBankContent.block(EnergyBankTier.STARTER));
+    EnergyBankEntity clone = helper.getBlockEntity(position);
+    clone.loadWithComponents(physical, helper.getLevel().registryAccess());
+    clone.onLoad();
+    return clone;
+  }
+
+  private static void rejectBankRepair(
+      GameTestHelper helper, EnergyBankEntity bank, DeviceRegistry.Handle expected) {
+    boolean rejected = false;
+    try {
+      bank.repairConflict(expected);
+    } catch (IllegalStateException | IllegalArgumentException denied) {
+      rejected = true;
+    } catch (java.io.IOException failure) {
+      throw new AssertionError(failure);
+    }
+    helper.assertTrue(rejected, "Unsupported bank repair must refuse");
+  }
+
+  private static int bankCommand(net.minecraft.commands.CommandSourceStack source, String command) {
+    try {
+      return source.getServer().getCommands().getDispatcher().execute(command, source);
+    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException denied) {
+      return -1;
+    }
+  }
+
   @GameTest(template = "empty")
   public static void starterRecipeUsesVanillaMaterialsAndUnlocksWithoutConsumingBank(
       GameTestHelper helper) {

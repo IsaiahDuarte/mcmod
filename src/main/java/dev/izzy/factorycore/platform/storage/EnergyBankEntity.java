@@ -77,6 +77,52 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
     changedNetwork();
   }
 
+  /** Trusted operator recovery at the exact existing canonical holder; never relocates FE. */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
+  public java.nio.file.Path repairConflict(DeviceRegistry.Handle expected)
+      throws java.io.IOException {
+    if (!(level instanceof ServerLevel server)
+        || isRemoved()
+        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
+            == null
+        || server.getBlockEntity(worldPosition) != this
+        || !expected.equals(handle)
+        || !expected.equals(EnergyBankHandleData.read(data)))
+      throw new IllegalStateException("Exact loaded bank reference required");
+    var saved = authority();
+    var registry = saved.registry();
+    var owner = registry.ownership(expected.backing());
+    if (owner == null
+        || !owner.handle().equals(expected)
+        || !owner.conflict()
+        || expected.generation() == Long.MAX_VALUE
+        || !location().equals(owner.definition().location())
+        || owner.definition().kind() != dev.izzy.factorycore.core.resource.ResourceKind.ENERGY
+        || owner.definition().infinite()
+        || owner.definition().capacity() != tier().capacity()
+        || saved.transfers().unresolved(expected.backing()) != null)
+      throw new IllegalStateException("Canonical bank conflict cannot be repaired");
+    var replacement =
+        new DeviceRegistry.Handle(expected.world(), expected.backing(), expected.generation() + 1);
+    var replacementData = EnergyBankHandleData.write(replacement);
+    var path =
+        DeviceRecoveryAudit.preserveBank(
+            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            registry.evidence(expected.backing()),
+            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            saveWithFullMetadata(server.registryAccess()));
+    var result = registry.repairConflict(expected, location());
+    if (result.failure() != DeviceRegistry.Failure.OK)
+      throw new IllegalStateException("Bank conflict repair refused: " + result.failure());
+    handle = replacement;
+    data = replacementData;
+    diagnostic = "";
+    setChanged();
+    onLoad();
+    return path;
+  }
+
   public void validatePlaced() {
     if (isRemoved() || !diagnostic.isEmpty() || handle == null)
       throw new IllegalStateException("Bank unavailable");

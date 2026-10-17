@@ -23,7 +23,7 @@ public final class RecoveryCommands {
   private RecoveryCommands() {}
 
   public static void stopped(ServerStoppedEvent event) {
-    CellRecoveryCommands.stopped(event.getServer());
+    DeviceRecoveryCommands.stopped(event.getServer());
     REQUESTS.remove(event.getServer());
     RETIRE_TIMES.remove(event.getServer());
   }
@@ -35,7 +35,8 @@ public final class RecoveryCommands {
             Commands.literal("factorycore")
                 .then(
                     Commands.literal("recovery")
-                        .then(CellRecoveryCommands.commands())
+                        .then(DeviceRecoveryCommands.commands(false))
+                        .then(DeviceRecoveryCommands.commands(true))
                         .then(
                             Commands.literal("list")
                                 .requires(s -> s.hasPermission(2))

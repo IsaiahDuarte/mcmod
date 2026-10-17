@@ -364,4 +364,11 @@ expected generation, exact matching reference/tier and no unresolved transfer.
 Before-state ledger/claims/physical stack evidence is preserved before rotating
 the lease; old copies become stale and quantities/claims do not change. Wrong or
 unavailable holders and independent-save mismatches remain inert. This does not
-complete bank/buffer/node reconciliation or uncertain external recovery.
+complete buffer/node reconciliation or uncertain external recovery.
+
+
+Canonical ownership recovery also supports finite energy banks at their exact
+loaded original holder, preserving FE/claims and same-tick rate spending while
+rotating the lease and invalidating clones. It rejects unresolved transfers and
+stale/unsupported holders and writes full physical/canonical evidence first.
+This extends partial A12/A13 support; independent-save mismatches stay inert.

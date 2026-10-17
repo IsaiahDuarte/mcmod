@@ -154,3 +154,13 @@ slot diagnostics are rechecked. The operator command is documented in the
 behavior are in [ADR0023](../decisions/0023-canonical-cell-repair.md). Unknown external
 outcomes and ownership conflicts involving unresolved transfers remain blocked.
 This is partial recovery support, not full A13 completion.
+
+
+The same trusted registry transition now also backs explicit finite energy-bank
+repair. The bank adapter preserves its complete block state/reference before
+rotation and keeps rate spending in the existing world service; see
+[bank recovery](ENERGY_BANKS.md). Cell and bank commands share permission/throttle
+and metadata infrastructure; each filters its own kind without provider calls.
+Cell/bank list pages examine at most16 handles and may show zero matches with a
+nonempty next cursor. Schema1 cell audit files stay supported unchanged; bank
+physical evidence uses separate audit schema2, with no world-format migration.

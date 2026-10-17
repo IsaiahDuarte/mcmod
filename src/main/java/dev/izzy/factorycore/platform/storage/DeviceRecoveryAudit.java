@@ -15,10 +15,30 @@ final class DeviceRecoveryAudit {
 
   static Path preserve(Path world, UUID namespace, DeviceRegistry.Stored owner, Tag stack)
       throws IOException {
+    var envelope = envelope(namespace, owner, 1);
+    envelope.put("Stack", stack.copy());
+    return write(world, owner, envelope);
+  }
+
+  static Path preserveBank(
+      Path world,
+      UUID namespace,
+      DeviceRegistry.Stored owner,
+      CompoundTag blockState,
+      CompoundTag blockEntity)
+      throws IOException {
+    var envelope = envelope(namespace, owner, 2);
+    envelope.putString("HolderKind", "ENERGY_BANK");
+    envelope.put("BlockState", blockState.copy());
+    envelope.put("BlockEntity", blockEntity.copy());
+    return write(world, owner, envelope);
+  }
+
+  private static CompoundTag envelope(UUID namespace, DeviceRegistry.Stored owner, int schema) {
     if (!owner.conflict() || owner.location() == null)
       throw new IllegalArgumentException("Expected placed conflict evidence");
     var envelope = new CompoundTag();
-    envelope.putInt("Schema", 1);
+    envelope.putInt("Schema", schema);
     envelope.putInt("WorldSchema", 12);
     envelope.putUUID("World", namespace);
     envelope.putLong("Generation", owner.generation());
@@ -29,7 +49,11 @@ final class DeviceRecoveryAudit {
     location.putInt("Slot", owner.location().slot());
     envelope.put("Location", location);
     envelope.putByteArray("Ledger", LedgerStateCodec.encode(owner.ledger()));
-    envelope.put("Stack", stack.copy());
+    return envelope;
+  }
+
+  private static Path write(Path world, DeviceRegistry.Stored owner, CompoundTag envelope)
+      throws IOException {
     var bytes = new ByteArrayOutputStream();
     try (var output = new DataOutputStream(new BoundedOutput(bytes))) {
       NbtIo.write(envelope, output);

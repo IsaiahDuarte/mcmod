@@ -158,3 +158,34 @@ now additionally verifies real removal/reconstruction, unchanged canonical state
 leases, retained quantities/holds, unavailable stock and inert cached capabilities
 while offline, and resumed saved Stock afterward. It does not prove split-chunk
 networks, staged unload or independent save-order/interrupt recovery.
+
+
+## Explicit canonical bank conflict repair
+
+Operators can inspect/repair conflicts using `/factorycore recovery bank list`,
+`show <backing>` and `repair <backing> <expected-generation>`. Metadata pages examine
+at most16 handles, filter ENERGY and expose an exclusive cursor even when a page
+has no matches. Show/repair reject item/fluid cells. Commands load no chunks.
+
+The trusted owner-thread `EnergyBankEntity.repairConflict(expected)` method requires
+a live loaded canonical holder, matching raw/parsed reference, exact finite ENERGY
+tier/capacity/slot0 and no unresolved transfer. It preserves full ledger/claims,
+block state and block-entity evidence before incrementing generation/clearing
+conflict; FE, claims, backing and location do not change. Availability stays false
+until current network revalidation. It updates only the bank reference and keeps
+the world EnergyBankAccess service; same-tick input/output spending cannot reset.
+All previous copied references and their cached capabilities remain inert.
+
+Wrong/stale/unknown/nonconflicted/removed/missing or mismatched holders, exhausted
+generation, unresolved staging and unsupported/raw data refuse without changing
+stock or lease. IO failures propagate before mutation; operator feedback explains
+evidence refusal. Reference schema1 and world12 remain unchanged. Audits use the
+standalone bank schema2 and shared bounds in [ADR0023](../decisions/0023-canonical-cell-repair.md).
+The synchronous explicit command may delay a tick; no IO latency claim is made.
+
+Native tests exercise the real console dispatcher,900FE/200 claimed repair,
+remaining100FE input allowance in that same tick,800 unreserved extraction,
+cached clone denial, physical/canonical reference reload, old snapshot inertness,
+failed audit preservation and a real400-ledger/100-staged transfer blocking repair.
+This does not reconcile a missing/stale canonical holder after interrupted independent
+saves, choose another survivor, or resolve uncertain external outcomes.

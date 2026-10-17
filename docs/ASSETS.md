@@ -101,7 +101,7 @@ row. Share navigation and components where appropriate.
 | Permissions and gateway policies | Authorized view/edit/ownership transfer, inherited limits and revocation feedback | P2–P6 | Missing / Pending |
 | Friendly editor and deployment | Highlighting, completion, errors, undo, templates, draft/deployed, logs/quotas, bounded Wasm upload | P5–P6 | Missing / Pending |
 | Wireless setup | Pairing, direction, range, authorization, power loss and reconnection | P6 | Missing / Pending |
-| Device diagnostics and recovery | Safe next actions, preserved evidence, authorized reconciliation and unresolved quarantine | P2–P6 | Partial translated operator inspection/known cleanup/canonical cell repair; broader reconciliation missing / Native command behavior checked, graphical walkthrough pending |
+| Device diagnostics and recovery | Safe next actions, preserved evidence, authorized reconciliation and unresolved quarantine | P2–P6 | Partial translated operator inspection/known cleanup/canonical cell/bank repair; broader reconciliation missing / Native command behavior checked, graphical walkthrough pending |
 | In-game help and progression | First-network diagram, hopper walkthrough, offhand upgrades, factory examples and next unlocks | P3–P6 | Missing; external player guide and recipe unlocks exist / Pending |
 | Shared UI assets and localization | Consistent controls/icons/tooltips/focus, translation keys, readable scales and non-color status cues | P3–P6 | Registered names and bank/connector/buffer tooltips/chat feedback translated; native item terminal screen implemented; other shared screens pending / Pending |
 
@@ -190,3 +190,8 @@ Operator recovery now includes translated transfer inspection/cleanup and canoni
 cell conflict inspection/repair feedback. Native command checks cover permission,
 formatting and safe refusal; real chat layout/accessibility and a full recovery
 walkthrough remain Pending. These commands do not finish the recovery asset row.
+
+
+Finite bank recovery now shares translated operator metadata/repair/refusal
+feedback. Native commands verify quantities, lease rotation, permission gates and
+safe failure; actual graphical chat/accessibility/recovery walkthrough remain Pending.

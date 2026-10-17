@@ -13,26 +13,30 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.*;
 import net.minecraft.server.MinecraftServer;
 
-/** Explicit operator selection of the existing canonical cell holder; no chunk loading. */
-final class CellRecoveryCommands {
+/** Explicit operator selection of the existing canonical storage holder; no chunk loading. */
+final class DeviceRecoveryCommands {
   private static final Map<MinecraftServer, Integer> REPAIRS = new WeakHashMap<>();
 
-  private CellRecoveryCommands() {}
+  private DeviceRecoveryCommands() {}
 
   static void stopped(MinecraftServer server) {
     REPAIRS.remove(server);
   }
 
-  static LiteralArgumentBuilder<CommandSourceStack> commands() {
-    return Commands.literal("cell")
+  static LiteralArgumentBuilder<CommandSourceStack> commands(boolean bank) {
+    return Commands.literal(bank ? "bank" : "cell")
         .requires(source -> source.hasPermission(2))
         .then(
             Commands.literal("list")
-                .executes(c -> list(c.getSource(), null))
+                .executes(c -> list(c.getSource(), null, bank))
                 .then(
                     Commands.argument("after", StringArgumentType.word())
                         .executes(
-                            c -> list(c.getSource(), StringArgumentType.getString(c, "after")))))
+                            c ->
+                                list(
+                                    c.getSource(),
+                                    StringArgumentType.getString(c, "after"),
+                                    bank))))
         .then(
             Commands.literal("show")
                 .then(
@@ -40,7 +44,10 @@ final class CellRecoveryCommands {
                         .executes(
                             c ->
                                 inspect(
-                                    c.getSource(), StringArgumentType.getString(c, "backing"), 0))))
+                                    c.getSource(),
+                                    StringArgumentType.getString(c, "backing"),
+                                    0,
+                                    bank))))
         .then(
             Commands.literal("repair")
                 .then(
@@ -52,7 +59,13 @@ final class CellRecoveryCommands {
                                         inspect(
                                             c.getSource(),
                                             StringArgumentType.getString(c, "backing"),
-                                            LongArgumentType.getLong(c, "generation"))))));
+                                            LongArgumentType.getLong(c, "generation"),
+                                            bank)))));
+  }
+
+  private static boolean matches(DeviceRegistry.Ownership owner, boolean bank) {
+    return (owner.definition().kind() == dev.izzy.factorycore.core.resource.ResourceKind.ENERGY)
+        == bank;
   }
 
   private static UUID parse(String value) {
@@ -63,7 +76,7 @@ final class CellRecoveryCommands {
   private static Component describe(DeviceRegistry.Ownership owner) {
     var location = owner.definition().location();
     return Component.translatable(
-        "command.factorycore.recovery.cell.row",
+        "command.factorycore.recovery.device.row",
         owner.handle().backing().toString(),
         owner.handle().generation(),
         owner.conflict(),
@@ -78,37 +91,49 @@ final class CellRecoveryCommands {
                 + location.slot());
   }
 
-  private static int list(CommandSourceStack source, String after) {
+  private static int list(CommandSourceStack source, String after, boolean bank) {
     try {
       var registry = DeviceSavedData.get(source.getServer()).registry();
       var page = registry.handles(after == null ? null : parse(after), 16);
-      for (var handle : page.handles())
-        source.sendSuccess(() -> describe(registry.ownership(handle.backing())), false);
+      int shown = 0;
+      for (var handle : page.handles()) {
+        var owner = registry.ownership(handle.backing());
+        if (matches(owner, bank)) {
+          source.sendSuccess(() -> describe(owner), false);
+          shown++;
+        }
+      }
+      int count = shown;
       source.sendSuccess(
           () ->
               Component.translatable(
                   "command.factorycore.recovery.page",
-                  page.handles().size(),
+                  count,
                   page.next() == null ? "—" : page.next().toString()),
           false);
-      return page.handles().size();
+      return count;
     } catch (IllegalArgumentException | IllegalStateException rejected) {
-      source.sendFailure(Component.translatable("command.factorycore.recovery.cell.refused"));
+      source.sendFailure(Component.translatable("command.factorycore.recovery.device.refused"));
       return 0;
     }
   }
 
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and level.
-  private static int inspect(CommandSourceStack source, String backing, long generation) {
+  private static int inspect(
+      CommandSourceStack source, String backing, long generation, boolean bank) {
     try {
       var server = source.getServer();
       var saved = DeviceSavedData.get(server);
       var owner = saved.registry().ownership(parse(backing));
-      if (owner == null) throw new IllegalArgumentException("Unknown backing");
+      if (owner == null || !matches(owner, bank))
+        throw new IllegalArgumentException("Unknown storage kind");
       source.sendSuccess(() -> describe(owner), false);
       if (generation == 0) {
         source.sendSuccess(
-            () -> Component.translatable("command.factorycore.recovery.cell.help"), false);
+            () ->
+                Component.translatable(
+                    "command.factorycore.recovery." + (bank ? "bank" : "cell") + ".help"),
+            false);
         return 1;
       }
       if (owner.handle().generation() != generation
@@ -122,8 +147,7 @@ final class CellRecoveryCommands {
                   Registries.DIMENSION, ResourceLocation.parse(location.dimension())));
       var pos = BlockPos.of(location.position());
       if (level == null
-          || level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null
-          || !(level.getBlockEntity(pos) instanceof StorageDriveEntity drive))
+          || level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null)
         throw new IllegalStateException("Canonical holder unavailable");
       var previous = REPAIRS.get(server);
       if (previous != null && server.getTickCount() - previous < 20) {
@@ -131,11 +155,18 @@ final class CellRecoveryCommands {
         return 0;
       }
       REPAIRS.put(server, server.getTickCount());
-      var path = drive.repairCellConflict(owner.handle());
+      var holder = level.getBlockEntity(pos);
+      var path =
+          bank && holder instanceof EnergyBankEntity energyBank
+              ? energyBank.repairConflict(owner.handle())
+              : !bank && holder instanceof StorageDriveEntity drive
+                  ? drive.repairCellConflict(owner.handle())
+                  : null;
+      if (path == null) throw new IllegalStateException("Wrong canonical holder kind");
       source.sendSuccess(
           () ->
               Component.translatable(
-                  "command.factorycore.recovery.cell.repaired",
+                  "command.factorycore.recovery." + (bank ? "bank" : "cell") + ".repaired",
                   backing,
                   generation + 1,
                   path.getFileName().toString()),
@@ -145,7 +176,7 @@ final class CellRecoveryCommands {
       source.sendFailure(Component.translatable("command.factorycore.recovery.audit"));
       return 0;
     } catch (IllegalArgumentException | IllegalStateException rejected) {
-      source.sendFailure(Component.translatable("command.factorycore.recovery.cell.refused"));
+      source.sendFailure(Component.translatable("command.factorycore.recovery.device.refused"));
       return 0;
     }
   }

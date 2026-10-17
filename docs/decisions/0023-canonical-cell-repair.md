@@ -5,19 +5,19 @@ reconciliation and independent-save interruption guarantees remain unfinished.
 
 ## Decision
 
-Support explicit operator repair of a conflicted digital item/fluid cell only at
-its existing canonical drive slot. The operator supplies backing UUID and expected
-current generation. Require a loaded, readable current drive object, exact physical
-world/backing/generation, one matching cell tier and no unresolved transfer for
+Support explicit operator repair of conflicted digital item/fluid cells and finite
+energy banks only at their existing canonical holders (drive slot or bank position).
+The operator supplies backing UUID and expected current generation. Require a loaded, readable current holder object, exact physical
+world/backing/generation, matching physical tier and no unresolved transfer for
 that backing. Never load a chunk, choose another holder, adopt accepted staging,
 change quantities/claims or synthesize contents. Other kinds and missing/stale
 canonical holders stay unavailable for investigation.
 
 Before mutation, preserve full canonical ledger bytes, generation/conflict/location,
-world namespace/schema and the complete serialized physical cell stack. Rotate the
+world namespace/schema and the complete serialized physical holder. Rotate the
 canonical generation exactly once, clear conflict, keep stock/claims/location and
-leave availability false. Replace only the original slot's lease, preserving other
-components. Revalidate all drive slots and invalidate network membership normally;
+leave availability false. Replace only the original holder lease, preserving other
+components. Revalidate physical references and invalidate network membership normally;
 routing can resume only through current network validation. Every previous copy
 has a stale generation and cannot quarantine the new lease on reload.
 
@@ -29,9 +29,12 @@ provider/resource callbacks occur in the repair critical section.
 ## Evidence format and limits
 
 A separate directory, world/factorycore-device-recovery, contains uncompressed
-binary NBT audit schema1. Fields: Schema, WorldSchema12, World UUID, Generation long,
+binary NBT cell audit schema1 or bank audit schema2. Common fields: Schema, WorldSchema12, World UUID, Generation long,
 Conflict boolean byte, Location (Dimension, Position, Slot), Ledger checksummed
-component bytes and Stack native serialized item. Existing world12, ledger1 and
+component bytes. Cell schema1 retains Stack (native serialized item). Bank schema2
+retains HolderKind=ENERGY_BANK, BlockState (native state NBT), and BlockEntity
+(complete native block-entity NBT, including its exact reference). The bank writer
+does not reinterpret older cell evidence or use an item break/drop transition. Existing world12, ledger1 and
 cell-reference1 formats are unchanged; no world migration is required. Audit files
 are evidence, not executable restore instructions or a new canonical owner.
 
@@ -58,7 +61,7 @@ Minecraft saves them independently. A hard interruption may leave a stale physic
 reference with newer canonical generation, or the converse. Such a mismatch stays
 inert; this command intentionally refuses it. Preserve the audit and full backups
 for investigation. Do not promise atomic crash recovery, automatic reconciliation,
-uncertain external refunds, or repair of banks/buffers/structural nodes.
+uncertain external refunds, or repair of buffers/structural nodes.
 
 ## Verification
 
@@ -69,3 +72,28 @@ corruption, oversized data and blocked output. Native cases exercise the actual
 operator dispatcher, copied drive conflict, current physical holder/tier, failed
 evidence with unchanged authority, saved reference reload, revalidated extraction
 and unresolved staging refusal. Final commands/results belong in the plan.
+
+
+## Energy-bank adapter extension — 2026-10-17
+
+Expose operator `/factorycore recovery bank list [after]`, `show <backing>` and
+`repair <backing> <expected-generation>` through the same permission/throttle
+and bounded metadata path as cells. Cell/bank pages examine at most16 canonical
+handles and emit only matching kinds; a page can show zero matches while still
+providing a continuation cursor. Show/repair refuse the other resource kind.
+
+`EnergyBankEntity.repairConflict` requires the current loaded canonical object,
+matching parsed/raw lease, exact finite ENERGY tier/capacity, slot0/location and
+no unresolved transfer. It prepares the replacement reference and preserves the
+schema2 evidence before the same canonical generation transition. It retains the
+existing EnergyBankAccess service, so spending remains keyed by backing UUID and
+cannot reset during repair. After normal network validation, current capabilities
+use the repaired lease; cloned holders/cached clone capabilities remain stale.
+Bank schema1 references and world12 remain unchanged. Audit limits/quotas are
+shared with cell archives; the explicit20-tick repair throttle is shared too.
+
+Native checks require900FE/200 claimed unchanged across repair, only100FE of the
+same tick's input allowance remaining, exact800 unreserved extraction, cached
+clone denial, repaired reference/canonical reload, stale snapshot inertness,
+failed audit with exact no-mutation and400 ledger/100 staged unresolved refusal.
+Graphical chat, real multiplayer and interrupted filesystem saves remain separate.

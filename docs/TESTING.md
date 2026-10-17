@@ -804,3 +804,15 @@ permission/metadata/repair, copied native drive, unchanged failed audit, matchin
 saved references, current-holder reactivation and unresolved real staging refusal.
 These checks do not prove interrupted independent saves, other ownership kinds,
 remote multiplayer or graphical chat layout.
+
+
+## Canonical energy-bank repair checks
+
+DeviceRecoveryAuditTest adds bank schema2 round-trip of complete block state/raw
+reference/FE ledger/claims, exact reuse and corruption refusal while existing cell
+schema1 tests remain. Three EnergyBankGameTests cover the production console
+commands, kind/permission/generation/holder refusals,900FE/200 claimed repair,
+remaining100FE same-tick input allowance,800 unreserved extraction, cached cloned
+capabilities, repaired physical/canonical reload, old snapshot inertness, failed
+audit no-mutation and a real400-ledger/100-staged unresolved transfer blocking repair.
+They do not prove interrupted independent filesystem saves or real client/multiplayer.

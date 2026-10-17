@@ -63,6 +63,52 @@ class DeviceRecoveryAuditTest {
   }
 
   @Test
+  void bankEvidenceKeepsStateAndRawHolderWithoutChangingCellSchema() throws Exception {
+    var original = owner();
+    var owner =
+        new DeviceRegistry.Stored(
+            new LedgerState(
+                original.ledger().id(),
+                ResourceKind.ENERGY,
+                100000,
+                false,
+                8,
+                8,
+                Map.of(ResourceKey.ENERGY, 900L),
+                List.of(new LedgerState.Reservation(UUID.randomUUID(), ResourceKey.ENERGY, 200))),
+            2,
+            new DeviceRegistry.Location("minecraft:overworld", 45, 0),
+            true);
+    var world = UUID.randomUUID();
+    var state = TagParser.parseTag("{Name:'factorycore:starter_energy_bank'}");
+    var holder = new CompoundTag();
+    var handle = new DeviceRegistry.Handle(world, owner.ledger().id(), owner.generation());
+    holder.put(EnergyBankHandleData.FIELD, EnergyBankHandleData.write(handle));
+    holder.putString("retained", "complete physical evidence");
+    var file = DeviceRecoveryAudit.preserveBank(folder, world, owner, state, holder);
+    assertEquals(file, DeviceRecoveryAudit.preserveBank(folder, world, owner, state, holder));
+    try (var input = new DataInputStream(Files.newInputStream(file))) {
+      var root = NbtIo.read(input, NbtAccounter.create(DeviceRecoveryAudit.MAX_FILE_BYTES * 2L));
+      assertEquals(2, root.getInt("Schema"));
+      assertEquals("ENERGY_BANK", root.getString("HolderKind"));
+      assertEquals(world, root.getUUID("World"));
+      assertEquals(owner.ledger(), LedgerStateCodec.decode(root.getByteArray("Ledger")));
+      assertEquals(state, root.getCompound("BlockState"));
+      assertEquals(holder, root.getCompound("BlockEntity"));
+      assertEquals(
+          handle,
+          EnergyBankHandleData.read(
+              root.getCompound("BlockEntity").get(EnergyBankHandleData.FIELD)));
+      assertFalse(root.contains("Stack"));
+    }
+    Files.writeString(file, "preserved corrupt bank evidence");
+    assertThrows(
+        IOException.class,
+        () -> DeviceRecoveryAudit.preserveBank(folder, world, owner, state, holder));
+    assertEquals("preserved corrupt bank evidence", Files.readString(file));
+  }
+
+  @Test
   void binaryAuditSupportsLedgerBeyondTransferSnbtLimit() throws Exception {
     var contents = new java.util.HashMap<ResourceKey, Long>();
     for (int index = 0; index < 10; index++)

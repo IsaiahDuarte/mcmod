@@ -333,8 +333,10 @@
   "command.factorycore.recovery.queued": "Recovery admission=%s. Before-state evidence: factorycore-recovery/%s",
   "command.factorycore.recovery.not_complete": "Only known complete empty records may be archived and retired. No transfer changed.",
   "command.factorycore.recovery.retired": "Retired completed record %s. Evidence: factorycore-recovery/%s",
-  "command.factorycore.recovery.cell.row": "Cell %s | generation %s | conflict=%s | %s total=%s | %s",
   "command.factorycore.recovery.cell.help": "Repair supports only the loaded original drive slot, matching cell and generation, with no unresolved transfers. Preserve backups. Other holders stay inert; uncertain transfers require investigation.",
-  "command.factorycore.recovery.cell.refused": "Cell repair/inspection refused: check backing, generation, conflict, loaded original slot and unresolved transfers. No resources were moved.",
-  "command.factorycore.recovery.cell.repaired": "Cell %s repaired at its original holder, generation %s. Clones are stale. Before-state evidence: %s"
+  "command.factorycore.recovery.cell.repaired": "Cell %s repaired at its original holder, generation %s. Clones are stale. Before-state evidence: %s",
+  "command.factorycore.recovery.device.row": "Storage %s | generation %s | conflict=%s | %s total=%s | %s",
+  "command.factorycore.recovery.device.refused": "Storage repair/inspection refused: check backing, generation, conflict, loaded original holder and unresolved transfers. No resources were moved.",
+  "command.factorycore.recovery.bank.help": "Repair supports only the loaded original bank, matching reference/tier/generation, with no unresolved transfers. Preserve backups. Old clones stay inert; uncertain transfers require investigation.",
+  "command.factorycore.recovery.bank.repaired": "Energy Bank %s repaired at its original holder, generation %s. Clones are stale. Before-state evidence: %s"
 }

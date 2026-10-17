@@ -100,7 +100,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Partial prerequisite: bounded server registry-text search and stable exact-count pages are implemented; physical item terminal/menu controls and headless flows are implemented; partial graphical item-screen evidence is [recorded](evidence/terminal-client-v1-2026-10-13.md); remaining R08 checks are pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
 | A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation and execution-time scheduled physical transfer permissions/private segments are implemented with seven WorldStorageTransfersGameTests. Connector cases additionally verify source/target current grants, denied parent/private-child transfers, config revocation and stale provider handles. Player permissions UI and multiplayer checks remain pending. |
-| A13 | P2, P4, P6, P7 | Partial: [audited canonical cell conflict repair](decisions/0023-canonical-cell-repair.md) now supports exact original holders without unresolved transfers; other kinds and independent-save mismatches remain open. operator inspection, audited original-owner known cleanup and empty completed-record retirement now have server command/native evidence; full ownership reconciliation remains open. required dedicated two-JVM recovery now preserves accepted known/uncertain staging and verifies delivery/return without replay; independent saves/administration remain open. a separate-JVM orderly integrated-server reopen now preserves complete canonical/physical state and resumes item Stock (see 2026-10-17 restart evidence); a native one-chunk unload/reload also preserves ownership and stops offline mutations; independent saves/interrupted calls remain open. Exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. World-scoped provider identity markers have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
+| A13 | P2, P4, P6, P7 | Partial: [audited canonical cell/bank conflict repair](decisions/0023-canonical-cell-repair.md) now supports exact original holders without unresolved transfers, preserving quantities/claims and bank rate spending; buffer/node kinds and independent-save mismatches remain open. operator inspection, audited original-owner known cleanup and empty completed-record retirement now have server command/native evidence; full ownership reconciliation remains open. required dedicated two-JVM recovery now preserves accepted known/uncertain staging and verifies delivery/return without replay; independent saves/administration remain open. a separate-JVM orderly integrated-server reopen now preserves complete canonical/physical state and resumes item Stock (see 2026-10-17 restart evidence); a native one-chunk unload/reload also preserves ownership and stops offline mutations; independent saves/interrupted calls remain open. Exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. World-scoped provider identity markers have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
@@ -2545,3 +2545,47 @@ independent-save/interruption boundaries, selected tanks/coordinated ports and
 remaining P1/P2 integration. P1/P2/P3 stay partial; crafting, production scripting,
 powered/wireless progression, finished assets/onboarding, remote multiplayer and
 P7 release verification remain unfinished. The full goal stays active.
+
+## Audited canonical energy-bank repair checkpoint — 2026-10-17
+
+P2/R09/A04/A12/A13 extends canonical recovery to finite energy banks. Operator
+`/factorycore recovery bank list [after]`, `show <backing>` and
+`repair <backing> <expected-generation>` share cell command permission/throttle
+and metadata infrastructure. Kind-filtered pages inspect at most16 handles and
+can return zero matches with a next cursor. Show/repair reject the other kind.
+No provider reads or chunk loading are added.
+
+The loaded original bank adapter validates exact raw/parsed lease, finite ENERGY
+tier/capacity/location/slot0 and no unresolved transfer. It archives complete
+canonical ledger/claims and native block state/reference before the existing
+canonical generation transition. FE, claims and location stay unchanged. Normal
+network validation precedes availability. The same world EnergyBankAccess service
+retains same-tick spending by backing ID; clones/cached clone capabilities stay
+inert. Unknown/stale/missing/raw holders, unresolved transfers and evidence failure
+remain denied. No independent-save mismatch is silently reconciled.
+
+Standalone bank audit schema2 adds HolderKind/BlockState/BlockEntity; existing
+cell audit schema1, world12 and bank reference1 stay unchanged. Quotas and the
+explicit20-tick repair throttle are shared across cell/bank actions. ADR0023,
+module/player contracts and translatable operator feedback are updated together.
+This does not add a restore/import path or claim crash/IO latency guarantees.
+
+One audit JVM case raises226→227; three native cases raise210→213. Actual command
+checks preserve900FE/200 claimed, permit only100 more input in the same tick,
+then800 unreserved extraction, and test stale cached capabilities, repaired
+reference/canonical reload and old snapshot inertness. Audit failure leaves exact
+physical/canonical state; a real400-bank/100-staged unresolved transfer blocks
+rotation unchanged. [Evidence](evidence/canonical-bank-repair-v1-2026-10-17.md)
+archives the full final log, exact before-state bank NBT, JVM and dedicated reports.
+
+`./gradlew spotlessApply compileJava` and
+`./gradlew spotlessApply test runGameTestServer` passed (227 JVM/213 required native).
+Final `python3 scripts/verify.py` passed24 tooling,227 JVM (up-to-date),213 executed
+GameTests and dedicated seed39572/restore39587. Gradle47s,31 tasks:10 executed/
+21 up-to-date; Rust guest checks up-to-date. Formatting/PMD/architecture/packaging
+passed; final log has no ERROR. Final docs/checksums and `git diff --check` passed.
+
+Next: buffer/structural ownership recovery and independent-save/interruption
+boundaries, then selected tanks/coordinated ports and remaining P1/P2 integration.
+Crafting, production scripting, powered/wireless progression, finished presentation/
+onboarding, remote multiplayer and P7 remain unfinished. Full goal stays active.

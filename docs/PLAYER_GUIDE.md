@@ -425,3 +425,21 @@ archives have independent limits of512 files,9MiB/file and32MiB total. Archive
 outside that directory to free quota; no command deletes audits. An evidence write
 failure leaves ownership untouched. Explicit repairs are throttled to one attempt
 per second per server and may be delayed by storage IO.
+
+
+Finite Energy Banks have the matching operator commands:
+`/factorycore recovery bank list [after-UUID]`, `show <backing-UUID>` and
+`repair <backing-UUID> <generation>` under the same prefix. Repair requires the
+loaded original bank, matching lease/tier and no unresolved transfer. It archives
+full FE/claims, block state and reference before rotating the lease. Stored FE and
+reservations stay unchanged; old clones/cached clone capabilities stay inert.
+Repair keeps rate spending already used in the same tick and requires normal
+network revalidation before FE transfer resumes.
+
+Bank and cell repairs share the20-tick throttle and device-audit quotas. Their
+list commands examine at most16 canonical handles per page and display only the
+selected kind; follow a printed cursor even if that page has zero matches. Bank
+archives use binary audit schema2, while existing cell files remain schema1.
+Neither command chooses another survivor or resolves interrupted independent-save
+mismatches, unsupported raw data or uncertain external outcomes. Preserve backups
+and retained evidence for those cases.
