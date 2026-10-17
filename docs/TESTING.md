@@ -742,3 +742,38 @@ callbacks, and retains prior empty-transition/cycle/sharing/queue-limit coverage
 The flat representation removes nested iterator recursion; it does not raise any
 region/discovery tick, probe or vertex limits. The split-root client is the native
 regression for the finite cable-placement trigger.
+
+## Required dedicated staged-operation restart
+
+`./gradlew runStagingRecoveryServer --console=plain` is now part of `check` and
+therefore the canonical verifier/CI build. It runs two real dedicated-server JVMs
+without graphics. Seed setup replaces only build/staging-server-run/world and
+build/reports/staging-server, binds an ephemeral loopback port, and uses a fixed
+flat world. The second process opens that saved world without reseeding; it
+requires the first PID to have exited and compares complete canonical SavedData
+before any progress. Normal run/server and player worlds are untouched.
+
+A test-only native ItemHandler provider simulates normal acceptance but actually
+accepts only three of eight items. Real shared scheduled submissions debit each
+source20→12 and persist known staging5/delivered3. A third provider accepts3 then
+throws, leaving QUARANTINED pending DELIVER8 with delivered0. Native inventories,
+acceptance budgets/call counters and provider backing markers persist in chunk
+NBT. The fixture never calls TransferRegistry.start or installs synthetic staging.
+
+After restart, native provider counts/identities/counters and source debits must
+match. Known delivery produces source12 + provider8 =20 without new extraction;
+known original-source cleanup produces source17 + provider3 =20 without another
+destination call. Both complete records may then retire. Uncertain delivery and
+return reject UNCERTAIN, cannot retire, make no extra native calls and preserve
+evidence. Its pending quantity is not treated as a proven recoverable balance.
+
+Reports seed.txt/restore.txt must begin PASS; missing/incomplete runs fail Gradle.
+This fixture uses a stable trusted synthetic program principal (NeoForge fake
+player only for server/registry access), not a logged-in player or player endpoint.
+It proves native server transfer/save/rebind behavior, not login/session/UI or
+independent-save/crash atomicity. Common registry/server entry and client-only
+setup subscribers are separated so dedicated execution never loads screen classes.
+All fixture classes/resources remain excluded from production packaging.
+
+The graphical restart fixture uses the same provider/checks. Its new staging steps
+need their own successful desktop run; a headless pass cannot substitute for that.

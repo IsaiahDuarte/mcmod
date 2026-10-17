@@ -37,6 +37,8 @@ final class WorldRestartVerification {
   private final AtomicBoolean initial = new AtomicBoolean(), replenished = new AtomicBoolean();
   private int stage, ticks, entered;
   private final ChunkLifecycleVerification chunks = new ChunkLifecycleVerification();
+  private final StagedRecoveryVerification staging = new StagedRecoveryVerification();
+  private final AtomicBoolean stagingDone = new AtomicBoolean();
   private final AtomicBoolean chunksDone = new AtomicBoolean(), splitDone = new AtomicBoolean();
   private final SplitRootVerification split = new SplitRootVerification();
 
@@ -141,7 +143,20 @@ final class WorldRestartVerification {
           });
       return;
     }
-    if (stage == 2 && replenished.get() && !chunksDone.get()) {
+    if (stage == 2 && replenished.get() && !stagingDone.get()) {
+      server.execute(
+          () -> {
+            if (stagingDone.get()) return;
+            try {
+              if (staging.tick(server.getPlayerList().getPlayer(principal), expected))
+                stagingDone.set(true);
+            } catch (RuntimeException error) {
+              failure.set(error);
+            }
+          });
+      return;
+    }
+    if (stage == 2 && stagingDone.get() && !chunksDone.get()) {
       server.execute(
           () -> {
             if (chunksDone.get()) return;
@@ -226,6 +241,7 @@ final class WorldRestartVerification {
                 + " restartPid="
                 + ProcessHandle.current().pid()
                 + "\nFresh JVM opened existing world without seeding or restoring from expected state.\n"
+                + "Accepted known staging delivered5 after restart (source12 + provider8 =20); owned cleanup returned5 (source17 + provider3 =20). Post-insert uncertainty stayed frozen with no replay/refund.\n"
                 + "Full canonical SavedData matched before mutation; physical/player resources and provider identity matched.\n"
                 + "1200mB water:400 held/800 available;300mB lava;500FE. Native Stock editor retained goal8/exact rule.\n"
                 + "After real chest removal3, resumed Stock conserved cell3 + machine8 + buffer9 + player5 =25.\n"

@@ -250,3 +250,5 @@ unloads. Storage/preset work stops, stock/holds persist, probes do not reload th
 root, and the original preset resumes only after the original root revalidates.
 It also covers the finite cable-run trigger for the flat retained-seed fix.
 This does not complete staged-unload, independent-save or release recovery gates.
+
+Actual accepted known/uncertain staging now has a required [two-JVM dedicated recovery record](../evidence/staged-server-v1-2026-10-17.md). The graphical variant remains separately unverified while no display is active; independent-save/interruption/administration gates remain open.

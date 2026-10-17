@@ -55,6 +55,27 @@ neoForge {
             systemProperty "factorycore.client.seed", file("build/reports/client-terminal/restart.properties").absolutePath
             systemProperty "factorycore.client.restart", "true"
         }
+        stagingSeedServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/staging-server-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.staging.server", "true"
+            systemProperty "factorycore.staging.report", file("build/reports/staging-server/seed.txt").absolutePath
+            systemProperty "factorycore.staging.expected", file("build/reports/staging-server/expected.properties").absolutePath
+        }
+        stagingRecoveryServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/staging-server-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.staging.server", "true"
+            systemProperty "factorycore.staging.restore", "true"
+            systemProperty "factorycore.staging.report", file("build/reports/staging-server/restore.txt").absolutePath
+            systemProperty "factorycore.staging.expected", file("build/reports/staging-server/expected.properties").absolutePath
+        }
         client {
             client()
             gameDirectory = file('run/client')
@@ -220,3 +241,26 @@ tasks.named('runTerminalRestartClient', JavaExec) {
         }
     }
 }
+
+// Required headless native persistence probe: accepted calls, orderly exit, distinct-JVM recovery.
+tasks.named('runStagingSeedServer', JavaExec) {
+    doFirst {
+        delete file('build/staging-server-run/world')
+        delete file('build/reports/staging-server')
+        def settings = file('build/staging-server-run/server.properties')
+        settings.parentFile.mkdirs()
+        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+    }
+    doLast {
+        def result = file('build/reports/staging-server/seed.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Native staging seed did not complete.')
+    }
+}
+tasks.named('runStagingRecoveryServer', JavaExec) {
+    dependsOn tasks.named('runStagingSeedServer')
+    doLast {
+        def result = file('build/reports/staging-server/restore.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Native staging recovery did not complete.')
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runStagingRecoveryServer') }

@@ -24,7 +24,9 @@ final class RestartCheckpoint {
       BUFFER = new BlockPos(3, 65, 1),
       MACHINE = new BlockPos(2, 65, 2),
       BANK = new BlockPos(3, 65, 2);
-  private boolean installed;
+  private boolean installed, resourcesSeeded;
+  private final StagedRecoveryVerification.Seed staging = new StagedRecoveryVerification.Seed();
+  private final Properties stagedExpected = new Properties();
 
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the player's live level.
   boolean prepare(ServerPlayer player, Path path) throws IOException {
@@ -50,17 +52,22 @@ final class RestartCheckpoint {
     if (!machine.canUse(player)
         || !saved.registry().stock(fluid, water).loaded()
         || !saved.registry().stock(bank.handle(), ResourceKey.ENERGY).loaded()) return false;
-    require(bank.receiveEnergy(500, false) == 500, "Finite bank owns500 real FE");
-    require(saved.registry().insert(fluid, water, 1200).amount() == 1200, "Own1200mB water");
-    require(saved.registry().insert(fluid, lava, 300).amount() == 300, "Own300mB lava");
-    require(
-        saved.registry().reserve(fluid, player.getUUID(), water, 400).amount() == 400,
-        "Persist a principal-owned400mB hold");
+    if (!resourcesSeeded) {
+      require(bank.receiveEnergy(500, false) == 500, "Finite bank owns500 real FE");
+      require(saved.registry().insert(fluid, water, 1200).amount() == 1200, "Own1200mB water");
+      require(saved.registry().insert(fluid, lava, 300).amount() == 300, "Own300mB lava");
+      require(
+          saved.registry().reserve(fluid, player.getUUID(), water, 400).amount() == 400,
+          "Persist a principal-owned400mB hold");
+      resourcesSeeded = true;
+    }
+    if (!staging.tick(player, stagedExpected)) return false;
     var root = (NetworkNodeEntity) level.getBlockEntity(ROOT);
     var actor = new NetworkPermissions.Actor(player.getUUID(), false);
     var bound = WorldNetworks.get(player.server).connectors().bind(machine);
     require(bound.handle() != null, "Live provider backing before save");
     var expected = new Properties();
+    expected.putAll(stagedExpected);
     expected.setProperty("pid", Long.toString(ProcessHandle.current().pid()));
     expected.setProperty("principal", player.getUUID().toString());
     expected.setProperty("world", saved.registry().world().toString());

@@ -1,0 +1,5 @@
+PASS
+mode=seed pid=36849
+Three accepted native operations: known delivery, known return, post-insert uncertainty.
+Each source debited8; providers accepted3; known staging5 and uncertain pendingDELIVER8 saved.
+Trusted synthetic program principal; no connected-player/session/UI claim.

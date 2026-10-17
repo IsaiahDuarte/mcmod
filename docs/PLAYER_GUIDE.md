@@ -106,6 +106,12 @@ crash recovery across independently saved chunks/player inventory, actual chunk
 unload/reload and multiplayer/client interaction remain unverified. This is not
 the first playable release; see [implementation evidence](IMPLEMENTATION.md).
 
+Known staged remainder can be delivered or returned only through its accepted
+owner and endpoints. A quarantined foreign call has an uncertain outcome: its
+recorded amount is evidence, not a guaranteed refund. Restarting preserves that
+evidence and does not replay the call. The broader administrator reconciliation
+workflow remains unfinished.
+
 ## Controllers, gateways and cables
 
 Craft a Network Controller from four iron, four redstone and one glass. Placement

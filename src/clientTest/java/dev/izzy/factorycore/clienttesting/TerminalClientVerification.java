@@ -40,14 +40,12 @@ import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 /** Isolated graphical fixture, never packaged or loaded in ordinary client/server runs. */
-@Mod("factorycore_client_tests")
 public final class TerminalClientVerification {
   private static final BlockPos ROOT = new BlockPos(1, 65, 1),
       DRIVE = new BlockPos(2, 65, 1),

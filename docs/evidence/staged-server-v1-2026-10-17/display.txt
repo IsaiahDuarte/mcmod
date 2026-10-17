@@ -1,0 +1,2 @@
+macOS CoreGraphics CGGetActiveDisplayList: activeDisplays=0 result=0.
+Observed at graphical launch and rechecked after successful dedicated verification.

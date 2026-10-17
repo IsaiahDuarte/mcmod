@@ -4,10 +4,10 @@ license="All Rights Reserved"
 [[mods]]
 modId="factorycore_client_tests"
 version="0.1.0-dev"
-displayName="Factory Core Graphical Terminal Verification"
+displayName="Factory Core Verification Fixture"
 [[dependencies.factorycore_client_tests]]
 modId="factorycore"
 type="required"
 versionRange="[0.1.0-dev]"
 ordering="AFTER"
-side="CLIENT"
+side="BOTH"

@@ -464,3 +464,5 @@ not add a network WITHDRAW requirement to depositing own items; network targets
 still require DEPOSIT and withdrawals still require WITHDRAW. Player backings
 never enter catalogs/claim registration, and unresolved canonical evidence blocks
 fresh operations. Terminal menus/client packet boundaries remain missing.
+
+Actual accepted known/uncertain staging now has a required [two-JVM dedicated recovery record](../evidence/staged-server-v1-2026-10-17.md). The graphical variant remains separately unverified while no display is active; independent-save/interruption/administration gates remain open.

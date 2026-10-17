@@ -204,3 +204,11 @@ interruption/reconciliation guarantees must still be verified before release.
 The [separate-JVM restart experiment](../evidence/world-restart-v1-2026-10-17.md) now checks complete canonical state, physical references, provider identity, mixed fluid reservations, finite FE and resumed item Stock after normal exit/reopen. This is scoped orderly-save evidence, not interrupted-write or independent-save proof.
 
 The [native chunk lifecycle experiment](../evidence/chunk-lifecycle-v1-2026-10-17.md) adds actual distance-driven unload/reload in one chunk, including offline nonloading probes, retained claims/leases and resumed Stock. Cross-chunk and independent-save interruption coverage is still required.
+
+
+A required two-process dedicated-server staging check now exercises actual accepted
+scheduled operations against an excluded optimistic/partial/faulting provider,
+normal save/reopen, known delivery/return without re-extraction, and preserved
+post-mutation uncertainty without calls/refunds/retirement. It uses a trusted test
+program principal; no player-login or independent-save/crash atomicity is inferred.
+The canonical build now runs this headless probe; desktop checks remain separate.
