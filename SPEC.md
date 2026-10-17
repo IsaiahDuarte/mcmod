@@ -346,3 +346,5 @@ Actual client Stock fills only the selected item window with exact conservation;
 headless cases cover typed samples and original-owner known return. This adds
 A04/A12/A13/A14 evidence without completing selected tanks, multiport coordination,
 actual restart, multiplayer or the first-playable acceptance set.
+
+Orderly restart now has a small actual two-JVM integrated-world experiment for canonical/physical identity, item/fluid/FE quantities, retained reservations and resumed Stock. This is partial A13 evidence; interrupted external writes, independent saves, job recovery and complete release acceptance remain unverified.

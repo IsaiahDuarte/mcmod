@@ -46,6 +46,15 @@ neoForge {
             loadedMods = [mods.factorycore, mods.factorycore_client_tests]
             systemProperty "factorycore.client.report", file("build/reports/client-terminal/result.txt").absolutePath
         }
+        terminalRestartClient {
+            client()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/client-terminal-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            systemProperty "factorycore.client.report", file("build/reports/client-restart/result.txt").absolutePath
+            systemProperty "factorycore.client.seed", file("build/reports/client-terminal/restart.properties").absolutePath
+            systemProperty "factorycore.client.restart", "true"
+        }
         client {
             client()
             gameDirectory = file('run/client')
@@ -195,6 +204,19 @@ tasks.named('runTerminalClient', JavaExec) {
             !capture.isFile() || capture.length() == 0
         }) {
             throw new GradleException('Graphical terminal screenshots are missing.')
+        }
+    }
+}
+
+// Separate JVM: reopen the completed seed world instead of recreating or repairing it.
+tasks.named('runTerminalRestartClient', JavaExec) {
+    dependsOn tasks.named('runTerminalClient')
+    doFirst { delete file('build/reports/client-restart') }
+    doLast {
+        def result = file('build/reports/client-restart/result.txt')
+        def capture = file('build/reports/client-restart/screenshots/restarted-machine-stock.png')
+        if (!result.isFile() || !result.text.startsWith('PASS\n') || !capture.isFile() || capture.length() == 0) {
+            throw new GradleException('Separate-process world restart verification did not complete.')
         }
     }
 }

@@ -1,7 +1,9 @@
 # ADR 0005 — Ledger persistence and device ownership
 
 Status: selected D03 design; ledger schema, owner registry and SavedData adapter
-locally implemented in P2. Physical cell/drive lease tests now pass locally; complete save ordering, actual chunk unload/restart and interrupted transfers remain unvalidated.
+locally implemented in P2. Physical cell/drive lease tests and a small nonempty
+orderly integrated-server restart now have local evidence. Independent save ordering,
+actual chunk unload and interrupted transfers remain unvalidated.
 
 ## Decision and boundaries
 
@@ -197,3 +199,5 @@ inventory copy or authority credential. Old context-one/two bytes and all tables
 are preserved. Typed pending-call quarantine and explicit original-owner progress
 remain mandatory; native player files are an independent save boundary whose full
 interruption/reconciliation guarantees must still be verified before release.
+
+The [separate-JVM restart experiment](../evidence/world-restart-v1-2026-10-17.md) now checks complete canonical state, physical references, provider identity, mixed fluid reservations, finite FE and resumed item Stock after normal exit/reopen. This is scoped orderly-save evidence, not interrupted-write or independent-save proof.

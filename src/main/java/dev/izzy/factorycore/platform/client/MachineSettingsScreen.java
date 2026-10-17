@@ -41,7 +41,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   public MachineSettingsScreen(MachineSettingsMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
     imageWidth = 300;
-    imageHeight = 272;
+    imageHeight = 236;
   }
 
   @Override
@@ -116,15 +116,15 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
         });
     mode = presetButton("mode", 10, 30, 130, () -> sendPreset(MachinePresetPackets.MODE));
     filter = presetButton("filter", 150, 30, 140, () -> sendPreset(MachinePresetPackets.FILTER));
-    goal = presetBox(64, 61, 120, 19, "goal");
-    presetButton("set", 190, 60, 100, () -> sendPreset(MachinePresetPackets.GOAL));
-    rule = presetBox(10, 88, 170, 256, "rule");
-    presetButton("registry", 184, 87, 50, () -> sendPreset(MachinePresetPackets.REGISTRY));
-    presetButton("tag", 238, 87, 52, () -> sendPreset(MachinePresetPackets.TAG));
+    goal = presetBox(64, 54, 120, 19, "goal");
+    presetButton("set", 190, 53, 100, () -> sendPreset(MachinePresetPackets.GOAL));
+    rule = presetBox(10, 78, 170, 256, "rule");
+    presetButton("registry", 184, 77, 50, () -> sendPreset(MachinePresetPackets.REGISTRY));
+    presetButton("tag", 238, 77, 52, () -> sendPreset(MachinePresetPackets.TAG));
     presetButton(
         "previous",
         10,
-        172,
+        147,
         48,
         () -> {
           selectedRule = Math.max(0, selectedRule - 1);
@@ -133,30 +133,30 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     presetButton(
         "next",
         62,
-        172,
+        147,
         48,
         () -> {
           selectedRule = Math.min(menu.presetView().rules().size() - 1, selectedRule + 1);
           sync();
         });
-    remove = presetButton("remove", 177, 172, 55, () -> sendPreset(MachinePresetPackets.REMOVE));
-    clear = presetButton("clear", 236, 172, 54, () -> sendPreset(MachinePresetPackets.CLEAR));
+    remove = presetButton("remove", 177, 147, 55, () -> sendPreset(MachinePresetPackets.REMOVE));
+    clear = presetButton("clear", 236, 147, 54, () -> sendPreset(MachinePresetPackets.CLEAR));
     sample =
         presetButton(
             "sample",
             10,
-            195,
+            168,
             175,
             () -> {
               selectedSlot = (selectedSlot + 1) % 36;
               sync();
             });
-    copy = presetButton("copy", 190, 195, 100, () -> sendPreset(MachinePresetPackets.SAMPLE));
+    copy = presetButton("copy", 190, 168, 100, () -> sendPreset(MachinePresetPackets.SAMPLE));
     returnStaged =
-        presetButton("return", 190, 216, 100, () -> sendPreset(MachinePresetPackets.RETURN));
-    presetCancel = presetButton("cancel", 10, 236, 88, this::onClose);
-    resetPreset = presetButton("reset", 106, 236, 88, () -> sendPreset(MachinePresetPackets.RESET));
-    deploy = presetButton("deploy", 202, 236, 88, () -> sendPreset(MachinePresetPackets.DEPLOY));
+        presetButton("return", 220, 214, 70, () -> sendPreset(MachinePresetPackets.RETURN));
+    presetCancel = presetButton("cancel", 10, 214, 65, this::onClose);
+    resetPreset = presetButton("reset", 80, 214, 65, () -> sendPreset(MachinePresetPackets.RESET));
+    deploy = presetButton("deploy", 150, 214, 65, () -> sendPreset(MachinePresetPackets.DEPLOY));
     presetShown = -1;
     if (draft == null) load(menu.view().form());
     else {
@@ -265,7 +265,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
                 .append(" ")
                 .append(
                     Component.translatable(
-                        "gui.factorycore.machine.units."
+                        "gui.factorycore.preset.units."
                             + preset.kind().name().toLowerCase(Locale.ROOT)))));
     returnStaged.setTooltip(
         Tooltip.create(
@@ -403,11 +403,11 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   private void renderPresets(GuiGraphics g) {
     var view = menu.presetView();
     g.drawString(
-        font, Component.translatable("gui.factorycore.preset.goal"), 10, 65, 0xffffff, false);
-    int start = selectedRule / 5 * 5;
-    g.fill(10, 111, 290, 169, 0xff282c30);
-    for (int i = start; i < Math.min(start + 5, view.rules().size()); i++) {
-      int y = 114 + (i - start) * 11;
+        font, Component.translatable("gui.factorycore.preset.goal"), 10, 58, 0xffffff, false);
+    int start = selectedRule / 4 * 4;
+    g.fill(10, 99, 290, 144, 0xff282c30);
+    for (int i = start; i < Math.min(start + 4, view.rules().size()); i++) {
+      int y = 101 + (i - start) * 11;
       if (i == selectedRule) g.fill(11, y - 1, 289, y + 9, 0xff535e68);
       g.drawString(font, font.plainSubstrByWidth(view.rules().get(i), 274), 13, y, 0xffffff, false);
     }
@@ -415,7 +415,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
         font,
         (view.rules().isEmpty() ? 0 : selectedRule + 1) + "/" + view.rules().size(),
         120,
-        177,
+        152,
         0xffffff,
         false);
     g.drawString(
@@ -430,7 +430,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
                     .getString(),
             173),
         10,
-        221,
+        190,
         0xd3e5ed,
         false);
     g.drawString(
@@ -439,7 +439,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
             Component.translatable("gui.factorycore.preset.status." + view.status()).getString(),
             280),
         10,
-        258,
+        201,
         0xe4bc83,
         false);
   }
@@ -456,9 +456,9 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     if (presets
         && x >= leftPos + 10
         && x < leftPos + 290
-        && y >= topPos + 114
-        && y < topPos + 169) {
-      int index = selectedRule / 5 * 5 + (y - topPos - 114) / 11;
+        && y >= topPos + 101
+        && y < topPos + 144) {
+      int index = selectedRule / 4 * 4 + (y - topPos - 101) / 11;
       if (index < menu.presetView().rules().size())
         g.renderTooltip(
             font, font.split(Component.literal(menu.presetView().rules().get(index)), 280), x, y);

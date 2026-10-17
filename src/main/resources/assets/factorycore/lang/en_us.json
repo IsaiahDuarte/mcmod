@@ -276,7 +276,7 @@
   "gui.factorycore.preset.sample.help": "Cycle occupied slots in your own main inventory.",
   "gui.factorycore.preset.copy": "Copy sample",
   "gui.factorycore.preset.copy.help": "Copy exact item identity, contained fluid, or canonical FE. Consumes nothing.",
-  "gui.factorycore.preset.return": "Return staged",
+  "gui.factorycore.preset.return": "Return",
   "gui.factorycore.preset.return.help": "Return your known staging to its original source. Uncertain calls cannot replay.",
   "gui.factorycore.preset.cancel": "Cancel",
   "gui.factorycore.preset.cancel.help": "Close and discard the unsaved draft.",
@@ -310,5 +310,8 @@
   "gui.factorycore.preset.status.handler_fault": "Destination handler fault; preserve pending work for recovery.",
   "gui.factorycore.preset.status.rate_limit": "Shared rate limit; will retry.",
   "gui.factorycore.preset.status.overlap": "Conflicting storage registration; resolve the overlap.",
-  "gui.factorycore.preset.status.unsupported": "Saved work needs explicit recovery."
+  "gui.factorycore.preset.status.unsupported": "Saved work needs explicit recovery.",
+  "gui.factorycore.preset.units.item": "items",
+  "gui.factorycore.preset.units.fluid": "mB",
+  "gui.factorycore.preset.units.energy": "FE"
 }

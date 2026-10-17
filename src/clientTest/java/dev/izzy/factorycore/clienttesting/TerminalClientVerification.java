@@ -59,6 +59,7 @@ public final class TerminalClientVerification {
   private final StringBuilder evidence = new StringBuilder();
   private BufferedInterfaceEntity fixtureBuffer;
   private boolean importEnabled;
+  private final RestartCheckpoint restartCheckpoint = new RestartCheckpoint();
   private DeviceRegistry.Handle cell;
   private ResourceKey key;
   private int stage, ticks, entered, rule;
@@ -66,7 +67,8 @@ public final class TerminalClientVerification {
   private long previousRevision;
 
   public TerminalClientVerification() {
-    NeoForge.EVENT_BUS.addListener(this::tick);
+    if (Boolean.getBoolean("factorycore.client.restart")) new WorldRestartVerification().register();
+    else NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
   private static ItemStack named(int count) {
@@ -736,13 +738,35 @@ public final class TerminalClientVerification {
     }
     if (stage == 59 && checked.get()) {
       capture(client, "machine-preset-scale-4-stock.png");
+      client.player.closeContainer();
+      checked.set(false);
+      next();
+      return;
+    }
+    if (stage == 60 && !checked.get()) {
+      var server = client.getSingleplayerServer();
+      var principal = client.player.getUUID();
+      server.execute(
+          () -> {
+            if (checked.get()) return;
+            try {
+              if (restartCheckpoint.prepare(
+                  server.getPlayerList().getPlayer(principal),
+                  report.getParent().resolve("restart.properties"))) checked.set(true);
+            } catch (IOException | RuntimeException error) {
+              failure.set(error);
+            }
+          });
+      return;
+    }
+    if (stage == 60 && checked.get()) {
       try {
         Files.writeString(
             report,
             "PASS\n"
                 + evidence
                 + "Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
-                + "Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample.\n");
+                + "Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample. Restart checkpoint adds1200mB water (400 held),300mB lava and500FE.\n");
       } catch (IOException error) {
         throw new IllegalStateException(error);
       }

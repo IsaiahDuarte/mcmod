@@ -662,3 +662,31 @@ original-owner staged return through the physical menu and shared scheduler.
 binding checks plus preset Stock authoring, exact sample/goal/Deploy and selected
 slot conservation. It does not prove physical Shift, remote multiplayer, restart,
 independent saves or complete release acceptance.
+
+## Separate-process orderly world restart
+
+Run `./gradlew runTerminalRestartClient --console=plain` on an active desktop.
+The task first runs the full terminal/buffer/machine graphical seed fixture, adds
+mixed fluid stock, a principal-owned fluid hold and finite bank energy, captures
+expected observations under build/reports/client-terminal/restart.properties,
+and exits normally. Only the generated fixture world/report are replaced.
+A second Java process opens that existing world with Minecraft's normal open flow;
+it does not call fresh-world setup or restore authority from the expectation file.
+It rejects the seed PID and requires that process to have exited.
+
+Before changing resources, require equality of the complete canonical SavedData
+snapshot, world/principal/root/machine/configuration/provider identities and real
+player/chest/buffer stock. Require1200mB water with400 held/800 available,300mB
+lava and500 loaded FE. Then remove3 real items from the machine chest into an
+empty player slot and require the saved Stock preset to replenish through the
+production scheduler with25 total conserved units. Finally reopen the physical
+preset screen in the second client’s default window, require every visible control
+to fit its actual scaled screen, capture it, write PASS and quit/save normally. Missing result or
+capture fails Gradle. All fixture classes remain in the excluded clientTest source
+set, which receives canonical compilation/format/static checks.
+
+This experiment covers orderly integrated-server restart on one machine. It does
+not replace independent chunk/player save-order injection, uncertain external
+write recovery, real remote multiplayer, crash/power-loss, dedicated-server
+restart, or separate-world namespace checks. Actual run evidence is recorded in
+the implementation plan; source compilation alone is not a passed restart check.

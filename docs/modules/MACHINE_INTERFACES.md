@@ -238,3 +238,23 @@ detached fingerprints and restored device indexing. The isolated graphical fixtu
 covers actual Stock authoring/deployment and selected-slot conservation at scales2–4.
 See the [graphical evidence record](../evidence/machine-preset-client-v1-2026-10-17.md). This remains partial A04/A12/A13/A14;
 restart, independent saves, multiplayer, broader recovery and performance are open.
+
+
+## Small-window layout regression
+
+The preset panel is300×236 GUI pixels, with four visible rule rows and Prev/Next
+across the existing sixteen-term limit. This fixes clipping of the previous272-pixel
+panel at the default854×480 window with a427×240 scaled GUI. Return now shares the
+footer with Cancel/Reset/Deploy. The separate-process restart fixture requires every
+visible widget to fit the actual screen and captures the reopened native editor;
+it does not resize that second window to conceal a failed layout.
+
+
+## Orderly restart evidence added 2026-10-17
+
+The [separate-JVM world experiment](../evidence/world-restart-v1-2026-10-17.md)
+now verifies a small nonempty integrated-server save/reopen: complete canonical
+state, physical/provider identity, mixed fluid stock and a retained400mB hold,
+500FE and resumed item Stock without redeployment. This narrows earlier restart
+limitations for that fixture only. Independent save-order injection, forced chunk
+unload, interrupted calls, dedicated-server/multiplayer and full acceptance remain open.

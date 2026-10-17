@@ -1,0 +1,270 @@
+package dev.izzy.factorycore.clienttesting;
+
+import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.*;
+
+import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.storage.MachinePresets;
+import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
+import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
+import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.storage.*;
+import java.io.IOException;
+import java.nio.file.*;
+import java.util.Properties;
+import java.util.concurrent.atomic.*;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.*;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.*;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.fluids.FluidStack;
+
+/** Real second-JVM reopen. Expected observations never feed a production load/restore API. */
+final class WorldRestartVerification {
+  private final Path report = Path.of(System.getProperty("factorycore.client.report"));
+  private final Properties expected;
+  private final AtomicReference<Throwable> failure = new AtomicReference<>();
+  private final AtomicBoolean initial = new AtomicBoolean(), replenished = new AtomicBoolean();
+  private int stage, ticks, entered;
+
+  WorldRestartVerification() {
+    try {
+      expected = RestartCheckpoint.read(Path.of(System.getProperty("factorycore.client.seed")));
+      long seedPid = Long.parseLong(expected.getProperty("pid"));
+      require(seedPid != ProcessHandle.current().pid(), "Restart uses a distinct JVM");
+      require(ProcessHandle.of(seedPid).map(p -> !p.isAlive()).orElse(true), "Seed JVM has exited");
+      Files.createDirectories(report.getParent());
+    } catch (IOException error) {
+      throw new IllegalStateException(error);
+    }
+  }
+
+  void register() {
+    NeoForge.EVENT_BUS.addListener(this::tick);
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns its server, world and render target.
+  private void tick(ClientTickEvent.Post event) {
+    var client = Minecraft.getInstance();
+    ticks++;
+    if (stage == 5) return;
+    if (failure.get() != null)
+      throw new IllegalStateException("World restart fixture failed", failure.get());
+    if (ticks - entered > 1200)
+      throw new IllegalStateException("World restart timeout stage=" + stage);
+    if (stage == 0 && client.screen instanceof TitleScreen) {
+      client.options.pauseOnLostFocus = false;
+      client
+          .createWorldOpenFlows()
+          .openWorld(
+              "factorycore-terminal-verification",
+              () -> {
+                throw new IllegalStateException("Opening saved fixture world was cancelled");
+              });
+      next();
+      return;
+    }
+    if (client.player == null || client.getSingleplayerServer() == null) return;
+    var server = client.getSingleplayerServer();
+    var principal = client.player.getUUID();
+    if (stage == 1 && !initial.get()) {
+      server.execute(
+          () -> {
+            if (initial.get()) return;
+            try {
+              var player = server.getPlayerList().getPlayer(principal);
+              var machine = (MachineInterfaceEntity) player.serverLevel().getBlockEntity(MACHINE);
+              if (machine == null || !machine.canUse(player)) return;
+              verifyInitial(player, machine);
+              var chest = (ChestBlockEntity) player.serverLevel().getBlockEntity(MACHINE.south());
+              require(
+                  player.getInventory().getItem(10).isEmpty(),
+                  "Destination slot for foreign removal is empty");
+              var removed = chest.removeItem(2, 3);
+              require(removed.getCount() == 3, "Actual chest removal takes exactly3");
+              chest.setChanged();
+              player.getInventory().setItem(10, removed);
+              player.inventoryMenu.broadcastChanges();
+              initial.set(true);
+            } catch (Exception error) {
+              failure.set(error);
+            }
+          });
+      return;
+    }
+    if (stage == 1 && initial.get()) {
+      next();
+      return;
+    }
+    if (stage == 2 && !replenished.get()) {
+      server.execute(
+          () -> {
+            if (replenished.get()) return;
+            try {
+              var player = server.getPlayerList().getPlayer(principal);
+              var chest = (ChestBlockEntity) player.serverLevel().getBlockEntity(MACHINE.south());
+              if (chest.getItem(2).getCount() != 8) return;
+              var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(DRIVE);
+              var buffer = (BufferedInterfaceEntity) player.serverLevel().getBlockEntity(BUFFER);
+              var codec = new PlatformResourceCodec(player.registryAccess());
+              var key = codec.itemKey(player.getInventory().getItem(9));
+              require(
+                  DeviceSavedData.get(server)
+                              .registry()
+                              .stock(CellHandleData.read(drive.cell(0)), key)
+                              .total()
+                          == 3
+                      && buffer.inventory().total(key) == 9
+                      && player.getInventory().getItem(9).getCount() == 2
+                      && player.getInventory().getItem(10).getCount() == 3
+                      && codec.itemKey(chest.getItem(2)).equals(key),
+                  "Resumed Stock conserves cell3 + machine8 + buffer9 + player5 =25");
+              replenished.set(true);
+            } catch (RuntimeException error) {
+              failure.set(error);
+            }
+          });
+      return;
+    }
+    if (stage == 2 && replenished.get() && ticks - entered > 30 && client.screen == null) {
+      client.gameMode.useItemOn(
+          client.player,
+          InteractionHand.MAIN_HAND,
+          new BlockHitResult(Vec3.atCenterOf(MACHINE), Direction.NORTH, MACHINE, false));
+      next();
+      return;
+    }
+    if (stage == 3
+        && client.screen instanceof MachineSettingsScreen screen
+        && screen.getMenu().view().editable()) {
+      for (var child : screen.children())
+        if (child instanceof Button button
+            && button.visible
+            && button.getMessage().getString().equals("Presets")) {
+          screen.mouseClicked(button.getX() + 10, button.getY() + 8, 0);
+          next();
+          return;
+        }
+      throw new IllegalStateException("Reopened machine has no Presets tab");
+    }
+    if (stage == 4
+        && ticks - entered > 10
+        && client.screen instanceof MachineSettingsScreen screen) {
+      var view = screen.getMenu().presetView();
+      require(
+          view.mode() == MachinePresets.Mode.STOCK && view.goal() == 8 && view.rules().size() == 1,
+          "Native reopened editor projects saved exact Stock goal8");
+      for (var child : screen.children())
+        if (child instanceof AbstractWidget widget && widget.visible)
+          require(
+              widget.getX() >= 0
+                  && widget.getY() >= 0
+                  && widget.getX() + widget.getWidth() <= screen.width
+                  && widget.getY() + widget.getHeight() <= screen.height,
+              "Every visible control fits the actual default-window GUI");
+      System.out.println(
+          "FACTORYCORE_RESTART_GUI "
+              + screen.width
+              + "x"
+              + screen.height
+              + " scale="
+              + client.getWindow().getGuiScale());
+      Screenshot.grab(
+          report.getParent().toFile(),
+          "restarted-machine-stock.png",
+          client.getMainRenderTarget(),
+          c -> System.out.println("FACTORYCORE_RESTART_SCREENSHOT " + c.getString()));
+      try {
+        Files.writeString(
+            report,
+            "PASS\nseedPid="
+                + expected.getProperty("pid")
+                + " restartPid="
+                + ProcessHandle.current().pid()
+                + "\nFresh JVM opened existing world without seeding or restoring from expected state.\n"
+                + "Full canonical SavedData matched before mutation; physical/player resources and provider identity matched.\n"
+                + "1200mB water:400 held/800 available;300mB lava;500FE. Native Stock editor retained goal8/exact rule.\n"
+                + "After real chest removal3, resumed Stock conserved cell3 + machine8 + buffer9 + player5 =25.\n");
+      } catch (IOException error) {
+        throw new IllegalStateException(error);
+      }
+      next();
+      client.level.disconnect();
+      client.disconnect();
+      client.stop();
+    }
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Borrowed world belongs to Minecraft.
+  private void verifyInitial(ServerPlayer player, MachineInterfaceEntity machine) throws Exception {
+    var level = player.serverLevel();
+    var saved = DeviceSavedData.get(player.server);
+    var canonical = saved.save(new CompoundTag(), player.registryAccess());
+    var previous = TagParser.parseTag(expected.getProperty("canonical"));
+    require(canonical.equals(previous), "Entire canonical SavedData equals pre-save observation");
+    Files.writeString(report.getParent().resolve("restored-canonical.snbt"), canonical + "\n");
+    require(
+        saved.registry().world().toString().equals(expected.getProperty("world"))
+            && player.getUUID().toString().equals(expected.getProperty("principal")),
+        "World and authenticated principal preserved");
+    var root = (NetworkNodeEntity) level.getBlockEntity(ROOT);
+    require(
+        root.handle().id().toString().equals(expected.getProperty("root"))
+            && machine.handle().id().toString().equals(expected.getProperty("machine"))
+            && machine.generation() == Long.parseLong(expected.getProperty("configuration"))
+            && machine.label().equals("smelter"),
+        "Physical root and machine identity/settings preserved");
+    var deployment = saved.machinePresets().get(machine.handle().id());
+    require(
+        machine.presetAuthorized(deployment), "Loaded preset retains current original authority");
+    var handle = WorldNetworks.get(player.server).connectors().bind(machine).handle();
+    require(
+        handle != null && handle.backing().toString().equals(expected.getProperty("backing")),
+        "Foreign provider component backing preserved");
+    var drive = (StorageDriveEntity) level.getBlockEntity(DRIVE);
+    var codec = new PlatformResourceCodec(player.registryAccess());
+    var key = codec.itemKey(player.getInventory().getItem(9));
+    var buffer = (BufferedInterfaceEntity) level.getBlockEntity(BUFFER);
+    var chest = (ChestBlockEntity) level.getBlockEntity(MACHINE.south());
+    require(
+        saved.registry().stock(CellHandleData.read(drive.cell(0)), key).total() == 6
+            && buffer.inventory().total(key) == 9
+            && chest.getItem(2).getCount() == 8
+            && codec.itemKey(chest.getItem(2)).equals(key)
+            && player.getInventory().getItem(9).getCount() == 2,
+        "Physical and canonical resources preserve cell6 + machine8 + buffer9 + player2 =25");
+    var fluid = CellHandleData.read(drive.cell(1));
+    var water = saved.registry().stock(fluid, codec.fluidKey(new FluidStack(Fluids.WATER, 1)));
+    var lava = saved.registry().stock(fluid, codec.fluidKey(new FluidStack(Fluids.LAVA, 1)));
+    require(
+        water.loaded()
+            && water.total() == 1200
+            && water.reserved() == 400
+            && water.available() == 800
+            && lava.loaded()
+            && lava.total() == 300,
+        "Mixed fluids and original400mB hold persist");
+    var bank = (EnergyBankEntity) level.getBlockEntity(BANK);
+    require(
+        bank.getEnergyStored() == 500
+            && saved.registry().stock(bank.handle(), ResourceKey.ENERGY).loaded(),
+        "Finite bank reactivates500FE");
+    System.out.println("FACTORYCORE_RESTART_INITIAL_STATE_MATCHED");
+  }
+
+  private void next() {
+    stage++;
+    entered = ticks;
+    System.out.println("FACTORYCORE_RESTART_STAGE " + stage);
+  }
+}

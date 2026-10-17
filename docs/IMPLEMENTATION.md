@@ -100,7 +100,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
 | A11 | P3, P4, P6 | Partial prerequisite: bounded server registry-text search and stable exact-count pages are implemented; physical item terminal/menu controls and headless flows are implemented; partial graphical item-screen evidence is [recorded](evidence/terminal-client-v1-2026-10-13.md); remaining R08 checks are pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
 | A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation and execution-time scheduled physical transfer permissions/private segments are implemented with seven WorldStorageTransfersGameTests. Connector cases additionally verify source/target current grants, denied parent/private-child transfers, config revocation and stale provider handles. Player permissions UI and multiplayer checks remain pending. |
-| A13 | P2, P4, P6, P7 | Partial: exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. Actual chunk unload/world restart, world-scoped provider identity markers now have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
+| A13 | P2, P4, P6, P7 | Partial: a separate-JVM orderly integrated-server reopen now preserves complete canonical/physical state and resumes item Stock (see 2026-10-17 restart evidence); independent saves/interrupted calls remain open. exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. Actual chunk unload/world restart, world-scoped provider identity markers now have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
 | A15 | P1, P7 | Partial: [portable core baseline](evidence/core-v1-2026-10-03.md) records bounds, timing outliers and a slight large-throughput miss. [Wasm probe measurements](evidence/wasm-v1-2026-10-03.md) record cold/warm startup, allocations and execution. Full server/client/production-guest measurements remain pending. |
 | A16 | P6 | Not implemented. |
@@ -2285,3 +2285,42 @@ Shift/accessibility, representative performance, crafting, production scripting,
 power/wireless and finished onboarding/P7 are open. P0 remains locally verified,
 P1/P2/P3 partial and full A01–A17 active. Next: close the earliest remaining storage/
 preset prerequisite and add real restart evidence before dependent crafting work.
+
+## Nonempty orderly world restart checkpoint — 2026-10-17
+
+P2/P3/A01/A03/A04/A12/A13/A14 now has a real two-JVM integrated-world experiment.
+`runTerminalRestartClient` depends on the full graphical seed run, which adds a
+mixed fluid cell,400mB original-principal hold and500FE bank. The second process
+requires the seed JVM to have exited, opens the existing world normally and
+compares complete canonical SavedData before mutation. Native player/provider/
+buffer contents, identities, configuration, grants and availability also match.
+It then removes3 physical chest items into the player and requires saved Stock
+to resume without redeployment, conserving25 items. The original1200mB water
+(400 held/800 available),300mB lava and500FE survive the normal save/reopen.
+This is primitive reservation evidence, not implemented crafting-job recovery.
+
+The default second window revealed a production layout bug: the272-pixel preset
+panel clipped at a427×240 GUI. The panel is now300×236, four visible rules with
+Prev/Next across all sixteen, and a shared Cancel/Reset/Deploy/Return footer.
+The actual client requires every visible control to fit the screen; the final
+native capture was inspected without observed clipping. Goal tooltip units also
+use items/mB/FE rather than rate units. No resource/persistence schema changed.
+An initial fixture-only bank fill failed before wired availability; setup now
+waits for current loaded membership without bypassing or weakening that guard.
+
+`./gradlew spotlessApply runTerminalRestartClient --console=plain` passed67s,
+7 executed/8 up-to-date tasks: seed PID23720 exited before restart PID23774; all20
+seed captures plus the native reopened capture exist. No ERROR appears in the
+final combined log. [Evidence and limitations](evidence/world-restart-v1-2026-10-17.md)
+archive expected observations, restored canonical SNBT, results/log/checksums and
+screenshot. `python3 scripts/verify.py` passed24 tooling,217 JVM and205 required
+GameTests; Gradle36s,9 executed/16 up-to-date tasks, Rust guest checks up-to-date.
+Formatting/static/architecture checks and `git diff --check` passed.
+
+This closes the blanket lack of any nonempty actual restart evidence, not D03 or
+A13. Independent chunk/player/controller saves, forced unload, interrupted foreign
+writes, unknown-call administration, dedicated-server restart, separate worlds,
+multiplayer and representative performance remain open. P1/P2/P3 remain partial;
+crafting, production scripting, power/wireless, assets/onboarding and P7 still
+prevent full release completion. Next: actual chunk lifecycle and independent-save/
+recovery prerequisites, then selected tanks/coordinated ports and crafting.

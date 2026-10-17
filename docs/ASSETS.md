@@ -182,3 +182,5 @@ not full block/model/state/permissions/accessibility or first-playable acceptanc
 The earlier no-display attempt remains historical rather than a current blocker.
 
 Machine preset Binding/Presets tabs, bounded rules, sample selection and Stock deployment now have [graphical evidence](evidence/machine-preset-client-v1-2026-10-17.md) at scales2–4. Selected tanks, multiport/preview and full device state visuals remain open.
+
+The machine panel now fits a427×240 GUI without clipping: [default-window restart evidence](evidence/world-restart-v1-2026-10-17.md). The rules remain bounded to sixteen; four render per page.

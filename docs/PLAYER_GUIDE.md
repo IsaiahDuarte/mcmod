@@ -343,10 +343,12 @@ Reset reloads the saved preset; Cancel discards the unsaved draft.
 Deployment requires current view, edit and deployment grants; active modes also
 need deposit and withdrawal grants. A changed binding/deployment reloads the draft
 before accepting another edit. Binding edits pause the preset. Review the selected
-provider side, access and rate in Binding if work is blocked; the Return staged
-button tooltip explains the latest runtime reason. Return staged recovers only
+provider side, access and rate in Binding if work is blocked; the Return
+button tooltip explains the latest runtime reason. Return recovers only
 your known staging to its original source, even after edit/deploy revocation while
 VIEW remains. An unavailable source can block recovery; uncertain provider calls
 never replay or fabricate refunds. Selected-tank adapters and coordinated disjoint
 ports remain pending.
 See [binding contract](modules/MACHINE_INTERFACES.md) for current limits.
+
+The compact machine editor fits Minecraft’s minimum240-pixel GUI height. Rules show four at a time; Prev/Next selects across all sixteen supported rules.

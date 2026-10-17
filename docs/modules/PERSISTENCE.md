@@ -225,3 +225,13 @@ Future world schema eleven/unknown unions preserve raw data. Fixed context-three
 and compressed known staging tests accompany the change. Player files save
 independently; full interrupted-file certainty/reconciliation remains unverified.
 See [player inventory contract](PLAYER_INVENTORY_TRANSFERS.md).
+
+
+## Orderly restart evidence added 2026-10-17
+
+The [separate-JVM world experiment](../evidence/world-restart-v1-2026-10-17.md)
+now verifies a small nonempty integrated-server save/reopen: complete canonical
+state, physical/provider identity, mixed fluid stock and a retained400mB hold,
+500FE and resumed item Stock without redeployment. This narrows earlier restart
+limitations for that fixture only. Independent save-order injection, forced chunk
+unload, interrupted calls, dedicated-server/multiplayer and full acceptance remain open.
