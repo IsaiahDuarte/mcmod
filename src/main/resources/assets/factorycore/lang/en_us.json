@@ -206,5 +206,14 @@
   "gui.factorycore.buffer.status.rate_limit": "Rate limit reached",
   "gui.factorycore.buffer.status.overlap": "Overlapping inventory endpoints",
   "gui.factorycore.buffer.status.partial": "Partial transfer",
-  "gui.factorycore.buffer.result": "%s · Moved %s/%s"
+  "gui.factorycore.buffer.result": "%s · Moved %s/%s",
+  "block.factorycore.machine_interface": "Machine Interface",
+  "tooltip.factorycore.machine": "Local machine port. Its stock is not listed in the storage terminal.",
+  "tooltip.factorycore.machine_controls": "Offhand renamed paper/name tag labels; sneak with paper clears.",
+  "tooltip.factorycore.machine_access": "Offhand redstone cycles access; sneak empty-handed cycles resource kind.",
+  "tooltip.factorycore.machine_priority": "Offhand iron/gold changes priority; selected slots/rates use the server binding API.",
+  "tooltip.factorycore.machine_unique": "One current backing registration per resource kind. Moving invalidates old handles.",
+  "message.factorycore.machine_label": "Machine label: %s",
+  "message.factorycore.machine_unlabelled": "Unlabelled",
+  "message.factorycore.machine_binding": "Local machine: %s · First slot %s · Window %s"
 }

@@ -111,3 +111,9 @@ mod prerequisite. Obtaining a hopper unlocks it. Nine physical slots cap stacks
 at 64 while respecting smaller native maxima. Real hopper full-buffer backpressure
 and recipe loading have headless evidence. Automatic network presets, measured
 throughput and complete survival progression remain pending D06/P3/P6 validation.
+
+
+Machine Interface binding prerequisite: recipe ICI / CRC / ICI (four iron, four
+copper, one redstone), unpowered wired binding, default64 items/1000 mB/FE per
+tick. Current adapter maxima and unfinished advanced ports are recorded in
+[ADR 0019](0019-local-machine-bindings.md); survival usefulness/balance remains P6.

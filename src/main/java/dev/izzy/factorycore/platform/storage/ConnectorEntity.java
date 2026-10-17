@@ -23,7 +23,7 @@ import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 
 /** Physical policy and reference holder; foreign contents are never copied into this block. */
-public final class ConnectorEntity extends BlockEntity {
+public class ConnectorEntity extends BlockEntity {
   private Tag data;
   private ConnectorData.State state;
   private String diagnostic = "";
@@ -32,7 +32,26 @@ public final class ConnectorEntity extends BlockEntity {
   private Direction cachedDirection;
 
   public ConnectorEntity(BlockPos position, BlockState blockState) {
-    super(ConnectorContent.ENTITY.get(), position, blockState);
+    this(ConnectorContent.ENTITY.get(), position, blockState);
+  }
+
+  protected ConnectorEntity(
+      net.minecraft.world.level.block.entity.BlockEntityType<?> type,
+      BlockPos position,
+      BlockState blockState) {
+    super(type, position, blockState);
+  }
+
+  protected NodeRegistry.Kind leaseKind() {
+    return NodeRegistry.Kind.CONNECTOR;
+  }
+
+  protected net.minecraft.world.item.Item portableItem() {
+    return ConnectorContent.ITEM.get();
+  }
+
+  public String label() {
+    return state == null ? "" : state.label();
   }
 
   public NodeRegistry.Handle handle() {
@@ -90,7 +109,7 @@ public final class ConnectorEntity extends BlockEntity {
     } else {
       state =
           new ConnectorData.State(
-              authority().createConnector(position()),
+              authority().createForeignNode(position(), leaseKind()),
               ConnectorSettings.defaults(ResourceKind.ITEM),
               1,
               "");
@@ -102,22 +121,32 @@ public final class ConnectorEntity extends BlockEntity {
   public void validatePlaced() {
     if (!diagnostic.isEmpty()) throw new IllegalStateException(diagnostic);
     if (state == null
+        || state.lease().kind() != leaseKind()
         || !position().equals(authority().nodes().definition(state.lease()).position()))
       throw new IllegalStateException("Connector has no current placed lease");
   }
 
   public NetworkAuthority.Decision configure(
       NetworkPermissions.Actor actor, ConnectorSettings settings) {
+    return configure(actor, settings, label());
+  }
+
+  protected NetworkAuthority.Decision configure(
+      NetworkPermissions.Actor actor, ConnectorSettings settings, String label) {
     java.util.Objects.requireNonNull(settings);
     validatePlaced();
+    var candidate =
+        new ConnectorData.State(
+            state.lease(), settings, Math.incrementExact(state.generation()), "", label);
     var result = runtime().authorize(actor, position(), NetworkPermissions.Permission.EDIT);
     if (result != NetworkAuthority.Decision.ALLOWED) return result;
-    long generation = Math.incrementExact(state.generation());
+    boolean relabel = !label.equals(label());
     WorldNetworks.connectorInvalidated(level, this);
     cache = null;
     providerToken = UUID.randomUUID();
-    state = new ConnectorData.State(state.lease(), settings, generation, "");
+    state = candidate;
     write();
+    if (relabel) changed();
     return result;
   }
 
@@ -174,7 +203,8 @@ public final class ConnectorEntity extends BlockEntity {
   public void quarantine(RuntimeException failure) {
     diagnostic = bounded(failure);
     state =
-        new ConnectorData.State(state.lease(), state.settings(), state.generation(), diagnostic);
+        new ConnectorData.State(
+            state.lease(), state.settings(), state.generation(), diagnostic, state.label());
     write();
     changed();
   }
@@ -191,6 +221,8 @@ public final class ConnectorEntity extends BlockEntity {
     try {
       if (data != null) {
         state = ConnectorData.read(data);
+        if (state.lease().kind() != leaseKind())
+          throw new IllegalArgumentException("Wrong physical casing for lease");
         diagnostic = state.fault();
       }
     } catch (IllegalArgumentException failure) {
@@ -208,7 +240,7 @@ public final class ConnectorEntity extends BlockEntity {
         throw new IllegalStateException("Connector binding: " + result.failure());
       state =
           new ConnectorData.State(
-              result.handle(), state.settings(), state.generation(), state.fault());
+              result.handle(), state.settings(), state.generation(), state.fault(), state.label());
       write();
     } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
       diagnostic = bounded(failure);
@@ -225,13 +257,15 @@ public final class ConnectorEntity extends BlockEntity {
   }
 
   public ItemStack portableForBreak() {
-    var stack = new ItemStack(ConnectorContent.ITEM.get());
+    var stack = new ItemStack(portableItem());
     if (state != null && diagnostic.isEmpty()) {
       try {
         var result = authority().nodes().detach(state.lease(), position());
         if (result.failure() != NodeRegistry.Failure.OK)
           throw new IllegalStateException("Connector removal: " + result.failure());
-        state = new ConnectorData.State(result.handle(), state.settings(), state.generation(), "");
+        state =
+            new ConnectorData.State(
+                result.handle(), state.settings(), state.generation(), "", state.label());
         write();
       } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
         diagnostic = bounded(failure);

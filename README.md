@@ -88,3 +88,5 @@ now provides server-side selected-slot operations and known cleanup. Native item
 terminal menus/client controls have partial [graphical evidence](docs/evidence/terminal-client-v1-2026-10-13.md); full client/release verification remains pending.
 
 Bounded typed selectors and physical stock-deficit planning: [filter/stock contract](docs/modules/RESOURCE_FILTERS.md). These are P3 prerequisites; authenticated persistent preset integration remains unfinished.
+
+Local machine labels, selected windows, sided utilities and current limits: [machine interface contract](docs/modules/MACHINE_INTERFACES.md).

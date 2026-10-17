@@ -19,6 +19,7 @@ public final class FactoryCoreMod {
     dev.izzy.factorycore.platform.storage.TerminalContent.register(bus);
     dev.izzy.factorycore.platform.storage.BufferedInterfaceContent.register(bus);
     dev.izzy.factorycore.platform.storage.ConnectorContent.register(bus);
+    dev.izzy.factorycore.platform.storage.MachineInterfaceContent.register(bus);
     EnergyBankContent.register(bus);
     NetworkContent.register(bus);
     NeoForge.EVENT_BUS.addListener(DeviceSavedData::serverStarted);

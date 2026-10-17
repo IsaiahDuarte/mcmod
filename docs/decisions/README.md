@@ -65,3 +65,6 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [Canonical buffer selection/rates](0018-buffer-filter-policy.md): nested buffers-v3,
   shared metadata/rate budgets, guarded filtered Import and basic physical controls;
   export/stock/full editor and release verification remain pending.
+
+- [Local machine bindings](0019-local-machine-bindings.md): distinct schema11 leases,
+  local labels and shared sided resource routes; presets/editor/release checks pending.

@@ -311,3 +311,16 @@ settings also require EDIT/DEPLOY and active-mode transfer permissions.
 Partial inventory moves show the actual moved/requested item count; a full goal
 shows zero moved and leaves your stack owned.
 The screen is implemented, but actual client verification is still pending.
+
+
+## Local machine bindings
+
+Craft a Machine Interface with four iron, four copper and one redstone (ICI /
+CRC / ICI). Place its socket against a machine and connect wires to another face.
+With an empty main hand, use renamed paper/name tag in your offhand to copy a
+local label; sneak-paper clears it. Tools are not consumed. Labels are case-sensitive
+and private to the current segment, even when storage is shared through a gateway.
+Machine stock stays out of the storage terminal. Current resource/access/priority
+shortcuts match storage connectors; advanced windows/rates use the server API.
+Automatic machine presets and the complete player settings editor remain pending.
+See [binding contract](modules/MACHINE_INTERFACES.md) for current limits.

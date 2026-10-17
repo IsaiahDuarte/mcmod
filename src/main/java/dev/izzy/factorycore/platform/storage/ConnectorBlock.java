@@ -28,8 +28,15 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
 
 public final class ConnectorBlock extends Block implements EntityBlock {
+  private final boolean machine;
+
   public ConnectorBlock(Properties properties) {
+    this(properties, false);
+  }
+
+  ConnectorBlock(Properties properties, boolean machine) {
     super(properties);
+    this.machine = machine;
     registerDefaultState(
         stateDefinition.any().setValue(BlockStateProperties.FACING, Direction.NORTH));
   }
@@ -77,7 +84,9 @@ public final class ConnectorBlock extends Block implements EntityBlock {
 
   @Override
   public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
-    return new ConnectorEntity(position, state);
+    return machine
+        ? new MachineInterfaceEntity(position, state)
+        : new ConnectorEntity(position, state);
   }
 
   @Override
@@ -104,6 +113,39 @@ public final class ConnectorBlock extends Block implements EntityBlock {
     if (!(level.getBlockEntity(position) instanceof ConnectorEntity entity))
       return InteractionResult.FAIL;
     try {
+      if (entity instanceof MachineInterfaceEntity local) {
+        if (!(player instanceof ServerPlayer server) || !local.canUse(server))
+          return InteractionResult.FAIL;
+        var held = player.getOffhandItem();
+        String label =
+            !player.isShiftKeyDown()
+                    && held.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)
+                    && (held.is(Items.NAME_TAG) || held.is(Items.PAPER))
+                ? held.getHoverName().getString()
+                : player.isShiftKeyDown() && held.is(Items.PAPER) ? "" : null;
+        if (label != null) {
+          var actor = new NetworkPermissions.Actor(server.getUUID(), server.hasPermissions(2));
+          if (local.relabel(actor, label) != NetworkAuthority.Decision.ALLOWED)
+            return InteractionResult.FAIL;
+          server.displayClientMessage(
+              Component.translatable(
+                  "message.factorycore.machine_label",
+                  label.isEmpty()
+                      ? Component.translatable("message.factorycore.machine_unlabelled")
+                      : label),
+              false);
+          return InteractionResult.CONSUME;
+        }
+        server.displayClientMessage(
+            Component.translatable(
+                "message.factorycore.machine_binding",
+                local.label().isEmpty()
+                    ? Component.translatable("message.factorycore.machine_unlabelled")
+                    : local.label(),
+                local.settings().firstSlot(),
+                local.settings().slotCount()),
+            false);
+      }
       entity.validatePlaced();
       var settings = entity.settings();
       var offhand = player.getOffhandItem();

@@ -10,6 +10,7 @@
     "factorycore:advanced_energy_bank",
     "factorycore:storage_connector",
     "factorycore:buffered_interface",
-    "factorycore:storage_terminal"
+    "factorycore:storage_terminal",
+    "factorycore:machine_interface"
   ]
 }

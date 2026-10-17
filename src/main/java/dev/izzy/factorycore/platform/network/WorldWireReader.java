@@ -113,8 +113,23 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
           ordinary(
               block,
               connector.handle() == null ? id(position, "unowned") : connector.handle().id(),
-              NetworkTopology.Role.STORAGE,
+              connector.handle() != null
+                      && connector.handle().kind() == NodeRegistry.Kind.MACHINE_INTERFACE
+                  ? NetworkTopology.Role.INTERFACE
+                  : NetworkTopology.Role.STORAGE,
               valid);
+      if (connector.handle() != null
+          && connector.handle().kind() == NodeRegistry.Kind.MACHINE_INTERFACE)
+        wire =
+            new WiredDiscovery.Wire(
+                List.of(
+                    new NetworkTopology.Node(
+                        connector.handle().id(),
+                        NetworkTopology.Role.INTERFACE,
+                        connector.label(),
+                        valid)),
+                wire.ports(),
+                null);
       var target = block.relative(connector.targetDirection()).asLong();
       return new WiredDiscovery.Wire(
           wire.nodes(),

@@ -158,7 +158,7 @@ class TransferPersistenceTest {
     assertEquals("", loaded.diagnostic());
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(10, migrated.getInt("Schema"));
+    assertEquals(11, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")
@@ -230,7 +230,7 @@ class TransferPersistenceTest {
     tag.remove("Transfers");
     rejected(tag);
     tag = fixture();
-    tag.putInt("Schema", 11);
+    tag.putInt("Schema", 12);
     rejected(tag);
     tag = fixture();
     tag.getList("Transfers", Tag.TAG_COMPOUND).getCompound(0).remove("Owner");

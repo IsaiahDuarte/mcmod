@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "factorycore:block/machine_interface"
+    },
+    "facing=east": {
+      "model": "factorycore:block/machine_interface",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "factorycore:block/machine_interface",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "factorycore:block/machine_interface",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "factorycore:block/machine_interface",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "factorycore:block/machine_interface",
+      "x": 90
+    }
+  }
+}

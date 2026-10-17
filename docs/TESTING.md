@@ -583,3 +583,17 @@ non-consuming exact samples, round-trip conservation and explicit partial/full
 move counts under rate/goal limits. Three packet tests round-trip the new bounded
 operation projection. All are part of canonical verification; neither they nor
 client compilation replace the graphical check.
+
+
+## Local machine binding checks
+
+Three MachinePersistenceTest cases cover schema11 compressed machine lease/policy
+round trips, generation movement, schema10 rejection of the new kind, future raw
+preservation and strict labels/legacy connector encoding. Existing migration tests
+now expect schema11 output; future-world fixtures advance11 to12 because11 is
+implemented. Original resource, raw-preservation and compatibility assertions stay.
+Six MachineInterfaceGameTests cover exact selected-slot scheduled conservation,
+catalog exclusion, reused labels across a gateway, case sensitivity, direct local
+authority, queued relabel/unauthorized edits, sided fluid/FE counts, authenticated
+non-consuming paper controls and recipe costs. See [contract](modules/MACHINE_INTERFACES.md).
+Actual client/restart/multiplayer, selected-tank adapters and processing remain open.

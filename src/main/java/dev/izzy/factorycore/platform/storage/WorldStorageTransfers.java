@@ -892,7 +892,7 @@ public final class WorldStorageTransfers {
                       world,
                       reference.device(),
                       reference.generation(),
-                      NodeRegistry.Kind.CONNECTOR),
+                      saved.nodes().kind(reference.device())),
                   reference.configuration(),
                   reference.backing());
       return registration.handle() == null ? null : new External(registration.handle());

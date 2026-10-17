@@ -28,6 +28,8 @@ final class NodeStateCodec {
       if (!entry.hasUUID("Id")) throw new IllegalArgumentException("Missing structural UUID");
       require(entry, "Kind", Tag.TAG_STRING);
       var kind = NodeRegistry.Kind.valueOf(entry.getString("Kind"));
+      if (kind == NodeRegistry.Kind.MACHINE_INTERFACE && root.getInt("Schema") < 11)
+        throw new IllegalArgumentException("Machine leases require world schema eleven");
       require(entry, "Generation", Tag.TAG_LONG);
       require(entry, "Conflict", Tag.TAG_BYTE);
       if (entry.getByte("Conflict") < 0 || entry.getByte("Conflict") > 1)

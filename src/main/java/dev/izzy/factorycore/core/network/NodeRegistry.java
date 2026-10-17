@@ -16,7 +16,8 @@ public final class NodeRegistry {
     CONTROLLER,
     GATEWAY,
     CONNECTOR,
-    BUFFERED_INTERFACE
+    BUFFERED_INTERFACE,
+    MACHINE_INTERFACE
   }
 
   public enum Failure {
@@ -119,6 +120,14 @@ public final class NodeRegistry {
     if (node.generation() != handle.generation() || node.kind() != handle.kind())
       return Failure.STALE;
     return node.conflict() ? Failure.CONFLICT : Failure.OK;
+  }
+
+  /** Canonical kind for saved endpoint recovery; callers still validate its saved generation. */
+  public Kind kind(UUID id) {
+    checkThread();
+    var stored = nodes.get(Objects.requireNonNull(id));
+    if (stored == null) throw new IllegalArgumentException("Unknown structural identity");
+    return stored.kind();
   }
 
   public Stored definition(Handle handle) {

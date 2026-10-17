@@ -73,7 +73,7 @@ and model inventory transforms remain pending real-client inspection.
 | Energy Banks: Starter, Expanded, Advanced + block items | Lightning symbol and tier bars; observable stored/capacity/rate/routing inspection | P2 | Implemented native JSON models and item parents; appearance not yet reviewed in client | Pending |
 | Storage Connector + block item | Connection face, resource/access/priority inspection | P2–P3 | Implemented native six-direction socket model, matching shape, tooltips and translated chat inspection; advanced settings screen remains pending | Pending |
 | Storage Terminal + block item | Recognizable access screen and connection state | P3 | Implemented native four-facing casing/screen/contact JSON and translated access tooltip; rendering pending | Pending |
-| Machine Interface + block item | Port/side/label identification and preset state | P3 | Missing | Pending |
+| Machine Interface + block item | Port/side/label identification and preset state | P3 | Native six-facing blue-inset socket/item and translated local label/window/resource inspection implemented; presets/editor pending | Pending |
 | Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Implemented native nine-slot top geometry, item parent, tooltip and authorized item/slot/mode/status inspection and Import/Paused/owned-cleanup controls; full preset/inventory screens remain pending | Pending |
 | Crafting Interface + block item | Processing ports and busy/blocked state | P4 | Missing | Pending |
 | Crafting Unit + block item | Distinct crafting role and working/blocked state | P4 | Missing | Pending |
@@ -162,3 +162,12 @@ draft Apply and inventory/full/partial results at scales2–4. Its latest actual
 launch was [blocked before execution](evidence/buffer-client-attempt-2026-10-13.md)
 by zero active macOS displays. The new buffer-screen client evidence therefore
 remains Pending; no prepared capture is counted as an observed result.
+
+
+Machine Interface: native six-facing [blockstate](../src/main/resources/assets/factorycore/blockstates/machine_interface.json),
+[blue-inset socket model](../src/main/resources/assets/factorycore/models/block/machine_interface.json)
+and [item model](../src/main/resources/assets/factorycore/models/item/machine_interface.json)
+reuse the connector geometry with matching collision/selection shape. Translated
+label/window/resource/status inspection and native tooltips are implemented.
+Actual client appearance and interactions remain Pending; no new graphical pass
+is inferred from headless controls.

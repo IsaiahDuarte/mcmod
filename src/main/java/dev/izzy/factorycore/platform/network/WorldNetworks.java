@@ -457,6 +457,23 @@ public final class WorldNetworks {
     return structural.position().equals(saved.nodes().definition(structural.handle()).position());
   }
 
+  /** Bounded local label resolution; no provider access or inherited machine visibility. */
+  public NetworkAuthority.MachineQuery machines(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      String label,
+      UUID after,
+      int limit) {
+    checkThread();
+    var member = membership(origin);
+    if (member.status() != NetworkTopology.Status.VALID)
+      return new NetworkAuthority.MachineQuery(
+          NetworkAuthority.Decision.INVALID_SCOPE, List.of(), false);
+    return resolve(owners.get(origin))
+        .authority
+        .machines(actor, member.scope(), label, after, limit);
+  }
+
   public NetworkAuthority.StorageQuery storage(
       NetworkPermissions.Actor actor,
       NodeRegistry.Position origin,

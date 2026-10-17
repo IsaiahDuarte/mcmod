@@ -45,7 +45,9 @@ public final class WorldConnectors {
       Objects.requireNonNull(provider);
       Objects.requireNonNull(backing);
       Objects.requireNonNull(kind);
-      if (generation <= 0 || connector.kind() != NodeRegistry.Kind.CONNECTOR)
+      if (generation <= 0
+          || (connector.kind() != NodeRegistry.Kind.CONNECTOR
+              && connector.kind() != NodeRegistry.Kind.MACHINE_INTERFACE))
         throw new IllegalArgumentException("Invalid external endpoint handle");
     }
   }
@@ -60,7 +62,8 @@ public final class WorldConnectors {
       NodeRegistry.Handle node,
       ResourceKey key) {
     checkThread();
-    if (node.kind() != NodeRegistry.Kind.CONNECTOR
+    if ((node.kind() != NodeRegistry.Kind.CONNECTOR
+            && node.kind() != NodeRegistry.Kind.MACHINE_INTERFACE)
         || saved.nodes().validate(node) != NodeRegistry.Failure.OK
         || networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
             != NetworkAuthority.Decision.ALLOWED)
@@ -74,7 +77,9 @@ public final class WorldConnectors {
         || target.status() != NetworkTopology.Status.VALID
         || !from.scope().network().equals(target.scope().network())
         || view.decision() != NetworkAuthority.Decision.ALLOWED
-        || !view.segments().contains(target.scope().segment()))
+        || !view.segments().contains(target.scope().segment())
+        || node.kind() == NodeRegistry.Kind.MACHINE_INTERFACE
+            && !from.scope().segment().equals(target.scope().segment()))
       return new Registration(OperationResult.Reason.DENIED, null);
     var level =
         server.getLevel(
@@ -411,7 +416,9 @@ public final class WorldConnectors {
     var from = networks.membership(origin);
     if (target.status() != NetworkTopology.Status.VALID
         || from.status() != NetworkTopology.Status.VALID
-        || !target.scope().network().equals(from.scope().network())) return false;
+        || !target.scope().network().equals(from.scope().network())
+        || handle.connector().kind() == NodeRegistry.Kind.MACHINE_INTERFACE
+            && !target.scope().segment().equals(from.scope().segment())) return false;
     var view = networks.storage(actor, origin, key, operation);
     if (view.decision() != NetworkAuthority.Decision.ALLOWED
         || !view.segments().contains(target.scope().segment())) return false;

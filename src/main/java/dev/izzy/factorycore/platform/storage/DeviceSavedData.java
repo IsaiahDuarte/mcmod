@@ -262,13 +262,19 @@ public final class DeviceSavedData extends SavedData {
   }
 
   public NodeRegistry.Handle createConnector(NodeRegistry.Position position) {
+    return createForeignNode(position, NodeRegistry.Kind.CONNECTOR);
+  }
+
+  NodeRegistry.Handle createForeignNode(NodeRegistry.Position position, NodeRegistry.Kind kind) {
+    if (kind != NodeRegistry.Kind.CONNECTOR && kind != NodeRegistry.Kind.MACHINE_INTERFACE)
+      throw new IllegalArgumentException("Foreign node kind");
     var admission = nodes().admission(position);
     if (admission != NodeRegistry.Failure.OK)
       throw new IllegalStateException("Connector admission: " + admission);
     UUID id = newBackingId();
     if (registry.containsBacking(id))
       throw new IllegalStateException("Connector/backing identity collision");
-    return nodes.create(id, NodeRegistry.Kind.CONNECTOR, position).handle();
+    return nodes.create(id, kind, position).handle();
   }
 
   /** Missing references never create replacement permissions or an implicit owner. */
@@ -314,7 +320,7 @@ public final class DeviceSavedData extends SavedData {
     try {
       require(tag, "Schema", Tag.TAG_INT);
       int schema = tag.getInt("Schema");
-      if ((schema < 1 || schema > 10) || !tag.hasUUID("World"))
+      if ((schema < 1 || schema > 11) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
       NetworkStateCodec.fields(tag, worldFields(schema));
       var networkStates =
@@ -403,7 +409,7 @@ public final class DeviceSavedData extends SavedData {
               schema < 8 ? List.of() : BufferStateCodec.deployments(tag.getCompound("Buffers")),
               null,
               "");
-      if (schema < 10) loaded.setDirty();
+      if (schema < 11) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
@@ -426,7 +432,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 10);
+    tag.putInt("Schema", 11);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {

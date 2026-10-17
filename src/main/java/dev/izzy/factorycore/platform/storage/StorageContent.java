@@ -57,6 +57,7 @@ public final class StorageContent {
                         output.accept(TerminalContent.ITEM.get());
                         output.accept(BufferedInterfaceContent.ITEM.get());
                         output.accept(ConnectorContent.ITEM.get());
+                        output.accept(MachineInterfaceContent.ITEM.get());
                         output.accept(NetworkContent.CONTROLLER_ITEM.get());
                         output.accept(NetworkContent.GATEWAY_ITEM.get());
                         output.accept(NetworkContent.CABLE_ITEM.get());

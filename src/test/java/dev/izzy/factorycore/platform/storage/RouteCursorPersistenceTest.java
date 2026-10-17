@@ -59,7 +59,7 @@ class RouteCursorPersistenceTest {
     assertTrue(restored.isDirty());
     assertTrue(restored.routeCursors().snapshot().isEmpty());
     var migrated = restored.save(new CompoundTag(), registries);
-    assertEquals(10, migrated.getInt("Schema"));
+    assertEquals(11, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")

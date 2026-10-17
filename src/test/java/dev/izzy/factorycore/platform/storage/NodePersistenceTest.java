@@ -88,7 +88,7 @@ class NodePersistenceTest {
     assertEquals("", loaded.diagnostic());
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(10, migrated.getInt("Schema"));
+    assertEquals(11, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")
@@ -188,7 +188,7 @@ class NodePersistenceTest {
         IllegalStateException.class, () -> loaded.createController(new UUID(0, 501), POSITION));
     assertFalse(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
-    assertEquals(10, migrated.getInt("Schema"));
+    assertEquals(11, migrated.getInt("Schema"));
     assertTrue(
         migrated
             .getCompound("Buffers")
