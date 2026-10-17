@@ -15,7 +15,11 @@ Empty labels select no group. Multiple local interfaces can share a label.
 
 Empty-hand inspection reports label, item window, resource, side, access, rate and
 binding status. Existing connector controls cycle resource/access/priority.
-Advanced slot windows/rates currently require the trusted server API. The block
+With both hands empty, normal use opens the settings screen for label, type,
+access, priority, slot window and rate. Apply & Close saves once; Reset restores
+latest saved values; Cancel or closing discards the local draft. Enter in a field
+also applies. Fluid/energy bind whole capabilities, so their item window is fixed
+to0/64. The block
 holds no machine contents, and terminal stock excludes its provider. Foreign
 inventory ownership stays with the provider, even during interface movement.
 
@@ -71,3 +75,31 @@ A compiled working setup/transfer example is
 `localLabelSelectedSlotAndScheduledTransferExcludeGlobalCatalog` waits for the
 label rebuild, discovers the selected port and submits an eight-item guarded move.
 The utility examples use the same path with actual mB/FE capabilities.
+
+
+## Authenticated settings menu
+
+The client keeps an unsaved form. Apply sends only bounded values plus menu ID,
+opaque opening nonce and expected configuration generation. The server derives
+the principal/operator from the actual registered player; current body, range,
+VIEW, EDIT, structural lease, full segment scope, selected face and active menu
+must match. Wrong sessions cannot save. A changed generation reloads current
+values with a stale status before retry. EDIT revocation disables publication;
+VIEW/range/lease/scope/face loss closes the menu. Cancel/close sends no form and
+changes no settings. Apply validates every field before one existing configure
+call, then closes intentionally because relabeling rebuilds wired publication.
+
+The menu has no resource/container slots and makes no provider inventory calls.
+Native initialization is passive until Minecraft installs the new menu. Display
+polls are bounded to one per five server ticks and publish only changed state.
+Payload version1 uses label0–64/no control characters, resource/access enums,
+priority-1000..1000, nonnegative first slot, count1–64 and rate1–128 items or1–1000
+mB/FE. Whole utility capabilities require first0/count64. Provider availability,
+selected tanks and automatic presets remain separate contracts. No persistence
+schema changed; applying writes existing machine reference schema2/world11.
+
+Four native menu cases exercise open/cancel/complete atomic save, nonce/stale
+rejection, range/closed-session rejection and live EDIT/VIEW revocation. Two packet
+cases cover real bounded codecs and malformed fields/enum rejection. The graphical
+fixture includes Reset/Cancel/Apply, form typing and draft retention at scales2–4;
+actual run evidence is recorded separately when completed.

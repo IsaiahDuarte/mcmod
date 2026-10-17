@@ -61,3 +61,15 @@ global exact-key catalog exclusion, reused/case-sensitive gateway-local labels,
 queued relabel/unauthorized edits, real sided mB/FE conservation, authenticated
 paper controls and exact vanilla recipe costs. These are component evidence;
 full A04/A05/A12/A13/A14 and first-playable acceptance stay incomplete.
+
+
+## Settings extension — 2026-10-17
+
+A native settings menu now exposes the existing policy without inventing another
+persistence or transfer path. Local drafts apply as one bounded form guarded by
+nonce, expected generation, current authenticated body/range/VIEW/EDIT and captured
+lease/scope/face. Apply closes after successful publication; Cancel changes nothing.
+The alternative of per-keystroke configuration would invalidate provider handles
+and wired labels repeatedly. Configuration remains separate from provider reads,
+resource transfers and later preset deployment. Native headless/packet checks and
+actual graphical evidence are tracked in the implementation plan.

@@ -136,6 +136,10 @@ public final class ConnectorBlock extends Block implements EntityBlock {
               false);
           return InteractionResult.CONSUME;
         }
+        if (held.isEmpty() && !player.isShiftKeyDown()) {
+          server.openMenu(local, b -> b.writeUUID(local.sessionForOpen()));
+          return InteractionResult.CONSUME;
+        }
         server.displayClientMessage(
             Component.translatable(
                 "message.factorycore.machine_binding",

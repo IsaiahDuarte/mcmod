@@ -1,0 +1,20 @@
+PASS
+scale-2-all-items.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+scale-3-iron.png framebuffer=2560x1920 gui=854x640 scale=3.0
+scale-4-iron.png framebuffer=2560x1920 gui=640x480 scale=4.0
+scale-4-next-page.png framebuffer=2560x1920 gui=640x480 scale=4.0
+buffer-scale-2-settings.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+buffer-scale-2-rules-page-1.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+buffer-scale-2-rules-page-2.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+buffer-scale-2-stock.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+buffer-scale-2-full.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+buffer-scale-3-inventory.png framebuffer=2560x1920 gui=854x640 scale=3.0
+buffer-scale-3-settings.png framebuffer=2560x1920 gui=854x640 scale=3.0
+buffer-scale-4-settings.png framebuffer=2560x1920 gui=640x480 scale=4.0
+buffer-scale-4-inventory.png framebuffer=2560x1920 gui=640x480 scale=4.0
+machine-scale-2-draft.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+machine-scale-3-draft.png framebuffer=2560x1920 gui=854x640 scale=3.0
+machine-scale-4-draft.png framebuffer=2560x1920 gui=640x480 scale=4.0
+machine-scale-4-reopened.png framebuffer=2560x1920 gui=640x480 scale=4.0
+Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.
+Conservation: named cell14 + buffer9 + original sample2 =25. Machine smelter: READ_ONLY, priority-7, first2/count1/rate8 persisted.

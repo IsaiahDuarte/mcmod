@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
+import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -79,7 +80,7 @@ public final class TerminalClientVerification {
   private void tick(ClientTickEvent.Post event) {
     Minecraft client = Minecraft.getInstance();
     ticks++;
-    if (stage == 40) return;
+    if (stage == 60) return;
     if (failure.get() != null)
       throw new IllegalStateException("Graphical terminal fixture failed", failure.get());
     if (ticks - entered > 1200)
@@ -88,6 +89,10 @@ public final class TerminalClientVerification {
               + stage
               + " screen="
               + (client.screen == null ? "none" : client.screen.getClass().getName()));
+    if (stage >= 39) {
+      machineTick(client);
+      return;
+    }
     if (stage >= 12) {
       bufferTick(client);
       return;
@@ -458,18 +463,18 @@ public final class TerminalClientVerification {
         next();
       }
       case 27 -> {
-        if (client.player.getInventory().getItem(0).getCount() != 1
+        if (client.player.getInventory().getItem(9).getCount() != 3
             || view.slots().getFirst().count() != 8) return;
         check(
-            ItemStack.isSameItemSameComponents(client.player.getInventory().getItem(0), named(1)),
+            ItemStack.isSameItemSameComponents(client.player.getInventory().getItem(9), named(1)),
             "Stock Take1 delivers exact named item and replenishes goal");
-        deposit(client, menu, 0);
+        deposit(client, menu, 9, 1);
         next();
       }
       case 28 -> {
         if (!view.status().equals("full")) return;
         check(
-            client.player.getInventory().getItem(0).getCount() == 1
+            client.player.getInventory().getItem(9).getCount() == 3
                 && view.slots().getFirst().count() == 8,
             "Full Stock goal retains player deposit without extraction");
         capture(client, "buffer-scale-2-full.png");
@@ -483,26 +488,26 @@ public final class TerminalClientVerification {
       }
       case 30 -> {
         if (view.dirty() || !view.status().equals("applied")) return;
-        deposit(client, menu, 0);
+        deposit(client, menu, 9, 1);
         next();
       }
       case 31 -> {
-        if (!client.player.getInventory().getItem(0).isEmpty()
+        if (client.player.getInventory().getItem(9).getCount() != 2
             || view.slots().getFirst().count() != 9) return;
         click(screen, "Take 64");
         next();
       }
       case 32 -> {
-        if (client.player.getInventory().getItem(0).getCount() != 8
+        if (client.player.getInventory().getItem(9).getCount() != 10
             || view.slots().getFirst().count() != 1) return;
         check(
             view.status().equals("partial") && view.moved() == 8 && view.requested() == 64,
             "Take64 reports actual eight of64 under shared rate");
-        deposit(client, menu, 0);
+        deposit(client, menu, 9, 8);
         next();
       }
       case 33 -> {
-        if (!client.player.getInventory().getItem(0).isEmpty()
+        if (client.player.getInventory().getItem(9).getCount() != 2
             || view.slots().getFirst().count() != 9) return;
         checked.set(false);
         var server = client.getSingleplayerServer();
@@ -557,27 +562,214 @@ public final class TerminalClientVerification {
         next();
       }
       case 38 -> {
-        try {
-          Files.createDirectories(report.getParent());
-          Files.writeString(
-              report,
-              "PASS\n"
-                  + evidence
-                  + "Input: native terminal search/row/Take1/Next/Home; buffer mode, rate/goal Enter, registry/tag, paging, ghost sample, Apply, inventory Take1/Take64. Deposits use real C2S payloads. Physical Shift gesture remains unverified.\n"
-                  + "Conservation: named cell14 + buffer9 + original sample2 =25; paused exact rule/rate8/goal8 persisted.\n");
-        } catch (IOException error) {
-          throw new IllegalStateException(error);
-        }
-        stage = 40;
-        client.level.disconnect();
-        client.disconnect();
-        client.stop();
+        client.player.closeContainer();
+        ready.set(false);
+        var server = client.getSingleplayerServer();
+        var principal = client.player.getUUID();
+        server.execute(
+            () -> {
+              try {
+                var player = server.getPlayerList().getPlayer(principal);
+                var level = player.serverLevel();
+                level.setBlock(
+                    new BlockPos(2, 65, 2),
+                    MachineInterfaceContent.BLOCK
+                        .get()
+                        .defaultBlockState()
+                        .setValue(
+                            net.minecraft.world.level.block.state.properties.BlockStateProperties
+                                .FACING,
+                            Direction.SOUTH),
+                    3);
+                ((MachineInterfaceEntity) level.getBlockEntity(new BlockPos(2, 65, 2)))
+                    .place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+                level.setBlock(new BlockPos(2, 65, 3), Blocks.CHEST.defaultBlockState(), 3);
+                ready.set(true);
+              } catch (RuntimeException error) {
+                failure.set(error);
+              }
+            });
+        client.options.guiScale().set(2);
+        client.resizeDisplay();
+        next();
       }
       default -> throw new IllegalStateException("Unexpected buffer client stage " + stage);
     }
   }
 
-  private static void edit(BufferSettingsScreen screen, int index, String text, boolean enter) {
+  @SuppressWarnings("PMD.CloseResource") // Borrowed integrated server/client levels.
+  private void machineTick(Minecraft client) {
+    var location = new BlockPos(2, 65, 2);
+    if (ticks - entered < 5) return;
+    if (stage == 39 && ready.get() && client.screen == null) {
+      next();
+      return;
+    }
+    if (stage == 40 && ready.get()) {
+      var server = client.getSingleplayerServer();
+      var principal = client.player.getUUID();
+      server.execute(
+          () -> {
+            try {
+              var player = server.getPlayerList().getPlayer(principal);
+              if (((MachineInterfaceEntity) player.serverLevel().getBlockEntity(location))
+                  .canUse(player)) ready.set(false);
+            } catch (RuntimeException error) {
+              failure.set(error);
+            }
+          });
+      return;
+    }
+    if (stage == 40
+        && !ready.get()
+        && client.screen == null
+        && client.level.getBlockState(location).is(MachineInterfaceContent.BLOCK.get())) {
+      client.gameMode.useItemOn(
+          client.player,
+          InteractionHand.MAIN_HAND,
+          new BlockHitResult(Vec3.atCenterOf(location), Direction.NORTH, location, false));
+      next();
+      return;
+    }
+    if (stage == 45 && client.screen == null) {
+      var server = client.getSingleplayerServer();
+      var principal = client.player.getUUID();
+      if (!checked.get()) {
+        server.execute(
+            () -> {
+              try {
+                var machine =
+                    (MachineInterfaceEntity)
+                        server
+                            .getPlayerList()
+                            .getPlayer(principal)
+                            .serverLevel()
+                            .getBlockEntity(location);
+                check(
+                    machine.label().isEmpty() && machine.settings().rate() == 64,
+                    "Native Cancel discards the complete machine draft");
+                checked.set(true);
+              } catch (RuntimeException error) {
+                failure.set(error);
+              }
+            });
+        return;
+      }
+      client.gameMode.useItemOn(
+          client.player,
+          InteractionHand.MAIN_HAND,
+          new BlockHitResult(Vec3.atCenterOf(location), Direction.NORTH, location, false));
+      next();
+      return;
+    }
+    if (stage == 47 && client.screen == null) {
+      var server = client.getSingleplayerServer();
+      var principal = client.player.getUUID();
+      server.execute(
+          () -> {
+            try {
+              var machine =
+                  (MachineInterfaceEntity)
+                      server
+                          .getPlayerList()
+                          .getPlayer(principal)
+                          .serverLevel()
+                          .getBlockEntity(location);
+              check(
+                  machine.label().equals("smelter")
+                      && machine.settings().rate() == 8
+                      && machine.settings().firstSlot() == 2
+                      && machine.settings().slotCount() == 1
+                      && machine.settings().priority() == -7
+                      && machine.settings().access()
+                          == dev.izzy.factorycore.core.storage.ConnectorSettings.Access.READ_ONLY,
+                  "Native Apply publishes exact complete machine settings");
+              checked.set(true);
+            } catch (RuntimeException error) {
+              failure.set(error);
+            }
+          });
+      next();
+      return;
+    }
+    if (stage == 48 && checked.get()) {
+      try {
+        Files.writeString(
+            report,
+            "PASS\n"
+                + evidence
+                + "Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
+                + "Conservation: named cell14 + buffer9 + original sample2 =25. Machine smelter: READ_ONLY, priority-7, first2/count1/rate8 persisted.\n");
+      } catch (IOException error) {
+        throw new IllegalStateException(error);
+      }
+      stage = 60;
+      client.level.disconnect();
+      client.disconnect();
+      client.stop();
+      return;
+    }
+    if (!(client.screen instanceof MachineSettingsScreen screen)
+        || !screen.getMenu().view().editable()) return;
+    switch (stage) {
+      case 41 -> {
+        edit(screen, 0, "discarded", false);
+        click(screen, "Reset");
+        check(machineLabel(screen).isEmpty(), "Native Reset restores saved machine label");
+        fillMachine(screen);
+        next();
+      }
+      case 42 -> {
+        check(machineLabel(screen).equals("smelter"), "Machine draft populated at scale2");
+        capture(client, "machine-scale-2-draft.png");
+        client.options.guiScale().set(3);
+        client.resizeDisplay();
+        next();
+      }
+      case 43 -> {
+        check(machineLabel(screen).equals("smelter"), "Machine draft survives GUI scale3");
+        capture(client, "machine-scale-3-draft.png");
+        client.options.guiScale().set(4);
+        client.resizeDisplay();
+        next();
+      }
+      case 44 -> {
+        check(machineLabel(screen).equals("smelter"), "Machine draft survives GUI scale4");
+        capture(client, "machine-scale-4-draft.png");
+        click(screen, "Cancel");
+        checked.set(false);
+        next();
+      }
+      case 46 -> {
+        check(machineLabel(screen).isEmpty(), "Reopened form has saved values after Cancel");
+        capture(client, "machine-scale-4-reopened.png");
+        fillMachine(screen);
+        checked.set(false);
+        click(screen, "Apply & Close");
+        next();
+      }
+      default -> {}
+    }
+  }
+
+  private static String machineLabel(Screen screen) {
+    return screen.children().stream()
+        .filter(c -> c instanceof EditBox)
+        .map(c -> ((EditBox) c).getValue())
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private static void fillMachine(Screen screen) {
+    edit(screen, 0, "smelter", false);
+    edit(screen, 1, "-7", false);
+    edit(screen, 2, "2", false);
+    edit(screen, 3, "1", false);
+    edit(screen, 4, "8", false);
+    click(screen, "Deposit and withdraw");
+  }
+
+  private static void edit(Screen screen, int index, String text, boolean enter) {
     var fields =
         screen.children().stream()
             .filter(child -> child instanceof EditBox)
@@ -592,14 +784,17 @@ public final class TerminalClientVerification {
     if (enter) screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed native window and connected level.
+  @SuppressWarnings(
+      "PMD.CloseResource") // Minecraft owns the native Window and its registered cursor callback.
   private static void pointer(Minecraft client, BufferSettingsScreen screen, int x, int y) {
     var window = client.getWindow();
     double guiX = (screen.width - 320) / 2.0 + x, guiY = (screen.height - 232) / 2.0 + y;
-    GLFW.glfwSetCursorPos(
-        window.getWindow(),
-        guiX * window.getScreenWidth() / window.getGuiScaledWidth(),
-        guiY * window.getScreenHeight() / window.getGuiScaledHeight());
+    double cursorX = guiX * window.getScreenWidth() / window.getGuiScaledWidth();
+    double cursorY = guiY * window.getScreenHeight() / window.getGuiScaledHeight();
+    var callback = GLFW.glfwSetCursorPosCallback(window.getWindow(), null);
+    GLFW.glfwSetCursorPosCallback(window.getWindow(), callback);
+    check(callback != null, "Minecraft owns a registered native cursor callback");
+    callback.invoke(window.getWindow(), cursorX, cursorY);
   }
 
   private static void sample(BufferSettingsScreen screen) {
@@ -610,7 +805,7 @@ public final class TerminalClientVerification {
     screen.mouseClicked((screen.width - 320) / 2.0 + 87, (screen.height - 232) / 2.0 + 111, 0);
   }
 
-  private static void deposit(Minecraft client, BufferSettingsMenu menu, int slot) {
+  private static void deposit(Minecraft client, BufferSettingsMenu menu, int slot, int amount) {
     var stack = client.player.getInventory().getItem(slot);
     var digest =
         TerminalPackets.fingerprint(
@@ -622,7 +817,7 @@ public final class TerminalClientVerification {
             menu.view().revision(),
             BufferSettingsPackets.DEPOSIT,
             slot,
-            Math.min(64, stack.getCount()),
+            amount,
             "",
             digest));
   }

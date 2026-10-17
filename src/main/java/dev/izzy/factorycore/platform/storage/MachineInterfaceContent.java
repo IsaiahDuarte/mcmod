@@ -31,11 +31,25 @@ public final class MachineInterfaceContent {
               () ->
                   BlockEntityType.Builder.of(MachineInterfaceEntity::new, BLOCK.get()).build(null));
 
+  private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
+      DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
+  public static final DeferredHolder<
+          net.minecraft.world.inventory.MenuType<?>,
+          net.minecraft.world.inventory.MenuType<MachineSettingsMenu>>
+      MENU =
+          MENUS.register(
+              "machine_settings",
+              () ->
+                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
+                      MachineSettingsMenu::new));
+
   private MachineInterfaceContent() {}
 
   public static void register(IEventBus bus) {
     BLOCKS.register(bus);
     ITEMS.register(bus);
     ENTITIES.register(bus);
+    MENUS.register(bus);
+    bus.addListener(MachineSettingsPackets::register);
   }
 }

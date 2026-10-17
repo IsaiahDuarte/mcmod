@@ -73,7 +73,7 @@ and model inventory transforms remain pending real-client inspection.
 | Energy Banks: Starter, Expanded, Advanced + block items | Lightning symbol and tier bars; observable stored/capacity/rate/routing inspection | P2 | Implemented native JSON models and item parents; appearance not yet reviewed in client | Pending |
 | Storage Connector + block item | Connection face, resource/access/priority inspection | P2–P3 | Implemented native six-direction socket model, matching shape, tooltips and translated chat inspection; advanced settings screen remains pending | Pending |
 | Storage Terminal + block item | Recognizable access screen and connection state | P3 | Implemented native four-facing casing/screen/contact JSON and translated access tooltip; rendering pending | Pending |
-| Machine Interface + block item | Port/side/label identification and preset state | P3 | Native six-facing blue-inset socket/item and translated local label/window/resource inspection implemented; presets/editor pending | Pending |
+| Machine Interface + block item | Port/side/label identification and preset state | P3 | Native six-facing blue-inset socket/item and translated local label/window/resource inspection implemented; presets pending | Settings controls verified at scales2–4; full casing/state inspection pending |
 | Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Implemented native nine-slot top geometry, item parent, tooltip and authorized item/slot/mode/status inspection and Import/Paused/owned-cleanup controls; full preset/inventory screens remain pending | Pending |
 | Crafting Interface + block item | Processing ports and busy/blocked state | P4 | Missing | Pending |
 | Crafting Unit + block item | Distinct crafting role and working/blocked state | P4 | Missing | Pending |
@@ -97,7 +97,7 @@ row. Share navigation and components where appropriate.
 | Terminal manual crafting and patterns | Ghost grid, remainders, JEI/manual selection, pattern editing | P4, P6 | Missing / Pending |
 | Crafting jobs | Preview/shortages/cycles, progress, cancellation, busy/cleanup state | P4–P6 | Missing / Pending |
 | Fluids and Energy | Real container/charge actions, units, observable capacities/rates and unsupported errors | P3, P6 | Missing / Pending |
-| Presets and machine binding | Sides/slots/labels, filters, priorities, rates, stock targets and preview | P3 | Basic item Import selection/rate has translated physical controls and headless evidence; basic buffered Export/Stock implemented; full settings/other bindings missing / new-control client checks Pending |
+| Presets and machine binding | Sides/slots/labels, filters, priorities, rates, stock targets and preview | P3 | Native buffered Import/Export/Stock rules/goal/inventory and machine label/type/access/windows/priority/rate editor implemented / Actual settings controls at scales2–4 recorded; machine automatic presets, selected tanks, multiport/preview and broader states remain pending |
 | Permissions and gateway policies | Authorized view/edit/ownership transfer, inherited limits and revocation feedback | P2–P6 | Missing / Pending |
 | Friendly editor and deployment | Highlighting, completion, errors, undo, templates, draft/deployed, logs/quotas, bounded Wasm upload | P5–P6 | Missing / Pending |
 | Wireless setup | Pairing, direction, range, authorization, power loss and reconnection | P6 | Missing / Pending |
@@ -171,3 +171,12 @@ reuse the connector geometry with matching collision/selection shape. Translated
 label/window/resource/status inspection and native tooltips are implemented.
 Actual client appearance and interactions remain Pending; no new graphical pass
 is inferred from headless controls.
+
+
+[Settings client evidence](evidence/settings-client-v1-2026-10-17.md) now verifies
+buffer rule paging/exact samples/Apply/Stock/inventory results and machine
+Reset/Cancel/Apply/draft retention at GUI scales2–4. The native
+[machine screen](../src/main/java/dev/izzy/factorycore/platform/client/MachineSettingsScreen.java)
+is implemented with translated form/tooltips/status. This updates settings evidence,
+not full block/model/state/permissions/accessibility or first-playable acceptance.
+The earlier no-display attempt remains historical rather than a current blocker.

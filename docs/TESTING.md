@@ -597,3 +597,14 @@ catalog exclusion, reused labels across a gateway, case sensitivity, direct loca
 authority, queued relabel/unauthorized edits, sided fluid/FE counts, authenticated
 non-consuming paper controls and recipe costs. See [contract](modules/MACHINE_INTERFACES.md).
 Actual client/restart/multiplayer, selected-tank adapters and processing remain open.
+
+
+Four MachineSettingsGameTests add native open/Cancel/complete atomic Apply,
+wrong nonce/stale form, range/closed-session rejection and live EDIT/VIEW revocation.
+Two MachineSettingsPacketsTest cases cover bounded real form/view codecs,
+malformed resource/window/rate/label fields and enum rejection. No new persistence
+schema is involved. The isolated graphical fixture now requires17 captures and
+includes actual buffer and machine controls; its
+[successful evidence](evidence/settings-client-v1-2026-10-17.md) supersedes the
+no-display prerequisite as the latest observed client run. Physical Shift,
+complete accessibility, multiplayer/restart and machine presets remain unverified.

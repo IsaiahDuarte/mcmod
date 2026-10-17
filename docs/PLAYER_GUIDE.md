@@ -320,7 +320,11 @@ CRC / ICI). Place its socket against a machine and connect wires to another face
 With an empty main hand, use renamed paper/name tag in your offhand to copy a
 local label; sneak-paper clears it. Tools are not consumed. Labels are case-sensitive
 and private to the current segment, even when storage is shared through a gateway.
-Machine stock stays out of the storage terminal. Current resource/access/priority
-shortcuts match storage connectors; advanced windows/rates use the server API.
-Automatic machine presets and the complete player settings editor remain pending.
+Machine stock stays out of the storage terminal. Use with both hands empty to edit label, resource, access, priority, item window
+and per-tick rate. Apply & Close saves the complete form; Reset restores saved
+values; Cancel discards local edits. Enter in a field also saves. Changing resource
+resets the draft window/rate to that resource’s defaults. Slots start at zero;
+fluid/energy bind the whole selected capability. A stale form reloads current
+server values before retry.
+Automatic machine presets and selected-tank adapters remain pending.
 See [binding contract](modules/MACHINE_INTERFACES.md) for current limits.

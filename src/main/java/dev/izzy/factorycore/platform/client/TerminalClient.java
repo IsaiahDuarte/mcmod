@@ -15,6 +15,9 @@ public final class TerminalClient {
   public static void screens(RegisterMenuScreensEvent event) {
     event.register(TerminalContent.MENU.get(), TerminalScreen::new);
     event.register(
+        dev.izzy.factorycore.platform.storage.MachineInterfaceContent.MENU.get(),
+        MachineSettingsScreen::new);
+    event.register(
         dev.izzy.factorycore.platform.storage.BufferedInterfaceContent.MENU.get(),
         BufferSettingsScreen::new);
   }

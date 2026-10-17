@@ -9,7 +9,36 @@ import net.minecraft.world.level.block.state.BlockState;
 /**
  * Local machine port; canonical leases and foreign adapter ownership are shared with connectors.
  */
-public final class MachineInterfaceEntity extends ConnectorEntity {
+public final class MachineInterfaceEntity extends ConnectorEntity
+    implements net.minecraft.world.MenuProvider {
+  private java.util.UUID opening;
+
+  java.util.UUID sessionForOpen() {
+    return opening;
+  }
+
+  @Override
+  public net.minecraft.network.chat.Component getDisplayName() {
+    return net.minecraft.network.chat.Component.translatable("block.factorycore.machine_interface");
+  }
+
+  @Override
+  public net.minecraft.world.inventory.AbstractContainerMenu createMenu(
+      int id,
+      net.minecraft.world.entity.player.Inventory inventory,
+      net.minecraft.world.entity.player.Player player) {
+    if (!(player instanceof ServerPlayer server) || !canUse(server)) return null;
+    opening = java.util.UUID.randomUUID();
+    return new MachineSettingsMenu(id, inventory, this, opening);
+  }
+
+  public NetworkAuthority.Decision applySettings(
+      NetworkPermissions.Actor actor,
+      dev.izzy.factorycore.core.storage.ConnectorSettings settings,
+      String label) {
+    return configure(actor, settings, label);
+  }
+
   public MachineInterfaceEntity(BlockPos position, BlockState state) {
     super(MachineInterfaceContent.ENTITY.get(), position, state);
   }
