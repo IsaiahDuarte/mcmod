@@ -107,7 +107,7 @@ public final class BufferImportGameTests {
   }
 
   @SuppressWarnings("removal")
-  @GameTest(template = "empty", timeoutTicks = 500)
+  @GameTest(template = "empty", batch = "buffer_recovery", timeoutTicks = 500)
   public static void auditedBufferRepairRetainsInventoryAndRequiresAuthorizedPresetReapply(
       GameTestHelper h) {
     var f = setup(h);

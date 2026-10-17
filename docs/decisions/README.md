@@ -80,3 +80,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0023 — Audited canonical cell conflict repair](0023-canonical-cell-repair.md)
 
 - [0024 — Audited canonical Buffered Interface conflict repair](0024-buffer-conflict-repair.md)
+
+- [0025 — Audited controller and gateway conflict repair](0025-network-node-repair.md)

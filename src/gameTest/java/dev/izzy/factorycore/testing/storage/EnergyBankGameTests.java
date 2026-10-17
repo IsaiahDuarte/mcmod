@@ -382,7 +382,8 @@ public final class EnergyBankGameTests {
         .thenSucceed();
   }
 
-  @GameTest(template = "empty", timeoutTicks = 200)
+  // Isolate the shared server repair throttle so seeding/repair/rate probes stay in one tick.
+  @GameTest(template = "empty", batch = "bank_recovery", timeoutTicks = 200)
   public static void operatorBankRepairPreservesFeClaimsAndSameTickRate(GameTestHelper helper) {
     var bank = setup(helper);
     var old = bank.handle();
@@ -498,6 +499,7 @@ public final class EnergyBankGameTests {
                       && canonical.equals(registry.evidence(current.backing())),
                   "Old canonical chunk snapshot is inert without changing ledger");
             })
+        .thenIdle(20)
         .thenSucceed();
   }
 

@@ -463,3 +463,23 @@ structural IDs and may show zero matches with a continuation cursor. Missing/sta
 original references, unsupported data, independent-save mismatches and unresolved
 staging still require backup/evidence investigation. No command guesses quantities,
 replays unknown provider calls, deletes evidence or chooses another survivor.
+
+
+Controller and gateway conflicts use operator `/factorycore recovery node list
+[after-UUID]`, `show <node-UUID>` and `repair <node-UUID> <generation>`. Only the
+loaded original canonical holder with its exact matching reference can be repaired.
+Show reports the original owner/grant metadata or canonical gateway policy. Repair
+archives the full node/policy/physical reference and controller grants before
+rotating the lease. It never recommissions an owner, changes a grant or opens a
+policy. Old copies become stale, and normal wiring revalidation precedes routing.
+
+Network/segment identities stay the same, and ordinary accepted transfer evidence
+is left unchanged under existing authorization/uncertainty checks. Repair performs
+no provider call, transfer replay or refund. Unsupported records using a controller/
+gateway itself as a storage endpoint block repair. Missing/stale original references
+or independent-save mismatches still need backup/evidence investigation.
+
+Node archives use standalone binary schema4 with the same device archive quotas
+and20-tick server repair throttle. List visits at most16 structural handles and
+may show zero matching records with a next cursor. Connector and Machine Interface
+conflicts are not exposed by this command.

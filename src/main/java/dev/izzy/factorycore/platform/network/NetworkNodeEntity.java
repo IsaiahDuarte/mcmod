@@ -84,6 +84,54 @@ public final class NetworkNodeEntity extends BlockEntity {
     networkingChanged();
   }
 
+  /** Trusted operator recovery at the loaded original holder; permissions/policy never change. */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
+  public java.nio.file.Path repairConflict(NodeRegistry.Handle expected)
+      throws java.io.IOException {
+    if (!(level instanceof ServerLevel server)
+        || !server.getServer().isSameThread()
+        || isRemoved()
+        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
+            == null
+        || server.getBlockEntity(worldPosition) != this
+        || !expected.equals(handle)
+        || !expected.equals(NodeHandleData.read(data))
+        || expected.kind() != kind())
+      throw new IllegalStateException("Exact loaded network-node reference required");
+    var saved = authority();
+    var owner = saved.nodes().evidence(expected.id());
+    if (owner == null
+        || !owner.conflict()
+        || saved.nodes().validate(expected) != NodeRegistry.Failure.CONFLICT
+        || !position().equals(owner.position())
+        || expected.generation() == Long.MAX_VALUE
+        || kind() != NodeRegistry.Kind.CONTROLLER && kind() != NodeRegistry.Kind.GATEWAY
+        || saved.transfers().unresolved(expected.id()) != null
+        || saved.transfers().unresolvedDevice(expected.id()) != null)
+      throw new IllegalStateException("Canonical network-node conflict cannot be repaired");
+    var next =
+        new NodeRegistry.Handle(
+            expected.world(), expected.id(), expected.generation() + 1, expected.kind());
+    var nextData = NodeHandleData.write(next);
+    var path =
+        dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit.preserveNetworkNode(
+            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            owner,
+            kind() == NodeRegistry.Kind.CONTROLLER ? saved.network(expected.id()).snapshot() : null,
+            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            saveWithFullMetadata(server.registryAccess()));
+    var repaired = saved.nodes().repairConflict(expected, position());
+    if (repaired.failure() != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Network-node repair refused: " + repaired.failure());
+    handle = next;
+    data = nextData;
+    diagnostic = "";
+    setChanged();
+    onLoad();
+    return path;
+  }
+
   public void validatePlaced() {
     if (!diagnostic.isEmpty()) throw new IllegalStateException(diagnostic);
     if (handle == null) throw new IllegalStateException("Uncommissioned structural node");

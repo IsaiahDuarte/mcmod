@@ -381,3 +381,12 @@ queued work become stale. The retained preset needs explicit reapply by a curren
 authorized player; operator repair never adopts the deployer. Unresolved staging
 and stale/missing original holders remain blocked; other physical structural kinds
 and interrupted independent-save recovery are unfinished.
+
+
+Controller/gateway conflict recovery now preserves the existing logical network/
+segment, controller grants/permission generation and gateway policy/orientation
+while consuming the conflicted physical lease at its exact loaded original holder.
+Before-state evidence is retained first; normal topology validation precedes routing.
+This extends partial A05/A12/A13 support, without widening private views or replaying
+accepted transfers. Connector/machine holders, stale independent-save mismatches
+and full release recovery remain unfinished.

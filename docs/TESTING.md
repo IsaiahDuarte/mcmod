@@ -838,3 +838,26 @@ when restored, resuming shared Import with19 total units conserved. Failed audit
 retains exact inventory/deployment/reference; a real16-buffer/3-staged unresolved
 transfer blocks repair unchanged. Headless native menu requests do not prove a real
 client screen/remote multiplayer or interrupted independent filesystem saves.
+
+
+## Controller and gateway repair checks
+
+NetworkNodeRecoveryAuditTest adds exact schema4 round trips of controller owner/
+grants/permission generation or restricted gateway policy, complete native state/
+reference, reuse/corruption refusal and mismatched authority/unsupported-kind refusal.
+Three WorldNetworksGameTests exercise real operator commands, actual copied holders,
+known90-source/10-staged accounting with60 claimed and no extra provider calls,
+unchanged view-only grants, fresh topology before availability and old snapshot
+inertness. Gateway checks retain segment/policy/orientation,50 units/20 claimed
+and parent/child privacy; the native policy remains its existing default, while
+restricted-policy preservation is codec/core evidence. Audit failure retains
+exact node/grants/policy/physical NBT for both holder kinds.
+
+Positive cell/bank/buffer/node repair fixtures now use dedicated batches with
+cooldown around actions; the two node cases explicitly retry the public command
+until the shared throttle admits one. The bank seed/repair/rate probes stay in
+one tick. This isolates the shared server repair throttle
+from other positive command tests;900/200/100/800 expectations and production
+limits remain unchanged. All required tests, including that batch, must pass.
+No graphical client, remote multiplayer or interrupted independent-save proof
+is inferred from these native checks.

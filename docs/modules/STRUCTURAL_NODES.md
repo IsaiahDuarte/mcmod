@@ -129,8 +129,46 @@ nonconflicted/portable references, OFFLINE rejects a different canonical positio
 LIMIT rejects exhausted generation, and other validation failures retain their
 meaning. Rejections do not dirty or change canonical state.
 
-The initial public command exposes Buffered Interfaces only, through their
-inventory-aware adapter and [ADR0024](../decisions/0024-buffer-conflict-repair.md).
-Core coverage of all node kinds does not establish safe physical recovery for
-controllers, gateways, connectors or Machine Interfaces. Those holder/evidence/
-configuration integrations and independent-save interruption remain unfinished.
+The first inventory-aware adapter is documented in
+[ADR0024](../decisions/0024-buffer-conflict-repair.md). Controllers/gateways now also
+have explicit holder integration below. Core coverage of every kind does not
+establish physical connector/Machine Interface recovery; their configuration/
+endpoint integration and independent-save interruption remain unfinished.
+
+
+## Controller and gateway recovery
+
+Operator `/factorycore recovery node list [after]`, `show <id>` and
+`repair <id> <expected-generation>` select controllers/gateways only. Pages examine
+at most16 structural records with an exclusive cursor, including zero-match pages.
+Show reads canonical metadata, original controller owner/grant count/permission
+generation or current gateway policy. No provider calls or chunk loading occur.
+
+The trusted owner-thread `NetworkNodeEntity.repairConflict(expected)` checks actual
+loaded holder identity, raw/parsed lease, kind, generation and canonical position.
+It rejects unresolved backing/endpoint records naming the node itself. Before
+rotation it archives complete node/policy and native block state/reference; a
+controller archive additionally retains the complete permission record. Success
+updates only the physical/structural generation, preserving network/segment IDs,
+grants/permission generation, policy and orientation. Routing stays unavailable
+until normal budgeted topology publication. Old copies and old snapshots stay inert.
+
+Ordinary accepted operations retain unchanged endpoint leases/context/quantities;
+repair does not progress/replay them. Current authority, loaded-endpoint and
+uncertainty guards remain mandatory. Native tests retain90 source/10 staged items
+and60 claimed without new provider calls across root repair, preserve view-only
+grants, revalidate a fresh scope, and preserve child-private visibility/50 units/
+20 claimed across default-policy gateway repair. Restricted policy persistence is
+covered by codec/core cases, not a new native policy editor.
+
+[ADR0025](../decisions/0025-network-node-repair.md) specifies audit schema4, shared
+archive limits/throttling, alternatives and unsupported recovery cases. The internal
+public `DeviceRecoveryAudit.preserveNetworkNode(worldPath, namespace, owner,
+permissionsOrNull, blockState, blockEntity)` crosses the platform package boundary;
+callers pass immutable canonical state and complete native tags on the server
+thread. Only a matching controller permission record is accepted; gateways pass
+null. It returns the preserved Path, throws IllegalArgumentException for mismatched
+state and IOException for failed/oversized/quota/corrupt output, before mutation.
+It grants no permission, imports no state and is not a client/guest SDK API.
+World12/node reference1 and audit1/2/3 stay unchanged. Independent file interruptions,
+missing/stale canonical holders and arbitrary survivor selection remain unsupported.

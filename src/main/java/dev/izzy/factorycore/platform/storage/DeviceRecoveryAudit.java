@@ -8,7 +8,7 @@ import java.util.UUID;
 import net.minecraft.nbt.*;
 
 /** Versioned binary before-state evidence; never a restore instruction or live authority. */
-final class DeviceRecoveryAudit {
+public final class DeviceRecoveryAudit {
   static final int MAX_FILE_BYTES = LedgerStateCodec.MAX_BYTES + 1024 * 1024;
 
   private DeviceRecoveryAudit() {}
@@ -60,6 +60,41 @@ final class DeviceRecoveryAudit {
         BufferStateCodec.encode(
             java.util.List.of(inventory),
             deployment == null ? java.util.List.of() : java.util.List.of(deployment)));
+    envelope.put("BlockState", blockState.copy());
+    envelope.put("BlockEntity", blockEntity.copy());
+    return write(world, owner.id(), envelope);
+  }
+
+  /**
+   * Internal server-thread evidence boundary for controller/gateway holders; never restores state.
+   */
+  public static Path preserveNetworkNode(
+      Path world,
+      UUID namespace,
+      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
+      dev.izzy.factorycore.core.network.NetworkPermissions.State permissions,
+      CompoundTag blockState,
+      CompoundTag blockEntity)
+      throws IOException {
+    boolean controller =
+        owner.kind() == dev.izzy.factorycore.core.network.NodeRegistry.Kind.CONTROLLER;
+    if (!owner.conflict()
+        || owner.position() == null
+        || !controller
+            && owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.GATEWAY
+        || controller != (permissions != null)
+        || permissions != null && !permissions.network().equals(owner.id()))
+      throw new IllegalArgumentException("Expected canonical network-node conflict evidence");
+    var envelope = new CompoundTag();
+    envelope.putInt("Schema", 4);
+    envelope.putInt("WorldSchema", 12);
+    envelope.putUUID("World", namespace);
+    envelope.putString("HolderKind", "NETWORK_NODE");
+    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put(
+        "Networks",
+        NetworkStateCodec.encode(
+            permissions == null ? java.util.List.of() : java.util.List.of(permissions)));
     envelope.put("BlockState", blockState.copy());
     envelope.put("BlockEntity", blockEntity.copy());
     return write(world, owner.id(), envelope);
