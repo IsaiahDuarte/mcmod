@@ -710,3 +710,35 @@ inert. A real one-item removal must then trigger saved Stock through shared
 scheduling, conserving25 units. This does not test independent save-order
 interruptions, split networks across chunk boundaries, orphan jobs or unknown-call
 recovery; those remain separate required scenarios.
+
+## Loaded-child/unloaded-root extension
+
+The restart client also constructs a private fixture network with a root in
+chunk111,272 cable blocks, and an east-facing gateway plus child drive/machine in
+chunk129. It explicitly retains only the child chunk using vanilla administrative
+chunk forcing, then moves the player far away. The eighteen-chunk separation keeps
+the root outside the forced child chunk's broader generation-dependency retention
+area. The root is explicitly retained during setup, then that separate ticket is
+released before departure. Setup/return place the player midway along the path
+so ordinary view loading covers both endpoints. Production discovery
+and resource probes must never force or reload the root.
+
+Require a native root unload event, removed original root, continuously loaded
+child holders, zero storage availability, retained16 gold/four-unit hold, rejected
+claimed extraction/cached machine mutation, invalid child execution scope and no
+preset replenishment for40 server ticks. A three-item physical chest removal goes
+into the player's inventory, so suspended conservation remains24 gold. Return
+normally, require the same root lease on a new physical holder, and require saved
+child Stock to resume without redeployment: cell13 + machine8 + player3 =24 with
+hold4 unchanged. Release the fixture's forced chunk before returning to the main
+fixture and opening its native screen. This adds actual split-root lifecycle
+coverage; queued/staged unload and independent-save interruption remain separate.
+
+
+DiscoverySeedsTest now replaces obsolete recursive-depth rejection with512
+successive ownership transfers that retain every seed/charged completion visit.
+It also checks combined8,192-frame admission preserves both queues without polling
+callbacks, and retains prior empty-transition/cycle/sharing/queue-limit coverage.
+The flat representation removes nested iterator recursion; it does not raise any
+region/discovery tick, probe or vertex limits. The split-root client is the native
+regression for the finite cable-placement trigger.

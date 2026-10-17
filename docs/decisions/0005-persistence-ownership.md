@@ -3,8 +3,8 @@
 Status: selected D03 design; ledger schema, owner registry and SavedData adapter
 locally implemented in P2. Physical cell/drive lease tests and a small nonempty
 orderly integrated-server restart now have local evidence. Independent save ordering,
-split-chunk lifecycle and interrupted transfers remain unvalidated; a native
-one-chunk unload/reload now has scoped evidence.
+staged/split-save interruptions remain unvalidated; native one-chunk and
+loaded-child/root-unload experiments now have scoped evidence.
 
 ## Decision and boundaries
 

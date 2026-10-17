@@ -1,0 +1,621 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.2.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :spotlessInternalRegisterDependencies UP-TO-DATE
+> Task :spotlessJava
+> Task :spotlessJavaApply
+> Task :spotlessApply
+> Task :createMinecraftArtifacts UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :compileClientTestJava
+> Task :processClientTestResources UP-TO-DATE
+> Task :clientTestClasses
+> Task :downloadAssets UP-TO-DATE
+> Task :writeTerminalRestartClientLegacyClasspath UP-TO-DATE
+> Task :prepareTerminalRestartClientRun UP-TO-DATE
+> Task :writeTerminalClientLegacyClasspath UP-TO-DATE
+> Task :prepareTerminalClientRun UP-TO-DATE
+
+> Task :runTerminalClient
+WARN StatusConsoleListener Advanced terminal features are not available in this environment
+[16:27:36] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeclientdev, --version, 21.1.252, --assetIndex, 17, --assetsDir, /Users/izzy/.gradle/caches/neoformruntime/assets, --gameDir, ., --fml.fmlVersion, 4.0.44, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.252, --fml.neoFormVersion, 20240808.144430]
+[16:27:36] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: JVM identified as Homebrew OpenJDK 64-Bit Server VM 21.0.12
+[16:27:36] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.12 by Homebrew; OS Mac OS X arch aarch64 version 15.3.1
+[16:27:36] [main/INFO] [ne.ne.fm.lo.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
+[16:27:36] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
+[16:27:36] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.5
+[16:27:36] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.4
+[16:27:36] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.3
+[16:27:36] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.2
+[16:27:36] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.1
+[16:27:36] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.1 got version 4.1
+2026-10-17 16:27:36.606 java[35058:834591] +[IMKClient subclass]: chose IMKClient_Modern
+2026-10-17 16:27:36.606 java[35058:834591] +[IMKInputSession subclass]: chose IMKInputSession_Modern
+[16:27:36] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/Users/izzy/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%23132!/ Service=ModLauncher Env=CLIENT
+[16:27:36] [pool-2-thread-1/INFO] [EARLYDISPLAY/]: GL info: Apple M1 GL version 4.1 Metal - 89.3, Apple
+[16:27:36] [main/INFO] [ne.ne.fm.lo.mo.lo.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
+[16:27:36] [main/INFO] [ne.ne.fm.lo.mo.ModDiscoverer/]:
+     Mod List:
+		Name Version (Mod Id)
+
+		Factory Core 0.1.0-dev (factorycore)
+		Factory Core Graphical Terminal Verification 0.1.0-dev (factorycore_client_tests)
+		Minecraft 1.21.1 (minecraft)
+		NeoForge 21.1.252 (neoforge)
+[16:27:37] [main/INFO] [cp.mo.mo.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeclientdev' with arguments [--version, 21.1.252, --gameDir, ., --assetsDir, /Users/izzy/.gradle/caches/neoformruntime/assets, --assetIndex, 17]
+[16:27:37] [Datafixer Bootstrap/INFO] [mojang/DataFixerBuilder]: 229 Datafixer optimizations took 196 milliseconds
+[16:27:38] [pool-8-thread-1/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.3).
+[16:27:41] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[16:27:41] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
+[16:27:41] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[16:27:41] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[16:27:41] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[16:27:41] [Render thread/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23185!/assets/.mcassetsroot' uses unexpected schema
+[16:27:41] [Render thread/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23185!/data/.mcassetsroot' uses unexpected schema
+[16:27:41] [Render thread/INFO] [mojang/YggdrasilAuthenticationService]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[16:27:41] [Render thread/INFO] [minecraft/Minecraft]: Setting user: Dev
+[16:27:41] [Render thread/INFO] [minecraft/Minecraft]: Backend library: LWJGL version 3.3.3+5
+UNSUPPORTED (log once): POSSIBLE ISSUE: unit 0 GLD_TEXTURE_INDEX_2D is unloadable and bound to sampler type (Float) - using zero texture because texture unloadable
+[16:27:41] [modloading-worker-0/INFO] [ne.ne.ne.co.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.252, for MC 1.21.1
+[16:27:42] [Render thread/INFO] [ne.ne.ne.ga.GameTestHooks/]: Enabled Gametest Namespaces: []
+[16:27:42] [Render thread/INFO] [minecraft/ReloadableResourceManager]: Reloading ResourceManager: vanilla, mod_resources, mod/neoforge, mod/factorycore, mod/factorycore_client_tests
+[16:27:42] [Worker-Main-4/INFO] [minecraft/UnihexProvider]: Found unifont_all_no_pua-15.1.05.hex, loading
+[16:27:42] [Worker-Main-3/INFO] [minecraft/UnihexProvider]: Found unifont_jp_patch-15.1.05.hex, loading
+[16:27:43] [Render thread/WARN] [minecraft/SoundEngine]: Missing sound for event: minecraft:item.goat_horn.play
+[16:27:43] [Render thread/WARN] [minecraft/SoundEngine]: Missing sound for event: minecraft:entity.goat.screaming.horn_break
+[16:27:43] [Render thread/INFO] [mojang/Library]: OpenAL initialized on device MacBook Pro Speakers
+[16:27:43] [Render thread/INFO] [minecraft/SoundEngine]: Sound engine started
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 1024x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[16:27:43] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
+[16:27:43] [Render thread/WARN] [minecraft/ShaderInstance]: Shader rendertype_entity_translucent_emissive could not find sampler named Sampler2 in the specified shader program.
+[16:27:43] [Render thread/INFO] [ne.ne.ne.cl.en.an.js.AnimationLoader/]: Loaded 0 entity animations
+[16:27:44] [Render thread/INFO] [minecraft/RecipeManager]: Loaded 1304 recipes
+[16:27:44] [Render thread/INFO] [minecraft/AdvancementTree]: Loaded 1413 advancements
+[16:27:44] [Server thread/INFO] [minecraft/IntegratedServer]: Starting integrated minecraft server version 1.21.1
+[16:27:44] [Server thread/INFO] [minecraft/MinecraftServer]: Generating keypair
+[16:27:45] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[16:27:45] [progressListener/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 2%
+[16:27:45] [Server thread/INFO] [ne.ne.ne.se.pe.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
+[16:27:45] [progressListener/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 168 ms
+[16:27:45] [Server thread/INFO] [minecraft/IntegratedServer]: Changing view distance to 12, from 10
+[16:27:45] [Server thread/INFO] [minecraft/IntegratedServer]: Changing simulation distance to 12, from 0
+FACTORYCORE_CLIENT_STAGE 1
+[16:27:46] [Server thread/INFO] [minecraft/PlayerList]: Dev[local:E:966a72f1] logged in with entity id 1 at (7.5, -60.0, 4.5)
+[16:27:46] [Server thread/INFO] [minecraft/MinecraftServer]: Dev joined the game
+[16:27:46] [Render thread/INFO] [minecraft/AdvancementTree]: Loaded 2 advancements
+FACTORYCORE_CLIENT_STAGE 2
+FACTORYCORE_CLIENT_OPEN SUCCESS player=(4.5, 65.0, 4.5)
+FACTORYCORE_CLIENT_STAGE 3
+FACTORYCORE_CLIENT_STAGE 4
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as scale-2-all-items.png
+FACTORYCORE_CLIENT_STAGE 5
+[16:27:56] [Server thread/INFO] [minecraft/MinecraftServer]: Dev has made the advancement [Acquire Hardware]
+[16:27:56] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] Dev has made the advancement [Acquire Hardware]
+[16:27:56] [Render thread/INFO] [minecraft/AdvancementTree]: Loaded 40 advancements
+FACTORYCORE_CLIENT_STAGE 6
+FACTORYCORE_CLIENT_STAGE 7
+FACTORYCORE_CLIENT_STAGE 8
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as scale-3-iron.png
+FACTORYCORE_CLIENT_STAGE 9
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as scale-4-iron.png
+FACTORYCORE_CLIENT_STAGE 10
+FACTORYCORE_CLIENT_STAGE 11
+FACTORYCORE_CLIENT_STAGE 12
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as scale-4-next-page.png
+FACTORYCORE_CLIENT_STAGE 13
+[16:27:58] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] Buffered Interface: 0 items in 0/9 slots.
+[16:27:58] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] Network rate: 64 items/tick each way. All items (0 rules).
+[16:27:58] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] Stock goal: 64 matching items across this buffer.
+[16:27:58] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] Mode: Import. Waiting for buffered items or writable storage.
+FACTORYCORE_CLIENT_STAGE 14
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as buffer-scale-2-settings.png
+FACTORYCORE_CLIENT_STAGE 15
+FACTORYCORE_CLIENT_STAGE 16
+FACTORYCORE_CLIENT_STAGE 17
+FACTORYCORE_CLIENT_STAGE 18
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as buffer-scale-2-rules-page-1.png
+FACTORYCORE_CLIENT_STAGE 19
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as buffer-scale-2-rules-page-2.png
+FACTORYCORE_CLIENT_STAGE 20
+FACTORYCORE_CLIENT_STAGE 21
+FACTORYCORE_CLIENT_STAGE 22
+FACTORYCORE_CLIENT_STAGE 23
+FACTORYCORE_CLIENT_STAGE 24
+FACTORYCORE_CLIENT_STAGE 25
+FACTORYCORE_CLIENT_STAGE 26
+FACTORYCORE_CLIENT_STAGE 27
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as buffer-scale-2-stock.png
+FACTORYCORE_CLIENT_STAGE 28
+FACTORYCORE_CLIENT_STAGE 29
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as buffer-scale-2-full.png
+FACTORYCORE_CLIENT_STAGE 30
+FACTORYCORE_CLIENT_STAGE 31
+FACTORYCORE_CLIENT_STAGE 32
+FACTORYCORE_CLIENT_STAGE 33
+FACTORYCORE_CLIENT_STAGE 34
+FACTORYCORE_CLIENT_STAGE 35
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as buffer-scale-3-inventory.png
+FACTORYCORE_CLIENT_STAGE 36
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as buffer-scale-3-settings.png
+FACTORYCORE_CLIENT_STAGE 37
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as buffer-scale-4-settings.png
+FACTORYCORE_CLIENT_STAGE 38
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as buffer-scale-4-inventory.png
+FACTORYCORE_CLIENT_STAGE 39
+FACTORYCORE_CLIENT_STAGE 40
+FACTORYCORE_CLIENT_STAGE 41
+FACTORYCORE_CLIENT_STAGE 42
+FACTORYCORE_CLIENT_STAGE 43
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as machine-scale-2-draft.png
+FACTORYCORE_CLIENT_STAGE 44
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as machine-scale-3-draft.png
+FACTORYCORE_CLIENT_STAGE 45
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as machine-scale-4-draft.png
+FACTORYCORE_CLIENT_STAGE 46
+FACTORYCORE_CLIENT_STAGE 47
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as machine-scale-4-reopened.png
+FACTORYCORE_CLIENT_STAGE 48
+FACTORYCORE_CLIENT_STAGE 49
+FACTORYCORE_CLIENT_STAGE 50
+FACTORYCORE_CLIENT_STAGE 51
+FACTORYCORE_CLIENT_STAGE 52
+FACTORYCORE_CLIENT_STAGE 53
+FACTORYCORE_CLIENT_STAGE 54
+FACTORYCORE_CLIENT_STAGE 55
+FACTORYCORE_CLIENT_STAGE 56
+FACTORYCORE_CLIENT_STAGE 57
+FACTORYCORE_CLIENT_STAGE 58
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as machine-preset-scale-2-draft.png
+FACTORYCORE_CLIENT_STAGE 59
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as machine-preset-scale-3-draft.png
+FACTORYCORE_CLIENT_STAGE 60
+FACTORYCORE_CLIENT_SCREENSHOT Saved screenshot as machine-preset-scale-4-stock.png
+FACTORYCORE_RESTART_CHECKPOINT seedPid=35058
+[16:28:11] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: Dev lost connection: Disconnected
+[16:28:11] [Server thread/INFO] [minecraft/MinecraftServer]: Dev left the game
+[16:28:11] [Server thread/INFO] [minecraft/ServerCommonPacketListenerImpl]: Stopping singleplayer server as player logged out
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[Terminal verification]'/minecraft:overworld
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[Terminal verification]'/minecraft:the_end
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[Terminal verification]'/minecraft:the_nether
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (factorycore-terminal-verification): All chunks are saved
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[16:28:12] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+[16:28:12] [Render thread/INFO] [minecraft/Minecraft]: Stopping!
+
+> Task :runTerminalRestartClient
+WARN StatusConsoleListener Advanced terminal features are not available in this environment
+[16:28:19] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeclientdev, --version, 21.1.252, --assetIndex, 17, --assetsDir, /Users/izzy/.gradle/caches/neoformruntime/assets, --gameDir, ., --fml.fmlVersion, 4.0.44, --fml.mcVersion, 1.21.1, --fml.neoForgeVersion, 21.1.252, --fml.neoFormVersion, 20240808.144430]
+[16:28:19] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: JVM identified as Homebrew OpenJDK 64-Bit Server VM 21.0.12
+[16:28:19] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.12 by Homebrew; OS Mac OS X arch aarch64 version 15.3.1
+[16:28:19] [main/INFO] [ne.ne.fm.lo.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
+[16:28:19] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
+[16:28:19] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.5
+[16:28:19] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.4
+[16:28:19] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.3
+[16:28:19] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.2
+[16:28:19] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.1
+[16:28:19] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.1 got version 4.1
+2026-10-17 16:28:19.540 java[35092:835600] +[IMKClient subclass]: chose IMKClient_Modern
+2026-10-17 16:28:19.540 java[35092:835600] +[IMKInputSession subclass]: chose IMKInputSession_Modern
+[16:28:19] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/Users/izzy/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/2af2f021d8e02a0220dc27a7a72b4666d66d44ca/sponge-mixin-0.15.2+mixin.0.8.7.jar%23132!/ Service=ModLauncher Env=CLIENT
+[16:28:19] [pool-2-thread-1/INFO] [EARLYDISPLAY/]: GL info: Apple M1 GL version 4.1 Metal - 89.3, Apple
+[16:28:19] [main/INFO] [ne.ne.fm.lo.mo.lo.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
+[16:28:19] [main/INFO] [ne.ne.fm.lo.mo.ModDiscoverer/]:
+     Mod List:
+		Name Version (Mod Id)
+
+		Factory Core 0.1.0-dev (factorycore)
+		Factory Core Graphical Terminal Verification 0.1.0-dev (factorycore_client_tests)
+		Minecraft 1.21.1 (minecraft)
+		NeoForge 21.1.252 (neoforge)
+[16:28:20] [main/INFO] [cp.mo.mo.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeclientdev' with arguments [--version, 21.1.252, --gameDir, ., --assetsDir, /Users/izzy/.gradle/caches/neoformruntime/assets, --assetIndex, 17]
+[16:28:20] [Datafixer Bootstrap/INFO] [mojang/DataFixerBuilder]: 229 Datafixer optimizations took 166 milliseconds
+[16:28:21] [pool-8-thread-1/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.3).
+[16:28:24] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[16:28:24] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, location] and [teleport, targets] with inputs: [0.1 -0.5 .9, 0 0 0]
+[16:28:24] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, destination] and [teleport, targets] with inputs: [Player, 0123, @e, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[16:28:24] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets] and [teleport, destination] with inputs: [Player, 0123, dd12be42-52a9-4a91-a8a1-11c01849e498]
+[16:28:24] [main/WARN] [minecraft/Commands]: Ambiguity between arguments [teleport, targets, location] and [teleport, targets, destination] with inputs: [0.1 -0.5 .9, 0 0 0]
+[16:28:24] [Render thread/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23185!/assets/.mcassetsroot' uses unexpected schema
+[16:28:24] [Render thread/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/moddev/artifacts/neoforge-21.1.252.jar%23185!/data/.mcassetsroot' uses unexpected schema
+[16:28:24] [Render thread/INFO] [mojang/YggdrasilAuthenticationService]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[16:28:24] [Render thread/INFO] [minecraft/Minecraft]: Setting user: Dev
+[16:28:24] [Render thread/INFO] [minecraft/Minecraft]: Backend library: LWJGL version 3.3.3+5
+UNSUPPORTED (log once): POSSIBLE ISSUE: unit 0 GLD_TEXTURE_INDEX_2D is unloadable and bound to sampler type (Float) - using zero texture because texture unloadable
+[16:28:24] [modloading-worker-0/INFO] [ne.ne.ne.co.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.252, for MC 1.21.1
+[16:28:24] [Render thread/INFO] [ne.ne.ne.ga.GameTestHooks/]: Enabled Gametest Namespaces: []
+[16:28:25] [Render thread/INFO] [minecraft/ReloadableResourceManager]: Reloading ResourceManager: vanilla, mod_resources, mod/neoforge, mod/factorycore, mod/factorycore_client_tests
+[16:28:25] [Worker-Main-7/INFO] [minecraft/UnihexProvider]: Found unifont_all_no_pua-15.1.05.hex, loading
+[16:28:25] [Worker-Main-1/INFO] [minecraft/UnihexProvider]: Found unifont_jp_patch-15.1.05.hex, loading
+[16:28:26] [Render thread/WARN] [minecraft/SoundEngine]: Missing sound for event: minecraft:item.goat_horn.play
+[16:28:26] [Render thread/WARN] [minecraft/SoundEngine]: Missing sound for event: minecraft:entity.goat.screaming.horn_break
+[16:28:26] [Render thread/INFO] [mojang/Library]: OpenAL initialized on device MacBook Pro Speakers
+[16:28:26] [Render thread/INFO] [minecraft/SoundEngine]: Sound engine started
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 1024x512x4 minecraft:textures/atlas/blocks.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 1024x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[16:28:26] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
+[16:28:26] [Render thread/WARN] [minecraft/ShaderInstance]: Shader rendertype_entity_translucent_emissive could not find sampler named Sampler2 in the specified shader program.
+[16:28:26] [Render thread/INFO] [ne.ne.ne.cl.en.an.js.AnimationLoader/]: Loaded 0 entity animations
+[16:28:27] [Render thread/INFO] [minecraft/RecipeManager]: Loaded 1304 recipes
+[16:28:27] [Render thread/INFO] [minecraft/AdvancementTree]: Loaded 1413 advancements
+[16:28:27] [Server thread/INFO] [minecraft/IntegratedServer]: Starting integrated minecraft server version 1.21.1
+[16:28:27] [Server thread/INFO] [minecraft/MinecraftServer]: Generating keypair
+[16:28:27] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[16:28:28] [progressListener/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[16:28:28] [Server thread/INFO] [ne.ne.ne.se.pe.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
+[16:28:28] [progressListener/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 202 ms
+[16:28:28] [Server thread/INFO] [minecraft/IntegratedServer]: Changing view distance to 12, from 10
+[16:28:28] [Server thread/INFO] [minecraft/IntegratedServer]: Changing simulation distance to 12, from 0
+FACTORYCORE_RESTART_STAGE 1
+[16:28:29] [Server thread/INFO] [minecraft/PlayerList]: Dev[local:E:1ae0a417] logged in with entity id 5 at (4.5, 65.0, 4.5)
+[16:28:29] [Server thread/INFO] [minecraft/MinecraftServer]: Dev joined the game
+FACTORYCORE_RESTART_INITIAL_STATE_MATCHED
+[16:28:29] [Render thread/INFO] [minecraft/AdvancementTree]: Loaded 40 advancements
+FACTORYCORE_RESTART_STAGE 2
+FACTORYCORE_CHUNK_LEAVE tick=26
+FACTORYCORE_CHUNK_UNLOADED tick=32 events=1
+FACTORYCORE_CHUNK_RETURN tick=73
+FACTORYCORE_CHUNK_RELOADED tick=74 events=1
+FACTORYCORE_CHUNK_PASS ticks=68 unloads=1 loads=1
+FACTORYCORE_SPLIT_WAIT phase=1 membership=REBUILDING stock=Stock[total=0, reserved=0, available=0, loaded=false] preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false] diagnostic=Discovery source depth limit
+FACTORYCORE_SPLIT_WAIT phase=1 membership=REBUILDING stock=Stock[total=0, reserved=0, available=0, loaded=false] preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false] diagnostic=Discovery source depth limit
+FACTORYCORE_SPLIT_WAIT phase=1 membership=REBUILDING stock=Stock[total=0, reserved=0, available=0, loaded=false] preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false] diagnostic=Discovery source depth limit
+FACTORYCORE_SPLIT_WAIT phase=1 membership=REBUILDING stock=Stock[total=0, reserved=0, available=0, loaded=false] preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false] diagnostic=Discovery source depth limit
+FACTORYCORE_SPLIT_WAIT phase=1 membership=REBUILDING stock=Stock[total=0, reserved=0, available=0, loaded=false] preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false] diagnostic=Discovery source depth limit
+FACTORYCORE_SPLIT_WAIT phase=1 membership=REBUILDING stock=Stock[total=0, reserved=0, available=0, loaded=false] preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false] diagnostic=Discovery source depth limit
+FACTORYCORE_SPLIT_WAIT phase=1 membership=REBUILDING stock=Stock[total=0, reserved=0, available=0, loaded=false] preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false] diagnostic=Discovery source depth limit
+FACTORYCORE_SPLIT_WAIT phase=1 membership=REBUILDING stock=Stock[total=0, reserved=0, available=0, loaded=false] preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false] diagnostic=Discovery source depth limit
+FACTORYCORE_SPLIT_WAIT phase=1 membership=REBUILDING stock=Stock[total=0, reserved=0, available=0, loaded=false] preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false] diagnostic=Discovery source depth limit
+[16:29:22] [Render thread/ERROR] [ne.ne.bu.EventBus/EVENTBUS]: Exception caught during firing event: World restart fixture failed
+	Index: 0
+	Listeners:
+		0: dev.izzy.factorycore.clienttesting.WorldRestartVerification$$Lambda/0x0000000301dc2000@6d41c9c0
+java.lang.IllegalStateException: World restart fixture failed
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.WorldRestartVerification.tick(WorldRestartVerification.java:67)
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.ConsumerEventHandler.invoke(ConsumerEventHandler.java:27)
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.EventBus.post(EventBus.java:360)
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.EventBus.post(EventBus.java:328)
+	at TRANSFORMER/neoforge@21.1.252/net.neoforged.neoforge.client.ClientHooks.fireClientTickPost(ClientHooks.java:1077)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.tick(Minecraft.java:1915)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.runTick(Minecraft.java:1161)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.run(Minecraft.java:807)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.main.Main.main(Main.java:230)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.runTarget(CommonLaunchHandler.java:136)
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.clientService(CommonLaunchHandler.java:124)
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.NeoForgeClientDevLaunchHandler.runService(NeoForgeClientDevLaunchHandler.java:23)
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.lambda$launchService$4(CommonLaunchHandler.java:118)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandlerDecorator.launch(LaunchServiceHandlerDecorator.java:30)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:53)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:71)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.Launcher.run(Launcher.java:103)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.Launcher.main(Launcher.java:74)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:26)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:23)
+	at cpw.mods.bootstraplauncher@2.0.2/cpw.mods.bootstraplauncher.BootstrapLauncher.run(BootstrapLauncher.java:210)
+	at cpw.mods.bootstraplauncher@2.0.2/cpw.mods.bootstraplauncher.BootstrapLauncher.main(BootstrapLauncher.java:69)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at net.neoforged.devlaunch.Main.main(Main.java:57)
+Caused by: java.lang.IllegalStateException: Split-root lifecycle deadline phase=1 membership=REBUILDING preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false]
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.RestartCheckpoint.require(RestartCheckpoint.java:92)
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.SplitRootVerification.tick(SplitRootVerification.java:109)
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.WorldRestartVerification.lambda$tick$5(WorldRestartVerification.java:161)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.TickTask.run(TickTask.java:18)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.BlockableEventLoop.doRunTask(BlockableEventLoop.java:148)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.ReentrantBlockableEventLoop.doRunTask(ReentrantBlockableEventLoop.java:24)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:872)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:170)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.BlockableEventLoop.pollTask(BlockableEventLoop.java:122)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.pollTaskInternal(MinecraftServer.java:855)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.pollTask(MinecraftServer.java:849)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.BlockableEventLoop.managedBlock(BlockableEventLoop.java:132)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.managedBlock(MinecraftServer.java:821)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.waitUntilNextTick(MinecraftServer.java:826)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:712)
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.lambda$spin$2(MinecraftServer.java:267)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+[16:29:22] [Render thread/ERROR] [minecraft/Minecraft]: Unreported exception thrown!
+java.lang.IllegalStateException: World restart fixture failed
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.WorldRestartVerification.tick(WorldRestartVerification.java:67) ~[%23187!/:?] {re:classloading}
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.ConsumerEventHandler.invoke(ConsumerEventHandler.java:27) ~[bus-8.0.5.jar%23144!/:?] {}
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.EventBus.post(EventBus.java:360) ~[bus-8.0.5.jar%23144!/:?] {}
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.EventBus.post(EventBus.java:328) ~[bus-8.0.5.jar%23144!/:?] {}
+	at TRANSFORMER/neoforge@21.1.252/net.neoforged.neoforge.client.ClientHooks.fireClientTickPost(ClientHooks.java:1077) ~[neoforge-21.1.252.jar%23186!/:?] {re:classloading}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.tick(Minecraft.java:1915) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.runTick(Minecraft.java:1161) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.run(Minecraft.java:807) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.main.Main.main(Main.java:230) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?] {}
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[?:?] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.runTarget(CommonLaunchHandler.java:136) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.clientService(CommonLaunchHandler.java:124) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.NeoForgeClientDevLaunchHandler.runService(NeoForgeClientDevLaunchHandler.java:23) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.lambda$launchService$4(CommonLaunchHandler.java:118) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandlerDecorator.launch(LaunchServiceHandlerDecorator.java:30) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:53) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:71) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.Launcher.run(Launcher.java:103) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.Launcher.main(Launcher.java:74) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:26) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:23) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at cpw.mods.bootstraplauncher@2.0.2/cpw.mods.bootstraplauncher.BootstrapLauncher.run(BootstrapLauncher.java:210) [bootstraplauncher-2.0.2.jar:?] {}
+	at cpw.mods.bootstraplauncher@2.0.2/cpw.mods.bootstraplauncher.BootstrapLauncher.main(BootstrapLauncher.java:69) [bootstraplauncher-2.0.2.jar:?] {}
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?] {}
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[?:?] {}
+	at net.neoforged.devlaunch.Main.main(Main.java:57) [DevLaunch-1.0.2.jar:?] {}
+Caused by: java.lang.IllegalStateException: Split-root lifecycle deadline phase=1 membership=REBUILDING preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false]
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.RestartCheckpoint.require(RestartCheckpoint.java:92) ~[%23187!/:?] {re:classloading}
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.SplitRootVerification.tick(SplitRootVerification.java:109) ~[%23187!/:?] {re:classloading}
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.WorldRestartVerification.lambda$tick$5(WorldRestartVerification.java:161) ~[%23187!/:?] {re:classloading}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.TickTask.run(TickTask.java:18) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.BlockableEventLoop.doRunTask(BlockableEventLoop.java:148) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.ReentrantBlockableEventLoop.doRunTask(ReentrantBlockableEventLoop.java:24) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:872) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:170) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.BlockableEventLoop.pollTask(BlockableEventLoop.java:122) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.pollTaskInternal(MinecraftServer.java:855) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.pollTask(MinecraftServer.java:849) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.BlockableEventLoop.managedBlock(BlockableEventLoop.java:132) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.managedBlock(MinecraftServer.java:821) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.waitUntilNextTick(MinecraftServer.java:826) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:712) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.lambda$spin$2(MinecraftServer.java:267) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[?:?] {}
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[Terminal verification]'/minecraft:overworld
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[Terminal verification]'/minecraft:the_end
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[Terminal verification]'/minecraft:the_nether
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (factorycore-terminal-verification): All chunks are saved
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[16:29:23] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+[16:29:24] [Render thread/FATAL] [ne.ne.ne.co.NeoForgeMod/]: Preparing crash report with UUID 4c238453-8d71-4247-8fc6-4f2455a671da
+---- Minecraft Crash Report ----
+// Oops.
+
+Time: 2026-10-17 16:29:24
+Description: Unexpected error
+
+java.lang.IllegalStateException: World restart fixture failed
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.WorldRestartVerification.tick(WorldRestartVerification.java:67) ~[%23187!/:?] {re:classloading}
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.ConsumerEventHandler.invoke(ConsumerEventHandler.java:27) ~[bus-8.0.5.jar%23144!/:?] {}
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.EventBus.post(EventBus.java:360) ~[bus-8.0.5.jar%23144!/:?] {}
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.EventBus.post(EventBus.java:328) ~[bus-8.0.5.jar%23144!/:?] {}
+	at TRANSFORMER/neoforge@21.1.252/net.neoforged.neoforge.client.ClientHooks.fireClientTickPost(ClientHooks.java:1077) ~[neoforge-21.1.252.jar%23186!/:?] {re:classloading}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.tick(Minecraft.java:1915) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.runTick(Minecraft.java:1161) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.run(Minecraft.java:807) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.main.Main.main(Main.java:230) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?] {}
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[?:?] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.runTarget(CommonLaunchHandler.java:136) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.clientService(CommonLaunchHandler.java:124) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.NeoForgeClientDevLaunchHandler.runService(NeoForgeClientDevLaunchHandler.java:23) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.lambda$launchService$4(CommonLaunchHandler.java:118) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandlerDecorator.launch(LaunchServiceHandlerDecorator.java:30) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:53) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:71) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.Launcher.run(Launcher.java:103) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.Launcher.main(Launcher.java:74) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:26) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:23) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at cpw.mods.bootstraplauncher@2.0.2/cpw.mods.bootstraplauncher.BootstrapLauncher.run(BootstrapLauncher.java:210) [bootstraplauncher-2.0.2.jar:?] {}
+	at cpw.mods.bootstraplauncher@2.0.2/cpw.mods.bootstraplauncher.BootstrapLauncher.main(BootstrapLauncher.java:69) [bootstraplauncher-2.0.2.jar:?] {}
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?] {}
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[?:?] {}
+	at net.neoforged.devlaunch.Main.main(Main.java:57) [DevLaunch-1.0.2.jar:?] {}
+Caused by: java.lang.IllegalStateException: Split-root lifecycle deadline phase=1 membership=REBUILDING preset=Status[mode=PAUSED, reason=OFFLINE, waiting=false]
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.RestartCheckpoint.require(RestartCheckpoint.java:92) ~[%23187!/:?] {re:classloading}
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.SplitRootVerification.tick(SplitRootVerification.java:109) ~[%23187!/:?] {re:classloading}
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.WorldRestartVerification.lambda$tick$5(WorldRestartVerification.java:161) ~[%23187!/:?] {re:classloading}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.TickTask.run(TickTask.java:18) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.BlockableEventLoop.doRunTask(BlockableEventLoop.java:148) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.ReentrantBlockableEventLoop.doRunTask(ReentrantBlockableEventLoop.java:24) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:872) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:170) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.BlockableEventLoop.pollTask(BlockableEventLoop.java:122) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.pollTaskInternal(MinecraftServer.java:855) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.pollTask(MinecraftServer.java:849) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.util.thread.BlockableEventLoop.managedBlock(BlockableEventLoop.java:132) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.managedBlock(MinecraftServer.java:821) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.waitUntilNextTick(MinecraftServer.java:826) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:712) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.server.MinecraftServer.lambda$spin$2(MinecraftServer.java:267) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:accesstransformer:B}
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[?:?] {}
+
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- Head --
+Thread: Render thread
+Stacktrace:
+	at TRANSFORMER/factorycore_client_tests@0.1.0-dev/dev.izzy.factorycore.clienttesting.WorldRestartVerification.tick(WorldRestartVerification.java:67) ~[%23187!/:?] {re:classloading}
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.ConsumerEventHandler.invoke(ConsumerEventHandler.java:27) ~[bus-8.0.5.jar%23144!/:?] {}
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.EventBus.post(EventBus.java:360) ~[bus-8.0.5.jar%23144!/:?] {}
+	at MC-BOOTSTRAP/net.neoforged.bus/net.neoforged.bus.EventBus.post(EventBus.java:328) ~[bus-8.0.5.jar%23144!/:?] {}
+	at TRANSFORMER/neoforge@21.1.252/net.neoforged.neoforge.client.ClientHooks.fireClientTickPost(ClientHooks.java:1077) ~[neoforge-21.1.252.jar%23186!/:?] {re:classloading}
+-- Uptime --
+Details:
+	JVM uptime: 69.828s
+	Wall uptime: 59.007s
+	High-res time: 63.809s
+	Client ticks: 1133 ticks / 56.650s
+Stacktrace:
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.fillReport(Minecraft.java:2395) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.emergencySaveAndCrash(Minecraft.java:868) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.Minecraft.run(Minecraft.java:828) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at TRANSFORMER/minecraft@1.21.1/net.minecraft.client.main.Main.main(Main.java:230) ~[neoforge-21.1.252.jar%23185!/:?] {re:classloading,pl:runtimedistcleaner:A}
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?] {}
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[?:?] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.runTarget(CommonLaunchHandler.java:136) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.clientService(CommonLaunchHandler.java:124) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.NeoForgeClientDevLaunchHandler.runService(NeoForgeClientDevLaunchHandler.java:23) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/fml_loader@4.0.44/net.neoforged.fml.loading.targets.CommonLaunchHandler.lambda$launchService$4(CommonLaunchHandler.java:118) ~[loader-4.0.44.jar%23140!/:4.0] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandlerDecorator.launch(LaunchServiceHandlerDecorator.java:30) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:53) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:71) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.Launcher.run(Launcher.java:103) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.Launcher.main(Launcher.java:74) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:26) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@11.0.5/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:23) [modlauncher-11.0.5.jar%23122!/:?] {}
+	at cpw.mods.bootstraplauncher@2.0.2/cpw.mods.bootstraplauncher.BootstrapLauncher.run(BootstrapLauncher.java:210) [bootstraplauncher-2.0.2.jar:?] {}
+	at cpw.mods.bootstraplauncher@2.0.2/cpw.mods.bootstraplauncher.BootstrapLauncher.main(BootstrapLauncher.java:69) [bootstraplauncher-2.0.2.jar:?] {}
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?] {}
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[?:?] {}
+	at net.neoforged.devlaunch.Main.main(Main.java:57) [DevLaunch-1.0.2.jar:?] {}
+
+
+-- Affected level --
+Details:
+	All players: 1 total; [LocalPlayer['Dev'/5, l='ClientLevel', x=2064.50, y=-60.00, z=4.50]]
+	Chunk stats: 961, 711
+	Level dimension: minecraft:overworld
+	Level spawn location: World: (0,-60,0), Section: (at 0,4,0 in 0,-4,0; chunk contains blocks 0,-64,0 to 15,319,15), Region: (0,0; contains chunks 0,0 to 31,31, blocks 0,-64,0 to 511,319,511)
+	Level time: 1629 game time, 7604 day time
+	Server brand: neoforge
+	Server type: Integrated singleplayer server
+	Tracked entity count: 13
+
+-- Last reload --
+Details:
+	Reload number: 1
+	Reload reason: initial
+	Finished: Yes
+	Packs: vanilla, mod_resources, mod/neoforge, mod/factorycore, mod/factorycore_client_tests
+
+-- System Details --
+Details:
+	Minecraft Version: 1.21.1
+	Minecraft Version ID: 1.21.1
+	Operating System: Mac OS X (aarch64) version 15.3.1
+	Java Version: 21.0.12, Homebrew
+	Java VM Version: OpenJDK 64-Bit Server VM (mixed mode, sharing), Homebrew
+	Memory: 275542144 bytes (262 MiB) / 812646400 bytes (775 MiB) up to 2147483648 bytes (2048 MiB)
+	CPUs: 8
+	Processor Vendor: Apple Inc.
+	Processor Name: Apple M1
+	Identifier: Apple Inc. Family 0x1b588bb3 Model 0 Stepping 0
+	Microarchitecture: ARM64 SoC: Firestorm + Icestorm
+	Frequency (GHz): 3.20
+	Number of physical packages: 1
+	Number of physical CPUs: 8
+	Number of logical CPUs: 8
+	Graphics card #0 name: Apple M1
+	Graphics card #0 vendor: Apple (0x106b)
+	Graphics card #0 VRAM (MiB): 0.00
+	Graphics card #0 deviceId: unknown
+	Graphics card #0 versionInfo: unknown
+	Memory slot #0 capacity (MiB): 0.00
+	Memory slot #0 clockSpeed (GHz): 0.00
+	Memory slot #0 type: unknown
+	Virtual memory max (MiB): 9216.00
+	Virtual memory used (MiB): 6925.78
+	Swap memory total (MiB): 1024.00
+	Swap memory used (MiB): 328.44
+	Space in storage for jna.tmpdir (MiB): <path not set>
+	Space in storage for org.lwjgl.system.SharedLibraryExtractPath (MiB): <path not set>
+	Space in storage for io.netty.native.workdir (MiB): <path not set>
+	Space in storage for java.io.tmpdir (MiB): available: 112790.38, total: 471482.09
+	Space in storage for workdir (MiB): available: 112790.38, total: 471482.09
+	JVM Flags: 0 total;
+	Launched Version: 21.1.252
+	Backend library: LWJGL version 3.3.3+5
+	Backend API: Apple M1 GL version 4.1 Metal - 89.3, Apple
+	Window size: 1708x960
+	GFLW Platform: cocoa
+	GL Caps: Using framebuffer using OpenGL 3.2
+	GL debug messages: <disabled>
+	Is Modded: Definitely; Client brand changed to 'neoforge'; Server brand changed to 'neoforge'
+	Universe: 400921fb54442d18
+	Type: Integrated Server (map_client.txt)
+	GPU Warnings: version: Metal
+	Graphics mode: fancy
+	Render Distance: 12/12 chunks
+	Resource Packs: vanilla, mod_resources, mod/neoforge, mod/factorycore, mod/factorycore_client_tests
+	Current Language: en_us
+	Locale: en_US
+	System encoding: UTF-8
+	File encoding: UTF-8
+	CPU: 8x Apple M1
+	Server Running: true
+	Player Count: 1 / 8; [ServerPlayer['Dev'/5, l='ServerLevel[Terminal verification]', x=2064.50, y=-60.00, z=4.50]]
+	Active Data Packs: vanilla, mod_data, mod/neoforge, mod/factorycore, mod/factorycore_client_tests
+	Available Data Packs: bundle, trade_rebalance, vanilla, mod/factorycore, mod/factorycore_client_tests, mod/neoforge, mod_data
+	Enabled Feature Flags: minecraft:vanilla
+	World Generation: Stable
+	World Seed: 517281
+	ModLauncher: 11.0.5+main.901c6ea8
+	ModLauncher launch target: forgeclientdev
+	ModLauncher services:
+		sponge-mixin-0.15.2+mixin.0.8.7.jar mixin PLUGINSERVICE
+		loader-4.0.44.jar slf4jfixer PLUGINSERVICE
+		loader-4.0.44.jar runtime_enum_extender PLUGINSERVICE
+		at-modlauncher-10.0.1.jar accesstransformer PLUGINSERVICE
+		loader-4.0.44.jar runtimedistcleaner PLUGINSERVICE
+		modlauncher-11.0.5.jar mixin TRANSFORMATIONSERVICE
+		modlauncher-11.0.5.jar fml TRANSFORMATIONSERVICE
+	FML Language Providers:
+		javafml@4.0
+		lowcodefml@4.0
+		minecraft@4.0
+	Mod List:
+		main                                              |Factory Core                  |factorycore                   |0.1.0-dev           |Manifest: NOSIGNATURE
+		clientTest                                        |Factory Core Graphical Termina|factorycore_client_tests      |0.1.0-dev           |Manifest: NOSIGNATURE
+		neoforge-21.1.252.jar                             |Minecraft                     |minecraft                     |1.21.1              |Manifest: NOSIGNATURE
+		neoforge-21.1.252.jar                             |NeoForge                      |neoforge                      |21.1.252            |Manifest: NOSIGNATURE
+	Crash Report UUID: 4c238453-8d71-4247-8fc6-4f2455a671da
+	FML: 4.0.44
+	NeoForge: 21.1.252
+[16:29:24] [Render thread/FATAL] [ne.ne.ne.co.NeoForgeMod/]: Preparing crash report with UUID c9d50502-fc5e-4994-a409-e2aeeff3efc1
+#@!@# Game crashed! Crash report saved to: #@!@# /Users/izzy/Documents/GitHub/izzy-meal/mcmod/build/client-terminal-run/./crash-reports/crash-2026-10-17_16.29.24-client.txt
+
+> Task :runTerminalRestartClient FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':runTerminalRestartClient'.
+> Process 'command '/opt/homebrew/Cellar/openjdk@21/21.0.12/libexec/openjdk.jdk/Contents/Home/bin/java'' finished with non-zero exit value 255
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 59s
+15 actionable tasks: 5 executed, 10 up-to-date

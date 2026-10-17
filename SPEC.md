@@ -350,3 +350,5 @@ actual restart, multiplayer or the first-playable acceptance set.
 Orderly restart now has a small actual two-JVM integrated-world experiment for canonical/physical identity, item/fluid/FE quantities, retained reservations and resumed Stock. This is partial A13 evidence; interrupted external writes, independent saves, job recovery and complete release acceptance remain unverified.
 
 A native distance-driven one-chunk unload/reload now has partial A03/A04/A12/A13/A14 evidence: resources/holds and leases persist, cached offline capabilities reject mutation without loading chunks, and saved Stock resumes. Split networks, queued/staged unload and independent save-order recovery remain unverified.
+
+A separate loaded-child/root-unload experiment now adds partial A03/A04/A05/A12/A13/A14 evidence: the child remains physically loaded while root loss suspends storage and saved Stock, preserving stock/holds and blocking implicit root loading. Rejoining the original root revalidates and resumes. Flat retained discovery queues also remove finite cable rebuild failures caused by recursive iterator nesting; independent work/size limits remain.

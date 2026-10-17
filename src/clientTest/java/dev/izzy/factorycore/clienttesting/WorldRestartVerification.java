@@ -37,7 +37,8 @@ final class WorldRestartVerification {
   private final AtomicBoolean initial = new AtomicBoolean(), replenished = new AtomicBoolean();
   private int stage, ticks, entered;
   private final ChunkLifecycleVerification chunks = new ChunkLifecycleVerification();
-  private final AtomicBoolean chunksDone = new AtomicBoolean();
+  private final AtomicBoolean chunksDone = new AtomicBoolean(), splitDone = new AtomicBoolean();
+  private final SplitRootVerification split = new SplitRootVerification();
 
   WorldRestartVerification() {
     try {
@@ -53,6 +54,7 @@ final class WorldRestartVerification {
 
   void register() {
     chunks.register();
+    split.register();
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
@@ -151,7 +153,24 @@ final class WorldRestartVerification {
           });
       return;
     }
-    if (stage == 2 && chunksDone.get() && ticks - entered > 30 && client.screen == null) {
+    if (stage == 2 && chunksDone.get() && !splitDone.get()) {
+      server.execute(
+          () -> {
+            if (splitDone.get()) return;
+            try {
+              if (split.tick(server.getPlayerList().getPlayer(principal))) splitDone.set(true);
+            } catch (RuntimeException error) {
+              failure.set(error);
+            }
+          });
+      return;
+    }
+    if (stage == 2
+        && splitDone.get()
+        && ticks - entered > 30
+        && client.screen == null
+        && client.player.distanceToSqr(4.5, 65, 4.5) < 4
+        && client.level.getBlockState(MACHINE).is(MachineInterfaceContent.BLOCK.get())) {
       client.gameMode.useItemOn(
           client.player,
           InteractionHand.MAIN_HAND,
@@ -210,7 +229,8 @@ final class WorldRestartVerification {
                 + "Full canonical SavedData matched before mutation; physical/player resources and provider identity matched.\n"
                 + "1200mB water:400 held/800 available;300mB lava;500FE. Native Stock editor retained goal8/exact rule.\n"
                 + "After real chest removal3, resumed Stock conserved cell3 + machine8 + buffer9 + player5 =25.\n"
-                + "Native chunk unload/reload retained leases/state, rejected cached offline capabilities and resumed Stock: cell2 + machine8 + buffer9 + player6 =25.\n");
+                + "Native chunk unload/reload retained leases/state, rejected cached offline capabilities and resumed Stock: cell2 + machine8 + buffer9 + player6 =25.\n"
+                + "Actual root unload suspended continuously loaded child storage/preset for40 ticks without loading root; restored root resumed child Stock with cell13 + machine8 + player3 =24 gold, hold4 retained.\n");
       } catch (IOException error) {
         throw new IllegalStateException(error);
       }

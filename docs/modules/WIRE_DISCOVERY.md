@@ -72,18 +72,23 @@ characters. These count ceilings are not measured memory/server latency claims.
 
 `DiscoverySeeds(anchor)` is an owner-thread iterator for trusted replacement
 sources. `appendPositions(iterator)` retains a bounded callback source without
-copying it; null rejects. `append(oldSources)` borrows remaining cursors only after
-the old producer is cancelled. A borrowed source cannot append again or be borrowed
-by another target, preventing mutable-cursor sharing and indirect cycles. Each
+copying it; null rejects. `append(oldSources)` transfers a flat queue only after
+the old producer is cancelled. The previous producer becomes empty and cannot
+append or transfer again, preventing mutable-cursor sharing and indirect cycles. Each
 `next()` inspects only the head iterator: an empty-source transition removes one
 source and returns the anchor to charge a visit. `hasNext()` does not scan sources.
 Exhaustion throws NoSuchElementException. Iterator callbacks must be bounded.
 
-Limits are 8,192 queued source iterators/container and depth 32. Depth/queue admission
-throws before borrowing or discarding old cursors. Total seed visits still obey
-WiredDiscovery's independent cap. Sources are transient and have no resource or
-permission authority. Four DiscoverySeedsTest cases exercise empty transitions,
-retained positions, nested interruption rejection, cycles/sharing and queue limits.
+The aggregate flat queue admits at most8,192 frames, including completion visits
+for adopted queues. Splicing checks the combined count before changing either
+owner; it neither polls iterators nor copies positions. Each frame retains its
+original completion anchor. Traversal has no nested DiscoverySeeds recursion, so
+repeated interruptions no longer hit the obsolete depth32 iterator limit. Region
+replacement-depth and independent WiredDiscovery seed/probe budgets remain intact.
+Sources are transient and grant no resource or permission authority. Five
+DiscoverySeedsTest cases cover charged transitions,512 successive transfers,
+combined rejection without callback execution or cursor loss, cycles/sharing and
+queue limits.
 
 ```java
 var oldSeeds = new DiscoverySeeds(anchor);

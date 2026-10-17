@@ -74,3 +74,35 @@ source growth and forbids a second borrower. Depth/queue rejection preserves old
 cursors; four core regressions verify admission, empty transitions, cycles/sharing
 and retained positions. Replacement failures are caught within scheduled dispatch,
 so unrelated queued regions continue. No source/schema/verification gate is weakened.
+
+
+## Flat retained-source amendment — 2026-10-17
+
+A native split-root fixture placing48 cable blocks exposed an indefinitely
+rebuilding valid network with `Discovery source depth limit`. Repeated finite
+region cancellations/merges nested retained iterators past32 even though discovery
+size and tick work were within their existing bounds. That guard prevented stack
+recursion but rejected ordinary finite edits and could leave publication offline.
+
+Replace nested DiscoverySeeds wrappers with an exclusively owned linked queue of
+bounded iterator frames. Transfer splices the remaining chain after checking the
+combined8,192-frame ceiling, empties/freezes the previous producer, and adds one
+completion frame preserving the former wrapper's charged visit. Each frame keeps
+its original anchor. Append/transfer/hasNext do constant metadata work; next
+inspects one iterator and removes at most one completed frame. Iterators still
+must be trusted bounded callbacks. No source traversal or position copying occurs
+inside transfer. Admission failure preserves both producers and all pending seeds.
+
+The former iterator-depth32 guard no longer applies because there is no nested
+DiscoverySeeds traversal. This is a representation change with a stronger
+aggregate source bound, not an increased depth/queue/tick allowance. The separate
+region replacement-depth32 and WiredDiscovery seed/probe/vertex/visit budgets are
+unchanged. Raising the recursive depth limit would merely postpone the defect;
+flattening eagerly by scanning every retained source would violate charged work.
+No persistence/resource schema or permission policy changes.
+
+Portable regressions preserve charged anchors, traverse512 successive transfers,
+reject combined over-capacity without callback execution or cursor loss, and keep
+single cursor ownership. Native split-root verification exercises the actual
+finite-edit trigger; its run outcome is recorded in the implementation plan.
+No measured tick-latency or heap guarantee follows from this algorithmic bound.

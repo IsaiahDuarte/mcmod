@@ -1,0 +1,8 @@
+PASS
+seedPid=35817 restartPid=35873
+Fresh JVM opened existing world without seeding or restoring from expected state.
+Full canonical SavedData matched before mutation; physical/player resources and provider identity matched.
+1200mB water:400 held/800 available;300mB lava;500FE. Native Stock editor retained goal8/exact rule.
+After real chest removal3, resumed Stock conserved cell3 + machine8 + buffer9 + player5 =25.
+Native chunk unload/reload retained leases/state, rejected cached offline capabilities and resumed Stock: cell2 + machine8 + buffer9 + player6 =25.
+Actual root unload suspended continuously loaded child storage/preset for40 ticks without loading root; restored root resumed child Stock with cell13 + machine8 + player3 =24 gold, hold4 retained.

@@ -128,7 +128,17 @@ Reconnection must finish validation before access resumes. Multiple roots,
 gateway bypasses and other invalid topology suspend affected routing. Independent
 valid regions stay available. Gateway child storage stays private from its parent;
 child access to ancestor storage follows current gateway policies/grants.
-No player deposit/withdrawal terminal is available yet.
+An unloaded controller or upstream gateway also suspends child automation, even
+when the child storage and machine chunks stay loaded. Stock and held quantities
+are preserved. Reloading the original upstream devices must finish validation
+before presets resume; the mod does not keep roots loaded implicitly.
+The item terminal provides search/deposit/withdrawal; crafting and other terminal
+tabs remain under development.
+
+A long cable run can take several server ticks to validate. Routing stays
+unavailable until required upstream chunks are loaded and validation finishes.
+If a technical workload limit blocks rebuilding, resources remain owned and
+unavailable rather than being discarded.
 
 
 ## Storage Connector (partial development feature)

@@ -265,3 +265,11 @@ now additionally verifies real removal/reconstruction, unchanged canonical state
 leases, retained quantities/holds, unavailable stock and inert cached capabilities
 while offline, and resumed saved Stock afterward. It does not prove split-chunk
 networks, staged unload or independent save-order/interrupt recovery.
+
+
+The [native split-root experiment](../evidence/split-root-v1-2026-10-17.md) now
+keeps a child gateway/drive/machine loaded while the upstream root actually
+unloads. Storage/preset work stops, stock/holds persist, probes do not reload the
+root, and the original preset resumes only after the original root revalidates.
+It also covers the finite cable-run trigger for the flat retained-seed fix.
+This does not complete staged-unload, independent-save or release recovery gates.

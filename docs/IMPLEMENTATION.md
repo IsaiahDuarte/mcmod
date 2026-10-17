@@ -92,7 +92,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
 | A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, canonical schema-eight ownership/migration and physical hopper/movement/copy/recipe evidence; explicit buffered item endpoints now have scope, rate, partial staging and recovery evidence; automatic Import/Paused/owned-cleanup controls have hopper/backpressure/revocation evidence; bounded all-key server discovery/search now has exact component/hold, BigInteger, scope and quota evidence; terminal frontends, remaining presets, crafting job claims and full server restart/interruption integration remain pending. |
 | A04 | P2, P3, P6 | Partial: automatic machine item/mB/FE Import/Export/Stock now has bounded shared runtime and native conservation/staging evidence; player preset authoring and actual Stock client dispatch now have evidence, with selected tanks/multiport/release recovery still open. Foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Bounded all-key discovery/priority routing and typed ResourceFilter/StockTarget component evidence now exist. Filtered Import now has canonical policy/rate storage and native sample/tag/clock controls with component/world evidence. Automatic filtered Export/Stock now has bounded priority discovery, physical deficit/rate caps and native compass/chest evidence. Native buffer Settings/Inventory now has headless draft, authority and partial/full inventory evidence; actual buffer and machine settings controls now have scales2–4 evidence in the 2026-10-17 client record. Other resource settings, permissions UI and actual chunks/restart remain pending. |
-| A05 | P2 | Partial: Physical MachineInterface local labels and gateway-local/direct endpoint isolation now have native evidence; complete presets/editor and restart evidence remain pending. NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Actual chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
+| A05 | P2 | Partial: Physical MachineInterface local labels and gateway-local/direct endpoint isolation now have native evidence; player binding/preset controls and small native restart/root-unload evidence now exist; selected tanks, broader recovery and program integration remain pending. NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Gateway-only/staged chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
 | A07 | P4 | Not implemented. |
 | A08 | P4, P5 | Not implemented. |
@@ -2357,3 +2357,53 @@ external-write administration remain required recovery work. Next: cross-chunk
 root suspension and staged unload/save-order prerequisites, then remaining
 selected-tank/coordinated-port work and crafting. Full A01–A17 remains active;
 P1/P2/P3 partial, production crafting/scripting/power/wireless/onboarding/P7 unfinished.
+
+
+## Flat discovery queues and loaded-child/root-unload checkpoint — 2026-10-17
+
+P2/P3/A03/A04/A05/A12/A13/A14 now has a native loaded-child/root-unload case.
+A child gateway/drive/machine remains physically loaded while the upstream
+controller and part of its path actually unload. For40 ticks, child stock/holds
+remain owned, availability is zero, claimed extraction and cached machine
+mutation reject, saved Stock does not replenish and probes never reload the root.
+Rejoining the original controller preserves its lease and revalidates saved child
+Stock. Gold conservation finishes at cell13 + machine8 + player3 =24, hold4 retained.
+The fixture explicitly releases administrative tickets and returns to the main
+network/native screen. No production chunk loading is introduced.
+
+The initial48-cable setup exposed a real production defect: recursive retained
+DiscoverySeeds hit depth32 under repeated finite region merges and left the
+network rebuilding. An exclusively owned flat frame queue now transfers pending
+iterators in constant metadata work, preserves charged completion anchors and
+empties/freezes the previous producer. Combined admission checks8,192 frames
+before any transfer; it never polls callbacks or discards rejected cursors. This
+removes obsolete recursive-depth rejection while strengthening aggregate bounds;
+region replacement-depth32 and existing discovery tick/seed/probe/vertex budgets
+are unchanged. ADR0011 records alternatives/consequences. Five core cases now
+include512 transfers and combined admission without lost positions or callback
+execution. JVM count217→218; no unrelated assertion, quota or CI gate was weakened.
+
+Fixture development also established vanilla generation-dependency retention:
+four chunks of separation did not unload the root, and a player near only one
+end did not initially load the longer cable path. The final root chunk111 and
+child chunk129 use272 cables, explicit initial endpoint retention and a midpoint
+player. Only the child remains retained during root loss. Root departure146/
+unload155 and112 total split-lifecycle server ticks are observations, not measured
+performance claims. Seed PID35817 exited before restart PID35873.
+
+`./gradlew spotlessApply runTerminalRestartClient --console=plain` passed76s,
+5 executed/10 up-to-date tasks; the existing restart, one-chunk and20 seed/native
+capture checks also passed. Final log has no ERROR. [Evidence](evidence/split-root-v1-2026-10-17.md)
+archives the original depth failure, final log/results/expectations/SNBT/native
+capture and checksums. Failed/aborted setup attempts are not counted as passes.
+`./gradlew spotlessApply test --console=plain` passed18s,6 executed/8 up-to-date;
+final `python3 scripts/verify.py` passed24 tooling,218 cached JVM and205 freshly
+executed required GameTests, Gradle20s,2 executed/23 up-to-date tasks. Formatting/
+static/architecture checks passed, Rust guest checks were up-to-date, and
+`git diff --check` passed. Final docs/acceptance and archived checksum checks passed.
+
+Full A01–A17 remains active; P1/P2/P3 partial. Next: accepted staged operations
+through unload/restart, independent save ordering and supported recovery; remaining
+selected tanks/coordinated ports and crafting follow those prerequisites. Gateway-
+only/deeper/multiple-branch faults, actual dedicated/multiplayer, performance,
+production scripting/power/wireless and finished assets/onboarding/P7 stay open.

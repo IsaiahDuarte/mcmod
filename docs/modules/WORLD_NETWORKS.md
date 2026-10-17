@@ -71,7 +71,7 @@ Each scheduled step costs 32 credits and processes at most 32 visits; fair sched
 global/network/program limits and deadline remain in force. A visit advances one
 discovery/validation operation, skips one retired entry, creates one replacement,
 or prepares one position. Discovery independently caps graph vertices at 4,096,
-seed visits at 8,192, pending neighbors at 24,576 and probes at 32,768. Portable `DiscoverySeeds` caps iterator nesting at 32 and queued sources at 8,192.
+seed visits at 8,192, pending neighbors at 24,576 and probes at 32,768. Portable `DiscoverySeeds` now holds a flat, ownership-transferred queue capped at8,192 aggregate frames, including charged completion visits; the former iterator-depth32 limit is obsolete because traversal no longer nests. Region replacement-depth32 remains unchanged.
 Borrowing freezes a source against further appends and prevents sharing its mutable
 cursor, excluding indirect cycles. Empty source transitions consume a seed visit.
 Depth/queue rejection leaves old sources intact and marks the affected publication
@@ -123,3 +123,11 @@ connector edits do not bypass gateway policies. `connectors()` lazily returns on
 server registry, and static invalidation cleans existing bindings without creating
 services during recovery/shutdown. Connector rotations use normal topology
 invalidation before accepting fresh endpoint handles.
+
+
+The [native split-root experiment](../evidence/split-root-v1-2026-10-17.md) now
+keeps a child gateway/drive/machine loaded while the upstream root actually
+unloads. Storage/preset work stops, stock/holds persist, probes do not reload the
+root, and the original preset resumes only after the original root revalidates.
+It also covers the finite cable-run trigger for the flat retained-seed fix.
+This does not complete staged-unload, independent-save or release recovery gates.
