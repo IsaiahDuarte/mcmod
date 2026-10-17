@@ -61,6 +61,7 @@ public final class DeviceSavedData extends SavedData {
       List<ItemBuffer.State> bufferStates,
       List<BufferRegistry.Deployment> deploymentStates,
       List<MachinePresets.Deployment> machineStates,
+      Map<UUID, Long> machineConfigurations,
       CompoundTag rejected,
       String diagnostic) {
     externalClaims = state == null ? null : new ExternalClaims(claimStates, this::setDirty);
@@ -82,8 +83,24 @@ public final class DeviceSavedData extends SavedData {
         state == null
             ? null
             : new BufferRegistry(nodes, bufferStates, deploymentStates, this::setDirty);
+    if (state != null && machineConfigurations == null) {
+      var legacy = new TreeMap<UUID, Long>();
+      for (var preset : machineStates)
+        legacy.merge(preset.node(), preset.configuration(), Math::max);
+      for (var transfer : transferStates)
+        if (transfer.context() != null)
+          for (var endpoint :
+              List.of(transfer.context().source(), transfer.context().destination()))
+            if (endpoint.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.EXTERNAL
+                && nodes.contains(endpoint.device())
+                && nodes.kind(endpoint.device()) == NodeRegistry.Kind.MACHINE_INTERFACE)
+              legacy.merge(endpoint.device(), endpoint.configuration(), Math::max);
+      machineConfigurations = legacy;
+    }
     machinePresets =
-        state == null ? null : new MachinePresets(nodes, machineStates, this::setDirty);
+        state == null
+            ? null
+            : new MachinePresets(nodes, machineStates, machineConfigurations, this::setDirty);
     for (var preset : machineStates) {
       var authority = preset.authority();
       if (!networks.containsKey(authority.network())
@@ -114,6 +131,15 @@ public final class DeviceSavedData extends SavedData {
                   || networks.containsKey(endpoint.backing())))
             throw new IllegalArgumentException("Player inventory collides with owned identity");
       }
+    for (var record : transferStates)
+      if (record.context() != null)
+        for (var endpoint : List.of(record.context().source(), record.context().destination()))
+          if (endpoint.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.EXTERNAL
+              && nodes.contains(endpoint.device())
+              && nodes.kind(endpoint.device()) == NodeRegistry.Kind.MACHINE_INTERFACE
+              && machinePresets.configuration(endpoint.device()) < endpoint.configuration())
+            throw new IllegalArgumentException(
+                "Machine transfer exceeds canonical configuration fence");
     for (var claim : claimStates)
       if (registry.containsBacking(claim.backing())
           || nodes.contains(claim.backing())
@@ -195,6 +221,7 @@ public final class DeviceSavedData extends SavedData {
         List.of(),
         List.of(),
         List.of(),
+        Map.of(),
         null,
         "");
   }
@@ -431,9 +458,12 @@ public final class DeviceSavedData extends SavedData {
               schema < 12
                   ? List.of()
                   : MachinePresetCodec.decode(tag.getCompound("MachinePresets")),
+              schema < 12
+                  ? null
+                  : MachinePresetCodec.configurations(tag.getCompound("MachinePresets")),
               null,
               "");
-      if (schema < 12) loaded.setDirty();
+      if (schema < 12 || tag.getCompound("MachinePresets").getInt("Schema") < 2) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
@@ -448,6 +478,7 @@ public final class DeviceSavedData extends SavedData {
           List.of(),
           List.of(),
           List.of(),
+          Map.of(),
           tag.copy(),
           message.substring(0, Math.min(message.length(), 512)));
     }
@@ -476,7 +507,9 @@ public final class DeviceSavedData extends SavedData {
     }
     tag.put("Devices", devices);
     tag.put("Nodes", NodeStateCodec.encode(nodes.snapshot()));
-    tag.put("MachinePresets", MachinePresetCodec.encode(machinePresets.snapshot()));
+    tag.put(
+        "MachinePresets",
+        MachinePresetCodec.encode(machinePresets.snapshot(), machinePresets.configurations()));
     tag.put("Transfers", TransferStateCodec.encode(transfers.snapshot()));
     tag.put("ExternalClaims", ExternalClaimsCodec.encode(externalClaims.snapshot()));
     tag.put("RouteCursors", RouteCursorCodec.encode(routeCursors.snapshot()));

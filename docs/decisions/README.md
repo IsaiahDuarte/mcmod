@@ -71,3 +71,6 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 
 - [Canonical machine preset authority](0020-machine-preset-authority.md): bounded
   world12 deployment records and freshness/permission guards; automatic dispatch/UI pending.
+
+- [Bounded machine preset dispatch](0021-machine-preset-dispatch.md): shared scheduled
+  item/mB/FE Import/Export/Stock and canonical configuration fences; player authoring/release checks pending.

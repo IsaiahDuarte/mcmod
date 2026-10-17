@@ -49,6 +49,7 @@ public final class WorldNetworks {
   private final FairScheduler scheduler;
   private WorldStorageTransfers transfers;
   private dev.izzy.factorycore.platform.storage.WorldBufferImports imports;
+  private dev.izzy.factorycore.platform.storage.WorldMachinePresets machinePresets;
   private dev.izzy.factorycore.platform.storage.WorldConnectors connectors;
   private final Map<NodeRegistry.Position, Region> owners = new HashMap<>();
   private final Map<NodeRegistry.Position, WiredDiscovery.Wire> geometry = new HashMap<>();
@@ -128,6 +129,24 @@ public final class WorldNetworks {
     return imports;
   }
 
+  public dev.izzy.factorycore.platform.storage.WorldMachinePresets machinePresets() {
+    checkThread();
+    if (saved == null) throw new IllegalStateException("World storage unavailable");
+    if (machinePresets == null)
+      machinePresets = new dev.izzy.factorycore.platform.storage.WorldMachinePresets(server, this);
+    return machinePresets;
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Borrowed loaded level.
+  public static void machineInvalidated(
+      net.minecraft.world.level.Level level,
+      dev.izzy.factorycore.platform.storage.MachineInterfaceEntity owner) {
+    if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
+      return;
+    var runtime = SERVERS.get(serverLevel.getServer());
+    if (runtime != null && runtime.machinePresets != null) runtime.machinePresets.unregister(owner);
+  }
+
   /** Teardown does not initialize services; stale copied holders cannot unregister replacements. */
   @SuppressWarnings("PMD.CloseResource")
   public static void bufferInvalidated(
@@ -178,6 +197,7 @@ public final class WorldNetworks {
   public void tick() {
     checkThread();
     if (imports != null) imports.tick();
+    if (machinePresets != null) machinePresets.tick();
     scheduler.tick();
   }
 
@@ -189,6 +209,7 @@ public final class WorldNetworks {
     if (event.getPlayer() != null) return;
     var runtime = SERVERS.get(event.getPlayerList().getServer());
     if (runtime != null && runtime.imports != null) runtime.imports.tagsReloaded();
+    if (runtime != null && runtime.machinePresets != null) runtime.machinePresets.tagsReloaded();
   }
 
   public static void playerLeft(

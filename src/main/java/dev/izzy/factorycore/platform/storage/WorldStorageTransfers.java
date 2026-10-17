@@ -818,7 +818,9 @@ public final class WorldStorageTransfers {
         bounded(
             returning && source instanceof Buffered buffer
                 ? new BufferPort(buffer, true)
-                : port(source, context.origin()),
+                : returning && source instanceof External external
+                    ? networks.connectors().returnPort(external.handle())
+                    : port(source, context.origin()),
             snapshot.key());
     var output =
         returning

@@ -112,7 +112,7 @@ class MachinePresetPersistenceTest {
       var list = table.getList("Deployments", Tag.TAG_COMPOUND);
       var entry = list.getCompound(0);
       switch (i) {
-        case 0 -> table.putInt("Schema", 2);
+        case 0 -> table.putInt("Schema", 3);
         case 1 -> entry.putUUID("Node", UUID.randomUUID());
         case 2 -> entry.putUUID("Network", UUID.randomUUID());
         case 3 -> entry.putUUID("Segment", UUID.randomUUID());
@@ -153,5 +153,48 @@ class MachinePresetPersistenceTest {
       }
       assertThrows(IllegalArgumentException.class, () -> MachinePresetCodec.decode(tag));
     }
+  }
+
+  @Test
+  void configurationFencePersistsAfterPresetRemovalAndRejectsMalformedFences() throws Exception {
+    var saved = world();
+    var value = saved.machinePresets().snapshot().getFirst();
+    var handle =
+        new NodeRegistry.Handle(
+            saved.registry().world(),
+            value.node(),
+            value.leaseGeneration(),
+            NodeRegistry.Kind.MACHINE_INTERFACE);
+    saved.machinePresets().observeConfiguration(handle, 7);
+    saved.machinePresets().remove(handle);
+    var tag = saved.save(new CompoundTag(), registries());
+    assertEquals(2, tag.getCompound("MachinePresets").getInt("Schema"));
+    var file = folder.resolve("fences.dat");
+    NbtIo.writeCompressed(tag, file);
+    var loaded =
+        DeviceSavedData.load(
+            NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap()), registries());
+    assertEquals("", loaded.diagnostic());
+    assertTrue(loaded.machinePresets().snapshot().isEmpty());
+    assertEquals(8, loaded.machinePresets().nextConfiguration(handle, 1));
+    for (int i = 0; i < 4; i++) {
+      var bad = tag.copy();
+      var list = bad.getCompound("MachinePresets").getList("Configurations", Tag.TAG_COMPOUND);
+      var entry = list.getCompound(0);
+      if (i == 0) entry.putLong("Configuration", 0);
+      if (i == 1) entry.putUUID("Node", UUID.randomUUID());
+      if (i == 2) list.add(entry.copy());
+      if (i == 3) entry.putString("Configuration", "7");
+      var rejected = DeviceSavedData.load(bad, registries());
+      assertFalse(rejected.diagnostic().isEmpty());
+      assertEquals(bad, rejected.save(new CompoundTag(), registries()));
+    }
+    var legacy = world().save(new CompoundTag(), registries());
+    legacy.getCompound("MachinePresets").remove("Configurations");
+    legacy.getCompound("MachinePresets").putInt("Schema", 1);
+    var migrated = DeviceSavedData.load(legacy, registries());
+    assertEquals("", migrated.diagnostic());
+    assertFalse(migrated.machinePresets().configurations().isEmpty());
+    assertTrue(migrated.isDirty());
   }
 }

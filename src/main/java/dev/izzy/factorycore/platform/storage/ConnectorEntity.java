@@ -133,11 +133,17 @@ public class ConnectorEntity extends BlockEntity {
 
   protected NetworkAuthority.Decision configure(
       NetworkPermissions.Actor actor, ConnectorSettings settings, String label) {
+    validatePlaced();
+    return configure(actor, settings, label, Math.incrementExact(state.generation()));
+  }
+
+  protected NetworkAuthority.Decision configure(
+      NetworkPermissions.Actor actor, ConnectorSettings settings, String label, long generation) {
     java.util.Objects.requireNonNull(settings);
     validatePlaced();
-    var candidate =
-        new ConnectorData.State(
-            state.lease(), settings, Math.incrementExact(state.generation()), "", label);
+    if (generation <= state.generation())
+      throw new IllegalArgumentException("Configuration must advance");
+    var candidate = new ConnectorData.State(state.lease(), settings, generation, "", label);
     var result = runtime().authorize(actor, position(), NetworkPermissions.Permission.EDIT);
     if (result != NetworkAuthority.Decision.ALLOWED) return result;
     boolean relabel = !label.equals(label());

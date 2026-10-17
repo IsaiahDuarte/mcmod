@@ -627,3 +627,22 @@ advance12→13. The legacy selected filter/stock/resource assertions remain inta
 new malformed table cases retain whole-world raw preservation. Binding reference
 schema2, buffer policy versions and transfer context formats are unchanged.
 See [authority contract](modules/MACHINE_INTERFACES.md) for remaining integration.
+
+
+## Required machine preset runtime checks
+
+Nineteen MachinePresetGameTests exercise actual scheduled item/fluid/FE Import,
+Export and Stock with exact conservation, excluded keys, full-target vacancy/pause,
+live goal admission for explicit moves, known inbound/no-refill re-extraction,
+owned returns, queued edit/revocation, same-principal replacement, unknown-call
+freeze, metadata admission and removal/old-chunk recovery. The quota fixture fills
+only remaining global capacity and removes its temporary rows; uncertainty checks
+are scoped to the fixture backing because required GameTests share one SavedData.
+The original limits and expected conservation amounts remain intact.
+
+MachinePresetsTest adds read-only preparation/stale commit and retained canonical
+configuration marks. MachinePresetPersistenceTest adds compressed fence recovery,
+strict malformed marks and schema1 migration; future nested-table tests now use3
+because2 is implemented. World12, reference schema2 and context ABI3 are unchanged.
+Actual player preset UI, client dispatch, independent saves/restart, multiplayer,
+selected tanks and representative performance remain separate required checks.

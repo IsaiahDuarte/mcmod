@@ -326,5 +326,6 @@ values; Cancel discards local edits. Enter in a field also saves. Changing resou
 resets the draft window/rate to that resource’s defaults. Slots start at zero;
 fluid/energy bind the whole selected capability. A stale form reloads current
 server values before retry.
-Automatic machine presets and selected-tank adapters remain pending.
+Automatic machine presets now run through the trusted server API; their player
+authoring controls and selected-tank adapters remain pending.
 See [binding contract](modules/MACHINE_INTERFACES.md) for current limits.

@@ -1,0 +1,789 @@
+package dev.izzy.factorycore.testing.storage;
+
+import dev.izzy.factorycore.core.network.*;
+import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.network.*;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.ConnectorFixture;
+import java.util.*;
+import net.minecraft.core.*;
+import net.minecraft.gametest.framework.*;
+import net.minecraft.world.item.*;
+import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
+import net.neoforged.neoforge.gametest.*;
+
+@GameTestHolder("factorycore_tests")
+@PrefixGameTestTemplate(false)
+public final class MachinePresetGameTests {
+  private static final BlockPos ROOT = new BlockPos(1, 1, 1),
+      MACHINE = new BlockPos(2, 1, 1),
+      PROVIDER = new BlockPos(3, 1, 1),
+      DRIVE = new BlockPos(1, 1, 2);
+
+  private record Fixture(
+      NetworkPermissions.Actor actor,
+      MachineInterfaceEntity machine,
+      WorldNetworks runtime,
+      DeviceSavedData saved,
+      DeviceRegistry.Handle cell,
+      ResourceKey key) {}
+
+  private MachinePresetGameTests() {}
+
+  private static Fixture setup(GameTestHelper h, ResourceKind kind) {
+    var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
+    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
+    NetworkNodeEntity root = h.getBlockEntity(ROOT);
+    root.commission(actor.id());
+    h.setBlock(
+        MACHINE,
+        MachineInterfaceContent.BLOCK
+            .get()
+            .defaultBlockState()
+            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
+    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    h.setBlock(PROVIDER, kind == ResourceKind.ITEM ? Blocks.CHEST : ConnectorFixture.BLOCK.get());
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var key =
+        kind == ResourceKind.ITEM
+            ? codec.itemKey(new ItemStack(Items.IRON_INGOT))
+            : kind == ResourceKind.FLUID
+                ? codec.fluidKey(new FluidStack(Fluids.WATER, 1))
+                : ResourceKey.ENERGY;
+    DeviceRegistry.Handle cell;
+    if (kind == ResourceKind.ENERGY) {
+      h.setBlock(DRIVE, EnergyBankContent.block(EnergyBankTier.STARTER));
+      EnergyBankEntity bank = h.getBlockEntity(DRIVE);
+      bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+      cell = bank.handle();
+    } else {
+      h.setBlock(DRIVE, StorageContent.DRIVE.get());
+      StorageDriveEntity drive = h.getBlockEntity(DRIVE);
+      drive.installCell(
+          new ItemStack(
+              StorageContent.cell(
+                  kind == ResourceKind.ITEM ? CellTier.STARTER_ITEM : CellTier.STARTER_FLUID)));
+      cell = CellHandleData.read(drive.cell(0));
+    }
+    return new Fixture(
+        actor,
+        machine,
+        WorldNetworks.get(h.getLevel().getServer()),
+        DeviceSavedData.get(h.getLevel().getServer()),
+        cell,
+        key);
+  }
+
+  private static void ready(GameTestHelper h, Fixture f) {
+    h.assertTrue(
+        f.runtime.membership(f.machine.position()).status() == NetworkTopology.Status.VALID,
+        "Machine network ready");
+  }
+
+  private static ResourceFilter exact(Fixture f) {
+    return new ResourceFilter(
+        f.key.kind(), ResourceFilter.Mode.INCLUDE, List.of(new ResourceFilter.Exact(f.key)));
+  }
+
+  private static void seed(GameTestHelper h, ResourceKind kind, int amount) {
+    if (kind == ResourceKind.ITEM) {
+      ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+      chest.setItem(0, new ItemStack(Items.IRON_INGOT, amount));
+      chest.setItem(1, new ItemStack(Items.GOLD_INGOT, 7));
+    } else {
+      ConnectorFixture.ProviderEntity provider = h.getBlockEntity(PROVIDER);
+      if (kind == ResourceKind.FLUID)
+        provider.fluids.fill(new FluidStack(Fluids.WATER, amount), FluidAction.EXECUTE);
+      else provider.energy.receiveEnergy(amount, false);
+    }
+  }
+
+  private static int resident(GameTestHelper h, ResourceKind kind) {
+    if (kind == ResourceKind.ITEM) {
+      ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+      int amount = 0;
+      for (int i = 0; i < chest.getContainerSize(); i++)
+        if (chest.getItem(i).is(Items.IRON_INGOT)) amount += chest.getItem(i).getCount();
+      return amount;
+    }
+    ConnectorFixture.ProviderEntity provider = h.getBlockEntity(PROVIDER);
+    return kind == ResourceKind.FLUID
+        ? provider.fluids.getFluidAmount()
+        : provider.energy.getEnergyStored();
+  }
+
+  private static void automatic(GameTestHelper h, ResourceKind kind, MachinePresets.Mode mode) {
+    var f = setup(h, kind);
+    int amount = kind == ResourceKind.ITEM ? 23 : 1000;
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.machine.configure(f.actor, ConnectorSettings.defaults(kind));
+              if (mode == MachinePresets.Mode.IMPORT) seed(h, kind, amount);
+              else f.saved.registry().insert(f.cell, f.key, amount);
+              f.machine.deployPreset(f.actor, mode, exact(f), amount);
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    mode == MachinePresets.Mode.IMPORT
+                        ? f.saved.registry().stock(f.cell, f.key).total() == amount
+                            && resident(h, kind) == 0
+                        : resident(h, kind) == amount
+                            && f.saved.registry().stock(f.cell, f.key).total() == 0,
+                    "Automatic preset transfers exact selected resource"))
+        .thenExecute(
+            () -> {
+              if (kind == ResourceKind.ITEM) {
+                ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+                h.assertTrue(
+                    mode != MachinePresets.Mode.IMPORT || chest.getItem(1).getCount() == 7,
+                    "Excluded gold remains physically owned");
+              }
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void automaticItemImportUsesSelectedIdentity(GameTestHelper h) {
+    automatic(h, ResourceKind.ITEM, MachinePresets.Mode.IMPORT);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void automaticItemExportUsesPriorityRoutes(GameTestHelper h) {
+    automatic(h, ResourceKind.ITEM, MachinePresets.Mode.EXPORT);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void automaticFluidImportPreservesMillibuckets(GameTestHelper h) {
+    automatic(h, ResourceKind.FLUID, MachinePresets.Mode.IMPORT);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void automaticFluidExportPreservesMillibuckets(GameTestHelper h) {
+    automatic(h, ResourceKind.FLUID, MachinePresets.Mode.EXPORT);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void automaticEnergyImportPreservesForgeEnergy(GameTestHelper h) {
+    automatic(h, ResourceKind.ENERGY, MachinePresets.Mode.IMPORT);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void automaticEnergyExportPreservesForgeEnergy(GameTestHelper h) {
+    automatic(h, ResourceKind.ENERGY, MachinePresets.Mode.EXPORT);
+  }
+
+  private static void stock(GameTestHelper h, ResourceKind kind) {
+    var f = setup(h, kind);
+    int initial = kind == ResourceKind.ITEM ? 32 : 1000,
+        goal = kind == ResourceKind.ITEM ? 8 : 400,
+        used = kind == ResourceKind.ITEM ? 3 : 100;
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.machine.configure(f.actor, ConnectorSettings.defaults(kind));
+              f.saved.registry().insert(f.cell, f.key, initial);
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.STOCK, exact(f), goal);
+            })
+        .thenWaitUntil(
+            () -> h.assertTrue(resident(h, kind) == goal, "Machine Stock reaches exact goal"))
+        .thenIdle(30)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  f.saved.registry().stock(f.cell, f.key).total() == initial - goal,
+                  "Goal stops additional extraction");
+              if (kind == ResourceKind.ITEM) {
+                ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+                chest.removeItem(0, used);
+              } else {
+                ConnectorFixture.ProviderEntity provider = h.getBlockEntity(PROVIDER);
+                if (kind == ResourceKind.FLUID) provider.fluids.drain(used, FluidAction.EXECUTE);
+                else provider.energy.extractEnergy(used, false);
+              }
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    resident(h, kind) == goal
+                        && f.saved.registry().stock(f.cell, f.key).total() == initial - goal - used,
+                    "Physical consumption replenishes without exceeding goal"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void itemStockStopsAndReplenishes(GameTestHelper h) {
+    stock(h, ResourceKind.ITEM);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void fluidStockStopsAndReplenishes(GameTestHelper h) {
+    stock(h, ResourceKind.FLUID);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void energyStockStopsAndReplenishes(GameTestHelper h) {
+    stock(h, ResourceKind.ENERGY);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void fullStorageBackpressureAndPauseRetainSource(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 8192);
+              seed(h, ResourceKind.ITEM, 23);
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.IMPORT, exact(f), 64);
+            })
+        .thenIdle(40)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  resident(h, ResourceKind.ITEM) == 23
+                      && f.saved.registry().stock(f.cell, f.key).total() == 8192,
+                  "Full storage does not extract or void machine source");
+              f.saved.registry().extract(f.cell, f.key, 8, null);
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    resident(h, ResourceKind.ITEM) == 15
+                        && f.saved.registry().stock(f.cell, f.key).total() == 8192,
+                    "Vacancy resumes exactly eight actual items"))
+        .thenExecute(
+            () -> {
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.PAUSED, exact(f), 64);
+              f.saved.registry().extract(f.cell, f.key, 8, null);
+            })
+        .thenIdle(40)
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    resident(h, ResourceKind.ITEM) == 15
+                        && f.saved.registry().stock(f.cell, f.key).total() == 8184,
+                    "Paused deployment retains remaining physical source"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void explicitMatchingInsertionCapsToLiveMachineGoal(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    WorldStorageTransfers.Result[] result = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 32);
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.STOCK, exact(f), 8);
+              f.runtime.machinePresets().unregister(f.machine);
+              ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+              chest.setItem(0, new ItemStack(Items.IRON_INGOT, 5));
+              var handle = f.runtime.connectors().bind(f.machine).handle();
+              f.runtime
+                  .transfers()
+                  .submit(
+                      UUID.randomUUID(),
+                      f.actor,
+                      f.machine.position(),
+                      new WorldStorageTransfers.Digital(f.cell),
+                      new WorldStorageTransfers.External(handle),
+                      f.key,
+                      16,
+                      r -> result[0] = r);
+            })
+        .thenWaitUntil(() -> h.assertTrue(result[0] != null, "Explicit stock insertion completed"))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    resident(h, ResourceKind.ITEM) == 8
+                        && f.saved.registry().stock(f.cell, f.key).total() == 29
+                        && result[0].transfer().delivered() == 3,
+                    "Shared insertion caps matching keys to live three-item deficit before extraction"))
+        .thenSucceed();
+  }
+
+  private static ResourcePort digital(Fixture f) {
+    return new ResourcePort() {
+      public UUID backingId() {
+        return f.cell.backing();
+      }
+
+      public long simulateInsert(ResourceKey k, long n) {
+        return f.saved.registry().simulateInsert(f.cell, k, n).amount();
+      }
+
+      public long insert(ResourceKey k, long n) {
+        return f.saved.registry().insert(f.cell, k, n).amount();
+      }
+
+      public long extract(ResourceKey k, long n) {
+        return f.saved.registry().extract(f.cell, k, n, null).amount();
+      }
+    };
+  }
+
+  private static ResourcePort rejecting(UUID backing) {
+    return new ResourcePort() {
+      public UUID backingId() {
+        return backing;
+      }
+
+      public long simulateInsert(ResourceKey k, long n) {
+        return n;
+      }
+
+      public long insert(ResourceKey k, long n) {
+        return 0;
+      }
+
+      public long extract(ResourceKey k, long n) {
+        throw new AssertionError("Rejecting target cannot extract");
+      }
+    };
+  }
+
+  private static TransferContext context(
+      Fixture f, WorldConnectors.Handle handle, boolean importing) {
+    var scope = f.runtime.membership(f.machine.position()).scope();
+    var external =
+        new TransferContext.Endpoint(
+            TransferContext.Type.EXTERNAL,
+            f.machine.handle().id(),
+            handle.backing(),
+            f.machine.handle().generation(),
+            f.machine.generation());
+    var digital =
+        new TransferContext.Endpoint(
+            TransferContext.Type.DIGITAL,
+            f.cell.backing(),
+            f.cell.backing(),
+            f.cell.generation(),
+            0);
+    return new TransferContext(
+        f.saved.registry().world(),
+        scope.network(),
+        scope.segment(),
+        f.machine.position(),
+        importing ? external : digital,
+        importing ? digital : external);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void knownInboundCompletesWithoutReextractingRefilledStorage(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 15);
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.STOCK, exact(f), 12);
+              var handle = f.runtime.connectors().bind(f.machine).handle();
+              id[0] = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id[0],
+                      f.actor.id(),
+                      f.key,
+                      digital(f),
+                      rejecting(handle.backing()),
+                      12,
+                      12,
+                      () -> true,
+                      context(f, handle, false));
+              f.saved.transfers().unbind(id[0]);
+              f.saved.registry().insert(f.cell, f.key, 20);
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    resident(h, ResourceKind.ITEM) == 12, "Known inbound staging delivered"))
+        .thenIdle(30)
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.saved.registry().stock(f.cell, f.key).total() == 23
+                        && !f.saved.transfers().contains(id[0]),
+                    "Known stock delivery retires staging and never re-extracts refill;35 items conserved"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void ownedReturnBypassesOnlyGoalAndPreservesBothRefills(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    UUID[] id = {null};
+    WorldStorageTransfers.Result[] result = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.STOCK, exact(f), 8);
+              f.runtime.machinePresets().unregister(f.machine);
+              seed(h, ResourceKind.ITEM, 8);
+              var handle = f.runtime.connectors().bind(f.machine).handle();
+              id[0] = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id[0],
+                      f.actor.id(),
+                      f.key,
+                      f.runtime.connectors().port(handle),
+                      rejecting(f.cell.backing()),
+                      8,
+                      8,
+                      () -> true,
+                      context(f, handle, true));
+              f.saved.transfers().unbind(id[0]);
+              seed(h, ResourceKind.ITEM, 8);
+              h.assertTrue(
+                  f.runtime.connectors().port(handle).simulateInsert(f.key, 8) == 0,
+                  "Fresh matching insertion is capped at the reached goal");
+              f.runtime.transfers().progress(id[0], f.actor, true, r -> result[0] = r);
+            })
+        .thenWaitUntil(() -> h.assertTrue(result[0] != null, "Owned return completed"))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    result[0].transfer().returned() == 8
+                        && result[0].transfer().staged() == 0
+                        && resident(h, ResourceKind.ITEM) == 16,
+                    "Known eight-item return preserves eight-item refill beyond best-effort goal without extracting again"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void queuedEditAndRevocationPreventSourceMutation(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    var guest = new NetworkPermissions.Actor(UUID.randomUUID(), false);
+    MachinePresets.Deployment[] original = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              seed(h, ResourceKind.ITEM, 23);
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.IMPORT, exact(f), 64);
+              f.runtime.machinePresets().tick();
+              f.machine.configure(
+                  f.actor,
+                  new ConnectorSettings(
+                      ResourceKind.ITEM, ConnectorSettings.Access.READ_ONLY, 0, 0, 64, 8));
+            })
+        .thenIdle(30)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  resident(h, ResourceKind.ITEM) == 23
+                      && f.saved.registry().stock(f.cell, f.key).total() == 0,
+                  "Queued preparation cannot extract after configuration invalidation");
+              var scope = f.runtime.membership(f.machine.position()).scope();
+              var grants = f.saved.network(scope.network());
+              grants.setGrants(
+                  f.actor,
+                  guest.id(),
+                  Set.of(
+                      NetworkPermissions.Permission.VIEW,
+                      NetworkPermissions.Permission.EDIT,
+                      NetworkPermissions.Permission.DEPLOY,
+                      NetworkPermissions.Permission.WITHDRAW,
+                      NetworkPermissions.Permission.DEPOSIT));
+              original[0] = f.machine.deployPreset(guest, MachinePresets.Mode.IMPORT, exact(f), 64);
+              f.runtime.machinePresets().tick();
+              grants.setGrants(f.actor, guest.id(), Set.of());
+            })
+        .thenIdle(30)
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    resident(h, ResourceKind.ITEM) == 23
+                        && f.saved.registry().stock(f.cell, f.key).total() == 0
+                        && !f.machine.presetAuthorized(original[0]),
+                    "Queued revoked principal cannot mutate or switch to the root owner"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void samePrincipalReplacementDoesNotAdoptOldStaging(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 15);
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.STOCK, exact(f), 12);
+              var handle = f.runtime.connectors().bind(f.machine).handle();
+              id[0] = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id[0],
+                      f.actor.id(),
+                      f.key,
+                      digital(f),
+                      rejecting(handle.backing()),
+                      12,
+                      12,
+                      () -> true,
+                      context(f, handle, false));
+              f.saved.transfers().unbind(id[0]);
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.STOCK, exact(f), 12);
+              f.saved.registry().insert(f.cell, f.key, 20);
+            })
+        .thenIdle(50)
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    resident(h, ResourceKind.ITEM) == 0
+                        && f.saved.registry().stock(f.cell, f.key).total() == 23
+                        && f.saved.transfers().get(id[0]).staged() == 12
+                        && f.runtime.machinePresets().status(f.machine).reason()
+                            == OperationResult.Reason.RESERVED,
+                    "Replacement has a new port generation and cannot adopt an earlier request even for the same principal"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void uncertainExtractionFreezesTheRefillWithoutReplay(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    h.setBlock(PROVIDER, ConnectorFixture.BLOCK.get());
+    ConnectorFixture.ProviderEntity provider = h.getBlockEntity(PROVIDER);
+    UUID[] backing = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              provider.items.setStackInSlot(0, new ItemStack(Items.IRON_INGOT, 23));
+              provider.failAfterExtraction = true;
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.IMPORT, exact(f), 64);
+              backing[0] = f.runtime.connectors().bind(f.machine).handle().backing();
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.transfers().unresolved(backing[0]) != null
+                        && f.saved.transfers().unresolved(backing[0]).transfer().state()
+                            == StagedTransfer.State.QUARANTINED,
+                    "Unknown extraction is canonically quarantined"))
+        .thenExecute(() -> provider.items.setStackInSlot(0, new ItemStack(Items.IRON_INGOT, 23)))
+        .thenIdle(50)
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    provider.items.getStackInSlot(0).getCount() == 23
+                        && f.saved.registry().stock(f.cell, f.key).total() == 0
+                        && f.saved.transfers().snapshot().stream()
+                                .filter(
+                                    r ->
+                                        r.transfer().source().equals(backing[0])
+                                            || r.transfer().destination().equals(backing[0]))
+                                .count()
+                            == 1
+                        && f.runtime.machinePresets().status(f.machine).reason()
+                            == OperationResult.Reason.UNCERTAIN,
+                    "Unknown original extraction freezes refilled source and reports uncertainty without replay/refund"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void metadataAdmissionFailureDoesNotAdvancePhysicalConfiguration(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var scope = f.runtime.membership(f.machine.position()).scope();
+              var auth =
+                  new MachinePresets.Authority(
+                      f.actor.id(),
+                      scope.network(),
+                      scope.segment(),
+                      f.saved.network(scope.network()).generation());
+              var added = new ArrayList<NodeRegistry.Handle>();
+              int remaining =
+                  MachinePresets.MAX_DEPLOYMENTS - f.saved.machinePresets().snapshot().size();
+              try {
+                for (int i = 0; i < remaining; i++) {
+                  var node =
+                      f.saved
+                          .nodes()
+                          .create(
+                              UUID.randomUUID(),
+                              NodeRegistry.Kind.MACHINE_INTERFACE,
+                              new NodeRegistry.Position("factorycore_tests:quota", i))
+                          .handle();
+                  added.add(node);
+                  f.saved
+                      .machinePresets()
+                      .deploy(
+                          node,
+                          1,
+                          MachinePresets.Face.NORTH,
+                          auth,
+                          MachinePresets.Mode.IMPORT,
+                          ResourceFilter.all(ResourceKind.ITEM),
+                          64);
+                }
+                long config = f.machine.generation();
+                var previous = f.machine.settings();
+                f.saved.setDirty(false);
+                boolean rejected = false;
+                try {
+                  f.machine.deployPreset(f.actor, MachinePresets.Mode.IMPORT, exact(f), 64);
+                } catch (IllegalStateException full) {
+                  rejected = true;
+                }
+                h.assertTrue(
+                    rejected
+                        && f.machine.generation() == config
+                        && f.machine.settings().equals(previous)
+                        && f.saved.machinePresets().get(f.machine.handle().id()) == null
+                        && !f.saved.isDirty(),
+                    "Preset metadata rejection precedes port/reference/authority mutation");
+              } finally {
+                for (var node : added) f.saved.machinePresets().remove(node);
+              }
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void pausingKeepsKnownStagingAvailableForOriginalOwnerCleanup(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    UUID[] id = {null};
+    WorldStorageTransfers.Result[] result = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 15);
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.STOCK, exact(f), 12);
+              var handle = f.runtime.connectors().bind(f.machine).handle();
+              id[0] = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id[0],
+                      f.actor.id(),
+                      f.key,
+                      digital(f),
+                      rejecting(handle.backing()),
+                      12,
+                      12,
+                      () -> true,
+                      context(f, handle, false));
+              f.saved.transfers().unbind(id[0]);
+              long configuration = f.machine.generation();
+              var paused =
+                  f.machine.deployPreset(f.actor, MachinePresets.Mode.PAUSED, exact(f), 12);
+              h.assertTrue(
+                  f.machine.generation() == configuration
+                      && paused.configuration() == configuration,
+                  "Pause invalidates intent without invalidating known endpoint cleanup");
+              f.runtime.transfers().progress(id[0], f.actor, true, r -> result[0] = r);
+            })
+        .thenWaitUntil(() -> h.assertTrue(result[0] != null, "Original owner cleanup completed"))
+        .thenIdle(30)
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    result[0].transfer().returned() == 12
+                        && result[0].transfer().staged() == 0
+                        && f.saved.registry().stock(f.cell, f.key).total() == 15
+                        && resident(h, ResourceKind.ITEM) == 0,
+                    "Paused original-owner return restores fifteen exact units without restarting automatic extraction"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void removedPresetAndOldChunkCannotReuseStagingGeneration(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    UUID[] id = {null};
+    long[] oldConfiguration = {0};
+    WorldStorageTransfers.Result[] cleanup = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var oldChunk = f.machine.saveWithFullMetadata(h.getLevel().registryAccess());
+              f.saved.registry().insert(f.cell, f.key, 15);
+              f.machine.deployPreset(f.actor, MachinePresets.Mode.STOCK, exact(f), 12);
+              oldConfiguration[0] = f.machine.generation();
+              var handle = f.runtime.connectors().bind(f.machine).handle();
+              id[0] = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id[0],
+                      f.actor.id(),
+                      f.key,
+                      digital(f),
+                      rejecting(handle.backing()),
+                      12,
+                      12,
+                      () -> true,
+                      context(f, handle, false));
+              f.saved.transfers().unbind(id[0]);
+              f.saved.registry().insert(f.cell, f.key, 20);
+              f.saved.machinePresets().remove(f.machine.handle());
+              f.machine.loadWithComponents(oldChunk, h.getLevel().registryAccess());
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var replacement =
+                  f.machine.deployPreset(f.actor, MachinePresets.Mode.STOCK, exact(f), 12);
+              h.assertTrue(
+                  replacement.revision() == 1 && f.machine.generation() > oldConfiguration[0],
+                  "Removed metadata and an old chunk cannot rewind the canonical configuration fence");
+            })
+        .thenIdle(40)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  resident(h, ResourceKind.ITEM) == 0
+                      && f.saved.registry().stock(f.cell, f.key).total() == 23
+                      && f.saved.transfers().get(id[0]).staged() == 12,
+                  "Old request remains owned and is not adopted after revision counter reset");
+              f.runtime
+                  .transfers()
+                  .progress(
+                      id[0],
+                      f.actor,
+                      true,
+                      r -> {
+                        cleanup[0] = r;
+                        if (r.transfer() != null
+                            && r.transfer().state() == StagedTransfer.State.COMPLETE)
+                          f.saved.transfers().retire(r.id());
+                      });
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    cleanup[0] != null
+                        && resident(h, ResourceKind.ITEM) == 12
+                        && f.saved.registry().stock(f.cell, f.key).total() == 23,
+                    "Original-owner return releases staging before replacement extracts fresh stock"))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    cleanup[0].transfer().returned() == 12 && !f.saved.transfers().contains(id[0]),
+                    "Thirty-five units remain conserved after explicit cleanup and resumed automation"))
+        .thenSucceed();
+  }
+}

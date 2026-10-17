@@ -65,19 +65,49 @@ public final class MachinePresets {
   private final Runnable changed;
   private final NavigableMap<UUID, Deployment> deployments = new TreeMap<>();
   private long bytes;
+  private final NavigableMap<UUID, Long> configurations = new TreeMap<>();
+  private java.util.function.Consumer<UUID> activity = node -> {};
+
+  public void activity(java.util.function.Consumer<UUID> listener) {
+    checkThread();
+    activity = Objects.requireNonNull(listener);
+  }
+
+  private static Map<UUID, Long> initialConfigurations(List<Deployment> restored) {
+    var values = new HashMap<UUID, Long>();
+    for (var value : restored) values.merge(value.node(), value.configuration(), Math::max);
+    return values;
+  }
 
   public MachinePresets(NodeRegistry nodes, List<Deployment> restored, Runnable changed) {
+    this(nodes, restored, initialConfigurations(restored), changed);
+  }
+
+  public MachinePresets(
+      NodeRegistry nodes, List<Deployment> restored, Map<UUID, Long> fences, Runnable changed) {
     this.nodes = Objects.requireNonNull(nodes);
     this.changed = Objects.requireNonNull(changed);
     if (restored.size() > MAX_DEPLOYMENTS)
       throw new IllegalArgumentException("Machine deployment limit");
     var records = new HashMap<UUID, NodeRegistry.Stored>();
     for (var record : nodes.snapshot()) records.put(record.id(), record);
+    if (fences.size() > NodeRegistry.MAX_NODES)
+      throw new IllegalArgumentException("Machine configuration fence limit");
+    for (var fence : fences.entrySet()) {
+      var node = records.get(fence.getKey());
+      if (node == null
+          || node.kind() != NodeRegistry.Kind.MACHINE_INTERFACE
+          || fence.getValue() == null
+          || fence.getValue() <= 0)
+        throw new IllegalArgumentException("Invalid machine configuration fence");
+      configurations.put(fence.getKey(), fence.getValue());
+    }
     for (var deployment : restored) {
       var node = records.get(deployment.node());
       if (node == null
           || node.kind() != NodeRegistry.Kind.MACHINE_INTERFACE
           || deployment.leaseGeneration() > node.generation()
+          || configurations.getOrDefault(deployment.node(), 0L) < deployment.configuration()
           || deployments.putIfAbsent(deployment.node(), deployment) != null)
         throw new IllegalArgumentException("Invalid/duplicate machine deployment owner");
       bytes = Math.addExact(bytes, deployment.bytes());
@@ -89,6 +119,33 @@ public final class MachinePresets {
   private void checkThread() {
     if (Thread.currentThread() != thread)
       throw new IllegalStateException("Machine presets require owner thread");
+  }
+
+  public Map<UUID, Long> configurations() {
+    checkThread();
+    return Map.copyOf(configurations);
+  }
+
+  public long configuration(UUID node) {
+    checkThread();
+    return configurations.getOrDefault(node, 0L);
+  }
+
+  public long nextConfiguration(NodeRegistry.Handle node, long observed) {
+    checkThread();
+    validate(node);
+    if (observed <= 0) throw new IllegalArgumentException("Invalid observed configuration");
+    return Math.incrementExact(Math.max(observed, configuration(node.id())));
+  }
+
+  public void observeConfiguration(NodeRegistry.Handle node, long observed) {
+    checkThread();
+    validate(node);
+    if (observed <= 0) throw new IllegalArgumentException("Invalid observed configuration");
+    if (observed > configuration(node.id())) {
+      configurations.put(node.id(), observed);
+      changed.run();
+    }
   }
 
   public Deployment get(UUID node) {
@@ -106,7 +163,7 @@ public final class MachinePresets {
     return bytes;
   }
 
-  public Deployment deploy(
+  public Deployment prepare(
       NodeRegistry.Handle node,
       long configuration,
       Face face,
@@ -128,12 +185,46 @@ public final class MachinePresets {
             mode,
             filter,
             target);
+    admission(old, next);
+    return next;
+  }
+
+  private long admission(Deployment old, Deployment next) {
     long updated = Math.addExact(bytes - (old == null ? 0 : old.bytes()), next.bytes());
     if (old == null && deployments.size() == MAX_DEPLOYMENTS || updated > MAX_BYTES)
       throw new IllegalStateException("Machine deployment metadata limit");
+    return updated;
+  }
+
+  /**
+   * Commit only an owner-thread prepared successor; admission is checked again before publication.
+   */
+  public void commit(NodeRegistry.Handle node, Deployment next) {
+    checkThread();
+    validate(node);
+    var old = deployments.get(node.id());
+    if (!next.node().equals(node.id())
+        || next.leaseGeneration() != node.generation()
+        || next.revision() != (old == null ? 1 : Math.incrementExact(old.revision())))
+      throw new IllegalStateException("Stale deployment preparation");
+    long updated = admission(old, next);
+    configurations.merge(node.id(), next.configuration(), Math::max);
     deployments.put(node.id(), next);
     bytes = updated;
     changed.run();
+    activity.accept(next.node());
+  }
+
+  public Deployment deploy(
+      NodeRegistry.Handle node,
+      long configuration,
+      Face face,
+      Authority authority,
+      Mode mode,
+      ResourceFilter filter,
+      long target) {
+    var next = prepare(node, configuration, face, authority, mode, filter, target);
+    commit(node, next);
     return next;
   }
 
@@ -170,6 +261,7 @@ public final class MachinePresets {
             old.target());
     deployments.put(node, next);
     changed.run();
+    activity.accept(node);
   }
 
   /**
@@ -184,6 +276,7 @@ public final class MachinePresets {
         && value.revision() == revision
         && value.leaseGeneration() == node.generation()
         && value.configuration() == configuration
+        && value.configuration() == configuration(node.id())
         && value.face() == face
         && value.authority().equals(current)
         && node.kind() == NodeRegistry.Kind.MACHINE_INTERFACE
@@ -198,6 +291,7 @@ public final class MachinePresets {
     if (old != null) {
       bytes -= old.bytes();
       changed.run();
+      activity.accept(node.id());
     }
   }
 }

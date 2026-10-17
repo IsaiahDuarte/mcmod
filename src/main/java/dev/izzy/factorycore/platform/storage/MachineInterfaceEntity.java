@@ -64,20 +64,30 @@ public final class MachineInterfaceEntity extends ConnectorEntity
           throw new IllegalStateException("Machine preset resource permission denied");
     var scope = runtime.membership(position()).scope();
     var saved = DeviceSavedData.get(serverLevel().getServer());
-    return saved
-        .machinePresets()
-        .deploy(
-            handle(),
-            generation(),
-            MachinePresets.Face.valueOf(targetDirection().name()),
-            new MachinePresets.Authority(
-                actor.id(),
-                scope.network(),
-                scope.segment(),
-                saved.network(scope.network()).generation()),
-            mode,
-            filter,
-            target);
+    var next =
+        saved
+            .machinePresets()
+            .prepare(
+                handle(),
+                mode == MachinePresets.Mode.PAUSED
+                    ? Math.max(generation(), saved.machinePresets().configuration(handle().id()))
+                    : saved.machinePresets().nextConfiguration(handle(), generation()),
+                MachinePresets.Face.valueOf(targetDirection().name()),
+                new MachinePresets.Authority(
+                    actor.id(),
+                    scope.network(),
+                    scope.segment(),
+                    saved.network(scope.network()).generation()),
+                mode,
+                filter,
+                target);
+    if (mode != MachinePresets.Mode.PAUSED
+        && super.configure(actor, settings(), label(), next.configuration())
+            != NetworkAuthority.Decision.ALLOWED)
+      throw new IllegalStateException("Machine preset edit denied");
+    saved.machinePresets().commit(handle(), next);
+    runtime.machinePresets().register(this);
+    return next;
   }
 
   /** Freshness plus current permissions, not permission delegated by a saved record. */
@@ -128,13 +138,26 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     validatePlaced();
     var presets = DeviceSavedData.get(serverLevel().getServer()).machinePresets();
     presets.prepareInvalidation(handle().id());
-    var result = super.configure(actor, settings, label);
-    if (result == NetworkAuthority.Decision.ALLOWED) presets.invalidate(handle().id());
+    long next = presets.nextConfiguration(handle(), generation());
+    var result = super.configure(actor, settings, label, next);
+    if (result == NetworkAuthority.Decision.ALLOWED) {
+      presets.observeConfiguration(handle(), generation());
+      presets.invalidate(handle().id());
+    }
     return result;
   }
 
   public MachineInterfaceEntity(BlockPos position, BlockState state) {
     super(MachineInterfaceContent.ENTITY.get(), position, state);
+  }
+
+  @Override
+  public void validatePlaced() {
+    super.validatePlaced();
+    // A current native reference may be newer than a legacy deployment-only save.
+    DeviceSavedData.get(serverLevel().getServer())
+        .machinePresets()
+        .observeConfiguration(handle(), generation());
   }
 
   @Override
@@ -167,5 +190,32 @@ public final class MachineInterfaceEntity extends ConnectorEntity
                     position(),
                     NetworkPermissions.Permission.VIEW)
             == NetworkAuthority.Decision.ALLOWED;
+  }
+
+  @Override
+  public void place(net.minecraft.world.item.ItemStack stack) {
+    super.place(stack);
+    registerPreset();
+  }
+
+  private void registerPreset() {
+    if (handle() == null || !diagnostic().isEmpty()) return;
+    var saved = DeviceSavedData.get(serverLevel().getServer());
+    validatePlaced();
+    saved.machinePresets().observeConfiguration(handle(), generation());
+    if (saved.machinePresets().get(handle().id()) != null)
+      WorldNetworks.get(serverLevel().getServer()).machinePresets().register(this);
+  }
+
+  @Override
+  public void onLoad() {
+    super.onLoad();
+    if (getLevel() instanceof net.minecraft.server.level.ServerLevel) registerPreset();
+  }
+
+  @Override
+  public void setRemoved() {
+    WorldNetworks.machineInvalidated(getLevel(), this);
+    super.setRemoved();
   }
 }

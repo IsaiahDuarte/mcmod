@@ -218,4 +218,59 @@ class MachinePresetsTest {
     assertEquals(changes, dirty.get());
     assertEquals(MachinePresets.MAX_DEPLOYMENTS, presets.snapshot().size());
   }
+
+  @Test
+  void preparedAdmissionIsReadOnlyAndCannotReplaceANewerRevision() {
+    var nodes = nodes();
+    var node = node(nodes, 3);
+    var dirty = new AtomicInteger();
+    var presets = new MachinePresets(nodes, List.of(), dirty::incrementAndGet);
+    var filter = ResourceFilter.all(ResourceKind.ITEM);
+    var first =
+        presets.prepare(
+            node, 1, MachinePresets.Face.NORTH, AUTH, MachinePresets.Mode.IMPORT, filter, 64);
+    assertNull(presets.get(node.id()));
+    assertEquals(0, dirty.get());
+    presets.commit(node, first);
+    var prepared =
+        presets.prepare(
+            node, 2, MachinePresets.Face.NORTH, AUTH, MachinePresets.Mode.EXPORT, filter, 64);
+    var newer =
+        presets.deploy(
+            node, 2, MachinePresets.Face.NORTH, AUTH, MachinePresets.Mode.STOCK, filter, 8);
+    long bytes = presets.bytes();
+    int changes = dirty.get();
+    assertThrows(IllegalStateException.class, () -> presets.commit(node, prepared));
+    assertEquals(newer, presets.get(node.id()));
+    assertEquals(bytes, presets.bytes());
+    assertEquals(changes, dirty.get());
+  }
+
+  @Test
+  void configurationFencesSurviveRemovalAndRejectCounterRollback() {
+    var nodes = nodes();
+    var node = node(nodes, 3);
+    var presets = new MachinePresets(nodes, List.of(), () -> {});
+    presets.observeConfiguration(node, 7);
+    var deployment =
+        presets.deploy(
+            node,
+            8,
+            MachinePresets.Face.NORTH,
+            AUTH,
+            MachinePresets.Mode.STOCK,
+            ResourceFilter.all(ResourceKind.ITEM),
+            8);
+    presets.remove(node);
+    var restored = new MachinePresets(nodes, List.of(), presets.configurations(), () -> {});
+    assertEquals(9, restored.nextConfiguration(node, 2));
+    restored.observeConfiguration(node, 1);
+    assertEquals(8, restored.configuration(node.id()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new MachinePresets(nodes, List.of(deployment), Map.of(node.id(), 7L), () -> {}));
+    restored.observeConfiguration(node, Long.MAX_VALUE);
+    assertThrows(ArithmeticException.class, () -> restored.nextConfiguration(node, 1));
+    assertEquals(Long.MAX_VALUE, restored.configuration(node.id()));
+  }
 }

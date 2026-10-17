@@ -62,3 +62,8 @@ identity/invalidation, fixed codec bytes/compressed disk data, strict migration/
 rejection, old chunks, rotation, revocation/regrant/replacement and new roots. Actual
 preset execution, client controls, independent saves/restart, multiplayer and
 performance remain required release work.
+
+
+Runtime extension: [ADR 0021](0021-machine-preset-dispatch.md) now attaches bounded
+dispatch and schema2 configuration fences. Statements above about absent dispatch
+describe this original prerequisite stage; player preset controls remain open.

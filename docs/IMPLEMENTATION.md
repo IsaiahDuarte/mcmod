@@ -91,7 +91,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A01 | P3 | Partial: headless BufferImportGameTests exercise no-code real hopper-to-cell imports, exact components, full cell/buffer/hopper retention and resumption. Import/Paused and owned-cleanup player controls are wired. Eight TerminalGameTests now add the physical hopper/buffer/cell/search/menu/player loop, exact deposit/withdraw, stale/full/revoked/closed sessions and recipe evidence. The graphical fixture adds actual search/Take1/paging/deposit-payload and scale2–4 evidence; manual/remaining client, multiplayer, chunks/full-server restart remain pending. |
 | A02 | P2, P6 | Partial foundation: ResourceAccountingTest verifies capacity/claim preservation, safe downgrade rejection, infinite-item technical limits and exact aggregates. Ten StorageDriveGameTests cover physical item/fluid cells, sequential module upgrades retaining stock/claims/components, player consumption, recipe costs and earned Infinite. Survival progression and complete network usability remain pending. |
 | A03 | P1, P2, P3 | Partial: ResourceAccountingTest verifies staged partial transfers, shared competing reservations, duplicate backing references and 30,000 seeded conservation operations. TransferRecoveryTest adds known-partial snapshot recovery and pending-call quarantine without replay/refunds; TransferRegistryTest and TransferPersistenceTest add bounded canonical records, exact owned ledger/staging disk recovery and strict schema-four migrations. Seven WorldStorageTransfersGameTests add scheduled physical cell/bank endpoints, exact unreserved/partial FE moves, queued revocation/disconnection/stale denial, private-child scope and cancellation. Nineteen ConnectorGameTests add explicit physical foreign transfers, overlap/alias rejection and uncertainty; indexed backing invalidation preserves staging and releases capability references. Eight saved-staging recovery scenarios additionally prove validated delivery/owned cleanup, legacy and principal rejection, a 250-item two-step quantum and actual chest block-entity NBT reacquisition. Bounded scheduled external stock observations have exact-key/pagination/nonmutation and queued VIEW-revocation evidence. Portable ExternalClaims/ExternalClaimPort tests add shared hold bounds, shortages, exact actual debit and generated accounting; canonical schema-six foreign hold persistence now has fixed fixtures/disk reload/strict rejection evidence; scheduled principal holds/protected extraction now have item/fluid/FE and uncertainty evidence; bounded live exact-key catalog discovery now has metadata/world privacy/cursor evidence; bounded global priority/persisted round-robin routes now have conservation, cancellation, revocation, uncertainty and migration/reload evidence; the nine-slot buffer/NeoForge handler now has component/backpressure/conservation evidence, canonical schema-eight ownership/migration and physical hopper/movement/copy/recipe evidence; explicit buffered item endpoints now have scope, rate, partial staging and recovery evidence; automatic Import/Paused/owned-cleanup controls have hopper/backpressure/revocation evidence; bounded all-key server discovery/search now has exact component/hold, BigInteger, scope and quota evidence; terminal frontends, remaining presets, crafting job claims and full server restart/interruption integration remain pending. |
-| A04 | P2, P3, P6 | Partial foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Bounded all-key discovery/priority routing and typed ResourceFilter/StockTarget component evidence now exist. Filtered Import now has canonical policy/rate storage and native sample/tag/clock controls with component/world evidence. Automatic filtered Export/Stock now has bounded priority discovery, physical deficit/rate caps and native compass/chest evidence. Native buffer Settings/Inventory now has headless draft, authority and partial/full inventory evidence; actual buffer and machine settings controls now have scales2–4 evidence in the 2026-10-17 client record. Other resource settings, permissions UI and actual chunks/restart remain pending. |
+| A04 | P2, P3, P6 | Partial: automatic machine item/mB/FE Import/Export/Stock now has bounded shared runtime and native conservation/staging evidence; player preset authoring remains pending. Foundation: PlatformResourceTest checks exact component identity, mB/FE units and actual NeoForge handler limits. [EnergyBankAccessTest and EnergyBankOwnershipTest](modules/ENERGY_BANKS.md) add finite bank rates, identity-based movement budgets, simulation/claim preservation, seeded conservation and portable bank transitions. Six EnergyBankGameTests add actual bank capabilities, shared faces/rates, claims, populated upgrades, break drops, reload/copy quarantine and recovery/recipe loading. Scheduled digital cell/bank routes now have WorldStorageTransfersGameTests evidence; sided connector routes now have nineteen real item/mB/FE/side/access/rate/overlap/fault cases. Bounded all-key discovery/priority routing and typed ResourceFilter/StockTarget component evidence now exist. Filtered Import now has canonical policy/rate storage and native sample/tag/clock controls with component/world evidence. Automatic filtered Export/Stock now has bounded priority discovery, physical deficit/rate caps and native compass/chest evidence. Native buffer Settings/Inventory now has headless draft, authority and partial/full inventory evidence; actual buffer and machine settings controls now have scales2–4 evidence in the 2026-10-17 client record. Other resource settings, permissions UI and actual chunks/restart remain pending. |
 | A05 | P2 | Partial: Physical MachineInterface local labels and gateway-local/direct endpoint isolation now have native evidence; complete presets/editor and restart evidence remain pending. NetworkTopologyTest/NetworkAuthorityTest verify local labels, inherited intersections, stale/foreign scopes, invalid graphs and descendant suspension. Four NetworkNodeGameTests verify actual directional ports, private player commissioning, move/reload and clone quarantine. [WiredDiscoveryTest and two WireDiscoveryGameTests](modules/WIRE_DISCOVERY.md) add bounded physical reciprocal probes, real private views and nonloading chunk evidence. [WorldNetworksGameTests](modules/WORLD_NETWORKS.md) verify production post-tick activation, immediate disconnection, coalescing, invalid roots/independent regions, private views and queued revocation. Actual chunk lifecycle and program integration remain pending; see [network contract](modules/NETWORK_AUTHORITY.md). |
 | A06 | P4 | Not implemented. |
 | A07 | P4 | Not implemented. |
@@ -2208,3 +2208,44 @@ Next: bounded machine preset observation/dispatch, priority routing, live goal/
 known-inbound admission and original-owner staged progress, then player controls.
 Machine presets remain incomplete; the full A01–A17 goal stays active, including
 crafting/programming, power/wireless, finished onboarding and P7 verification.
+
+
+## Scheduled machine presets checkpoint — 2026-10-17
+
+The previous turn was verified committed authority work (0487aa8). This P3/A04/
+A12/A13/A14 slice now attaches loaded-only automatic item/mB/FE Import, Export and
+Stock through the trusted server API and shared scheduler/priority/staging paths.
+Current filters/rights/leases/configuration guard every phase. Stock counts matching
+physical units and live-caps network insertion; known staging prevents re-extraction,
+unknown calls freeze, and original-owner returns bypass only goal caps. Runtime
+bounds are256 loaded holders, eight visits/tick,16-row observations,64-position
+live Stock reads,2MiB cursors,32768 unsuccessful pages and20-tick backoff. Larger
+fluid handlers explicitly reject Stock rather than scan unboundedly.
+
+Review exposed a counter-reuse risk after old-chunk replay plus metadata removal.
+MachinePresets schema2 therefore retains per-node canonical configuration marks,
+including after removal. Active deployment advances beyond native/canonical marks;
+Pause retains endpoint configuration for owner cleanup. Admission prepares before
+physical writes and commits only the expected successor. Schema1 migration derives
+marks from deployments and accepted contexts; current references may raise them.
+World12/reference2/context3 remain unchanged. These fences close accidental adoption
+of old/manual requests without inventing a new resource or permission path.
+
+Nineteen native runtime cases cover all kinds/modes and failures/conservation,
+including explicit recovery after removal/replay. Core/persistence checks add
+prepared successors, quota/overflow and compressed retained marks. Early quota and
+uncertainty fixtures incorrectly assumed a private SavedData; they now account
+for shared-world capacity, clean up temporary rows and inspect their own backing.
+No production quota, test gate or expected resource total was weakened.
+
+[ADR 0021](decisions/0021-machine-preset-dispatch.md) and the
+[module contract](modules/MACHINE_INTERFACES.md) record current behavior, budgets,
+compatibility and limits. `./gradlew spotlessApply build --console=plain` passed
+in37s (13 executed/13 up-to-date tasks). Final `python3 scripts/verify.py` passed:
+24 tooling,214 cached JVM and200 freshly executed required GameTests; Gradle20s,
+3 executed/22 up-to-date tasks. Formatting/static passed; Rust guest checks were
+up-to-date. `git diff --check` passed.
+Player preset authoring and actual client dispatch are next; selected tanks,
+multiport coordination, real chunks/restart/independent saves, multiplayer,
+performance, crafting/programming, power/wireless and finished onboarding/P7
+remain required. Full A01–A17 remains active and incomplete.

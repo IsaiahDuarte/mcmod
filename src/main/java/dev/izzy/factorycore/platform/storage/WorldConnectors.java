@@ -438,6 +438,34 @@ public final class WorldConnectors {
     return binding.port;
   }
 
+  /** Known owned returns bypass only Stock goals, never endpoint/rate/access/capacity checks. */
+  ResourcePort returnPort(Handle handle) {
+    checkThread();
+    var binding = current(handle);
+    if (binding == null) throw new IllegalStateException("Stale return endpoint");
+    return new ResourcePort() {
+      @Override
+      public UUID backingId() {
+        return handle.backing();
+      }
+
+      @Override
+      public long simulateInsert(ResourceKey key, long amount) {
+        return change(binding, key, amount, true, true, null, true);
+      }
+
+      @Override
+      public long insert(ResourceKey key, long amount) {
+        return change(binding, key, amount, true, false, null, true);
+      }
+
+      @Override
+      public long extract(ResourceKey key, long amount) {
+        throw new IllegalStateException("Owned return port cannot extract");
+      }
+    };
+  }
+
   public ResourcePort claimedPort(Handle handle, UUID owner) {
     checkThread();
     Objects.requireNonNull(owner);
@@ -485,6 +513,96 @@ public final class WorldConnectors {
     } finally {
       calling = false;
     }
+  }
+
+  OperationResult matchingStock(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      Handle handle,
+      dev.izzy.factorycore.core.resource.ResourceFilter filter) {
+    checkThread();
+    var identity =
+        new ResourceKey(
+            handle.kind(),
+            handle.kind() == ResourceKind.ENERGY ? "neoforge:energy" : "factorycore:catalog",
+            new byte[0]);
+    if (filter.kind() != handle.kind()
+        || calling
+        || probing
+        || !allowed(actor, origin, handle, identity, NetworkPermissions.Permission.VIEW))
+      return new OperationResult(0, OperationResult.Reason.DENIED);
+    var binding = current(handle);
+    if (binding == null) return new OperationResult(0, OperationResult.Reason.OFFLINE);
+    var result = matching(binding, filter);
+    return current(handle) != binding
+            || !allowed(actor, origin, handle, identity, NetworkPermissions.Permission.VIEW)
+        ? new OperationResult(0, OperationResult.Reason.OFFLINE)
+        : result;
+  }
+
+  private OperationResult matching(
+      Binding binding, dev.izzy.factorycore.core.resource.ResourceFilter filter) {
+    if (calling || probing)
+      throw new IllegalStateException("Machine stock cannot reenter provider reads");
+    calling = true;
+    try {
+      if (binding.handle.kind() == ResourceKind.FLUID
+          && ((IFluidHandler) binding.handler).getTanks() > 64)
+        return new OperationResult(0, OperationResult.Reason.UNSUPPORTED);
+      var settings = binding.owner.settings();
+      var codec = new PlatformResourceCodec(binding.owner.serverLevel().registryAccess());
+      var tags = new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server);
+      long total = 0;
+      int cursor = 0;
+      for (int i = 0; i < 4 && cursor >= 0; i++) {
+        var page =
+            dev.izzy.factorycore.platform.resource.ExternalStockPage.read(
+                binding.handle.kind(),
+                binding.handler,
+                codec,
+                settings.firstSlot(),
+                settings.slotCount(),
+                cursor);
+        for (var row : page.entries())
+          if (filter.matches(row.key(), tags)) total = Math.addExact(total, row.stored());
+        cursor = page.next();
+      }
+      if (cursor >= 0) return new OperationResult(0, OperationResult.Reason.UNSUPPORTED);
+      return new OperationResult(total, OperationResult.Reason.OK);
+    } catch (RuntimeException failure) {
+      binding.owner.quarantine(failure);
+      return new OperationResult(0, OperationResult.Reason.HANDLER_FAULT);
+    } finally {
+      calling = false;
+    }
+  }
+
+  private long stockRoom(Binding binding, ResourceKey key, long amount) {
+    if (!(binding.owner instanceof MachineInterfaceEntity)) return amount;
+    var deployment = saved.machinePresets().get(binding.handle.connector().id());
+    if (deployment == null
+        || deployment.mode() != dev.izzy.factorycore.core.storage.MachinePresets.Mode.STOCK
+        || deployment.leaseGeneration() != binding.handle.connector().generation()
+        || deployment.configuration() != binding.handle.generation()
+        || !deployment.face().name().equals(binding.owner.targetDirection().name())
+        || !deployment
+            .filter()
+            .matches(key, new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server)))
+      return amount;
+    if (!((MachineInterfaceEntity) binding.owner).presetAuthorized(deployment)) return 0;
+    var resident = matching(binding, deployment.filter());
+    if (current(binding.handle) != binding
+        || !deployment.equals(saved.machinePresets().get(binding.handle.connector().id()))
+        || !((MachineInterfaceEntity) binding.owner).presetAuthorized(deployment)
+        || !deployment
+            .filter()
+            .matches(key, new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server)))
+      return 0;
+    return resident.reason() == OperationResult.Reason.OK
+        ? Math.min(
+            amount,
+            Math.max(0, deployment.target() - Math.min(deployment.target(), resident.amount())))
+        : 0;
   }
 
   private long freshTotal(Binding binding, ResourceKey key) {
@@ -546,7 +664,7 @@ public final class WorldConnectors {
 
   private long change(
       Binding binding, ResourceKey key, long requested, boolean insertion, boolean simulate) {
-    return change(binding, key, requested, insertion, simulate, null);
+    return change(binding, key, requested, insertion, simulate, null, false);
   }
 
   private long change(
@@ -556,6 +674,17 @@ public final class WorldConnectors {
       boolean insertion,
       boolean simulate,
       UUID claimOwner) {
+    return change(binding, key, requested, insertion, simulate, claimOwner, false);
+  }
+
+  private long change(
+      Binding binding,
+      ResourceKey key,
+      long requested,
+      boolean insertion,
+      boolean simulate,
+      UUID claimOwner,
+      boolean ownedReturn) {
     checkThread();
     if (calling)
       throw new IllegalStateException("Foreign ports cannot reenter mutation or simulation");
@@ -584,13 +713,15 @@ public final class WorldConnectors {
         Math.min(
             requested,
             Math.max(0, settings.rate() - Math.max(budget[direction], local[direction])));
+    if (insertion && !ownedReturn) amount = stockRoom(binding, key, amount);
     if (amount == 0) return 0;
+    final long offered = amount;
     LongSupplier call =
         () ->
             insertion
                 ? simulate
-                    ? binding.delegate.simulateInsert(key, amount)
-                    : binding.delegate.insert(key, amount)
+                    ? binding.delegate.simulateInsert(key, offered)
+                    : binding.delegate.insert(key, offered)
                 : claimOwner != null
                         || saved.externalClaims().reserved(binding.handle.backing(), key) > 0
                     ? new dev.izzy.factorycore.core.resource.ExternalClaimPort(
@@ -598,8 +729,8 @@ public final class WorldConnectors {
                             saved.externalClaims(),
                             claimOwner,
                             resource -> freshTotal(binding, resource))
-                        .extract(key, amount)
-                    : binding.delegate.extract(key, amount);
+                        .extract(key, offered)
+                    : binding.delegate.extract(key, offered);
     if (!simulate) {
       budget[direction] += amount;
       local[direction] += amount;

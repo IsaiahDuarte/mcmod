@@ -1,8 +1,9 @@
 # Machine Interfaces
 
 Implemented P3 binding prerequisite; see [ADR 0019](../decisions/0019-local-machine-bindings.md).
-Automatic machine presets, selected-tank adapters, multiport coordination,
-processing jobs and complete settings/client verification remain unfinished.
+Automatic machine preset runtime is implemented through a trusted server API.
+Player preset authoring, selected-tank adapters, multiport coordination, processing
+jobs and complete release verification remain unfinished.
 
 ## Player controls
 
@@ -109,12 +110,12 @@ actual run evidence is recorded separately when completed.
 ## Canonical preset authority prerequisite
 
 [ADR 0020](../decisions/0020-machine-preset-authority.md) defines world12
-MachinePresets schema1. This stores intent and guards only: no automatic machine
-Import/Export/Stock dispatcher or player preset controls are attached yet.
+MachinePresets schema1. This was the original authority prerequisite. The runtime extension below now
+attaches automatic machine Import/Export/Stock; player preset controls remain open.
 
 On the server thread, after establishing current machine membership, call
 `machine.deployPreset(actor, MachinePresets.Mode.IMPORT,
-ResourceFilter.all(ResourceKind.ITEM), 64)` to record an item preset. The port's
+ResourceFilter.all(ResourceKind.ITEM), 64)` to deploy a scheduled item preset. The port's
 current kind must match the filter; target uses that kind's item/mB/FE units and
 accepts0..Long.MAX_VALUE. The API requires VIEW/EDIT/DEPLOY; active modes also
 require WITHDRAW/DEPOSIT. Actor data must come from an authenticated frontend or
@@ -147,5 +148,51 @@ Compiled examples are in
 [MachinePresetAuthorityGameTests](../../src/gameTest/java/dev/izzy/factorycore/testing/storage/MachinePresetAuthorityGameTests.java).
 They exercise original-principal authorization, old chunk replay, revocation,
 regrant, replacement and a new root. Core/persistence suites also cover quotas,
-overflow, strict fixed fixtures and compressed disk round trips. These prove no
-automatic transfer, throughput, client preset flow or full release acceptance.
+overflow, strict fixed fixtures and compressed disk round trips. Those authority tests alone prove no automatic transfer or throughput; the runtime
+evidence below adds dispatch, while client preset/full release acceptance remain open.
+
+
+## Scheduled Import, Export and Stock
+
+[ADR 0021](../decisions/0021-machine-preset-dispatch.md) owns the runtime extension.
+`WorldNetworks.machinePresets()` manages loaded holders and provides typed status.
+Deploying through the trusted API wakes the holder; valid saved deployments register
+on loaded reference binding. Import routes provider→storage, Export storage→provider,
+and Stock fills aggregate matching resident units to the nonnegative goal. All
+support current registry/exact/tag selectors for their kind (FE has no tags).
+Rates, access, slot windows and provider identity remain the shared connector
+contract. Invalid/currently unavailable scopes or providers block work without
+resources being guessed, copied into a ledger or silently discarded.
+
+Eight metadata visits/tick admit bounded preparation into the shared scheduler.
+Import observes16 positions per step; Export/Stock discover bounded storage pages.
+Only one request per holder runs at a time. Cursors share2MiB and32768 unsuccessful
+pages, reset on changes/reload, and full/empty/goal retries wait20 ticks. Stock
+live reads cap64 selected item positions/tanks (one FE provider); larger fluid
+capabilities reject Stock as UNSUPPORTED. Physical automation can overfill a goal;
+all matching network insertions still cap to the current deficit. Matching reads
+revalidate after foreign callbacks. Known-owned return bypasses only the goal.
+
+Pending/uncertain transfers stop new extraction. Compatible current-configuration
+original-owner staging resumes delivery without extraction. Active replacement
+gets a new physical configuration and cannot adopt the old request, even for the
+same principal. Pause preserves the endpoint for explicit known-owner cleanup:
+`runtime.transfers().progress(id, originalActor, true, completion)` returns existing
+staging only. A changed/unsupported original source may remain blocked and needs
+the later recovery workflow; never replay or invent a refund. Metadata removal
+stops the cached holder and does not delete resource ownership.
+
+Schema2 configuration marks survive program removal and chunk replay. New active
+ports/deployments advance beyond the greatest canonical/observed value; prepare
+checks metadata admission before the physical write. Current native validation
+may raise the mark without lowering it. Restore requires the full
+`MachinePresets(nodes, deployments, configurations, changed)` constructor;
+the deployment-only overload is for fresh or legacy data. Schema1 migration also
+accounts for accepted transfer contexts. Separate marks are bounded by structural
+owners, up to4096/512KiB, in addition to deployment/selector budgets.
+
+Nineteen runtime GameTests and core/compressed-disk regressions cover the stated
+boundaries. See
+[working runtime examples](../../src/gameTest/java/dev/izzy/factorycore/testing/storage/MachinePresetGameTests.java).
+The program UI, live preset client flows, actual restart/independent saves,
+multiplayer, selected tanks and performance remain required release evidence.

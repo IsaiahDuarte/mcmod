@@ -5,7 +5,7 @@ import dev.izzy.factorycore.core.storage.MachinePresets;
 import java.util.*;
 import net.minecraft.nbt.*;
 
-/** Strict canonical deployment schema1. No executable authority or resources are encoded. */
+/** Strict deployment/fence schemas1–2. No executable authority or resources are encoded. */
 final class MachinePresetCodec {
   private MachinePresetCodec() {}
 
@@ -53,11 +53,53 @@ final class MachinePresetCodec {
     return root;
   }
 
+  static CompoundTag encode(
+      List<MachinePresets.Deployment> records, Map<UUID, Long> configurations) {
+    var root = encode(records);
+    root.putInt("Schema", 2);
+    var list = new ListTag();
+    for (var value : new TreeMap<>(configurations).entrySet()) {
+      var tag = new CompoundTag();
+      tag.putUUID("Node", value.getKey());
+      tag.putLong("Configuration", value.getValue());
+      list.add(tag);
+    }
+    root.put("Configurations", list);
+    return root;
+  }
+
+  /**
+   * Null identifies schema1, whose fences are derived from records and accepted transfer contexts.
+   */
+  static Map<UUID, Long> configurations(CompoundTag root) {
+    if (root.getInt("Schema") == 1) return null;
+    require(root, "Configurations", Tag.TAG_LIST);
+    var list = root.getList("Configurations", Tag.TAG_COMPOUND);
+    if (list.size() != ((ListTag) root.get("Configurations")).size()
+        || list.size() > dev.izzy.factorycore.core.network.NodeRegistry.MAX_NODES)
+      throw new IllegalArgumentException("Invalid machine fence count");
+    var result = new HashMap<UUID, Long>();
+    for (int i = 0; i < list.size(); i++) {
+      var value = list.getCompound(i);
+      NetworkStateCodec.fields(value, Set.of("Node", "Configuration"));
+      require(value, "Configuration", Tag.TAG_LONG);
+      if (!value.hasUUID("Node")
+          || value.getLong("Configuration") <= 0
+          || result.putIfAbsent(value.getUUID("Node"), value.getLong("Configuration")) != null)
+        throw new IllegalArgumentException("Invalid/duplicate machine fence");
+    }
+    return Map.copyOf(result);
+  }
+
   static List<MachinePresets.Deployment> decode(CompoundTag root) {
-    NetworkStateCodec.fields(root, Set.of("Schema", "Deployments"));
+    NetworkStateCodec.fields(
+        root,
+        root.getInt("Schema") == 2
+            ? Set.of("Schema", "Deployments", "Configurations")
+            : Set.of("Schema", "Deployments"));
     require(root, "Schema", Tag.TAG_INT);
     require(root, "Deployments", Tag.TAG_LIST);
-    if (root.getInt("Schema") != 1)
+    if (root.getInt("Schema") != 1 && root.getInt("Schema") != 2)
       throw new IllegalArgumentException("Unknown machine deployment schema");
     var list = root.getList("Deployments", Tag.TAG_COMPOUND);
     if (list.size() != ((ListTag) root.get("Deployments")).size()
