@@ -1151,7 +1151,17 @@ These tests run headless:
   moves nothing, and a short fill is rejected.
 - `ArchitectureTest`: now inspects a real `..integration..` package.
 
-**Not run:** JEI's own client callbacks, which need a graphical client with JEI.
+**Graphical JEI run (2026-10-18):** `./gradlew runJeiClient` (desktop) loads JEI
+19.57.0.451 only in the isolated `jeiTest` source set. It checks that:
+- JEI shows its ingredient list beside the terminal;
+- JEI's recipe view opens over the terminal with the **+** button;
+- JEI resolves `TerminalTransferHandler` for the open menu, and feeding it JEI's own
+  layout slots for `minecraft:crafting_table` fills four oak-plank ghost cells;
+- JEI resolves the program ghost handler, and item and fluid drops type
+  `item("minecraft:iron_ingot") fluid("minecraft:water")`.
+
+The task requires PASS and four captures. Physical drag and the "+" click are not
+simulated. [Evidence](evidence/jei-client-v1-2026-10-18.md).
 
 
 ## Persistent guest state checks

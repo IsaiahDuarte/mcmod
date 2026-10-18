@@ -1,0 +1,9 @@
+PASS
+jei-terminal-overlay.png
+jei-recipe-over-terminal.png
+jei: resolved terminal transfer handler dev.izzy.factorycore.platform.client.integration.jei.TerminalTransferHandler
+jei-terminal-filled.png
+jei: crafting table recipe filled the ghost grid [minecraft:oak_planks, minecraft:oak_planks, , minecraft:oak_planks, minecraft:oak_planks, , , , , , , ]
+jei: program ghost drops -> item("minecraft:iron_ingot") fluid("minecraft:water")
+jei-program-ghost.png
+Handlers are resolved and fed by JEI's own runtime; physical drag and the RecipesGui transfer button click are not simulated.

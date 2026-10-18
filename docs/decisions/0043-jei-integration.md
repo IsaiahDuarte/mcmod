@@ -1,8 +1,9 @@
 # ADR 0043 — Optional JEI integration
 
 Status: selected; compiled against JEI 19.57.0.451 API. Server-side transfer behavior has
-headless evidence. **The JEI client behavior has not been run**: no graphical client with
-JEI installed has been available.
+headless evidence. On 2026-10-18 the client behavior ran graphically with JEI 19.57.0.451
+installed ([evidence](../evidence/jei-client-v1-2026-10-18.md)): JEI resolved both
+handlers and drove them. Physical drag and the "+" button click were not simulated.
 
 ## Decision
 
@@ -37,7 +38,8 @@ option.
 
 ## Consequences
 
-A11 JEI filling and the R07 JEI-drop requirement are implemented. Their
-client-side verification is open until a graphical run with JEI is recorded. A14
+A11 JEI filling and the R07 JEI-drop requirement are implemented. `./gradlew runJeiClient`
+verifies them in an isolated `jeiTest` source set, the only one with JEI at runtime; the
+`net.mezzdev.config` group is allowed from JEI's maven for that run. A14
 "works without JEI" is evidenced by every headless run, since none has JEI on the
 classpath.

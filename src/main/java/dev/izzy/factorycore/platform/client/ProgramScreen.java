@@ -100,10 +100,16 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
         editor.getX(), editor.getY(), editor.getWidth(), editor.getHeight());
   }
 
-  /** Types {@code text} at the editor cursor, as if the player typed it. */
+  /**
+   * Types {@code text} at the editor cursor, as if the player typed it. A space is typed first when
+   * the draft does not already end in whitespace, so consecutive drops stay separate tokens.
+   */
   public void insert(String text) {
     setFocused(editor);
     editor.setFocused(true);
+    var current = editor.getValue();
+    if (!current.isEmpty() && !Character.isWhitespace(current.charAt(current.length() - 1)))
+      editor.charTyped(' ', 0);
     for (int index = 0; index < text.length(); index++) editor.charTyped(text.charAt(index), 0);
   }
 

@@ -678,7 +678,7 @@ from a book and a redstone dust.
 With Just Enough Items installed, press JEI's **+** button on a crafting recipe while the
 terminal is open to fill the grid. This places ghost entries only; nothing is moved until
 you craft. Drag an item or fluid from JEI onto the Program editor to type its
-`item("…")` or `fluid("…")` expression. Without JEI, everything still works through the
+`item("…")` or `fluid("…")` expression (a space separates it from the text before it). Without JEI, everything still works through the
 terminal rows and by typing IDs.
 
 

@@ -3015,3 +3015,14 @@ The client fixture opens a bound, charged handheld 19 blocks from a powered acce
 by actual item use and captures the Wireless Terminal (30 captures). The restart run has
 now passed 12 of 14 times since the tour was added, the last 10 in a row; the two earlier
 failures remain unexplained. JEI is the remaining screen with no graphical evidence.
+
+## Graphical JEI checkpoint — 2026-10-18
+
+`./gradlew runJeiClient` runs the ADR 0043 client behavior with JEI 19.57.0.451 in an
+isolated `jeiTest` source set ([evidence](evidence/jei-client-v1-2026-10-18.md)):
+- JEI resolves the terminal transfer handler and fills the grid from its crafting-table
+  layout.
+- JEI resolves the program ghost handler; item and fluid drops type expressions.
+
+Consecutive drops now get a separating space. Physical drag and "+" clicks remain
+unsimulated. Every Factory Core screen now has graphical evidence.

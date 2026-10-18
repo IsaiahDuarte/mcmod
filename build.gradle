@@ -15,7 +15,8 @@ repositories {
     // JEI is an optional, compile-only integration (ADR 0043).
     exclusiveContent {
         forRepository { maven { url = 'https://maven.blamejared.com' } }
-        filter { includeGroup 'mezz.jei' }
+        // mezz_config is JEI's own runtime dependency, needed only by the isolated JEI client run.
+        filter { includeGroup 'mezz.jei'; includeGroup 'net.mezzdev.config' }
     }
 }
 
@@ -28,22 +29,39 @@ sourceSets {
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
+    // Isolated JEI graphical run (ADR 0043): the only source set with JEI at runtime.
+    jeiTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
 }
 configurations.clientTestImplementation.extendsFrom(configurations.implementation)
 configurations.clientTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 configurations.gameTestImplementation.extendsFrom(configurations.implementation)
 configurations.gameTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
+configurations.jeiTestImplementation.extendsFrom(configurations.implementation)
+configurations.jeiTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 
 neoForge {
     version = '21.1.252'
     addModdingDependenciesTo(sourceSets.gameTest)
     addModdingDependenciesTo(sourceSets.clientTest)
+    addModdingDependenciesTo(sourceSets.jeiTest)
     mods {
         factorycore { sourceSet(sourceSets.main) }
         factorycore_tests { sourceSet(sourceSets.gameTest) }
         factorycore_client_tests { sourceSet(sourceSets.clientTest) }
+        factorycore_jei_tests { sourceSet(sourceSets.jeiTest) }
     }
     runs {
+        jeiClient {
+            client()
+            sourceSet = sourceSets.jeiTest
+            gameDirectory = file("build/client-jei-run")
+            loadedMods = [mods.factorycore, mods.factorycore_jei_tests]
+            systemProperty "factorycore.client.report", file("build/reports/client-jei/result.txt").absolutePath
+            systemProperty "factorycore.noWelcomeGuide", "true"
+        }
         terminalClient {
             client()
             sourceSet = sourceSets.clientTest
@@ -196,6 +214,9 @@ dependencies {
     // Optional JEI integration: API at compile time only; never bundled or required (A14).
     compileOnly 'mezz.jei:jei-1.21.1-common-api:19.57.0.451'
     compileOnly 'mezz.jei:jei-1.21.1-neoforge-api:19.57.0.451'
+    jeiTestCompileOnly 'mezz.jei:jei-1.21.1-common-api:19.57.0.451'
+    jeiTestCompileOnly 'mezz.jei:jei-1.21.1-neoforge-api:19.57.0.451'
+    jeiTestRuntimeOnly 'mezz.jei:jei-1.21.1-neoforge:19.57.0.451'
     // Production guest runtime (ADR 0037): embedded in the mod jar and on dev run classpaths.
     implementation 'com.dylibso.chicory:runtime:1.7.5'
     implementation 'com.dylibso.chicory:wasm:1.7.5'
@@ -284,7 +305,22 @@ tasks.register('wasmBenchmark', JavaExec) {
 
 
 // Compile the isolated graphical fixture in the canonical gate; run it explicitly on a desktop.
-tasks.named('check') { dependsOn tasks.named('compileClientTestJava') }
+tasks.named('check') { dependsOn tasks.named('compileClientTestJava'), tasks.named('compileJeiTestJava') }
+tasks.named('runJeiClient', JavaExec) {
+    doFirst {
+        delete file('build/client-jei-run/saves/factorycore-jei-verification')
+        delete file('build/reports/client-jei')
+    }
+    doLast {
+        def result = file('build/reports/client-jei/result.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('JEI graphical verification did not complete.')
+        def captures = ['jei-terminal-overlay.png', 'jei-recipe-over-terminal.png', 'jei-terminal-filled.png', 'jei-program-ghost.png']
+        if (captures.any { name ->
+            def capture = file("build/reports/client-jei/screenshots/${name}")
+            !capture.isFile() || capture.length() == 0
+        }) throw new GradleException('JEI screenshots are missing.')
+    }
+}
 tasks.named('runTerminalClient', JavaExec) {
     doFirst {
         delete file('build/client-terminal-run/saves/factorycore-terminal-verification')
