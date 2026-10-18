@@ -52,6 +52,23 @@ public final class WorldPrograms {
 
   private record Pending(String rule, ProgramCommand command) {}
 
+  /** A scheduled rule of either deployment kind; {@code index} addresses a Wasm callback. */
+  private record RuleRef(String key, int interval, int index, ProgramIr.Rule friendly) {}
+
+  private static List<RuleRef> rules(ProgramControllerEntity controller) {
+    var refs = new ArrayList<RuleRef>();
+    if (controller.wasmDeployment()) {
+      var wasm = controller.wasm();
+      if (wasm == null) return refs;
+      var specs = wasm.rules();
+      for (int index = 0; index < specs.size(); index++)
+        refs.add(new RuleRef(specs.get(index).key(), specs.get(index).interval(), index, null));
+    } else if (controller.program() != null)
+      for (var rule : controller.program().rules())
+        refs.add(new RuleRef(rule.key(), rule.interval(), -1, rule));
+    return refs;
+  }
+
   /** Transient runtime state of one loaded controller; persisted state lives in the entity. */
   private static final class Runtime {
     final Map<String, Long> due = new HashMap<>();
@@ -134,16 +151,48 @@ public final class WorldPrograms {
     return List.of();
   }
 
+  /**
+   * Validates, instantiates and initializes a Wasm artifact and deploys it under {@code actor};
+   * returns a diagnostic and changes nothing on failure.
+   */
+  public List<FriendlyCompiler.Diagnostic> deployWasm(
+      NetworkPermissions.Actor actor, ProgramControllerEntity controller, byte[] artifact) {
+    if (!allowed(actor, controller))
+      return List.of(new FriendlyCompiler.Diagnostic(1, 1, "You need Deploy permission here"));
+    dev.izzy.factorycore.core.wasm.WasmProgram instance;
+    try {
+      instance = new dev.izzy.factorycore.core.wasm.WasmProgram(artifact, System::nanoTime);
+    } catch (RuntimeException failure) {
+      var message =
+          failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+      return List.of(new FriendlyCompiler.Diagnostic(1, 1, "Wasm rejected: " + message));
+    }
+    controller.deployWasm(artifact, instance, actor.id());
+    var runtime = controllers.computeIfAbsent(controller, c -> new Runtime());
+    runtime.due.clear();
+    runtime.queue.clear();
+    runtime.crafts.clear();
+    runtime.deployment = controller.deployment();
+    return List.of();
+  }
+
   /** Pause, resume or stop; requires DEPLOY at the controller. Started transfers finish. */
   public boolean control(
       NetworkPermissions.Actor actor,
       ProgramControllerEntity controller,
       ProgramControllerEntity.State next) {
-    if (!allowed(actor, controller) || controller.deployedSource() == null) return false;
+    if (!allowed(actor, controller) || !controller.deployed()) return false;
     var runtime = controllers.computeIfAbsent(controller, c -> new Runtime());
     runtime.queue.clear();
     if (next == ProgramControllerEntity.State.STOPPED) controller.undeploy();
-    else controller.state(next, "");
+    else if (next == ProgramControllerEntity.State.RUNNING
+        && controller.wasmDeployment()
+        && (controller.wasm() == null || controller.wasm().failed())) {
+      // A trapped guest never resumes mid-stack: resuming starts a fresh, re-initialized instance.
+      var failure = controller.freshWasm();
+      controller.state(failure.isEmpty() ? next : ProgramControllerEntity.State.TRAPPED, failure);
+      if (!failure.isEmpty()) return false;
+    } else controller.state(next, "");
     if (next == ProgramControllerEntity.State.RUNNING) runtime.due.clear();
     return true;
   }
@@ -164,8 +213,8 @@ public final class WorldPrograms {
         controllers.remove(controller);
         continue;
       }
-      var program = controller.program();
-      if (controller.state() != ProgramControllerEntity.State.RUNNING || program == null) continue;
+      if (controller.state() != ProgramControllerEntity.State.RUNNING || !controller.deployed())
+        continue;
       if (!controller.deployment().equals(runtime.deployment)) {
         runtime.deployment = controller.deployment();
         runtime.due.clear();
@@ -176,7 +225,7 @@ public final class WorldPrograms {
         runtime.status = "offline";
         continue;
       }
-      for (var rule : program.rules()) {
+      for (var rule : rules(controller)) {
         if (runtime.due.getOrDefault(rule.key(), Long.MIN_VALUE) > now) continue;
         var key = "rule:" + rule.key();
         // An overdue rule runs once: missed invocations coalesce into the next due time.
@@ -196,7 +245,7 @@ public final class WorldPrograms {
   }
 
   /** One rule invocation: authority, power, bounded evaluation, then publication. */
-  void invoke(ProgramControllerEntity controller, UUID deployment, ProgramIr.Rule rule) {
+  void invoke(ProgramControllerEntity controller, UUID deployment, RuleRef rule) {
     var runtime = controllers.get(controller);
     if (runtime == null
         || controller.state() != ProgramControllerEntity.State.RUNNING
@@ -207,13 +256,32 @@ public final class WorldPrograms {
       runtime.queue.clear();
       return;
     }
-    if (controller.energy() < BASE_COST + ProgramEvaluator.MAX_STEPS / STEPS_PER_FE) {
+    boolean guest = rule.friendly() == null;
+    long worst =
+        BASE_COST
+            + (guest
+                    ? dev.izzy.factorycore.core.wasm.WasmProgram.RULE_INSTRUCTIONS
+                    : ProgramEvaluator.MAX_STEPS)
+                / STEPS_PER_FE;
+    if (controller.energy() < worst) {
       runtime.status = "no_power";
       return;
     }
-    ProgramEvaluator.Outcome outcome;
+    List<ProgramCommand> commands;
+    int work;
     try {
-      outcome = ProgramEvaluator.evaluate(rule, host(controller, actor));
+      if (guest) {
+        var instance = controller.wasm();
+        if (instance == null || instance.failed())
+          throw new ProgramEvaluator.Trap("guest instance unavailable");
+        var outcome = instance.invoke(rule.index(), host(controller, actor));
+        commands = outcome.commands();
+        work = outcome.instructions();
+      } else {
+        var outcome = ProgramEvaluator.evaluate(rule.friendly(), host(controller, actor));
+        commands = outcome.commands();
+        work = outcome.steps();
+      }
     } catch (ProgramEvaluator.Trap trap) {
       controller.spend(BASE_COST);
       controller.state(
@@ -222,10 +290,10 @@ public final class WorldPrograms {
       runtime.queue.clear();
       return;
     }
-    controller.spend(BASE_COST + (outcome.steps() + STEPS_PER_FE - 1) / STEPS_PER_FE);
+    controller.spend(BASE_COST + (work + STEPS_PER_FE - 1) / STEPS_PER_FE);
     runtime.status = "running";
     runtime.queue.removeIf(pending -> pending.rule().equals(rule.key()));
-    for (var command : outcome.commands()) {
+    for (var command : commands) {
       if (command instanceof ProgramCommand.Log log) {
         controller.log(rule.key() + ": " + log.text());
         continue;

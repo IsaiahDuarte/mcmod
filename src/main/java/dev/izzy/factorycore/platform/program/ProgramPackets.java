@@ -137,6 +137,72 @@ public final class ProgramPackets {
                     lines(buffer)));
   }
 
+  /** One chunk of a Wasm artifact upload; the last chunk deploys it (needs DEPLOY). */
+  public record Artifact(int menu, UUID session, int index, int count, byte[] bytes)
+      implements CustomPacketPayload {
+    public static final int CHUNK_BYTES = 8_192, MAX_CHUNKS = 16;
+    public static final Type<Artifact> TYPE =
+        new Type<>(
+            ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "program_artifact"));
+
+    public Artifact {
+      bytes = bytes.clone();
+      if (count < 1
+          || count > MAX_CHUNKS
+          || index < 0
+          || index >= count
+          || bytes.length > CHUNK_BYTES)
+        throw new IllegalArgumentException("Invalid artifact chunk bounds");
+    }
+
+    @Override
+    public byte[] bytes() {
+      return bytes.clone();
+    }
+
+    @Override
+    public Type<Artifact> type() {
+      return TYPE;
+    }
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, Artifact> CODEC =
+        StreamCodec.of(
+            (buffer, value) -> {
+              buffer.writeVarInt(value.menu);
+              buffer.writeUUID(value.session);
+              buffer.writeVarInt(value.index);
+              buffer.writeVarInt(value.count);
+              buffer.writeByteArray(value.bytes);
+            },
+            buffer ->
+                new Artifact(
+                    buffer.readVarInt(),
+                    buffer.readUUID(),
+                    buffer.readVarInt(),
+                    buffer.readVarInt(),
+                    buffer.readByteArray(CHUNK_BYTES)));
+
+    /** Splits an artifact (at most 128 KiB) into bounded upload chunks. */
+    public static List<Artifact> chunks(int menu, UUID session, byte[] artifact) {
+      if (artifact.length > CHUNK_BYTES * MAX_CHUNKS)
+        throw new IllegalArgumentException("Artifact too large");
+      int count = Math.max(1, (artifact.length + CHUNK_BYTES - 1) / CHUNK_BYTES);
+      var chunks = new ArrayList<Artifact>(count);
+      for (int index = 0; index < count; index++)
+        chunks.add(
+            new Artifact(
+                menu,
+                session,
+                index,
+                count,
+                java.util.Arrays.copyOfRange(
+                    artifact,
+                    index * CHUNK_BYTES,
+                    Math.min(artifact.length, (index + 1) * CHUNK_BYTES))));
+      return chunks;
+    }
+  }
+
   /** The current draft, sent once when the editor opens. */
   public record Draft(int menu, UUID session, String text) implements CustomPacketPayload {
     public static final Type<Draft> TYPE =
@@ -195,6 +261,13 @@ public final class ProgramPackets {
         (value, context) -> {
           if (context.player() instanceof ServerPlayer player
               && player.containerMenu instanceof ProgramMenu menu) menu.command(player, value);
+        });
+    registrar.playToServer(
+        Artifact.TYPE,
+        Artifact.CODEC,
+        (value, context) -> {
+          if (context.player() instanceof ServerPlayer player
+              && player.containerMenu instanceof ProgramMenu menu) menu.artifact(player, value);
         });
     registrar.playToClient(
         View.TYPE,

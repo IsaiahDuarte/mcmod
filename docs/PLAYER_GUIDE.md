@@ -624,3 +624,9 @@ of it. Use the controller to open its editor: type in the text box, **Save draft
 for errors (shown as line:column under the editor), **Deploy**, **Pause/Resume** or
 **Stop**. **Template** cycles through built-in examples you can edit. Saving needs Edit
 permission; the running program only changes when you deploy.
+
+To run a Rust program, build it with the SDK (see `sdk/rust/README.md`), copy the
+`.wasm` file into `factorycore/programs` in your game folder and press **Upload Wasm**:
+the newest file is sent and deployed. A Wasm rule run needs about 260 FE available and
+costs 4 FE plus 1 FE per 256 instructions it actually uses. If it traps, it stops;
+Resume starts it fresh.

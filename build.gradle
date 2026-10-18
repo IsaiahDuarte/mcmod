@@ -93,6 +93,7 @@ neoForge {
             gameDirectory = file('build/gametest-run')
             systemProperty 'neoforge.enabledGameTestNamespaces', 'factorycore_tests'
             systemProperty 'factorycore.test.report', file('build/reports/gametest/results.xml').absolutePath
+            systemProperty 'factorycore.test.smelter', file('build/test-guests/smelter.wasm').absolutePath
             loadedMods = [mods.factorycore, mods.factorycore_tests]
         }
     }
@@ -122,6 +123,7 @@ tasks.named('runGameTestServer', JavaExec) {
     }
 }
 tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
+tasks.named('runGameTestServer') { dependsOn tasks.named('verifyRustGuest') }
 
 tasks.named('runServer', JavaExec) {
     standardInput = System.in

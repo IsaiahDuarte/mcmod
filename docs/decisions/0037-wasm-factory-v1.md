@@ -1,7 +1,7 @@
 # ADR 0037 — Production Wasm runtime and `factory_v1` ABI
 
-Status: selected; JVM evidence with a real Rust SDK guest. In-game artifact upload and
-deployment through Program Controllers are the next slice. Promotes ADR 0004's
+Status: selected; JVM and native evidence with a real Rust SDK guest, including in-game
+upload and deployment through Program Controllers. Promotes ADR 0004's
 Chicory 1.7.5 interpreter from test-only to an embedded runtime dependency.
 
 ## Decision
@@ -53,3 +53,14 @@ fallback if measured throughput is insufficient (ADR 0004).
 
 Per-callback FE cost uses instructions: 1 FE per begun 256 instructions plus the base
 cost (ADR 0006). Persistent guest state is not part of version 1.
+
+
+## Deployment — 2026-10-17
+
+The editor's **Upload Wasm** sends the newest `.wasm` in `<game dir>/factorycore/programs`
+as at most sixteen 8 KiB `ProgramPackets.Artifact` chunks (in order, one session);
+the final chunk calls `WorldPrograms.deployWasm`, which needs DEPLOY and instantiates
+and initializes a fresh guest before replacing anything. Controller block-entity
+schema 2 persists the artifact; load and resume-after-trap always build a fresh
+instance. Each callback needs 4 + 65,536/256 FE available and is charged 4 FE plus
+1 FE per begun 256 instructions.

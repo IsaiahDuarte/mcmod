@@ -48,6 +48,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     pause = button("pause", 234, 84, this::togglePause);
     button("stop", 234, 106, () -> action(ProgramPackets.STOP));
     button("template", 234, 128, this::nextTemplate);
+    button("wasm", 234, 150, this::uploadWasm);
   }
 
   private Button button(String key, int x, int y, Runnable action) {
@@ -64,6 +65,32 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     for (var chunk : ProgramPackets.chunks(menu.containerId, menu.session(), editor.getValue()))
       PacketDistributor.sendToServer(chunk);
     if (then >= 0) action(then);
+  }
+
+  /** Uploads and deploys the newest .wasm in {@code <game dir>/factorycore/programs}. */
+  private void uploadWasm() {
+    var folder = net.neoforged.fml.loading.FMLPaths.GAMEDIR.get().resolve("factorycore/programs");
+    try (var files = java.nio.file.Files.list(folder)) {
+      var newest =
+          files
+              .filter(path -> path.toString().endsWith(".wasm"))
+              .max(java.util.Comparator.comparingLong(path -> path.toFile().lastModified()));
+      if (newest.isEmpty()) {
+        minecraft.player.displayClientMessage(
+            Component.translatable("gui.factorycore.program.wasm.none", folder.toString()), false);
+        return;
+      }
+      var bytes = java.nio.file.Files.readAllBytes(newest.get());
+      for (var chunk : ProgramPackets.Artifact.chunks(menu.containerId, menu.session(), bytes))
+        PacketDistributor.sendToServer(chunk);
+      minecraft.player.displayClientMessage(
+          Component.translatable(
+              "gui.factorycore.program.wasm.sent", newest.get().getFileName().toString()),
+          false);
+    } catch (java.io.IOException | IllegalArgumentException failure) {
+      minecraft.player.displayClientMessage(
+          Component.translatable("gui.factorycore.program.wasm.none", folder.toString()), false);
+    }
   }
 
   private void action(int action) {
@@ -105,24 +132,20 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     graphics.drawString(font, title, 8, 6, 0xffffff, false);
     var view = menu.view();
-    graphics.drawString(
-        font,
+    var state =
         Component.translatable(
             "gui.factorycore.program.state",
             Component.translatable("status.factorycore.program." + view.state()),
-            view.energy()),
-        234,
-        152,
-        0xe4bc83,
-        false);
-    if (!view.status().isEmpty())
-      graphics.drawString(
-          font,
-          Component.translatable("gui.factorycore.program.status." + view.status()),
-          234,
-          164,
-          0xc9dbed,
-          false);
+            view.energy());
+    // Runtime problems (no FE, offline network) share the state line so nothing overlaps.
+    if (!view.status().isEmpty() && !view.status().equals("running"))
+      state =
+          state
+              .copy()
+              .append(" · ")
+              .append(Component.translatable("gui.factorycore.program.status." + view.status()));
+    graphics.drawString(
+        font, font.plainSubstrByWidth(state.getString(), 104), 234, 172, 0xe4bc83, false);
     int y = 185;
     var lines = new java.util.ArrayList<String>();
     if (!view.message().isEmpty()) lines.add(view.message());

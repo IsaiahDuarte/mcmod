@@ -491,3 +491,7 @@ guests are preflighted, bounded per callback and stage the same commands as the
 friendly language. A Rust SDK and starter example build with pinned tooling, and a real
 Rust guest matches its friendly twin command-for-command. This adds A09/A10 evidence;
 in-game artifact upload and deployment remain unfinished.
+
+Wasm artifacts upload through the Program Controller editor and run under the same
+lifecycle, authority and FE accounting as friendly programs (fresh instances on reload
+or resume after a trap).

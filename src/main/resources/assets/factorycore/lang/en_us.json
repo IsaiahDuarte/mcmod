@@ -489,5 +489,9 @@
   "gui.factorycore.program.state": "%s · %s FE",
   "gui.factorycore.program.status.running": "Running",
   "gui.factorycore.program.status.no_power": "Needs FE to run",
-  "gui.factorycore.program.status.offline": "Network offline"
+  "gui.factorycore.program.status.offline": "Network offline",
+  "gui.factorycore.program.wasm": "Upload Wasm",
+  "gui.factorycore.program.wasm.help": "Deploy the newest .wasm file from factorycore/programs in your game folder (needs Deploy). Build it with the Rust SDK.",
+  "gui.factorycore.program.wasm.none": "No .wasm files in %s",
+  "gui.factorycore.program.wasm.sent": "Uploading %s…"
 }

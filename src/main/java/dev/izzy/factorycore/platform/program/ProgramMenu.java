@@ -28,6 +28,8 @@ public final class ProgramMenu extends AbstractContainerMenu {
   private final UUID session;
   private final BlockPos position;
   private final StringBuilder upload = new StringBuilder();
+  private final java.io.ByteArrayOutputStream binary = new java.io.ByteArrayOutputStream();
+  private int binaryExpected = -1;
   private int expected = -1;
   private List<String> diagnostics = List.of();
   private long revision = 1;
@@ -230,6 +232,30 @@ public final class ProgramMenu extends AbstractContainerMenu {
     publish();
   }
 
+  /** Assembles a chunked Wasm artifact; the final chunk deploys it under the viewer's grants. */
+  public void artifact(ServerPlayer sender, ProgramPackets.Artifact chunk) {
+    if (sender != viewer
+        || chunk.menu() != containerId
+        || !chunk.session().equals(session)
+        || !authorized()) return;
+    if (chunk.index() == 0) {
+      binary.reset();
+      binaryExpected = chunk.count();
+    } else if (binaryExpected != chunk.count()
+        || binary.size() != chunk.index() * ProgramPackets.Artifact.CHUNK_BYTES) {
+      binary.reset();
+      binaryExpected = -1;
+      return;
+    }
+    binary.writeBytes(chunk.bytes());
+    if (chunk.index() < chunk.count() - 1) return;
+    binaryExpected = -1;
+    var bytes = binary.toByteArray();
+    binary.reset();
+    diagnose(WorldPrograms.get(sender.server).deployWasm(actor(), controller, bytes));
+    publish();
+  }
+
   private void publish() {
     var logs = controller.logs();
     var recent = logs.subList(Math.max(0, logs.size() - ProgramPackets.LINES), logs.size());
@@ -243,7 +269,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
             message.length() > 256 ? message.substring(0, 256) : message,
             controller.energy(),
             WorldPrograms.get(player().server).status(controller),
-            controller.deployedSource() != null,
+            controller.deployed(),
             diagnostics,
             recent.stream()
                 .map(line -> line.length() > 192 ? line.substring(0, 192) : line)

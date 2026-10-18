@@ -29,7 +29,9 @@ public final class ProgramControllerEntity extends BlockEntity {
   public static final long CAPACITY = 10_000;
   public static final long INPUT_RATE = 1_000;
   public static final int MAX_LOGS = 16;
-  static final int SCHEMA = 1;
+
+  /** Schema 2 adds the optional deployed Wasm {@code Artifact}; schema 1 still loads. */
+  static final int SCHEMA = 2;
 
   public enum State {
     STOPPED,
@@ -46,6 +48,8 @@ public final class ProgramControllerEntity extends BlockEntity {
   private long energy;
   private long inputTick = Long.MIN_VALUE, inputThisTick;
   private ProgramIr.Program program;
+  private byte[] artifact;
+  private dev.izzy.factorycore.core.wasm.WasmProgram wasm;
   private CompoundTag unsupported;
   private final ArrayDeque<String> logs = new ArrayDeque<>();
 
@@ -149,6 +153,51 @@ public final class ProgramControllerEntity extends BlockEntity {
     return program;
   }
 
+  /** The live Wasm instance of a Wasm deployment, or null (friendly or none). */
+  public dev.izzy.factorycore.core.wasm.WasmProgram wasm() {
+    return wasm;
+  }
+
+  public boolean deployed() {
+    return deployed != null || artifact != null;
+  }
+
+  public boolean wasmDeployment() {
+    return artifact != null;
+  }
+
+  /**
+   * Replaces a failed or missing instance with a fresh one from the persisted artifact; no
+   * suspended guest state survives. Returns the failure message, or empty on success.
+   */
+  public String freshWasm() {
+    if (artifact == null) return "No Wasm deployment";
+    try {
+      wasm = new dev.izzy.factorycore.core.wasm.WasmProgram(artifact, System::nanoTime);
+      return "";
+    } catch (RuntimeException failure) {
+      wasm = null;
+      return failure.getMessage() == null
+          ? failure.getClass().getSimpleName()
+          : failure.getMessage();
+    }
+  }
+
+  /** Replaces the deployment with an initialized Wasm guest; trusted runtime call only. */
+  public void deployWasm(
+      byte[] bytes, dev.izzy.factorycore.core.wasm.WasmProgram instance, UUID by) {
+    deployed = null;
+    program = null;
+    artifact = bytes.clone();
+    wasm = instance;
+    deployer = by;
+    deployment = UUID.randomUUID();
+    state = State.RUNNING;
+    message = "";
+    logs.clear();
+    setChanged();
+  }
+
   public String diagnostic() {
     return unsupported == null ? "" : "Unsupported program controller data; retained unchanged";
   }
@@ -166,6 +215,8 @@ public final class ProgramControllerEntity extends BlockEntity {
   public void deploy(String source, ProgramIr.Program compiled, UUID by) {
     deployed = source;
     program = compiled;
+    artifact = null;
+    wasm = null;
     deployer = by;
     deployment = UUID.randomUUID();
     state = State.RUNNING;
@@ -185,6 +236,8 @@ public final class ProgramControllerEntity extends BlockEntity {
   public void undeploy() {
     deployed = null;
     program = null;
+    artifact = null;
+    wasm = null;
     deployer = null;
     deployment = null;
     state = State.STOPPED;
@@ -242,8 +295,9 @@ public final class ProgramControllerEntity extends BlockEntity {
     tag.putLong("Energy", energy);
     tag.putString("State", state.name());
     tag.putString("Message", message);
-    if (deployed != null) {
-      tag.putString("Deployed", deployed);
+    if (deployed != null) tag.putString("Deployed", deployed);
+    if (artifact != null) tag.putByteArray("Artifact", artifact);
+    if (deployed()) {
       tag.putUUID("Deployer", deployer);
       tag.putUUID("Deployment", deployment);
     }
@@ -255,7 +309,9 @@ public final class ProgramControllerEntity extends BlockEntity {
     unsupported = null;
     if (!tag.contains("Schema")) return;
     try {
-      if (tag.getInt("Schema") != SCHEMA) throw new IllegalArgumentException("Schema");
+      int schema = tag.getInt("Schema");
+      if (schema < 1 || schema > SCHEMA) throw new IllegalArgumentException("Schema");
+      if (schema < 2 && tag.contains("Artifact")) throw new IllegalArgumentException("Artifact");
       var savedDraft = tag.getString("Draft");
       long savedEnergy = tag.getLong("Energy");
       var savedState = State.valueOf(tag.getString("State"));
@@ -264,7 +320,21 @@ public final class ProgramControllerEntity extends BlockEntity {
       draft = savedDraft;
       energy = savedEnergy;
       message = tag.getString("Message");
-      if (tag.contains("Deployed")) {
+      artifact = null;
+      wasm = null;
+      if (tag.contains("Artifact")) {
+        var bytes = tag.getByteArray("Artifact");
+        if (bytes.length > dev.izzy.factorycore.core.wasm.WasmPreflight.MAX_ARTIFACT)
+          throw new IllegalArgumentException("Artifact size");
+        deployed = null;
+        program = null;
+        artifact = bytes;
+        deployer = tag.getUUID("Deployer");
+        deployment = tag.getUUID("Deployment");
+        var failure = freshWasm();
+        state = failure.isEmpty() ? savedState : State.TRAPPED;
+        if (!failure.isEmpty()) message = "Deployed Wasm no longer loads: " + failure;
+      } else if (tag.contains("Deployed")) {
         deployed = tag.getString("Deployed");
         deployer = tag.getUUID("Deployer");
         deployment = tag.getUUID("Deployment");

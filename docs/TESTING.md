@@ -1071,3 +1071,9 @@ stock levels with instruction counts within budget; preflight rejects probe impo
 oversized and malformed artifacts; a hand-assembled infinite loop traps at the
 instruction budget and the instance stays failed; registering a rule outside init
 traps; unknown imports are refused.
+
+WasmProgramGameTests uploads the real Rust example through the editor's artifact
+chunks, deploys it, keeps a labeled machine at exactly 64 raw iron (36 left in storage)
+with FE charged, rejects an invalid artifact without replacing the deployment, and
+re-instantiates a fresh guest from the persisted artifact on reload before stop.
+`runGameTestServer` depends on `verifyRustGuest` for `smelter.wasm`.
