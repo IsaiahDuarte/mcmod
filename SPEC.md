@@ -461,3 +461,11 @@ to an ancestor when every gateway on the path allows CRAFT for its branch. The
 requester's job reserves once from its own storage view, runs at the branch holder
 through job staging and delivers to the requester; branch storage and machine handles
 stay private. This adds A07 evidence; a gateway policy editor remains unfinished.
+
+
+Keep-stock requests are implemented: persisted per-principal rules with low/high
+thresholds evaluated every 100 ticks through the shared scheduler, at most one job per
+rule (in-flight output counted by that job), refills to the high threshold under the
+principal's current CRAFT grants, and a terminal Keep toggle. This completes the P4
+request types with headless evidence; A06/A07/A08 remain partial pending graphical,
+multiplayer and fluid processing checks.

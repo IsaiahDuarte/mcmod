@@ -58,6 +58,10 @@ public final class WorldCraftingJobs {
   private final Map<UUID, RecipeHolder<CraftingRecipe>> recipes = new HashMap<>();
   private final Map<UUID, ArrayDeque<Notice>> notices = new HashMap<>();
   private final Map<UUID, Integer> cleanups = new HashMap<>();
+  private final Map<UUID, String> ruleStatus = new HashMap<>();
+  private final Map<UUID, Long> ruleDue = new HashMap<>();
+  public static final int RULE_TICKS = 100;
+  public static final long MAX_RULE_REQUEST = 4_096;
   public static final int MAX_CLEANUP_PASSES = 60;
 
   private WorldCraftingJobs(MinecraftServer server) {
@@ -161,6 +165,15 @@ public final class WorldCraftingJobs {
   /** Plans again now and reserves the plan's consumed stock exactly once, or reserves nothing. */
   public Submission submit(
       NetworkPermissions.Actor actor, NodeRegistry.Position origin, ResourceKey key, long amount) {
+    return submit(actor, origin, key, amount, null);
+  }
+
+  private Submission submit(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      ResourceKey key,
+      long amount,
+      UUID rule) {
     checkThread();
     var denied = denial(actor, origin);
     if (denied != null) return new Submission(null, null, denied);
@@ -202,7 +215,7 @@ public final class WorldCraftingJobs {
     }
     var job =
         CraftingJob.accepted(
-            id, actor.id(), scope.network(), scope.segment(), origin, plan, reserved);
+            id, actor.id(), scope.network(), scope.segment(), origin, plan, reserved, rule);
     jobs.add(job);
     return new Submission(id, plan, "");
   }
@@ -225,6 +238,98 @@ public final class WorldCraftingJobs {
     retryAt.remove(id);
     saved().craftingJobs().changed();
     return true;
+  }
+
+  /**
+   * Creates or replaces the requester's keep-stock rule for {@code key} in the origin's segment.
+   * Returns an empty reason on success. Rules act later under the principal's current grants.
+   */
+  public String keep(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      ResourceKey key,
+      long low,
+      long high) {
+    checkThread();
+    var denied = denial(actor, origin);
+    if (denied != null) return denied;
+    if (key.kind() != ResourceKind.ITEM) return "unsupported";
+    var scope = networks().membership(origin).scope();
+    try {
+      var refused =
+          saved()
+              .craftingJobs()
+              .setRule(
+                  new dev.izzy.factorycore.core.crafting.KeepStockRule(
+                      UUID.randomUUID(),
+                      actor.id(),
+                      scope.network(),
+                      scope.segment(),
+                      origin,
+                      key,
+                      low,
+                      high));
+      return refused == null ? "" : refused;
+    } catch (IllegalArgumentException invalid) {
+      return "limit";
+    }
+  }
+
+  /** The requester's rule for {@code key} in the origin's segment, or null. */
+  public dev.izzy.factorycore.core.crafting.KeepStockRule rule(
+      NetworkPermissions.Actor actor, NodeRegistry.Position origin, ResourceKey key) {
+    checkThread();
+    var member = networks().membership(origin);
+    if (member.status() != NetworkTopology.Status.VALID) return null;
+    return saved()
+        .craftingJobs()
+        .ruleFor(actor.id(), member.scope().network(), member.scope().segment(), key);
+  }
+
+  /** Removes the requester's (or, for an operator, any) rule; its in-flight job continues. */
+  public boolean unkeep(NetworkPermissions.Actor actor, UUID rule) {
+    checkThread();
+    var jobs = saved().craftingJobs();
+    var existing = jobs.rules().stream().filter(r -> r.id().equals(rule)).findFirst().orElse(null);
+    if (existing == null || (!existing.principal().equals(actor.id()) && !actor.operator()))
+      return false;
+    ruleStatus.remove(rule);
+    return jobs.removeRule(rule);
+  }
+
+  /** Last evaluation outcome for a rule: "" when satisfied or a job started, else a reason. */
+  public String ruleStatus(UUID rule) {
+    checkThread();
+    return ruleStatus.getOrDefault(rule, "");
+  }
+
+  /** Evaluates one rule: start a job for its deficit unless one of its jobs is in flight. */
+  void evaluate(UUID id) {
+    checkThread();
+    var jobs = saved().craftingJobs();
+    var rule = jobs.rules().stream().filter(r -> r.id().equals(id)).findFirst().orElse(null);
+    if (rule == null) return;
+    for (var job : jobs.all())
+      if (id.equals(job.rule())) {
+        ruleStatus.put(id, "in_flight");
+        return;
+      }
+    var actor = actor(rule.principal());
+    var denied = denial(actor, rule.origin());
+    if (denied != null) {
+      ruleStatus.put(id, denied);
+      return;
+    }
+    long available = 0;
+    for (var cell : cells(actor, rule.origin(), rule.key()))
+      available = Math.addExact(available, cell.available());
+    long deficit = Math.min(rule.deficit(available), MAX_RULE_REQUEST);
+    if (deficit == 0) {
+      ruleStatus.put(id, "satisfied");
+      return;
+    }
+    var submission = submit(actor, rule.origin(), rule.key(), deficit, id);
+    ruleStatus.put(id, submission.job() != null ? "started" : submission.reason());
   }
 
   public List<CraftingJob> jobs(UUID principal) {
@@ -257,6 +362,14 @@ public final class WorldCraftingJobs {
       if (retryAt.getOrDefault(job.id(), Long.MIN_VALUE) > now) continue;
       var id = job.id();
       scheduler.submit(job.network(), job.principal(), key, TASK_COST, () -> run(id));
+    }
+    for (var rule : saved().craftingJobs().rules()) {
+      var key = "keep:" + rule.id();
+      if (ruleDue.getOrDefault(rule.id(), Long.MIN_VALUE) > now
+          || scheduler.isQueued(rule.network(), rule.principal(), key)) continue;
+      ruleDue.put(rule.id(), now + RULE_TICKS);
+      var id = rule.id();
+      scheduler.submit(rule.network(), rule.principal(), key, TASK_COST, () -> evaluate(id));
     }
   }
 

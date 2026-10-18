@@ -77,8 +77,9 @@ public final class CraftingJob {
       Map<ResourceKey, Long> staged,
       State state,
       String reason,
-      Dispatch dispatch) {
-    /** A snapshot with no active processing dispatch. */
+      Dispatch dispatch,
+      UUID rule) {
+    /** A manual job snapshot with no active processing dispatch. */
     public Snapshot(
         UUID id,
         UUID principal,
@@ -94,7 +95,7 @@ public final class CraftingJob {
         String reason) {
       this(
           id, principal, network, segment, origin, request, amount, steps, reserved, staged, state,
-          reason, null);
+          reason, null, null);
     }
 
     public Snapshot {
@@ -145,6 +146,7 @@ public final class CraftingJob {
   private State state;
   private String reason;
   private Dispatch dispatch;
+  private final UUID rule;
 
   public CraftingJob(Snapshot saved) {
     id = saved.id();
@@ -161,6 +163,7 @@ public final class CraftingJob {
     state = saved.state();
     reason = saved.reason();
     dispatch = saved.dispatch();
+    rule = saved.rule();
   }
 
   /** New running job from an OK plan whose consumed stock was reserved as {@code reserved}. */
@@ -172,6 +175,19 @@ public final class CraftingJob {
       NodeRegistry.Position origin,
       CraftingPlanner.Plan plan,
       Map<UUID, Map<ResourceKey, Long>> reserved) {
+    return accepted(id, principal, network, segment, origin, plan, reserved, null);
+  }
+
+  /** As above, started by keep-stock {@code rule} (null for a manual request). */
+  public static CraftingJob accepted(
+      UUID id,
+      UUID principal,
+      UUID network,
+      UUID segment,
+      NodeRegistry.Position origin,
+      CraftingPlanner.Plan plan,
+      Map<UUID, Map<ResourceKey, Long>> reserved,
+      UUID rule) {
     if (plan.status() != CraftingPlanner.Status.OK)
       throw new IllegalArgumentException("Only complete plans become jobs");
     var steps = new ArrayList<Step>();
@@ -196,13 +212,20 @@ public final class CraftingJob {
             reserved,
             Map.of(),
             State.RUNNING,
-            ""));
+            "",
+            null,
+            rule));
   }
 
   public Snapshot snapshot() {
     return new Snapshot(
         id, principal, network, segment, origin, request, amount, steps, reserved, staged, state,
-        reason, dispatch);
+        reason, dispatch, rule);
+  }
+
+  /** The keep-stock rule that started this job, or null for a manual request. */
+  public UUID rule() {
+    return rule;
   }
 
   public UUID id() {

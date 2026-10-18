@@ -14,13 +14,29 @@ import java.util.UUID;
 public final class CraftingJobs {
   public static final int MAX_JOBS = 64;
   public static final int MAX_PER_PRINCIPAL = 8;
+  public static final int MAX_RULES = 64;
+  public static final int MAX_RULES_PER_PRINCIPAL = 16;
 
   private final Map<UUID, CraftingJob> jobs = new LinkedHashMap<>();
+  private final Map<UUID, KeepStockRule> rules = new LinkedHashMap<>();
   private final Runnable dirty;
   private Thread owner;
 
   public CraftingJobs(List<CraftingJob.Snapshot> saved, Runnable dirty) {
+    this(saved, List.of(), dirty);
+  }
+
+  public CraftingJobs(
+      List<CraftingJob.Snapshot> saved, List<KeepStockRule> savedRules, Runnable dirty) {
     this.dirty = Objects.requireNonNull(dirty);
+    if (savedRules.size() > MAX_RULES) throw new IllegalArgumentException("Rule limit exceeded");
+    var owners = new LinkedHashMap<UUID, Integer>();
+    for (var rule : savedRules) {
+      if (rules.putIfAbsent(rule.id(), rule) != null)
+        throw new IllegalArgumentException("Duplicate rule");
+      if (owners.merge(rule.principal(), 1, Integer::sum) > MAX_RULES_PER_PRINCIPAL)
+        throw new IllegalArgumentException("Per-principal rule limit exceeded");
+    }
     if (saved.size() > MAX_JOBS) throw new IllegalArgumentException("Job limit exceeded");
     var principals = new LinkedHashMap<UUID, Integer>();
     for (var snapshot : saved) {
@@ -75,6 +91,45 @@ public final class CraftingJobs {
     if (job == null || !job.finished()) throw new IllegalStateException("Job is not finished");
     jobs.remove(id);
     dirty.run();
+  }
+
+  /** Adds or replaces the principal's rule for the same network, segment and key. */
+  public String setRule(KeepStockRule rule) {
+    checkThread();
+    var existing = ruleFor(rule.principal(), rule.network(), rule.segment(), rule.key());
+    if (existing != null) rules.remove(existing.id());
+    else if (rules.size() >= MAX_RULES) return "rule_limit";
+    else if (rules().stream().filter(r -> r.principal().equals(rule.principal())).count()
+        >= MAX_RULES_PER_PRINCIPAL) return "principal_rule_limit";
+    rules.put(rule.id(), rule);
+    dirty.run();
+    return null;
+  }
+
+  public KeepStockRule ruleFor(
+      UUID principal,
+      UUID network,
+      UUID segment,
+      dev.izzy.factorycore.core.resource.ResourceKey key) {
+    checkThread();
+    for (var rule : rules.values())
+      if (rule.principal().equals(principal)
+          && rule.network().equals(network)
+          && rule.segment().equals(segment)
+          && rule.key().equals(key)) return rule;
+    return null;
+  }
+
+  public boolean removeRule(UUID id) {
+    checkThread();
+    if (rules.remove(id) == null) return false;
+    dirty.run();
+    return true;
+  }
+
+  public List<KeepStockRule> rules() {
+    checkThread();
+    return List.copyOf(rules.values());
   }
 
   public List<CraftingJob.Snapshot> snapshot() {

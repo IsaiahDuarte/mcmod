@@ -67,7 +67,7 @@ public final class DeviceSavedData extends SavedData {
       List<BufferRegistry.Deployment> deploymentStates,
       List<MachinePresets.Deployment> machineStates,
       Map<UUID, Long> machineConfigurations,
-      List<dev.izzy.factorycore.core.crafting.CraftingJob.Snapshot> jobStates,
+      CraftingJobCodec.Decoded jobStates,
       CompoundTag rejected,
       String diagnostic) {
     externalClaims = state == null ? null : new ExternalClaims(claimStates, this::setDirty);
@@ -167,8 +167,12 @@ public final class DeviceSavedData extends SavedData {
     craftingJobs =
         state == null
             ? null
-            : new dev.izzy.factorycore.core.crafting.CraftingJobs(jobStates, this::setDirty);
-    for (var job : jobStates) {
+            : new dev.izzy.factorycore.core.crafting.CraftingJobs(
+                jobStates.jobs(), jobStates.rules(), this::setDirty);
+    for (var rule : jobStates.rules())
+      if (!networks.containsKey(rule.network()))
+        throw new IllegalArgumentException("Keep-stock rule has unknown network");
+    for (var job : jobStates.jobs()) {
       if (!networks.containsKey(job.network()))
         throw new IllegalArgumentException("Crafting job has unknown network");
       for (var cell : job.reserved().entrySet())
@@ -240,7 +244,7 @@ public final class DeviceSavedData extends SavedData {
         List.of(),
         List.of(),
         Map.of(),
-        List.of(),
+        new CraftingJobCodec.Decoded(List.of(), List.of()),
         null,
         "");
   }
@@ -485,7 +489,9 @@ public final class DeviceSavedData extends SavedData {
               schema < 12
                   ? null
                   : MachinePresetCodec.configurations(tag.getCompound("MachinePresets")),
-              schema < 13 ? List.of() : CraftingJobCodec.decode(tag.getCompound("CraftingJobs")),
+              schema < 13
+                  ? new CraftingJobCodec.Decoded(List.of(), List.of())
+                  : CraftingJobCodec.decodeAll(tag.getCompound("CraftingJobs")),
               null,
               "");
       if (schema < SCHEMA || tag.getCompound("MachinePresets").getInt("Schema") < 2)
@@ -505,7 +511,7 @@ public final class DeviceSavedData extends SavedData {
           List.of(),
           List.of(),
           Map.of(),
-          List.of(),
+          new CraftingJobCodec.Decoded(List.of(), List.of()),
           tag.copy(),
           message.substring(0, Math.min(message.length(), 512)));
     }
@@ -541,7 +547,7 @@ public final class DeviceSavedData extends SavedData {
     tag.put("ExternalClaims", ExternalClaimsCodec.encode(externalClaims.snapshot()));
     tag.put("RouteCursors", RouteCursorCodec.encode(routeCursors.snapshot()));
     tag.put("Buffers", BufferStateCodec.encode(buffers.snapshot(), buffers.deployments()));
-    tag.put("CraftingJobs", CraftingJobCodec.encode(craftingJobs.snapshot()));
+    tag.put("CraftingJobs", CraftingJobCodec.encode(craftingJobs.snapshot(), craftingJobs.rules()));
     tag.put(
         "Networks",
         NetworkStateCodec.encode(

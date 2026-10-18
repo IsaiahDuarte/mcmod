@@ -1004,3 +1004,17 @@ revalidation and the root request reports `missing` without reserving. The earli
 CraftingUnitGameTests case now asserts upward-only publication (the root sees the
 child's stick pattern as published; the child does not see root patterns) instead of
 segment-only visibility.
+
+
+## Keep-stock checks
+
+KeepStockRuleTest covers refill-to-high deficits, threshold validation, replacement
+of the same target, per-principal limits, removal and duplicate rejection.
+CraftingJobPersistenceTest round-trips rules (nested schema 3), rejects rules in
+schema 2 and rules for unknown networks; its future nested schema is now 4 and its
+schema-1 fixture removes the new `Rules` field. KeepStockGameTests: a rule fills eight
+sticks, refills after four are removed with at most one job in flight and exactly two
+logs used, and stops after removal; a rule whose principal loses CRAFT is evaluated as
+denied and starts no job or reservation. TerminalJobGameTests toggles Keep on and off
+through the menu. TerminalJobPacketsTest now treats KEEP + 1 as the first invalid
+action.

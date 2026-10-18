@@ -1,0 +1,188 @@
+package dev.izzy.factorycore.testing.crafting;
+
+import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NetworkTopology;
+import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.crafting.CraftingContent;
+import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
+import dev.izzy.factorycore.platform.crafting.PatternContents;
+import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
+import dev.izzy.factorycore.platform.network.NetworkContent;
+import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
+import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.storage.CellHandleData;
+import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.StorageContent;
+import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.gametest.GameTestHolder;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+
+@GameTestHolder("factorycore_tests")
+@PrefixGameTestTemplate(false)
+public final class KeepStockGameTests {
+  private static final BlockPos ROOT = new BlockPos(1, 1, 1),
+      DRIVE = new BlockPos(2, 1, 1),
+      UNIT = new BlockPos(1, 1, 2);
+
+  private KeepStockGameTests() {}
+
+  private static ItemStack pattern(int[] cells, Item input, Item output, int count) {
+    var stacks = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
+    for (int cell : cells) stacks.set(cell, new ItemStack(input));
+    var stack = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
+    stack.set(
+        CraftingContent.PATTERN.get(),
+        new PatternContents(
+            UUID.randomUUID(), 1, 0, stacks, new ItemStack(output, count), List.of()));
+    return stack;
+  }
+
+  private record Fixture(
+      UUID owner,
+      NodeRegistry.Position origin,
+      DeviceSavedData saved,
+      DeviceRegistry.Handle cell,
+      ResourceKey log,
+      ResourceKey stick) {
+    long stock(ResourceKey key) {
+      return saved.registry().stock(cell, key).total();
+    }
+  }
+
+  private static Fixture setup(GameTestHelper h) {
+    var owner = UUID.randomUUID();
+    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
+    NetworkNodeEntity root = h.getBlockEntity(ROOT);
+    root.commission(owner);
+    h.setBlock(DRIVE, StorageContent.DRIVE.get());
+    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
+    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    h.setBlock(UNIT, CraftingContent.UNIT.get());
+    CraftingUnitEntity unit = h.getBlockEntity(UNIT);
+    unit.patterns()
+        .insertItem(0, pattern(new int[] {0}, Items.OAK_LOG, Items.OAK_PLANKS, 4), false);
+    unit.patterns()
+        .insertItem(1, pattern(new int[] {0, 3}, Items.OAK_PLANKS, Items.STICK, 4), false);
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    return new Fixture(
+        owner,
+        new NodeRegistry.Position(
+            h.getLevel().dimension().location().toString(), h.absolutePos(UNIT).asLong()),
+        DeviceSavedData.get(h.getLevel().getServer()),
+        CellHandleData.read(drive.cell(0)),
+        codec.itemKey(new ItemStack(Items.OAK_LOG)),
+        codec.itemKey(new ItemStack(Items.STICK)));
+  }
+
+  private static void ready(GameTestHelper h, Fixture f) {
+    h.assertTrue(
+        WorldNetworks.get(h.getLevel().getServer()).membership(f.origin).status()
+                == NetworkTopology.Status.VALID
+            && f.saved.registry().stock(f.cell, f.log).loaded(),
+        "Ready");
+  }
+
+  private static WorldCraftingJobs jobs(GameTestHelper h) {
+    return WorldCraftingJobs.get(h.getLevel().getServer());
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 1200)
+  public static void ruleFillsAndRefillsWithOneJobInFlightAndStopsWhenRemoved(GameTestHelper h) {
+    var f = setup(h);
+    var actor = new NetworkPermissions.Actor(f.owner, false);
+    int[] maxInFlight = {0};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.log, 4);
+              h.assertTrue(jobs(h).keep(actor, f.origin, f.stick, 8, 8).isEmpty(), "Rule set");
+            })
+        .thenWaitUntil(
+            () -> {
+              maxInFlight[0] = Math.max(maxInFlight[0], jobs(h).jobs(f.owner).size());
+              h.assertTrue(
+                  f.stock(f.stick) == 8 && jobs(h).jobs(f.owner).isEmpty(), "Filled to eight");
+            })
+        .thenExecute(() -> f.saved.registry().extract(f.cell, f.stick, 4, null))
+        .thenWaitUntil(
+            () -> {
+              maxInFlight[0] = Math.max(maxInFlight[0], jobs(h).jobs(f.owner).size());
+              h.assertTrue(
+                  f.stock(f.stick) == 8 && jobs(h).jobs(f.owner).isEmpty(), "Refilled to eight");
+            })
+        .thenExecute(
+            () -> {
+              h.assertTrue(maxInFlight[0] <= 1, "Never more than one job per rule");
+              h.assertTrue(f.stock(f.log) == 2, "Two logs used: 8 then 4 sticks");
+              var rule = jobs(h).rule(actor, f.origin, f.stick);
+              h.assertTrue(rule != null && jobs(h).unkeep(actor, rule.id()), "Rule removed");
+              f.saved.registry().extract(f.cell, f.stick, 5, null);
+            })
+        .thenIdle(250)
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.stock(f.stick) == 3 && jobs(h).jobs(f.owner).isEmpty(),
+                    "Without the rule nothing refills"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void ruleOfARevokedPrincipalStartsNothing(GameTestHelper h) {
+    var f = setup(h);
+    var member = UUID.randomUUID();
+    var memberActor = new NetworkPermissions.Actor(member, false);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var network =
+                  WorldNetworks.get(h.getLevel().getServer())
+                      .membership(f.origin)
+                      .scope()
+                      .network();
+              var owner = new NetworkPermissions.Actor(f.owner, false);
+              f.saved
+                  .network(network)
+                  .setGrants(owner, member, EnumSet.of(NetworkPermissions.Permission.CRAFT));
+              f.saved.registry().insert(f.cell, f.log, 4);
+              h.assertTrue(
+                  jobs(h).keep(memberActor, f.origin, f.stick, 8, 8).isEmpty(),
+                  "Member sets a rule");
+              f.saved
+                  .network(network)
+                  .setGrants(owner, member, EnumSet.noneOf(NetworkPermissions.Permission.class));
+            })
+        .thenWaitUntil(
+            () -> {
+              var rule = jobs(h).rule(memberActor, f.origin, f.stick);
+              h.assertTrue(
+                  rule != null && jobs(h).ruleStatus(rule.id()).equals("denied"),
+                  "Rule evaluated as denied");
+            })
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    jobs(h).jobs(member).isEmpty()
+                        && f.stock(f.stick) == 0
+                        && f.saved.registry().stock(f.cell, f.log).reserved() == 0,
+                    "No job and no reservation under revoked grants"))
+        .thenSucceed();
+  }
+}

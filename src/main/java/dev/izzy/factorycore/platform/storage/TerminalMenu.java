@@ -507,6 +507,21 @@ public final class TerminalMenu extends AbstractContainerMenu {
                     submission.plan(), submission.reason());
         }
       }
+      case TerminalJobPackets.KEEP -> {
+        if (command.revision() != jobRevision || command.selection() >= craftables.size()) {
+          publish();
+          return;
+        }
+        var key = craftables.get(command.selection());
+        var existing = jobs.rule(actor(), terminal.origin(), key);
+        if (existing != null)
+          jobStatus = jobs.unkeep(actor(), existing.id()) ? "unkept" : "refused";
+        else {
+          var reason =
+              jobs.keep(actor(), terminal.origin(), key, command.amount(), command.amount());
+          jobStatus = reason.isEmpty() ? "kept" : reason;
+        }
+      }
       case TerminalJobPackets.CANCEL -> {
         if (command.selection() >= jobIds.size()) return;
         jobStatus =
@@ -538,7 +553,12 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   private void publishJobs() {
     var rows = new ArrayList<TerminalJobPackets.Entry>();
-    for (var key : craftables) rows.add(entry(key, ""));
+    var runtime = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(player().server);
+    for (var key : craftables) {
+      // A craftable row's amount carries the viewer's keep-stock threshold, if any.
+      var rule = runtime.rule(actor(), terminal.origin(), key);
+      rows.add(entry(key, rule == null ? "" : Long.toString(rule.low())));
+    }
     var missing = new ArrayList<TerminalJobPackets.Entry>();
     int steps = 0;
     long crafts = 0;

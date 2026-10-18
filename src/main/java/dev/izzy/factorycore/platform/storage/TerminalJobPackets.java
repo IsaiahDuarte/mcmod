@@ -15,7 +15,9 @@ import net.minecraft.resources.ResourceLocation;
  * bounded names and exact decimal counts.
  */
 public final class TerminalJobPackets {
-  public static final int HOME = 0, NEXT = 1, PREVIEW = 2, START = 3, CANCEL = 4;
+  /** KEEP toggles the viewer's keep-stock rule for a craftable row at {@code amount}. */
+  public static final int HOME = 0, NEXT = 1, PREVIEW = 2, START = 3, CANCEL = 4, KEEP = 5;
+
   public static final int ROWS = 8, JOBS = 4, MISSING = 3;
   public static final int MAX_AMOUNT = 4_096;
 
@@ -28,7 +30,7 @@ public final class TerminalJobPackets {
 
     public Command {
       if (action < HOME
-          || action > CANCEL
+          || action > KEEP
           || selection < 0
           || selection >= ROWS
           || amount < 1

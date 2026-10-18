@@ -119,7 +119,7 @@ class CraftingJobPersistenceTest {
       var tag = world(true, 3);
       var entry = tag.getCompound("CraftingJobs").getList("Jobs", Tag.TAG_COMPOUND).getCompound(0);
       switch (i) {
-        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 3);
+        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 4);
         case 1 -> entry.putString("State", "FUTURE");
         case 2 -> entry.putString("Unknown", "x");
         case 3 -> entry.getList("Steps", Tag.TAG_COMPOUND).getCompound(0).putLong("Done", 9);
@@ -144,6 +144,7 @@ class CraftingJobPersistenceTest {
     assertEquals(Map.of(STICK, 2L), dispatch.inserted());
     var legacy = world(true, 3);
     legacy.getCompound("CraftingJobs").putInt("Schema", 1);
+    legacy.getCompound("CraftingJobs").remove("Rules"); // Introduced by nested schema three.
     assertEquals(
         "", DeviceSavedData.load(legacy, registries).diagnostic(), "Nested schema one loads");
     var withDispatch = saved.copy();
@@ -151,5 +152,40 @@ class CraftingJobPersistenceTest {
     assertFalse(
         DeviceSavedData.load(withDispatch, registries).diagnostic().isEmpty(),
         "Schema one cannot carry a dispatch");
+  }
+
+  @Test
+  void keepStockRulesAndJobRuleLinksRoundTripAndNeedNestedSchemaThree() {
+    var tag = world(true, 3);
+    var loaded = DeviceSavedData.load(tag, registries);
+    var network = loaded.craftingJobs().all().getFirst().network();
+    var rule =
+        new dev.izzy.factorycore.core.crafting.KeepStockRule(
+            new UUID(0, 333),
+            new UUID(0, 1),
+            network,
+            network,
+            new NodeRegistry.Position("minecraft:overworld", 7),
+            STICK,
+            16,
+            64);
+    assertNull(loaded.craftingJobs().setRule(rule));
+    var saved = loaded.save(new CompoundTag(), registries);
+    var reloaded = DeviceSavedData.load(saved, registries);
+    assertEquals(List.of(rule), reloaded.craftingJobs().rules());
+    var legacy = saved.copy();
+    legacy.getCompound("CraftingJobs").putInt("Schema", 2);
+    assertFalse(
+        DeviceSavedData.load(legacy, registries).diagnostic().isEmpty(),
+        "Schema two cannot carry rules");
+    var orphan = saved.copy();
+    orphan
+        .getCompound("CraftingJobs")
+        .getList("Rules", Tag.TAG_COMPOUND)
+        .getCompound(0)
+        .putUUID("Network", new UUID(9, 9));
+    assertFalse(
+        DeviceSavedData.load(orphan, registries).diagnostic().isEmpty(),
+        "A rule for an unknown network quarantines the world");
   }
 }

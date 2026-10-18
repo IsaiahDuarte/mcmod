@@ -80,3 +80,14 @@ gateways all allow CRAFT for the branch ([ADR 0033](../decisions/0033-branch-rec
 `WorldNetworks.ancestors(origin)` lists gateway ancestors nearest first. Jobs are
 unchanged: they belong to the requester's segment, reserve from its view and deliver
 there.
+
+
+## Keep-stock rules
+
+`core.crafting.KeepStockRule` (`deficit(available)`) and `CraftingJobs.setRule/ruleFor/
+removeRule/rules` with the bounds in [ADR 0034](../decisions/0034-keep-stock-requests.md).
+`WorldCraftingJobs.keep(actor, origin, key, low, high)` returns `""` or a reason
+(`denied`, `offline`, `unsupported`, `rule_limit`, `principal_rule_limit`, `limit`);
+`rule(actor, origin, key)`, `unkeep(actor, ruleId)` (owner or operator) and
+`ruleStatus(ruleId)` (`satisfied`, `in_flight`, `started` or a submit reason).
+`CraftingJob.rule()` links a job to its rule. Nested job schema 3 adds `Rules`.

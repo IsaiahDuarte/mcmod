@@ -596,3 +596,12 @@ only for this while a job runs, and keep its output slot empty: a job waits whil
 output slot already holds the product, while another job is using the machine, or
 while the machine is full. If you cancel during processing, the job keeps collecting
 that batch's output for about a minute before giving up and leaving it in the machine.
+
+
+### Keep-stock
+
+In Jobs mode, select a craftable item, preview an amount, and press **Keep**. The
+network then crafts that item whenever storage holds fewer than that amount, up to
+it, one job at a time, using your Craft permission. Rows show **≥N** while kept;
+press **Keep** again to stop. If storage is full, results wait in the job until there
+is room. If you lose Craft permission, the rule stops starting jobs.

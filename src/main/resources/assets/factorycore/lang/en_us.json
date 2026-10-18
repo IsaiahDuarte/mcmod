@@ -458,5 +458,11 @@
   "gui.factorycore.terminal.job.reason.busy": "Machine busy with another job",
   "gui.factorycore.terminal.job.reason.output_not_clean": "Machine already holds an output item: empty it",
   "gui.factorycore.terminal.job.reason.machine_full": "Machine is full: waiting to insert inputs",
-  "gui.factorycore.terminal.job.reason.processing": "Machine processing"
+  "gui.factorycore.terminal.job.reason.processing": "Machine processing",
+  "gui.factorycore.terminal.job.keep": "Keep",
+  "gui.factorycore.terminal.job.keep.help": "Toggle keep-stock: whenever storage holds fewer than the previewed amount (64 if none), craft back up to it automatically. Rows show ≥N while kept.",
+  "gui.factorycore.terminal.job.status.kept": "Keep-stock rule set",
+  "gui.factorycore.terminal.job.status.unkept": "Keep-stock rule removed",
+  "gui.factorycore.terminal.job.status.rule_limit": "The network has too many keep-stock rules",
+  "gui.factorycore.terminal.job.status.principal_rule_limit": "You already have 16 keep-stock rules"
 }

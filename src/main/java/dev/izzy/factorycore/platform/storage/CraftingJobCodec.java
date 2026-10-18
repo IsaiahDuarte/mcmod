@@ -17,7 +17,8 @@ import net.minecraft.nbt.Tag;
 
 /**
  * Nested crafting-job schema inside world schema thirteen. Schema two adds the optional processing
- * {@code Dispatch}; schema one (no dispatch) still loads. Unknown fields reject.
+ * {@code Dispatch}; schema three adds keep-stock {@code Rules} and an optional job {@code Rule}.
+ * Older nested schemas still load. Unknown fields reject.
  */
 public final class CraftingJobCodec {
   static final long MAX_BYTES = 4L * 1024 * 1024;
@@ -77,9 +78,35 @@ public final class CraftingJobCodec {
     return list;
   }
 
+  /** Decoded nested table: jobs and keep-stock rules, already validated together. */
+  public record Decoded(
+      List<CraftingJob.Snapshot> jobs,
+      List<dev.izzy.factorycore.core.crafting.KeepStockRule> rules) {}
+
   public static CompoundTag encode(List<CraftingJob.Snapshot> jobs) {
+    return encode(jobs, List.of());
+  }
+
+  public static CompoundTag encode(
+      List<CraftingJob.Snapshot> jobs,
+      List<dev.izzy.factorycore.core.crafting.KeepStockRule> rules) {
     var root = new CompoundTag();
-    root.putInt("Schema", 2);
+    root.putInt("Schema", 3);
+    var ruleList = new ListTag();
+    for (var rule : rules) {
+      var entry = new CompoundTag();
+      entry.putUUID("Id", rule.id());
+      entry.putUUID("Principal", rule.principal());
+      entry.putUUID("Network", rule.network());
+      entry.putUUID("Segment", rule.segment());
+      entry.putString("Dimension", rule.origin().dimension());
+      entry.putLong("Position", rule.origin().block());
+      entry.put("Key", key(rule.key()));
+      entry.putLong("Low", rule.low());
+      entry.putLong("High", rule.high());
+      ruleList.add(entry);
+    }
+    root.put("Rules", ruleList);
     var list = new ListTag();
     for (var job : jobs) {
       var entry = new CompoundTag();
@@ -121,6 +148,7 @@ public final class CraftingJobCodec {
         dispatch.put("Collected", amounts(job.dispatch().collected()));
         entry.put("Dispatch", dispatch);
       }
+      if (job.rule() != null) entry.putUUID("Rule", job.rule());
       list.add(entry);
     }
     root.put("Jobs", list);
@@ -128,12 +156,56 @@ public final class CraftingJobCodec {
   }
 
   public static List<CraftingJob.Snapshot> decode(CompoundTag root) {
-    NetworkStateCodec.fields(root, Set.of("Schema", "Jobs"));
+    return decodeAll(root).jobs();
+  }
+
+  public static Decoded decodeAll(CompoundTag root) {
     if (!root.contains("Schema", Tag.TAG_INT)
         || root.getInt("Schema") < 1
-        || root.getInt("Schema") > 2)
+        || root.getInt("Schema") > 3)
       throw new IllegalArgumentException("Unsupported crafting job schema");
     int schema = root.getInt("Schema");
+    NetworkStateCodec.fields(
+        root, schema >= 3 ? Set.of("Schema", "Jobs", "Rules") : Set.of("Schema", "Jobs"));
+    var rules = new ArrayList<dev.izzy.factorycore.core.crafting.KeepStockRule>();
+    if (schema >= 3) {
+      var ruleList = list(root, "Rules");
+      if (ruleList.size() > CraftingJobs.MAX_RULES)
+        throw new IllegalArgumentException("Rule limit");
+      for (int index = 0; index < ruleList.size(); index++) {
+        var entry = ruleList.getCompound(index);
+        NetworkStateCodec.fields(
+            entry,
+            Set.of(
+                "Id",
+                "Principal",
+                "Network",
+                "Segment",
+                "Dimension",
+                "Position",
+                "Key",
+                "Low",
+                "High"));
+        for (var field : List.of("Id", "Principal", "Network", "Segment"))
+          if (!entry.hasUUID(field)) throw new IllegalArgumentException("Missing rule " + field);
+        if (!entry.contains("Dimension", Tag.TAG_STRING)
+            || !entry.contains("Position", Tag.TAG_LONG)
+            || !entry.contains("Key", Tag.TAG_COMPOUND)
+            || !entry.contains("Low", Tag.TAG_LONG)
+            || !entry.contains("High", Tag.TAG_LONG))
+          throw new IllegalArgumentException("Malformed keep-stock rule");
+        rules.add(
+            new dev.izzy.factorycore.core.crafting.KeepStockRule(
+                entry.getUUID("Id"),
+                entry.getUUID("Principal"),
+                entry.getUUID("Network"),
+                entry.getUUID("Segment"),
+                new NodeRegistry.Position(entry.getString("Dimension"), entry.getLong("Position")),
+                key(entry.getCompound("Key")),
+                entry.getLong("Low"),
+                entry.getLong("High")));
+      }
+    }
     var list = list(root, "Jobs");
     if (list.size() > CraftingJobs.MAX_JOBS)
       throw new IllegalArgumentException("Crafting job limit");
@@ -160,6 +232,9 @@ public final class CraftingJobCodec {
                   "State",
                   "Reason"));
       if (schema >= 2) fields.add("Dispatch");
+      if (schema >= 3) fields.add("Rule");
+      if (entry.contains("Rule") && !entry.hasUUID("Rule"))
+        throw new IllegalArgumentException("Malformed job rule");
       NetworkStateCodec.fields(entry, fields);
       CraftingJob.Dispatch dispatch = null;
       if (entry.contains("Dispatch")) {
@@ -229,8 +304,10 @@ public final class CraftingJobCodec {
               amounts(list(entry, "Staged")),
               CraftingJob.State.valueOf(entry.getString("State")),
               entry.getString("Reason"),
-              dispatch));
+              dispatch,
+              entry.hasUUID("Rule") ? entry.getUUID("Rule") : null));
     }
-    return new CraftingJobs(jobs, () -> {}).snapshot();
+    var validated = new CraftingJobs(jobs, rules, () -> {});
+    return new Decoded(validated.snapshot(), validated.rules());
   }
 }

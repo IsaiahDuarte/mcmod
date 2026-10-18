@@ -67,7 +67,7 @@ class TerminalJobPacketsTest {
     for (int[] bad :
         new int[][] {
           {-1, 0, 1},
-          {TerminalJobPackets.CANCEL + 1, 0, 1},
+          {TerminalJobPackets.KEEP + 1, 0, 1},
           {2, 8, 1},
           {2, -1, 1},
           {2, 0, 0},

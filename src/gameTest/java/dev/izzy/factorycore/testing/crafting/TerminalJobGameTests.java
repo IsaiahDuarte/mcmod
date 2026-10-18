@@ -221,6 +221,32 @@ public final class TerminalJobGameTests {
                       && saved.registry().stock(cell, log).reserved() == 0,
                   "Cancelled job retires and releases its reservation");
             })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              var m = menu(h, player);
+              command(h, player, TerminalJobPackets.KEEP, row(m, "minecraft:stick"), 8);
+              m.broadcastChanges();
+              h.assertTrue(
+                  m.jobView().status().equals("kept")
+                      && m.jobView()
+                          .craftables()
+                          .get(row(m, "minecraft:stick"))
+                          .amount()
+                          .equals("8"),
+                  "Keep sets a rule shown on the row: " + m.jobView());
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              var m = menu(h, player);
+              command(h, player, TerminalJobPackets.KEEP, row(m, "minecraft:stick"), 8);
+              m.broadcastChanges();
+              h.assertTrue(
+                  m.jobView().status().equals("unkept")
+                      && m.jobView().craftables().get(row(m, "minecraft:stick")).amount().isEmpty(),
+                  "Keep again removes the rule");
+            })
         .thenExecute(
             () -> {
               player.closeContainer();

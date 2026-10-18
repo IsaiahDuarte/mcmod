@@ -27,7 +27,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private int selected;
   private long shownRevision;
   private Button one, stack, home, next, returning, useRow, craftOne, craftMany, clearGrid, encode;
-  private Button mode, previewOne, previewEight, previewMany, startJob, jobHome, jobNext, cancelJob;
+  private Button mode, previewOne, previewEight, previewMany, startJob, keepJob, jobHome, jobNext;
+  private Button cancelJob;
   private boolean jobsMode;
   private Button gridMode;
 
@@ -155,12 +156,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                         Component.translatable("gui.factorycore.terminal.job.mode.help")))
                 .build());
     previewOne =
-        jobButton("preview_one", 10, 40, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 1));
+        jobButton("preview_one", 10, 34, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 1));
     previewEight =
-        jobButton("preview_eight", 54, 40, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 8));
+        jobButton("preview_eight", 46, 34, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 8));
     previewMany =
-        jobButton("preview_many", 98, 44, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 64));
-    startJob = jobButton("start", 146, 52, () -> job(TerminalJobPackets.START, 0, 1));
+        jobButton("preview_many", 82, 36, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 64));
+    startJob = jobButton("start", 120, 40, () -> job(TerminalJobPackets.START, 0, 1));
+    keepJob =
+        jobButton("keep", 162, 38, () -> job(TerminalJobPackets.KEEP, craftSelected, keepAmount()));
     jobHome = jobButton("home", 202, 32, () -> job(TerminalJobPackets.HOME, 0, 1));
     jobNext = jobButton("next", 238, 32, () -> job(TerminalJobPackets.NEXT, 0, 1));
     cancelJob =
@@ -173,6 +176,16 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                     Tooltip.create(
                         Component.translatable("gui.factorycore.terminal.job.cancel.help")))
                 .build());
+  }
+
+  /** Keep-stock threshold: the previewed amount, or 64 when nothing is previewed. */
+  private int keepAmount() {
+    var preview = menu.jobView().preview();
+    try {
+      return preview.amount().isEmpty() ? 64 : Integer.parseInt(preview.amount());
+    } catch (NumberFormatException invalid) {
+      return 64;
+    }
   }
 
   private Component modeLabel() {
@@ -299,8 +312,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     craftSelected = Math.min(craftSelected, Math.max(0, jobs.craftables().size() - 1));
     jobSelected = Math.min(jobSelected, Math.max(0, jobs.jobs().size() - 1));
     for (var item : List.of(one, stack, home, next, returning)) item.visible = !jobsMode;
-    for (var item : List.of(previewOne, previewEight, previewMany, startJob, jobHome, jobNext))
+    for (var item :
+        List.of(previewOne, previewEight, previewMany, startJob, keepJob, jobHome, jobNext))
       item.visible = jobsMode;
+    keepJob.active = craftSelected < jobs.craftables().size();
     previewOne.active = craftSelected < jobs.craftables().size();
     previewEight.active = previewOne.active;
     previewMany.active = previewOne.active;
@@ -396,7 +411,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         graphics.fill(
             x, topPos + 45, x + 28, topPos + 74, index == craftSelected ? 0xffbb8659 : 0xff59626b);
         var item = icon(craftables.get(index).icon());
-        if (item != null) graphics.renderItem(item.getDefaultInstance(), x + 6, topPos + 51);
+        if (item != null) graphics.renderItem(item.getDefaultInstance(), x + 6, topPos + 47);
+        var keep = craftables.get(index).amount();
+        if (!keep.isEmpty())
+          graphics.drawCenteredString(font, "≥" + compact(keep), x + 14, topPos + 65, 0xb8e986);
       }
       return;
     }
