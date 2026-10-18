@@ -125,3 +125,7 @@ Blank Pattern: PRP/RIR/PRP (four paper, four redstone, one iron) yields four. Cr
 Unit: IGI/RTR/IGI (four iron, two gold, two redstone, one crafting table), unlocked by
 gold so it lands in the Expanded tier per R11. Nine patterns per unit. Survival
 usefulness and crafting concurrency balance remain P6 validation.
+
+
+Crafting Interface: IGI/RHR/IGI (four iron, two gold, two redstone, one hopper),
+unlocked by gold (Expanded tier), nine processing patterns. — 2026-10-17

@@ -20,6 +20,11 @@ import java.util.UUID;
  * <p>Transitions: RUNNING ⇄ WAITING (with a reason) → DELIVERING once every step is done → removed
  * when staging and reservations are empty. Cancel moves RUNNING/WAITING to CANCELLING, which
  * releases reservations and then delivers staging; consumed ingredients are not restored.
+ *
+ * <p>A processing step runs through one {@link Dispatch} at a machine interface: staged inputs
+ * leave the job when inserted into the machine, and expected outputs re-enter staging only when
+ * collected from that leased machine. The dispatch is the persisted port lease. After cancel the
+ * dispatch remains as a bounded cleanup record until its outputs are collected or it is abandoned.
  */
 public final class CraftingJob {
   public static final int MAX_STEPS = CraftingPlanner.MAX_STEPS;
@@ -43,6 +48,21 @@ public final class CraftingJob {
     }
   }
 
+  /** Active processing craft at one interface: exact units inserted and collected so far. */
+  public record Dispatch(
+      NodeRegistry.Position machine,
+      Map<ResourceKey, Long> inserted,
+      Map<ResourceKey, Long> collected) {
+    public Dispatch {
+      Objects.requireNonNull(machine);
+      inserted = Snapshot.positive(inserted, "inserted");
+      collected = Snapshot.positive(collected, "collected");
+      if (inserted.size() > Pattern.MAX_INPUT_KEYS
+          || collected.size() > Pattern.MAX_BYPRODUCT_KEYS + 1)
+        throw new IllegalArgumentException("Too many dispatch keys");
+    }
+  }
+
   /** Immutable persisted form; validated on construction. */
   public record Snapshot(
       UUID id,
@@ -56,7 +76,27 @@ public final class CraftingJob {
       Map<UUID, Map<ResourceKey, Long>> reserved,
       Map<ResourceKey, Long> staged,
       State state,
-      String reason) {
+      String reason,
+      Dispatch dispatch) {
+    /** A snapshot with no active processing dispatch. */
+    public Snapshot(
+        UUID id,
+        UUID principal,
+        UUID network,
+        UUID segment,
+        NodeRegistry.Position origin,
+        ResourceKey request,
+        long amount,
+        List<Step> steps,
+        Map<UUID, Map<ResourceKey, Long>> reserved,
+        Map<ResourceKey, Long> staged,
+        State state,
+        String reason) {
+      this(
+          id, principal, network, segment, origin, request, amount, steps, reserved, staged, state,
+          reason, null);
+    }
+
     public Snapshot {
       Objects.requireNonNull(id);
       Objects.requireNonNull(principal);
@@ -104,6 +144,7 @@ public final class CraftingJob {
   private final Map<ResourceKey, Long> staged = new LinkedHashMap<>();
   private State state;
   private String reason;
+  private Dispatch dispatch;
 
   public CraftingJob(Snapshot saved) {
     id = saved.id();
@@ -119,6 +160,7 @@ public final class CraftingJob {
     staged.putAll(saved.staged());
     state = saved.state();
     reason = saved.reason();
+    dispatch = saved.dispatch();
   }
 
   /** New running job from an OK plan whose consumed stock was reserved as {@code reserved}. */
@@ -160,7 +202,7 @@ public final class CraftingJob {
   public Snapshot snapshot() {
     return new Snapshot(
         id, principal, network, segment, origin, request, amount, steps, reserved, staged, state,
-        reason);
+        reason, dispatch);
   }
 
   public UUID id() {
@@ -265,7 +307,8 @@ public final class CraftingJob {
 
   /** Completes one craft of the current step: consumes staged inputs and stages outputs. */
   public void crafted(Map<ResourceKey, Long> inputs, Map<ResourceKey, Long> outputs) {
-    if (state != State.RUNNING) throw new IllegalStateException("Job is not running");
+    if (state != State.RUNNING || dispatch != null)
+      throw new IllegalStateException("Job is not running a direct craft");
     int index = current();
     if (index < 0) throw new IllegalStateException("No unfinished step");
     for (var input : inputs.entrySet())
@@ -286,6 +329,65 @@ public final class CraftingJob {
       state = State.DELIVERING;
       reason = "";
     }
+  }
+
+  public Dispatch dispatch() {
+    return dispatch;
+  }
+
+  /** Leases a machine for the current processing craft; only one dispatch exists at a time. */
+  public void dispatch(NodeRegistry.Position machine) {
+    if (state != State.RUNNING || dispatch != null || current() < 0)
+      throw new IllegalStateException("Cannot dispatch now");
+    dispatch = new Dispatch(machine, Map.of(), Map.of());
+  }
+
+  /** Staged units accepted by the dispatched machine; they now belong to the external process. */
+  public void inserted(ResourceKey key, long amount) {
+    if (dispatch == null) throw new IllegalStateException("No dispatch");
+    unstage(key, amount);
+    var map = new LinkedHashMap<>(dispatch.inserted());
+    map.merge(key, amount, Math::addExact);
+    dispatch = new Dispatch(dispatch.machine(), map, dispatch.collected());
+  }
+
+  /** Units extracted from the dispatched machine as expected outputs; they become job staging. */
+  public void collected(ResourceKey key, long amount) {
+    if (dispatch == null) throw new IllegalStateException("No dispatch");
+    stage(key, amount);
+    var map = new LinkedHashMap<>(dispatch.collected());
+    map.merge(key, amount, Math::addExact);
+    dispatch = new Dispatch(dispatch.machine(), dispatch.inserted(), map);
+  }
+
+  /** Completes the dispatched craft once every input is inserted and every output collected. */
+  public void processed(Map<ResourceKey, Long> inputs, Map<ResourceKey, Long> outputs) {
+    if (state != State.RUNNING || dispatch == null) throw new IllegalStateException("No dispatch");
+    for (var input : inputs.entrySet())
+      if (dispatch.inserted().getOrDefault(input.getKey(), 0L) < input.getValue())
+        throw new IllegalArgumentException("Inputs not inserted");
+    for (var output : outputs.entrySet())
+      if (dispatch.collected().getOrDefault(output.getKey(), 0L) < output.getValue())
+        throw new IllegalArgumentException("Outputs not collected");
+    dispatch = null;
+    int index = current();
+    var step = steps.get(index);
+    steps.set(
+        index,
+        new Step(step.pattern(), step.version(), step.output(), step.crafts(), step.done() + 1));
+    if (current() < 0) {
+      state = State.DELIVERING;
+      reason = "";
+    }
+  }
+
+  /**
+   * Ends a cancelled job's cleanup record. Outputs not yet collected stay in the machine; the job
+   * makes no claim on them.
+   */
+  public void abandonDispatch() {
+    if (state != State.CANCELLING) throw new IllegalStateException("Only after cancel");
+    dispatch = null;
   }
 
   /** Records {@code amount} staged units of {@code key} delivered into storage. */
@@ -318,7 +420,8 @@ public final class CraftingJob {
   public boolean finished() {
     return (state == State.DELIVERING || state == State.CANCELLING)
         && staged.isEmpty()
-        && reserved.isEmpty();
+        && reserved.isEmpty()
+        && dispatch == null;
   }
 
   private void stage(ResourceKey key, long amount) {

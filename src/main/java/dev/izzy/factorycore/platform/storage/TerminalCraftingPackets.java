@@ -20,6 +20,12 @@ public final class TerminalCraftingPackets {
    */
   public static final int SET_OWN = 0, SET_ROW = 1, CLEAR = 2, CRAFT = 3, ENCODE = 4;
 
+  /** MODE: cell 0 = crafting, 1 = processing. COUNT: cell 0–11, crafts = units 1–64. */
+  public static final int MODE = 5, COUNT = 6;
+
+  /** Nine input cells plus three processing output cells (indices 9–11). */
+  public static final int CELLS = TerminalCrafting.ALL_CELLS;
+
   public record Command(
       int menu,
       UUID session,
@@ -38,9 +44,9 @@ public final class TerminalCraftingPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < SET_OWN
-          || action > ENCODE
+          || action > COUNT
           || cell < -1
-          || cell >= GridRequirement.CELLS
+          || cell >= CELLS
           || source < 0
           || source >= TerminalCrafting.SLOTS
           || crafts < 1
@@ -91,6 +97,8 @@ public final class TerminalCraftingPackets {
       UUID session,
       long gridRevision,
       List<String> cells,
+      List<Integer> counts,
+      boolean processing,
       String result,
       String resultName,
       int resultCount,
@@ -103,7 +111,10 @@ public final class TerminalCraftingPackets {
 
     public View {
       cells = List.copyOf(cells);
-      if (cells.size() != GridRequirement.CELLS
+      counts = List.copyOf(counts);
+      if (cells.size() != CELLS
+          || counts.size() != CELLS
+          || counts.stream().anyMatch(count -> count < 1 || count > 64)
           || cells.stream().anyMatch(cell -> cell.length() > 256)
           || result.length() > 256
           || resultName.length() > 96
@@ -127,6 +138,8 @@ public final class TerminalCraftingPackets {
               buffer.writeUUID(value.session);
               buffer.writeLong(value.gridRevision);
               for (var cell : value.cells) buffer.writeUtf(cell, 256);
+              for (var count : value.counts) buffer.writeVarInt(count);
+              buffer.writeBoolean(value.processing);
               buffer.writeUtf(value.result, 256);
               buffer.writeUtf(value.resultName, 96);
               buffer.writeVarInt(value.resultCount);
@@ -138,13 +151,17 @@ public final class TerminalCraftingPackets {
               UUID session = buffer.readUUID();
               long revision = buffer.readLong();
               var cells = new java.util.ArrayList<String>();
-              for (int index = 0; index < GridRequirement.CELLS; index++)
-                cells.add(buffer.readUtf(256));
+              for (int index = 0; index < CELLS; index++) cells.add(buffer.readUtf(256));
+              var counts = new java.util.ArrayList<Integer>();
+              for (int index = 0; index < CELLS; index++) counts.add(buffer.readVarInt());
+              boolean processing = buffer.readBoolean();
               return new View(
                   menu,
                   session,
                   revision,
                   cells,
+                  counts,
+                  processing,
                   buffer.readUtf(256),
                   buffer.readUtf(96),
                   buffer.readVarInt(),

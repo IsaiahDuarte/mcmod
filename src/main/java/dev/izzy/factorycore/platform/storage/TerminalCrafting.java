@@ -27,8 +27,19 @@ final class TerminalCrafting {
   /** Result of one bounded request. A deficit means more ingredients must be gathered first. */
   record Outcome(int crafted, String status, GridRequirement.Deficit deficit) {}
 
+  /** Nine input cells plus three processing output cells. */
+  static final int ALL_CELLS = GridRequirement.CELLS + 3;
+
   private final ResourceKey[] cells = new ResourceKey[GridRequirement.CELLS];
+  private final ResourceKey[] outputs = new ResourceKey[3];
+  private final int[] counts = new int[ALL_CELLS];
+  private boolean processing;
   private long revision = 1;
+
+  TerminalCrafting() {
+    Arrays.fill(counts, 1);
+  }
+
   private long cachedRevision;
   private Optional<RecipeHolder<CraftingRecipe>> cached = Optional.empty();
 
@@ -37,17 +48,43 @@ final class TerminalCrafting {
   }
 
   ResourceKey cell(int index) {
-    return cells[index];
+    return index < cells.length ? cells[index] : outputs[index - cells.length];
+  }
+
+  int count(int index) {
+    return counts[index];
+  }
+
+  boolean processing() {
+    return processing;
+  }
+
+  /** Processing mode encodes declared inputs/outputs instead of a crafting-table recipe. */
+  void processing(boolean enabled) {
+    processing = enabled;
+    revision++;
   }
 
   void set(int index, ResourceKey key) {
-    if (index < 0 || index >= cells.length) throw new IllegalArgumentException("Grid cell");
-    cells[index] = key;
+    if (index < 0 || index >= ALL_CELLS) throw new IllegalArgumentException("Grid cell");
+    if (index < cells.length) cells[index] = key;
+    else outputs[index - cells.length] = key;
+    counts[index] = 1;
+    revision++;
+  }
+
+  /** Per-cell unit count used only by processing patterns. */
+  void count(int index, int amount) {
+    if (index < 0 || index >= ALL_CELLS || amount < 1 || amount > 64)
+      throw new IllegalArgumentException("Grid count");
+    counts[index] = amount;
     revision++;
   }
 
   void clear() {
     Arrays.fill(cells, null);
+    Arrays.fill(outputs, null);
+    Arrays.fill(counts, 1);
     revision++;
   }
 
@@ -63,6 +100,7 @@ final class TerminalCrafting {
 
   /** Current recipe for the ghost selections, if any; advisory until a craft revalidates it. */
   Optional<RecipeHolder<CraftingRecipe>> recipe(ServerPlayer player) {
+    if (processing) return Optional.empty();
     if (cachedRevision == revision) return cached;
     cachedRevision = revision;
     cached = lookup(player);
@@ -85,6 +123,16 @@ final class TerminalCrafting {
 
   ItemStack preview(ServerPlayer player) {
     var codec = new PlatformResourceCodec(player.registryAccess());
+    if (processing) {
+      for (int index = 0; index < outputs.length; index++)
+        if (outputs[index] != null)
+          try {
+            return codec.itemStack(outputs[index], counts[cells.length + index]);
+          } catch (IllegalArgumentException unsupported) {
+            return ItemStack.EMPTY;
+          }
+      return ItemStack.EMPTY;
+    }
     return recipe(player)
         .map(
             holder ->
@@ -115,6 +163,7 @@ final class TerminalCrafting {
    * cannot cover every requested craft, so the caller may gather and retry.
    */
   Outcome craft(ServerPlayer player, int crafts) {
+    if (processing) return new Outcome(0, "processing_mode", null);
     var requirement = requirement();
     if (requirement.empty()) return new Outcome(0, "empty", null);
     var holder = recipe(player);
@@ -180,6 +229,7 @@ final class TerminalCrafting {
    * and remainders come from the server recipe; nothing else is consumed.
    */
   Outcome encode(ServerPlayer player) {
+    if (processing) return encodeProcessing(player);
     var holder = recipe(player);
     if (holder.isEmpty()) return new Outcome(0, "no_recipe", null);
     var codec = new PlatformResourceCodec(player.registryAccess());
@@ -203,6 +253,39 @@ final class TerminalCrafting {
     } catch (IllegalArgumentException unsupported) {
       return new Outcome(0, "unsupported", null);
     }
+    return write(player, encoded);
+  }
+
+  /** Declared processing pattern: input cells with counts and up to three output cells. */
+  private Outcome encodeProcessing(ServerPlayer player) {
+    var codec = new PlatformResourceCodec(player.registryAccess());
+    var in = new ArrayList<ItemStack>();
+    var out = new ArrayList<ItemStack>();
+    ItemStack encoded;
+    try {
+      for (int index = 0; index < cells.length; index++)
+        if (cells[index] != null) in.add(codec.itemStack(cells[index], counts[index]));
+      for (int index = 0; index < outputs.length; index++)
+        if (outputs[index] != null)
+          out.add(codec.itemStack(outputs[index], counts[cells.length + index]));
+      if (in.isEmpty() || out.isEmpty()) return new Outcome(0, "no_recipe", null);
+      var contents =
+          new dev.izzy.factorycore.platform.crafting.ProcessingContents(
+              java.util.UUID.randomUUID(), 1, 0, in, out);
+      contents.pattern(codec);
+      encoded =
+          new ItemStack(
+              dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING_PATTERN.get());
+      encoded.set(
+          dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING.get(), contents);
+    } catch (IllegalArgumentException unsupported) {
+      return new Outcome(0, "unsupported", null);
+    }
+    return write(player, encoded);
+  }
+
+  /** Replaces one blank pattern in the main inventory with {@code encoded}, or changes nothing. */
+  private Outcome write(ServerPlayer player, ItemStack encoded) {
     var inventory = player.getInventory();
     var trial = new ArrayList<ItemStack>(SLOTS);
     for (int slot = 0; slot < SLOTS; slot++) trial.add(inventory.getItem(slot).copy());

@@ -972,3 +972,22 @@ job and reserves one log; the finished job leaves the list with eight sticks sto
 64-stick preview is missing logs until more are stored; a 24-craft job is listed and
 cancelled through the menu, then retires with its reservation released. The screen's
 Jobs mode is compiled but not graphically verified.
+
+
+## Processing pattern checks
+
+ProcessingContentsTest round-trips the component and splits primary output from
+byproducts, rejecting empty/oversized/zero-version contents, a primary repeated as a
+byproduct and output-as-input. CraftingJobTest adds dispatch rules (one at a time, no
+direct craft while dispatched, completion only after inserted and collected, persisted
+dispatch, cancel keeping the cleanup record until abandoned). CraftingJobPersistenceTest
+adds dispatch round trip, nested schema 1 loading and schema 1 rejecting a dispatch;
+its future-schema case now uses nested schema 3. ProcessingJobGameTests use a real
+blast furnace behind a Crafting Interface: two ore → two ingots collected from the
+furnace with nothing left behind; a furnace already holding ingots is never dispatched
+until cleared, then exactly one ingot is stored; a second job waits `busy` and each
+collects only its own ingot; cancel mid-smelt releases unused ore and still collects
+the in-flight ingot (three units conserved); terminal processing mode encodes 2 raw
+gold → 2 gold ingots and refuses manual crafting. Three earlier assertions that all
+world jobs were empty now check the test's own principal, since jobs from concurrent
+tests share the world.

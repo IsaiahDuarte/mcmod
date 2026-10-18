@@ -446,3 +446,11 @@ The terminal now has a Jobs mode: craftable outputs of the segment's patterns, Ã
 permission, a four-job progress column with text state symbols, and Cancel. Previews
 reserve nothing; the server holds the previewed key. This adds partial A06/A11
 evidence; graphical verification, JEI and branch/processing jobs remain unfinished.
+
+
+Processing patterns and the Crafting Interface are implemented for items: declared
+inputs/outputs encoded from the terminal grid, a persisted per-job dispatch as the
+machine lease, dispatch only into a machine holding none of the outputs, real
+per-key insertion with staged remainders, completion only from outputs collected from
+that machine, and a bounded post-cancel cleanup record. This adds partial A06/A08
+evidence; fluid processing, branch publication and keep-stock remain unfinished.

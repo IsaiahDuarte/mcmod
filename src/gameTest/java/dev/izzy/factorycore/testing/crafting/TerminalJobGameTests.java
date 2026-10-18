@@ -139,7 +139,12 @@ public final class TerminalJobGameTests {
                   player,
                   new TerminalJobPackets.Command(
                       m.containerId, m.session(), stale, TerminalJobPackets.START, 0, 1));
-              h.assertTrue(saved.craftingJobs().all().isEmpty(), "Stale start is ignored");
+              h.assertTrue(
+                  dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(
+                          h.getLevel().getServer())
+                      .jobs(player.getUUID())
+                      .isEmpty(),
+                  "Stale start is ignored");
             })
         .thenIdle(3)
         .thenExecute(
@@ -209,7 +214,10 @@ public final class TerminalJobGameTests {
             () -> {
               menu(h, player).broadcastChanges();
               h.assertTrue(
-                  saved.craftingJobs().all().isEmpty()
+                  dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(
+                              h.getLevel().getServer())
+                          .jobs(player.getUUID())
+                          .isEmpty()
                       && saved.registry().stock(cell, log).reserved() == 0,
                   "Cancelled job retires and releases its reservation");
             })

@@ -18,8 +18,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
-/** Wired holder of up to nine crafting patterns. Pattern items are ordinary, physically owned. */
-public final class CraftingUnitBlock extends BaseEntityBlock {
+/** Wired holder of up to nine patterns. Pattern items are ordinary, physically owned. */
+public class CraftingUnitBlock extends BaseEntityBlock {
   public static final MapCodec<CraftingUnitBlock> CODEC = simpleCodec(CraftingUnitBlock::new);
 
   public CraftingUnitBlock(Properties properties) {
@@ -51,11 +51,12 @@ public final class CraftingUnitBlock extends BaseEntityBlock {
       Player player,
       InteractionHand hand,
       BlockHitResult hit) {
-    if (!held.is(CraftingContent.CRAFTING_PATTERN.get())
-        || !(level.getBlockEntity(position) instanceof CraftingUnitEntity unit))
+    if (!(held.is(CraftingContent.CRAFTING_PATTERN.get())
+            || held.is(CraftingContent.PROCESSING_PATTERN.get()))
+        || !(level.getBlockEntity(position) instanceof PatternHolderEntity unit))
       return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     if (level.isClientSide()) return ItemInteractionResult.SUCCESS;
-    for (int slot = 0; slot < CraftingUnitEntity.SLOTS; slot++) {
+    for (int slot = 0; slot < PatternHolderEntity.SLOTS; slot++) {
       var rest = unit.patterns().insertItem(slot, held.copyWithCount(1), false);
       if (rest.isEmpty()) {
         held.shrink(1);
@@ -64,9 +65,9 @@ public final class CraftingUnitBlock extends BaseEntityBlock {
     }
     player.displayClientMessage(
         Component.translatable(
-            held.get(CraftingContent.PATTERN.get()) == null
-                ? "message.factorycore.crafting_unit_invalid"
-                : "message.factorycore.crafting_unit_full"),
+            unit.patterns().isItemValid(0, held)
+                ? "message.factorycore.crafting_unit_full"
+                : "message.factorycore.crafting_unit_invalid"),
         true);
     return ItemInteractionResult.FAIL;
   }
@@ -76,10 +77,10 @@ public final class CraftingUnitBlock extends BaseEntityBlock {
   protected InteractionResult useWithoutItem(
       BlockState state, Level level, BlockPos position, Player player, BlockHitResult hit) {
     if (level.isClientSide()) return InteractionResult.SUCCESS;
-    if (!(level.getBlockEntity(position) instanceof CraftingUnitEntity unit))
+    if (!(level.getBlockEntity(position) instanceof PatternHolderEntity unit))
       return InteractionResult.FAIL;
     if (player.isShiftKeyDown()) {
-      for (int slot = CraftingUnitEntity.SLOTS - 1; slot >= 0; slot--) {
+      for (int slot = PatternHolderEntity.SLOTS - 1; slot >= 0; slot--) {
         var taken = unit.patterns().extractItem(slot, 1, false);
         if (!taken.isEmpty()) {
           if (!player.getInventory().add(taken))
@@ -98,7 +99,7 @@ public final class CraftingUnitBlock extends BaseEntityBlock {
         Component.translatable(
             "message.factorycore.crafting_unit_status",
             unit.patternCount(),
-            CraftingUnitEntity.SLOTS,
+            PatternHolderEntity.SLOTS,
             Component.translatable(
                 "status.factorycore." + status.name().toLowerCase(java.util.Locale.ROOT))),
         true);
@@ -129,9 +130,9 @@ public final class CraftingUnitBlock extends BaseEntityBlock {
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
     WorldNetworks.changed(level, position);
     if (!state.is(next.getBlock())
-        && level.getBlockEntity(position) instanceof CraftingUnitEntity unit
+        && level.getBlockEntity(position) instanceof PatternHolderEntity unit
         && unit.diagnostic().isEmpty())
-      for (int slot = 0; slot < CraftingUnitEntity.SLOTS; slot++)
+      for (int slot = 0; slot < PatternHolderEntity.SLOTS; slot++)
         Containers.dropItemStack(
             level,
             position.getX(),

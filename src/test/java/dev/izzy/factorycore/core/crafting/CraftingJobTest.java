@@ -195,4 +195,51 @@ class CraftingJobTest {
     assertNull(jobs.get(added.get(0)));
     assertNull(jobs.admission(principal));
   }
+
+  @Test
+  void processingDispatchLeasesStagesAndCompletesOnlyFromCollectedOutputs() {
+    var ore = new ResourceKey(ResourceKind.ITEM, "minecraft:raw_iron", new byte[0]);
+    var ingot = new ResourceKey(ResourceKind.ITEM, "minecraft:iron_ingot", new byte[0]);
+    var smelt =
+        new Pattern(
+            new UUID(0, 3), 1, Pattern.Type.PROCESSING, 0, Map.of(ore, 1L), ingot, 1, Map.of());
+    var plan = new CraftingPlanner(key -> List.of(smelt)).plan(ingot, 2, Map.of(ore, 2L));
+    var job =
+        CraftingJob.accepted(
+            new UUID(0, 9),
+            new UUID(0, 10),
+            new UUID(0, 11),
+            new UUID(0, 11),
+            new NodeRegistry.Position("minecraft:overworld", 5),
+            plan,
+            Map.of(CELL, Map.of(ore, 2L)));
+    var machine = new NodeRegistry.Position("minecraft:overworld", 77);
+    job.pulled(CELL, ore, 1);
+    job.dispatch(machine);
+    assertThrows(
+        IllegalStateException.class, () -> job.dispatch(machine), "One dispatch at a time");
+    assertThrows(
+        IllegalStateException.class, () -> job.crafted(Map.of(ore, 1L), Map.of(ingot, 1L)));
+    assertThrows(
+        IllegalArgumentException.class, () -> job.processed(Map.of(ore, 1L), Map.of(ingot, 1L)));
+    job.inserted(ore, 1);
+    assertEquals(0, job.stagedAmount(ore), "Inserted units left the job");
+    assertThrows(
+        IllegalArgumentException.class, () -> job.processed(Map.of(ore, 1L), Map.of(ingot, 1L)));
+    job.collected(ingot, 1);
+    job.processed(Map.of(ore, 1L), Map.of(ingot, 1L));
+    assertNull(job.dispatch());
+    assertEquals(1, job.steps().getFirst().done());
+    job.pulled(CELL, ore, 1);
+    job.dispatch(machine);
+    job.inserted(ore, 1);
+    var saved = new CraftingJob(job.snapshot());
+    assertEquals(job.snapshot(), saved.snapshot(), "Dispatch persists with the job");
+    job.cancel();
+    assertFalse(job.finished(), "Cleanup record keeps a cancelled job alive");
+    job.collected(ingot, 1);
+    job.abandonDispatch();
+    job.delivered(ingot, 2);
+    assertTrue(job.finished());
+  }
 }

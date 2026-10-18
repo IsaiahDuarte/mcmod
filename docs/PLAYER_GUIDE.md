@@ -577,3 +577,20 @@ Press **Start** to begin; you need Craft permission. Your jobs appear in the col
 the right with crafts done/total and a state symbol (▶ running, ⏸ waiting, ⇩ storing
 results, ✕ cancelling); hover for the reason. Select a job and press **Cancel** to stop
 it. You can run up to eight jobs; a network holds at most 64.
+
+
+### Processing patterns and Crafting Interfaces
+
+For machine recipes (smelting and similar), press the grid's **Craft** button until it
+reads **Inputs**: put the machine's ingredients in the grid (scroll over a cell to
+change its count). Press again for **Outputs** and set what the machine produces in the
+first row (the first is the main product). Press **Encode** with a Blank Pattern to
+get a Processing Pattern.
+
+Place a Crafting Interface against the machine (it faces the block you click) and wire
+it to your network; insert the processing pattern. Autocrafting then puts the inputs
+into that machine and takes only the expected outputs back out of it. Use the machine
+only for this while a job runs, and keep its output slot empty: a job waits while the
+output slot already holds the product, while another job is using the machine, or
+while the machine is full. If you cancel during processing, the job keeps collecting
+that batch's output for about a minute before giving up and leaving it in the machine.

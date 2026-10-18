@@ -15,7 +15,10 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 
-/** Nested crafting-job schema one inside world schema thirteen; unknown fields reject. */
+/**
+ * Nested crafting-job schema inside world schema thirteen. Schema two adds the optional processing
+ * {@code Dispatch}; schema one (no dispatch) still loads. Unknown fields reject.
+ */
 public final class CraftingJobCodec {
   static final long MAX_BYTES = 4L * 1024 * 1024;
 
@@ -76,7 +79,7 @@ public final class CraftingJobCodec {
 
   public static CompoundTag encode(List<CraftingJob.Snapshot> jobs) {
     var root = new CompoundTag();
-    root.putInt("Schema", 1);
+    root.putInt("Schema", 2);
     var list = new ListTag();
     for (var job : jobs) {
       var entry = new CompoundTag();
@@ -110,6 +113,14 @@ public final class CraftingJobCodec {
       entry.put("Staged", amounts(job.staged()));
       entry.putString("State", job.state().name());
       entry.putString("Reason", job.reason());
+      if (job.dispatch() != null) {
+        var dispatch = new CompoundTag();
+        dispatch.putString("Dimension", job.dispatch().machine().dimension());
+        dispatch.putLong("Position", job.dispatch().machine().block());
+        dispatch.put("Inserted", amounts(job.dispatch().inserted()));
+        dispatch.put("Collected", amounts(job.dispatch().collected()));
+        entry.put("Dispatch", dispatch);
+      }
       list.add(entry);
     }
     root.put("Jobs", list);
@@ -118,8 +129,11 @@ public final class CraftingJobCodec {
 
   public static List<CraftingJob.Snapshot> decode(CompoundTag root) {
     NetworkStateCodec.fields(root, Set.of("Schema", "Jobs"));
-    if (!root.contains("Schema", Tag.TAG_INT) || root.getInt("Schema") != 1)
+    if (!root.contains("Schema", Tag.TAG_INT)
+        || root.getInt("Schema") < 1
+        || root.getInt("Schema") > 2)
       throw new IllegalArgumentException("Unsupported crafting job schema");
+    int schema = root.getInt("Schema");
     var list = list(root, "Jobs");
     if (list.size() > CraftingJobs.MAX_JOBS)
       throw new IllegalArgumentException("Crafting job limit");
@@ -129,22 +143,39 @@ public final class CraftingJobCodec {
       var entry = list.getCompound(index);
       bytes += entry.sizeInBytes();
       if (bytes > MAX_BYTES) throw new IllegalArgumentException("Crafting job byte limit");
-      NetworkStateCodec.fields(
-          entry,
-          Set.of(
-              "Id",
-              "Principal",
-              "Network",
-              "Segment",
-              "Dimension",
-              "Position",
-              "Request",
-              "Amount",
-              "Steps",
-              "Reserved",
-              "Staged",
-              "State",
-              "Reason"));
+      var fields =
+          new java.util.HashSet<>(
+              Set.of(
+                  "Id",
+                  "Principal",
+                  "Network",
+                  "Segment",
+                  "Dimension",
+                  "Position",
+                  "Request",
+                  "Amount",
+                  "Steps",
+                  "Reserved",
+                  "Staged",
+                  "State",
+                  "Reason"));
+      if (schema >= 2) fields.add("Dispatch");
+      NetworkStateCodec.fields(entry, fields);
+      CraftingJob.Dispatch dispatch = null;
+      if (entry.contains("Dispatch")) {
+        if (!entry.contains("Dispatch", Tag.TAG_COMPOUND))
+          throw new IllegalArgumentException("Malformed dispatch");
+        var saved = entry.getCompound("Dispatch");
+        NetworkStateCodec.fields(saved, Set.of("Dimension", "Position", "Inserted", "Collected"));
+        if (!saved.contains("Dimension", Tag.TAG_STRING)
+            || !saved.contains("Position", Tag.TAG_LONG))
+          throw new IllegalArgumentException("Malformed dispatch");
+        dispatch =
+            new CraftingJob.Dispatch(
+                new NodeRegistry.Position(saved.getString("Dimension"), saved.getLong("Position")),
+                amounts(list(saved, "Inserted")),
+                amounts(list(saved, "Collected")));
+      }
       for (var field : List.of("Id", "Principal", "Network", "Segment"))
         if (!entry.hasUUID(field)) throw new IllegalArgumentException("Missing job " + field);
       if (!entry.contains("Dimension", Tag.TAG_STRING)
@@ -197,7 +228,8 @@ public final class CraftingJobCodec {
               reserved,
               amounts(list(entry, "Staged")),
               CraftingJob.State.valueOf(entry.getString("State")),
-              entry.getString("Reason")));
+              entry.getString("Reason"),
+              dispatch));
     }
     return new CraftingJobs(jobs, () -> {}).snapshot();
   }

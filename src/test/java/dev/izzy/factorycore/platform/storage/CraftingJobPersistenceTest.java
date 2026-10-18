@@ -119,7 +119,7 @@ class CraftingJobPersistenceTest {
       var tag = world(true, 3);
       var entry = tag.getCompound("CraftingJobs").getList("Jobs", Tag.TAG_COMPOUND).getCompound(0);
       switch (i) {
-        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 2);
+        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 3);
         case 1 -> entry.putString("State", "FUTURE");
         case 2 -> entry.putString("Unknown", "x");
         case 3 -> entry.getList("Steps", Tag.TAG_COMPOUND).getCompound(0).putLong("Done", 9);
@@ -127,5 +127,29 @@ class CraftingJobPersistenceTest {
       }
       assertFalse(DeviceSavedData.load(tag, registries).diagnostic().isEmpty(), "Case " + i);
     }
+  }
+
+  @Test
+  void dispatchRoundTripsAndNestedSchemaOneStillLoads() {
+    var tag = world(true, 3);
+    var loaded = DeviceSavedData.load(tag, registries);
+    var job = loaded.craftingJobs().all().getFirst();
+    job.resume();
+    job.dispatch(new NodeRegistry.Position("minecraft:overworld", 99));
+    job.inserted(STICK, 2);
+    var saved = loaded.save(new CompoundTag(), registries);
+    var dispatch =
+        DeviceSavedData.load(saved, registries).craftingJobs().all().getFirst().dispatch();
+    assertEquals(new NodeRegistry.Position("minecraft:overworld", 99), dispatch.machine());
+    assertEquals(Map.of(STICK, 2L), dispatch.inserted());
+    var legacy = world(true, 3);
+    legacy.getCompound("CraftingJobs").putInt("Schema", 1);
+    assertEquals(
+        "", DeviceSavedData.load(legacy, registries).diagnostic(), "Nested schema one loads");
+    var withDispatch = saved.copy();
+    withDispatch.getCompound("CraftingJobs").putInt("Schema", 1);
+    assertFalse(
+        DeviceSavedData.load(withDispatch, registries).diagnostic().isEmpty(),
+        "Schema one cannot carry a dispatch");
   }
 }

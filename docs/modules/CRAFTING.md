@@ -2,8 +2,8 @@
 
 P4 contracts. Portable planning is in [ADR 0029](../decisions/0029-crafting-planner.md);
 pattern items and Crafting Units are in [ADR 0030](../decisions/0030-patterns-and-crafting-units.md).
-Persisted jobs are in [ADR 0031](../decisions/0031-crafting-jobs.md). Crafting Interfaces
-and the terminal request UI are not implemented yet. Manual crafting is
+Persisted jobs are in [ADR 0031](../decisions/0031-crafting-jobs.md); processing patterns
+and Crafting Interfaces are in [ADR 0032](../decisions/0032-processing-patterns.md). Manual crafting is
 the [terminal grid](STORAGE_TERMINAL.md#manual-crafting-grid).
 
 ## Pattern
@@ -59,3 +59,15 @@ amount)` and `submit(...)` return the plan and a reason (`""`, `missing`, `cycle
 `principal_limit`); `cancel(actor, id)` (requester or operator); `jobs(principal)`;
 `notices(principal)` (last eight finished, not persisted). `CraftingJobCodec` is the
 nested schema-one codec in world schema 13.
+
+
+## Processing
+
+`ProcessingContents` is the `factorycore:processing_pattern` component; `pattern(codec)`
+returns a PROCESSING `Pattern` whose first output is primary. `CraftingInterfaceEntity`
+(extends `PatternHolderEntity`) exposes `facing()` and `machine()`. A job's
+`dispatch(machine)`, `inserted(key, n)`, `collected(key, n)`, `processed(inputs,
+outputs)` and, after cancel, `abandonDispatch()` record one leased machine craft;
+`crafted` refuses while a dispatch exists and `finished()` requires none. Wait reasons
+add `machine_missing`, `busy`, `output_not_clean`, `machine_full` and `processing`.
+Cleanup after cancel is bounded by `WorldCraftingJobs.MAX_CLEANUP_PASSES` (60).

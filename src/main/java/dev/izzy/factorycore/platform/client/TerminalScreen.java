@@ -29,6 +29,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private Button one, stack, home, next, returning, useRow, craftOne, craftMany, clearGrid, encode;
   private Button mode, previewOne, previewEight, previewMany, startJob, jobHome, jobNext, cancelJob;
   private boolean jobsMode;
+  private Button gridMode;
+
+  /** 0 = crafting grid, 1 = processing inputs, 2 = processing outputs (first row = 3 outputs). */
+  private int gridPage;
+
   private int target, craftSelected, jobSelected;
   public static final int JOBS_X = 276;
   public static final int GRID_X = 236, GRID_Y = 146, RESULT_X = 314, RESULT_Y = 170;
@@ -108,6 +113,31 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             () -> grid(TerminalCraftingPackets.CLEAR, -1, 0, 1, new byte[32]));
     addEncode();
     addJobControls();
+    gridMode =
+        addRenderableWidget(
+            Button.builder(gridModeLabel(), button -> cycleGrid())
+                .bounds(leftPos + GRID_X, topPos + 131, 44, 13)
+                .tooltip(
+                    Tooltip.create(
+                        Component.translatable("gui.factorycore.terminal.grid.mode.help")))
+                .build());
+  }
+
+  private Component gridModeLabel() {
+    return Component.translatable("gui.factorycore.terminal.grid.mode." + gridPage);
+  }
+
+  private void cycleGrid() {
+    gridPage = (gridPage + 1) % 3;
+    if (gridPage == 1) grid(TerminalCraftingPackets.MODE, 1, 0, 1, new byte[32]);
+    if (gridPage == 0) grid(TerminalCraftingPackets.MODE, 0, 0, 1, new byte[32]);
+    gridMode.setMessage(gridModeLabel());
+  }
+
+  /** Server cell index shown at a displayed 3×3 position, or -1 for an unused output-page cell. */
+  private int cellIndex(int display) {
+    if (gridPage == 2) return display < 3 ? 9 + display : -1;
+    return display;
   }
 
   private void addJobControls() {
@@ -256,7 +286,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     craftOne.active = !view.busy() && !menu.gridView().result().isEmpty();
     craftMany.active = craftOne.active;
     clearGrid.active = !view.busy();
-    encode.active = craftOne.active;
+    var gridView = menu.gridView();
+    if (!gridView.processing() && gridPage != 0) gridPage = 0;
+    if (gridView.processing() && gridPage == 0) gridPage = 1;
+    gridMode.setMessage(gridModeLabel());
+    if (gridView.processing()) {
+      craftOne.active = false;
+      craftMany.active = false;
+    }
+    encode.active = !view.busy() && !gridView.result().isEmpty();
     var jobs = menu.jobView();
     craftSelected = Math.min(craftSelected, Math.max(0, jobs.craftables().size() - 1));
     jobSelected = Math.min(jobSelected, Math.max(0, jobs.jobs().size() - 1));
@@ -301,13 +339,24 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     var grid = menu.gridView();
     for (int cell = 0; cell < 9; cell++) {
       int x = leftPos + GRID_X + 18 * (cell % 3), y = topPos + GRID_Y + 18 * (cell / 3);
-      graphics.fill(x, y, x + 18, y + 18, cell == target ? 0xffbb8659 : 0xff151b20);
-      graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xff30373e);
-      var ghost = icon(grid.cells().get(cell));
+      int index = cellIndex(cell);
+      graphics.fill(x, y, x + 18, y + 18, index == target ? 0xffbb8659 : 0xff151b20);
+      graphics.fill(x + 1, y + 1, x + 17, y + 17, index < 0 ? 0xff1d2226 : 0xff30373e);
+      if (index < 0) continue;
+      var ghost = icon(grid.cells().get(index));
       if (ghost != null) {
         graphics.renderFakeItem(ghost.getDefaultInstance(), x + 1, y + 1);
         // Translucent veil marks a ghost selection rather than a held item.
         graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x6630373e);
+        int count = grid.counts().get(index);
+        if (grid.processing() && count > 1)
+          graphics.drawString(
+              font,
+              Integer.toString(count),
+              x + 17 - font.width(Integer.toString(count)),
+              y + 9,
+              0xffffff,
+              true);
       }
     }
     graphics.fill(
@@ -401,13 +450,6 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     graphics.drawString(font, title, 8, 7, 0xffffff, false);
     graphics.drawString(font, playerInventoryTitle, 59, 136, 0xeeeeee, false);
-    graphics.drawString(
-        font,
-        Component.translatable("gui.factorycore.terminal.grid"),
-        GRID_X,
-        136,
-        0xeeeeee,
-        false);
     graphics.drawString(
         font,
         font.plainSubstrByWidth(
@@ -604,8 +646,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
     int cell = cellAt(mouseX, mouseY);
     if (cell >= 0) {
-      if (button == 1) grid(TerminalCraftingPackets.CLEAR, cell, 0, 1, new byte[32]);
-      else target = cell;
+      int index = cellIndex(cell);
+      if (index < 0) return true;
+      if (button == 1) grid(TerminalCraftingPackets.CLEAR, index, 0, 1, new byte[32]);
+      else target = index;
       return true;
     }
     var slot = getSlotUnderMouse();
@@ -623,7 +667,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             slot.getContainerSlot(),
             1,
             TerminalPackets.fingerprint(key));
-        target = (target + 1) % 9;
+        target = gridPage == 2 ? 9 + (target - 8) % 3 : (target + 1) % 9;
       } catch (IllegalArgumentException unsupported) {
         minecraft.player.displayClientMessage(
             Component.translatable("gui.factorycore.terminal.status.unsupported"), true);
@@ -654,6 +698,23 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       return true;
     }
     return super.mouseClicked(mouseX, mouseY, button);
+  }
+
+  /** In processing mode, scrolling over a cell changes its per-craft count (Shift: by 8). */
+  @Override
+  public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    int cell = cellAt(mouseX, mouseY);
+    var grid = menu.gridView();
+    if (cell >= 0 && grid.processing() && scrollY != 0) {
+      int index = cellIndex(cell);
+      if (index < 0 || grid.cells().get(index).isEmpty()) return true;
+      int step = (hasShiftDown() ? 8 : 1) * (scrollY > 0 ? 1 : -1);
+      int count = Math.max(1, Math.min(64, grid.counts().get(index) + step));
+      if (count != grid.counts().get(index))
+        grid(TerminalCraftingPackets.COUNT, index, 0, count, new byte[32]);
+      return true;
+    }
+    return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
   }
 
   @Override

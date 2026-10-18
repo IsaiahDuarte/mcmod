@@ -177,7 +177,7 @@ public final class CraftingJobGameTests {
                   missing.job() == null
                       && missing.reason().equals("missing")
                       && missing.plan().missing().get(f.log) == 1
-                      && f.saved.craftingJobs().all().isEmpty(),
+                      && jobs(h).jobs(f.owner).isEmpty(),
                   "Shortage explains the missing log and creates no job");
               f.saved.registry().insert(f.cell, f.log, 2);
               var stranger = jobs(h).submit(actor(UUID.randomUUID()), f.origin, f.stick, 8);

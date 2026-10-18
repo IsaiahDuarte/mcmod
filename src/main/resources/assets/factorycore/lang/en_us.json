@@ -445,5 +445,18 @@
   "gui.factorycore.terminal.job.reason.denied": "Craft permission revoked",
   "gui.factorycore.terminal.job.reason.pattern_missing": "Pattern removed from its Crafting Unit",
   "gui.factorycore.terminal.job.reason.recipe_changed": "Recipe no longer matches the pattern",
-  "gui.factorycore.terminal.job.reason.full": "Storage full: make room to finish"
+  "gui.factorycore.terminal.job.reason.full": "Storage full: make room to finish",
+  "gui.factorycore.terminal.grid.mode.0": "Craft",
+  "gui.factorycore.terminal.grid.mode.1": "Inputs",
+  "gui.factorycore.terminal.grid.mode.2": "Outputs",
+  "gui.factorycore.terminal.grid.mode.help": "Craft: crafting-table grid. Inputs/Outputs: declare a machine processing pattern; scroll over a cell to set its count, then Encode.",
+  "gui.factorycore.terminal.grid.status.processing_mode": "Processing: encode only",
+  "item.factorycore.processing_pattern": "Processing Pattern",
+  "block.factorycore.crafting_interface": "Crafting Interface",
+  "tooltip.factorycore.processing_exclusive": "Its machine must be used only by this pattern while a job runs.",
+  "gui.factorycore.terminal.job.reason.machine_missing": "No machine faces the Crafting Interface",
+  "gui.factorycore.terminal.job.reason.busy": "Machine busy with another job",
+  "gui.factorycore.terminal.job.reason.output_not_clean": "Machine already holds an output item: empty it",
+  "gui.factorycore.terminal.job.reason.machine_full": "Machine is full: waiting to insert inputs",
+  "gui.factorycore.terminal.job.reason.processing": "Machine processing"
 }

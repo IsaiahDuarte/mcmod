@@ -28,9 +28,16 @@ public final class WorldCrafting {
   public static final int MAX_PATTERNS = 4_096;
   private static final Map<MinecraftServer, WorldCrafting> SERVERS = new HashMap<>();
 
-  /** A pattern and the loaded unit offering it; the first unit in stable order wins duplicates. */
+  /**
+   * A pattern and the loaded holder offering it; the first holder in stable order wins duplicates.
+   * Exactly one of {@code contents} (crafting) and {@code processing} is present.
+   */
   public record Offer(
-      Pattern pattern, PatternContents contents, CraftingUnitEntity unit, int slot) {}
+      Pattern pattern,
+      PatternContents contents,
+      ProcessingContents processing,
+      PatternHolderEntity unit,
+      int slot) {}
 
   /** Patterns visible to one segment, keyed by output. Overflow beyond the bounds is reported. */
   public record Index(Map<ResourceKey, List<Offer>> byOutput, boolean truncated) {
@@ -46,7 +53,7 @@ public final class WorldCrafting {
   }
 
   private final MinecraftServer server;
-  private final Set<CraftingUnitEntity> units = new LinkedHashSet<>();
+  private final Set<PatternHolderEntity> units = new LinkedHashSet<>();
   private boolean overflow;
 
   private WorldCrafting(MinecraftServer server) {
@@ -66,7 +73,7 @@ public final class WorldCrafting {
     SERVERS.remove(event.getServer());
   }
 
-  void loaded(CraftingUnitEntity unit) {
+  void loaded(PatternHolderEntity unit) {
     if (units.size() >= MAX_UNITS) {
       overflow = true;
       return;
@@ -74,7 +81,7 @@ public final class WorldCrafting {
     units.add(unit);
   }
 
-  void removed(CraftingUnitEntity unit) {
+  void removed(PatternHolderEntity unit) {
     units.remove(unit);
   }
 
@@ -86,7 +93,7 @@ public final class WorldCrafting {
     if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
     var networks = WorldNetworks.get(server);
     var codec = new PlatformResourceCodec(server.registryAccess());
-    var members = new ArrayList<CraftingUnitEntity>();
+    var members = new ArrayList<PatternHolderEntity>();
     var iterator = units.iterator();
     while (iterator.hasNext()) {
       var unit = iterator.next();
@@ -101,29 +108,32 @@ public final class WorldCrafting {
       members.add(unit);
     }
     members.sort(
-        Comparator.comparing((CraftingUnitEntity unit) -> unit.origin().dimension())
+        Comparator.comparing((PatternHolderEntity unit) -> unit.origin().dimension())
             .thenComparingLong(unit -> unit.origin().block()));
     var byOutput = new LinkedHashMap<ResourceKey, List<Offer>>();
     var seen = new HashMap<UUID, Boolean>();
     int count = 0;
     boolean truncated = overflow;
     for (var unit : members)
-      for (int slot = 0; slot < CraftingUnitEntity.SLOTS; slot++) {
-        var contents = unit.patterns().getStackInSlot(slot).get(CraftingContent.PATTERN.get());
-        if (contents == null || seen.putIfAbsent(contents.id(), true) != null) continue;
+      for (int slot = 0; slot < PatternHolderEntity.SLOTS; slot++) {
+        var stack = unit.patterns().getStackInSlot(slot);
+        var contents = stack.get(CraftingContent.PATTERN.get());
+        var processing = stack.get(CraftingContent.PROCESSING.get());
+        UUID id = contents != null ? contents.id() : processing != null ? processing.id() : null;
+        if (id == null || seen.putIfAbsent(id, true) != null) continue;
         if (count == MAX_PATTERNS) {
           truncated = true;
           continue;
         }
         Pattern pattern;
         try {
-          pattern = contents.pattern(codec);
+          pattern = contents != null ? contents.pattern(codec) : processing.pattern(codec);
         } catch (IllegalArgumentException unsupported) {
           continue;
         }
         byOutput
             .computeIfAbsent(pattern.output(), key -> new ArrayList<>())
-            .add(new Offer(pattern, contents, unit, slot));
+            .add(new Offer(pattern, contents, processing, unit, slot));
         count++;
       }
     return new Index(byOutput, truncated);

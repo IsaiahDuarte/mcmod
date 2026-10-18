@@ -57,6 +57,8 @@ public final class WorldCraftingJobs {
   private final Map<UUID, Long> retryAt = new HashMap<>();
   private final Map<UUID, RecipeHolder<CraftingRecipe>> recipes = new HashMap<>();
   private final Map<UUID, ArrayDeque<Notice>> notices = new HashMap<>();
+  private final Map<UUID, Integer> cleanups = new HashMap<>();
+  public static final int MAX_CLEANUP_PASSES = 60;
 
   private WorldCraftingJobs(MinecraftServer server) {
     this.server = server;
@@ -265,6 +267,7 @@ public final class WorldCraftingJobs {
     var job = jobs.get(id);
     if (job == null) return;
     boolean cancelling = job.state() == CraftingJob.State.CANCELLING;
+    if (cancelling && job.dispatch() != null) cleanup(job);
     if (job.state() == CraftingJob.State.DELIVERING || cancelling) {
       deliver(job);
       if (job.finished()) {
@@ -284,6 +287,42 @@ public final class WorldCraftingJobs {
       retryAt.put(id, (long) server.getTickCount() + RETRY_TICKS);
     }
     jobs.changed();
+  }
+
+  /**
+   * Bounded cleanup record after cancel: keep collecting the dispatch's expected outputs from its
+   * machine for at most {@link #MAX_CLEANUP_PASSES} passes, then abandon the remainder in place.
+   */
+  private void cleanup(CraftingJob job) {
+    int passes = cleanups.merge(job.id(), 1, Integer::sum);
+    var holder = interfaceAt(job.dispatch().machine());
+    var machine = holder == null ? null : holder.machine();
+    var offer = machine == null ? null : findDispatched(job);
+    if (offer != null) {
+      var outputs = expected(offer.pattern());
+      collect(job, outputs, machine, new PlatformResourceCodec(server.registryAccess()));
+      boolean done =
+          outputs.entrySet().stream()
+              .allMatch(
+                  e -> job.dispatch().collected().getOrDefault(e.getKey(), 0L) >= e.getValue());
+      if (done) passes = MAX_CLEANUP_PASSES;
+    }
+    if (passes >= MAX_CLEANUP_PASSES) {
+      job.abandonDispatch();
+      cleanups.remove(job.id());
+    } else retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
+  }
+
+  private WorldCrafting.Offer findDispatched(CraftingJob job) {
+    int index = job.current();
+    if (index < 0) return null;
+    var anchor = anchor(job, null);
+    if (anchor == null) return null;
+    var offer =
+        WorldCrafting.get(server)
+            .index(networks().membership(anchor).scope())
+            .offer(job.steps().get(index).pattern());
+    return offer != null && offer.processing() != null ? offer : null;
   }
 
   /** Finds a position in the job's segment for authorization, preferring the request origin. */
@@ -315,6 +354,7 @@ public final class WorldCraftingJobs {
     var offer = crafting.offer(step.pattern());
     if (offer == null || offer.pattern().version() != step.version()) return "pattern_missing";
     var inputs = offer.pattern().inputs();
+    if (offer.processing() != null) return process(job, offer);
     for (var input : inputs.entrySet()) {
       long missing = input.getValue() - job.stagedAmount(input.getKey());
       if (missing > 0) pull(job, input.getKey(), missing);
@@ -324,6 +364,138 @@ public final class WorldCraftingJobs {
     if (outputs == null) return "recipe_changed";
     job.crafted(inputs, outputs);
     return null;
+  }
+
+  /** The loaded current interface at a dispatch position, or null. */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
+  private CraftingInterfaceEntity interfaceAt(NodeRegistry.Position position) {
+    for (var level : server.getAllLevels()) {
+      if (!level.dimension().location().toString().equals(position.dimension())) continue;
+      var pos = net.minecraft.core.BlockPos.of(position.block());
+      if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) return null;
+      return level.getBlockEntity(pos) instanceof CraftingInterfaceEntity holder && holder.current()
+          ? holder
+          : null;
+    }
+    return null;
+  }
+
+  private boolean leasedByOther(NodeRegistry.Position machine, UUID job) {
+    for (var other : saved().craftingJobs().all())
+      if (!other.id().equals(job)
+          && other.dispatch() != null
+          && other.dispatch().machine().equals(machine)) return true;
+    return false;
+  }
+
+  private static boolean contains(
+      net.neoforged.neoforge.items.IItemHandler machine,
+      ResourceKey key,
+      PlatformResourceCodec codec) {
+    for (int slot = 0; slot < machine.getSlots(); slot++) {
+      var stack = machine.getStackInSlot(slot);
+      if (!stack.isEmpty() && key.equals(keyOf(codec, stack))) return true;
+    }
+    return false;
+  }
+
+  private static ResourceKey keyOf(PlatformResourceCodec codec, ItemStack stack) {
+    try {
+      return codec.itemKey(stack);
+    } catch (IllegalArgumentException unsupported) {
+      return null;
+    }
+  }
+
+  private static Map<ResourceKey, Long> expected(
+      dev.izzy.factorycore.core.crafting.Pattern pattern) {
+    var outputs = new LinkedHashMap<ResourceKey, Long>();
+    outputs.put(pattern.output(), pattern.outputAmount());
+    pattern.byproducts().forEach((key, amount) -> outputs.merge(key, amount, Math::addExact));
+    return outputs;
+  }
+
+  /**
+   * One processing pass: lease a clean machine and stage every input, insert what the machine
+   * accepts, collect expected outputs only from that machine, and complete the craft when all are
+   * collected. Units the machine does not accept stay staged; nothing is voided.
+   */
+  private String process(CraftingJob job, WorldCrafting.Offer offer) {
+    var pattern = offer.pattern();
+    var codec = new PlatformResourceCodec(server.registryAccess());
+    var outputs = expected(pattern);
+    if (job.dispatch() == null) {
+      var holder = (CraftingInterfaceEntity) offer.unit();
+      var machine = holder.machine();
+      if (machine == null) return "machine_missing";
+      if (leasedByOther(holder.origin(), job.id())) return "busy";
+      for (var key : outputs.keySet()) if (contains(machine, key, codec)) return "output_not_clean";
+      for (var input : pattern.inputs().entrySet()) {
+        long missing = input.getValue() - job.stagedAmount(input.getKey());
+        if (missing > 0) pull(job, input.getKey(), missing);
+        if (job.stagedAmount(input.getKey()) < input.getValue()) return "offline";
+      }
+      job.dispatch(holder.origin());
+    }
+    var holder = interfaceAt(job.dispatch().machine());
+    var machine = holder == null ? null : holder.machine();
+    if (machine == null) return "machine_missing";
+    insert(job, pattern.inputs(), machine, codec);
+    collect(job, outputs, machine, codec);
+    var dispatch = job.dispatch();
+    for (var input : pattern.inputs().entrySet())
+      if (dispatch.inserted().getOrDefault(input.getKey(), 0L) < input.getValue())
+        return "machine_full";
+    for (var output : outputs.entrySet())
+      if (dispatch.collected().getOrDefault(output.getKey(), 0L) < output.getValue())
+        return "processing";
+    job.processed(pattern.inputs(), outputs);
+    return null;
+  }
+
+  private static void insert(
+      CraftingJob job,
+      Map<ResourceKey, Long> inputs,
+      net.neoforged.neoforge.items.IItemHandler machine,
+      PlatformResourceCodec codec) {
+    for (var input : inputs.entrySet()) {
+      long remaining =
+          Math.min(
+              input.getValue() - job.dispatch().inserted().getOrDefault(input.getKey(), 0L),
+              job.stagedAmount(input.getKey()));
+      while (remaining > 0) {
+        var stack = codec.itemStack(input.getKey(), 1);
+        int size = (int) Math.min(remaining, stack.getMaxStackSize());
+        stack.setCount(size);
+        var rest = net.neoforged.neoforge.items.ItemHandlerHelper.insertItem(machine, stack, false);
+        int accepted = size - rest.getCount();
+        if (accepted <= 0) break;
+        job.inserted(input.getKey(), accepted);
+        remaining -= accepted;
+      }
+    }
+  }
+
+  /** Extracts expected outputs from the leased machine; anything else extracted is staged too. */
+  private static void collect(
+      CraftingJob job,
+      Map<ResourceKey, Long> outputs,
+      net.neoforged.neoforge.items.IItemHandler machine,
+      PlatformResourceCodec codec) {
+    for (var output : outputs.entrySet())
+      for (int slot = 0; slot < machine.getSlots(); slot++) {
+        long remaining =
+            output.getValue() - job.dispatch().collected().getOrDefault(output.getKey(), 0L);
+        if (remaining <= 0) break;
+        var present = machine.getStackInSlot(slot);
+        if (present.isEmpty() || !output.getKey().equals(keyOf(codec, present))) continue;
+        var got = machine.extractItem(slot, (int) Math.min(remaining, present.getCount()), false);
+        if (got.isEmpty()) continue;
+        var key = keyOf(codec, got);
+        if (key == null)
+          throw new IllegalStateException("Machine returned an unrepresentable stack");
+        job.collected(key, got.getCount());
+      }
   }
 
   /** Moves reserved units into job staging; stops at offline or moved ledgers. */

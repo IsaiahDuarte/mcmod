@@ -85,7 +85,17 @@ public final class TerminalMenu extends AbstractContainerMenu {
             jobStatus);
     gridView =
         new TerminalCraftingPackets.View(
-            id, session, 0, java.util.Collections.nCopies(9, ""), "", "", 0, gridStatus, 0);
+            id,
+            session,
+            0,
+            java.util.Collections.nCopies(TerminalCraftingPackets.CELLS, ""),
+            java.util.Collections.nCopies(TerminalCraftingPackets.CELLS, 1),
+            false,
+            "",
+            "",
+            0,
+            gridStatus,
+            0);
   }
 
   public TerminalJobPackets.View jobView() {
@@ -391,6 +401,15 @@ public final class TerminalMenu extends AbstractContainerMenu {
       case TerminalCraftingPackets.CLEAR -> {
         if (command.cell() < 0) crafting.clear();
         else crafting.set(command.cell(), null);
+        gridStatus = "ready";
+      }
+      case TerminalCraftingPackets.MODE -> {
+        crafting.processing(command.cell() == 1);
+        gridStatus = "ready";
+      }
+      case TerminalCraftingPackets.COUNT -> {
+        if (command.cell() < 0 || !crafting.processing()) return;
+        crafting.count(command.cell(), command.crafts());
         gridStatus = "ready";
       }
       case TerminalCraftingPackets.ENCODE -> {
@@ -699,10 +718,12 @@ public final class TerminalMenu extends AbstractContainerMenu {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);
     }
-    var cells = new ArrayList<String>(9);
-    for (int index = 0; index < 9; index++) {
+    var cells = new ArrayList<String>(TerminalCraftingPackets.CELLS);
+    var counts = new ArrayList<Integer>(TerminalCraftingPackets.CELLS);
+    for (int index = 0; index < TerminalCraftingPackets.CELLS; index++) {
       var key = crafting.cell(index);
       cells.add(key == null ? "" : key.registryId());
+      counts.add(crafting.count(index));
     }
     var result = crafting.preview(player());
     String resultName =
@@ -714,6 +735,8 @@ public final class TerminalMenu extends AbstractContainerMenu {
             session,
             crafting.revision(),
             cells,
+            counts,
+            crafting.processing(),
             result.isEmpty()
                 ? ""
                 : net.minecraft.core.registries.BuiltInRegistries.ITEM
