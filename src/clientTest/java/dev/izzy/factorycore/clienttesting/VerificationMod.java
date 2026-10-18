@@ -10,6 +10,7 @@ public final class VerificationMod {
     RecoveryProvider.register(bus);
     if (Boolean.getBoolean("factorycore.staging.server"))
       new StagingServerVerification().register();
+    if (Boolean.getBoolean("factorycore.bench.server")) new ServerBenchmark().register();
     if (Boolean.getBoolean("factorycore.saveorder.server")) new SaveOrderVerification().register();
   }
 }

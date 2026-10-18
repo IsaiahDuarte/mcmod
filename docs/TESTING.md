@@ -1213,3 +1213,12 @@ These tests run headless:
   usable once.
 - **Two-JVM injection:** the [save-order record](evidence/save-order-v1-2026-10-18.md)
   covers older SavedData with newer chunks (`runSaveOrderRestoreServer`, part of `check`).
+
+
+## Server workload benchmark (manual)
+
+`./gradlew runBenchmarkServer` runs `ServerBenchmark` (clientTest source set) in a
+dedicated server. It fails unless items churn in the large phase and cobblestone is
+conserved, and it writes `build/benchmarks/server-v1.csv` plus a summary. It is a
+measurement, not a correctness gate in `check`. See the
+[2026-10-18 record](evidence/server-v1-2026-10-18.md).

@@ -83,6 +83,16 @@ neoForge {
             systemProperty "factorycore.staging.report", file("build/reports/staging-server/restore.txt").absolutePath
             systemProperty "factorycore.staging.expected", file("build/reports/staging-server/expected.properties").absolutePath
         }
+        benchmarkServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/benchmark-server-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            jvmArgument '-Xmx2g'
+            systemProperty "factorycore.bench.server", "true"
+            systemProperty "factorycore.bench.output", file("build/benchmarks").absolutePath
+        }
         saveOrderSeedServer {
             server()
             sourceSet = sourceSets.clientTest
@@ -337,3 +347,19 @@ tasks.named('runSaveOrderRestoreServer', JavaExec) {
     }
 }
 tasks.named('check') { dependsOn tasks.named('runSaveOrderRestoreServer') }
+
+// Manual A15/D07 measurement (not part of check): dedicated-server workload benchmark.
+tasks.named('runBenchmarkServer', JavaExec) {
+    doFirst {
+        delete file('build/benchmark-server-run/world')
+        delete file('build/benchmarks/server-v1-summary.txt')
+        delete file('build/benchmarks/server-v1.csv')
+        def settings = file('build/benchmark-server-run/server.properties')
+        settings.parentFile.mkdirs()
+        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+    }
+    doLast {
+        def result = file('build/benchmarks/server-v1-summary.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Server benchmark did not pass conservation.')
+    }
+}
