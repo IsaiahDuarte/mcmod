@@ -127,3 +127,12 @@ of the viewer's jobs (output, done, total, state, reason) and a status key. Craf
 are the sorted output keys of `WorldCrafting.index` for the terminal's segment,
 refreshed on open and paging. Preview/start/cancel delegate to
 [`WorldCraftingJobs`](CRAFTING.md#jobs); the client never names a resource key.
+
+
+## Fluids and energy
+
+`TerminalPackets` adds KIND (selection 0/1/2), FILL (fluid row), EMPTY (own slot), CHARGE
+and DISCHARGE (own slot); see [ADR0038](../decisions/0038-terminal-fluids-energy.md).
+Status keys: `filled`, `emptied`, `charged`, `discharged`, `no_container`, `empty`,
+`no_energy_item`, `item_full`, `item_empty`, `handler_fault`, `full`, `shortage`,
+`wrong_resource`. Per-action limits: 16,000 mB and 1,000 FE.

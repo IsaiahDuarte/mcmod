@@ -1077,3 +1077,12 @@ chunks, deploys it, keeps a labeled machine at exactly 64 raw iron (36 left in s
 with FE charged, rejects an invalid artifact without replacing the deployment, and
 re-instantiates a fresh guest from the persisted artifact on reload before stop.
 `runGameTestServer` depends on `verifyRustGuest` for `smelter.wasm`.
+
+
+## Terminal fluid and energy checks
+
+TerminalContainerGameTests (with a test-only 5,000 FE battery fixture) switches the real
+menu to Fluids (2,500 mB row), fills one of two buckets with exactly 1,000 mB, empties it
+back exactly, refuses emptying an empty bucket, then in Energy charges 900 FE from a bank
+into the battery and discharges exactly 900 FE back, and refuses a non-energy stack.
+TerminalPacketsTest now treats DISCHARGE + 1 as the first invalid action.

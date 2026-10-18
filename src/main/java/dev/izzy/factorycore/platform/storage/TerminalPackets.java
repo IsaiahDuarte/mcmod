@@ -17,6 +17,13 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 public final class TerminalPackets {
   public static final int SEARCH = 0, HOME = 1, NEXT = 2, WITHDRAW = 3, DEPOSIT = 4, RETURN = 5;
 
+  /**
+   * KIND switches the view (selection 0 items, 1 fluids, 2 energy); FILL fills the first compatible
+   * container from fluid row {@code selection}; EMPTY empties own slot {@code selection};
+   * CHARGE/DISCHARGE move up to 1,000 FE into/out of the energy item in a slot.
+   */
+  public static final int KIND = 6, FILL = 7, EMPTY = 8, CHARGE = 9, DISCHARGE = 10;
+
   public record Command(
       int menu,
       UUID session,
@@ -34,7 +41,7 @@ public final class TerminalPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > RETURN
+          || action > DISCHARGE
           || selection < 0
           || selection >= 36
           || amount < 1

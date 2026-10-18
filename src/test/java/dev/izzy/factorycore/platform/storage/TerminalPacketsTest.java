@@ -101,7 +101,9 @@ class TerminalPacketsTest {
     UUID session = UUID.randomUUID();
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminalPackets.Command(1, session, 1, 6, 0, 1, "", new byte[32]));
+        () ->
+            new TerminalPackets.Command(
+                1, session, 1, TerminalPackets.DISCHARGE + 1, 0, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalPackets.Command(1, session, 1, 4, 36, 1, "", new byte[32]));

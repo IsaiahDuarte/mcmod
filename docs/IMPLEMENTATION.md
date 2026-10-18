@@ -2903,3 +2903,9 @@ block-entity schema 2, fresh instances on load/resume, per-instruction FE) and a
 Upload Wasm editor button. Native 262→263. P5 now covers both authoring paths with
 shared commands; remaining P5 gaps: persistent guest state, graphical editor checks,
 JEI insertion into the editor (P6). Next: P6 — terminal fluid and energy views.
+
+## Terminal fluids and energy checkpoint — 2026-10-18
+
+P6/R08 adds the terminal kind toggle and `TerminalContainers` fill/empty/charge/
+discharge ([ADR0038](decisions/0038-terminal-fluids-energy.md)). Native 263→264.
+Next: wireless access point and rechargeable handheld terminal (A16).

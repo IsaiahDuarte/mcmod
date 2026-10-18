@@ -280,8 +280,13 @@ already owns known staged items, Return requests their return to the original
 source; free that source's space first. Uncertain writes are frozen and need
 administrator recovery. If all View permission or the original network is gone,
 the terminal cannot provide cleanup; the admin recovery interface remains pending.
-Sorting, fluid containers, energy actions and job controls are not yet
-implemented in this screen; see the crafting grid below.
+Use the **Items/Fluids/Energy** button next to Search to change the view. In Fluids,
+select a fluid and press **Fill** to fill the first empty bucket or tank item in your
+inventory, or Shift-click a filled container to empty it into storage. In Energy, hold an
+FE item and press **Charge held** or **Discharge held** (up to 1,000 FE each time), or
+Shift-click an item to discharge it. Nothing moves if the container cannot take or give
+the fluid, or if there is no room. Sorting is not implemented yet; see the crafting grid
+below.
 
 ### Terminal crafting grid
 

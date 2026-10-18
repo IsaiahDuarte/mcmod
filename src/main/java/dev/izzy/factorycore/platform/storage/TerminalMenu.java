@@ -28,6 +28,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private ResourceKey after, next;
   private List<CatalogCounts.Row> selections = List.of();
   private String text = "", status = "loading";
+  private ResourceKind kind = ResourceKind.ITEM;
   private long revision = 1;
   private int lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE;
   private boolean active = true, loaded, busy;
@@ -226,8 +227,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     revision++;
     status = "loading";
     query = UUID.randomUUID();
-    var submission =
-        transfers().search().start(query, actor(), terminal.origin(), ResourceKind.ITEM, text);
+    var submission = transfers().search().start(query, actor(), terminal.origin(), kind, text);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
       status = submission.rejection().name().toLowerCase(Locale.ROOT);
@@ -270,6 +270,36 @@ public final class TerminalMenu extends AbstractContainerMenu {
       }
       return;
     }
+    if (command.action() == TerminalPackets.KIND) {
+      if (command.selection() > 2) return;
+      kind = ResourceKind.values()[command.selection()];
+      refresh();
+      publish();
+      return;
+    }
+    if (command.action() >= TerminalPackets.FILL) {
+      var containers = new TerminalContainers(sender, terminal.origin());
+      String outcome;
+      if (command.action() == TerminalPackets.FILL) {
+        if (command.revision() != revision
+            || kind != ResourceKind.FLUID
+            || command.selection() >= selections.size()) {
+          publish();
+          return;
+        }
+        outcome = containers.fill(selections.get(command.selection()).key());
+      } else if (command.action() == TerminalPackets.EMPTY)
+        outcome = containers.empty(command.selection());
+      else
+        outcome =
+            containers.energy(command.selection(), command.action() == TerminalPackets.CHARGE);
+      status = outcome;
+      revision++;
+      refresh();
+      status = outcome;
+      publish();
+      return;
+    }
     if (command.revision() != revision) {
       publish();
       return;
@@ -291,6 +321,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     WorldStorageTransfers.PlayerInventory endpoint;
     WorldStorageRoutes.Direction direction;
     long amount = command.amount();
+    if (kind != ResourceKind.ITEM) return;
     if (command.action() == TerminalPackets.WITHDRAW) {
       if (command.selection() >= selections.size()) return;
       // A ready observation is advisory; revalidate its captured scope/grants before selecting it.
@@ -704,12 +735,15 @@ public final class TerminalMenu extends AbstractContainerMenu {
       var row = selections.get(index);
       String name;
       try {
-        name =
-            codec
-                .itemStack(row.key(), 1)
-                .getHoverName()
-                .getString()
-                .replaceAll("[\\p{Cntrl}§]", "");
+        var shown =
+            switch (row.key().kind()) {
+              case ITEM -> codec.itemStack(row.key(), 1).getHoverName();
+              case FLUID -> codec.fluidStack(row.key(), 1).getHoverName();
+              case ENERGY ->
+                  net.minecraft.network.chat.Component.translatable(
+                      "gui.factorycore.terminal.energy");
+            };
+        name = shown.getString().replaceAll("[\\p{Cntrl}§]", "");
       } catch (IllegalArgumentException unsupported) {
         name = row.key().registryId();
       }

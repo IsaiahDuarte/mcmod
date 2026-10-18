@@ -106,3 +106,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0036 — Program Controller runtime for native rules](0036-program-controller-runtime.md)
 
 - [0037 — Production Wasm runtime and factory_v1 ABI](0037-wasm-factory-v1.md)
+
+- [0038 — Terminal fluid containers and energy items](0038-terminal-fluids-energy.md)

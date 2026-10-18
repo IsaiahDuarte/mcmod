@@ -30,6 +30,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private Button mode, previewOne, previewEight, previewMany, startJob, keepJob, jobHome, jobNext;
   private Button cancelJob;
   private boolean jobsMode;
+
+  /** Client-selected storage kind (0 items, 1 fluids, 2 energy); the server switches its search. */
+  private int kind;
+
+  private Button kindButton;
   private Button gridMode;
 
   /** 0 = crafting grid, 1 = processing inputs, 2 = processing outputs (first row = 3 outputs). */
@@ -57,7 +62,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 font,
                 leftPos + 10,
                 topPos + 20,
-                204,
+                158,
                 18,
                 Component.translatable("gui.factorycore.terminal.search")));
     search.setMaxLength(128);
@@ -74,13 +79,30 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             "withdraw_one",
             10,
             48,
-            () -> send(TerminalPackets.WITHDRAW, selected, 1, new byte[32]));
+            () -> {
+              if (kind == 0) send(TerminalPackets.WITHDRAW, selected, 1, new byte[32]);
+              else if (kind == 1) send(TerminalPackets.FILL, selected, 1, new byte[32]);
+              else
+                send(
+                    TerminalPackets.CHARGE,
+                    minecraft.player.getInventory().selected,
+                    1,
+                    new byte[32]);
+            });
     stack =
         button(
             "withdraw_stack",
             62,
             48,
-            () -> send(TerminalPackets.WITHDRAW, selected, 64, new byte[32]));
+            () -> {
+              if (kind == 0) send(TerminalPackets.WITHDRAW, selected, 64, new byte[32]);
+              else if (kind == 2)
+                send(
+                    TerminalPackets.DISCHARGE,
+                    minecraft.player.getInventory().selected,
+                    1,
+                    new byte[32]);
+            });
     home = button("home", 114, 48, () -> send(TerminalPackets.HOME, 0, 1, new byte[32]));
     next = button("next", 166, 48, () -> send(TerminalPackets.NEXT, 0, 1, new byte[32]));
     returning = button("return", 218, 52, () -> send(TerminalPackets.RETURN, 0, 1, new byte[32]));
@@ -114,6 +136,19 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             () -> grid(TerminalCraftingPackets.CLEAR, -1, 0, 1, new byte[32]));
     addEncode();
     addJobControls();
+    kindButton =
+        addRenderableWidget(
+            Button.builder(
+                    kindLabel(),
+                    button -> {
+                      kind = (kind + 1) % 3;
+                      button.setMessage(kindLabel());
+                      send(TerminalPackets.KIND, kind, 1, new byte[32]);
+                    })
+                .bounds(leftPos + 172, topPos + 20, 42, 18)
+                .tooltip(
+                    Tooltip.create(Component.translatable("gui.factorycore.terminal.kind.help")))
+                .build());
     gridMode =
         addRenderableWidget(
             Button.builder(gridModeLabel(), button -> cycleGrid())
@@ -186,6 +221,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     } catch (NumberFormatException invalid) {
       return 64;
     }
+  }
+
+  private Component kindLabel() {
+    return Component.translatable("gui.factorycore.terminal.kind." + kind);
   }
 
   private Component modeLabel() {
@@ -290,8 +329,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       selected = Math.min(selected, Math.max(0, view.rows().size() - 1));
       shownRevision = view.revision();
     }
-    one.active = !view.busy() && !view.rows().isEmpty();
-    stack.active = one.active;
+    one.active = !view.busy() && (kind == 2 || !view.rows().isEmpty());
+    stack.active = kind == 0 ? one.active : kind == 2;
+    one.setMessage(Component.translatable("gui.factorycore.terminal.action." + kind + ".one"));
+    stack.setMessage(Component.translatable("gui.factorycore.terminal.action." + kind + ".two"));
+    kindButton.visible = !jobsMode;
     next.active = !view.busy() && view.next();
     returning.active =
         !view.busy() && !view.staged().equals("0") && !view.status().equals("uncertain");
@@ -423,11 +465,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       int x = leftPos + 12 + 32 * index;
       graphics.fill(
           x, topPos + 45, x + 28, topPos + 74, index == selected ? 0xffbb8659 : 0xff59626b);
-      var id = ResourceLocation.tryParse(rows.get(index).icon());
-      var item =
-          id == null || !BuiltInRegistries.ITEM.containsKey(id)
-              ? Items.BARRIER
-              : BuiltInRegistries.ITEM.get(id);
+      var item = rowIcon(rows.get(index).icon());
       graphics.renderItem(item.getDefaultInstance(), x + 6, topPos + 47);
       graphics.drawCenteredString(
           font, compact(rows.get(index).available()), x + 14, topPos + 65, 0xffffff);
@@ -443,6 +481,21 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       case "cancelling" -> "✕";
       default -> "?";
     };
+  }
+
+  /** Items show themselves; fluids show their bucket; energy shows redstone. */
+  private net.minecraft.world.item.Item rowIcon(String id) {
+    if (kind == 2) return Items.REDSTONE;
+    var location = ResourceLocation.tryParse(id);
+    if (location == null) return Items.BARRIER;
+    if (kind == 1)
+      return BuiltInRegistries.FLUID.containsKey(location)
+              && BuiltInRegistries.FLUID.get(location).getBucket() != Items.AIR
+          ? BuiltInRegistries.FLUID.get(location).getBucket()
+          : Items.BUCKET;
+    return BuiltInRegistries.ITEM.containsKey(location)
+        ? BuiltInRegistries.ITEM.get(location)
+        : Items.BARRIER;
   }
 
   private static net.minecraft.world.item.Item icon(String id) {
@@ -701,6 +754,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         && mouseX < leftPos + slot.x + 16
         && mouseY >= topPos + slot.y
         && mouseY < topPos + slot.y + 16) {
+      if (kind == 1) {
+        send(TerminalPackets.EMPTY, slot.getContainerSlot(), 1, new byte[32]);
+        return true;
+      }
+      if (kind == 2) {
+        send(TerminalPackets.DISCHARGE, slot.getContainerSlot(), 1, new byte[32]);
+        return true;
+      }
       try {
         var key =
             new PlatformResourceCodec(minecraft.level.registryAccess()).itemKey(slot.getItem());

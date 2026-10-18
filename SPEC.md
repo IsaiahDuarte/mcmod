@@ -495,3 +495,9 @@ in-game artifact upload and deployment remain unfinished.
 Wasm artifacts upload through the Program Controller editor and run under the same
 lifecycle, authority and FE accounting as friendly programs (fresh instances on reload
 or resume after a trap).
+
+
+The terminal now has Fluids and Energy views with explicit fill/empty actions for real
+fluid containers and charge/discharge for single FE items (≤ 1,000 FE per action through
+bank rates), each proving fit before moving anything. This adds partial A04/A11
+evidence; capacity and rate displays, the handheld terminal and graphical checks remain.
