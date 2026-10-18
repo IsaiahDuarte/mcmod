@@ -1018,3 +1018,16 @@ logs used, and stops after removal; a rule whose principal loses CRAFT is evalua
 denied and starts no job or reservation. TerminalJobGameTests toggles Keep on and off
 through the menu. TerminalJobPacketsTest now treats KEEP + 1 as the first invalid
 action.
+
+
+## Friendly language checks
+
+FriendlyCompilerTest compiles the spec's smelter example to exact IR (rule keys,
+intervals including seconds, loop/label targets, registry/tag/energy/fluid filters,
+default limit, craft IDs) and checks positioned diagnostics for unknown statements,
+unbound variables, intervals, duplicate keys, unterminated text and blocks, invalid
+moves/limits/amounts/IDs/escapes, shadowed variables, oversized source, nesting
+depth and statement count, plus recovery reporting several errors capped at 16.
+ProgramEvaluatorTest stages ordered Keep/Move/Craft commands across loops and
+conditions, treats an empty label as a no-op, and traps (staging nothing) on more
+than 64 machines per label, the command/step bounds and failing host queries.

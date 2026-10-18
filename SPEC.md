@@ -469,3 +469,10 @@ rule (in-flight output counted by that job), refills to the high threshold under
 principal's current CRAFT grants, and a terminal Keep toggle. This completes the P4
 request types with headless evidence; A06/A07/A08 remain partial pending graphical,
 multiplayer and fluid processing checks.
+
+
+D05 is frozen: the friendly language version 1 grammar, semantics and limits are in
+ADR 0035, with a portable compiler (positioned diagnostics) and a bounded evaluator
+that stages Keep/Move/Craft/Log commands and traps without publishing. Program
+Controllers, deployment, the editor and Rust parity remain unimplemented, so A09/A10
+are not yet met.

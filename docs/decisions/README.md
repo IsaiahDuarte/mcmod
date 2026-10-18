@@ -100,3 +100,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0033 — Published branch recipes](0033-branch-recipe-publication.md)
 
 - [0034 — Keep-stock crafting requests](0034-keep-stock-requests.md)
+
+- [0035 — Friendly language version 1 (D05)](0035-friendly-language.md)
