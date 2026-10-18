@@ -400,3 +400,10 @@ accepted preset/fence on the old lease until a currently authorized player
 explicitly redeploys. This extends partial A05/A12/A13 support. Unresolved or
 unscoped legacy staging, stale/missing holders, independent-save mismatches and
 full release recovery remain unfinished.
+
+
+The Fuel Generator is implemented as a standalone vanilla-fuel FE source: 20 FE per
+burn tick, a 100,000 FE buffer and an 80 FE/tick shared output cap, with remainders
+kept and full-buffer pauses that waste no fuel. It pushes to adjacent receivers and
+keeps exact state when broken. This is partial A04/A14/A17 evidence; a screen,
+finished visuals and survival power progression remain unfinished.

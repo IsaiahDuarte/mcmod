@@ -84,3 +84,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0025 — Audited controller and gateway conflict repair](0025-network-node-repair.md)
 
 - [0026 — Audited connector and Machine Interface conflict repair](0026-foreign-port-repair.md)
+
+- [0027 — Standalone vanilla Fuel Generator](0027-fuel-generator.md)

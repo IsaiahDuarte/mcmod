@@ -79,7 +79,7 @@ and model inventory transforms remain pending real-client inspection.
 | Crafting Unit + block item | Distinct crafting role and working/blocked state | P4 | Missing | Pending |
 | Pattern items, if used by selected implementation | Distinguish recipe/processing identity and invalid patterns | P4 | Missing; physical representation to be selected | Pending |
 | Program Controller + block item | Distinct program role; deployed/paused/trapped/power state | P5 | Missing | Pending |
-| Fuel Generator + block item | Fuel/remainder access and observable generation/buffer state | P5–P6, before powered demonstration | Missing | Pending |
+| Fuel Generator + block item | Fuel/remainder access and observable generation/buffer state | P5–P6, before powered demonstration | Implemented facing/lit stand-in models from vanilla blast-furnace/copper textures, translated status/blocked reasons and stored-FE tooltip; no screen | Pending |
 | Wireless Access Point + block item | Range/power/access status | P6 | Missing | Pending |
 | Rechargeable handheld terminal | Inventory/held appearance, charge and connection status | P6 | Missing | Pending |
 | Wireless Link Endpoint + block item | Pair/direction/range/power status | P6 | Missing | Pending |

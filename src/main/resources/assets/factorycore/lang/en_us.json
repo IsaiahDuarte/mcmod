@@ -354,5 +354,14 @@
   "command.factorycore.recovery.port.deployment": "Accepted deployer=%s mode=%s revision=%s lease=%s configuration=%s canonical fence=%s",
   "command.factorycore.recovery.port.help": "Repair requires the loaded original connector/machine, matching reference/configuration and no persisted provider fault or unresolved transfer. Provider contents are not inspected. Machine presets need authorized redeployment. Legacy records may require investigation.",
   "command.factorycore.recovery.port.refused": "Port recovery refused: check UUID/kind/generation, original holder, provider fault, machine fence and unresolved/legacy ownership. No provider contents or preset were changed.",
-  "command.factorycore.recovery.port.repaired": "Foreign port %s repaired at its original holder, generation %s. Old mod ports are stale; provider contents/settings unchanged. Revalidate normally; machine presets need authorized redeployment. Before-state evidence: %s"
+  "command.factorycore.recovery.port.repaired": "Foreign port %s repaired at its original holder, generation %s. Old mod ports are stale; provider contents/settings unchanged. Revalidate normally; machine presets need authorized redeployment. Before-state evidence: %s",
+  "block.factorycore.fuel_generator": "Fuel Generator",
+  "message.factorycore.generator_status": "Fuel Generator: %s / %s FE; %s burn ticks left; pushes up to %s FE/tick to adjacent receivers; %s",
+  "message.factorycore.generator_unsupported": "This Fuel Generator holds data from a newer version. It is retained unchanged and stays inactive; update the mod or restore a backup.",
+  "status.factorycore.generator.burning": "Burning",
+  "status.factorycore.generator.no_fuel": "Idle: insert furnace fuel",
+  "status.factorycore.generator.full": "Paused: energy buffer full, fuel kept until FE is drawn",
+  "status.factorycore.generator.remainder_full": "Paused: empty the container slot (sneak-use or hopper below)",
+  "tooltip.factorycore.generator_energy": "Stored: %s / %s FE",
+  "tooltip.factorycore.generator_rate": "%s FE per burn tick, up to %s FE/tick output"
 }

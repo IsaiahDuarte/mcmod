@@ -11,6 +11,7 @@
     "factorycore:storage_connector",
     "factorycore:buffered_interface",
     "factorycore:storage_terminal",
-    "factorycore:machine_interface"
+    "factorycore:machine_interface",
+    "factorycore:fuel_generator"
   ]
 }

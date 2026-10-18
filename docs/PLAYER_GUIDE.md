@@ -75,9 +75,27 @@ tiers use modules rather than recipes consuming a populated bank.
 Malformed/future bank leases break into a labeled recovery bank preserving the
 original reference data. Conflicting block copies quarantine the canonical
 backing; preserve the references and world backup for recovery. Full chunk/restart
-and administrative reconciliation evidence is still pending. The built-in Fuel
-Generator is not implemented yet; current energy ports can use a compatible
-external source. This does not complete the no-optional-mod powered progression.
+and administrative reconciliation evidence is still pending. The built-in
+[Fuel Generator](#fuel-generator) provides FE without other mods.
+
+## Fuel Generator
+
+Craft it from four iron, three copper, a furnace and redstone (ICI/CFC/IRI); the
+recipe unlocks when you have a furnace. It needs no controller or cables.
+
+Use furnace fuel on it, or feed fuel with a hopper from the top or sides. Each burn
+tick makes 20 FE (coal: 1,600 ticks = 32,000 FE) into a 100,000 FE buffer. It pushes
+up to 80 FE per tick into adjacent energy receivers such as an Energy Bank, and
+pipes/connectors may pull from any face within the same 80 FE/tick limit. Lava
+buckets leave their empty bucket in a container slot: pull it with a hopper below,
+or sneak-use with an empty hand to take containers, then fuel.
+
+Use it with an empty hand to see stored FE, remaining burn ticks and status. When
+the buffer is full it pauses and keeps both the remaining burn and unused fuel; a
+full container slot also stops it from taking more fuel. Breaking it drops its fuel
+and containers, and the generator item keeps its stored FE and partial burn (shown
+in its tooltip). A generator saved by a newer mod version stays inactive and keeps
+that data unchanged.
 
 ## Ownership and recovery
 

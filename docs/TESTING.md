@@ -881,3 +881,16 @@ explicit redeploy after restoration with19 items conserved, and refuses a
 mismatched physical/canonical fence. Positive cases use dedicated batches for the
 shared repair throttle. No graphical client, remote multiplayer or interrupted
 independent-save proof is inferred.
+
+
+## Fuel Generator checks
+
+FuelGeneratorTest covers exact 20 FE burn ticks, full-buffer pauses retaining burn,
+the shared 80 FE/tick budget with non-spending simulation, backwards clocks and
+invalid snapshots. FuelGeneratorGameTests use a real hopper to feed a stick (exactly
+2,000 FE, visible lit state, non-fuel/bottom-face rejection), a player-inserted lava
+bucket leaving an extractable bucket, a full remainder slot blocking ignition until
+emptied, a full buffer retaining coal while capability extraction caps at 80 FE/tick,
+conserved push into a starter bank only after its network validates, break/place
+preservation of FE/burn/fuel/remainder, unchanged future-schema data across break
+and place, and the vanilla-only recipe/unlock. No client rendering is inferred.
