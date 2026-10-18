@@ -2832,7 +2832,8 @@ P4/R06 adds processing patterns (`ProcessingContents`), the Crafting Interface
 (`PatternHolderEntity` base shared with Crafting Units), grid processing mode with
 counts and output cells, nested job schema 2 with persisted dispatches, and dispatch/
 collect/cleanup execution ([ADR0032](decisions/0032-processing-patterns.md)). JVM tests
-265→273 (three new suites/cases plus updated packet bounds); native 247→252. A shared-
+267→271 after the jobs view (ProcessingContentsTest two cases, one CraftingJobTest and one
+CraftingJobPersistenceTest case, plus updated packet bounds); native 247→252. A shared-
 world isolation bug in three earlier job tests (asserting every job in the world was
 gone) surfaced once concurrent processing jobs existed; they now assert per principal.
 
