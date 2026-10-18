@@ -49,9 +49,11 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * idle (built, no programs), small (4 programs) and large (64 programs). Each program keeps its
  * machines stocked with 64 and moves 16 back every 10 ticks, so items churn continuously. Overload
  * then adds 64 more factories (128 networks) and runs an eight-rule program on every one, which
- * deliberately exceeds the scheduler's per-tick shares; admissions may be refused. Measured span:
- * Factory Core's server post-tick listeners (HIGHEST to LOWEST priority Post); whole server ticks
- * are recorded alongside. Raw nanoseconds go to CSV.
+ * deliberately exceeds the scheduler's per-tick shares; admissions may be refused. Finally, with
+ * all programs stopped, 896 extra idle networks (1,024 total, the server limit) must leave the
+ * scheduler empty on every measured tick. Measured span: Factory Core's server post-tick listeners
+ * (HIGHEST to LOWEST priority Post); whole server ticks are recorded alongside. Raw nanoseconds go
+ * to CSV.
  */
 @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and levels.
 final class ServerBenchmark {
@@ -108,7 +110,8 @@ final class ServerBenchmark {
   private long tickStart, postStart;
   private long[] mod = new long[MEASURED], whole = new long[MEASURED];
   private int[] backlog = new int[MEASURED];
-  private boolean done, churned;
+  private boolean done, churned, conserved;
+  private final List<NetworkNodeEntity> idleNetworks = new ArrayList<>();
 
   void register() {
     NeoForge.EVENT_BUS.addListener(this::started);
@@ -349,11 +352,51 @@ final class ServerBenchmark {
         if (counter < 200) return;
         long expected = STOCK * factories.size();
         long actual = total(server);
-        summary.add(
-            "conservation expected=" + expected + " actual=" + actual + " " + (actual == expected));
-        finish(server, actual == expected && churned);
+        conserved = actual == expected;
+        summary.add("conservation expected=" + expected + " actual=" + actual + " " + conserved);
+        buildIdleNetworks();
+        next("settle-wide");
+      }
+      case "settle-wide" -> {
+        if (counter > 1_200) throw new IllegalStateException("Idle networks did not validate");
+        var networks = WorldNetworks.get(server);
+        for (var node : idleNetworks)
+          if (networks.membership(node.position()).status() != NetworkTopology.Status.VALID) return;
+        summary.add("idle-wide networks=" + (idleNetworks.size() + factories.size()));
+        next("warm-idle-wide");
+      }
+      case "warm-idle-wide" -> {
+        if (counter >= WARMUP) next("idle-wide");
+      }
+      case "idle-wide" -> {
+        mod[counter - 1] = modNanos;
+        whole[counter - 1] = wholeNanos;
+        backlog[counter - 1] = WorldNetworks.get(server).scheduler().backlog();
+        if (counter < MEASURED) return;
+        boolean quiet = Arrays.stream(backlog).allMatch(value -> value == 0);
+        record(phase);
+        summary.add("idle-wide scheduler_quiet=" + quiet);
+        finish(server, conserved && churned && quiet);
       }
       default -> throw new IllegalStateException(phase);
+    }
+  }
+
+  /**
+   * D07 idle scenario: 896 extra single-controller networks (seven per already-forced factory
+   * chunk, two blocks apart so none connect) bring the server to its 1,024-network limit, with
+   * every program stopped. No work is submitted.
+   */
+  private void buildIdleNetworks() {
+    for (int index = 0; index < OVERLOAD_FACTORIES; index++) {
+      int x0 = 16 * (index % 8), z0 = 16 * (index / 8);
+      for (int k = 0; k < 7; k++) {
+        var at = new BlockPos(x0 + 2 * k, 90, z0 + 1);
+        level.setBlock(at, NetworkContent.CONTROLLER.get().defaultBlockState(), 3);
+        var node = (NetworkNodeEntity) level.getBlockEntity(at);
+        node.commission(owner.id());
+        idleNetworks.add(node);
+      }
     }
   }
 

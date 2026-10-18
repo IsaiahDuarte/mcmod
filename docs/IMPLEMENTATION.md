@@ -3038,3 +3038,12 @@ unsimulated. Every Factory Core screen now has graphical evidence.
 A functional run passed (conservation 524,288 = 524,288; backlog max 1,138 of the 8,192
 bound). That run competed with a concurrent build, so its timings are not evidence.
 Official measurement runs on a quiet machine are pending.
+
+## Benchmark 1,024-network idle checkpoint — 2026-10-18
+
+`runBenchmarkServer` ends with the D07 idle scenario. It adds 896 single-controller
+networks (1,024 in total, the server limit) with every program stopped, and gates on the
+scheduler backlog being zero on all 1,000 measured ticks. A functional run passed
+(scheduler quiet; Factory Core p99 0.13 ms). Official timings for all five phases are
+pending a quiet machine, because concurrent agent builds inflated this run's overload
+timings.

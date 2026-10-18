@@ -1237,6 +1237,8 @@ dedicated server. After the large phase it adds an overload phase: 64 more facto
 (128 networks), each running an eight-rule program that exceeds the scheduler's per-tick
 shares. The CSV records the scheduler backlog every measured tick. It fails unless items
 churn in the large and overload phases and all 128 factories' cobblestone is conserved.
+A final idle phase brings the server to its 1,024-network limit with every program
+stopped; it fails unless the scheduler backlog is zero on every measured tick.
 It writes `build/benchmarks/server-v1.csv` plus a summary. It is a
 measurement, not a correctness gate in `check`. See the
 [2026-10-18 record](evidence/server-v1-2026-10-18.md).
