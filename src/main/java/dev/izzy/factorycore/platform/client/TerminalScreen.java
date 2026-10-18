@@ -152,7 +152,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     gridMode =
         addRenderableWidget(
             Button.builder(gridModeLabel(), button -> cycleGrid())
-                .bounds(leftPos + GRID_X, topPos + 131, 44, 13)
+                .bounds(leftPos + 8, topPos + GRID_Y, 46, 18)
                 .tooltip(
                     Tooltip.create(
                         Component.translatable("gui.factorycore.terminal.grid.mode.help")))
@@ -521,6 +521,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     graphics.drawString(font, title, 8, 7, 0xffffff, false);
     graphics.drawString(font, playerInventoryTitle, 59, 136, 0xeeeeee, false);
+    graphics.drawString(
+        font,
+        Component.translatable("gui.factorycore.terminal.grid.mode"),
+        8,
+        136,
+        0xeeeeee,
+        false);
     graphics.drawString(
         font,
         font.plainSubstrByWidth(

@@ -87,6 +87,11 @@ public final class TerminalClientVerification {
       throw new IllegalStateException(
           "Graphical terminal stage timeout: "
               + stage
+              + " craftStep="
+              + craftStep
+              + (client.screen instanceof TerminalScreen terminal
+                  ? " grid=" + terminal.getMenu().gridView()
+                  : "")
               + " screen="
               + (client.screen == null ? "none" : client.screen.getClass().getName()));
     if (stage >= 39) {
@@ -337,6 +342,8 @@ public final class TerminalClientVerification {
     }
   }
 
+  private int plankSlot = -1;
+
   /** Manual grid: cell click, own-slot ghost, Row→, right-click clear, Craft and two scales. */
   @SuppressWarnings("PMD.CloseResource") // Borrowed active client/server/window.
   private void craftTick(Minecraft client, TerminalScreen screen) {
@@ -379,6 +386,7 @@ public final class TerminalClientVerification {
       case 2 -> {
         if (!grid.result().equals("minecraft:oak_planks")) return;
         check(grid.resultCount() == 4, "Actual server recipe preview for one log");
+        checkNoOverlap(screen);
         capture(client, "terminal-grid-scale-4.png");
         screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + TerminalScreen.GRID_Y + 9, 0);
         for (var child : screen.children())
@@ -399,11 +407,14 @@ public final class TerminalClientVerification {
         craftStep++;
       }
       case 5 -> {
-        if (!grid.status().equals("crafted")
-            || !client.player.getInventory().getItem(20).is(Items.OAK_PLANKS)) return;
+        var inventory = client.player.getInventory();
+        plankSlot = inventory.findSlotMatchingItem(new ItemStack(Items.OAK_PLANKS));
+        if (!grid.status().equals("crafted") || plankSlot < 0) return;
         check(
-            client.player.getInventory().getItem(20).getCount() == 4,
-            "Actual Craft button consumes the log and returns four planks");
+            inventory.getItem(20).isEmpty()
+                && inventory.countItem(Items.OAK_LOG) == 0
+                && inventory.countItem(Items.OAK_PLANKS) == 4,
+            "Actual Craft button consumes the log and returns four planks to a free slot");
         client.options.guiScale().set(2);
         client.resizeDisplay();
         entered = ticks;
@@ -411,6 +422,7 @@ public final class TerminalClientVerification {
       }
       case 6 -> {
         if (ticks - entered < 10) return;
+        checkNoOverlap(screen);
         capture(client, "terminal-grid-scale-2.png");
         server.execute(
             () ->
@@ -418,13 +430,13 @@ public final class TerminalClientVerification {
                     .getPlayerList()
                     .getPlayer(principal)
                     .getInventory()
-                    .setItem(20, ItemStack.EMPTY));
+                    .setItem(plankSlot, ItemStack.EMPTY));
         click(screen, "Clear");
         craftStep++;
       }
       case 7 -> {
         if (!grid.cells().stream().allMatch(String::isEmpty)
-            || !client.player.getInventory().getItem(20).isEmpty()) return;
+            || !client.player.getInventory().getItem(plankSlot).isEmpty()) return;
         evidence.append(
             "terminal-grid: own ghost, Row→, right-click clear, Craft 1 log -> 4 planks\n");
         craftStep++;
@@ -1092,6 +1104,29 @@ public final class TerminalClientVerification {
         return;
       }
     throw new IllegalStateException("Search widget missing");
+  }
+
+  /** Visible controls must not overlap at the current GUI scale. */
+  private static void checkNoOverlap(Screen screen) {
+    var widgets =
+        screen.children().stream()
+            .filter(
+                child ->
+                    child instanceof net.minecraft.client.gui.components.AbstractWidget widget
+                        && widget.visible)
+            .map(child -> (net.minecraft.client.gui.components.AbstractWidget) child)
+            .toList();
+    for (int first = 0; first < widgets.size(); first++)
+      for (int second = first + 1; second < widgets.size(); second++) {
+        var a = widgets.get(first);
+        var b = widgets.get(second);
+        check(
+            a.getRight() <= b.getX()
+                || b.getRight() <= a.getX()
+                || a.getBottom() <= b.getY()
+                || b.getBottom() <= a.getY(),
+            "Controls overlap: " + a.getMessage().getString() + " / " + b.getMessage().getString());
+      }
   }
 
   private static void click(Screen screen, String text) {

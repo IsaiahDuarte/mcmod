@@ -2983,3 +2983,15 @@ schema 5). JVM +3, native 275→276. Open: buffered-interface adoption.
 ADR 0046 extends adoption to buffered interfaces (`BufferRegistry.adopt`, buffer audit
 schema 6). JVM +1, native 276→277. Every canonical storage/structural holder now has an
 independent-save adoption path.
+
+## Graphical crafting-grid checkpoint — 2026-10-18
+
+With a display available, `runTerminalClient` executed the crafting-grid steps for the
+first time ([evidence](evidence/terminal-grid-client-v1-2026-10-18.md)). Two problems
+were fixed:
+- The harness expected crafted output in the input slot.
+- The grid-mode button overlapped Return and duplicated the "Craft" label. It moved left
+  of the inventory and now reads **Table**.
+
+The harness now fails on overlapping controls. Remaining graphical gaps: fluid/energy
+terminal kinds, wireless terminal, gateway policy editor, guide, program editor and JEI.

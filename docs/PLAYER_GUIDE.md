@@ -588,8 +588,8 @@ it. You can run up to eight jobs; a network holds at most 64.
 
 ### Processing patterns and Crafting Interfaces
 
-For machine recipes (smelting and similar), press the grid's **Craft** button until it
-reads **Inputs**: put the machine's ingredients in the grid (scroll over a cell to
+For machine recipes (smelting and similar), press the **Grid** mode button (left of
+your inventory, normally **Table**) until it reads **Inputs**: put the machine's ingredients in the grid (scroll over a cell to
 change its count). Press again for **Outputs** and set what the machine produces in the
 first row (the first is the main product). Press **Encode** with a Blank Pattern to
 get a Processing Pattern.
