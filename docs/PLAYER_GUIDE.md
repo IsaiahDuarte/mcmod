@@ -671,3 +671,12 @@ them; others see them read-only. Wait a moment between clicks while the branch u
 You receive a **Factory Guide** the first time you join a world with this mod. Use it to
 read the step-by-step guide from your first network to wireless links. Craft another
 from a book and a redstone dust.
+
+
+## JEI (optional)
+
+With Just Enough Items installed, press JEI's **+** button on a crafting recipe while the
+terminal is open to fill the grid. This places ghost entries only; nothing is moved until
+you craft. Drag an item or fluid from JEI onto the Program editor to type its
+`item("…")` or `fluid("…")` expression. Without JEI, everything still works through the
+terminal rows and by typing IDs.

@@ -421,6 +421,35 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   /** Ghost edits and bounded crafting; ingredients come only from the player's own inventory. */
+  /** Applies a recipe-viewer transfer as crafting-mode ghost cells; unknown IDs clear a cell. */
+  public void gridFill(ServerPlayer sender, TerminalCraftingPackets.Fill fill) {
+    if (sender != viewer
+        || fill.menu() != containerId
+        || !fill.session().equals(session)
+        || !authorized()
+        || busy) return;
+    int tick = sender.server.getTickCount();
+    if (editWindow == Integer.MIN_VALUE || tick - editWindow >= 20) {
+      editWindow = tick;
+      edits = 0;
+    }
+    if (edits++ >= MAX_EDITS_PER_SECOND) return;
+    var codec = new PlatformResourceCodec(sender.registryAccess());
+    crafting.clear();
+    if (crafting.processing()) crafting.processing(false);
+    for (int cell = 0; cell < fill.items().size(); cell++) {
+      var id = net.minecraft.resources.ResourceLocation.tryParse(fill.items().get(cell));
+      var item =
+          id == null
+              ? net.minecraft.world.item.Items.AIR
+              : net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id);
+      if (item == net.minecraft.world.item.Items.AIR) continue;
+      crafting.set(cell, codec.itemKey(new net.minecraft.world.item.ItemStack(item)));
+    }
+    gridStatus = "ready";
+    publish();
+  }
+
   public void gridCommand(ServerPlayer sender, TerminalCraftingPackets.Command command) {
     if (sender != viewer
         || command.menu() != containerId

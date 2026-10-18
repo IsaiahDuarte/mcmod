@@ -214,6 +214,13 @@ public final class TerminalPackets {
           if (context.player() instanceof ServerPlayer player
               && player.containerMenu instanceof TerminalMenu menu) menu.gridCommand(player, value);
         });
+    registrar.playToServer(
+        TerminalCraftingPackets.Fill.TYPE,
+        TerminalCraftingPackets.Fill.CODEC,
+        (value, context) -> {
+          if (context.player() instanceof ServerPlayer player
+              && player.containerMenu instanceof TerminalMenu menu) menu.gridFill(player, value);
+        });
     registrar.playToClient(
         TerminalCraftingPackets.View.TYPE,
         TerminalCraftingPackets.View.CODEC,

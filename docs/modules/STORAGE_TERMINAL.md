@@ -136,3 +136,11 @@ and DISCHARGE (own slot); see [ADR0038](../decisions/0038-terminal-fluids-energy
 Status keys: `filled`, `emptied`, `charged`, `discharged`, `no_container`, `empty`,
 `no_energy_item`, `item_full`, `item_empty`, `handler_fault`, `full`, `shortage`,
 `wrong_resource`. Per-action limits: 16,000 mB and 1,000 FE.
+
+
+## Recipe-viewer fill
+
+`TerminalCraftingPackets.Fill(menu, session, items[9])` is applied by `TerminalMenu.gridFill`.
+It sets crafting-mode ghost cells by registry identity; unknown IDs clear a cell. It shares
+the ghost-edit budget and moves nothing. The JEI handler is in
+`platform.client.integration.jei` ([ADR0043](../decisions/0043-jei-integration.md)).

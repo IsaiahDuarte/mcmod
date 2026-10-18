@@ -171,4 +171,48 @@ public final class TerminalCraftingPackets {
   }
 
   private TerminalCraftingPackets() {}
+
+  /**
+   * Recipe-viewer transfer: nine registry item IDs ("" = empty) set as crafting ghost cells by
+   * registry identity. Ghost cells move nothing; a later craft revalidates real stock.
+   */
+  public record Fill(int menu, UUID session, java.util.List<String> items)
+      implements CustomPacketPayload {
+    public static final int MAX_ID = 256;
+    public static final Type<Fill> TYPE =
+        new Type<>(
+            ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_grid_fill"));
+
+    public Fill {
+      items = java.util.List.copyOf(items);
+      if (items.size() != GridRequirement.CELLS
+          || items.stream()
+              .anyMatch(
+                  id ->
+                      id.length() > MAX_ID
+                          || !id.isEmpty() && ResourceLocation.tryParse(id) == null))
+        throw new IllegalArgumentException("Invalid grid fill bounds");
+    }
+
+    @Override
+    public Type<Fill> type() {
+      return TYPE;
+    }
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, Fill> CODEC =
+        StreamCodec.of(
+            (buffer, value) -> {
+              buffer.writeVarInt(value.menu);
+              buffer.writeUUID(value.session);
+              for (var id : value.items) buffer.writeUtf(id, MAX_ID);
+            },
+            buffer -> {
+              int menu = buffer.readVarInt();
+              var session = buffer.readUUID();
+              var items = new java.util.ArrayList<String>(GridRequirement.CELLS);
+              for (int cell = 0; cell < GridRequirement.CELLS; cell++)
+                items.add(buffer.readUtf(MAX_ID));
+              return new Fill(menu, session, items);
+            });
+  }
 }

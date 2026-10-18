@@ -1132,3 +1132,19 @@ change nothing.
 `GuideGameTests` checks that fixture logins skip the welcome gift, so fixture players start
 clean, and that `welcome()` gives exactly one guide and never a second. The GameTest server
 and both terminal client runs set `factorycore.noWelcomeGuide=true`.
+
+
+## Recipe-viewer checks
+
+These tests run headless:
+
+- `GridTransferTest`: prefers visible options, falls back to the first, pads to nine and
+  rejects ten cells.
+- `ResourceExpressionsTest`: inserted expressions compile; quotes, backslashes, control
+  characters and the length limit are handled.
+- `TerminalCraftingGameTests.recipeViewerFillSetsGhostCellsByRegistryIdentityOnly`: a fill
+  in processing mode switches to crafting, matches crafting_table, clears an unknown ID,
+  moves nothing, and a short fill is rejected.
+- `ArchitectureTest`: now inspects a real `..integration..` package.
+
+**Not run:** JEI's own client callbacks, which need a graphical client with JEI.

@@ -2931,3 +2931,11 @@ Native 266→267. Next: in-game guide/onboarding, then JEI integration.
 P6 adds the Factory Guide and the first-login gift ([ADR0042](decisions/0042-in-game-guide.md)).
 JVM tests +2, native 267→268. A17 still needs a survival playtest. Next: JEI integration
 (optional, isolated).
+
+## JEI integration checkpoint — 2026-10-18
+
+P6 adds optional compile-only JEI (recipe transfer into the terminal grid, editor
+ingredient drops; [ADR0043](decisions/0043-jei-integration.md)). JVM +2 classes, native
+268→269. JEI client callbacks are unverified (no graphical client). Remaining P6:
+finished assets, recipes/balance (D06); then P5 persistent guest state, P4 fluid
+processing, recovery gaps and P7 verification.

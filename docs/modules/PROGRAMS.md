@@ -67,3 +67,10 @@ invalid artifacts or failed init); `rules()` lists `RuleSpec(key, interval)`;
 `invoke(index, host)` returns `Outcome(commands, instructions)` or throws
 `ProgramEvaluator.Trap`, after which `failed()` is true. ABI and limits:
 [ADR 0037](../decisions/0037-wasm-factory-v1.md); SDK: [sdk/rust](../../sdk/rust/README.md).
+
+
+## Editor resource insertion
+
+`ResourceExpressions.item/fluid` build escaped literals for insertion. With JEI installed,
+dropping an item or fluid on the editor types one at the cursor
+([ADR0043](../decisions/0043-jei-integration.md)).

@@ -93,6 +93,19 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     }
   }
 
+  /** Screen area of the draft editor, for recipe-viewer drop targets. */
+  public net.minecraft.client.renderer.Rect2i editorArea() {
+    return new net.minecraft.client.renderer.Rect2i(
+        editor.getX(), editor.getY(), editor.getWidth(), editor.getHeight());
+  }
+
+  /** Types {@code text} at the editor cursor, as if the player typed it. */
+  public void insert(String text) {
+    setFocused(editor);
+    editor.setFocused(true);
+    for (int index = 0; index < text.length(); index++) editor.charTyped(text.charAt(index), 0);
+  }
+
   private void action(int action) {
     PacketDistributor.sendToServer(
         new ProgramPackets.Command(menu.containerId, menu.session(), action, 0, 1, ""));

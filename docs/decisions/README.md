@@ -112,3 +112,4 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0040 — Paired wireless links](0040-paired-wireless-links.md)
 - [0041 — Gateway policy editor](0041-gateway-policy-editor.md)
 - [0042 — In-game Factory Guide](0042-in-game-guide.md)
+- [0043 — Optional JEI integration](0043-jei-integration.md)

@@ -345,4 +345,56 @@ public final class TerminalCraftingGameTests {
             })
         .thenSucceed();
   }
+
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void recipeViewerFillSetsGhostCellsByRegistryIdentityOnly(GameTestHelper h) {
+    var f = setup(h);
+    var planks = "minecraft:oak_planks";
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenExecute(() -> open(h, f))
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.MODE, 1, 0, 1, new byte[32]);
+              var m = menu(f);
+              m.gridFill(
+                  f.player,
+                  new TerminalCraftingPackets.Fill(
+                      m.containerId,
+                      m.session(),
+                      java.util.List.of(
+                          planks,
+                          planks,
+                          "",
+                          planks,
+                          planks,
+                          "",
+                          "",
+                          "",
+                          "minecraft:not_an_item")));
+              m.broadcastChanges();
+              var view = m.gridView();
+              h.assertTrue(
+                  !view.processing()
+                      && view.result().equals("minecraft:crafting_table")
+                      && view.cells().get(0).equals(planks)
+                      && view.cells().get(8).isEmpty(),
+                  "Fill switches to crafting, matches the recipe and clears unknown IDs: " + view);
+              h.assertTrue(
+                  count(f, Items.OAK_PLANKS) == 0 && count(f, Items.CRAFTING_TABLE) == 0,
+                  "A fill moves and creates nothing");
+              boolean rejected;
+              try {
+                new TerminalCraftingPackets.Fill(
+                    m.containerId, m.session(), java.util.List.of(planks, planks));
+                rejected = false;
+              } catch (IllegalArgumentException expected) {
+                rejected = true;
+              }
+              h.assertTrue(rejected, "Fills must name exactly nine cells");
+              logout(f);
+            })
+        .thenSucceed();
+  }
 }

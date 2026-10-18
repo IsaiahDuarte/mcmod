@@ -515,3 +515,7 @@ inherited kinds (A07 evidence; graphical checks remain).
 An in-game Factory Guide (book screen, first-login gift, craftable) now provides
 discoverable onboarding from first network to wireless links (R-help evidence; A17
 playtest remains).
+
+Optional JEI integration now fills the terminal ghost grid from crafting recipes and
+inserts escaped resource expressions into the program editor. The integration is
+compile-only and isolated; its client behavior is unverified.
