@@ -69,7 +69,8 @@ public final class WorldCraftingJobs {
 
   public static void postTick(ServerTickEvent.Post event) {
     // Quarantined storage keeps every job record untouched; storage reports the diagnostic.
-    if (DeviceSavedData.get(event.getServer()).diagnostic().isEmpty()) get(event.getServer()).tick();
+    if (DeviceSavedData.get(event.getServer()).diagnostic().isEmpty())
+      get(event.getServer()).tick();
   }
 
   public static void stopped(ServerStoppedEvent event) {
