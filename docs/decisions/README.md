@@ -88,3 +88,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0027 — Standalone vanilla Fuel Generator](0027-fuel-generator.md)
 
 - [0028 — Terminal manual crafting grid](0028-terminal-manual-crafting.md)
+
+- [0029 — Portable pattern model and bounded recursive planner](0029-crafting-planner.md)

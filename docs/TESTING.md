@@ -914,3 +914,13 @@ loses nothing. The screen layout is compiled but not graphically verified here.
 `terminal-grid-scale-2.png` from a grid stage that clicks a cell, sets an own-slot
 ghost, uses Row→, clears by right-click and crafts one log into four planks with
 the actual Craft button. That stage has not yet run on a display.
+
+
+## Crafting planner checks
+
+CraftingPlannerTest covers dependency-ordered recursive steps with surplus reuse,
+intermediate stock use while the top-level item is always crafted, exact shortages,
+reported cycles broken by stock, priority alternatives chosen only when higher ranks
+lack inputs with stable-ID ties, byproducts serving later sibling steps (and the
+documented same-step limitation), depth and overflow LIMIT plans with no partial
+output, and Pattern contract rejection.

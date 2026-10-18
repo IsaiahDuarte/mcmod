@@ -415,3 +415,10 @@ player's main inventory, first gathering missing ingredients through the shared
 permission-checked withdraw route, and commits bounded batches (up to 64) only when
 outputs and remainders fit. This is partial A11 evidence; JEI transfer, patterns,
 autocrafting and graphical grid checks remain unfinished.
+
+
+A portable pattern model and bounded recursive crafting planner now exist: exact
+inputs/outputs/byproducts, priority alternatives with stable-ID ties, cycle and
+shortage explanations, and a stock-only `consumed` set for a single reservation.
+Pattern items, Crafting Units, jobs and the request UI remain unimplemented, so A06
+is still unmet.
