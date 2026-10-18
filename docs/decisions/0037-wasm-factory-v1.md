@@ -52,7 +52,8 @@ fallback if measured throughput is insufficient (ADR 0004).
 ## Consequences
 
 Per-callback FE cost uses instructions: 1 FE per begun 256 instructions plus the base
-cost (ADR 0006). Persistent guest state is not part of version 1.
+cost (ADR 0006). Persistent guest state was deferred here and added as two additive
+imports by [ADR 0044](0044-persistent-guest-state.md).
 
 
 ## Deployment — 2026-10-17

@@ -252,3 +252,18 @@ It also covers the finite cable-run trigger for the flat retained-seed fix.
 This does not complete staged-unload, independent-save or release recovery gates.
 
 Actual accepted known/uncertain staging now has a required [two-JVM dedicated recovery record](../evidence/staged-server-v1-2026-10-17.md). The graphical variant remains separately unverified while no display is active; independent-save/interruption/administration gates remain open.
+
+
+## Program Controller guest state (schema 3)
+
+`ProgramControllerEntity` block-entity schema 3 adds an optional `GuestState` byte array
+(at most 4,096 bytes), present only with an `Artifact`.
+
+- **Migration:** schemas 1–2 load with no state, and saving writes schema 3.
+- **Ownership:** the state belongs to the current deployment and is cleared on any
+  deploy, stop or undeploy.
+- **Interrupted operations:** a callback's state commits at publication. Trapped callbacks
+  leave the previous state. On load, the state is restored into a fresh instance; no
+  suspended stack is persisted.
+
+See [ADR0044](../decisions/0044-persistent-guest-state.md).

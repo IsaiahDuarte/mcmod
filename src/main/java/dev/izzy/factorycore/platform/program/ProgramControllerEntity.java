@@ -30,8 +30,11 @@ public final class ProgramControllerEntity extends BlockEntity {
   public static final long INPUT_RATE = 1_000;
   public static final int MAX_LOGS = 16;
 
-  /** Schema 2 adds the optional deployed Wasm {@code Artifact}; schema 1 still loads. */
-  static final int SCHEMA = 2;
+  /**
+   * Schema 2 adds the optional deployed Wasm {@code Artifact}; schema 3 adds its committed {@code
+   * GuestState}. Older schemas still load.
+   */
+  static final int SCHEMA = 3;
 
   public enum State {
     STOPPED,
@@ -50,6 +53,7 @@ public final class ProgramControllerEntity extends BlockEntity {
   private ProgramIr.Program program;
   private byte[] artifact;
   private dev.izzy.factorycore.core.wasm.WasmProgram wasm;
+  private byte[] guestState;
   private CompoundTag unsupported;
   private final ArrayDeque<String> logs = new ArrayDeque<>();
 
@@ -173,7 +177,7 @@ public final class ProgramControllerEntity extends BlockEntity {
   public String freshWasm() {
     if (artifact == null) return "No Wasm deployment";
     try {
-      wasm = new dev.izzy.factorycore.core.wasm.WasmProgram(artifact, System::nanoTime);
+      wasm = new dev.izzy.factorycore.core.wasm.WasmProgram(artifact, System::nanoTime, guestState);
       return "";
     } catch (RuntimeException failure) {
       wasm = null;
@@ -183,6 +187,17 @@ public final class ProgramControllerEntity extends BlockEntity {
     }
   }
 
+  /** Committed guest state of the current Wasm deployment, or null. */
+  public byte[] guestState() {
+    return guestState == null ? null : guestState.clone();
+  }
+
+  /** Records a callback's committed guest state; trusted runtime call only. */
+  public void guestState(byte[] state) {
+    guestState = state == null ? null : state.clone();
+    setChanged();
+  }
+
   /** Replaces the deployment with an initialized Wasm guest; trusted runtime call only. */
   public void deployWasm(
       byte[] bytes, dev.izzy.factorycore.core.wasm.WasmProgram instance, UUID by) {
@@ -190,6 +205,7 @@ public final class ProgramControllerEntity extends BlockEntity {
     program = null;
     artifact = bytes.clone();
     wasm = instance;
+    guestState = null;
     deployer = by;
     deployment = UUID.randomUUID();
     state = State.RUNNING;
@@ -217,6 +233,7 @@ public final class ProgramControllerEntity extends BlockEntity {
     program = compiled;
     artifact = null;
     wasm = null;
+    guestState = null;
     deployer = by;
     deployment = UUID.randomUUID();
     state = State.RUNNING;
@@ -238,6 +255,7 @@ public final class ProgramControllerEntity extends BlockEntity {
     program = null;
     artifact = null;
     wasm = null;
+    guestState = null;
     deployer = null;
     deployment = null;
     state = State.STOPPED;
@@ -297,6 +315,7 @@ public final class ProgramControllerEntity extends BlockEntity {
     tag.putString("Message", message);
     if (deployed != null) tag.putString("Deployed", deployed);
     if (artifact != null) tag.putByteArray("Artifact", artifact);
+    if (artifact != null && guestState != null) tag.putByteArray("GuestState", guestState);
     if (deployed()) {
       tag.putUUID("Deployer", deployer);
       tag.putUUID("Deployment", deployment);
@@ -312,6 +331,8 @@ public final class ProgramControllerEntity extends BlockEntity {
       int schema = tag.getInt("Schema");
       if (schema < 1 || schema > SCHEMA) throw new IllegalArgumentException("Schema");
       if (schema < 2 && tag.contains("Artifact")) throw new IllegalArgumentException("Artifact");
+      if ((schema < 3 || !tag.contains("Artifact")) && tag.contains("GuestState"))
+        throw new IllegalArgumentException("GuestState");
       var savedDraft = tag.getString("Draft");
       long savedEnergy = tag.getLong("Energy");
       var savedState = State.valueOf(tag.getString("State"));
@@ -322,6 +343,7 @@ public final class ProgramControllerEntity extends BlockEntity {
       message = tag.getString("Message");
       artifact = null;
       wasm = null;
+      guestState = null;
       if (tag.contains("Artifact")) {
         var bytes = tag.getByteArray("Artifact");
         if (bytes.length > dev.izzy.factorycore.core.wasm.WasmPreflight.MAX_ARTIFACT)
@@ -331,6 +353,12 @@ public final class ProgramControllerEntity extends BlockEntity {
         artifact = bytes;
         deployer = tag.getUUID("Deployer");
         deployment = tag.getUUID("Deployment");
+        if (tag.contains("GuestState")) {
+          var state = tag.getByteArray("GuestState");
+          if (state.length > dev.izzy.factorycore.core.wasm.WasmProgram.MAX_STATE)
+            throw new IllegalArgumentException("GuestState size");
+          guestState = state;
+        }
         var failure = freshWasm();
         state = failure.isEmpty() ? savedState : State.TRAPPED;
         if (!failure.isEmpty()) message = "Deployed Wasm no longer loads: " + failure;

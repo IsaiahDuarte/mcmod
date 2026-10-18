@@ -519,3 +519,6 @@ playtest remains).
 Optional JEI integration now fills the terminal ghost grid from crafting recipes and
 inserts escaped resource expressions into the program editor. The integration is
 compile-only and isolated; its client behavior is unverified.
+
+Wasm guests now have quota-limited persistent state (4,096 bytes per deployment,
+committed per successful callback, restored into fresh instances) per R09.

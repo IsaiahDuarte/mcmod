@@ -1,5 +1,5 @@
 [workspace]
-members = ["factorycore", "examples/smelter"]
+members = ["factorycore", "examples/smelter", "examples/counter"]
 resolver = "2"
 
 [profile.release]

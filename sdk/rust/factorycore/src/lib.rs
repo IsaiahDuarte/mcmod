@@ -69,6 +69,8 @@ mod host {
         pub fn craft(id: *const u8, id_len: i32, amount: i64) -> i32;
         pub fn stock(kind: i32, id: *const u8, id_len: i32, tag: i32) -> i64;
         pub fn log(text: *const u8, text_len: i32) -> i32;
+        pub fn state_read(buffer: *mut u8, capacity: i32) -> i32;
+        pub fn state_write(data: *const u8, len: i32) -> i32;
     }
 }
 
@@ -130,6 +132,45 @@ pub fn log(text: &str) {
     unsafe { host::log(text.as_ptr(), text.len() as i32) };
 }
 
+/// Persistent guest state: one blob of at most [`state::MAX`] bytes per deployment.
+///
+/// A [`state::save`] commits only if the current rule callback finishes without trapping, and
+/// the committed state is restored into the fresh instance after a reload or resume. Deploying
+/// again (even the same artifact) starts with no state. Guests version their own blob layout.
+pub mod state {
+    /// Maximum state size in bytes.
+    pub const MAX: usize = 4096;
+
+    /// Copies the committed state into `buffer`; returns its full length, or `None` if unset.
+    /// A shorter buffer receives a prefix.
+    #[cfg(target_arch = "wasm32")]
+    pub fn load(buffer: &mut [u8]) -> Option<usize> {
+        let len = unsafe { super::host::state_read(buffer.as_mut_ptr(), buffer.len() as i32) };
+        usize::try_from(len).ok()
+    }
+
+    /// Stages `data` as the new state (rule callbacks only; over [`MAX`] bytes traps).
+    #[cfg(target_arch = "wasm32")]
+    pub fn save(data: &[u8]) {
+        unsafe { super::host::state_write(data.as_ptr(), data.len() as i32) };
+    }
+}
+
+/// Writes `value` in decimal into `buffer`, returning the digits (no allocation).
+pub fn format_u64(value: u64, buffer: &mut [u8; 20]) -> &str {
+    let mut index = buffer.len();
+    let mut rest = value;
+    loop {
+        index -= 1;
+        buffer[index] = b'0' + (rest % 10) as u8;
+        rest /= 10;
+        if rest == 0 {
+            break;
+        }
+    }
+    core::str::from_utf8(&buffer[index..]).unwrap_or("")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -140,6 +181,14 @@ mod tests {
         assert_eq!(Resource::Fluid("water").encode(), (1, "water", 0));
         assert_eq!(Resource::Tag("logs").encode(), (0, "logs", 1));
         assert_eq!(Resource::Energy.encode(), (2, "", 0));
+    }
+
+    #[test]
+    fn decimal_formatting_has_no_allocation_and_covers_bounds() {
+        let mut buffer = [0; 20];
+        assert_eq!(format_u64(0, &mut buffer), "0");
+        assert_eq!(format_u64(1234, &mut buffer), "1234");
+        assert_eq!(format_u64(u64::MAX, &mut buffer), "18446744073709551615");
     }
 
     #[test]

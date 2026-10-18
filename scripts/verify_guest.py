@@ -63,6 +63,8 @@ def main() -> int:
         common + ["test", "--manifest-path", str(sdk), "--locked", "--workspace"],
         common + ["rustc", "--manifest-path", str(sdk), "--locked", "-p", "factorycore-smelter", "--release",
                   "--target", "wasm32-unknown-unknown", "--crate-type", "cdylib", "--"] + wasm_flags,
+        common + ["rustc", "--manifest-path", str(sdk), "--locked", "-p", "factorycore-counter", "--release",
+                  "--target", "wasm32-unknown-unknown", "--crate-type", "cdylib", "--"] + wasm_flags,
     ]
     for command in sdk_commands:
         print("SDK CHECK:", " ".join(command), flush=True)
@@ -85,8 +87,13 @@ def main() -> int:
     if not smelter.is_file() or smelter.stat().st_size < 8:
         print("FAIL: SDK example did not produce a nonempty Wasm artifact.", file=sys.stderr)
         return 1
+    counter = sdk_target / "wasm32-unknown-unknown/release/factorycore_counter.wasm"
+    if not counter.is_file() or counter.stat().st_size < 8:
+        print("FAIL: SDK counter example did not produce a nonempty Wasm artifact.", file=sys.stderr)
+        return 1
     (root / "build/test-guests").mkdir(parents=True, exist_ok=True)
     shutil.copyfile(smelter, root / "build/test-guests/smelter.wasm")
+    shutil.copyfile(counter, root / "build/test-guests/counter.wasm")
     artifact = target / "wasm32-unknown-unknown/release/factorycore_wasm_probe.wasm"
     if not artifact.is_file() or artifact.stat().st_size < 8:
         print("FAIL: Rust build did not produce a nonempty Wasm artifact.", file=sys.stderr)

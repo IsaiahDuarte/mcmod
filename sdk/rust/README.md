@@ -40,3 +40,13 @@ cargo +1.95.0 rustc --release -p factorycore-smelter --target wasm32-unknown-unk
 
 The artifact must be at most 128 KiB, import only `factory_v1` functions and use at
 most 32 memory pages. Each rule run may use 65,536 instructions and 512 host calls.
+
+
+## Persistent state
+
+`factorycore::state::load(&mut buf)` returns the committed state's length (or `None`), and
+`factorycore::state::save(&bytes)` stages up to `state::MAX` (4,096) bytes, committed only if
+the rule callback finishes. State survives reloads and resumes, but a new deployment starts
+empty. See `examples/counter`. Avoid `copy_from_slice` and similar slice copies in guests:
+the prebuilt `core` emits bulk-memory instructions that Factory Core rejects. Write bytes
+individually instead, or pass slices directly to host calls.

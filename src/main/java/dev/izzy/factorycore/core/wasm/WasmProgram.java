@@ -38,11 +38,17 @@ public final class WasmProgram {
   public static final int MAX_TEXT = 128;
   public static final long DEADLINE_NANOS = 50_000_000;
 
+  /** Persistent guest state quota in bytes (one blob per deployment). */
+  public static final int MAX_STATE = 4_096;
+
   /** A registered persistent rule; registering the same key twice fails initialization. */
   public record RuleSpec(String key, int interval) {}
 
-  /** Staged commands and guest instructions used, for publication and FE accounting. */
-  public record Outcome(List<ProgramCommand> commands, int instructions) {}
+  /**
+   * Staged commands and guest instructions used, for publication and FE accounting; {@code
+   * stateChanged} reports a committed {@code state_write} (read it with {@link #state()}).
+   */
+  public record Outcome(List<ProgramCommand> commands, int instructions, boolean stateChanged) {}
 
   private static final FunctionType REGISTER =
       FunctionType.of(List.of(ValType.I32, ValType.I32, ValType.I32), List.of(ValType.I32));
@@ -59,6 +65,8 @@ public final class WasmProgram {
           List.of(ValType.I32, ValType.I32, ValType.I32, ValType.I32), List.of(ValType.I64));
   private static final FunctionType LOG =
       FunctionType.of(List.of(ValType.I32, ValType.I32), List.of(ValType.I32));
+  private static final FunctionType STATE =
+      FunctionType.of(List.of(ValType.I32, ValType.I32), List.of(ValType.I32));
 
   private final LongSupplier clock;
   private final Instance instance;
@@ -66,7 +74,8 @@ public final class WasmProgram {
   private final List<ProgramCommand> staged = new ArrayList<>();
   private final List<UUID> selected = new ArrayList<>();
   private ProgramEvaluator.Host host;
-  private boolean initializing, failed;
+  private boolean initializing, failed, wrote;
+  private byte[] committed, pending;
   private int remaining, budget, hostCalls;
   private long started;
 
@@ -99,7 +108,18 @@ public final class WasmProgram {
 
   /** Validates, instantiates and initializes {@code artifact}; throws on any failure. */
   public WasmProgram(byte[] artifact, LongSupplier clock) {
+    this(artifact, clock, null);
+  }
+
+  /**
+   * As {@link #WasmProgram(byte[], LongSupplier)}, restoring previously committed persistent {@code
+   * state} (or null) into the fresh instance before {@code factory_init} runs.
+   */
+  public WasmProgram(byte[] artifact, LongSupplier clock, byte[] state) {
     this.clock = clock;
+    if (state != null && state.length > MAX_STATE)
+      throw new IllegalArgumentException("Guest state over " + MAX_STATE + " bytes");
+    committed = state == null ? null : state.clone();
     var module = Parser.parse(WasmPreflight.validate(artifact));
     var imports =
         ImportValues.builder()
@@ -111,6 +131,8 @@ public final class WasmProgram {
             .addFunction(function("craft", CRAFT, this::craft))
             .addFunction(function("stock", STOCK, this::stock))
             .addFunction(function("log", LOG, this::log))
+            .addFunction(function("state_read", STATE, this::stateRead))
+            .addFunction(function("state_write", STATE, this::stateWrite))
             .build();
     instance =
         Instance.builder(module)
@@ -152,6 +174,11 @@ public final class WasmProgram {
     return failed;
   }
 
+  /** The last committed persistent state, or null when the guest never wrote any. */
+  public byte[] state() {
+    return committed == null ? null : committed.clone();
+  }
+
   public int memoryPages() {
     return instance.memory().pages();
   }
@@ -185,12 +212,18 @@ public final class WasmProgram {
     if (rule < 0 || rule >= rules.size()) throw new IllegalArgumentException("Unknown rule");
     this.host = host;
     selected.clear();
+    wrote = false;
+    pending = null;
     try {
       run("factory_rule", RULE_INSTRUCTIONS, rule);
-      return new Outcome(List.copyOf(staged), budget - Math.max(0, remaining));
+      // A write commits only with a successful callback; traps leave the previous state.
+      if (wrote) committed = pending;
+      return new Outcome(List.copyOf(staged), budget - Math.max(0, remaining), wrote);
     } finally {
       staged.clear();
       selected.clear();
+      wrote = false;
+      pending = null;
       this.host = null;
     }
   }
@@ -319,6 +352,27 @@ public final class WasmProgram {
     call();
     requireCallback();
     stage(new ProgramCommand.Log(text(a[0], a[1])));
+    return new long[] {0};
+  }
+
+  /** {@code state_read(ptr, cap)}: copies up to cap bytes; returns the full length or -1. */
+  private long[] stateRead(long[] a) {
+    call();
+    var current = wrote ? pending : committed;
+    if (a[1] < 0) throw new Limit("negative state buffer");
+    if (current == null) return new long[] {-1};
+    int copied = (int) Math.min(a[1], current.length);
+    instance.memory().write((int) a[0], java.util.Arrays.copyOf(current, copied));
+    return new long[] {current.length};
+  }
+
+  /** {@code state_write(ptr, len)}: stages the whole state blob (callbacks only, ≤ quota). */
+  private long[] stateWrite(long[] a) {
+    call();
+    requireCallback();
+    if (a[1] < 0 || a[1] > MAX_STATE) throw new Limit("state over " + MAX_STATE + " bytes");
+    pending = instance.memory().readBytes((int) a[0], (int) a[1]);
+    wrote = true;
     return new long[] {0};
   }
 }

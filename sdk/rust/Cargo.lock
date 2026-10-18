@@ -7,6 +7,13 @@ name = "factorycore"
 version = "1.0.0"
 
 [[package]]
+name = "factorycore-counter"
+version = "1.0.0"
+dependencies = [
+ "factorycore",
+]
+
+[[package]]
 name = "factorycore-smelter"
 version = "1.0.0"
 dependencies = [

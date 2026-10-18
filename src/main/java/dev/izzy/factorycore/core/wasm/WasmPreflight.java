@@ -14,7 +14,16 @@ public final class WasmPreflight {
   public static final String MODULE = "factory_v1";
   public static final java.util.Set<String> IMPORTS =
       java.util.Set.of(
-          "register_rule", "machines", "keep", "move_from", "move_to", "craft", "stock", "log");
+          "register_rule",
+          "machines",
+          "keep",
+          "move_from",
+          "move_to",
+          "craft",
+          "stock",
+          "log",
+          "state_read",
+          "state_write");
   private static final byte[] HEADER = {0, 97, 115, 109, 1, 0, 0, 0};
 
   private WasmPreflight() {}

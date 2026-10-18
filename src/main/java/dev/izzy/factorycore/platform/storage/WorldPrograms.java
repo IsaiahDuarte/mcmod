@@ -277,6 +277,7 @@ public final class WorldPrograms {
         var outcome = instance.invoke(rule.index(), host(controller, actor));
         commands = outcome.commands();
         work = outcome.instructions();
+        if (outcome.stateChanged()) controller.guestState(instance.state());
       } else {
         var outcome = ProgramEvaluator.evaluate(rule.friendly(), host(controller, actor));
         commands = outcome.commands();

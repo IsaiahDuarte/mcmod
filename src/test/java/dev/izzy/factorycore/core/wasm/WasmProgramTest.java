@@ -3,6 +3,7 @@ package dev.izzy.factorycore.core.wasm;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
+import dev.izzy.factorycore.core.program.ProgramCommand;
 import dev.izzy.factorycore.core.program.ProgramEvaluator;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import java.io.ByteArrayOutputStream;
@@ -176,5 +177,48 @@ class WasmProgramTest {
         IllegalArgumentException.class,
         () -> new WasmProgram(module("open_file", new byte[] {0x0b}), System::nanoTime),
         "Only factory_v1 functions may be imported");
+  }
+
+  private static byte[] counter() throws Exception {
+    return Files.readAllBytes(Path.of(System.getProperty("factorycore.test.counter")));
+  }
+
+  private static String logged(WasmProgram.Outcome outcome) {
+    return ((ProgramCommand.Log) outcome.commands().getFirst()).text();
+  }
+
+  @Test
+  void persistentStateCommitsPerCallbackAndRestoresIntoAFreshInstance() throws Exception {
+    var guest = new WasmProgram(counter(), System::nanoTime);
+    assertNull(guest.state(), "A new deployment has no state");
+    var first = guest.invoke(0, host(0));
+    assertTrue(first.stateChanged());
+    assertEquals("1", logged(first));
+    assertEquals("2", logged(guest.invoke(0, host(0))));
+    var saved = guest.state();
+    assertEquals(8, saved.length);
+    var restored = new WasmProgram(counter(), System::nanoTime, saved);
+    assertEquals("3", logged(restored.invoke(0, host(0))), "Reload continues the count");
+    assertEquals(
+        2,
+        java.nio.ByteBuffer.wrap(saved).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong(),
+        "state() returned a copy that later commits do not change");
+  }
+
+  @Test
+  void overQuotaWriteTrapsAndLeavesCommittedStateUnchanged() throws Exception {
+    var guest = new WasmProgram(counter(), System::nanoTime);
+    guest.invoke(0, host(0));
+    var before = guest.state();
+    assertFalse(guest.invoke(1, host(0)).stateChanged(), "No barrier: nothing is written");
+    // The host reports barrier stock, so the guest attempts an over-quota write.
+    var trap = assertThrows(ProgramEvaluator.Trap.class, () -> guest.invoke(1, host(1)));
+    assertTrue(trap.getMessage().contains("state over 4096 bytes"), trap.getMessage());
+    assertArrayEquals(before, guest.state(), "The trapping callback's write is discarded");
+    var resumed = new WasmProgram(counter(), System::nanoTime, guest.state());
+    assertEquals("2", logged(resumed.invoke(0, host(0))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new WasmProgram(counter(), System::nanoTime, new byte[WasmProgram.MAX_STATE + 1]));
   }
 }

@@ -74,3 +74,11 @@ invalid artifacts or failed init); `rules()` lists `RuleSpec(key, interval)`;
 `ResourceExpressions.item/fluid` build escaped literals for insertion. With JEI installed,
 dropping an item or fluid on the editor types one at the cursor
 ([ADR0043](../decisions/0043-jei-integration.md)).
+
+
+## Persistent guest state
+
+Wasm guests may keep one blob of at most 4,096 bytes per deployment through
+`state_read`/`state_write` ([ADR0044](../decisions/0044-persistent-guest-state.md)). Writes
+commit only with a successful callback. Friendly-language programs have no persistent
+variables; their rules are stateless.

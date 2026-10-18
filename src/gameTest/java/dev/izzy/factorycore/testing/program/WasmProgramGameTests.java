@@ -174,4 +174,91 @@ public final class WasmProgramGameTests {
       if (chest.getItem(slot).is(Items.RAW_IRON)) total += chest.getItem(slot).getCount();
     return total;
   }
+
+  private static long count(byte[] state) {
+    return state == null
+        ? 0
+        : java.nio.ByteBuffer.wrap(state).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong();
+  }
+
+  @SuppressWarnings("removal")
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void guestStatePersistsAcrossReloadAndResetsOnRedeploy(GameTestHelper h) {
+    var player = h.makeMockServerPlayerInLevel();
+    var owner = new NetworkPermissions.Actor(player.getUUID(), false);
+    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
+    NetworkNodeEntity root = h.getBlockEntity(ROOT);
+    root.commission(owner.id());
+    h.setBlock(DRIVE, ProgramContent.BLOCK.get());
+    ProgramControllerEntity controller = h.getBlockEntity(DRIVE);
+    byte[] counter;
+    try {
+      counter = Files.readAllBytes(Path.of(System.getProperty("factorycore.test.counter")));
+    } catch (java.io.IOException failure) {
+      throw new AssertionError(failure);
+    }
+    var programs = WorldPrograms.get(h.getLevel().getServer());
+    var networks = WorldNetworks.get(h.getLevel().getServer());
+    long[] before = new long[1];
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    networks.membership(controller.origin()).status()
+                        == NetworkTopology.Status.VALID,
+                    "Ready"))
+        .thenExecute(
+            () -> {
+              controller.energyStorage().receiveEnergy(1_000, false);
+              h.assertTrue(
+                  programs.deployWasm(owner, controller, counter).isEmpty()
+                      && controller.guestState() == null,
+                  "Counter guest deploys with no state");
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    count(controller.guestState()) >= 2 && controller.logs().contains("count: 2"),
+                    "Each callback commits its count: " + controller.logs()))
+        .thenExecute(
+            () -> {
+              before[0] = count(controller.guestState());
+              var tag = controller.saveWithoutMetadata(h.getLevel().registryAccess());
+              h.assertTrue(tag.contains("GuestState"), "Schema 3 persists GuestState");
+              h.setBlock(DRIVE, Blocks.AIR);
+              h.setBlock(DRIVE, ProgramContent.BLOCK.get());
+              ProgramControllerEntity reloaded = h.getBlockEntity(DRIVE);
+              reloaded.loadWithComponents(tag, h.getLevel().registryAccess());
+              h.assertTrue(
+                  count(reloaded.guestState()) == before[0]
+                      && reloaded.wasm() != null
+                      && count(reloaded.wasm().state()) == before[0],
+                  "Reload restores committed state into a fresh instance");
+            })
+        .thenWaitUntil(
+            () -> {
+              ProgramControllerEntity reloaded = h.getBlockEntity(DRIVE);
+              h.assertTrue(
+                  reloaded.logs().contains("count: " + (before[0] + 1)),
+                  "The reloaded guest continues from the saved count: " + reloaded.logs());
+            })
+        .thenExecute(
+            () -> {
+              ProgramControllerEntity reloaded = h.getBlockEntity(DRIVE);
+              h.assertTrue(
+                  programs.deployWasm(owner, reloaded, counter).isEmpty()
+                      && reloaded.guestState() == null,
+                  "Redeploying starts a new deployment without state");
+            })
+        .thenWaitUntil(
+            () -> {
+              ProgramControllerEntity reloaded = h.getBlockEntity(DRIVE);
+              h.assertTrue(
+                  reloaded.logs().contains("count: 1") && count(reloaded.guestState()) >= 1,
+                  "The new deployment counts from one: " + reloaded.logs());
+              programs.control(owner, reloaded, ProgramControllerEntity.State.STOPPED);
+              player.connection.disconnect(Component.literal("done"));
+            })
+        .thenSucceed();
+  }
 }

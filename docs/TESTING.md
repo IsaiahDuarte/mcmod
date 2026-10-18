@@ -1148,3 +1148,28 @@ These tests run headless:
 - `ArchitectureTest`: now inspects a real `..integration..` package.
 
 **Not run:** JEI's own client callbacks, which need a graphical client with JEI.
+
+
+## Persistent guest state checks
+
+`scripts/verify_guest.py` now also builds `examples/counter` into
+`build/test-guests/counter.wasm`, which is passed to the tests as `factorycore.test.counter`.
+
+`WasmProgramTest` (real counter guest):
+
+- A new instance has no state; callbacks commit 1, 2, and a restored instance continues
+  at 3.
+- `state()` returns copies.
+- A dormant oversize rule writes nothing.
+- An over-quota write traps without changing committed state, and a resumed instance
+  continues from it.
+- Oversized restore state is rejected.
+
+`WasmProgramGameTests.guestStatePersistsAcrossReloadAndResetsOnRedeploy`:
+
+- A deployed counter commits counts.
+- Schema 3 saves `GuestState`.
+- Block replacement and load restore it into a fresh instance, which continues the count.
+- Redeploying clears it, and the new deployment counts from 1.
+
+**Not run:** dedicated two-JVM restart coverage for guest state.
