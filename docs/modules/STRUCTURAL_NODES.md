@@ -173,3 +173,12 @@ state and IOException for failed/oversized/quota/corrupt output, before mutation
 It grants no permission, imports no state and is not a client/guest SDK API.
 World12/node reference1 and audit1/2/3 stay unchanged. Independent file interruptions,
 missing/stale canonical holders and arbitrary survivor selection remain unsupported.
+
+
+## Gateway policy replacement
+
+`NodeRegistry.setPolicy(handle, policy)` replaces a valid gateway's policy on the owner
+thread and marks the registry dirty; controllers return UNKNOWN and stale/foreign
+handles their validation failure, changing nothing. It grants nothing: callers
+authenticate the editor and call `WorldNetworks.changed` so topology republishes the
+policy. No player editor exists yet.

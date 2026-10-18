@@ -128,14 +128,21 @@ public final class CraftingUnitGameTests {
                           == (h.absolutePos(COPY_UNIT).asLong() < h.absolutePos(ROOT_UNIT).asLong()
                               ? copyUnit
                               : rootUnit)
-                      && rootIndex.producers(stickKey).isEmpty()
+                      && !rootIndex.byOutput().get(plankKey).getFirst().published()
                       && !rootIndex.truncated(),
-                  "Root sees one plank pattern, kept from the first unit in stable position order, and no child pattern");
+                  "Root sees one local plank pattern, kept from the first unit in stable position order");
+              // The default open gateway allows CRAFT for its branch, so the child publishes
+              // upward.
+              h.assertTrue(
+                  rootIndex.producers(stickKey).size() == 1
+                      && rootIndex.byOutput().get(stickKey).getFirst().published()
+                      && rootIndex.byOutput().get(stickKey).getFirst().unit() == childUnit,
+                  "Root sees the child's stick pattern as published");
               var childIndex = crafting.index(membership(h, CHILD_UNIT).scope());
               h.assertTrue(
                   childIndex.producers(stickKey).size() == 1
                       && childIndex.producers(plankKey).isEmpty(),
-                  "Child segment sees only its own pattern; no gateway publication yet");
+                  "Publication is upward only: the child does not see root patterns");
             })
         .thenSucceed();
   }

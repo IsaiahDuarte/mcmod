@@ -71,3 +71,12 @@ outputs)` and, after cancel, `abandonDispatch()` record one leased machine craft
 `crafted` refuses while a dispatch exists and `finished()` requires none. Wait reasons
 add `machine_missing`, `busy`, `output_not_clean`, `machine_full` and `processing`.
 Cleanup after cancel is bounded by `WorldCraftingJobs.MAX_CLEANUP_PASSES` (60).
+
+
+## Branch publication
+
+`WorldCrafting.Offer.published()` marks patterns offered by descendant branches whose
+gateways all allow CRAFT for the branch ([ADR 0033](../decisions/0033-branch-recipe-publication.md)).
+`WorldNetworks.ancestors(origin)` lists gateway ancestors nearest first. Jobs are
+unchanged: they belong to the requester's segment, reserve from its view and deliver
+there.

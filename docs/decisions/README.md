@@ -96,3 +96,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0031 — Persisted crafting jobs with single reservations](0031-crafting-jobs.md)
 
 - [0032 — Processing patterns and the Crafting Interface](0032-processing-patterns.md)
+
+- [0033 — Published branch recipes](0033-branch-recipe-publication.md)

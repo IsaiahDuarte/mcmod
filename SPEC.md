@@ -454,3 +454,10 @@ machine lease, dispatch only into a machine holding none of the outputs, real
 per-key insertion with staged remainders, completion only from outputs collected from
 that machine, and a bounded post-cancel cleanup record. This adds partial A06/A08
 evidence; fluid processing, branch publication and keep-stock remain unfinished.
+
+
+Branch recipe publication is implemented: patterns in a descendant branch are offered
+to an ancestor when every gateway on the path allows CRAFT for its branch. The
+requester's job reserves once from its own storage view, runs at the branch holder
+through job staging and delivers to the requester; branch storage and machine handles
+stay private. This adds A07 evidence; a gateway policy editor remains unfinished.

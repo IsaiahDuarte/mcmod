@@ -553,8 +553,10 @@ Place a Crafting Unit (iron, gold, redstone and a crafting table) on your networ
 use a pattern on it, or feed patterns with a hopper. It holds nine. Use it with an
 empty hand to see how many patterns it has and its network status; sneak-use to take
 the last pattern back. Breaking it drops its patterns. Patterns are offered only to
-the network segment the unit is wired into; a branch's patterns are not shared with
-the parent yet. Autocrafting requests that use these patterns are not available yet.
+the network segment the unit is wired into and, through each gateway that lets its
+branch craft (the default), to the segments above it. The parent can then request
+those recipes; the branch's machines and storage stay private, ingredients come from
+the requester's storage and results go back there. Autocrafting requests that use these patterns are not available yet.
 
 
 ### Autocrafting jobs (server side)

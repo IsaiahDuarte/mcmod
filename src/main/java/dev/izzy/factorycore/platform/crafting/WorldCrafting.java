@@ -30,14 +30,16 @@ public final class WorldCrafting {
 
   /**
    * A pattern and the loaded holder offering it; the first holder in stable order wins duplicates.
-   * Exactly one of {@code contents} (crafting) and {@code processing} is present.
+   * Exactly one of {@code contents} (crafting) and {@code processing} is present. {@code published}
+   * marks a pattern held in a descendant branch and offered through its gateways.
    */
   public record Offer(
       Pattern pattern,
       PatternContents contents,
       ProcessingContents processing,
       PatternHolderEntity unit,
-      int slot) {}
+      int slot,
+      boolean published) {}
 
   /** Patterns visible to one segment, keyed by output. Overflow beyond the bounds is reported. */
   public record Index(Map<ResourceKey, List<Offer>> byOutput, boolean truncated) {
@@ -86,14 +88,29 @@ public final class WorldCrafting {
   }
 
   /**
-   * Patterns from current, VALID units in exactly {@code scope}'s network and segment. Gateway
-   * publication of child recipes is not included.
+   * Patterns from current, VALID holders in {@code scope}'s segment, plus patterns published by
+   * descendant branches: a branch publishes to an ancestor when every gateway on the path allows
+   * CRAFT for that branch. Published patterns add no storage or machine handles to the ancestor.
    */
+  private static boolean publishes(
+      WorldNetworks networks, PatternHolderEntity unit, NetworkTopology.Scope scope) {
+    for (var ancestor : networks.ancestors(unit.origin())) {
+      if (!ancestor
+          .policy()
+          .branchPermissions()
+          .contains(dev.izzy.factorycore.core.network.NetworkPermissions.Permission.CRAFT))
+        return false;
+      if (ancestor.segment().equals(scope.segment())) return true;
+    }
+    return false;
+  }
+
   public Index index(NetworkTopology.Scope scope) {
     if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
     var networks = WorldNetworks.get(server);
     var codec = new PlatformResourceCodec(server.registryAccess());
     var members = new ArrayList<PatternHolderEntity>();
+    var published = new java.util.HashSet<PatternHolderEntity>();
     var iterator = units.iterator();
     while (iterator.hasNext()) {
       var unit = iterator.next();
@@ -103,9 +120,12 @@ public final class WorldCrafting {
       }
       var membership = networks.membership(unit.origin());
       if (membership.status() != NetworkTopology.Status.VALID
-          || !membership.scope().network().equals(scope.network())
-          || !membership.scope().segment().equals(scope.segment())) continue;
-      members.add(unit);
+          || !membership.scope().network().equals(scope.network())) continue;
+      if (membership.scope().segment().equals(scope.segment())) members.add(unit);
+      else if (publishes(networks, unit, scope)) {
+        members.add(unit);
+        published.add(unit);
+      }
     }
     members.sort(
         Comparator.comparing((PatternHolderEntity unit) -> unit.origin().dimension())
@@ -133,7 +153,7 @@ public final class WorldCrafting {
         }
         byOutput
             .computeIfAbsent(pattern.output(), key -> new ArrayList<>())
-            .add(new Offer(pattern, contents, processing, unit, slot));
+            .add(new Offer(pattern, contents, processing, unit, slot, published.contains(unit)));
         count++;
       }
     return new Index(byOutput, truncated);

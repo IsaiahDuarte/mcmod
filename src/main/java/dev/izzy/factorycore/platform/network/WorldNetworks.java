@@ -495,6 +495,14 @@ public final class WorldNetworks {
         .machines(actor, member.scope(), label, after, limit);
   }
 
+  /** Gateways above {@code origin}, nearest first, with their policies; empty when invalid. */
+  public List<NetworkTopology.Ancestor> ancestors(NodeRegistry.Position origin) {
+    checkThread();
+    var membership = membership(origin);
+    if (membership.status() != NetworkTopology.Status.VALID) return List.of();
+    return resolve(owners.get(origin)).discovery.publishedTopology().ancestors(membership.scope());
+  }
+
   public NetworkAuthority.StorageQuery storage(
       NetworkPermissions.Actor actor,
       NodeRegistry.Position origin,

@@ -236,4 +236,30 @@ class NodeRegistryTest {
     assertEquals(moved, registry.handles(null, 1).handles().getFirst());
     assertThrows(IllegalArgumentException.class, () -> registry.handles(null, 0));
   }
+
+  @Test
+  void setPolicyReplacesOnlyAValidGatewayPolicyAndMarksDirty() {
+    int[] changes = {0};
+    var registry = new NodeRegistry(WORLD, List.of(), () -> changes[0]++);
+    var gate = registry.create(ID, NodeRegistry.Kind.GATEWAY, FIRST).handle();
+    var root = registry.create(new UUID(0, 2), NodeRegistry.Kind.CONTROLLER, SECOND).handle();
+    int before = changes[0];
+    var restricted =
+        new GatewayPolicy(
+            java.util.EnumSet.of(NetworkPermissions.Permission.VIEW),
+            java.util.EnumSet.noneOf(NetworkPermissions.Permission.class),
+            java.util.EnumSet.noneOf(dev.izzy.factorycore.core.resource.ResourceKind.class));
+    assertEquals(NodeRegistry.Failure.OK, registry.setPolicy(gate, restricted));
+    assertEquals(before + 1, changes[0]);
+    assertEquals(restricted, registry.definition(gate).policy());
+    assertEquals(gate.generation(), registry.definition(gate).generation(), "Lease unchanged");
+    assertEquals(NodeRegistry.Failure.UNKNOWN, registry.setPolicy(root, GatewayPolicy.open()));
+    var stale =
+        new NodeRegistry.Handle(WORLD, ID, gate.generation() + 5, NodeRegistry.Kind.GATEWAY);
+    assertNotEquals(NodeRegistry.Failure.OK, registry.setPolicy(stale, GatewayPolicy.open()));
+    assertEquals(restricted, registry.definition(gate).policy(), "Refusals change nothing");
+    assertEquals(
+        restricted,
+        new NodeRegistry(WORLD, registry.snapshot(), () -> {}).definition(gate).policy());
+  }
 }

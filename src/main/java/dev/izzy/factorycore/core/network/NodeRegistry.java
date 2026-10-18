@@ -139,6 +139,25 @@ public final class NodeRegistry {
     return nodes.get(handle.id());
   }
 
+  /**
+   * Trusted policy replacement for a valid gateway lease; the caller authenticates the editor and
+   * schedules topology revalidation. Identity, generation and position are unchanged.
+   */
+  public Failure setPolicy(Handle handle, GatewayPolicy policy) {
+    checkThread();
+    Objects.requireNonNull(policy);
+    var failure = validate(handle);
+    if (failure != Failure.OK) return failure;
+    var node = nodes.get(handle.id());
+    if (node.kind() != Kind.GATEWAY) return Failure.UNKNOWN;
+    nodes.put(
+        node.id(),
+        new Stored(
+            node.id(), node.kind(), node.generation(), node.position(), node.conflict(), policy));
+    changed.run();
+    return Failure.OK;
+  }
+
   /** Trusted owner-thread inspection, including conflicts; unknown IDs return null. */
   public Stored evidence(UUID id) {
     checkThread();

@@ -991,3 +991,16 @@ the in-flight ingot (three units conserved); terminal processing mode encodes 2 
 gold → 2 gold ingots and refuses manual crafting. Three earlier assertions that all
 world jobs were empty now check the test's own principal, since jobs from concurrent
 tests share the world.
+
+
+## Branch publication checks
+
+NodeRegistryTest covers `setPolicy` replacing only a valid gateway's policy (lease
+unchanged, dirty marked, persisted) and refusing controllers and stale handles.
+BranchCraftingGameTests: a root job for sticks uses the child branch's published
+patterns with one root log reservation, executes in the branch and delivers eight
+sticks to root storage; a gateway whose branch lacks CRAFT stops publishing after
+revalidation and the root request reports `missing` without reserving. The earlier
+CraftingUnitGameTests case now asserts upward-only publication (the root sees the
+child's stick pattern as published; the child does not see root patterns) instead of
+segment-only visibility.
