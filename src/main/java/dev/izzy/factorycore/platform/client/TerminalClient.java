@@ -22,5 +22,8 @@ public final class TerminalClient {
         BufferSettingsScreen::new);
     event.register(
         dev.izzy.factorycore.platform.program.ProgramContent.MENU.get(), ProgramScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.network.NetworkContent.POLICY_MENU.get(),
+        GatewayPolicyScreen::new);
   }
 }

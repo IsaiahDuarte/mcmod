@@ -1109,3 +1109,13 @@ The test checks the following:
   1,000 FE/tick.
 - Once powered, the child becomes VALID in the root's network in a separate segment.
 - Draining one endpoint returns the child to NO_ROOT.
+
+
+## Gateway policy editor checks
+
+GatewayPolicyTest round-trips the 17-bit mask and checks that toggles are isolated and
+out-of-range bits are rejected. GatewayPolicyGameTests opens the editor by sneak-use,
+toggles branch Craft (canonical policy changes only that bit) and checks that a second
+click during the rebuild fails closed. After the rebuild it toggles inherited fluids,
+refuses an out-of-range button, and shows a stranger a read-only editor whose clicks
+change nothing.

@@ -2920,3 +2920,8 @@ reusing `TerminalMenu` through `TerminalAccess`. Native 264→265. Next: paired 
 P6 adds Wireless Link Endpoints as reciprocal topology edges between gateways
 ([ADR0040](decisions/0040-paired-wireless-links.md)). Native 265→266. Next: JEI integration
 (optional, isolated) or gateway policy editor.
+
+## Gateway policy editor checkpoint — 2026-10-18
+
+P6 adds the sneak-use gateway policy editor ([ADR0041](decisions/0041-gateway-policy-editor.md)).
+Native 266→267. Next: in-game guide/onboarding, then JEI integration.

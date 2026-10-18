@@ -214,3 +214,4 @@ check behavior; graphical chat/accessibility/full recovery walkthrough remain Pe
 | Wireless Access Point + block item | Range/power state | P6 | Copper/beacon cube stand-in, translated status message | Pending |
 | Wireless Terminal item | Bound/unbound, FE | P6 | Recovery-compass stand-in, tooltip with FE and binding | Pending |
 | Wireless Link Endpoint + block item | Facing, paired/active/no-power state | P6 | Oxidized copper/end rod cube stand-in, translated status message | Pending |
+| Gateway policy editor screen | Toggle on/off, read-only state | P6 | Flat panel, translated headers and toggle labels; not graphically verified | Pending |

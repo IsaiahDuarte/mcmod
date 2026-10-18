@@ -655,3 +655,12 @@ apart in the same dimension. Sneak-use one endpoint and then the other to pair t
 Each endpoint needs its own FE and uses 32 FE per tick. The branch disconnects if either
 end loses power or is broken, and gateway rules still decide what it can see. Use an
 endpoint without sneaking to see its state.
+
+
+## Gateway rules
+
+Sneak-use a gateway to open its policy editor. The left column chooses what the branch
+may do in the parent network, for example letting the parent craft its patterns. The middle
+column chooses what the branch may do with parent stock, and the right column chooses
+which resource kinds (items, fluids, energy) the branch can see. You need Manage to change
+them; others see them read-only. Wait a moment between clicks while the branch updates.

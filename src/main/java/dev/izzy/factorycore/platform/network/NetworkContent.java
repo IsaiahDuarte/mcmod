@@ -66,6 +66,18 @@ public final class NetworkContent {
         || state.getBlock() instanceof dev.izzy.factorycore.platform.storage.TerminalBlock;
   }
 
+  private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
+      DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
+  public static final DeferredHolder<
+          net.minecraft.world.inventory.MenuType<?>,
+          net.minecraft.world.inventory.MenuType<GatewayPolicyMenu>>
+      POLICY_MENU =
+          MENUS.register(
+              "gateway_policy",
+              () ->
+                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
+                      GatewayPolicyMenu::new));
+
   private NetworkContent() {}
 
   private static BlockBehaviour.Properties properties() {
@@ -76,5 +88,6 @@ public final class NetworkContent {
     BLOCKS.register(bus);
     ITEMS.register(bus);
     ENTITIES.register(bus);
+    MENUS.register(bus);
   }
 }

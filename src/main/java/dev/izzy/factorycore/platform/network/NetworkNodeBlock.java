@@ -93,6 +93,17 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
                   + "; "
                   + routing
               : "Network " + node.handle().id() + "; " + routing;
+      // Sneak-use opens the gateway policy editor; it shows read-only toggles without Manage.
+      if (kind == NodeRegistry.Kind.GATEWAY
+          && player.isShiftKeyDown()
+          && player instanceof net.minecraft.server.level.ServerPlayer server) {
+        server.openMenu(
+            new net.minecraft.world.SimpleMenuProvider(
+                (id, inventory, who) -> new GatewayPolicyMenu(id, inventory, node),
+                Component.translatable("gui.factorycore.gateway_policy")),
+            buffer -> buffer.writeBlockPos(position));
+        return InteractionResult.CONSUME;
+      }
       player.displayClientMessage(Component.literal(message), true);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {

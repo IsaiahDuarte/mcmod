@@ -168,3 +168,11 @@ pagination/ambiguity, inherited intersections and real FairScheduler queued
 revocation are exercised. A [budgeted physical discovery producer](WIRE_DISCOVERY.md) now supplies bounded
 world descriptors; [live coordination](WORLD_NETWORKS.md) adds automatic event invalidation and activation. Canonical network identities/grants now have [persistence evidence](NETWORK_PERSISTENCE.md). Physical leases/policies now have [adapter evidence](STRUCTURAL_NODES.md). Actual chunk unload/full restart, clients, remaining device/endpoint integration
 and server performance remain required P2/P3/P7 evidence. Full A05/A12 is not proved by these core tests.
+
+
+## Gateway policy editor
+
+`platform/network/GatewayPolicyMenu` + `platform/client/GatewayPolicyScreen`
+([ADR0041](../decisions/0041-gateway-policy-editor.md)): sneak-use a gateway; button
+`n < GatewayPolicy.BITS` toggles bit `n` after a server-side Manage check, writes
+`NodeRegistry.setPolicy` and calls `WorldNetworks.changed` at the gateway. Server thread only.

@@ -536,5 +536,21 @@
   "status.factorycore.link.unpaired": "not paired",
   "status.factorycore.link.needs_gateway": "back face must touch a gateway",
   "status.factorycore.link.out_of_range": "out of range",
-  "status.factorycore.link.no_power": "no operating power"
+  "status.factorycore.link.no_power": "no operating power",
+  "gui.factorycore.gateway_policy": "Gateway Policy",
+  "gui.factorycore.gateway_policy.branch": "Branch grants (child → parent)",
+  "gui.factorycore.gateway_policy.inherited": "Inherited access (parent → child)",
+  "gui.factorycore.gateway_policy.kinds": "Inherited resources",
+  "gui.factorycore.gateway_policy.readonly": "Read-only: you need Manage at this gateway",
+  "gui.factorycore.gateway_policy.help": "Child branch policies intersect with every ancestor gateway.",
+  "permission.factorycore.view": "View",
+  "permission.factorycore.deposit": "Deposit",
+  "permission.factorycore.withdraw": "Withdraw",
+  "permission.factorycore.craft": "Craft",
+  "permission.factorycore.edit": "Edit",
+  "permission.factorycore.deploy": "Deploy",
+  "permission.factorycore.manage": "Manage",
+  "kind.factorycore.item": "Items",
+  "kind.factorycore.fluid": "Fluids",
+  "kind.factorycore.energy": "Energy"
 }

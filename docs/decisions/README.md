@@ -110,3 +110,4 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0038 — Terminal fluid containers and energy items](0038-terminal-fluids-energy.md)
 - [0039 — Wireless access point and handheld terminal](0039-wireless-access.md)
 - [0040 — Paired wireless links](0040-paired-wireless-links.md)
+- [0041 — Gateway policy editor](0041-gateway-policy-editor.md)

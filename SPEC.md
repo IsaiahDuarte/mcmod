@@ -508,3 +508,6 @@ through the shared terminal path (partial A16; paired links remain).
 
 Paired Wireless Link Endpoints now join gateway-bounded branches as reciprocal topology
 edges under normal validation (partial A16; per-pair rate caps remain).
+
+Gateways now have a policy editor for branch grants, inherited permissions and
+inherited kinds (A07 evidence; graphical checks remain).
