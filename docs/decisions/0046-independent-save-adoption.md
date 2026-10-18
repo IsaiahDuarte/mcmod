@@ -1,4 +1,4 @@
-# ADR 0046 — Independent-save mismatch adoption for cells and energy banks
+# ADR 0046 — Independent-save mismatch adoption for cells, energy banks and network nodes
 
 Status: selected; two-JVM dedicated injection evidence for both save orders (older
 SavedData, older chunks) for cells; native single-JVM evidence for banks. Banks, buffers and
@@ -44,7 +44,7 @@ cell audit **schema 3** (`HolderKind=CELL_ADOPTION`, with the before-state lease
 ## Consequences
 
 Mismatches remain inert until an operator acts. They are never duplicated or lost.
-Energy-bank, buffer and structural-node mismatches still have only conflict repair. The
+Buffered-interface mismatches still have only conflict repair (cells, banks and controllers/gateways are adoptable). The
 injection replaces the whole data file, which is coarser than a torn write. Corrupt
 files are handled by the existing quarantine path.
 
@@ -63,3 +63,21 @@ the same rule to finite energy banks.
 
 FE, claims and rate spending are unchanged. Buffers and structural nodes still have only
 conflict repair.
+
+
+## Controllers and gateways — 2026-10-18
+
+The command `factorycore recovery node adopt <id> <generation> <x y z>` uses
+`NodeRegistry.adopt` on the same rule, for controllers and gateways.
+
+- **Old position:** must be loaded, and must not hold a structural node that references
+  the ID.
+- **Target:** the holder must have the same world, ID and kind, with a different
+  generation.
+- **Transfers:** none may be unresolved, for transfers or devices.
+- **Evidence:** schema 5 (`HolderKind=NETWORK_NODE_ADOPTION`), including controller
+  grants.
+
+Grants, ownership and gateway policy are unchanged. Topology rebuilds from both
+positions. Buffered interfaces, whose canonical slots and deployments are bound to their
+position, still have only conflict repair.

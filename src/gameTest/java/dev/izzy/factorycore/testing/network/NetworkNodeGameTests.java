@@ -288,4 +288,107 @@ public final class NetworkNodeGameTests {
         "Explicit use commissions actual server player");
     helper.succeed();
   }
+
+  // Own batch: the audited repair/adoption throttle is shared per server.
+  @SuppressWarnings("removal")
+  @GameTest(template = "empty", batch = "node_adoption", timeoutTicks = 300)
+  public static void operatorAdoptsAStaleControllerAfterAnIndependentSaveMismatch(
+      GameTestHelper helper) {
+    var player = helper.makeMockServerPlayerInLevel();
+    var drivePos = new BlockPos(2, 1, 1);
+    var far = new BlockPos(1, 1, 4);
+    var access = helper.getLevel().registryAccess();
+    place(helper, FIRST, player, new ItemStack(NetworkContent.CONTROLLER_ITEM.get()));
+    var original = node(helper, FIRST).handle();
+    helper.setBlock(drivePos, dev.izzy.factorycore.platform.storage.StorageContent.DRIVE.get());
+    var membership =
+        (java.util.function.Supplier<dev.izzy.factorycore.core.network.NetworkTopology.Status>)
+            () ->
+                dev.izzy.factorycore.platform.network.WorldNetworks.get(
+                        helper.getLevel().getServer())
+                    .membership(
+                        new NodeRegistry.Position(
+                            helper.getLevel().dimension().location().toString(),
+                            helper.absolutePos(drivePos).asLong()))
+                    .status();
+    long[] canonical = {0};
+    helper
+        .startSequence()
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    membership.get()
+                        == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                    "Drive joins the controller's network"))
+        .thenIdle(21)
+        .thenExecute(
+            () -> {
+              var before = node(helper, FIRST).saveWithFullMetadata(access);
+              // The canonical save records the controller broken at FIRST and placed at `far`...
+              place(helper, far, player, breakOne(helper, FIRST));
+              var moved = node(helper, far).handle();
+              canonical[0] = moved.generation();
+              helper.assertTrue(
+                  moved.generation() == original.generation() + 2, "Break and place rotate");
+              // ...but the chunk was saved before: FIRST still holds the old controller.
+              node(helper, far).loadWithComponents(new CompoundTag(), access);
+              helper.setBlock(FIRST, NetworkContent.CONTROLLER.get());
+              node(helper, FIRST).loadWithComponents(before, access);
+              node(helper, FIRST).onLoad();
+              helper.assertTrue(
+                  !node(helper, FIRST).diagnostic().isEmpty()
+                      && authority(helper)
+                          .network(original.id())
+                          .snapshot()
+                          .owner()
+                          .equals(player.getUUID()),
+                  "The mismatch is inert; grants are untouched");
+            })
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    membership.get()
+                        != dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                    "Without its canonical controller the network is not valid"))
+        .thenExecute(
+            () -> {
+              var console = helper.getLevel().getServer().createCommandSourceStack();
+              var pos = helper.absolutePos(FIRST);
+              var adopt =
+                  "factorycore recovery node adopt %s %d %d %d %d"
+                      .formatted(original.id(), canonical[0], pos.getX(), pos.getY(), pos.getZ());
+              helper.assertTrue(
+                  command(console.withPermission(0), adopt) < 1, "Ordinary sources cannot adopt");
+              helper.assertTrue(command(console, adopt) == 1, "Operator adopts the old controller");
+              var adopted = node(helper, FIRST).handle();
+              helper.assertTrue(
+                  adopted.generation() == canonical[0] + 1
+                      && node(helper, FIRST).diagnostic().isEmpty()
+                      && authority(helper).nodes().validate(original) == NodeRegistry.Failure.STALE,
+                  "The canonical lease moved back to the adopted controller");
+            })
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    membership.get()
+                            == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID
+                        && authority(helper)
+                            .network(original.id())
+                            .snapshot()
+                            .owner()
+                            .equals(player.getUUID()),
+                    "The network and its owner are restored"))
+        .thenExecute(
+            () ->
+                player.connection.disconnect(net.minecraft.network.chat.Component.literal("done")))
+        .thenSucceed();
+  }
+
+  private static int command(net.minecraft.commands.CommandSourceStack source, String command) {
+    try {
+      return source.getServer().getCommands().getDispatcher().execute(command, source);
+    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException denied) {
+      return -1;
+    }
+  }
 }

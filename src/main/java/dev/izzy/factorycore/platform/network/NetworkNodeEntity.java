@@ -132,6 +132,75 @@ public final class NetworkNodeEntity extends BlockEntity {
     return path;
   }
 
+  /**
+   * Independent-save reconciliation adapter for controllers and gateways: adopts this loaded
+   * holder's mismatched reference as canonical. Refuses unless the old canonical position is loaded
+   * and is not a structural node referencing this ID, this holder's reference has the same world,
+   * ID and kind with a different generation, and no transfer is unresolved. Grants and policy are
+   * unchanged.
+   */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
+  public java.nio.file.Path adoptNode(NodeRegistry.Handle expected) throws java.io.IOException {
+    if (!(level instanceof ServerLevel server)
+        || !server.getServer().isSameThread()
+        || isRemoved()
+        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
+            == null
+        || server.getBlockEntity(worldPosition) != this
+        || handle == null
+        || expected.kind() != kind())
+      throw new IllegalStateException("Adopting network node must be loaded and readable");
+    var saved = authority();
+    var owner = saved.nodes().evidence(expected.id());
+    if (owner == null
+        || owner.position() == null
+        || owner.generation() != expected.generation()
+        || owner.kind() != expected.kind()
+        || kind() != NodeRegistry.Kind.CONTROLLER && kind() != NodeRegistry.Kind.GATEWAY
+        || !handle.world().equals(expected.world())
+        || !handle.id().equals(expected.id())
+        || handle.generation() == expected.generation()
+        || expected.generation() == Long.MAX_VALUE
+        || saved.transfers().unresolved(expected.id()) != null
+        || saved.transfers().unresolvedDevice(expected.id()) != null)
+      throw new IllegalStateException("Network-node lease cannot be adopted");
+    var old = owner.position();
+    var oldLevel =
+        server
+            .getServer()
+            .getLevel(
+                net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION,
+                    net.minecraft.resources.ResourceLocation.parse(old.dimension())));
+    var oldPos = BlockPos.of(old.block());
+    if (oldLevel == null
+        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+      throw new IllegalStateException("Old canonical holder must be loaded");
+    if (oldLevel.getBlockEntity(oldPos) instanceof NetworkNodeEntity previous
+        && previous.handle != null
+        && previous.handle.id().equals(expected.id()))
+      throw new IllegalStateException("Old canonical holder still references the node");
+    var path =
+        dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit.preserveNetworkNodeAdoption(
+            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            owner,
+            kind() == NodeRegistry.Kind.CONTROLLER ? saved.network(expected.id()).snapshot() : null,
+            position(),
+            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            saveWithFullMetadata(server.registryAccess()));
+    var adopted = saved.nodes().adopt(expected, position());
+    if (adopted.failure() != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Network-node adoption refused: " + adopted.failure());
+    handle = adopted.handle();
+    data = NodeHandleData.write(handle);
+    diagnostic = "";
+    setChanged();
+    WorldNetworks.changed(oldLevel, oldPos);
+    onLoad();
+    return path;
+  }
+
   public void validatePlaced() {
     if (!diagnostic.isEmpty()) throw new IllegalStateException(diagnostic);
     if (handle == null) throw new IllegalStateException("Uncommissioned structural node");

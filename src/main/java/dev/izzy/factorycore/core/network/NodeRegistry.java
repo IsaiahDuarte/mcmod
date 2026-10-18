@@ -185,6 +185,32 @@ public final class NodeRegistry {
     return new Result(Failure.OK, handle(repaired));
   }
 
+  /**
+   * Trusted independent-save reconciliation: moves the canonical placed lease of {@code expected}
+   * (current generation, conflicted or not) to {@code target}, consuming one generation so every
+   * other reference is stale and clearing conflict; policy is unchanged. The caller must preserve
+   * evidence and prove the old position is loaded without a reference to this node, that the target
+   * physically holds a mismatched reference and that no transfer is unresolved. Portable leases,
+   * the same position and occupied targets are refused.
+   */
+  public Result adopt(Handle expected, Position target) {
+    checkThread();
+    Objects.requireNonNull(target);
+    var failure = validate(expected);
+    if (failure != Failure.OK && failure != Failure.CONFLICT) return new Result(failure, null);
+    var node = nodes.get(expected.id());
+    if (node.position() == null || node.position().equals(target))
+      return new Result(Failure.OFFLINE, null);
+    if (positions.containsKey(target)) return new Result(Failure.OCCUPIED, null);
+    if (node.generation() == Long.MAX_VALUE) return new Result(Failure.LIMIT, null);
+    positions.remove(node.position());
+    var adopted =
+        new Stored(node.id(), node.kind(), node.generation() + 1, target, false, node.policy());
+    put(adopted);
+    changed.run();
+    return new Result(Failure.OK, handle(adopted));
+  }
+
   public Result attach(Handle handle, Position position) {
     Failure failure = validate(handle);
     if (failure != Failure.OK) return new Result(failure, handle);

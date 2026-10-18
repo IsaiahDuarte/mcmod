@@ -703,3 +703,6 @@ evidence before changing anything.
 
 Energy banks work the same way: `/factorycore recovery bank adopt <backing> <generation>
 <x y z>` names the bank that physically holds the reference.
+
+Controllers and gateways: `/factorycore recovery node adopt <id> <generation> <x y z>`.
+Ownership, grants and gateway rules stay as they were.

@@ -262,4 +262,47 @@ class NodeRegistryTest {
         restricted,
         new NodeRegistry(WORLD, registry.snapshot(), () -> {}).definition(gate).policy());
   }
+
+  @Test
+  void adoptMovesTheCanonicalLeaseOnceAndKeepsPolicy() {
+    int[] changes = {0};
+    var registry = new NodeRegistry(WORLD, List.of(), () -> changes[0]++);
+    var handle = registry.create(ID, NodeRegistry.Kind.GATEWAY, FIRST).handle();
+    var policy = registry.definition(handle).policy();
+    int before = changes[0];
+    var adopted = registry.adopt(handle, SECOND);
+    assertEquals(NodeRegistry.Failure.OK, adopted.failure());
+    assertEquals(handle.generation() + 1, adopted.handle().generation());
+    assertEquals(SECOND, registry.definition(adopted.handle()).position());
+    assertEquals(policy, registry.definition(adopted.handle()).policy());
+    assertEquals(NodeRegistry.Failure.STALE, registry.validate(handle));
+    assertEquals(NodeRegistry.Failure.OK, registry.admission(FIRST), "Old position is released");
+    assertEquals(NodeRegistry.Failure.OCCUPIED, registry.admission(SECOND));
+    assertEquals(before + 1, changes[0]);
+    var restored = new NodeRegistry(WORLD, registry.snapshot(), () -> {});
+    assertEquals(SECOND, restored.definition(adopted.handle()).position());
+  }
+
+  @Test
+  void adoptRefusesStaleSameOccupiedAndPortableWithoutMutation() {
+    var registry = new NodeRegistry(WORLD, List.of(), () -> {});
+    var handle = registry.create(ID, NodeRegistry.Kind.CONTROLLER, FIRST).handle();
+    var other =
+        registry.create(new java.util.UUID(9, 9), NodeRegistry.Kind.GATEWAY, SECOND).handle();
+    var before = registry.snapshot();
+    assertEquals(NodeRegistry.Failure.OCCUPIED, registry.adopt(handle, SECOND).failure());
+    assertEquals(NodeRegistry.Failure.OFFLINE, registry.adopt(handle, FIRST).failure());
+    assertEquals(
+        NodeRegistry.Failure.STALE,
+        registry
+            .adopt(
+                new NodeRegistry.Handle(WORLD, ID, handle.generation() + 5, handle.kind()), SECOND)
+            .failure());
+    assertEquals(before, registry.snapshot());
+    var portable = registry.detach(other, SECOND).handle();
+    assertEquals(
+        NodeRegistry.Failure.OFFLINE,
+        registry.adopt(portable, FIRST).failure(),
+        "A portable lease cannot prove its item is gone");
+  }
 }

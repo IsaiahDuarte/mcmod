@@ -114,6 +114,46 @@ public final class DeviceRecoveryAudit {
   /**
    * Internal server-thread evidence boundary for controller/gateway holders; never restores state.
    */
+  /**
+   * Network-node adoption evidence (schema 5): the canonical node before adoption (conflicted or
+   * not), controller grants, the target position and the adopting holder's native state.
+   */
+  public static Path preserveNetworkNodeAdoption(
+      Path world,
+      UUID namespace,
+      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
+      dev.izzy.factorycore.core.network.NetworkPermissions.State permissions,
+      dev.izzy.factorycore.core.network.NodeRegistry.Position target,
+      CompoundTag blockState,
+      CompoundTag blockEntity)
+      throws IOException {
+    boolean controller =
+        owner.kind() == dev.izzy.factorycore.core.network.NodeRegistry.Kind.CONTROLLER;
+    if (owner.position() == null
+        || !controller
+            && owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.GATEWAY
+        || controller != (permissions != null)
+        || permissions != null && !permissions.network().equals(owner.id()))
+      throw new IllegalArgumentException("Expected canonical network-node adoption evidence");
+    var envelope = new CompoundTag();
+    envelope.putInt("Schema", 5);
+    envelope.putInt("WorldSchema", 12);
+    envelope.putUUID("World", namespace);
+    envelope.putString("HolderKind", "NETWORK_NODE_ADOPTION");
+    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put(
+        "Networks",
+        NetworkStateCodec.encode(
+            permissions == null ? java.util.List.of() : java.util.List.of(permissions)));
+    var adopted = new CompoundTag();
+    adopted.putString("Dimension", target.dimension());
+    adopted.putLong("Position", target.block());
+    envelope.put("Target", adopted);
+    envelope.put("BlockState", blockState.copy());
+    envelope.put("BlockEntity", blockEntity.copy());
+    return write(world, owner.id(), envelope);
+  }
+
   public static Path preserveNetworkNode(
       Path world,
       UUID namespace,

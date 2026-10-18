@@ -1231,3 +1231,10 @@ measurement, not a correctness gate in `check`. See the
   sources are refused, the console adopts, and exactly 500 FE is usable.
   `DeviceRecoveryAuditTest` checks the schema-4 evidence. The cell adoption GameTest now
   also runs in its own batch.
+
+- **Node adoption:** `NodeRegistryTest` covers node adoption and its refusals.
+  `NetworkNodeRecoveryAuditTest` checks schema-5 evidence.
+  `NetworkNodeGameTests.operatorAdoptsAStaleControllerAfterAnIndependentSaveMismatch` (own
+  batch) moves a commissioned controller by real break/place and restores its old chunk
+  tag. It checks that the drive's network becomes invalid, that ordinary sources are
+  refused, and that console adoption restores the VALID network with the same owner.

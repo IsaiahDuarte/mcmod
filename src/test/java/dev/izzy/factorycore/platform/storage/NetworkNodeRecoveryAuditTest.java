@@ -127,4 +127,31 @@ class NetworkNodeRecoveryAuditTest {
                 folder, WORLD, owner(NodeRegistry.Kind.CONNECTOR), null, physical, physical));
     assertFalse(Files.exists(folder.resolve("factorycore-device-recovery")));
   }
+
+  @Test
+  void schemaFiveAdoptionEvidenceAcceptsUnconflictedNodesAndRecordsTheTarget() throws Exception {
+    var conflicted = owner(NodeRegistry.Kind.CONTROLLER);
+    var owner =
+        new NodeRegistry.Stored(
+            ID, conflicted.kind(), 7, conflicted.position(), false, conflicted.policy());
+    var target = new NodeRegistry.Position("minecraft:overworld", 456);
+    var state = TagParser.parseTag("{Name:'factorycore:network_controller'}");
+    var file =
+        DeviceRecoveryAudit.preserveNetworkNodeAdoption(
+            folder, WORLD, owner, permissions(ID), target, state, new CompoundTag());
+    CompoundTag evidence;
+    try (var input = new DataInputStream(Files.newInputStream(file))) {
+      evidence = NbtIo.read(input, NbtAccounter.unlimitedHeap());
+    }
+    assertEquals(5, evidence.getInt("Schema"));
+    assertEquals("NETWORK_NODE_ADOPTION", evidence.getString("HolderKind"));
+    assertEquals(456, evidence.getCompound("Target").getLong("Position"));
+    assertEquals(state, evidence.get("BlockState"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            DeviceRecoveryAudit.preserveNetworkNodeAdoption(
+                folder, WORLD, owner, null, target, state, new CompoundTag()),
+        "A controller adoption must carry its grants");
+  }
 }
