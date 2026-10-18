@@ -552,5 +552,20 @@
   "permission.factorycore.manage": "Manage",
   "kind.factorycore.item": "Items",
   "kind.factorycore.fluid": "Fluids",
-  "kind.factorycore.energy": "Energy"
+  "kind.factorycore.energy": "Energy",
+  "item.factorycore.factory_guide": "Factory Guide",
+  "guide.factorycore.page.0": "Factory Guide\n\nBuild a storage network step by step. No scripts or other mods are needed for storage, hoppers or presets.\n\nTurn the page to start.",
+  "guide.factorycore.page.1": "1. First network\n\nCraft a Network Controller (4 iron, 4 redstone, 1 glass) and place it. It belongs to you. Connect blocks with Network Cable; controllers and cables join on all six faces.",
+  "guide.factorycore.page.2": "2. Storage\n\nCraft a Storage Drive and a Starter Item Cell. Use the cell on the drive to install it (4 cells per drive). Cable the drive to the controller. Use the controller to check its status.",
+  "guide.factorycore.page.3": "3. Terminal\n\nPlace a Storage Terminal on the network and use it. Search, take 1 or 64, Shift-click items to store them. The Fluids/Energy button switches views for buckets and FE items.",
+  "guide.factorycore.page.4": "4. Hopper to terminal\n\nPlace a Buffered Interface on the network and point a hopper into it. Crouch-use it with both hands empty to enable Import. Hopper items then appear in the terminal.",
+  "guide.factorycore.page.5": "5. Safe cell upgrades\n\nSneak-use the drive with an empty hand to remove a cell. Hold it in your offhand and use a module: Expansion, then Advanced, then Infinite. Contents are kept; failures cost nothing.",
+  "guide.factorycore.page.6": "6. Machines and presets\n\nPut a Machine Interface against a machine, label it with renamed paper, then use it to set resource, access, priority and rate. Presets move items without any code.",
+  "guide.factorycore.page.7": "7. Power\n\nFuel Generators burn furnace fuel into FE. Energy Banks on the network store it. Programs, wireless blocks and links all run on FE.",
+  "guide.factorycore.page.8": "8. Crafting\n\nUse the terminal grid to craft from storage and encode Blank Patterns. Put patterns in a Crafting Unit and request items in the Jobs view, or use Keep to hold stock.",
+  "guide.factorycore.page.9": "9. Processing\n\nProcessing Patterns go in a Crafting Interface facing a machine such as a furnace. Jobs send inputs and collect outputs automatically.",
+  "guide.factorycore.page.10": "10. Programs\n\nA Program Controller runs simple rules such as keep 64 iron_ingot. Templates help you start. Advanced users can upload Wasm programs. It needs FE and Deploy rights.",
+  "guide.factorycore.page.11": "11. Branches\n\nA Gateway's eye face is upstream and its red face is downstream. Sneak-use it to choose what the branch may do and see. Nested gateways only narrow access.",
+  "guide.factorycore.page.12": "12. Wireless\n\nPower a Wireless Access Point, bind a Wireless Terminal to it and use the terminal within 64 blocks. Each action costs 64 FE from the handheld.",
+  "guide.factorycore.page.13": "13. Links\n\nPlace Wireless Link Endpoints against two gateways up to 256 blocks apart. Sneak-use one, then the other, to pair them. Each end needs its own FE."
 }

@@ -45,6 +45,7 @@ neoForge {
             gameDirectory = file("build/client-terminal-run")
             loadedMods = [mods.factorycore, mods.factorycore_client_tests]
             systemProperty "factorycore.client.report", file("build/reports/client-terminal/result.txt").absolutePath
+            systemProperty "factorycore.noWelcomeGuide", "true"
         }
         terminalRestartClient {
             client()
@@ -52,6 +53,7 @@ neoForge {
             gameDirectory = file("build/client-terminal-run")
             loadedMods = [mods.factorycore, mods.factorycore_client_tests]
             systemProperty "factorycore.client.report", file("build/reports/client-restart/result.txt").absolutePath
+            systemProperty "factorycore.noWelcomeGuide", "true"
             systemProperty "factorycore.client.seed", file("build/reports/client-terminal/restart.properties").absolutePath
             systemProperty "factorycore.client.restart", "true"
         }
@@ -94,6 +96,7 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', 'factorycore_tests'
             systemProperty 'factorycore.test.report', file('build/reports/gametest/results.xml').absolutePath
             systemProperty 'factorycore.test.smelter', file('build/test-guests/smelter.wasm').absolutePath
+            systemProperty 'factorycore.noWelcomeGuide', 'true'
             loadedMods = [mods.factorycore, mods.factorycore_tests]
         }
     }

@@ -2925,3 +2925,9 @@ P6 adds Wireless Link Endpoints as reciprocal topology edges between gateways
 
 P6 adds the sneak-use gateway policy editor ([ADR0041](decisions/0041-gateway-policy-editor.md)).
 Native 266→267. Next: in-game guide/onboarding, then JEI integration.
+
+## In-game guide checkpoint — 2026-10-18
+
+P6 adds the Factory Guide and the first-login gift ([ADR0042](decisions/0042-in-game-guide.md)).
+JVM tests +2, native 267→268. A17 still needs a survival playtest. Next: JEI integration
+(optional, isolated).

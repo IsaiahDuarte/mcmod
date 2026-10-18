@@ -511,3 +511,7 @@ edges under normal validation (partial A16; per-pair rate caps remain).
 
 Gateways now have a policy editor for branch grants, inherited permissions and
 inherited kinds (A07 evidence; graphical checks remain).
+
+An in-game Factory Guide (book screen, first-login gift, craftable) now provides
+discoverable onboarding from first network to wireless links (R-help evidence; A17
+playtest remains).

@@ -664,3 +664,10 @@ may do in the parent network, for example letting the parent craft its patterns.
 column chooses what the branch may do with parent stock, and the right column chooses
 which resource kinds (items, fluids, energy) the branch can see. You need Manage to change
 them; others see them read-only. Wait a moment between clicks while the branch updates.
+
+
+## Factory Guide
+
+You receive a **Factory Guide** the first time you join a world with this mod. Use it to
+read the step-by-step guide from your first network to wireless links. Craft another
+from a book and a redstone dust.

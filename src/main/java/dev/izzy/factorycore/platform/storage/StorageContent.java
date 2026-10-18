@@ -79,6 +79,7 @@ public final class StorageContent {
                             dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get());
                         output.accept(
                             dev.izzy.factorycore.platform.wireless.WirelessContent.LINK_ITEM.get());
+                        output.accept(dev.izzy.factorycore.platform.guide.GuideContent.GUIDE.get());
                         output.accept(
                             dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN
                                 .get());

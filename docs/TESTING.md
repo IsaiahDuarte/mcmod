@@ -1119,3 +1119,16 @@ toggles branch Craft (canonical policy changes only that bit) and checks that a 
 click during the rebuild fails closed. After the rebuild it toggles inherited fluids,
 refuses an out-of-range button, and shows a stranger a read-only editor whose clicks
 change nothing.
+
+
+## Guide checks
+
+`GuidePagesTest` checks the following in the shipped `en_us.json`:
+
+- Every one of the 14 pages exists, and there are no extra pages.
+- Each page is at most 256 characters.
+- Together the pages cover the required onboarding topics.
+
+`GuideGameTests` checks that fixture logins skip the welcome gift, so fixture players start
+clean, and that `welcome()` gives exactly one guide and never a second. The GameTest server
+and both terminal client runs set `factorycore.noWelcomeGuide=true`.
