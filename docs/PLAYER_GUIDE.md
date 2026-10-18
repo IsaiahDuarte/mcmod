@@ -605,3 +605,19 @@ network then crafts that item whenever storage holds fewer than that amount, up 
 it, one job at a time, using your Craft permission. Rows show **≥N** while kept;
 press **Keep** again to stop. If storage is full, results wait in the job until there
 is room. If you lose Craft permission, the rule stops starting jobs.
+
+
+## Program Controllers
+
+A Program Controller (iron, gold, redstone and a repeater) runs one program for its
+network segment. Power it with FE (for example from a Fuel Generator or Energy Bank):
+each rule run costs 4 FE plus a little for long rules, and an unpowered controller
+waits. Use it with an empty hand to see its state, FE and last message.
+
+Programs use the friendly language (see the programs reference): rules like
+`every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage }`.
+Label Machine Interfaces in their settings to target them. Deploying needs Deploy
+permission; the program then acts with the deployer's current permissions, and pauses
+if the deployer loses Deploy. Reading storage with `if stock(...)` needs View. A rule
+that does too much work at once stops the program with an error instead of doing part
+of it. The in-game editor is not available yet in this build.

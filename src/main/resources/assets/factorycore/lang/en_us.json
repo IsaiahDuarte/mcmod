@@ -464,5 +464,11 @@
   "gui.factorycore.terminal.job.status.kept": "Keep-stock rule set",
   "gui.factorycore.terminal.job.status.unkept": "Keep-stock rule removed",
   "gui.factorycore.terminal.job.status.rule_limit": "The network has too many keep-stock rules",
-  "gui.factorycore.terminal.job.status.principal_rule_limit": "You already have 16 keep-stock rules"
+  "gui.factorycore.terminal.job.status.principal_rule_limit": "You already have 16 keep-stock rules",
+  "block.factorycore.program_controller": "Program Controller",
+  "message.factorycore.program_status": "Program Controller: %s; %s / %s FE; network %s. %s",
+  "status.factorycore.program.stopped": "Stopped",
+  "status.factorycore.program.running": "Running",
+  "status.factorycore.program.paused": "Paused",
+  "status.factorycore.program.trapped": "Stopped by an error"
 }

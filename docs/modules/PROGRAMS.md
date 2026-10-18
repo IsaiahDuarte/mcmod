@@ -1,7 +1,8 @@
 # Programs
 
 Portable P5 contracts. The language is frozen in [ADR 0035](../decisions/0035-friendly-language.md).
-Program Controllers, deployment and the editor are not implemented yet.
+The Program Controller runtime is in [ADR 0036](../decisions/0036-program-controller-runtime.md);
+the editor screen and Wasm programs are not implemented yet.
 
 ## API
 
@@ -32,3 +33,15 @@ every 5 seconds {
     }
 }
 ```
+
+
+## Program Controller
+
+`ProgramControllerEntity`: `draft()/draft(source)`, `deployedSource()`, `deployer()`,
+`deployment()`, `state()`, `message()`, `program()`, `energy()`, `energyStorage()`,
+`logs()`. Trusted runtime transitions `deploy/state/undeploy` are called only by
+`WorldPrograms` (server thread): `deploy(actor, controller)` returns compiler or
+permission diagnostics (empty on success); `control(actor, controller, state)` pauses,
+resumes or stops (false without DEPLOY or deployment); `status(controller)` is
+`running`, `no_power` or `offline`. Costs: `BASE_COST` 4 FE, `STEPS_PER_FE` 256; queue
+`MAX_QUEUE` 64.

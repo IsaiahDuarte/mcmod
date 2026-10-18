@@ -476,3 +476,11 @@ ADR 0035, with a portable compiler (positioned diagnostics) and a bounded evalua
 that stages Keep/Move/Craft/Log commands and traps without publishing. Program
 Controllers, deployment, the editor and Rust parity remain unimplemented, so A09/A10
 are not yet met.
+
+
+Program Controllers run deployed friendly-language programs: DEPLOY-gated deployment
+with compiler diagnostics, rule invocations through the shared scheduler under the
+deployer's current grants, FE costs per ADR 0006, traps that publish nothing, bounded
+command queues executed through the same routes/connectors/crafting jobs as presets,
+and per-outcome logs. This adds partial A08/A09/A10/A12 evidence; the editor,
+templates and Rust/Wasm parity remain unfinished.

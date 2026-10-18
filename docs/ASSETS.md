@@ -78,7 +78,7 @@ and model inventory transforms remain pending real-client inspection.
 | Crafting Interface + block item | Processing ports and busy/blocked state | P4 | Six-facing smithing-table/deepslate stand-in, translated busy/not-clean/full/processing job reasons, exclusive-use tooltip on processing patterns | Pending |
 | Crafting Unit + block item | Distinct crafting role and working/blocked state | P4 | Stand-in crafting-table/deepslate model, translated pattern-count/network status and full/invalid messages; working/blocked state awaits jobs | Pending |
 | Pattern items, if used by selected implementation | Distinguish recipe/processing identity and invalid patterns | P4 | Blank, Crafting and Processing Pattern items (vanilla paper/map/filled-map stand-ins), output/input/ID/exclusive-use tooltips and invalid-data tooltip | Pending |
-| Program Controller + block item | Distinct program role; deployed/paused/trapped/power state | P5 | Missing | Pending |
+| Program Controller + block item | Distinct program role; deployed/paused/trapped/power state | P5 | Observer-texture stand-in, translated state/FE/network/message status line; editor screen missing | Pending |
 | Fuel Generator + block item | Fuel/remainder access and observable generation/buffer state | P5–P6, before powered demonstration | Implemented facing/lit stand-in models from vanilla blast-furnace/copper textures, translated status/blocked reasons and stored-FE tooltip; no screen | Pending |
 | Wireless Access Point + block item | Range/power/access status | P6 | Missing | Pending |
 | Rechargeable handheld terminal | Inventory/held appearance, charge and connection status | P6 | Missing | Pending |

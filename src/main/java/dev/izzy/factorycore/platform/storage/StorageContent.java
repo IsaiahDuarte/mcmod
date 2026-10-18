@@ -71,6 +71,8 @@ public final class StorageContent {
                             dev.izzy.factorycore.platform.crafting.CraftingContent.INTERFACE_ITEM
                                 .get());
                         output.accept(
+                            dev.izzy.factorycore.platform.program.ProgramContent.ITEM.get());
+                        output.accept(
                             dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN
                                 .get());
                         for (var tier : CellTier.values()) output.accept(cell(tier));

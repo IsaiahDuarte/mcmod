@@ -1031,3 +1031,18 @@ depth and statement count, plus recovery reporting several errors capped at 16.
 ProgramEvaluatorTest stages ordered Keep/Move/Craft commands across loops and
 conditions, treats an empty label as a no-op, and traps (staging nothing) on more
 than 64 machines per label, the command/step bounds and failing host queries.
+
+
+## Program Controller checks
+
+ProgramGameTests run real controllers, Machine Interfaces with chests, cells and a
+Crafting Unit: a `move` rule empties a labeled machine into storage and spends FE; a
+`keep` rule stocks a machine to exactly 16 coal and later invocations request nothing
+(4 + 12 moved, 38 left); an unpowered controller reports `no_power` and moves nothing
+until FE arrives; deploying without Deploy or with compile errors changes nothing; a
+300-log rule traps with no published logs; a member's `craft` rule produces planks once
+and stops when stock suffices, losing Deploy pauses the deployment, and the
+deployment/deployer/state persist and recompile on reload. Development runs found
+three issues: stock counting tripped over conflicted cells from other tests (now
+skipped), a deployer without View read zero stock (now a trap requiring View), and an
+8-page catalog bound too small for worlds with many devices (now the preset bound).

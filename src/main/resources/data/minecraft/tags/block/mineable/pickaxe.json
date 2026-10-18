@@ -14,6 +14,7 @@
     "factorycore:machine_interface",
     "factorycore:fuel_generator",
     "factorycore:crafting_unit",
-    "factorycore:crafting_interface"
+    "factorycore:crafting_interface",
+    "factorycore:program_controller"
   ]
 }

@@ -129,3 +129,8 @@ usefulness and crafting concurrency balance remain P6 validation.
 
 Crafting Interface: IGI/RHR/IGI (four iron, two gold, two redstone, one hopper),
 unlocked by gold (Expanded tier), nine processing patterns. — 2026-10-17
+
+
+Program Controller: IGI/RPR/IRI (four iron, one gold, three redstone, one repeater),
+unlocked by a repeater; 10,000 FE buffer, 1,000 FE/tick input; 4 FE per rule run plus
+1 FE per begun 256 evaluation steps. — 2026-10-17

@@ -44,11 +44,19 @@ public final class ProgramEvaluator {
     this.host = Objects.requireNonNull(host);
   }
 
+  /** Staged commands and the evaluation steps they cost. */
+  public record Outcome(List<ProgramCommand> commands, int steps) {}
+
   /** Evaluates {@code rule} once; returns its staged commands or throws {@link Trap}. */
   public static List<ProgramCommand> invoke(ProgramIr.Rule rule, Host host) {
+    return evaluate(rule, host).commands();
+  }
+
+  /** As {@link #invoke}, also reporting evaluation steps for power accounting. */
+  public static Outcome evaluate(ProgramIr.Rule rule, Host host) {
     var evaluator = new ProgramEvaluator(host);
     evaluator.run(rule.body(), new HashMap<>());
-    return List.copyOf(evaluator.staged);
+    return new Outcome(List.copyOf(evaluator.staged), evaluator.steps);
   }
 
   private void step() {
