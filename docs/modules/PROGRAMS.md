@@ -2,7 +2,7 @@
 
 Portable P5 contracts. The language is frozen in [ADR 0035](../decisions/0035-friendly-language.md).
 The Program Controller runtime is in [ADR 0036](../decisions/0036-program-controller-runtime.md);
-the editor screen and Wasm programs are not implemented yet.
+the editor is below; Wasm programs are not implemented yet.
 
 ## API
 
@@ -45,3 +45,16 @@ permission diagnostics (empty on success); `control(actor, controller, state)` p
 resumes or stops (false without DEPLOY or deployment); `status(controller)` is
 `running`, `no_power` or `offline`. Costs: `BASE_COST` 4 FE, `STEPS_PER_FE` 256; queue
 `MAX_QUEUE` 64.
+
+
+## Editor
+
+Using a controller with View opens `ProgramMenu`. `ProgramPackets.Command(menu, session,
+action, index, count, text)`: CHUNK uploads the draft in at most eight 2,048-character
+chunks (index 0 restarts; the last chunk saves the draft, needing EDIT, and reports
+diagnostics), CHECK compiles the saved draft, DEPLOY/PAUSE/RESUME/STOP go through
+`WorldPrograms` (DEPLOY permission). Actions share a two-tick throttle. `View` carries
+state, message, FE, runtime status, deployed flag, up to eight `line:column message`
+diagnostics and eight recent logs; `Draft` sends the saved draft once on open.
+`ProgramTemplates.ALL` lists seven compiling starters (import, export, stock,
+round-robin, fluids, energy, craft-when-low).

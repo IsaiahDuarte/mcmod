@@ -20,5 +20,7 @@ public final class TerminalClient {
     event.register(
         dev.izzy.factorycore.platform.storage.BufferedInterfaceContent.MENU.get(),
         BufferSettingsScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.program.ProgramContent.MENU.get(), ProgramScreen::new);
   }
 }

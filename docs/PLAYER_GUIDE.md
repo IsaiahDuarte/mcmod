@@ -620,4 +620,7 @@ Label Machine Interfaces in their settings to target them. Deploying needs Deplo
 permission; the program then acts with the deployer's current permissions, and pauses
 if the deployer loses Deploy. Reading storage with `if stock(...)` needs View. A rule
 that does too much work at once stops the program with an error instead of doing part
-of it. The in-game editor is not available yet in this build.
+of it. Use the controller to open its editor: type in the text box, **Save draft**, **Check**
+for errors (shown as line:column under the editor), **Deploy**, **Pause/Resume** or
+**Stop**. **Template** cycles through built-in examples you can edit. Saving needs Edit
+permission; the running program only changes when you deploy.

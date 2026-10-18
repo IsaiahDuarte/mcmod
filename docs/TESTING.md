@@ -1046,3 +1046,14 @@ deployment/deployer/state persist and recompile on reload. Development runs foun
 three issues: stock counting tripped over conflicted cells from other tests (now
 skipped), a deployer without View read zero stock (now a trap requiring View), and an
 8-page catalog bound too small for worlds with many devices (now the preset bound).
+
+
+## Program editor checks
+
+ProgramTemplatesTest compiles all seven templates with named rules. ProgramPacketsTest
+checks exact chunk splitting/rebuilding of a full 16,384-character draft and command/
+view bounds. ProgramEditorGameTests drives the real menu: a saved bad draft returns a
+`1:18` diagnostic; a 5,000-character program uploads in three chunks and deploys
+exactly; pause, resume and stop work and stop keeps the draft; a View-only player
+cannot save (Edit diagnostic) or deploy. The screen is compiled, not graphically
+verified.

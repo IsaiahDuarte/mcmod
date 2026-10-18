@@ -25,6 +25,8 @@ public final class ProgramContent {
       DeferredRegister.createItems(FactoryCoreMod.MOD_ID);
   private static final DeferredRegister<BlockEntityType<?>> ENTITIES =
       DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FactoryCoreMod.MOD_ID);
+  private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
+      DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
   private static final DeferredRegister.DataComponents COMPONENTS =
       DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, FactoryCoreMod.MOD_ID);
 
@@ -73,6 +75,16 @@ public final class ProgramContent {
                   BlockEntityType.Builder.of(ProgramControllerEntity::new, BLOCK.get())
                       .build(null));
 
+  public static final DeferredHolder<
+          net.minecraft.world.inventory.MenuType<?>,
+          net.minecraft.world.inventory.MenuType<ProgramMenu>>
+      MENU =
+          MENUS.register(
+              "program_controller",
+              () ->
+                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
+                      ProgramMenu::new));
+
   private ProgramContent() {}
 
   private static void capabilities(RegisterCapabilitiesEvent event) {
@@ -87,6 +99,8 @@ public final class ProgramContent {
     ITEMS.register(bus);
     ENTITIES.register(bus);
     COMPONENTS.register(bus);
+    MENUS.register(bus);
     bus.addListener(ProgramContent::capabilities);
+    bus.addListener(ProgramPackets::register);
   }
 }

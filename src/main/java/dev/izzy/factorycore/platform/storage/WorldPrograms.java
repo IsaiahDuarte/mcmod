@@ -96,7 +96,7 @@ public final class WorldPrograms {
 
   /** Opens the editor for an authorized viewer; false when no screen applies. */
   public boolean open(ServerPlayer player, ProgramControllerEntity controller) {
-    return false;
+    return dev.izzy.factorycore.platform.program.ProgramMenu.open(player, controller);
   }
 
   private WorldNetworks networks() {
