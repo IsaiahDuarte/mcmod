@@ -706,3 +706,6 @@ Energy banks work the same way: `/factorycore recovery bank adopt <backing> <gen
 
 Controllers and gateways: `/factorycore recovery node adopt <id> <generation> <x y z>`.
 Ownership, grants and gateway rules stay as they were.
+
+Buffered Interfaces: `/factorycore recovery buffer adopt <id> <generation> <x y z>`. Their
+items stay. Re-enable Import, Export or Stock afterwards.

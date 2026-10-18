@@ -135,4 +135,43 @@ class BufferRecoveryAuditTest {
                 folder, WORLD, OWNER, inventory(), deployment(UUID.randomUUID()), holder, holder));
     assertEquals("preserve corrupt before-state", Files.readString(file));
   }
+
+  @Test
+  void schemaSixAdoptionEvidenceAcceptsUnconflictedBuffersAndRecordsTheTarget() throws Exception {
+    var owner =
+        new NodeRegistry.Stored(
+            ID, NodeRegistry.Kind.BUFFERED_INTERFACE, 7, OWNER.position(), false, null);
+    var target = new NodeRegistry.Position("minecraft:overworld", 456);
+    var file =
+        DeviceRecoveryAudit.preserveBufferAdoption(
+            folder,
+            WORLD,
+            owner,
+            inventory(),
+            deployment(ID),
+            target,
+            new CompoundTag(),
+            new CompoundTag());
+    CompoundTag evidence;
+    try (var input = new DataInputStream(Files.newInputStream(file))) {
+      evidence = NbtIo.read(input, NbtAccounter.unlimitedHeap());
+    }
+    assertEquals(6, evidence.getInt("Schema"));
+    assertEquals("BUFFERED_INTERFACE_ADOPTION", evidence.getString("HolderKind"));
+    assertEquals(456, evidence.getCompound("Target").getLong("Position"));
+    assertTrue(evidence.contains("Buffers"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            DeviceRecoveryAudit.preserveBufferAdoption(
+                folder,
+                WORLD,
+                owner,
+                inventory(),
+                deployment(new UUID(9, 9)),
+                target,
+                new CompoundTag(),
+                new CompoundTag()),
+        "A foreign deployment is never recorded as this buffer's");
+  }
 }

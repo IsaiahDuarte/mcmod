@@ -576,5 +576,7 @@
   "command.factorycore.recovery.bank.adopted": "Bank %s adopted at %s (slot %s), generation %s. Every other reference is now stale. Before-state evidence: %s",
   "command.factorycore.recovery.bank.adopt_refused": "Bank adoption refused: the canonical generation must match, the old position must be loaded without this bank, the bank must hold a mismatched reference of the same tier, and no transfer may be unresolved. Nothing changed.",
   "command.factorycore.recovery.node.adopted": "Network node %s adopted at %s, generation %s. Grants and policy are unchanged; every other reference is now stale. Before-state evidence: %s",
-  "command.factorycore.recovery.node.adopt_refused": "Node adoption refused: the canonical generation must match, the old position must be loaded without this node, the controller/gateway must hold a mismatched reference of the same kind, and no transfer may be unresolved. Nothing changed."
+  "command.factorycore.recovery.node.adopt_refused": "Node adoption refused: the canonical generation must match, the old position must be loaded without this node, the controller/gateway must hold a mismatched reference of the same kind, and no transfer may be unresolved. Nothing changed.",
+  "command.factorycore.recovery.buffer.adopted": "Buffer %s adopted at %s, generation %s. Slots are unchanged; reapply its automation with current permissions. Every other reference is now stale. Before-state evidence: %s",
+  "command.factorycore.recovery.buffer.adopt_refused": "Buffer adoption refused: the canonical generation must match, the old position must be loaded without this buffer, the buffer must hold a mismatched reference, and no transfer may be unresolved. Nothing changed."
 }

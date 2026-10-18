@@ -1048,4 +1048,65 @@ public final class BufferImportGameTests {
         .thenWaitUntil(() -> exact(helper, fixture, 0, 81))
         .thenSucceed();
   }
+
+  // Own batch: the audited repair/adoption throttle is shared per server.
+  @GameTest(template = "empty", batch = "buffer_adoption", timeoutTicks = 400)
+  public static void operatorAdoptsAStaleBufferAfterAnIndependentSaveMismatch(GameTestHelper h) {
+    var f = setup(h);
+    var original = f.buffer.handle();
+    var far = new BlockPos(1, 1, 4);
+    var access = h.getLevel().registryAccess();
+    long[] canonical = {0};
+    dev.izzy.factorycore.core.storage.ItemBuffer.State[] slots = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenIdle(21)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  f.buffer.capability().insertItem(8, named(19), false).isEmpty(),
+                  "Seed 19 named items");
+              slots[0] = f.saved.buffers().evidence(original.id());
+              var before = f.buffer.saveWithFullMetadata(access);
+              // The canonical save records the buffer broken at BUFFER and placed at `far`...
+              var portable = f.buffer.portableForBreak();
+              h.setBlock(far, BufferedInterfaceContent.BLOCK.get());
+              BufferedInterfaceEntity placed = h.getBlockEntity(far);
+              placed.place(portable, f.actor.id());
+              canonical[0] = placed.handle().generation();
+              h.assertTrue(canonical[0] == original.generation() + 2, "Break and place rotate");
+              // ...but the chunk was saved before: BUFFER still holds the old reference.
+              placed.loadWithComponents(new net.minecraft.nbt.CompoundTag(), access);
+              f.buffer.loadWithComponents(before, access);
+              f.buffer.onLoad();
+              h.assertTrue(
+                  !f.buffer.diagnostic().isEmpty()
+                      && f.buffer.capability() == null
+                      && slots[0].equals(f.saved.buffers().evidence(original.id())),
+                  "The mismatch is inert and the canonical slots are unchanged");
+              var console = h.getLevel().getServer().createCommandSourceStack();
+              var pos = h.absolutePos(BUFFER);
+              var adopt =
+                  "factorycore recovery buffer adopt %s %d %d %d %d"
+                      .formatted(original.id(), canonical[0], pos.getX(), pos.getY(), pos.getZ());
+              h.assertTrue(
+                  recoveryCommand(console.withPermission(0), adopt) < 1,
+                  "Ordinary sources cannot adopt");
+              h.assertTrue(recoveryCommand(console, adopt) == 1, "Operator adopts the old buffer");
+              h.assertTrue(
+                  f.buffer.handle().generation() == canonical[0] + 1
+                      && f.buffer.diagnostic().isEmpty()
+                      && f.saved.nodes().validate(original) == NodeRegistry.Failure.STALE,
+                  "The canonical lease moved back to the adopted buffer");
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.buffer.capability() != null
+                        && f.buffer.capability().getStackInSlot(8).getCount() == 19
+                        && slots[0].equals(f.saved.buffers().evidence(original.id())),
+                    "Exactly the original 19 items are served by the adopted buffer"))
+        .thenSucceed();
+  }
 }

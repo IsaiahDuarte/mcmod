@@ -1238,3 +1238,9 @@ measurement, not a correctness gate in `check`. See the
   batch) moves a commissioned controller by real break/place and restores its old chunk
   tag. It checks that the drive's network becomes invalid, that ordinary sources are
   refused, and that console adoption restores the VALID network with the same owner.
+
+- **Buffer adoption:** `BufferImportGameTests.operatorAdoptsAStaleBufferAfterAnIndependentSaveMismatch`
+  (own batch) moves a buffer holding 19 named items by real break/place and restores the
+  old chunk tag. It checks that the mismatch is inert with unchanged slots, that ordinary
+  sources are refused, and that after console adoption exactly 19 items are served.
+  `BufferRecoveryAuditTest` checks the schema-6 evidence.

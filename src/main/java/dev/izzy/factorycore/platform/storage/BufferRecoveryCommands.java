@@ -46,7 +46,67 @@ final class BufferRecoveryCommands {
                                         inspect(
                                             c.getSource(),
                                             StringArgumentType.getString(c, "backing"),
-                                            LongArgumentType.getLong(c, "generation"))))));
+                                            LongArgumentType.getLong(c, "generation"))))))
+        .then(
+            Commands.literal("adopt")
+                .then(
+                    Commands.argument("backing", StringArgumentType.word())
+                        .then(
+                            Commands.argument("generation", LongArgumentType.longArg(1))
+                                .then(
+                                    Commands.argument(
+                                            "buffer",
+                                            net.minecraft.commands.arguments.coordinates
+                                                .BlockPosArgument.blockPos())
+                                        .executes(
+                                            c ->
+                                                adopt(
+                                                    c.getSource(),
+                                                    StringArgumentType.getString(c, "backing"),
+                                                    LongArgumentType.getLong(c, "generation"),
+                                                    net.minecraft.commands.arguments.coordinates
+                                                        .BlockPosArgument.getBlockPos(
+                                                        c, "buffer")))))));
+  }
+
+  /** Operator reconciliation of an independent-save mismatch at a loaded buffered interface. */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and level.
+  private static int adopt(
+      CommandSourceStack source, String backing, long generation, BlockPos at) {
+    try {
+      var saved = DeviceSavedData.get(source.getServer());
+      var id = parse(backing);
+      var owner = saved.nodes().evidence(id);
+      if (owner == null
+          || owner.kind() != NodeRegistry.Kind.BUFFERED_INTERFACE
+          || owner.generation() != generation)
+        throw new IllegalStateException("Canonical buffer changed");
+      var level = source.getLevel();
+      if (level.getChunkSource().getChunkNow(at.getX() >> 4, at.getZ() >> 4) == null
+          || !(level.getBlockEntity(at) instanceof BufferedInterfaceEntity buffer))
+        throw new IllegalStateException("Adopting buffer unavailable");
+      if (!DeviceRecoveryCommands.admitRepair(source)) return 0;
+      var path =
+          buffer.adoptBuffer(
+              new NodeRegistry.Handle(saved.registry().world(), id, generation, owner.kind()));
+      source.sendSuccess(
+          () ->
+              Component.translatable(
+                  "command.factorycore.recovery.buffer.adopted",
+                  backing,
+                  at.toShortString(),
+                  generation + 1,
+                  path.getFileName().toString()),
+          true);
+      return 1;
+    } catch (IOException auditFailure) {
+      source.sendFailure(Component.translatable("command.factorycore.recovery.audit"));
+      return 0;
+    } catch (IllegalArgumentException | IllegalStateException rejected) {
+      source.sendFailure(
+          Component.translatable("command.factorycore.recovery.buffer.adopt_refused"));
+      return 0;
+    }
   }
 
   private static UUID parse(String text) {

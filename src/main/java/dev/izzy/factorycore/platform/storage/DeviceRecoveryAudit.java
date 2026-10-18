@@ -80,6 +80,45 @@ public final class DeviceRecoveryAudit {
     return write(world, owner.ledger().id(), envelope);
   }
 
+  /**
+   * Buffer adoption evidence (schema 6): canonical node (conflicted or not), exact slots,
+   * deployment, target position and the adopting holder's native state.
+   */
+  static Path preserveBufferAdoption(
+      Path world,
+      UUID namespace,
+      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
+      dev.izzy.factorycore.core.storage.ItemBuffer.State inventory,
+      dev.izzy.factorycore.core.storage.BufferRegistry.Deployment deployment,
+      dev.izzy.factorycore.core.network.NodeRegistry.Position target,
+      CompoundTag blockState,
+      CompoundTag blockEntity)
+      throws IOException {
+    if (owner.position() == null
+        || owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.BUFFERED_INTERFACE
+        || !owner.id().equals(inventory.backing())
+        || deployment != null && !deployment.backing().equals(owner.id()))
+      throw new IllegalArgumentException("Expected canonical buffer adoption evidence");
+    var envelope = new CompoundTag();
+    envelope.putInt("Schema", 6);
+    envelope.putInt("WorldSchema", 12);
+    envelope.putUUID("World", namespace);
+    envelope.putString("HolderKind", "BUFFERED_INTERFACE_ADOPTION");
+    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put(
+        "Buffers",
+        BufferStateCodec.encode(
+            java.util.List.of(inventory),
+            deployment == null ? java.util.List.of() : java.util.List.of(deployment)));
+    var adopted = new CompoundTag();
+    adopted.putString("Dimension", target.dimension());
+    adopted.putLong("Position", target.block());
+    envelope.put("Target", adopted);
+    envelope.put("BlockState", blockState.copy());
+    envelope.put("BlockEntity", blockEntity.copy());
+    return write(world, owner.id(), envelope);
+  }
+
   static Path preserveBuffer(
       Path world,
       UUID namespace,

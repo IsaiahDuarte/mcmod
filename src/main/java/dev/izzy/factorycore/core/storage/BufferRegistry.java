@@ -209,6 +209,21 @@ public final class BufferRegistry {
     return result;
   }
 
+  /**
+   * Trusted independent-save reconciliation: moves the buffer's canonical node lease to {@code
+   * target} via {@link NodeRegistry#adopt}; slots and any accepted deployment stay keyed by the
+   * unchanged backing, and live bindings are dropped so automation must be reapplied.
+   */
+  public NodeRegistry.Result adopt(NodeRegistry.Handle expected, NodeRegistry.Position target) {
+    checkThread();
+    if (expected.kind() != NodeRegistry.Kind.BUFFERED_INTERFACE
+        || !buffers.containsKey(expected.id()))
+      return new NodeRegistry.Result(NodeRegistry.Failure.UNKNOWN, null);
+    var result = nodes.adopt(expected, target);
+    if (result.failure() == NodeRegistry.Failure.OK) bindings.remove(expected.id());
+    return result;
+  }
+
   public List<ItemBuffer.State> snapshot() {
     checkThread();
     return buffers.values().stream().map(ItemBuffer::snapshot).toList();

@@ -190,6 +190,71 @@ public final class BufferedInterfaceEntity extends BlockEntity
     return path;
   }
 
+  /**
+   * Independent-save reconciliation adapter: adopts this loaded buffer's mismatched reference as
+   * canonical. Refuses unless the old canonical position is loaded and is not a buffer referencing
+   * this ID, this reference has the same world/ID with a different generation, and no transfer is
+   * unresolved. Slots and the accepted deployment are unchanged; automation needs reapply.
+   */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
+  public java.nio.file.Path adoptBuffer(NodeRegistry.Handle expected) throws java.io.IOException {
+    var server = serverLevel();
+    if (isRemoved() || !physicallyCurrent() || state == null)
+      throw new IllegalStateException("Adopting buffer must be loaded and readable");
+    var saved = authority();
+    var owner = saved.nodes().evidence(expected.id());
+    var physical = state.lease();
+    if (owner == null
+        || owner.kind() != NodeRegistry.Kind.BUFFERED_INTERFACE
+        || owner.position() == null
+        || owner.generation() != expected.generation()
+        || !physical.world().equals(expected.world())
+        || !physical.id().equals(expected.id())
+        || physical.generation() == expected.generation()
+        || expected.generation() == Long.MAX_VALUE
+        || saved.transfers().unresolved(expected.id()) != null)
+      throw new IllegalStateException("Buffer lease cannot be adopted");
+    var old = owner.position();
+    var oldLevel =
+        server
+            .getServer()
+            .getLevel(
+                net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION,
+                    net.minecraft.resources.ResourceLocation.parse(old.dimension())));
+    var oldPos = BlockPos.of(old.block());
+    if (oldLevel == null
+        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+      throw new IllegalStateException("Old canonical holder must be loaded");
+    if (oldLevel.getBlockEntity(oldPos) instanceof BufferedInterfaceEntity previous
+        && previous.state != null
+        && previous.state.lease().id().equals(expected.id()))
+      throw new IllegalStateException("Old canonical holder still references the buffer");
+    var path =
+        DeviceRecoveryAudit.preserveBufferAdoption(
+            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            owner,
+            saved.buffers().evidence(expected.id()),
+            saved.buffers().deployment(expected.id()),
+            position(),
+            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            saveWithFullMetadata(server.registryAccess()));
+    var adopted = saved.buffers().adopt(expected, position());
+    if (adopted.failure() != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Buffer adoption refused: " + adopted.failure());
+    WorldNetworks.bufferInvalidated(level, this);
+    saved.transfers().unbindBacking(expected.id());
+    handler = null;
+    state = new BufferData.State(adopted.handle(), state.principal(), state.configuration());
+    data = BufferData.write(state);
+    diagnostic = "";
+    setChanged();
+    WorldNetworks.changed(oldLevel, oldPos);
+    onLoad();
+    return path;
+  }
+
   public void validatePlaced() {
     if (state == null
         || !diagnostic.isEmpty()
