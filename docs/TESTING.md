@@ -1233,8 +1233,11 @@ simulated. [Evidence](evidence/jei-client-v1-2026-10-18.md).
 ## Server workload benchmark (manual)
 
 `./gradlew runBenchmarkServer` runs `ServerBenchmark` (clientTest source set) in a
-dedicated server. It fails unless items churn in the large phase and cobblestone is
-conserved, and it writes `build/benchmarks/server-v1.csv` plus a summary. It is a
+dedicated server. After the large phase it adds an overload phase: 64 more factories
+(128 networks), each running an eight-rule program that exceeds the scheduler's per-tick
+shares. The CSV records the scheduler backlog every measured tick. It fails unless items
+churn in the large and overload phases and all 128 factories' cobblestone is conserved.
+It writes `build/benchmarks/server-v1.csv` plus a summary. It is a
 measurement, not a correctness gate in `check`. See the
 [2026-10-18 record](evidence/server-v1-2026-10-18.md).
 

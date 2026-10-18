@@ -3026,3 +3026,15 @@ isolated `jeiTest` source set ([evidence](evidence/jei-client-v1-2026-10-18.md))
 
 Consecutive drops now get a separating space. Physical drag and "+" clicks remain
 unsimulated. Every Factory Core screen now has graphical evidence.
+
+## Benchmark overload harness checkpoint — 2026-10-18
+
+`runBenchmarkServer` adds the D07 overload phase:
+- 128 networks, each running eight competing rules that deliberately saturate the
+  scheduler;
+- scheduler backlog recorded per measured tick;
+- 128-factory conservation gate.
+
+A functional run passed (conservation 524,288 = 524,288; backlog max 1,138 of the 8,192
+bound). That run competed with a concurrent build, so its timings are not evidence.
+Official measurement runs on a quiet machine are pending.

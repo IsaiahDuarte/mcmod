@@ -47,13 +47,16 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * Dedicated-server workload benchmark (A15/D07). 64 factories, each one controller, one drive with
  * 4,096 cobblestone, one Program Controller and four labeled Machine Interfaces on chests. Phases:
  * idle (built, no programs), small (4 programs) and large (64 programs). Each program keeps its
- * machines stocked with 64 and moves 16 back every 10 ticks, so items churn continuously. Measured
- * span: Factory Core's server post-tick listeners (HIGHEST to LOWEST priority Post); whole server
- * ticks are recorded alongside. Raw nanoseconds go to CSV.
+ * machines stocked with 64 and moves 16 back every 10 ticks, so items churn continuously. Overload
+ * then adds 64 more factories (128 networks) and runs an eight-rule program on every one, which
+ * deliberately exceeds the scheduler's per-tick shares; admissions may be refused. Measured span:
+ * Factory Core's server post-tick listeners (HIGHEST to LOWEST priority Post); whole server ticks
+ * are recorded alongside. Raw nanoseconds go to CSV.
  */
 @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and levels.
 final class ServerBenchmark {
-  static final int FACTORIES = 64, SMALL = 4, WARMUP = 200, MEASURED = 1_000;
+  static final int FACTORIES = 64, OVERLOAD_FACTORIES = 128, SMALL = 4, WARMUP = 200;
+  static final int MEASURED = 1_000;
   static final long STOCK = 4_096;
   static final String PROGRAM =
       """
@@ -64,6 +67,26 @@ final class ServerBenchmark {
           move item("minecraft:cobblestone") from machines("bench") to storage limit 16
       }
       """;
+
+  /** Eight staggered rules, each restocking every machine and moving up to 64 back. */
+  static final String OVERLOAD_PROGRAM = overloadProgram();
+
+  private static String overloadProgram() {
+    var source = new StringBuilder();
+    for (int rule = 0; rule < 8; rule++)
+      source
+          .append("every ")
+          .append(10 + rule)
+          .append(" ticks as \"o")
+          .append(rule)
+          .append(
+              "\" {\n    for machine in machines(\"bench\") {\n        keep machine stocked with 64"
+                  + " of item(\"minecraft:cobblestone\") from storage\n    }\n    move"
+                  + " item(\"minecraft:cobblestone\") from machines(\"bench\") to storage limit"
+                  + " 64\n}\n");
+    return source.toString();
+  }
+
   private ResourceKey cobble;
   private static final Direction[] FACES = {Direction.WEST, Direction.NORTH, Direction.UP};
 
@@ -84,6 +107,7 @@ final class ServerBenchmark {
   private int counter;
   private long tickStart, postStart;
   private long[] mod = new long[MEASURED], whole = new long[MEASURED];
+  private int[] backlog = new int[MEASURED];
   private boolean done, churned;
 
   void register() {
@@ -111,8 +135,8 @@ final class ServerBenchmark {
     return new BlockPos(8 + 16 * (index % 8), 70, 8 + 16 * (index / 8));
   }
 
-  private void build() {
-    for (int index = 0; index < FACTORIES; index++) {
+  private void build(int from, int to) {
+    for (int index = from; index < to; index++) {
       var root = base(index);
       level.setChunkForced(root.getX() >> 4, root.getZ() >> 4, true);
       level.setBlock(root, NetworkContent.CONTROLLER.get().defaultBlockState(), 3);
@@ -164,9 +188,9 @@ final class ServerBenchmark {
 
   private final java.util.Set<MachineInterfaceEntity> configured = new java.util.HashSet<>();
 
-  private void seed(MinecraftServer server) {
+  private void seed(MinecraftServer server, int from) {
     var registry = DeviceSavedData.get(server).registry();
-    for (var factory : factories)
+    for (var factory : factories.subList(from, factories.size()))
       if (registry.insert(factory.cell(), cobble, STOCK).amount() != STOCK)
         throw new IllegalStateException("Seed stock");
   }
@@ -194,13 +218,13 @@ final class ServerBenchmark {
           throw new IllegalStateException("Machine settings refused: " + decision);
         break;
       }
-    return configured.size() == FACTORIES * 4;
+    return configured.size() == factories.size() * 4;
   }
 
-  private void deploy(MinecraftServer server, int from, int to) {
+  private void deploy(MinecraftServer server, int from, int to, String source) {
     for (int index = from; index < to; index++) {
       var controller = factories.get(index).controller();
-      controller.draft(PROGRAM);
+      controller.draft(source);
       var diagnostics = WorldPrograms.get(server).deploy(owner, controller);
       if (!diagnostics.isEmpty()) throw new IllegalStateException("Deploy: " + diagnostics);
     }
@@ -254,31 +278,43 @@ final class ServerBenchmark {
     counter++;
     switch (phase) {
       case "build" -> {
-        build();
+        build(0, FACTORIES);
+        next("settle");
+      }
+      case "build-overload" -> {
+        // Programs were stopped after the large phase; let in-flight work drain first.
+        if (counter < 200) return;
+        build(FACTORIES, OVERLOAD_FACTORIES);
         next("settle");
       }
       case "settle" -> {
         if (counter > 600) throw new IllegalStateException("Networks did not validate");
         if (!ready(server)) return;
-        seed(server);
+        seed(server, factories.size() == FACTORIES ? 0 : FACTORIES);
         next("configure");
       }
       case "configure" -> {
         if (counter > 1_200) throw new IllegalStateException("Machines did not configure");
         if (!configure(server) || !ready(server)) return;
-        next("warm-idle");
+        if (factories.size() == FACTORIES) next("warm-idle");
+        else {
+          deploy(server, 0, OVERLOAD_FACTORIES, OVERLOAD_PROGRAM);
+          next("warm-overload");
+        }
       }
-      case "warm-idle", "warm-small", "warm-large" -> {
+      case "warm-idle", "warm-small", "warm-large", "warm-overload" -> {
         if (counter >= WARMUP) next(phase.substring(5));
       }
-      case "idle", "small", "large" -> {
+      case "idle", "small", "large", "overload" -> {
         mod[counter - 1] = modNanos;
         whole[counter - 1] = wholeNanos;
+        backlog[counter - 1] = WorldNetworks.get(server).scheduler().backlog();
         if (counter < MEASURED) return;
         record(phase);
         long inChests = chests();
         summary.add(phase + " items_in_machine_chests=" + inChests);
         if (phase.equals("large")) churned = inChests > 0;
+        if (phase.equals("overload")) churned &= inChests > 0;
         var probe = factories.getFirst().controller();
         summary.add(
             phase
@@ -292,24 +328,26 @@ final class ServerBenchmark {
                 + probe.logs());
         switch (phase) {
           case "idle" -> {
-            deploy(server, 0, SMALL);
+            deploy(server, 0, SMALL, PROGRAM);
             next("warm-small");
           }
           case "small" -> {
-            deploy(server, SMALL, FACTORIES);
+            deploy(server, SMALL, FACTORIES, PROGRAM);
             next("warm-large");
           }
+          case "large" -> {
+            stopAll(server);
+            next("build-overload");
+          }
           default -> {
-            for (var factory : factories)
-              WorldPrograms.get(server)
-                  .control(owner, factory.controller(), ProgramControllerEntity.State.STOPPED);
+            stopAll(server);
             next("drain");
           }
         }
       }
       case "drain" -> {
         if (counter < 200) return;
-        long expected = STOCK * FACTORIES;
+        long expected = STOCK * factories.size();
         long actual = total(server);
         summary.add(
             "conservation expected=" + expected + " actual=" + actual + " " + (actual == expected));
@@ -317,6 +355,12 @@ final class ServerBenchmark {
       }
       default -> throw new IllegalStateException(phase);
     }
+  }
+
+  private void stopAll(MinecraftServer server) {
+    for (var factory : factories)
+      WorldPrograms.get(server)
+          .control(owner, factory.controller(), ProgramControllerEntity.State.STOPPED);
   }
 
   private void next(String value) {
@@ -334,7 +378,7 @@ final class ServerBenchmark {
 
   private void record(String name) {
     for (int index = 0; index < MEASURED; index++)
-      rows.add(name + "," + index + "," + mod[index] + "," + whole[index]);
+      rows.add(name + "," + index + "," + mod[index] + "," + whole[index] + "," + backlog[index]);
     var sortedMod = mod.clone();
     var sortedWhole = whole.clone();
     Arrays.sort(sortedMod);
@@ -364,8 +408,22 @@ final class ServerBenchmark {
             + over10
             + " of "
             + MEASURED);
+    var sortedBacklog = backlog.clone();
+    Arrays.sort(sortedBacklog);
+    var runtime = Runtime.getRuntime();
+    summary.add(
+        name
+            + " scheduler_backlog median="
+            + sortedBacklog[MEASURED / 2]
+            + " p99="
+            + sortedBacklog[(int) Math.ceil(0.99 * MEASURED) - 1]
+            + " max="
+            + sortedBacklog[MEASURED - 1]
+            + " used_heap="
+            + (runtime.totalMemory() - runtime.freeMemory()));
     mod = new long[MEASURED];
     whole = new long[MEASURED];
+    backlog = new int[MEASURED];
   }
 
   private void finish(MinecraftServer server, boolean pass) throws IOException {
@@ -388,7 +446,8 @@ final class ServerBenchmark {
             + " used_heap="
             + (runtime.totalMemory() - runtime.freeMemory()));
     Files.write(
-        output.resolve("server-v1.csv"), prepend("phase,tick,mod_nanos,server_tick_nanos", rows));
+        output.resolve("server-v1.csv"),
+        prepend("phase,tick,mod_nanos,server_tick_nanos,scheduler_backlog", rows));
     Files.write(output.resolve("server-v1-summary.txt"), prepend(pass ? "PASS" : "FAIL", summary));
     System.out.println("FACTORYCORE_SERVER_BENCHMARK " + (pass ? "PASS" : "FAIL"));
     server.halt(false);

@@ -45,7 +45,7 @@ REQUIRED_FILES = (
     "sdk/rust/rust-toolchain.toml",
 )
 IGNORED_DIRS = {
-    ".git", ".agents", ".codex", ".venv", "__pycache__", ".gradle",
+    ".git", ".agents", ".claude", ".codex", ".venv", "__pycache__", ".gradle",
     "build", "target", "node_modules", "run",
 }
 UNWIRED_SOURCE_SUFFIXES = {".kt", ".kts", ".rs"}
