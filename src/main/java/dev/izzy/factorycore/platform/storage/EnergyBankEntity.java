@@ -123,6 +123,72 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
     return path;
   }
 
+  /**
+   * Independent-save reconciliation adapter: adopts this loaded bank's mismatched reference as the
+   * canonical holder of {@code expected}. Refuses unless the old canonical position is loaded and
+   * is not a bank referencing the backing, this bank's reference has the same world/backing, a
+   * different generation and a matching finite tier, and no transfer is unresolved.
+   */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
+  public java.nio.file.Path adoptBank(DeviceRegistry.Handle expected) throws java.io.IOException {
+    if (!(level instanceof ServerLevel server)
+        || isRemoved()
+        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
+            == null
+        || server.getBlockEntity(worldPosition) != this
+        || handle == null)
+      throw new IllegalStateException("Adopting bank must be loaded and readable");
+    var saved = authority();
+    var registry = saved.registry();
+    var owner = registry.ownership(expected.backing());
+    var canonical = owner == null ? null : owner.definition().location();
+    if (owner == null
+        || !owner.handle().equals(expected)
+        || canonical == null
+        || expected.generation() == Long.MAX_VALUE
+        || !handle.world().equals(expected.world())
+        || !handle.backing().equals(expected.backing())
+        || handle.generation() == expected.generation()
+        || owner.definition().kind() != dev.izzy.factorycore.core.resource.ResourceKind.ENERGY
+        || owner.definition().infinite()
+        || owner.definition().capacity() != tier().capacity()
+        || saved.transfers().unresolved(expected.backing()) != null)
+      throw new IllegalStateException("Bank lease cannot be adopted");
+    var oldLevel =
+        server
+            .getServer()
+            .getLevel(
+                net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION,
+                    net.minecraft.resources.ResourceLocation.parse(canonical.dimension())));
+    var oldPos = BlockPos.of(canonical.position());
+    if (oldLevel == null
+        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+      throw new IllegalStateException("Old canonical holder must be loaded");
+    if (oldLevel.getBlockEntity(oldPos) instanceof EnergyBankEntity old
+        && old.handle != null
+        && old.handle.backing().equals(expected.backing()))
+      throw new IllegalStateException("Old canonical holder still references the backing");
+    var path =
+        DeviceRecoveryAudit.preserveBankAdoption(
+            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            registry.evidence(expected.backing()),
+            location(),
+            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            saveWithFullMetadata(server.registryAccess()));
+    var adopted = registry.adopt(expected, location());
+    if (adopted.failure() != DeviceRegistry.Failure.OK)
+      throw new IllegalStateException("Bank adoption refused: " + adopted.failure());
+    handle = adopted.handle();
+    data = EnergyBankHandleData.write(handle);
+    diagnostic = "";
+    setChanged();
+    WorldNetworks.changed(oldLevel, oldPos);
+    onLoad();
+    return path;
+  }
+
   public void validatePlaced() {
     if (isRemoved() || !diagnostic.isEmpty() || handle == null)
       throw new IllegalStateException("Bank unavailable");

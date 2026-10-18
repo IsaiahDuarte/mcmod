@@ -1222,3 +1222,11 @@ dedicated server. It fails unless items churn in the large phase and cobblestone
 conserved, and it writes `build/benchmarks/server-v1.csv` plus a summary. It is a
 measurement, not a correctness gate in `check`. See the
 [2026-10-18 record](evidence/server-v1-2026-10-18.md).
+
+- **Bank adoption:**
+  `EnergyBankGameTests.operatorAdoptsAStaleBankReferenceAfterAnIndependentSaveMismatch`
+  (own batch, because the repair throttle is shared) moves a 500 FE bank by real
+  break/place, restores the old chunk tag, and checks that the mismatch is inert. Ordinary
+  sources are refused, the console adopts, and exactly 500 FE is usable.
+  `DeviceRecoveryAuditTest` checks the schema-4 evidence. The cell adoption GameTest now
+  also runs in its own batch.

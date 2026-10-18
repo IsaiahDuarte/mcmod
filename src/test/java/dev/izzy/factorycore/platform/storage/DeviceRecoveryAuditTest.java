@@ -176,4 +176,26 @@ class DeviceRecoveryAuditTest {
         IllegalArgumentException.class,
         () -> DeviceRecoveryAudit.preserveAdoption(folder, world, portable, target, stack));
   }
+
+  @Test
+  void bankAdoptionEvidenceKeepsRawHolderAndTarget() throws Exception {
+    var original = owner();
+    var owner = new DeviceRegistry.Stored(original.ledger(), 4, original.location(), false);
+    var target = new DeviceRegistry.Location("minecraft:overworld", 789, 0);
+    var state = TagParser.parseTag("{Name:'factorycore:starter_energy_bank'}");
+    var entity = TagParser.parseTag("{id:'factorycore:energy_bank',FactoryCoreBank:{x:1b}}");
+    var file =
+        DeviceRecoveryAudit.preserveBankAdoption(
+            folder, UUID.randomUUID(), owner, target, state, entity);
+    CompoundTag evidence;
+    try (var input = new DataInputStream(Files.newInputStream(file))) {
+      evidence = NbtIo.read(input, NbtAccounter.create(DeviceRecoveryAudit.MAX_FILE_BYTES * 2L));
+    }
+    assertEquals(4, evidence.getInt("Schema"));
+    assertEquals("ENERGY_BANK_ADOPTION", evidence.getString("HolderKind"));
+    assertEquals(789, evidence.getCompound("Target").getLong("Position"));
+    assertEquals(state, evidence.get("BlockState"));
+    assertEquals(entity, evidence.get("BlockEntity"));
+    assertEquals(owner.ledger(), LedgerStateCodec.decode(evidence.getByteArray("Ledger")));
+  }
 }

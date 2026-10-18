@@ -803,7 +803,8 @@ public final class StorageDriveGameTests {
     helper.assertTrue(rejected, "Operation must reject without replacement");
   }
 
-  @GameTest(template = "empty", timeoutTicks = 200)
+  // Own batch: the audited repair/adoption throttle is shared per server.
+  @GameTest(template = "empty", batch = "cell_adoption", timeoutTicks = 200)
   public static void operatorAdoptsAStaleChunkReferenceAfterAnIndependentSaveMismatch(
       GameTestHelper helper) {
     var registry = registry(helper);

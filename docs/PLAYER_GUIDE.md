@@ -700,3 +700,6 @@ lost or duplicated. An operator can inspect the cell with `/factorycore recovery
 <slot>`, naming the drive slot that physically holds the cell. The original location
 must be loaded and must not still hold the cell. Keep backups. The command records
 evidence before changing anything.
+
+Energy banks work the same way: `/factorycore recovery bank adopt <backing> <generation>
+<x y z>` names the bank that physically holds the reference.

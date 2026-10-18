@@ -1,4 +1,4 @@
-# ADR 0046 — Independent-save mismatch adoption for cells
+# ADR 0046 — Independent-save mismatch adoption for cells and energy banks
 
 Status: selected; two-JVM dedicated injection evidence for one save order (older
 SavedData), plus native single-JVM evidence for the converse. Banks, buffers and
@@ -47,3 +47,19 @@ Mismatches remain inert until an operator acts. They are never duplicated or los
 Energy-bank, buffer and structural-node mismatches still have only conflict repair. The
 injection replaces the whole data file, which is coarser than a torn write. Corrupt
 files are handled by the existing quarantine path.
+
+
+## Energy banks — 2026-10-18
+
+The command `factorycore recovery bank adopt <backing> <generation> <bank x y z>` applies
+the same rule to finite energy banks.
+
+- **Old position:** must be loaded, and must not hold a bank that references the backing.
+- **Target:** the loaded bank must hold a reference with the same world and backing, a
+  different generation, and a matching finite tier.
+- **Transfers:** none may be unresolved.
+- **Evidence:** bank audit **schema 4** (`HolderKind=ENERGY_BANK_ADOPTION`) records the
+  before-state lease, `Target`, and the bank's native block state and block entity.
+
+FE, claims and rate spending are unchanged. Buffers and structural nodes still have only
+conflict repair.

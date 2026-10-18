@@ -25,7 +25,27 @@ final class DeviceRecoveryCommands {
 
   static LiteralArgumentBuilder<CommandSourceStack> commands(boolean bank) {
     var root = commands(bank, Commands.literal(bank ? "bank" : "cell"));
-    if (bank) return root;
+    if (bank)
+      return root.then(
+          Commands.literal("adopt")
+              .then(
+                  Commands.argument("backing", StringArgumentType.word())
+                      .then(
+                          Commands.argument("generation", LongArgumentType.longArg(1))
+                              .then(
+                                  Commands.argument(
+                                          "bank",
+                                          net.minecraft.commands.arguments.coordinates
+                                              .BlockPosArgument.blockPos())
+                                      .executes(
+                                          c ->
+                                              adopt(
+                                                  c.getSource(),
+                                                  StringArgumentType.getString(c, "backing"),
+                                                  LongArgumentType.getLong(c, "generation"),
+                                                  net.minecraft.commands.arguments.coordinates
+                                                      .BlockPosArgument.getBlockPos(c, "bank"),
+                                                  -1))))));
     return root.then(
         Commands.literal("adopt")
             .then(
@@ -57,8 +77,9 @@ final class DeviceRecoveryCommands {
   }
 
   /**
-   * Operator reconciliation of an independent-save mismatch: adopt the loaded drive slot's
-   * reference in the source's dimension as the canonical holder. All proof is server-side.
+   * Operator reconciliation of an independent-save mismatch: adopt the loaded drive slot's (or,
+   * with {@code slot < 0}, energy bank's) reference in the source's dimension as the canonical
+   * holder. All proof is server-side.
    */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and level.
   private static int adopt(
@@ -66,18 +87,24 @@ final class DeviceRecoveryCommands {
     try {
       var server = source.getServer();
       var owner = DeviceSavedData.get(server).registry().ownership(parse(backing));
-      if (owner == null || !matches(owner, false) || owner.handle().generation() != generation)
+      boolean bank = slot < 0;
+      if (owner == null || !matches(owner, bank) || owner.handle().generation() != generation)
         throw new IllegalStateException("Canonical lease changed");
       var level = source.getLevel();
-      if (level.getChunkSource().getChunkNow(drive.getX() >> 4, drive.getZ() >> 4) == null
-          || !(level.getBlockEntity(drive) instanceof StorageDriveEntity holder))
-        throw new IllegalStateException("Adopting drive unavailable");
+      if (level.getChunkSource().getChunkNow(drive.getX() >> 4, drive.getZ() >> 4) == null)
+        throw new IllegalStateException("Adopting holder unavailable");
+      var entity = level.getBlockEntity(drive);
+      if (!(bank ? entity instanceof EnergyBankEntity : entity instanceof StorageDriveEntity))
+        throw new IllegalStateException("Adopting holder has the wrong kind");
       if (!admitRepair(source)) return 0;
-      var path = holder.adoptCell(owner.handle(), slot);
+      var path =
+          bank
+              ? ((EnergyBankEntity) entity).adoptBank(owner.handle())
+              : ((StorageDriveEntity) entity).adoptCell(owner.handle(), slot);
       source.sendSuccess(
           () ->
               Component.translatable(
-                  "command.factorycore.recovery.cell.adopted",
+                  "command.factorycore.recovery." + (bank ? "bank" : "cell") + ".adopted",
                   backing,
                   drive.toShortString(),
                   slot,
@@ -89,7 +116,9 @@ final class DeviceRecoveryCommands {
       source.sendFailure(Component.translatable("command.factorycore.recovery.audit"));
       return 0;
     } catch (IllegalArgumentException | IllegalStateException rejected) {
-      source.sendFailure(Component.translatable("command.factorycore.recovery.cell.adopt_refused"));
+      source.sendFailure(
+          Component.translatable(
+              "command.factorycore.recovery." + (slot < 0 ? "bank" : "cell") + ".adopt_refused"));
       return 0;
     }
   }

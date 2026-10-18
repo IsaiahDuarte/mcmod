@@ -743,4 +743,76 @@ public final class EnergyBankGameTests {
         "Malformed raw type also retained");
     helper.succeed();
   }
+
+  // Own batch: the audited repair/adoption throttle is shared per server.
+  @GameTest(template = "empty", batch = "bank_adoption", timeoutTicks = 200)
+  public static void operatorAdoptsAStaleBankReferenceAfterAnIndependentSaveMismatch(
+      GameTestHelper helper) {
+    var bank = setup(helper);
+    var original = bank.handle();
+    var registry = registry(helper);
+    var moved = new BlockPos(3, 1, 2);
+    var access = helper.getLevel().registryAccess();
+    long[] canonicalGeneration = {0};
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper))
+        .thenIdle(21)
+        .thenExecute(
+            () -> {
+              helper.assertTrue(bank.receiveEnergy(500, false) == 500, "Seed 500 FE");
+              var before = bank.saveWithFullMetadata(access);
+              // The canonical save records the bank broken at BANK and placed at `moved`...
+              var portable = bank.portableForBreak();
+              helper.setBlock(moved, EnergyBankContent.block(EnergyBankTier.STARTER));
+              EnergyBankEntity placed = helper.getBlockEntity(moved);
+              placed.place(portable);
+              var canonical = placed.handle();
+              canonicalGeneration[0] = canonical.generation();
+              helper.assertTrue(
+                  canonical.generation() == original.generation() + 2, "Remove and place rotate");
+              // ...but the chunk was saved before: BANK still holds the old reference, `moved`
+              // is an empty bank.
+              registry.availability(canonical, placed.location(), false);
+              placed.loadWithComponents(new CompoundTag(), access);
+              bank.loadWithComponents(before, access);
+              bank.onLoad();
+              helper.assertTrue(
+                  !bank.diagnostic().isEmpty()
+                      && registry.ownership(original.backing()).total() == 500
+                      && !registry.stock(canonical, ResourceKey.ENERGY).loaded(),
+                  "The mismatch is inert: one ledger with 500 FE, offline");
+              var console = helper.getLevel().getServer().createCommandSourceStack();
+              var pos = helper.absolutePos(BANK);
+              var adopt =
+                  "factorycore recovery bank adopt %s %d %d %d %d"
+                      .formatted(
+                          original.backing(),
+                          canonical.generation(),
+                          pos.getX(),
+                          pos.getY(),
+                          pos.getZ());
+              helper.assertTrue(
+                  bankCommand(console.withPermission(0), adopt) < 1,
+                  "Ordinary sources cannot adopt");
+              helper.assertTrue(bankCommand(console, adopt) == 1, "Operator adopts the old bank");
+            })
+        .thenWaitUntil(() -> ready(helper))
+        .thenExecute(
+            () -> {
+              var adopted = bank.handle();
+              helper.assertTrue(
+                  adopted.generation() == canonicalGeneration[0] + 1
+                      && registry.ownership(original.backing()).handle().equals(adopted)
+                      && bank.diagnostic().isEmpty()
+                      && registry.validate(original) == DeviceRegistry.Failure.STALE,
+                  "The single canonical lease moved back to the adopted bank");
+            })
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    bank.getEnergyStored() == 500 && bank.extractEnergy(1_000, true) > 0,
+                    "Exactly 500 FE is usable again at the adopted bank"))
+        .thenSucceed();
+  }
 }

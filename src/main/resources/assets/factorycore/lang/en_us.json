@@ -572,5 +572,7 @@
   "tooltip.factorycore.pattern_fluid_input": "Uses %s mB %s",
   "tooltip.factorycore.pattern_fluid_output": "Makes %s mB %s",
   "command.factorycore.recovery.cell.adopted": "Cell %s adopted at %s slot %s, generation %s. Every other reference is now stale. Before-state evidence: %s",
-  "command.factorycore.recovery.cell.adopt_refused": "Adoption refused: the canonical generation must match, the old holder must be loaded without this cell, the drive slot must hold exactly one mismatched reference of the same tier, and no transfer may be unresolved. Nothing changed."
+  "command.factorycore.recovery.cell.adopt_refused": "Adoption refused: the canonical generation must match, the old holder must be loaded without this cell, the drive slot must hold exactly one mismatched reference of the same tier, and no transfer may be unresolved. Nothing changed.",
+  "command.factorycore.recovery.bank.adopted": "Bank %s adopted at %s (slot %s), generation %s. Every other reference is now stale. Before-state evidence: %s",
+  "command.factorycore.recovery.bank.adopt_refused": "Bank adoption refused: the canonical generation must match, the old position must be loaded without this bank, the bank must hold a mismatched reference of the same tier, and no transfer may be unresolved. Nothing changed."
 }

@@ -42,6 +42,30 @@ public final class DeviceRecoveryAudit {
     return write(world, owner.ledger().id(), envelope);
   }
 
+  /**
+   * Bank adoption evidence (schema 4): the canonical lease before adoption, the adopted target
+   * position and the adopting bank's complete native state and block entity.
+   */
+  static Path preserveBankAdoption(
+      Path world,
+      UUID namespace,
+      DeviceRegistry.Stored owner,
+      DeviceRegistry.Location target,
+      CompoundTag blockState,
+      CompoundTag blockEntity)
+      throws IOException {
+    var envelope = envelope(namespace, owner, 4, false);
+    envelope.putString("HolderKind", "ENERGY_BANK_ADOPTION");
+    var adopted = new CompoundTag();
+    adopted.putString("Dimension", target.dimension());
+    adopted.putLong("Position", target.position());
+    adopted.putInt("Slot", target.slot());
+    envelope.put("Target", adopted);
+    envelope.put("BlockState", blockState.copy());
+    envelope.put("BlockEntity", blockEntity.copy());
+    return write(world, owner.ledger().id(), envelope);
+  }
+
   static Path preserveBank(
       Path world,
       UUID namespace,
