@@ -149,7 +149,7 @@ public final class WorldCraftingJobs {
     checkThread();
     var denied = denial(actor, origin);
     if (denied != null) return new Preview(null, denied);
-    if (key.kind() != ResourceKind.ITEM) return new Preview(null, "unsupported");
+    if (key.kind() == ResourceKind.ENERGY) return new Preview(null, "unsupported");
     var plan = plan(actor, origin, key, amount);
     return new Preview(plan, reason(plan));
   }
@@ -177,7 +177,7 @@ public final class WorldCraftingJobs {
     checkThread();
     var denied = denial(actor, origin);
     if (denied != null) return new Submission(null, null, denied);
-    if (key.kind() != ResourceKind.ITEM) return new Submission(null, null, "unsupported");
+    if (key.kind() == ResourceKind.ENERGY) return new Submission(null, null, "unsupported");
     var jobs = saved().craftingJobs();
     var admission = jobs.admission(actor.id());
     if (admission != null) return new Submission(null, null, admission);
@@ -253,7 +253,7 @@ public final class WorldCraftingJobs {
     checkThread();
     var denied = denial(actor, origin);
     if (denied != null) return denied;
-    if (key.kind() != ResourceKind.ITEM) return "unsupported";
+    if (key.kind() == ResourceKind.ENERGY) return "unsupported";
     var scope = networks().membership(origin).scope();
     try {
       var refused =
@@ -409,11 +409,12 @@ public final class WorldCraftingJobs {
   private void cleanup(CraftingJob job) {
     int passes = cleanups.merge(job.id(), 1, Integer::sum);
     var holder = interfaceAt(job.dispatch().machine());
-    var machine = holder == null ? null : holder.machine();
-    var offer = machine == null ? null : findDispatched(job);
-    if (offer != null) {
+    var offer = holder == null ? null : findDispatched(job);
+    if (offer != null && reachable(holder, offer.pattern())) {
       var outputs = expected(offer.pattern());
-      collect(job, outputs, machine, new PlatformResourceCodec(server.registryAccess()));
+      var codec = new PlatformResourceCodec(server.registryAccess());
+      if (holder.machine() != null) collect(job, outputs, holder.machine(), codec);
+      if (holder.fluidMachine() != null) collectFluids(job, outputs, holder.fluidMachine(), codec);
       boolean done =
           outputs.entrySet().stream()
               .allMatch(
@@ -539,10 +540,12 @@ public final class WorldCraftingJobs {
     var outputs = expected(pattern);
     if (job.dispatch() == null) {
       var holder = (CraftingInterfaceEntity) offer.unit();
-      var machine = holder.machine();
-      if (machine == null) return "machine_missing";
+      if (!reachable(holder, pattern)) return "machine_missing";
       if (leasedByOther(holder.origin(), job.id())) return "busy";
-      for (var key : outputs.keySet()) if (contains(machine, key, codec)) return "output_not_clean";
+      for (var key : outputs.keySet())
+        if (key.kind() == ResourceKind.FLUID
+            ? containsFluid(holder.fluidMachine(), key)
+            : contains(holder.machine(), key, codec)) return "output_not_clean";
       for (var input : pattern.inputs().entrySet()) {
         long missing = input.getValue() - job.stagedAmount(input.getKey());
         if (missing > 0) pull(job, input.getKey(), missing);
@@ -551,10 +554,15 @@ public final class WorldCraftingJobs {
       job.dispatch(holder.origin());
     }
     var holder = interfaceAt(job.dispatch().machine());
-    var machine = holder == null ? null : holder.machine();
-    if (machine == null) return "machine_missing";
-    insert(job, pattern.inputs(), machine, codec);
-    collect(job, outputs, machine, codec);
+    if (holder == null || !reachable(holder, pattern)) return "machine_missing";
+    if (holder.machine() != null) {
+      insert(job, pattern.inputs(), holder.machine(), codec);
+      collect(job, outputs, holder.machine(), codec);
+    }
+    if (holder.fluidMachine() != null) {
+      insertFluids(job, pattern.inputs(), holder.fluidMachine(), codec);
+      collectFluids(job, outputs, holder.fluidMachine(), codec);
+    }
     var dispatch = job.dispatch();
     for (var input : pattern.inputs().entrySet())
       if (dispatch.inserted().getOrDefault(input.getKey(), 0L) < input.getValue())
@@ -566,12 +574,81 @@ public final class WorldCraftingJobs {
     return null;
   }
 
+  /** True when the machine exposes every handler kind the pattern's keys need. */
+  private static boolean reachable(
+      CraftingInterfaceEntity holder, dev.izzy.factorycore.core.crafting.Pattern pattern) {
+    var keys = new java.util.HashSet<>(pattern.inputs().keySet());
+    keys.addAll(expected(pattern).keySet());
+    boolean items = keys.stream().anyMatch(key -> key.kind() == ResourceKind.ITEM);
+    boolean fluids = keys.stream().anyMatch(key -> key.kind() == ResourceKind.FLUID);
+    if (keys.stream().anyMatch(key -> key.kind() == ResourceKind.ENERGY)) return false;
+    return (!items || holder.machine() != null) && (!fluids || holder.fluidMachine() != null);
+  }
+
+  private static boolean containsFluid(
+      net.neoforged.neoforge.fluids.capability.IFluidHandler tanks, ResourceKey key) {
+    for (int tank = 0; tank < tanks.getTanks(); tank++) {
+      var present = tanks.getFluidInTank(tank);
+      if (!present.isEmpty()
+          && key.registryId()
+              .equals(
+                  net.minecraft.core.registries.BuiltInRegistries.FLUID
+                      .getKey(present.getFluid())
+                      .toString())) return true;
+    }
+    return false;
+  }
+
+  /** Fills exactly what the machine accepts of each staged fluid input; the rest stays staged. */
+  private static void insertFluids(
+      CraftingJob job,
+      Map<ResourceKey, Long> inputs,
+      net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
+      PlatformResourceCodec codec) {
+    for (var input : inputs.entrySet()) {
+      if (input.getKey().kind() != ResourceKind.FLUID) continue;
+      long remaining =
+          Math.min(
+              input.getValue() - job.dispatch().inserted().getOrDefault(input.getKey(), 0L),
+              job.stagedAmount(input.getKey()));
+      if (remaining <= 0) continue;
+      var offer = codec.fluidStack(input.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
+      int accepted =
+          tanks.fill(
+              offer, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+      if (accepted > 0) job.inserted(input.getKey(), Math.min(accepted, remaining));
+    }
+  }
+
+  /** Drains only the expected fluid outputs from the leased machine into job staging. */
+  private static void collectFluids(
+      CraftingJob job,
+      Map<ResourceKey, Long> outputs,
+      net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
+      PlatformResourceCodec codec) {
+    for (var output : outputs.entrySet()) {
+      if (output.getKey().kind() != ResourceKind.FLUID) continue;
+      long remaining =
+          output.getValue() - job.dispatch().collected().getOrDefault(output.getKey(), 0L);
+      if (remaining <= 0) continue;
+      var want = codec.fluidStack(output.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
+      var got =
+          tanks.drain(
+              want, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+      if (got.isEmpty()) continue;
+      if (!codec.fluidKey(got).equals(output.getKey()) || got.getAmount() > remaining)
+        throw new IllegalStateException("Machine drained an unexpected fluid");
+      job.collected(output.getKey(), got.getAmount());
+    }
+  }
+
   private static void insert(
       CraftingJob job,
       Map<ResourceKey, Long> inputs,
       net.neoforged.neoforge.items.IItemHandler machine,
       PlatformResourceCodec codec) {
     for (var input : inputs.entrySet()) {
+      if (input.getKey().kind() != ResourceKind.ITEM) continue;
       long remaining =
           Math.min(
               input.getValue() - job.dispatch().inserted().getOrDefault(input.getKey(), 0L),
@@ -596,7 +673,9 @@ public final class WorldCraftingJobs {
       net.neoforged.neoforge.items.IItemHandler machine,
       PlatformResourceCodec codec) {
     for (var output : outputs.entrySet())
-      for (int slot = 0; slot < machine.getSlots(); slot++) {
+      for (int slot = 0;
+          output.getKey().kind() == ResourceKind.ITEM && slot < machine.getSlots();
+          slot++) {
         long remaining =
             output.getValue() - job.dispatch().collected().getOrDefault(output.getKey(), 0L);
         if (remaining <= 0) break;

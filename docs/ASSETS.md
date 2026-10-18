@@ -216,3 +216,4 @@ check behavior; graphical chat/accessibility/full recovery walkthrough remain Pe
 | Wireless Link Endpoint + block item | Facing, paired/active/no-power state | P6 | Oxidized copper/end rod cube stand-in, translated status message | Pending |
 | Gateway policy editor screen | Toggle on/off, read-only state | P6 | Flat panel, translated headers and toggle labels; not graphically verified | Pending |
 | Factory Guide item | Read-only book pages | P6 | Knowledge-book stand-in, vanilla book screen, 14 translated pages; not graphically verified | Pending |
+| Fluid processing cells in the terminal grid | Fluid id + 250 mB unit count | P4 | Uses the existing cell/count rendering; no mB label yet; not graphically verified | Pending |

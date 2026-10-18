@@ -17,6 +17,10 @@ import net.neoforged.neoforge.items.IItemHandler;
 @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed ServerLevel.
 public final class CraftingInterfaceEntity extends PatternHolderEntity {
   private BlockCapabilityCache<IItemHandler, Direction> machine, sided;
+  private BlockCapabilityCache<net.neoforged.neoforge.fluids.capability.IFluidHandler, Direction>
+      tanks,
+      sidedTanks;
+  private Direction tankFacing;
   private Direction cachedFacing;
 
   public CraftingInterfaceEntity(BlockPos position, BlockState state) {
@@ -51,10 +55,27 @@ public final class CraftingInterfaceEntity extends PatternHolderEntity {
     return whole != null ? whole : sided.getCapability();
   }
 
+  /** The faced machine's fluid handler, chosen like {@link #machine()}; null if it has none. */
+  public net.neoforged.neoforge.fluids.capability.IFluidHandler fluidMachine() {
+    if (!(level instanceof ServerLevel server) || !current()) return null;
+    if (tanks == null || tankFacing != facing()) {
+      tankFacing = facing();
+      var target = worldPosition.relative(tankFacing);
+      tanks = BlockCapabilityCache.create(Capabilities.FluidHandler.BLOCK, server, target, null);
+      sidedTanks =
+          BlockCapabilityCache.create(
+              Capabilities.FluidHandler.BLOCK, server, target, tankFacing.getOpposite());
+    }
+    var whole = tanks.getCapability();
+    return whole != null ? whole : sidedTanks.getCapability();
+  }
+
   @Override
   public void setRemoved() {
     machine = null;
     sided = null;
+    tanks = null;
+    sidedTanks = null;
     super.setRemoved();
   }
 }

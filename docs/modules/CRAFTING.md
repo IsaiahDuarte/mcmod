@@ -91,3 +91,12 @@ removeRule/rules` with the bounds in [ADR 0034](../decisions/0034-keep-stock-req
 `rule(actor, origin, key)`, `unkeep(actor, ruleId)` (owner or operator) and
 `ruleStatus(ruleId)` (`satisfied`, `in_flight`, `started` or a submit reason).
 `CraftingJob.rule()` links a job to its rule. Nested job schema 3 adds `Rules`.
+
+
+## Fluid processing
+
+Processing patterns may declare fluid inputs/outputs (mB); the Crafting Interface uses the
+faced machine's fluid handler for them ([ADR0045](../decisions/0045-fluid-processing.md)).
+Requests and keep-stock rules accept item and fluid keys. Wait reasons: `machine_missing`
+also covers a missing fluid port; `output_not_clean` also covers tanks holding the output
+fluid.

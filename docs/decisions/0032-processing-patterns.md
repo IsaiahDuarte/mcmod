@@ -55,6 +55,6 @@ the grid keeps one authenticated editing path.
 ## Consequences
 
 Machines must not be fed by other automation while a job runs (tooltip warning). Item
-only in version one; fluids need the terminal fluid view. Polling is every 20 ticks
+only in version one; fluids were added by [ADR 0045](0045-fluid-processing.md). Polling is every 20 ticks
 while processing. Recipe: IGI/RHR/IGI (four iron, two gold, two redstone, one hopper),
 unlocked by gold.

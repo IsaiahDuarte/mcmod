@@ -17,6 +17,7 @@ public final class GameTestMod {
     ConnectorFixture.register(bus);
     PolicyFixture.register(bus);
     EnergyFixture.register(bus);
+    MixerFixture.register(bus);
     if (!Boolean.getBoolean("neoforge.gameTestServer")) return;
     var xml = new JUnitLikeTestReporter(new File(System.getProperty("factorycore.test.report")));
     var log = new LogTestReporter();

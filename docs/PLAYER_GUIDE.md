@@ -680,3 +680,12 @@ terminal is open to fill the grid. This places ghost entries only; nothing is mo
 you craft. Drag an item or fluid from JEI onto the Program editor to type its
 `item("…")` or `fluid("…")` expression. Without JEI, everything still works through the
 terminal rows and by typing IDs.
+
+
+### Fluid processing
+
+In the terminal grid's processing mode, switch the terminal view to **Fluids** and select a
+fluid to place it in a cell. A fluid cell's count is in quarter buckets: 4 means 1,000 mB,
+and 64 means 16,000 mB. Patterns may mix items and fluids. The Crafting Interface uses the
+machine's fluid tanks for fluids, so the machine must accept fluids from that side.
+Leaving processing mode removes fluid cells from the grid.

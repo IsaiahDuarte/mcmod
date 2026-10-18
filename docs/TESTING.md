@@ -1173,3 +1173,28 @@ These tests run headless:
 - Redeploying clears it, and the new deployment counts from 1.
 
 **Not run:** dedicated two-JVM restart coverage for guest state.
+
+
+## Fluid processing checks
+
+`ProcessingContentsTest`:
+
+- Mixed item/fluid contents round-trip the codec and stream.
+- Fluid keys become inputs and byproducts; items are primary, and a fluid-only pattern's
+  first fluid is primary.
+- The 16,000 mB bound and the at-least-one-input rule hold.
+- An encoding without fluid fields (from before fluids) still decodes.
+
+`ProcessingJobGameTests` uses a test-only fixture mixer: 1 cobblestone + 1,000 mB water →
+1 stone + 250 mB lava.
+
+- A job for 2 stone reserves exactly 2,000 mB water, then stores 2 stone and exactly
+  500 mB lava. Nothing remains in the machine.
+- A fluid pattern on a blast furnace waits `machine_missing`, is never dispatched, keeps
+  its water in storage, and cancel returns everything.
+
+`TerminalCraftingGameTests`:
+
+- Fluid rows are refused outside processing mode.
+- In processing mode, a count of 4 encodes exactly 1,000 mB of water.
+- Leaving processing mode drops the fluid cell.

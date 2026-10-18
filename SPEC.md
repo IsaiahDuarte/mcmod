@@ -522,3 +522,6 @@ compile-only and isolated; its client behavior is unverified.
 
 Wasm guests now have quota-limited persistent state (4,096 bytes per deployment,
 committed per successful callback, restored into fresh instances) per R09.
+
+Processing patterns now support fluid inputs and outputs through the Crafting Interface's
+machine fluid port (R06 fluid evidence; the grid shows fluid amounts as 250 mB units).

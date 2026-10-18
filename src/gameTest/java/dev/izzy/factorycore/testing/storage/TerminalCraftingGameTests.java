@@ -397,4 +397,101 @@ public final class TerminalCraftingGameTests {
             })
         .thenSucceed();
   }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void fluidRowsEncodeAsProcessingInputsInQuarterBucketUnits(GameTestHelper h) {
+    var f = setup(h);
+    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
+    drive.installCell(
+        new ItemStack(
+            StorageContent.cell(dev.izzy.factorycore.core.storage.CellTier.STARTER_FLUID)));
+    var tank = CellHandleData.read(drive.cell(1));
+    var water =
+        f.codec.fluidKey(
+            new net.neoforged.neoforge.fluids.FluidStack(
+                net.minecraft.world.level.material.Fluids.WATER, 1));
+    var inventory = f.player.getInventory();
+    inventory.setItem(0, new ItemStack(Items.STONE));
+    inventory.setItem(
+        1,
+        new ItemStack(dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN.get()));
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.terminal.canUse(f.player) && f.saved.registry().stock(tank, water).loaded(),
+                    "Network ready"))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(tank, water, 4_000);
+              open(h, f);
+            })
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu(f);
+              m.command(
+                  f.player,
+                  new TerminalPackets.Command(
+                      m.containerId,
+                      m.session(),
+                      m.view().revision(),
+                      TerminalPackets.KIND,
+                      1,
+                      1,
+                      "",
+                      new byte[32]));
+              grid(f, TerminalCraftingPackets.SET_ROW, 0, 0, 1, new byte[32]);
+            })
+        .thenWaitUntil(
+            () -> {
+              menu(f).broadcastChanges();
+              h.assertTrue(
+                  menu(f).view().status().equals("ready") && menu(f).view().rows().size() == 1,
+                  "Fluid view lists water");
+            })
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.SET_ROW, 0, 0, 1, new byte[32]);
+              h.assertTrue(
+                  menu(f).gridView().cells().get(0).isEmpty(),
+                  "Outside processing mode a fluid row is not a grid ingredient");
+              grid(f, TerminalCraftingPackets.MODE, 1, 0, 1, new byte[32]);
+              grid(f, TerminalCraftingPackets.SET_ROW, 0, 0, 1, new byte[32]);
+              grid(f, TerminalCraftingPackets.COUNT, 0, 0, 4, new byte[32]);
+              ghost(f, 9, 0);
+              h.assertTrue(
+                  menu(f).gridView().cells().get(0).equals("minecraft:water"),
+                  "Processing mode accepts the fluid row: " + menu(f).gridView());
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]);
+              ItemStack encoded = ItemStack.EMPTY;
+              for (int slot = 0; slot < 36; slot++)
+                if (inventory
+                    .getItem(slot)
+                    .is(
+                        dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING_PATTERN
+                            .get())) encoded = inventory.getItem(slot);
+              var contents =
+                  encoded.get(
+                      dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING.get());
+              h.assertTrue(
+                  contents != null
+                      && contents.inputs().isEmpty()
+                      && contents.fluidInputs().size() == 1
+                      && contents.fluidInputs().getFirst().getAmount() == 1_000
+                      && contents.outputs().getFirst().is(Items.STONE),
+                  "Four quarter-bucket units encode exactly 1000 mB water: "
+                      + menu(f).gridView().status());
+              grid(f, TerminalCraftingPackets.MODE, 0, 0, 1, new byte[32]);
+              h.assertTrue(
+                  menu(f).gridView().cells().get(0).isEmpty(),
+                  "Leaving processing mode drops fluid cells");
+              logout(f);
+            })
+        .thenSucceed();
+  }
 }

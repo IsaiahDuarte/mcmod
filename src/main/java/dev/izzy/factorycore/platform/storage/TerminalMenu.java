@@ -494,7 +494,9 @@ public final class TerminalMenu extends AbstractContainerMenu {
           return;
         }
         var key = selections.get(command.source()).key();
-        if (key.kind() != ResourceKind.ITEM) return;
+        // Fluid rows are accepted only as processing-pattern cells.
+        if (key.kind() == ResourceKind.ENERGY
+            || key.kind() == ResourceKind.FLUID && !crafting.processing()) return;
         crafting.set(command.cell(), key);
         gridStatus = "ready";
       }

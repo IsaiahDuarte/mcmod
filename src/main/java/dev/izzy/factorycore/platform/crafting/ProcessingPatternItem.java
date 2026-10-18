@@ -28,10 +28,24 @@ public final class ProcessingPatternItem extends Item {
           Component.translatable(
                   "tooltip.factorycore.pattern_output", output.getCount(), output.getHoverName())
               .withStyle(ChatFormatting.GRAY));
+    for (var output : contents.fluidOutputs())
+      lines.add(
+          Component.translatable(
+                  "tooltip.factorycore.pattern_fluid_output",
+                  output.getAmount(),
+                  output.getHoverName())
+              .withStyle(ChatFormatting.GRAY));
     for (var input : contents.inputs())
       lines.add(
           Component.translatable(
                   "tooltip.factorycore.pattern_input", input.getCount(), input.getHoverName())
+              .withStyle(ChatFormatting.DARK_GRAY));
+    for (var input : contents.fluidInputs())
+      lines.add(
+          Component.translatable(
+                  "tooltip.factorycore.pattern_fluid_input",
+                  input.getAmount(),
+                  input.getHoverName())
               .withStyle(ChatFormatting.DARK_GRAY));
     lines.add(
         Component.translatable("tooltip.factorycore.processing_exclusive")

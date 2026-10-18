@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.crafting.GridRequirement;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,6 +63,10 @@ final class TerminalCrafting {
   /** Processing mode encodes declared inputs/outputs instead of a crafting-table recipe. */
   void processing(boolean enabled) {
     processing = enabled;
+    // A crafting-table grid cannot hold fluids; leaving processing mode drops fluid cells.
+    if (!enabled)
+      for (int index = 0; index < ALL_CELLS; index++)
+        if (cell(index) != null && cell(index).kind() == ResourceKind.FLUID) set(index, null);
     revision++;
   }
 
@@ -127,6 +132,13 @@ final class TerminalCrafting {
       for (int index = 0; index < outputs.length; index++)
         if (outputs[index] != null)
           try {
+            if (outputs[index].kind() == ResourceKind.FLUID) {
+              // Fluids preview as their bucket (or nothing when the fluid has none).
+              var bucket = codec.fluidStack(outputs[index], 1).getFluid().getBucket();
+              return bucket == net.minecraft.world.item.Items.AIR
+                  ? ItemStack.EMPTY
+                  : new ItemStack(bucket);
+            }
             return codec.itemStack(outputs[index], counts[cells.length + index]);
           } catch (IllegalArgumentException unsupported) {
             return ItemStack.EMPTY;
@@ -256,22 +268,38 @@ final class TerminalCrafting {
     return write(player, encoded);
   }
 
-  /** Declared processing pattern: input cells with counts and up to three output cells. */
+  /** Fluid processing cells count in units of this many mB (1–64 units: 250–16,000 mB). */
+  static final int FLUID_UNIT = 250;
+
+  /**
+   * Declared processing pattern: input cells with counts and up to three output cells. Item cells
+   * count items; fluid cells count {@link #FLUID_UNIT} mB units.
+   */
   private Outcome encodeProcessing(ServerPlayer player) {
     var codec = new PlatformResourceCodec(player.registryAccess());
     var in = new ArrayList<ItemStack>();
     var out = new ArrayList<ItemStack>();
+    var fluidIn = new ArrayList<net.neoforged.neoforge.fluids.FluidStack>();
+    var fluidOut = new ArrayList<net.neoforged.neoforge.fluids.FluidStack>();
     ItemStack encoded;
     try {
       for (int index = 0; index < cells.length; index++)
-        if (cells[index] != null) in.add(codec.itemStack(cells[index], counts[index]));
+        if (cells[index] != null)
+          if (cells[index].kind() == ResourceKind.FLUID)
+            fluidIn.add(codec.fluidStack(cells[index], counts[index] * FLUID_UNIT));
+          else in.add(codec.itemStack(cells[index], counts[index]));
       for (int index = 0; index < outputs.length; index++)
-        if (outputs[index] != null)
-          out.add(codec.itemStack(outputs[index], counts[cells.length + index]));
-      if (in.isEmpty() || out.isEmpty()) return new Outcome(0, "no_recipe", null);
+        if (outputs[index] != null) {
+          int count = counts[cells.length + index];
+          if (outputs[index].kind() == ResourceKind.FLUID)
+            fluidOut.add(codec.fluidStack(outputs[index], count * FLUID_UNIT));
+          else out.add(codec.itemStack(outputs[index], count));
+        }
+      if (in.isEmpty() && fluidIn.isEmpty() || out.isEmpty() && fluidOut.isEmpty())
+        return new Outcome(0, "no_recipe", null);
       var contents =
           new dev.izzy.factorycore.platform.crafting.ProcessingContents(
-              java.util.UUID.randomUUID(), 1, 0, in, out);
+              java.util.UUID.randomUUID(), 1, 0, in, out, fluidIn, fluidOut);
       contents.pattern(codec);
       encoded =
           new ItemStack(

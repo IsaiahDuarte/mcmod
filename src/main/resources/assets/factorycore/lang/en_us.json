@@ -568,5 +568,7 @@
   "guide.factorycore.page.11": "11. Branches\n\nA Gateway's eye face is upstream and its red face is downstream. Sneak-use it to choose what the branch may do and see. Nested gateways only narrow access.",
   "guide.factorycore.page.12": "12. Wireless\n\nPower a Wireless Access Point, bind a Wireless Terminal to it and use the terminal within 64 blocks. Each action costs 64 FE from the handheld.",
   "guide.factorycore.page.13": "13. Links\n\nPlace Wireless Link Endpoints against two gateways up to 256 blocks apart. Sneak-use one, then the other, to pair them. Each end needs its own FE.",
-  "gui.factorycore.terminal.jei.too_large": "This recipe does not fit the 3×3 grid"
+  "gui.factorycore.terminal.jei.too_large": "This recipe does not fit the 3×3 grid",
+  "tooltip.factorycore.pattern_fluid_input": "Uses %s mB %s",
+  "tooltip.factorycore.pattern_fluid_output": "Makes %s mB %s"
 }

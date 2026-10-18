@@ -358,4 +358,154 @@ public final class ProcessingJobGameTests {
             print));
     m.broadcastChanges();
   }
+
+  @GameTest(template = "empty", timeoutTicks = 1200)
+  public static void mixedItemAndFluidProcessingInsertsAndCollectsExactAmounts(GameTestHelper h) {
+    var owner = UUID.randomUUID();
+    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
+    NetworkNodeEntity root = h.getBlockEntity(ROOT);
+    root.commission(owner);
+    h.setBlock(DRIVE, StorageContent.DRIVE.get());
+    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
+    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+    var items = CellHandleData.read(drive.cell(0));
+    var fluids = CellHandleData.read(drive.cell(1));
+    h.setBlock(FURNACE, dev.izzy.factorycore.testing.MixerFixture.BLOCK.get());
+    dev.izzy.factorycore.testing.MixerFixture.MixerEntity mixer = h.getBlockEntity(FURNACE);
+    h.setBlock(
+        INTERFACE,
+        CraftingContent.INTERFACE
+            .get()
+            .defaultBlockState()
+            .setValue(BlockStateProperties.FACING, Direction.SOUTH));
+    CraftingInterfaceEntity face = h.getBlockEntity(INTERFACE);
+    var water =
+        new net.neoforged.neoforge.fluids.FluidStack(
+            net.minecraft.world.level.material.Fluids.WATER, 1_000);
+    var lava =
+        new net.neoforged.neoforge.fluids.FluidStack(
+            net.minecraft.world.level.material.Fluids.LAVA, 250);
+    var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    pattern.set(
+        CraftingContent.PROCESSING.get(),
+        new ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.COBBLESTONE)),
+            List.of(new ItemStack(Items.STONE)),
+            List.of(water),
+            List.of(lava)));
+    face.patterns().insertItem(0, pattern, false);
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var cobble = codec.itemKey(new ItemStack(Items.COBBLESTONE));
+    var stone = codec.itemKey(new ItemStack(Items.STONE));
+    var waterKey = codec.fluidKey(water);
+    var lavaKey = codec.fluidKey(lava);
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    var origin =
+        new NodeRegistry.Position(
+            h.getLevel().dimension().location().toString(), h.absolutePos(INTERFACE).asLong());
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    WorldNetworks.get(h.getLevel().getServer()).membership(origin).status()
+                            == NetworkTopology.Status.VALID
+                        && saved.registry().stock(items, cobble).loaded()
+                        && saved.registry().stock(fluids, waterKey).loaded(),
+                    "Network ready"))
+        .thenExecute(
+            () -> {
+              saved.registry().insert(items, cobble, 3);
+              saved.registry().insert(fluids, waterKey, 3_000);
+              var submission = jobs(h).submit(actor(owner), origin, stone, 2);
+              h.assertTrue(submission.job() != null, "Submitted: " + submission.reason());
+              id[0] = submission.job();
+              h.assertTrue(
+                  saved.registry().stock(fluids, waterKey).reserved() == 2_000,
+                  "Exactly 2000 mB water reserved once");
+            })
+        .thenWaitUntil(() -> h.assertTrue(saved.craftingJobs().get(id[0]) == null, "Job finishes"))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    saved.registry().stock(items, stone).total() == 2
+                        && saved.registry().stock(items, cobble).total() == 1
+                        && saved.registry().stock(fluids, waterKey).total() == 1_000
+                        && saved.registry().stock(fluids, lavaKey).total() == 500
+                        && saved.registry().stock(fluids, waterKey).reserved() == 0
+                        && mixer.lava.isEmpty()
+                        && mixer.water.isEmpty()
+                        && mixer.items.getStackInSlot(1).isEmpty(),
+                    "2 stone and exactly 500 mB lava collected; 2000 mB water and 2 cobblestone"
+                        + " consumed; nothing left in the machine"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void machineWithoutAFluidPortIsNeverDispatchedForAFluidPattern(GameTestHelper h) {
+    var f = setup(h);
+    var water =
+        new net.neoforged.neoforge.fluids.FluidStack(
+            net.minecraft.world.level.material.Fluids.WATER, 1_000);
+    var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    pattern.set(
+        CraftingContent.PROCESSING.get(),
+        new ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.RAW_GOLD)),
+            List.of(new ItemStack(Items.GOLD_INGOT)),
+            List.of(water),
+            List.of()));
+    f.face.patterns().extractItem(0, 1, false);
+    f.face.patterns().insertItem(0, pattern, false);
+    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
+    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+    var tank = CellHandleData.read(drive.cell(1));
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var gold = codec.itemKey(new ItemStack(Items.RAW_GOLD));
+    var ingot = codec.itemKey(new ItemStack(Items.GOLD_INGOT));
+    var waterKey = codec.fluidKey(water);
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenWaitUntil(
+            () -> h.assertTrue(f.saved.registry().stock(tank, waterKey).loaded(), "Tank ready"))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, gold, 1);
+              f.saved.registry().insert(tank, waterKey, 1_000);
+              var submission = jobs(h).submit(actor(f.owner), f.origin, ingot, 1);
+              h.assertTrue(submission.job() != null, "Submitted: " + submission.reason());
+              id[0] = submission.job();
+            })
+        .thenWaitUntil(
+            () -> {
+              var job = f.saved.craftingJobs().get(id[0]);
+              h.assertTrue(
+                  job.state() == CraftingJob.State.WAITING
+                      && job.reason().equals("machine_missing")
+                      && job.dispatch() == null
+                      && f.furnace.getItem(0).isEmpty(),
+                  "A blast furnace has no fluid port, so the fluid pattern is never dispatched: "
+                      + job.reason());
+              h.assertTrue(
+                  f.saved.registry().stock(tank, waterKey).total() == 1_000,
+                  "The water stays in storage (reserved or staged, never voided)");
+              jobs(h).cancel(actor(f.owner), id[0]);
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.craftingJobs().get(id[0]) == null
+                        && f.saved.registry().stock(tank, waterKey).available() == 1_000
+                        && f.stock(gold) == 1,
+                    "Cancel returns everything"))
+        .thenSucceed();
+  }
 }

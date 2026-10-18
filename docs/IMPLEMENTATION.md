@@ -2945,3 +2945,10 @@ processing, recovery gaps and P7 verification.
 P5 adds quota-limited, callback-transactional persistent Wasm state with SDK support,
 a counter example and controller schema 3 ([ADR0044](decisions/0044-persistent-guest-state.md)).
 JVM +2, native 269→270. Next: P4 fluid processing.
+
+## Fluid processing checkpoint — 2026-10-18
+
+P4 adds fluid inputs and outputs to processing patterns, Crafting Interface fluid ports,
+and fluid crafting requests ([ADR0045](decisions/0045-fluid-processing.md)). JVM +2, native
+270→273. Remaining P4 gap: graphical checks. Next: recovery gaps (unresolved or unscoped
+staging, independent-save interruption).
