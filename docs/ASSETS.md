@@ -211,3 +211,5 @@ and behavior; graphical chat/accessibility/full recovery walkthrough remain Pend
 Connector/Machine Interface recovery adds translated operator metadata, accepted
 deployment/fence display, safe refusal and redeployment guidance. Native commands
 check behavior; graphical chat/accessibility/full recovery walkthrough remain Pending.
+| Wireless Access Point + block item | Range/power state | P6 | Copper/beacon cube stand-in, translated status message | Pending |
+| Wireless Terminal item | Bound/unbound, FE | P6 | Recovery-compass stand-in, tooltip with FE and binding | Pending |

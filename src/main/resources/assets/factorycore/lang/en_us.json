@@ -512,5 +512,17 @@
   "gui.factorycore.terminal.status.no_container": "No container that can hold this fluid",
   "gui.factorycore.terminal.status.no_energy_item": "Hold one item that stores FE",
   "gui.factorycore.terminal.status.item_full": "Item is fully charged",
-  "gui.factorycore.terminal.status.item_empty": "Item has no FE"
+  "gui.factorycore.terminal.status.item_empty": "Item has no FE",
+  "block.factorycore.wireless_access_point": "Wireless Access Point",
+  "item.factorycore.wireless_terminal": "Wireless Terminal",
+  "message.factorycore.access_point_status": "Access point: %s / %s FE; range %s blocks; network %s. 16 FE per tick while a terminal is open.",
+  "message.factorycore.wireless_bound": "Wireless Terminal bound to this access point",
+  "message.factorycore.wireless_unbound": "Use the Wireless Terminal on an access point to bind it first",
+  "message.factorycore.wireless_out_of_range": "Out of range, in another dimension, or no View permission at the access point",
+  "message.factorycore.wireless_missing": "The bound access point is not loaded",
+  "message.factorycore.wireless_no_power": "The access point has no FE",
+  "tooltip.factorycore.handheld_energy": "%s / %s FE (64 FE per action)",
+  "tooltip.factorycore.handheld_bound": "Bound to an access point",
+  "tooltip.factorycore.handheld_unbound": "Not bound",
+  "gui.factorycore.terminal.status.no_power": "Not enough FE in the handheld terminal"
 }

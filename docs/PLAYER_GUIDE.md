@@ -635,3 +635,13 @@ To run a Rust program, build it with the SDK (see `sdk/rust/README.md`), copy th
 the newest file is sent and deployed. A Wasm rule run needs about 260 FE available and
 costs 4 FE plus 1 FE per 256 instructions it actually uses. If it traps, it stops;
 Resume starts it fresh.
+
+
+## Wireless access
+
+Place a **Wireless Access Point** on your network and feed it FE. Use a **Wireless
+Terminal** on it to bind it, charge the handheld (for example from the terminal's Energy
+view), then right-click the handheld anywhere within 64 blocks in the same dimension to
+open the storage terminal. The access point uses 16 FE per tick while you have it open,
+and every action that moves items, fluids or energy costs 64 FE from the handheld. The
+screen closes if you leave range, lose View permission, or the access point runs dry.

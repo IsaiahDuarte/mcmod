@@ -354,6 +354,14 @@ public final class WorldStorageTransfers {
 
   private WorldPlayerInventories players;
 
+  /** Registers (or clears, for 8 blocks or less) a wireless session's reach to {@code origin}. */
+  void playerReach(
+      net.minecraft.server.level.ServerPlayer player,
+      NodeRegistry.Position origin,
+      double squared) {
+    players().reach(player, origin, squared);
+  }
+
   private WorldPlayerInventories players() {
     if (players == null) players = new WorldPlayerInventories(server);
     return players;

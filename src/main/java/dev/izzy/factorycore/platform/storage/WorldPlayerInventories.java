@@ -38,6 +38,12 @@ final class WorldPlayerInventories {
   private final PlatformResourceCodec codec;
   private final Map<UUID, Binding> bindings = new HashMap<>();
   private final Map<UUID, Budget> budgets = new HashMap<>();
+
+  private record Reach(NodeRegistry.Position origin, double squared) {}
+
+  /** Wireless sessions extend a player's reach to one origin; wired reach is 8 blocks. */
+  private final Map<UUID, Reach> reaches = new HashMap<>();
+
   private int budgetTick = -1;
 
   WorldPlayerInventories(MinecraftServer server) {
@@ -92,7 +98,19 @@ final class WorldPlayerInventories {
         : null;
   }
 
+  void reach(ServerPlayer player, NodeRegistry.Position origin, double squared) {
+    checkThread();
+    if (squared <= 64) reaches.remove(player.getUUID());
+    else reaches.put(player.getUUID(), new Reach(origin, squared));
+  }
+
+  private double reachSquared(UUID player, NodeRegistry.Position origin) {
+    var reach = reaches.get(player);
+    return reach != null && reach.origin().equals(origin) ? reach.squared() : 64;
+  }
+
   void disconnected(ServerPlayer player) {
+    reaches.remove(player.getUUID());
     checkThread();
     var binding = bindings.get(player.getUUID());
     if (binding != null && binding.player() == player) {
@@ -113,7 +131,7 @@ final class WorldPlayerInventories {
     return player.serverLevel().dimension().location().toString().equals(origin.dimension())
         && player.distanceToSqr(
                 net.minecraft.world.phys.Vec3.atCenterOf(BlockPos.of(origin.block())))
-            <= 64
+            <= reachSquared(player.getUUID(), origin)
         && (operation != NetworkPermissions.Permission.WITHDRAW || endpoint.slot() >= 0);
   }
 
@@ -174,7 +192,7 @@ final class WorldPlayerInventories {
                   .player()
                   .distanceToSqr(
                       net.minecraft.world.phys.Vec3.atCenterOf(BlockPos.of(origin.block())))
-              <= 64;
+              <= reachSquared(captured.player().getUUID(), origin);
     }
 
     private boolean matches(ItemStack stack, ResourceKey key) {

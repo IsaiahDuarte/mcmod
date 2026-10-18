@@ -1086,3 +1086,12 @@ menu to Fluids (2,500 mB row), fills one of two buckets with exactly 1,000 mB, e
 back exactly, refuses emptying an empty bucket, then in Energy charges 900 FE from a bank
 into the battery and discharges exactly 900 FE back, and refuses a non-energy stack.
 TerminalPacketsTest now treats DISCHARGE + 1 as the first invalid action.
+
+
+## Wireless access checks
+
+WirelessGameTests: an unbound handheld and an unpowered access point refuse; access point
+input is capped at 1,000 FE/tick; a bound, charged handheld opens 20 blocks away (beyond
+8-block wired reach), lists stock, withdraws 4 items into the player's inventory for
+64 FE, refuses the next action with no effect at 36 FE, closes when the player moves 70
+blocks away, and refuses again once the access point is drained.

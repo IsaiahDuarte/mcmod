@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "factorycore:block/wireless_access_point"
+    }
+  }
+}

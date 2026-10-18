@@ -501,3 +501,7 @@ The terminal now has Fluids and Energy views with explicit fill/empty actions fo
 fluid containers and charge/discharge for single FE items (≤ 1,000 FE per action through
 bank rates), each proving fit before moving anything. This adds partial A04/A11
 evidence; capacity and rate displays, the handheld terminal and graphical checks remain.
+
+
+Wireless Access Points and handheld Wireless Terminals now provide ranged terminal access
+through the shared terminal path (partial A16; paired links remain).

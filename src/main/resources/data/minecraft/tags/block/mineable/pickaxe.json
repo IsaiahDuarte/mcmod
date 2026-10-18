@@ -15,6 +15,7 @@
     "factorycore:fuel_generator",
     "factorycore:crafting_unit",
     "factorycore:crafting_interface",
-    "factorycore:program_controller"
+    "factorycore:program_controller",
+    "factorycore:wireless_access_point"
   ]
 }

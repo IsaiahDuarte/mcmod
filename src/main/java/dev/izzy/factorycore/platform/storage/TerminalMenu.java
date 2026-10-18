@@ -21,7 +21,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  */
 public final class TerminalMenu extends AbstractContainerMenu {
   private final Player viewer;
-  private final TerminalEntity terminal;
+  private final TerminalAccess terminal;
   private final UUID session;
   private final BlockPos position;
   private UUID query, route;
@@ -31,7 +31,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private ResourceKind kind = ResourceKind.ITEM;
   private long revision = 1;
   private int lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE;
-  private boolean active = true, loaded, busy;
+  private boolean active = true, loaded, busy, reachRegistered;
   private TerminalPackets.View view;
   private final TerminalCrafting crafting = new TerminalCrafting();
   private TerminalCraftingPackets.View gridView;
@@ -53,12 +53,12 @@ public final class TerminalMenu extends AbstractContainerMenu {
     this(id, inventory, null, buffer.readBlockPos(), buffer.readUUID());
   }
 
-  TerminalMenu(int id, Inventory inventory, TerminalEntity terminal, UUID session) {
+  TerminalMenu(int id, Inventory inventory, TerminalAccess terminal, UUID session) {
     this(id, inventory, terminal, terminal.getBlockPos(), session);
   }
 
   private TerminalMenu(
-      int id, Inventory inventory, TerminalEntity terminal, BlockPos position, UUID session) {
+      int id, Inventory inventory, TerminalAccess terminal, BlockPos position, UUID session) {
     super(TerminalContent.MENU.get(), id);
     this.viewer = inventory.player;
     this.terminal = terminal;
@@ -119,6 +119,21 @@ public final class TerminalMenu extends AbstractContainerMenu {
         && packet.menu() == containerId
         && packet.session().equals(session)
         && packet.gridRevision() >= gridView.gridRevision()) gridView = packet;
+  }
+
+  /** Opens a terminal session through {@code access} if it currently allows the player. */
+  public static boolean open(
+      ServerPlayer player, TerminalAccess access, net.minecraft.network.chat.Component title) {
+    if (!access.canUse(player)) return false;
+    var session = UUID.randomUUID();
+    player.openMenu(
+        new net.minecraft.world.SimpleMenuProvider(
+            (id, inventory, who) -> new TerminalMenu(id, inventory, access, session), title),
+        buffer -> {
+          buffer.writeBlockPos(access.getBlockPos());
+          buffer.writeUUID(session);
+        });
+    return player.containerMenu instanceof TerminalMenu;
   }
 
   public UUID session() {
@@ -182,6 +197,19 @@ public final class TerminalMenu extends AbstractContainerMenu {
       player().closeContainer();
       return;
     }
+    if (!terminal.upkeep(player())) {
+      player()
+          .displayClientMessage(
+              net.minecraft.network.chat.Component.translatable(
+                  "message.factorycore.wireless_no_power"),
+              true);
+      player().closeContainer();
+      return;
+    }
+    if (!reachRegistered) {
+      reachRegistered = true;
+      transfers().playerReach(player(), terminal.origin(), terminal.reachSquared());
+    }
     int tick = player().server.getTickCount();
     if (lastPoll != Integer.MIN_VALUE && tick - lastPoll < 5) return;
     lastPoll = tick;
@@ -243,6 +271,18 @@ public final class TerminalMenu extends AbstractContainerMenu {
     int tick = sender.server.getTickCount();
     if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
     lastCommand = tick;
+    int action = command.action();
+    boolean mutating =
+        action == TerminalPackets.WITHDRAW
+            || action == TerminalPackets.DEPOSIT
+            || action == TerminalPackets.RETURN
+            || action >= TerminalPackets.FILL;
+    if (mutating && !terminal.spendAction(sender)) {
+      status = "no_power";
+      revision++;
+      publish();
+      return;
+    }
     if (command.action() == TerminalPackets.SEARCH) {
       text = command.text();
       refresh();
@@ -444,6 +484,11 @@ public final class TerminalMenu extends AbstractContainerMenu {
         gridStatus = "ready";
       }
       case TerminalCraftingPackets.ENCODE -> {
+        if (!terminal.spendAction(sender)) {
+          gridStatus = "no_power";
+          publish();
+          return;
+        }
         if (command.gridRevision() != crafting.revision()) {
           publish();
           return;
@@ -452,6 +497,11 @@ public final class TerminalMenu extends AbstractContainerMenu {
         return;
       }
       case TerminalCraftingPackets.CRAFT -> {
+        if (!terminal.spendAction(sender)) {
+          gridStatus = "no_power";
+          publish();
+          return;
+        }
         if (command.gridRevision() != crafting.revision()) {
           publish();
           return;
@@ -521,6 +571,10 @@ public final class TerminalMenu extends AbstractContainerMenu {
         jobStatus = preview.reason().isEmpty() ? "previewed" : preview.reason();
       }
       case TerminalJobPackets.START -> {
+        if (!terminal.spendAction(sender)) {
+          jobStatus = "no_power";
+          break;
+        }
         if (command.revision() != jobRevision || previewKey == null) {
           publish();
           return;
@@ -811,6 +865,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   public void removed(Player player) {
     if (terminal != null && active) {
       active = false;
+      if (reachRegistered) transfers().playerReach(player(), terminal.origin(), 64);
       pendingCrafts = 0;
       closeSearch();
       selections = List.of();

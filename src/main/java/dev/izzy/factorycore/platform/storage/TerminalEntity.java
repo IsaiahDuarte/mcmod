@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 /** Access-only holder; stock, grants and menu credentials are never copied into chunk/item NBT. */
-public final class TerminalEntity extends BlockEntity implements MenuProvider {
+public final class TerminalEntity extends BlockEntity implements MenuProvider, TerminalAccess {
   private UUID opening;
 
   public TerminalEntity(BlockPos pos, BlockState state) {
@@ -30,6 +30,7 @@ public final class TerminalEntity extends BlockEntity implements MenuProvider {
     return server;
   }
 
+  @Override
   public NodeRegistry.Position origin() {
     return new NodeRegistry.Position(
         serverLevel().dimension().location().toString(), worldPosition.asLong());
@@ -45,6 +46,7 @@ public final class TerminalEntity extends BlockEntity implements MenuProvider {
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }
 
+  @Override
   public boolean canUse(ServerPlayer player) {
     if (!player.isAlive()
         || !current()

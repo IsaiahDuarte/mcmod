@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "minecraft:block/beacon",
+    "bottom": "minecraft:block/polished_deepslate",
+    "side": "minecraft:block/copper_block",
+    "particle": "minecraft:block/copper_block"
+  }
+}

@@ -73,6 +73,11 @@ public final class StorageContent {
                         output.accept(
                             dev.izzy.factorycore.platform.program.ProgramContent.ITEM.get());
                         output.accept(
+                            dev.izzy.factorycore.platform.wireless.WirelessContent.ACCESS_POINT_ITEM
+                                .get());
+                        output.accept(
+                            dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get());
+                        output.accept(
                             dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN
                                 .get());
                         for (var tier : CellTier.values()) output.accept(cell(tier));
