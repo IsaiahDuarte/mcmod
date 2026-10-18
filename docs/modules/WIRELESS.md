@@ -12,5 +12,13 @@ grants, stock or session credentials are stored on the item or block.
 Refusal reasons: `unbound`, `missing` (access point not loaded), `no_power`,
 `out_of_range` (also wrong dimension or no View).
 
-Not implemented: paired wireless links, the gateway-level wireless policy, measured
-throughput comparison beyond the shared scheduled path.
+## Paired links
+
+`LinkEndpointBlock`/`LinkEndpointEntity` ([ADR0040](../decisions/0040-paired-wireless-links.md)):
+back face on a gateway, one-to-one pairing within 256 blocks, 20,000 FE buffer, 32 FE per
+paired tick. `WorldWireReader` emits the partner port only while `active()`. Diagnostics:
+`unpaired`, `needs_gateway`, `out_of_range`, `no_power`. Pairing results: `paired`,
+`out_of_range`, `missing`, `denied`.
+
+Not implemented: per-pair resource rate caps, measured throughput comparison beyond the
+shared scheduled path.

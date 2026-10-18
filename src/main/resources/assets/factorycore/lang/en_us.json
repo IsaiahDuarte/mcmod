@@ -524,5 +524,17 @@
   "tooltip.factorycore.handheld_energy": "%s / %s FE (64 FE per action)",
   "tooltip.factorycore.handheld_bound": "Bound to an access point",
   "tooltip.factorycore.handheld_unbound": "Not bound",
-  "gui.factorycore.terminal.status.no_power": "Not enough FE in the handheld terminal"
+  "gui.factorycore.terminal.status.no_power": "Not enough FE in the handheld terminal",
+  "block.factorycore.wireless_link_endpoint": "Wireless Link Endpoint",
+  "message.factorycore.link_status": "Link: %s; %s / %s FE (32 FE per tick while paired)",
+  "message.factorycore.link_selected": "Endpoint selected; sneak-use a second endpoint within 256 blocks to pair",
+  "message.factorycore.link_paired": "Endpoints paired",
+  "message.factorycore.link_out_of_range": "The endpoints are more than 256 blocks apart",
+  "message.factorycore.link_missing": "Both endpoints must be loaded",
+  "message.factorycore.link_denied": "You need Manage permission (or ownership) at both endpoints",
+  "status.factorycore.link.active": "active",
+  "status.factorycore.link.unpaired": "not paired",
+  "status.factorycore.link.needs_gateway": "back face must touch a gateway",
+  "status.factorycore.link.out_of_range": "out of range",
+  "status.factorycore.link.no_power": "no operating power"
 }

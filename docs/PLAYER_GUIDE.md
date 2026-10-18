@@ -645,3 +645,13 @@ view), then right-click the handheld anywhere within 64 blocks in the same dimen
 open the storage terminal. The access point uses 16 FE per tick while you have it open,
 and every action that moves items, fluids or energy costs 64 FE from the handheld. The
 screen closes if you leave range, lose View permission, or the access point runs dry.
+
+
+## Wireless links
+
+To connect a distant branch, place a **Wireless Link Endpoint** against the parent
+side's gateway and another against the child branch's gateway, up to 256 blocks
+apart in the same dimension. Sneak-use one endpoint and then the other to pair them.
+Each endpoint needs its own FE and uses 32 FE per tick. The branch disconnects if either
+end loses power or is broken, and gateway rules still decide what it can see. Use an
+endpoint without sneaking to see its state.

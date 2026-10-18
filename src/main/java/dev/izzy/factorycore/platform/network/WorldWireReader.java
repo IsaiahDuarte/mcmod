@@ -87,6 +87,22 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
     if (entity instanceof dev.izzy.factorycore.platform.storage.TerminalEntity terminal)
       return ordinary(
           block, id(position, "terminal"), NetworkTopology.Role.TERMINAL, terminal.current());
+    if (entity instanceof dev.izzy.factorycore.platform.wireless.LinkEndpointEntity link) {
+      // A wired back face plus, while the pair is active, one reciprocal port to the partner.
+      var id = id(position, "link");
+      var ports = new ArrayList<WiredDiscovery.Port>(2);
+      ports.add(port(block, link.back(), id));
+      if (link.active())
+        ports.add(
+            new WiredDiscovery.Port(
+                new NodeRegistry.Position(
+                    level.dimension().location().toString(), link.partner().asLong()),
+                id));
+      return new WiredDiscovery.Wire(
+          List.of(new NetworkTopology.Node(id, NetworkTopology.Role.CABLE, "", link.current())),
+          ports,
+          null);
+    }
     if (entity instanceof dev.izzy.factorycore.platform.wireless.AccessPointEntity point)
       return ordinary(
           block, id(position, "access_point"), NetworkTopology.Role.TERMINAL, point.current());

@@ -54,6 +54,12 @@ public final class NetworkContent {
       return face
           != state.getValue(
               net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING);
+    if (state.getBlock() instanceof dev.izzy.factorycore.platform.wireless.LinkEndpointBlock)
+      return face
+          == state
+              .getValue(
+                  net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING)
+              .getOpposite();
     return state.is(CABLE.get())
         || state.getBlock() instanceof StorageDriveBlock
         || state.getBlock() instanceof EnergyBankBlock

@@ -505,3 +505,6 @@ evidence; capacity and rate displays, the handheld terminal and graphical checks
 
 Wireless Access Points and handheld Wireless Terminals now provide ranged terminal access
 through the shared terminal path (partial A16; paired links remain).
+
+Paired Wireless Link Endpoints now join gateway-bounded branches as reciprocal topology
+edges under normal validation (partial A16; per-pair rate caps remain).

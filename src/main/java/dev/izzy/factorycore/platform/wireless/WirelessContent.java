@@ -88,6 +88,25 @@ public final class WirelessContent {
                   BlockEntityType.Builder.of(AccessPointEntity::new, ACCESS_POINT.get())
                       .build(null));
 
+  public static final DeferredBlock<LinkEndpointBlock> LINK =
+      BLOCKS.registerBlock(
+          "wireless_link_endpoint",
+          LinkEndpointBlock::new,
+          BlockBehaviour.Properties.of()
+              .strength(3.5f)
+              .requiresCorrectToolForDrops()
+              .sound(SoundType.METAL));
+
+  public static final DeferredItem<BlockItem> LINK_ITEM =
+      ITEMS.register(
+          "wireless_link_endpoint", () -> new BlockItem(LINK.get(), new Item.Properties()));
+
+  public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<LinkEndpointEntity>>
+      LINK_ENTITY =
+          ENTITIES.register(
+              "wireless_link_endpoint",
+              () -> BlockEntityType.Builder.of(LinkEndpointEntity::new, LINK.get()).build(null));
+
   private WirelessContent() {}
 
   private static void capabilities(RegisterCapabilitiesEvent event) {
@@ -95,6 +114,8 @@ public final class WirelessContent {
         Capabilities.EnergyStorage.BLOCK,
         ACCESS_POINT_ENTITY.get(),
         (point, face) -> point.energyStorage());
+    event.registerBlockEntity(
+        Capabilities.EnergyStorage.BLOCK, LINK_ENTITY.get(), (link, face) -> link.energyStorage());
     event.registerItem(
         Capabilities.EnergyStorage.ITEM,
         (stack, context) ->

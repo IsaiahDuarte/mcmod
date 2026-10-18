@@ -78,6 +78,8 @@ public final class StorageContent {
                         output.accept(
                             dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get());
                         output.accept(
+                            dev.izzy.factorycore.platform.wireless.WirelessContent.LINK_ITEM.get());
+                        output.accept(
                             dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN
                                 .get());
                         for (var tier : CellTier.values()) output.accept(cell(tier));

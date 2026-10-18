@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "factorycore:block/wireless_link_endpoint",
+      "x": 180
+    },
+    "facing=up": {
+      "model": "factorycore:block/wireless_link_endpoint"
+    },
+    "facing=north": {
+      "model": "factorycore:block/wireless_link_endpoint",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "factorycore:block/wireless_link_endpoint",
+      "x": 90,
+      "y": 180
+    },
+    "facing=west": {
+      "model": "factorycore:block/wireless_link_endpoint",
+      "x": 90,
+      "y": 270
+    },
+    "facing=east": {
+      "model": "factorycore:block/wireless_link_endpoint",
+      "x": 90,
+      "y": 90
+    }
+  }
+}

@@ -213,3 +213,4 @@ deployment/fence display, safe refusal and redeployment guidance. Native command
 check behavior; graphical chat/accessibility/full recovery walkthrough remain Pending.
 | Wireless Access Point + block item | Range/power state | P6 | Copper/beacon cube stand-in, translated status message | Pending |
 | Wireless Terminal item | Bound/unbound, FE | P6 | Recovery-compass stand-in, tooltip with FE and binding | Pending |
+| Wireless Link Endpoint + block item | Facing, paired/active/no-power state | P6 | Oxidized copper/end rod cube stand-in, translated status message | Pending |

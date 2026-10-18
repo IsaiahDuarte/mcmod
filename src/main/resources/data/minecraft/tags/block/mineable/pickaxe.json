@@ -16,6 +16,7 @@
     "factorycore:crafting_unit",
     "factorycore:crafting_interface",
     "factorycore:program_controller",
-    "factorycore:wireless_access_point"
+    "factorycore:wireless_access_point",
+    "factorycore:wireless_link_endpoint"
   ]
 }

@@ -1095,3 +1095,17 @@ input is capped at 1,000 FE/tick; a bound, charged handheld opens 20 blocks away
 8-block wired reach), lists stock, withdraws 4 items into the player's inventory for
 64 FE, refuses the next action with no effect at 36 FE, closes when the player moves 70
 blocks away, and refuses again once the access point is drained.
+
+
+## Paired wireless link checks
+
+WirelessLinkGameTests builds controller → gateway → endpoint ~~ endpoint → gateway → drive.
+The test checks the following:
+
+- The unlinked child is NO_ROOT.
+- Pairing to a position 300 blocks away is refused.
+- A stranger without Manage is denied.
+- An owner's pairing stays inactive until both ends have FE, with input capped at
+  1,000 FE/tick.
+- Once powered, the child becomes VALID in the root's network in a separate segment.
+- Draining one endpoint returns the child to NO_ROOT.
