@@ -1,7 +1,7 @@
 # ADR 0046 — Independent-save mismatch adoption for cells and energy banks
 
-Status: selected; two-JVM dedicated injection evidence for one save order (older
-SavedData), plus native single-JVM evidence for the converse. Banks, buffers and
+Status: selected; two-JVM dedicated injection evidence for both save orders (older
+SavedData, older chunks) for cells; native single-JVM evidence for banks. Banks, buffers and
 structural nodes are not covered.
 
 ## Context

@@ -26,8 +26,21 @@ Observed: seed and restore printed `FACTORYCORE_SAVE_ORDER_PASS`. The reports ar
 `build/reports/save-order/`.
 
 **Not covered:**
-- The converse order (SavedData newer than chunks) in separate JVMs; it is covered by
-  the single-JVM GameTest
-  `operatorAdoptsAStaleChunkReferenceAfterAnIndependentSaveMismatch`.
 - Banks, buffers, structural nodes, player files, torn or corrupt writes.
 - Multiplayer and performance.
+
+
+## Converse order (added 2026-10-18)
+
+`runSaveOrderChunksRestoreServer` (also part of `check`) uses `build/save-order-chunks-run`
+and `factorycore.saveorder.order=chunks-old`.
+
+1. **Seed:** additionally copies `region/r.0.0.mca` after the first save.
+2. **Between the JVMs:** Gradle restores that older region file, while the newer SavedData
+   stays.
+3. **Restore:** asserts that drive A's chunk holds the old reference, drive B's chunk is
+   empty, the canonical lease is already at B with the new generation, and A reports the
+   stale reference. It also asserts one offline ledger with exactly 20 iron. It then adopts
+   A by console command, and after revalidation 20 iron extracts exactly once.
+
+Both orders printed `FACTORYCORE_SAVE_ORDER_PASS` for seed and restore in distinct JVMs.

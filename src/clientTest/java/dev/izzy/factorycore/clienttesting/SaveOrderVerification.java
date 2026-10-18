@@ -34,15 +34,19 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
  * Independent-save interruption across two dedicated JVMs. The seed saves a consistent world, keeps
- * a copy of factorycore_devices.dat, moves a 20-item cell from drive A to drive B and saves again.
- * Between JVMs the build restores the old data file, so the restore JVM opens chunks that are newer
- * than the canonical SavedData (the cell physically in B, the lease still at A).
+ * copies of factorycore_devices.dat and the region file, moves a 20-item cell from drive A to drive
+ * B and saves again. Between JVMs the build restores one old file: {@code data-old} restores the
+ * data file (chunks newer than SavedData: cell physically in B, lease still at A; adopt B); {@code
+ * chunks-old} restores the region file (SavedData newer than chunks: cell physically in A, lease
+ * already at B; adopt A).
  */
 final class SaveOrderVerification {
   private static final BlockPos ROOT = new BlockPos(9, 65, 9), A = ROOT.east(), B = ROOT.west();
   private static final ResourceKey IRON =
       new ResourceKey(ResourceKind.ITEM, "minecraft:iron_ingot", new byte[0]);
   private final boolean restoring = Boolean.getBoolean("factorycore.saveorder.restore");
+  private final boolean chunksOld =
+      "chunks-old".equals(System.getProperty("factorycore.saveorder.order", "data-old"));
   private final Path report = Path.of(System.getProperty("factorycore.saveorder.report"));
   private final Path observation = Path.of(System.getProperty("factorycore.saveorder.expected"));
   private ServerPlayer principal;
@@ -117,6 +121,9 @@ final class SaveOrderVerification {
               data(server),
               data(server).resolveSibling(DeviceSavedData.NAME + ".before"),
               StandardCopyOption.REPLACE_EXISTING);
+          var region = server.getWorldPath(LevelResource.ROOT).resolve("region/r.0.0.mca");
+          Files.copy(
+              region, region.resolveSibling("r.0.0.before"), StandardCopyOption.REPLACE_EXISTING);
           var moved =
               ((StorageDriveEntity) level.getBlockEntity(B))
                   .installCell(((StorageDriveEntity) level.getBlockEntity(A)).removeCell(0));
@@ -149,20 +156,25 @@ final class SaveOrderVerification {
     var backing = UUID.fromString(expected.getProperty("backing"));
     long before = Long.parseLong(expected.getProperty("before"));
     long after = Long.parseLong(expected.getProperty("after"));
-    var drive = (StorageDriveEntity) level.getBlockEntity(B);
-    var origin = (StorageDriveEntity) level.getBlockEntity(A);
+    // The surviving drive holds the physical cell; the other is where the canonical lease points.
+    var target = chunksOld ? A : B;
+    var drive = (StorageDriveEntity) level.getBlockEntity(target);
+    var origin = (StorageDriveEntity) level.getBlockEntity(chunksOld ? B : A);
     if (drive == null || origin == null || !valid(server, ROOT)) return;
     var owner = registry.ownership(backing);
+    long canonical = chunksOld ? after : before;
     switch (phase) {
       case 0 -> {
         var physical = CellHandleData.read(drive.cell(0));
-        require(physical != null && physical.generation() == after, "Chunk kept the newer move");
-        require(origin.cell(0).isEmpty(), "Drive A chunk no longer holds the cell");
         require(
-            owner.handle().generation() == before
+            physical != null && physical.generation() == (chunksOld ? before : after),
+            "The surviving chunk holds the expected reference");
+        require(origin.cell(0).isEmpty(), "The canonical holder's chunk holds no cell");
+        require(
+            owner.handle().generation() == canonical
                 && owner.definition().location().equals(origin.location(0)),
-            "Canonical data is the older save: lease still at drive A");
-        require(!drive.diagnostic().isEmpty(), "Drive B reports the stale reference");
+            "Canonical data names the other drive");
+        require(!drive.diagnostic().isEmpty(), "The surviving drive reports the stale reference");
         require(
             owner.total() == 20 && !registry.stock(owner.handle(), IRON).loaded(),
             "One ledger with exactly 20 iron, offline: nothing duplicated, nothing usable");
@@ -173,18 +185,18 @@ final class SaveOrderVerification {
                 .getDispatcher()
                 .execute(
                     "factorycore recovery cell adopt %s %d %d %d %d 0"
-                        .formatted(backing, before, B.getX(), B.getY(), B.getZ()),
+                        .formatted(backing, canonical, target.getX(), target.getY(), target.getZ()),
                     console);
-        require(adopted == 1, "Operator adopts drive B's reference");
+        require(adopted == 1, "Operator adopts the surviving reference");
         phase = 1;
       }
       case 1 -> {
         var handle = CellHandleData.read(drive.cell(0));
         if (!valid(server, B) || !registry.stock(handle, IRON).loaded()) return;
         require(
-            handle.generation() == before + 1
+            handle.generation() == canonical + 1
                 && registry.definition(handle).location().equals(drive.location(0)),
-            "Adopted lease lives at drive B with one new generation");
+            "Adopted lease lives at the surviving drive with one new generation");
         require(registry.extract(handle, IRON, 64, null).amount() == 20, "Exactly 20 iron, once");
         require(registry.stock(handle, IRON).total() == 0, "Nothing left over");
         require(
@@ -198,8 +210,11 @@ final class SaveOrderVerification {
         finish(
             server,
             "restore",
-            "Old data/new chunk: lease at A, cell in B, inert with exactly 20; adopt moved the"
-                + " lease to B; 20 extracted once.");
+            (chunksOld
+                    ? "New data/old chunk: lease at B, cell in A"
+                    : "Old data/new chunk: lease at A, cell in B")
+                + ", inert with exactly 20; adopt moved the lease to the surviving drive; 20"
+                + " extracted once.");
       }
       default -> {}
     }

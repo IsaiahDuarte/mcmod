@@ -2971,4 +2971,4 @@ interruption suite, graphical runs. Remaining P6: finished assets, D06 balance p
 ## Bank adoption checkpoint — 2026-10-18
 
 ADR 0046 extends adoption to energy banks (bank audit schema 4). Native 274→275.
-Open: buffer and structural-node mismatches, converse save order across JVMs.
+Open: buffer and structural-node mismatches. (The converse save order across JVMs was added afterwards; see the save-order evidence.)

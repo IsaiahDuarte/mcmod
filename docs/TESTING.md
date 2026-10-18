@@ -1212,7 +1212,8 @@ These tests run headless:
   stale/empty-slot adoptions are refused, and the console adopts so exactly 20 items are
   usable once.
 - **Two-JVM injection:** the [save-order record](evidence/save-order-v1-2026-10-18.md)
-  covers older SavedData with newer chunks (`runSaveOrderRestoreServer`, part of `check`).
+  covers older SavedData with newer chunks (`runSaveOrderRestoreServer`) and older chunks
+  with newer SavedData (`runSaveOrderChunksRestoreServer`); both are part of `check`.
 
 
 ## Server workload benchmark (manual)

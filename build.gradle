@@ -114,6 +114,29 @@ neoForge {
             systemProperty "factorycore.saveorder.report", file("build/reports/save-order/restore.txt").absolutePath
             systemProperty "factorycore.saveorder.expected", file("build/reports/save-order/expected.properties").absolutePath
         }
+        saveOrderChunksSeedServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/save-order-chunks-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.saveorder.server", "true"
+            systemProperty "factorycore.saveorder.order", "chunks-old"
+            systemProperty "factorycore.saveorder.report", file("build/reports/save-order-chunks/seed.txt").absolutePath
+            systemProperty "factorycore.saveorder.expected", file("build/reports/save-order-chunks/expected.properties").absolutePath
+        }
+        saveOrderChunksRestoreServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/save-order-chunks-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.saveorder.server", "true"
+            systemProperty "factorycore.saveorder.order", "chunks-old"
+            systemProperty "factorycore.saveorder.restore", "true"
+            systemProperty "factorycore.saveorder.report", file("build/reports/save-order-chunks/restore.txt").absolutePath
+            systemProperty "factorycore.saveorder.expected", file("build/reports/save-order-chunks/expected.properties").absolutePath
+        }
         client {
             client()
             gameDirectory = file('run/client')
@@ -347,6 +370,36 @@ tasks.named('runSaveOrderRestoreServer', JavaExec) {
     }
 }
 tasks.named('check') { dependsOn tasks.named('runSaveOrderRestoreServer') }
+
+// Required converse injection: chunks older than the canonical SavedData that describes them.
+tasks.named('runSaveOrderChunksSeedServer', JavaExec) {
+    doFirst {
+        delete file('build/save-order-chunks-run/world')
+        delete file('build/reports/save-order-chunks')
+        def settings = file('build/save-order-chunks-run/server.properties')
+        settings.parentFile.mkdirs()
+        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+    }
+    doLast {
+        def result = file('build/reports/save-order-chunks/seed.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order seed did not complete.')
+    }
+}
+tasks.named('runSaveOrderChunksRestoreServer', JavaExec) {
+    dependsOn tasks.named('runSaveOrderChunksSeedServer')
+    doFirst {
+        def region = file('build/save-order-chunks-run/world/region/r.0.0.mca')
+        def before = file('build/save-order-chunks-run/world/region/r.0.0.before')
+        if (!before.isFile()) throw new GradleException('Save-order seed left no older region file.')
+        // Simulate an interruption after SavedData was saved but before the chunks were.
+        java.nio.file.Files.copy(before.toPath(), region.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+    doLast {
+        def result = file('build/reports/save-order-chunks/restore.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order restore did not complete.')
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runSaveOrderChunksRestoreServer') }
 
 // Manual A15/D07 measurement (not part of check): dedicated-server workload benchmark.
 tasks.named('runBenchmarkServer', JavaExec) {
