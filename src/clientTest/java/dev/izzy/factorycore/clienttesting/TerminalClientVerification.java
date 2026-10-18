@@ -65,7 +65,8 @@ public final class TerminalClientVerification {
   private static final int DONE = 99;
   private static final BlockPos GATEWAY = new BlockPos(0, 65, 1),
       BRANCH = new BlockPos(-1, 65, 1),
-      PROGRAM = new BlockPos(1, 65, 0);
+      PROGRAM = new BlockPos(1, 65, 0),
+      ACCESS_POINT = new BlockPos(1, 66, 1);
   private int stage, ticks, entered, rule, craftStep, policyMask;
   private boolean sampleSeeded;
   private long previousRevision;
@@ -895,7 +896,7 @@ public final class TerminalClientVerification {
           report,
           "PASS\n"
               + evidence
-              + "Tour: gateway policy toggle (actual sneak-use C2S), program editor, Factory Guide pages 1-2 (actual item use), terminal Fluids/Energy views; no overlapping controls.\n"
+              + "Tour: gateway policy toggle (actual sneak-use C2S), program editor, Factory Guide pages 1-2 (actual item use), wireless handheld terminal beyond wired reach, terminal Fluids/Energy views; no overlapping controls.\n"
               + "Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
               + "Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample. Restart checkpoint adds1200mB water (400 held),300mB lava and500FE.\n");
     } catch (IOException error) {
@@ -909,8 +910,9 @@ public final class TerminalClientVerification {
 
   /**
    * Screens added after the original flow. Before the restart checkpoint (61–71): gateway policy
-   * editor, program editor and Factory Guide. After it, with fluids and FE stocked (72–76):
-   * terminal Fluids/Energy views. Every capture also asserts that no visible controls overlap.
+   * editor, program editor, Factory Guide and wireless terminal (80–83). After it, with fluids and
+   * FE stocked (72–76): terminal Fluids/Energy views. Every capture also asserts that no visible
+   * controls overlap.
    */
   @SuppressWarnings("PMD.CloseResource") // Borrowed active client and integrated server.
   private void tourTick(Minecraft client) {
@@ -1078,6 +1080,84 @@ public final class TerminalClientVerification {
       }
       case 71 -> {
         if (client.screen != null || !client.player.getInventory().getItem(0).isEmpty()) return;
+        jump(80);
+      }
+      case 80 -> {
+        server.execute(
+            () -> {
+              try {
+                var player = server.getPlayerList().getPlayer(principal);
+                var level = player.serverLevel();
+                level.setBlock(
+                    ACCESS_POINT,
+                    dev.izzy.factorycore.platform.wireless.WirelessContent.ACCESS_POINT
+                        .get()
+                        .defaultBlockState(),
+                    3);
+                level.setBlock(new BlockPos(20, 64, 4), Blocks.STONE.defaultBlockState(), 3);
+                var handheld =
+                    new ItemStack(
+                        dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get());
+                handheld.set(
+                    dev.izzy.factorycore.platform.wireless.WirelessContent.BINDING.get(),
+                    new dev.izzy.factorycore.platform.wireless.WirelessContent.Binding(
+                        level.dimension().location().toString(), ACCESS_POINT.asLong()));
+                handheld
+                    .getCapability(
+                        net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.ITEM)
+                    .receiveEnergy(1_000, false);
+                player.getInventory().setItem(0, handheld);
+                player.getInventory().selected = 0;
+                player.teleportTo(20.5, 65, 4.5);
+                player.setYRot(90);
+                player.setXRot(10);
+              } catch (RuntimeException error) {
+                failure.set(error);
+              }
+            });
+        next();
+      }
+      case 81 -> {
+        powerAccessPoint(server);
+        if (client.screen != null
+            || client.player.distanceToSqr(20.5, 65, 4.5) > 1
+            || !client
+                .player
+                .getInventory()
+                .getItem(0)
+                .is(dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get())) return;
+        client.player.getInventory().selected = 0;
+        client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND);
+        next();
+      }
+      case 82 -> {
+        powerAccessPoint(server);
+        if (!(client.screen instanceof TerminalScreen screen)) return;
+        var view = screen.getMenu().view();
+        if (!view.status().equals("ready") || view.rows().isEmpty() || ticks - entered < 10) return;
+        checkNoOverlap(screen);
+        capture(client, "wireless-terminal-scale-2.png");
+        evidence.append(
+            "wireless: bound handheld opened the terminal "
+                + Math.round(Math.sqrt(client.player.distanceToSqr(Vec3.atCenterOf(ACCESS_POINT))))
+                + " blocks from the access point; rows="
+                + view.rows().size()
+                + "\n");
+        client.player.closeContainer();
+        server.execute(
+            () -> {
+              var player = server.getPlayerList().getPlayer(principal);
+              player.getInventory().setItem(0, ItemStack.EMPTY);
+              player.teleportTo(4.5, 65, 4.5);
+              player.setYRot(135);
+              player.setXRot(10);
+            });
+        next();
+      }
+      case 83 -> {
+        if (client.screen != null
+            || !client.player.getInventory().getItem(0).isEmpty()
+            || client.player.distanceToSqr(4.5, 65, 4.5) > 1) return;
         jump(60);
       }
       case 72 -> {
@@ -1121,6 +1201,17 @@ public final class TerminalClientVerification {
       }
       default -> throw new IllegalStateException("Unknown tour stage " + stage);
     }
+  }
+
+  /** Keeps the fixture access point above its 16 FE/tick upkeep while the handheld is in use. */
+  @SuppressWarnings("PMD.CloseResource") // Borrowed integrated server.
+  private static void powerAccessPoint(net.minecraft.server.MinecraftServer server) {
+    server.execute(
+        () -> {
+          if (server.overworld().getBlockEntity(ACCESS_POINT)
+              instanceof dev.izzy.factorycore.platform.wireless.AccessPointEntity point)
+            point.energyStorage().receiveEnergy(1_000, false);
+        });
   }
 
   /** Sends the actual sneak state the server reads for gateway sneak-use. */

@@ -3008,3 +3008,10 @@ controls and on labels too wide for their buttons.
 Open: `runTerminalRestartClient` failed 2 of 7 runs (restart stage 4; a split-root
 `NO_ROOT` deadline). Neither is explained yet; diagnostics are added. Not covered
 graphically: the wireless terminal and JEI.
+
+## Graphical wireless terminal checkpoint — 2026-10-18
+
+The client fixture opens a bound, charged handheld 19 blocks from a powered access point
+by actual item use and captures the Wireless Terminal (30 captures). The restart run has
+now passed 12 of 14 times since the tour was added, the last 10 in a row; the two earlier
+failures remain unexplained. JEI is the remaining screen with no graphical evidence.

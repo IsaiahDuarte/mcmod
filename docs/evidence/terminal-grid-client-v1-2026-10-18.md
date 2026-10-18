@@ -70,14 +70,27 @@ Screenshots: [policy ×2](terminal-grid-client-v1-2026-10-18/gateway-policy-scal
 
 ## Restart run reliability
 
-`runTerminalRestartClient` passed in 5 of 7 runs after the tour was added. It failed
-twice:
+`runTerminalRestartClient` passed in 12 of 14 runs after the tour was added, including
+the last 10 in a row. It failed twice:
 - once at restart stage 4 (the reopened machine Presets tab);
 - once in the split-root fixture: the child branch stayed `NO_ROOT` for 1,000 ticks; it
   normally validates within 100.
 
-Neither failure has been reproduced or explained. Both failure messages now report the
+Both failures were in heavier runs: one directly after the first tour run, and one with
+`--rerun-tasks` recompiling everything. That suggests a timing race under load, but
+neither failure has been reproduced or explained. Both failure messages now report the
 open screen, the root/gateway membership and the network diagnostic. This is an open
 flaky failure, not a pass.
 
-**Not covered:** the wireless terminal, JEI, physical HID input and multiplayer.
+## Wireless terminal
+
+Stages 80–83 run before the restart checkpoint:
+1. Place an access point on the controller and keep it powered.
+2. Give the player a bound, charged handheld and move them 19 blocks away, beyond wired
+   reach.
+3. Open the handheld by actual item use. The [Wireless Terminal](terminal-grid-client-v1-2026-10-18/wireless-terminal-scale-2.png)
+   lists live stock (8 rows) with no overlapping or overflowing controls.
+
+The task now requires 30 captures.
+
+**Not covered:** JEI, physical HID input and multiplayer.
