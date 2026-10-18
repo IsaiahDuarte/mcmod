@@ -50,7 +50,7 @@ class MachinePersistenceTest {
             "",
             "smelter");
     var encoded = saved.save(new CompoundTag(), registries);
-    assertEquals(12, encoded.getInt("Schema"));
+    assertEquals(DeviceSavedData.SCHEMA, encoded.getInt("Schema"));
     var data = ConnectorData.write(state);
     assertEquals(2, data.getInt("Schema"));
     var container = new CompoundTag();
@@ -77,11 +77,12 @@ class MachinePersistenceTest {
         new NodeRegistry.Position("minecraft:overworld", 42), NodeRegistry.Kind.MACHINE_INTERFACE);
     var tag = saved.save(new CompoundTag(), registries);
     tag.remove("MachinePresets");
+    tag.remove("CraftingJobs");
     tag.putInt("Schema", 10);
     var old = DeviceSavedData.load(tag, registries);
     assertFalse(old.diagnostic().isEmpty());
     assertEquals(tag, old.save(new CompoundTag(), registries));
-    tag.putInt("Schema", 13);
+    tag.putInt("Schema", DeviceSavedData.SCHEMA + 1);
     var future = DeviceSavedData.load(tag, registries);
     assertFalse(future.diagnostic().isEmpty());
     assertEquals(tag, future.save(new CompoundTag(), registries));

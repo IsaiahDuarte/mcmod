@@ -938,3 +938,24 @@ unsupported data kept inert across break/place, terminal Encode refusing without
 blank and then consuming exactly one blank to record the server recipe's output and
 bucket remainders, and vanilla-only recipes/unlocks. TerminalCraftingPacketsTest now
 treats action 5 as the first invalid action because ENCODE is action 4.
+
+
+## Crafting job checks
+
+CraftingJobTest covers ordered steps, WAITING refusing crafts until resumed,
+delivery and finish only when empty, cancellation keeping staged units for delivery
+and explicit reservation release, snapshot validation, reservations that must equal
+consumed stock, and per-principal bounds with retirement of finished jobs only.
+CraftingJobPersistenceTest round-trips a job with its ledger reservation through
+world schema 13, quarantines worlds whose job reservation disagrees with the ledger,
+migrates schema 12 to an empty jobs table and rejects malformed job tables. Eighteen
+existing persistence tests now assert `DeviceSavedData.SCHEMA` instead of the literal
+12 for the current writer and use `SCHEMA + 1` as the future schema; migration
+comparisons also remove the new CraftingJobs table. Six CraftingJobGameTests use a
+real controller, cell and Crafting Unit with real recipes: a preview reserves nothing
+and a submitted 8-stick job reserves one log once and delivers exactly eight sticks;
+shortage or missing CRAFT reserves nothing; cancellation by a stranger is refused,
+by the requester releases the reservation and returns staging with wood conserved;
+a removed stick pattern pauses with staged planks until reinserted; a full cell keeps
+undeliverable sticks staged until space returns; and a revoked CRAFT grant pauses
+before the next craft while keeping the reservation.

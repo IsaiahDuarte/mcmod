@@ -30,6 +30,9 @@ public final class CraftingPlanner {
   public static final int MAX_NODES = 4_096;
   public static final int MAX_STEPS = 256;
 
+  /** Distinct keys whose stock a single plan may look up; more returns LIMIT. */
+  public static final int MAX_STOCK_KEYS = 128;
+
   public enum Status {
     /** Every unit is covered by stock or planned crafts. */
     OK,
@@ -68,7 +71,7 @@ public final class CraftingPlanner {
   }
 
   /** Mutable search state that can be copied for alternative attempts. */
-  private static final class State {
+  private final class State {
     final Map<ResourceKey, Long> available;
     final Map<ResourceKey, Long> produced;
     final Map<ResourceKey, Long> consumed;
@@ -76,8 +79,8 @@ public final class CraftingPlanner {
     final List<Step> steps;
     final List<List<ResourceKey>> cycles;
 
-    State(Map<ResourceKey, Long> available) {
-      this.available = new HashMap<>(available);
+    State() {
+      this.available = new HashMap<>();
       produced = new HashMap<>();
       consumed = new LinkedHashMap<>();
       missing = new LinkedHashMap<>();
@@ -96,6 +99,8 @@ public final class CraftingPlanner {
   }
 
   private final Function<ResourceKey, Collection<Pattern>> producers;
+  private final Map<ResourceKey, Long> looked = new HashMap<>();
+  private java.util.function.ToLongFunction<ResourceKey> stock;
   private int nodes;
 
   /** {@code producers} returns patterns whose primary output is the key, in any order. */
@@ -105,12 +110,23 @@ public final class CraftingPlanner {
 
   /** Plans {@code amount} units of {@code request} against exact available stock. */
   public Plan plan(ResourceKey request, long amount, Map<ResourceKey, Long> available) {
-    Objects.requireNonNull(request);
-    if (amount < 1) throw new IllegalArgumentException("Request amount must be positive");
     for (var value : available.values())
       if (value < 0) throw new IllegalArgumentException("Negative available stock");
+    return plan(request, amount, key -> available.getOrDefault(key, 0L));
+  }
+
+  /**
+   * Plans against stock looked up at most once per distinct key from {@code stock}, which must be a
+   * consistent snapshot for the duration of this call. Negative results throw.
+   */
+  public Plan plan(
+      ResourceKey request, long amount, java.util.function.ToLongFunction<ResourceKey> stock) {
+    Objects.requireNonNull(request);
+    if (amount < 1) throw new IllegalArgumentException("Request amount must be positive");
+    this.stock = Objects.requireNonNull(stock);
+    looked.clear();
     nodes = 0;
-    var state = new State(available);
+    var state = new State();
     try {
       need(state, request, amount, new ArrayList<>(), true);
     } catch (LimitReached | ArithmeticException limit) {
@@ -126,6 +142,16 @@ public final class CraftingPlanner {
         state.missing,
         state.cycles,
         nodes);
+  }
+
+  private long lookup(ResourceKey key) {
+    var cached = looked.get(key);
+    if (cached != null) return cached;
+    if (looked.size() >= MAX_STOCK_KEYS) throw new LimitReached();
+    long value = stock.applyAsLong(key);
+    if (value < 0) throw new IllegalArgumentException("Negative available stock");
+    looked.put(key, value);
+    return value;
   }
 
   private static List<Pattern> ranked(Collection<Pattern> patterns, ResourceKey key) {
@@ -150,7 +176,7 @@ public final class CraftingPlanner {
         state.produced.put(key, made - reuse);
         remaining -= reuse;
       }
-      long have = state.available.getOrDefault(key, 0L);
+      long have = state.available.computeIfAbsent(key, this::lookup);
       long take = Math.min(have, remaining);
       if (take > 0) {
         state.available.put(key, have - take);

@@ -555,3 +555,17 @@ empty hand to see how many patterns it has and its network status; sneak-use to 
 the last pattern back. Breaking it drops its patterns. Patterns are offered only to
 the network segment the unit is wired into; a branch's patterns are not shared with
 the parent yet. Autocrafting requests that use these patterns are not available yet.
+
+
+### Autocrafting jobs (server side)
+
+Autocrafting jobs now exist on the server: a request plans with the patterns in your
+segment's Crafting Units and reserves exactly the ingredients it will use from your
+network's cells, so other players cannot take them. The Crafting Unit crafts one step
+at a time; intermediate items stay inside the job and the finished items are put back
+into storage. Cancelling releases unused ingredients and returns any items the job was
+holding; ingredients already crafted are not restored. If a pattern is removed, the
+network goes offline, your Craft permission is revoked or storage is full, the job
+waits with a reason and continues when the problem is fixed. Jobs survive a normal
+save and restart. The terminal screen for previewing, starting and cancelling jobs is
+not available yet.

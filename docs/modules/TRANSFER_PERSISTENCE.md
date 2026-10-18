@@ -44,7 +44,7 @@ IllegalStateException. Snapshot reads during journal notifications are allowed.
 ## Save format and migration
 
 World schema six introduced ExternalClaims alongside the earlier ledgers, grants,
-nodes and accepted transfer contexts. The current world writer is schema12 and
+nodes and accepted transfer contexts. The current world writer is schema13 (adding the nested CraftingJobs table) and
 also owns routing, buffers and machine-preset tables; local transfer entry schema2
 and context schemas1–3 retain their existing formats.
 Schemas one, two and three retain their existing owned data and migrate by adding
@@ -150,7 +150,7 @@ snapshot IDs or unknown world/network quarantine and preserve the entire world
 file. Global versions one/two/three still add missing tables. Version four migrates
 its entry-schema-one records into schema two without changing a single quantity,
 owner, key, endpoint ID, diagnostic or pending intent. No legacy context is guessed.
-Versions five/six/seven/eight/nine/ten use entry schema two; schema six adds canonical foreign claims and seven adds routing preferences. World schemas11/12 remain supported; versions above12 reject. Schema nine adds buffer context schema two and ten adds player context schema three.
+Versions five/six/seven/eight/nine/ten use entry schema two; schema six adds canonical foreign claims and seven adds routing preferences. World schemas11/12 remain supported and 12 migrates to 13 with an empty CraftingJobs table; versions above13 reject. Schema nine adds buffer context schema two and ten adds player context schema three.
 Old binaries reject the new format, so downgrade without a matching backup is
 unsupported. Fixed schema-one/two/three/four fixtures continue to assert exact
 owned-data preservation after stripping only the declared format-version changes.

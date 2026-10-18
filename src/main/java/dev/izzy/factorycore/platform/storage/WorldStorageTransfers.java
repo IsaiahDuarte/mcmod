@@ -1371,6 +1371,17 @@ public final class WorldStorageTransfers {
     return holder;
   }
 
+  /** Trusted scope check for a digital cell; grants nothing beyond the named operation. */
+  public boolean digitalAllowed(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      DeviceRegistry.Handle handle,
+      ResourceKey key,
+      NetworkPermissions.Permission operation) {
+    checkThread();
+    return allowed(actor, origin, handle, key, operation);
+  }
+
   private boolean allowed(
       NetworkPermissions.Actor actor,
       NodeRegistry.Position origin,

@@ -429,3 +429,13 @@ grid encodes the server-matched recipe (exact cells, output and remainders) onto
 blank; units hold nine patterns and offer them only to their own segment, with
 bounded deduplicated indexing. Jobs and requests still do not exist, so A06/A07 stay
 unmet.
+
+
+Persisted crafting jobs now reserve a plan's stock once (the job is the ledger
+reservation owner), stage intermediates/outputs/remainders as job-owned units, run
+crafts through the shared scheduler at Crafting Units with exact recipe revalidation,
+wait with reasons on missing patterns, revoked CRAFT, offline storage or full
+storage, and on cancellation release reservations and deliver staging without
+replay or refund. World schema 13 stores jobs with the ledger. This is partial
+A06/A08/A13 evidence; the request UI, processing patterns, branch publication and
+keep-stock requests remain unfinished.

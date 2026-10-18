@@ -35,6 +35,10 @@ import org.slf4j.Logger;
 /** Overworld authority; unreadable/incompatible data never becomes a replacement empty registry. */
 public final class DeviceSavedData extends SavedData {
   public static final String NAME = "factorycore_devices";
+
+  /** Current world writer schema; thirteen adds the nested CraftingJobs table. */
+  public static final int SCHEMA = 13;
+
   public static final int MAX_NETWORKS = 1024;
   public static final int MAX_NETWORK_GRANTS = 65536;
   private final Map<UUID, NetworkPermissions> networks = new TreeMap<>();
@@ -48,6 +52,7 @@ public final class DeviceSavedData extends SavedData {
   private final RouteCursors routeCursors;
   private final BufferRegistry buffers;
   private final MachinePresets machinePresets;
+  private final dev.izzy.factorycore.core.crafting.CraftingJobs craftingJobs;
   private final CompoundTag rejected;
   private final String diagnostic;
 
@@ -62,6 +67,7 @@ public final class DeviceSavedData extends SavedData {
       List<BufferRegistry.Deployment> deploymentStates,
       List<MachinePresets.Deployment> machineStates,
       Map<UUID, Long> machineConfigurations,
+      List<dev.izzy.factorycore.core.crafting.CraftingJob.Snapshot> jobStates,
       CompoundTag rejected,
       String diagnostic) {
     externalClaims = state == null ? null : new ExternalClaims(claimStates, this::setDirty);
@@ -158,6 +164,18 @@ public final class DeviceSavedData extends SavedData {
                               || node.kind() == NodeRegistry.Kind.CONTROLLER
                                   && node.id().equals(deployment.network()))))
         throw new IllegalArgumentException("Buffer deployment has unknown network/segment");
+    craftingJobs =
+        state == null
+            ? null
+            : new dev.izzy.factorycore.core.crafting.CraftingJobs(jobStates, this::setDirty);
+    for (var job : jobStates) {
+      if (!networks.containsKey(job.network()))
+        throw new IllegalArgumentException("Crafting job has unknown network");
+      for (var cell : job.reserved().entrySet())
+        for (var entry : cell.getValue().entrySet())
+          if (registry.reservation(cell.getKey(), job.id(), entry.getKey()) != entry.getValue())
+            throw new IllegalArgumentException("Crafting job reservation disagrees with ledger");
+    }
   }
 
   public static DeviceSavedData get(MinecraftServer server) {
@@ -222,6 +240,7 @@ public final class DeviceSavedData extends SavedData {
         List.of(),
         List.of(),
         Map.of(),
+        List.of(),
         null,
         "");
   }
@@ -245,6 +264,11 @@ public final class DeviceSavedData extends SavedData {
   public MachinePresets machinePresets() {
     registry().world();
     return machinePresets;
+  }
+
+  public dev.izzy.factorycore.core.crafting.CraftingJobs craftingJobs() {
+    registry().world();
+    return craftingJobs;
   }
 
   public BufferRegistry buffers() {
@@ -368,7 +392,7 @@ public final class DeviceSavedData extends SavedData {
     try {
       require(tag, "Schema", Tag.TAG_INT);
       int schema = tag.getInt("Schema");
-      if ((schema < 1 || schema > 12) || !tag.hasUUID("World"))
+      if ((schema < 1 || schema > SCHEMA) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
       NetworkStateCodec.fields(tag, worldFields(schema));
       var networkStates =
@@ -461,9 +485,11 @@ public final class DeviceSavedData extends SavedData {
               schema < 12
                   ? null
                   : MachinePresetCodec.configurations(tag.getCompound("MachinePresets")),
+              schema < 13 ? List.of() : CraftingJobCodec.decode(tag.getCompound("CraftingJobs")),
               null,
               "");
-      if (schema < 12 || tag.getCompound("MachinePresets").getInt("Schema") < 2) loaded.setDirty();
+      if (schema < SCHEMA || tag.getCompound("MachinePresets").getInt("Schema") < 2)
+        loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =
@@ -479,6 +505,7 @@ public final class DeviceSavedData extends SavedData {
           List.of(),
           List.of(),
           Map.of(),
+          List.of(),
           tag.copy(),
           message.substring(0, Math.min(message.length(), 512)));
     }
@@ -488,7 +515,7 @@ public final class DeviceSavedData extends SavedData {
   public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
     if (rejected != null) return rejected.copy();
     var state = registry().snapshot();
-    tag.putInt("Schema", 12);
+    tag.putInt("Schema", SCHEMA);
     tag.putUUID("World", state.world());
     var devices = new ListTag();
     for (var record : state.devices()) {
@@ -514,6 +541,7 @@ public final class DeviceSavedData extends SavedData {
     tag.put("ExternalClaims", ExternalClaimsCodec.encode(externalClaims.snapshot()));
     tag.put("RouteCursors", RouteCursorCodec.encode(routeCursors.snapshot()));
     tag.put("Buffers", BufferStateCodec.encode(buffers.snapshot(), buffers.deployments()));
+    tag.put("CraftingJobs", CraftingJobCodec.encode(craftingJobs.snapshot()));
     tag.put(
         "Networks",
         NetworkStateCodec.encode(
@@ -530,6 +558,7 @@ public final class DeviceSavedData extends SavedData {
     if (schema >= 7) fields.add("RouteCursors");
     if (schema >= 8) fields.add("Buffers");
     if (schema >= 12) fields.add("MachinePresets");
+    if (schema >= 13) fields.add("CraftingJobs");
     return fields;
   }
 

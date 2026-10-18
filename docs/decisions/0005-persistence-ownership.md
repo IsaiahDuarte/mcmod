@@ -212,3 +212,11 @@ normal save/reopen, known delivery/return without re-extraction, and preserved
 post-mutation uncertainty without calls/refunds/retirement. It uses a trusted test
 program principal; no player-login or independent-save/crash atomicity is inferred.
 The canonical build now runs this headless probe; desktop checks remain separate.
+
+
+## Crafting jobs — 2026-10-17
+
+World schema 13 adds the nested CraftingJobs table in the same SavedData as the
+ledgers, so job records and their ledger reservations share one save. Load rejects a
+job whose recorded reservation differs from the ledger. See
+[ADR 0031](0031-crafting-jobs.md).

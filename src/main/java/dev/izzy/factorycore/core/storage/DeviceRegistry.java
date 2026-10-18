@@ -112,6 +112,13 @@ public final class DeviceRegistry {
 
   public record Ownership(Handle handle, Definition definition, boolean conflict, long total) {}
 
+  /** Trusted owner-thread inspection of one owner's reserved units, including offline ledgers. */
+  public long reservation(UUID backing, UUID owner, ResourceKey key) {
+    checkThread();
+    var device = devices.get(Objects.requireNonNull(backing));
+    return device == null ? 0 : device.ledger.reservation(owner, key);
+  }
+
   /** Trusted owner-thread metadata inspection, including conflicted leases; null means unknown. */
   public Ownership ownership(UUID backing) {
     checkThread();

@@ -20,7 +20,7 @@ code/tests. Inspect current git changes and preserve unrelated work. Do not
 delegate unless I explicitly request it.
 
 Current recorded baseline: Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21.
-Canonical world writer is schema12; older schema numbers below identify introduction/migration history. Machine reference2, buffer policy2 and transfer context3 remain current formats.
+Canonical world writer is schema13 (CraftingJobs added); older schema numbers below identify introduction/migration history. Machine reference2, buffer policy2 and transfer context3 remain current formats.
 P0 is locally verified; P1/P2/P3 are partial; P4–P7 are unstarted. Cells/drives,
 controller/gateway/cable ownership, automatic wired availability, core resource
 accounting and scheduling exist. Physical energy banks, capabilities and portable

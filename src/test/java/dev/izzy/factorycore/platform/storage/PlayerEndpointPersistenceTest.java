@@ -99,8 +99,9 @@ class PlayerEndpointPersistenceTest {
     var original = fixture("registry-v8");
     original.putInt("Schema", 9);
     var migrated = DeviceSavedData.load(original, registries).save(new CompoundTag(), registries);
-    assertEquals(12, migrated.getInt("Schema"));
+    assertEquals(DeviceSavedData.SCHEMA, migrated.getInt("Schema"));
     migrated.remove("MachinePresets");
+    migrated.remove("CraftingJobs");
     migrated.putInt("Schema", 9);
     assertEquals(original, migrated);
     var context = TransferContextCodec.decode(fixture("transfer-player-context-v3"));

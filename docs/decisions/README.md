@@ -92,3 +92,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0029 — Portable pattern model and bounded recursive planner](0029-crafting-planner.md)
 
 - [0030 — Pattern items and Crafting Units](0030-patterns-and-crafting-units.md)
+
+- [0031 — Persisted crafting jobs with single reservations](0031-crafting-jobs.md)

@@ -83,7 +83,7 @@ class MachinePresetPersistenceTest {
     var saved = world();
     var expected = saved.machinePresets().snapshot();
     var tag = saved.save(new CompoundTag(), registries());
-    assertEquals(12, tag.getInt("Schema"));
+    assertEquals(DeviceSavedData.SCHEMA, tag.getInt("Schema"));
     var file = folder.resolve("deployments.dat");
     NbtIo.writeCompressed(tag, file);
     var loaded =
@@ -93,12 +93,14 @@ class MachinePresetPersistenceTest {
     assertEquals(expected, loaded.machinePresets().snapshot());
     var legacy = tag.copy();
     legacy.remove("MachinePresets");
+    legacy.remove("CraftingJobs");
     legacy.putInt("Schema", 11);
     var migrated = DeviceSavedData.load(legacy, registries());
     assertEquals("", migrated.diagnostic());
     assertTrue(migrated.machinePresets().snapshot().isEmpty());
     var encoded = migrated.save(new CompoundTag(), registries());
     encoded.remove("MachinePresets");
+    encoded.remove("CraftingJobs");
     encoded.putInt("Schema", 11);
     assertEquals(legacy, encoded);
   }
@@ -120,7 +122,7 @@ class MachinePresetPersistenceTest {
         case 5 -> entry.putLong("Lease", 2);
         case 6 -> entry.getCompound("Filter").putString("Mode", "FUTURE");
         case 7 -> entry.putLong("Target", -1);
-        case 8 -> tag.putInt("Schema", 13);
+        case 8 -> tag.putInt("Schema", DeviceSavedData.SCHEMA + 1);
         default -> throw new IllegalStateException();
       }
       var rejected = DeviceSavedData.load(tag, registries());

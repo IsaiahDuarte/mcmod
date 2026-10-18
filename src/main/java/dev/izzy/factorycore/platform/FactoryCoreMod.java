@@ -31,6 +31,10 @@ public final class FactoryCoreMod {
     NeoForge.EVENT_BUS.addListener(WorldNetworks::postTick);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::stopped);
     NeoForge.EVENT_BUS.addListener(dev.izzy.factorycore.platform.crafting.WorldCrafting::stopped);
+    NeoForge.EVENT_BUS.addListener(
+        dev.izzy.factorycore.platform.crafting.WorldCraftingJobs::postTick);
+    NeoForge.EVENT_BUS.addListener(
+        dev.izzy.factorycore.platform.crafting.WorldCraftingJobs::stopped);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::playerLeft);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::tagsReloaded);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::loaded);
