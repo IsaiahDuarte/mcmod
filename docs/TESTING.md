@@ -924,3 +924,17 @@ reported cycles broken by stock, priority alternatives chosen only when higher r
 lack inputs with stable-ID ties, byproducts serving later sibling steps (and the
 documented same-step limitation), depth and overflow LIMIT plans with no partial
 output, and Pattern contract rejection.
+
+
+## Pattern and Crafting Unit checks
+
+PatternContentsTest round-trips the component through its codec and stream codec
+with value equality and defensive copies, converts a cake pattern to exact component
+keys with bucket byproducts, and rejects empty, malformed, multi-count and invalid
+saved data. CraftingUnitGameTests cover hopper insertion and blank rejection, a
+segment-scoped index that deduplicates a copied pattern by stable position and keeps
+root and child patterns apart, breaking that drops the unit and every pattern,
+unsupported data kept inert across break/place, terminal Encode refusing without a
+blank and then consuming exactly one blank to record the server recipe's output and
+bucket remainders, and vanilla-only recipes/unlocks. TerminalCraftingPacketsTest now
+treats action 5 as the first invalid action because ENCODE is action 4.

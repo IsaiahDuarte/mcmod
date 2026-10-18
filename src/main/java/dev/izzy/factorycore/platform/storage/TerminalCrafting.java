@@ -175,6 +175,53 @@ final class TerminalCrafting {
   }
 
   /** Exact key, or null for stacks the resource codec cannot represent; those are never used. */
+  /**
+   * Writes the current recipe onto one blank pattern from the main inventory. The encoded output
+   * and remainders come from the server recipe; nothing else is consumed.
+   */
+  Outcome encode(ServerPlayer player) {
+    var holder = recipe(player);
+    if (holder.isEmpty()) return new Outcome(0, "no_recipe", null);
+    var codec = new PlatformResourceCodec(player.registryAccess());
+    var ghosts = ghosts(cells, codec);
+    var input = CraftingInput.of(3, 3, ghosts);
+    var recipe = holder.get().value();
+    var output = recipe.assemble(input, player.registryAccess());
+    var remainders = new ArrayList<ItemStack>();
+    for (var remainder : recipe.getRemainingItems(input))
+      if (!remainder.isEmpty()) remainders.add(remainder);
+    ItemStack encoded;
+    try {
+      var contents =
+          new dev.izzy.factorycore.platform.crafting.PatternContents(
+              java.util.UUID.randomUUID(), 1, 0, ghosts, output, remainders);
+      contents.pattern(codec);
+      encoded =
+          new ItemStack(
+              dev.izzy.factorycore.platform.crafting.CraftingContent.CRAFTING_PATTERN.get());
+      encoded.set(dev.izzy.factorycore.platform.crafting.CraftingContent.PATTERN.get(), contents);
+    } catch (IllegalArgumentException unsupported) {
+      return new Outcome(0, "unsupported", null);
+    }
+    var inventory = player.getInventory();
+    var trial = new ArrayList<ItemStack>(SLOTS);
+    for (int slot = 0; slot < SLOTS; slot++) trial.add(inventory.getItem(slot).copy());
+    boolean blank = false;
+    for (var stack : trial)
+      if (stack.is(dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN.get())) {
+        stack.shrink(1);
+        blank = true;
+        break;
+      }
+    if (!blank) return new Outcome(0, "no_blank", null);
+    if (!add(trial, encoded)) return new Outcome(0, "full", null);
+    for (int slot = 0; slot < SLOTS; slot++)
+      if (!ItemStack.matches(inventory.getItem(slot), trial.get(slot)))
+        inventory.setItem(slot, trial.get(slot).isEmpty() ? ItemStack.EMPTY : trial.get(slot));
+    inventory.setChanged();
+    return new Outcome(0, "encoded", null);
+  }
+
   private static ResourceKey keyOf(PlatformResourceCodec codec, ItemStack stack) {
     try {
       return codec.itemKey(stack);

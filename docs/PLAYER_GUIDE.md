@@ -540,3 +540,18 @@ blocks repair unchanged. Investigate those with backups and evidence.
 
 Port archives use standalone binary schema5 with the same device archive quotas
 and20-tick repair throttle. List visits at most16 structural handles.
+
+
+## Patterns and Crafting Units
+
+Craft Blank Patterns (four paper, four redstone and an iron ingot make four). Set up a
+recipe in the terminal crafting grid and press **Encode** with a blank in your
+inventory: one blank becomes a Crafting Pattern that remembers the exact ingredients,
+result and container remainders. Your ingredients are not used.
+
+Place a Crafting Unit (iron, gold, redstone and a crafting table) on your network and
+use a pattern on it, or feed patterns with a hopper. It holds nine. Use it with an
+empty hand to see how many patterns it has and its network status; sneak-use to take
+the last pattern back. Breaking it drops its patterns. Patterns are offered only to
+the network segment the unit is wired into; a branch's patterns are not shared with
+the parent yet. Autocrafting requests that use these patterns are not available yet.

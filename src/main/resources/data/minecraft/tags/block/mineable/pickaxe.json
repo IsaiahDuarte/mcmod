@@ -12,6 +12,7 @@
     "factorycore:buffered_interface",
     "factorycore:storage_terminal",
     "factorycore:machine_interface",
-    "factorycore:fuel_generator"
+    "factorycore:fuel_generator",
+    "factorycore:crafting_unit"
   ]
 }

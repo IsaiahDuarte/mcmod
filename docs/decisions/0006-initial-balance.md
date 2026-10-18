@@ -117,3 +117,11 @@ Machine Interface binding prerequisite: recipe ICI / CRC / ICI (four iron, four
 copper, one redstone), unpowered wired binding, default64 items/1000 mB/FE per
 tick. Current adapter maxima and unfinished advanced ports are recorded in
 [ADR 0019](0019-local-machine-bindings.md); survival usefulness/balance remains P6.
+
+
+## Patterns and Crafting Units — 2026-10-17
+
+Blank Pattern: PRP/RIR/PRP (four paper, four redstone, one iron) yields four. Crafting
+Unit: IGI/RTR/IGI (four iron, two gold, two redstone, one crafting table), unlocked by
+gold so it lands in the Expanded tier per R11. Nine patterns per unit. Survival
+usefulness and crafting concurrency balance remain P6 validation.

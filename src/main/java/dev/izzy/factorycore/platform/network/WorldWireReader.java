@@ -87,6 +87,12 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
     if (entity instanceof dev.izzy.factorycore.platform.storage.TerminalEntity terminal)
       return ordinary(
           block, id(position, "terminal"), NetworkTopology.Role.TERMINAL, terminal.current());
+    if (entity instanceof dev.izzy.factorycore.platform.crafting.CraftingUnitEntity unit)
+      return ordinary(
+          block,
+          id(position, "crafting_unit"),
+          NetworkTopology.Role.CRAFTER,
+          unit.current() && unit.diagnostic().isEmpty());
     if (entity instanceof dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity buffer) {
       boolean valid;
       try {

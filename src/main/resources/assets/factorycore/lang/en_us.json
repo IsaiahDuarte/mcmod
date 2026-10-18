@@ -384,5 +384,19 @@
   "gui.factorycore.terminal.grid.status.crafted": "Crafted ×%s",
   "gui.factorycore.terminal.grid.status.partial": "Partial ×%s",
   "gui.factorycore.terminal.grid.status.reserved": "Return staged items first",
-  "gui.factorycore.terminal.grid.status.unsupported": "Unsupported item"
+  "gui.factorycore.terminal.grid.status.unsupported": "Unsupported item",
+  "gui.factorycore.terminal.grid.encode": "Encode",
+  "gui.factorycore.terminal.grid.encode.help": "Write this recipe onto one Blank Pattern from your inventory. Put the pattern in a Crafting Unit to make it available to autocrafting.",
+  "gui.factorycore.terminal.grid.status.encoded": "Pattern encoded",
+  "gui.factorycore.terminal.grid.status.no_blank": "Need a Blank Pattern",
+  "item.factorycore.blank_pattern": "Blank Pattern",
+  "item.factorycore.crafting_pattern": "Crafting Pattern",
+  "block.factorycore.crafting_unit": "Crafting Unit",
+  "tooltip.factorycore.pattern_invalid": "Unreadable pattern data",
+  "tooltip.factorycore.pattern_output": "Crafts %s × %s",
+  "tooltip.factorycore.pattern_input": "  %s × %s",
+  "tooltip.factorycore.pattern_id": "Pattern %s, version %s",
+  "message.factorycore.crafting_unit_status": "Crafting Unit: %s / %s patterns; %s. Patterns are offered to this network segment.",
+  "message.factorycore.crafting_unit_full": "Crafting Unit is full (9 patterns).",
+  "message.factorycore.crafting_unit_invalid": "Only encoded Crafting Patterns fit here."
 }

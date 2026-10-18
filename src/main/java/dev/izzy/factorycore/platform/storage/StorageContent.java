@@ -65,6 +65,11 @@ public final class StorageContent {
                           output.accept(EnergyBankContent.item(tier));
                         output.accept(
                             dev.izzy.factorycore.platform.power.FuelGeneratorContent.ITEM.get());
+                        output.accept(
+                            dev.izzy.factorycore.platform.crafting.CraftingContent.UNIT_ITEM.get());
+                        output.accept(
+                            dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN
+                                .get());
                         for (var tier : CellTier.values()) output.accept(cell(tier));
                         output.accept(EXPANSION.get());
                         output.accept(ADVANCED.get());

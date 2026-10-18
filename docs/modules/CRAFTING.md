@@ -1,8 +1,9 @@
 # Crafting
 
-Portable P4 contracts. Physical patterns, Crafting Units/Interfaces, jobs and UI are
-not implemented yet; see [ADR 0029](../decisions/0029-crafting-planner.md) and the
-[terminal grid](STORAGE_TERMINAL.md#manual-crafting-grid) for manual crafting.
+P4 contracts. Portable planning is in [ADR 0029](../decisions/0029-crafting-planner.md);
+pattern items and Crafting Units are in [ADR 0030](../decisions/0030-patterns-and-crafting-units.md).
+Jobs, Crafting Interfaces and request UI are not implemented yet. Manual crafting is
+the [terminal grid](STORAGE_TERMINAL.md#manual-crafting-grid).
 
 ## Pattern
 
@@ -26,3 +27,15 @@ consumed, missing, cycles, nodes)`:
 
 Steps are `(pattern, version, output, crafts)` in dependency order. Instances are
 single-threaded and not shared; plans are immutable.
+
+
+## Pattern items and Crafting Units
+
+`platform.crafting.PatternContents` is the immutable `factorycore:pattern` component
+(codec and stream codec reject invalid data). `pattern(codec)` throws
+IllegalArgumentException for unrepresentable stacks. `CraftingUnitEntity.patterns()`
+is the nine-slot handler (Crafting Patterns with contents only, one per slot);
+`current()`, `origin()` and `diagnostic()` describe the holder. On the server thread,
+`WorldCrafting.get(server).index(scope)` returns `Index(byOutput, truncated)`;
+`producers(key)` feeds `CraftingPlanner` and `offer(patternId)` names the unit and
+slot that supplied a pattern. The index is advisory and grants no authority.

@@ -76,8 +76,8 @@ and model inventory transforms remain pending real-client inspection.
 | Machine Interface + block item | Port/side/label identification and preset state | P3 | Native six-facing blue-inset socket/item and translated local label/window/resource inspection implemented; preset authoring implemented | Settings controls verified at scales2–4; full casing/state inspection pending |
 | Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Implemented native nine-slot top geometry, item parent, tooltip and authorized item/slot/mode/status inspection and Import/Paused/owned-cleanup controls; full preset/inventory screens remain pending | Pending |
 | Crafting Interface + block item | Processing ports and busy/blocked state | P4 | Missing | Pending |
-| Crafting Unit + block item | Distinct crafting role and working/blocked state | P4 | Missing | Pending |
-| Pattern items, if used by selected implementation | Distinguish recipe/processing identity and invalid patterns | P4 | Missing; physical representation to be selected | Pending |
+| Crafting Unit + block item | Distinct crafting role and working/blocked state | P4 | Stand-in crafting-table/deepslate model, translated pattern-count/network status and full/invalid messages; working/blocked state awaits jobs | Pending |
+| Pattern items, if used by selected implementation | Distinguish recipe/processing identity and invalid patterns | P4 | Blank and Crafting Pattern items (vanilla paper/map stand-in icons), output/input/ID tooltips and invalid-data tooltip; processing patterns missing | Pending |
 | Program Controller + block item | Distinct program role; deployed/paused/trapped/power state | P5 | Missing | Pending |
 | Fuel Generator + block item | Fuel/remainder access and observable generation/buffer state | P5–P6, before powered demonstration | Implemented facing/lit stand-in models from vanilla blast-furnace/copper textures, translated status/blocked reasons and stored-FE tooltip; no screen | Pending |
 | Wireless Access Point + block item | Range/power/access status | P6 | Missing | Pending |

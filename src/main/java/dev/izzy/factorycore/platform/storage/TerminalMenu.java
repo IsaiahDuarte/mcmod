@@ -311,7 +311,8 @@ public final class TerminalMenu extends AbstractContainerMenu {
         || !authorized()
         || busy) return;
     int tick = sender.server.getTickCount();
-    if (command.action() == TerminalCraftingPackets.CRAFT) {
+    if (command.action() == TerminalCraftingPackets.CRAFT
+        || command.action() == TerminalCraftingPackets.ENCODE) {
       if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
       lastCommand = tick;
     } else {
@@ -355,6 +356,14 @@ public final class TerminalMenu extends AbstractContainerMenu {
         if (command.cell() < 0) crafting.clear();
         else crafting.set(command.cell(), null);
         gridStatus = "ready";
+      }
+      case TerminalCraftingPackets.ENCODE -> {
+        if (command.gridRevision() != crafting.revision()) {
+          publish();
+          return;
+        }
+        finishCraft(crafting.encode(sender));
+        return;
       }
       case TerminalCraftingPackets.CRAFT -> {
         if (command.gridRevision() != crafting.revision()) {

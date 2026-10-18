@@ -22,6 +22,7 @@ public final class FactoryCoreMod {
     dev.izzy.factorycore.platform.storage.MachineInterfaceContent.register(bus);
     EnergyBankContent.register(bus);
     dev.izzy.factorycore.platform.power.FuelGeneratorContent.register(bus);
+    dev.izzy.factorycore.platform.crafting.CraftingContent.register(bus);
     NetworkContent.register(bus);
     NeoForge.EVENT_BUS.addListener(DeviceSavedData::serverStarted);
     NeoForge.EVENT_BUS.addListener(
@@ -29,6 +30,7 @@ public final class FactoryCoreMod {
     NeoForge.EVENT_BUS.addListener(dev.izzy.factorycore.platform.storage.RecoveryCommands::stopped);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::postTick);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::stopped);
+    NeoForge.EVENT_BUS.addListener(dev.izzy.factorycore.platform.crafting.WorldCrafting::stopped);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::playerLeft);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::tagsReloaded);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::loaded);

@@ -422,3 +422,10 @@ inputs/outputs/byproducts, priority alternatives with stable-ID ties, cycle and
 shortage explanations, and a stock-only `consumed` set for a single reservation.
 Pattern items, Crafting Units, jobs and the request UI remain unimplemented, so A06
 is still unmet.
+
+
+Blank and Crafting Pattern items and the Crafting Unit are implemented. The terminal
+grid encodes the server-matched recipe (exact cells, output and remainders) onto a
+blank; units hold nine patterns and offer them only to their own segment, with
+bounded deduplicated indexing. Jobs and requests still do not exist, so A06/A07 stay
+unmet.

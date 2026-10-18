@@ -63,7 +63,7 @@ class TerminalCraftingPacketsTest {
     for (int[] bad :
         new int[][] {
           {-1, 0, 0, 1},
-          {4, 0, 0, 1},
+          {TerminalCraftingPackets.ENCODE + 1, 0, 0, 1},
           {0, 9, 0, 1},
           {0, -2, 0, 1},
           {0, 0, 36, 1},

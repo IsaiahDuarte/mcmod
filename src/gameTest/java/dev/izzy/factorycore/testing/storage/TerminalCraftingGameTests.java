@@ -265,8 +265,10 @@ public final class TerminalCraftingGameTests {
                   f.saved.registry().stock(f.cell, log).total() == 1
                       && count(f, Items.OAK_LOG) == 0,
                   "Exactly four logs left storage and all four were consumed");
-              grid(f, TerminalCraftingPackets.CRAFT, -1, 0, 3, new byte[32]);
             })
+        // Crafts share the menu's two-tick command throttle; a same-tick follow-up is ignored.
+        .thenIdle(3)
+        .thenExecute(() -> grid(f, TerminalCraftingPackets.CRAFT, -1, 0, 3, new byte[32]))
         .thenWaitUntil(
             () -> {
               menu(f).broadcastChanges();

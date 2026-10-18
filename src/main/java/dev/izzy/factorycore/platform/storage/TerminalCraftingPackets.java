@@ -14,8 +14,11 @@ import net.minecraft.resources.ResourceLocation;
  * only; the server resolves exact keys and never trusts a client stack, recipe or quantity.
  */
 public final class TerminalCraftingPackets {
-  /** Ghost from own slot (source=slot, fingerprint), current row (source=row), clear, craft. */
-  public static final int SET_OWN = 0, SET_ROW = 1, CLEAR = 2, CRAFT = 3;
+  /**
+   * Ghost from own slot (source=slot, fingerprint), current row (source=row), clear, craft, and
+   * encode the current recipe onto a blank pattern from the player's main inventory.
+   */
+  public static final int SET_OWN = 0, SET_ROW = 1, CLEAR = 2, CRAFT = 3, ENCODE = 4;
 
   public record Command(
       int menu,
@@ -35,7 +38,7 @@ public final class TerminalCraftingPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < SET_OWN
-          || action > CRAFT
+          || action > ENCODE
           || cell < -1
           || cell >= GridRequirement.CELLS
           || source < 0

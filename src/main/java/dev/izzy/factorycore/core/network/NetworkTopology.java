@@ -27,7 +27,8 @@ public final class NetworkTopology {
     STORAGE,
     INTERFACE,
     PROGRAM,
-    TERMINAL
+    TERMINAL,
+    CRAFTER
   }
 
   public enum Status {

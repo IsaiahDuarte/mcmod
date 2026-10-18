@@ -25,7 +25,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private EditBox search;
   private int selected;
   private long shownRevision;
-  private Button one, stack, next, returning, useRow, craftOne, craftMany, clearGrid;
+  private Button one, stack, next, returning, useRow, craftOne, craftMany, clearGrid, encode;
   private int target;
   public static final int GRID_X = 236, GRID_Y = 146, RESULT_X = 314, RESULT_Y = 170;
 
@@ -102,6 +102,17 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             210,
             32,
             () -> grid(TerminalCraftingPackets.CLEAR, -1, 0, 1, new byte[32]));
+    addEncode();
+  }
+
+  private void addEncode() {
+    encode =
+        gridButton(
+            "encode",
+            296,
+            GRID_Y + 46,
+            44,
+            () -> grid(TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]));
   }
 
   private Button gridButton(String key, int x, int y, int width, Runnable action) {
@@ -177,6 +188,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     craftOne.active = !view.busy() && !menu.gridView().result().isEmpty();
     craftMany.active = craftOne.active;
     clearGrid.active = !view.busy();
+    encode.active = craftOne.active;
   }
 
   @Override
@@ -282,9 +294,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                     "gui.factorycore.terminal.grid.status." + menu.gridView().status(),
                     menu.gridView().crafted())
                 .getString(),
-            48),
-        294,
-        196,
+            58),
+        282,
+        136,
         0xe4bc83,
         false);
     var view = menu.view();
