@@ -24,8 +24,79 @@ final class DeviceRecoveryCommands {
   }
 
   static LiteralArgumentBuilder<CommandSourceStack> commands(boolean bank) {
-    return Commands.literal(bank ? "bank" : "cell")
-        .requires(source -> source.hasPermission(2))
+    var root = commands(bank, Commands.literal(bank ? "bank" : "cell"));
+    if (bank) return root;
+    return root.then(
+        Commands.literal("adopt")
+            .then(
+                Commands.argument("backing", StringArgumentType.word())
+                    .then(
+                        Commands.argument("generation", LongArgumentType.longArg(1))
+                            .then(
+                                Commands.argument(
+                                        "drive",
+                                        net.minecraft.commands.arguments.coordinates
+                                            .BlockPosArgument.blockPos())
+                                    .then(
+                                        Commands.argument(
+                                                "slot",
+                                                com.mojang.brigadier.arguments.IntegerArgumentType
+                                                    .integer(0, 3))
+                                            .executes(
+                                                c ->
+                                                    adopt(
+                                                        c.getSource(),
+                                                        StringArgumentType.getString(c, "backing"),
+                                                        LongArgumentType.getLong(c, "generation"),
+                                                        net.minecraft.commands.arguments.coordinates
+                                                            .BlockPosArgument.getBlockPos(
+                                                            c, "drive"),
+                                                        com.mojang.brigadier.arguments
+                                                            .IntegerArgumentType.getInteger(
+                                                            c, "slot"))))))));
+  }
+
+  /**
+   * Operator reconciliation of an independent-save mismatch: adopt the loaded drive slot's
+   * reference in the source's dimension as the canonical holder. All proof is server-side.
+   */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and level.
+  private static int adopt(
+      CommandSourceStack source, String backing, long generation, BlockPos drive, int slot) {
+    try {
+      var server = source.getServer();
+      var owner = DeviceSavedData.get(server).registry().ownership(parse(backing));
+      if (owner == null || !matches(owner, false) || owner.handle().generation() != generation)
+        throw new IllegalStateException("Canonical lease changed");
+      var level = source.getLevel();
+      if (level.getChunkSource().getChunkNow(drive.getX() >> 4, drive.getZ() >> 4) == null
+          || !(level.getBlockEntity(drive) instanceof StorageDriveEntity holder))
+        throw new IllegalStateException("Adopting drive unavailable");
+      if (!admitRepair(source)) return 0;
+      var path = holder.adoptCell(owner.handle(), slot);
+      source.sendSuccess(
+          () ->
+              Component.translatable(
+                  "command.factorycore.recovery.cell.adopted",
+                  backing,
+                  drive.toShortString(),
+                  slot,
+                  generation + 1,
+                  path.getFileName().toString()),
+          true);
+      return 1;
+    } catch (IOException auditFailure) {
+      source.sendFailure(Component.translatable("command.factorycore.recovery.audit"));
+      return 0;
+    } catch (IllegalArgumentException | IllegalStateException rejected) {
+      source.sendFailure(Component.translatable("command.factorycore.recovery.cell.adopt_refused"));
+      return 0;
+    }
+  }
+
+  private static LiteralArgumentBuilder<CommandSourceStack> commands(
+      boolean bank, LiteralArgumentBuilder<CommandSourceStack> root) {
+    return root.requires(source -> source.hasPermission(2))
         .then(
             Commands.literal("list")
                 .executes(c -> list(c.getSource(), null, bank))

@@ -136,6 +136,84 @@ public final class StorageDriveEntity extends BlockEntity {
     return path;
   }
 
+  /**
+   * Independent-save reconciliation adapter: adopts the mismatched reference in {@code slot} of
+   * this loaded drive as the canonical holder of {@code expected}. Refuses unless the old canonical
+   * holder is loaded and holds no reference to the backing, the slot holds exactly one
+   * matching-tier cell of the same world/backing with a different generation, and no transfer is
+   * unresolved. The single ledger moves; quantities, claims and other copies are never touched.
+   */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
+  public java.nio.file.Path adoptCell(DeviceRegistry.Handle expected, int slot)
+      throws java.io.IOException {
+    checkSlot(slot);
+    if (!(level instanceof ServerLevel server)
+        || isRemoved()
+        || rejected != null
+        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
+            == null
+        || server.getBlockEntity(worldPosition) != this)
+      throw new IllegalStateException("Adopting drive must be loaded and readable");
+    var saved = DeviceSavedData.get(server.getServer());
+    var registry = saved.registry();
+    var owner = registry.ownership(expected.backing());
+    if (owner == null
+        || !owner.handle().equals(expected)
+        || owner.definition().location() == null
+        || expected.generation() == Long.MAX_VALUE
+        || saved.transfers().unresolved(expected.backing()) != null)
+      throw new IllegalStateException("Canonical lease cannot be adopted");
+    var stack = cells[slot];
+    var physical = CellHandleData.read(stack);
+    if (physical == null
+        || !physical.world().equals(expected.world())
+        || !physical.backing().equals(expected.backing())
+        || physical.generation() == expected.generation()
+        || stack.getCount() != 1
+        || !(stack.getItem() instanceof CellItem item)
+        || item.tier().kind() != owner.definition().kind()
+        || item.tier().capacity() != owner.definition().capacity()
+        || item.tier().infinite() != owner.definition().infinite())
+      throw new IllegalStateException("Exact mismatched cell reference required");
+    var canonical = owner.definition().location();
+    var oldLevel =
+        server
+            .getServer()
+            .getLevel(
+                net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION,
+                    net.minecraft.resources.ResourceLocation.parse(canonical.dimension())));
+    var oldPos = BlockPos.of(canonical.position());
+    if (oldLevel == null
+        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+      throw new IllegalStateException("Old canonical holder must be loaded");
+    if (oldLevel.getBlockEntity(oldPos) instanceof StorageDriveEntity old) {
+      for (int index = 0; index < old.cells.length; index++) {
+        var held = CellHandleData.read(old.cells[index]);
+        if (held != null && held.backing().equals(expected.backing()))
+          throw new IllegalStateException("Old canonical holder still references the backing");
+      }
+    }
+    var path =
+        DeviceRecoveryAudit.preserveAdoption(
+            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            registry.evidence(expected.backing()),
+            location(slot),
+            stack.save(server.registryAccess()));
+    var adopted = registry.adopt(expected, location(slot));
+    if (adopted.failure() != DeviceRegistry.Failure.OK)
+      throw new IllegalStateException("Adoption refused: " + adopted.failure());
+    var replacement = stack.copy();
+    CellHandleData.write(replacement, adopted.handle());
+    cells[slot] = replacement;
+    setChanged();
+    diagnostic = "";
+    WorldNetworks.changed(oldLevel, oldPos);
+    onLoad(); // Recheck every slot; other faulty references keep their diagnostic.
+    return path;
+  }
+
   public List<ItemStack> ejectForBreak() {
     if (!(level instanceof ServerLevel)) return List.of();
     var dropped = new ArrayList<ItemStack>(4);

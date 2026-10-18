@@ -525,3 +525,6 @@ committed per successful callback, restored into fresh instances) per R09.
 
 Processing patterns now support fluid inputs and outputs through the Crafting Interface's
 machine fluid port (R06 fluid evidence; the grid shows fluid amounts as 250 mB units).
+
+Independent-save mismatches of storage cells stay inert and can be adopted by an operator
+with evidence (A13 partial; two-JVM injection for older SavedData).

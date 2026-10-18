@@ -802,4 +802,88 @@ public final class StorageDriveGameTests {
     }
     helper.assertTrue(rejected, "Operation must reject without replacement");
   }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void operatorAdoptsAStaleChunkReferenceAfterAnIndependentSaveMismatch(
+      GameTestHelper helper) {
+    var registry = registry(helper);
+    var first = drive(helper, FIRST);
+    var second = drive(helper, SECOND);
+    var access = helper.getLevel().registryAccess();
+    first.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    var original = CellHandleData.read(first.cell(0));
+    activate(helper, first);
+    registry.insert(original, IRON, 20);
+    var firstBefore = first.saveWithFullMetadata(access);
+    var secondBefore = second.saveWithFullMetadata(access);
+    // The canonical save records the move to the second drive...
+    second.installCell(first.removeCell(0));
+    var canonical = CellHandleData.read(second.cell(0));
+    helper.assertTrue(
+        canonical.generation() == original.generation() + 2, "Detach and attach each rotate");
+    // ...but both chunks were saved before it: the first drive still holds the old reference.
+    registry.availability(canonical, second.location(0), false);
+    second.loadWithComponents(secondBefore, access);
+    second.onLoad();
+    first.loadWithComponents(firstBefore, access);
+    first.onLoad();
+    helper.assertTrue(
+        !first.diagnostic().isEmpty()
+            && !registry.stock(canonical, IRON).loaded()
+            && registry.stock(canonical, IRON).total() == 20
+            && registry
+                .ownership(original.backing())
+                .definition()
+                .location()
+                .equals(second.location(0)),
+        "The mismatch is inert: one ledger, offline, no copy at either holder");
+    var console = helper.getLevel().getServer().createCommandSourceStack();
+    var pos = helper.absolutePos(FIRST);
+    var adopt =
+        "factorycore recovery cell adopt "
+            + original.backing()
+            + " %d "
+            + pos.getX()
+            + " "
+            + pos.getY()
+            + " "
+            + pos.getZ()
+            + " %d";
+    helper.assertTrue(
+        cellCommand(console.withPermission(0), adopt.formatted(canonical.generation(), 0)) < 1,
+        "Ordinary command sources cannot adopt");
+    helper.assertTrue(
+        cellCommand(console, adopt.formatted(original.generation(), 0)) == 0,
+        "A stale expected canonical generation is refused");
+    helper.assertTrue(
+        cellCommand(console, adopt.formatted(canonical.generation(), 1)) == 0,
+        "An empty target slot is refused");
+    helper.assertTrue(
+        registry.ownership(original.backing()).handle().equals(canonical),
+        "Refusals change nothing");
+    helper
+        .startSequence()
+        .thenIdle(21) // One audited repair attempt per 20 ticks.
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  cellCommand(console, adopt.formatted(canonical.generation(), 0)) == 1,
+                  "Operator adopts the exact mismatched reference");
+              var adopted = CellHandleData.read(first.cell(0));
+              helper.assertTrue(
+                  adopted.generation() == canonical.generation() + 1
+                      && registry.ownership(original.backing()).handle().equals(adopted)
+                      && registry.definition(adopted).location().equals(first.location(0))
+                      && first.diagnostic().isEmpty()
+                      && registry.validate(original) == DeviceRegistry.Failure.STALE
+                      && registry.validate(canonical) == DeviceRegistry.Failure.STALE,
+                  "The single canonical lease moves to the adopted reference; others are stale");
+              activate(helper, first);
+              helper.assertTrue(
+                  registry.stock(adopted, IRON).total() == 20
+                      && registry.extract(adopted, IRON, 20, null).amount() == 20,
+                  "Exactly the original 20 items are usable again, once");
+            })
+        .thenSucceed();
+  }
 }

@@ -689,3 +689,14 @@ fluid to place it in a cell. A fluid cell's count is in quarter buckets: 4 means
 and 64 means 16,000 mB. Patterns may mix items and fluids. The Crafting Interface uses the
 machine's fluid tanks for fluids, so the machine must accept fluids from that side.
 Leaving processing mode removes fluid cells from the grid.
+
+
+### After a crash: adopting a cell
+
+If a server stops between saving its chunks and saving Factory Core's data, a drive may
+show a "stale placed cell" message, and that cell's contents are unavailable. Nothing is
+lost or duplicated. An operator can inspect the cell with `/factorycore recovery cell show
+<backing>`. Then run `/factorycore recovery cell adopt <backing> <generation> <x y z>
+<slot>`, naming the drive slot that physically holds the cell. The original location
+must be loaded and must not still hold the cell. Keep backups. The command records
+evidence before changing anything.

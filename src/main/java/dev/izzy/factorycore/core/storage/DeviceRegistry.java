@@ -167,6 +167,34 @@ public final class DeviceRegistry {
     return result(Failure.OK, device);
   }
 
+  /**
+   * Trusted independent-save reconciliation: moves the one canonical placed lease of {@code
+   * expected} (current generation, conflicted or not) to {@code target}. The caller must preserve
+   * evidence and prove that the old canonical holder is loaded and holds no reference to this
+   * backing, that the target physically holds a mismatched reference, and that no transfer is
+   * unresolved. Keeps all stock/claims, consumes one generation (so every other copy is stale),
+   * clears conflict and leaves routing offline. Portable leases and occupied targets are refused.
+   */
+  public LeaseResult adopt(Handle expected, Location target) {
+    checkThread();
+    Objects.requireNonNull(target);
+    var invalid = validate(expected);
+    if (invalid != Failure.OK && invalid != Failure.CONFLICT) return result(invalid, null);
+    var device = devices.get(expected.backing());
+    if (device.location == null || device.location.equals(target))
+      return result(Failure.OFFLINE, null);
+    if (placements.containsKey(target)) return result(Failure.OCCUPIED, null);
+    if (device.generation == Long.MAX_VALUE) return result(Failure.LIMIT, null);
+    placements.remove(device.location);
+    placements.put(target, expected.backing());
+    device.location = target;
+    device.generation++;
+    device.conflict = false;
+    device.ledger.setLoaded(false);
+    changed.run();
+    return result(Failure.OK, device);
+  }
+
   private static final class Device {
     final ResourceLedger ledger;
     long generation;

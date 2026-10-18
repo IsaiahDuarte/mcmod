@@ -390,4 +390,57 @@ class DeviceRegistryTest {
     assertThrows(IllegalArgumentException.class, () -> registry.handles(null, 17));
     assertTrue(registry.handles(actual.getLast(), 8).handles().isEmpty());
   }
+
+  @Test
+  void adoptMovesTheSingleCanonicalLeaseAndStalesEveryOtherReference() {
+    var dirty = new java.util.concurrent.atomic.AtomicInteger();
+    var registry = registry(dirty::incrementAndGet);
+    var current = placed(registry);
+    var location = registry.definition(current).location();
+    assertEquals(100, registry.insert(current, KEY, 100).amount());
+    registry.availability(current, location, true);
+    var target = location.equals(FIRST) ? SECOND : FIRST;
+    int before = dirty.get();
+    var adopted = registry.adopt(current, target);
+    assertEquals(DeviceRegistry.Failure.OK, adopted.failure());
+    var moved = adopted.handle();
+    assertEquals(current.generation() + 1, moved.generation());
+    assertEquals(target, registry.definition(moved).location());
+    assertTrue(registry.vacant(location), "The old canonical slot is released");
+    assertFalse(registry.stock(moved, KEY).loaded(), "Routing stays offline until revalidated");
+    assertEquals(100, registry.stock(moved, KEY).total(), "Contents are unchanged");
+    assertEquals(DeviceRegistry.Failure.STALE, registry.validate(current));
+    assertEquals(before + 1, dirty.get());
+    assertEquals(DeviceRegistry.Failure.OK, registry.attach(moved, target).failure());
+    var restored = DeviceRegistry.restore(registry.snapshot(), () -> {}, UUID::randomUUID);
+    assertEquals(target, restored.definition(moved).location());
+  }
+
+  @Test
+  void adoptRefusesStalePortableOccupiedAndSameLocationWithoutMutation() {
+    var registry = registry(() -> {});
+    var current = placed(registry);
+    var location = registry.definition(current).location();
+    var target = location.equals(FIRST) ? SECOND : FIRST;
+    var other = registry.create(ResourceKind.ITEM, 1_000, false, 16, 16).handle();
+    var otherPlaced = registry.attach(other, target).handle();
+    var before = registry.snapshot();
+    assertEquals(DeviceRegistry.Failure.OCCUPIED, registry.adopt(current, target).failure());
+    assertEquals(DeviceRegistry.Failure.OFFLINE, registry.adopt(current, location).failure());
+    assertEquals(
+        DeviceRegistry.Failure.STALE,
+        registry
+            .adopt(
+                new DeviceRegistry.Handle(WORLD, current.backing(), current.generation() - 1),
+                target)
+            .failure());
+    assertEquals(before, registry.snapshot());
+    var portable = registry.detach(otherPlaced, target).handle();
+    assertEquals(
+        DeviceRegistry.Failure.OFFLINE,
+        registry
+            .adopt(portable, new DeviceRegistry.Location("minecraft:overworld", 300, 2))
+            .failure(),
+        "A portable lease cannot prove its item is gone");
+  }
 }

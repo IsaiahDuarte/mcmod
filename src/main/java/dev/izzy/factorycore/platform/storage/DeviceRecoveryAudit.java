@@ -20,6 +20,28 @@ public final class DeviceRecoveryAudit {
     return write(world, owner.ledger().id(), envelope);
   }
 
+  /**
+   * Cell adoption evidence (schema 3): the canonical lease before adoption (conflicted or not), the
+   * adopted target location and the complete adopted physical stack.
+   */
+  static Path preserveAdoption(
+      Path world,
+      UUID namespace,
+      DeviceRegistry.Stored owner,
+      DeviceRegistry.Location target,
+      Tag stack)
+      throws IOException {
+    var envelope = envelope(namespace, owner, 3, false);
+    envelope.putString("HolderKind", "CELL_ADOPTION");
+    var adopted = new CompoundTag();
+    adopted.putString("Dimension", target.dimension());
+    adopted.putLong("Position", target.position());
+    adopted.putInt("Slot", target.slot());
+    envelope.put("Target", adopted);
+    envelope.put("Stack", stack.copy());
+    return write(world, owner.ledger().id(), envelope);
+  }
+
   static Path preserveBank(
       Path world,
       UUID namespace,
@@ -159,7 +181,12 @@ public final class DeviceRecoveryAudit {
   }
 
   private static CompoundTag envelope(UUID namespace, DeviceRegistry.Stored owner, int schema) {
-    if (!owner.conflict() || owner.location() == null)
+    return envelope(namespace, owner, schema, true);
+  }
+
+  private static CompoundTag envelope(
+      UUID namespace, DeviceRegistry.Stored owner, int schema, boolean conflict) {
+    if (conflict && !owner.conflict() || owner.location() == null)
       throw new IllegalArgumentException("Expected placed conflict evidence");
     var envelope = new CompoundTag();
     envelope.putInt("Schema", schema);

@@ -333,7 +333,7 @@
   "command.factorycore.recovery.queued": "Recovery admission=%s. Before-state evidence: factorycore-recovery/%s",
   "command.factorycore.recovery.not_complete": "Only known complete empty records may be archived and retired. No transfer changed.",
   "command.factorycore.recovery.retired": "Retired completed record %s. Evidence: factorycore-recovery/%s",
-  "command.factorycore.recovery.cell.help": "Repair supports only the loaded original drive slot, matching cell and generation, with no unresolved transfers. Preserve backups. Other holders stay inert; uncertain transfers require investigation.",
+  "command.factorycore.recovery.cell.help": "Repair supports only the loaded original drive slot, matching cell and generation, with no unresolved transfers. Preserve backups. Other holders stay inert; uncertain transfers require investigation. After an interrupted save, use \"cell adopt <backing> <generation> <drive> <slot>\" to make a mismatched reference canonical.",
   "command.factorycore.recovery.cell.repaired": "Cell %s repaired at its original holder, generation %s. Clones are stale. Before-state evidence: %s",
   "command.factorycore.recovery.device.row": "Storage %s | generation %s | conflict=%s | %s total=%s | %s",
   "command.factorycore.recovery.device.refused": "Storage repair/inspection refused: check backing, generation, conflict, loaded original holder and unresolved transfers. No resources were moved.",
@@ -570,5 +570,7 @@
   "guide.factorycore.page.13": "13. Links\n\nPlace Wireless Link Endpoints against two gateways up to 256 blocks apart. Sneak-use one, then the other, to pair them. Each end needs its own FE.",
   "gui.factorycore.terminal.jei.too_large": "This recipe does not fit the 3×3 grid",
   "tooltip.factorycore.pattern_fluid_input": "Uses %s mB %s",
-  "tooltip.factorycore.pattern_fluid_output": "Makes %s mB %s"
+  "tooltip.factorycore.pattern_fluid_output": "Makes %s mB %s",
+  "command.factorycore.recovery.cell.adopted": "Cell %s adopted at %s slot %s, generation %s. Every other reference is now stale. Before-state evidence: %s",
+  "command.factorycore.recovery.cell.adopt_refused": "Adoption refused: the canonical generation must match, the old holder must be loaded without this cell, the drive slot must hold exactly one mismatched reference of the same tier, and no transfer may be unresolved. Nothing changed."
 }

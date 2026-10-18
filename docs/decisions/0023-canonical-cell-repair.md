@@ -59,7 +59,8 @@ the transfer audit limit. The separate bounded binary envelope avoids that expan
 Canonical and chunk updates complete synchronously before an orderly save, but
 Minecraft saves them independently. A hard interruption may leave a stale physical
 reference with newer canonical generation, or the converse. Such a mismatch stays
-inert; this command intentionally refuses it. Preserve the audit and full backups
+inert; this command intentionally refuses it (cells can now be adopted explicitly, see
+[ADR 0046](0046-independent-save-adoption.md)). Preserve the audit and full backups
 for investigation. Do not promise atomic crash recovery, automatic reconciliation,
 uncertain external refunds, or repair of buffers/structural nodes.
 

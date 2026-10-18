@@ -144,4 +144,36 @@ class DeviceRecoveryAuditTest {
         () -> DeviceRecoveryAudit.preserve(folder, UUID.randomUUID(), owner, new CompoundTag()));
     assertEquals("preserved", Files.readString(path));
   }
+
+  @Test
+  void adoptionEvidenceAcceptsUnconflictedLeasesAndRecordsTheTarget() throws Exception {
+    var conflicted = owner();
+    var owner =
+        new DeviceRegistry.Stored(
+            conflicted.ledger(), conflicted.generation(), conflicted.location(), false);
+    var world = UUID.randomUUID();
+    var target = new DeviceRegistry.Location("minecraft:overworld", 456, 1);
+    var stack = TagParser.parseTag("{id:'factorycore:starter_fluid_cell',count:1}");
+    var file = DeviceRecoveryAudit.preserveAdoption(folder, world, owner, target, stack);
+    CompoundTag evidence;
+    try (var input = new DataInputStream(Files.newInputStream(file))) {
+      evidence = NbtIo.read(input, NbtAccounter.create(DeviceRecoveryAudit.MAX_FILE_BYTES * 2L));
+    }
+    assertEquals(3, evidence.getInt("Schema"));
+    assertEquals("CELL_ADOPTION", evidence.getString("HolderKind"));
+    assertFalse(evidence.getBoolean("Conflict"));
+    assertEquals(owner.location().position(), evidence.getCompound("Location").getLong("Position"));
+    assertEquals(456, evidence.getCompound("Target").getLong("Position"));
+    assertEquals(1, evidence.getCompound("Target").getInt("Slot"));
+    assertEquals(owner.ledger(), LedgerStateCodec.decode(evidence.getByteArray("Ledger")));
+    assertEquals(stack, evidence.get("Stack"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DeviceRecoveryAudit.preserve(folder, world, owner, stack),
+        "Conflict repair evidence still requires a conflict");
+    var portable = new DeviceRegistry.Stored(owner.ledger(), 3, null, false);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DeviceRecoveryAudit.preserveAdoption(folder, world, portable, target, stack));
+  }
 }

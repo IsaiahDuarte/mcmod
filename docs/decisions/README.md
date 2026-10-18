@@ -115,3 +115,4 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0043 — Optional JEI integration](0043-jei-integration.md)
 - [0044 — Persistent guest state](0044-persistent-guest-state.md)
 - [0045 — Fluid processing patterns](0045-fluid-processing.md)
+- [0046 — Independent-save mismatch adoption for cells](0046-independent-save-adoption.md)

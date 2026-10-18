@@ -83,6 +83,27 @@ neoForge {
             systemProperty "factorycore.staging.report", file("build/reports/staging-server/restore.txt").absolutePath
             systemProperty "factorycore.staging.expected", file("build/reports/staging-server/expected.properties").absolutePath
         }
+        saveOrderSeedServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/save-order-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.saveorder.server", "true"
+            systemProperty "factorycore.saveorder.report", file("build/reports/save-order/seed.txt").absolutePath
+            systemProperty "factorycore.saveorder.expected", file("build/reports/save-order/expected.properties").absolutePath
+        }
+        saveOrderRestoreServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/save-order-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.saveorder.server", "true"
+            systemProperty "factorycore.saveorder.restore", "true"
+            systemProperty "factorycore.saveorder.report", file("build/reports/save-order/restore.txt").absolutePath
+            systemProperty "factorycore.saveorder.expected", file("build/reports/save-order/expected.properties").absolutePath
+        }
         client {
             client()
             gameDirectory = file('run/client')
@@ -286,3 +307,33 @@ tasks.named('runStagingRecoveryServer', JavaExec) {
     }
 }
 tasks.named('check') { dependsOn tasks.named('runStagingRecoveryServer') }
+
+// Required independent-save injection: canonical SavedData older than the chunks it describes.
+tasks.named('runSaveOrderSeedServer', JavaExec) {
+    doFirst {
+        delete file('build/save-order-run/world')
+        delete file('build/reports/save-order')
+        def settings = file('build/save-order-run/server.properties')
+        settings.parentFile.mkdirs()
+        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+    }
+    doLast {
+        def result = file('build/reports/save-order/seed.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order seed did not complete.')
+    }
+}
+tasks.named('runSaveOrderRestoreServer', JavaExec) {
+    dependsOn tasks.named('runSaveOrderSeedServer')
+    doFirst {
+        def data = file('build/save-order-run/world/data/factorycore_devices.dat')
+        def before = file('build/save-order-run/world/data/factorycore_devices.before')
+        if (!before.isFile()) throw new GradleException('Save-order seed left no older SavedData.')
+        // Simulate an interruption after chunks were saved but before SavedData was.
+        java.nio.file.Files.copy(before.toPath(), data.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+    doLast {
+        def result = file('build/reports/save-order/restore.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order restore did not complete.')
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runSaveOrderRestoreServer') }

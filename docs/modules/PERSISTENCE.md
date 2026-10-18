@@ -267,3 +267,13 @@ Actual accepted known/uncertain staging now has a required [two-JVM dedicated re
   suspended stack is persisted.
 
 See [ADR0044](../decisions/0044-persistent-guest-state.md).
+
+
+## Independent-save mismatch adoption (cells) — 2026-10-18
+
+A drive slot whose reference generation differs from the canonical lease stays inert
+(offline, exactly one ledger). Operators may adopt it with `factorycore recovery cell
+adopt`. This writes cell audit schema 3 evidence first and needs no world migration.
+The [two-JVM injection record](../evidence/save-order-v1-2026-10-18.md) shows an older
+SavedData with newer chunks: the mismatch is inert, then adoption moves the lease
+exactly once. See [ADR0046](../decisions/0046-independent-save-adoption.md).

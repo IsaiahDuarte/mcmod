@@ -1198,3 +1198,18 @@ These tests run headless:
 - Fluid rows are refused outside processing mode.
 - In processing mode, a count of 4 encodes exactly 1,000 mB of water.
 - Leaving processing mode drops the fluid cell.
+
+
+## Independent-save checks
+
+- **JVM tests:** `DeviceRegistryTest` covers adoption (the lease moves once, other copies
+  go stale, routing stays offline, reload) and its refusals (occupied, same location,
+  stale, portable), with no mutation on refusal. `DeviceRecoveryAuditTest` checks the
+  schema-3 adoption evidence.
+- **Single-JVM GameTest:**
+  `StorageDriveGameTests.operatorAdoptsAStaleChunkReferenceAfterAnIndependentSaveMismatch`
+  (SavedData newer than chunks) checks that the mismatch is inert, ordinary sources and
+  stale/empty-slot adoptions are refused, and the console adopts so exactly 20 items are
+  usable once.
+- **Two-JVM injection:** the [save-order record](evidence/save-order-v1-2026-10-18.md)
+  covers older SavedData with newer chunks (`runSaveOrderRestoreServer`, part of `check`).
