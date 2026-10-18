@@ -101,7 +101,7 @@ row. Share navigation and components where appropriate.
 | Permissions and gateway policies | Authorized view/edit/ownership transfer, inherited limits and revocation feedback | P2–P6 | Missing / Pending |
 | Friendly editor and deployment | Highlighting, completion, errors, undo, templates, draft/deployed, logs/quotas, bounded Wasm upload | P5–P6 | Missing / Pending |
 | Wireless setup | Pairing, direction, range, authorization, power loss and reconnection | P6 | Missing / Pending |
-| Device diagnostics and recovery | Safe next actions, preserved evidence, authorized reconciliation and unresolved quarantine | P2–P6 | Partial translated operator inspection/known cleanup/canonical cell/bank/buffer/controller/gateway repair; broader reconciliation missing / Native command behavior checked, graphical walkthrough pending |
+| Device diagnostics and recovery | Safe next actions, preserved evidence, authorized reconciliation and unresolved quarantine | P2–P6 | Partial translated operator inspection/known cleanup/canonical cell/bank/buffer/controller/gateway/connector/machine repair; broader reconciliation missing / Native command behavior checked, graphical walkthrough pending |
 | In-game help and progression | First-network diagram, hopper walkthrough, offhand upgrades, factory examples and next unlocks | P3–P6 | Missing; external player guide and recipe unlocks exist / Pending |
 | Shared UI assets and localization | Consistent controls/icons/tooltips/focus, translation keys, readable scales and non-color status cues | P3–P6 | Registered names and bank/connector/buffer tooltips/chat feedback translated; native item terminal screen implemented; other shared screens pending / Pending |
 
@@ -206,3 +206,8 @@ complete client recovery walkthrough remain Pending.
 Controller/gateway recovery adds translated operator owner/grant/policy metadata,
 safe refusal and wiring-revalidation guidance. Native commands check formatting
 and behavior; graphical chat/accessibility/full recovery walkthrough remain Pending.
+
+
+Connector/Machine Interface recovery adds translated operator metadata, accepted
+deployment/fence display, safe refusal and redeployment guidance. Native commands
+check behavior; graphical chat/accessibility/full recovery walkthrough remain Pending.

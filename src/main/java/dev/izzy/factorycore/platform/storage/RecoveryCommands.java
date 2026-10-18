@@ -39,6 +39,7 @@ public final class RecoveryCommands {
                         .then(DeviceRecoveryCommands.commands(true))
                         .then(BufferRecoveryCommands.commands())
                         .then(NetworkNodeRecoveryCommands.commands())
+                        .then(PortRecoveryCommands.commands())
                         .then(
                             Commands.literal("list")
                                 .requires(s -> s.hasPermission(2))

@@ -414,4 +414,63 @@ class TransferRegistryTest {
     assertTrue(registry.page(third, 2).records().isEmpty());
     assertThrows(IllegalArgumentException.class, () -> registry.page(null, 17));
   }
+
+  @Test
+  void unscopedRecoveryCheckIsReadOnlyAndIgnoresCompletedOrScopedRecords() {
+    int[] changes = {0};
+    var source = new Port(UUID.randomUUID(), 20);
+    var target = new Port(UUID.randomUUID(), 0);
+    var registry = new TransferRegistry(List.of(), () -> changes[0]++);
+    var completed = UUID.randomUUID();
+    registry.start(completed, UUID.randomUUID(), KEY, source, target, 1, 1, () -> true);
+    assertFalse(registry.hasUnscopedUnresolved());
+    target.acceptance = 0;
+    var scoped = UUID.randomUUID();
+    var context =
+        new TransferContext(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new dev.izzy.factorycore.core.network.NodeRegistry.Position("minecraft:overworld", 0),
+            new TransferContext.Endpoint(TransferContext.Type.DIGITAL, source.id, source.id, 1, 0),
+            new TransferContext.Endpoint(
+                TransferContext.Type.EXTERNAL, UUID.randomUUID(), target.id, 1, 1));
+    registry.start(scoped, UUID.randomUUID(), KEY, source, target, 3, 3, () -> true, context);
+    assertFalse(registry.hasUnscopedUnresolved());
+    var legacy = UUID.randomUUID();
+    registry.start(legacy, UUID.randomUUID(), KEY, source, target, 4, 4, () -> true);
+    var before = registry.snapshot();
+    int dirty = changes[0];
+    assertTrue(registry.hasUnscopedUnresolved());
+    registry.unbind(legacy);
+    assertTrue(registry.hasUnscopedUnresolved());
+    var restored = new TransferRegistry(before, () -> fail("Inspection changed evidence"));
+    assertTrue(restored.hasUnscopedUnresolved());
+    assertEquals(before, restored.snapshot());
+    assertEquals(dirty, changes[0]);
+    registry.bind(legacy, source, target, () -> true);
+    target.acceptance = 10;
+    registry.deliver(legacy);
+    assertFalse(
+        registry.hasUnscopedUnresolved(),
+        "Scoped pending owner still does not make legacy ambiguity");
+    var unknown =
+        new StagedTransfer.Snapshot(
+            UUID.randomUUID(),
+            KEY,
+            source.id,
+            target.id,
+            4,
+            0,
+            0,
+            StagedTransfer.State.QUARANTINED,
+            OperationResult.Reason.UNCERTAIN,
+            "Interrupted foreign call",
+            StagedTransfer.PendingCall.DELIVER,
+            4);
+    assertTrue(
+        new TransferRegistry(
+                List.of(new TransferRegistry.Stored(UUID.randomUUID(), unknown)), () -> {})
+            .hasUnscopedUnresolved());
+  }
 }

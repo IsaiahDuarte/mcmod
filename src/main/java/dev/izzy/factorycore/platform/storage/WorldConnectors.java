@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.LongSupplier;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.ChestBlock;
@@ -161,6 +162,7 @@ public final class WorldConnectors {
     final List<Provider> providers;
     final ResourcePort delegate;
     final ResourcePort port;
+    final Direction face;
 
     Binding(
         ConnectorEntity owner,
@@ -169,6 +171,7 @@ public final class WorldConnectors {
         ResourcePort delegate,
         UUID backing) {
       this.owner = owner;
+      face = owner.targetDirection();
       this.handler = handler;
       this.providers = providers;
       this.delegate = delegate;
@@ -335,6 +338,19 @@ public final class WorldConnectors {
     } catch (IllegalArgumentException | IllegalStateException unavailable) {
       return new Registration(OperationResult.Reason.DENIED, null);
     }
+  }
+
+  /** Remembered metadata only, including ownership conflicts; never authorizes resource access. */
+  public Handle recoveryRegistration(ConnectorEntity owner) {
+    checkThread();
+    var binding = owners.get(Objects.requireNonNull(owner));
+    if (binding == null
+        || !binding.handle.connector().equals(owner.handle())
+        || binding.handle.generation() != owner.generation()
+        || !binding.handle.provider().equals(owner.providerToken())
+        || binding.handle.kind() != owner.settings().kind()
+        || binding.face != owner.targetDirection()) return null;
+    return binding.handle;
   }
 
   /** Releases only this physical owner, so a clone cannot unregister the original. */

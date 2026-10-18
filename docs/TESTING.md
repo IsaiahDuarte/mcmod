@@ -861,3 +861,23 @@ from other positive command tests;900/200/100/800 expectations and production
 limits remain unchanged. All required tests, including that batch, must pass.
 No graphical client, remote multiplayer or interrupted independent-save proof
 is inferred from these native checks.
+
+
+## Connector and Machine Interface repair checks
+
+PortRecoveryAuditTest adds exact schema5 round trips for connector/machine native
+state, settings/label/fence, optional deployment and optional remembered binding,
+plus content-addressed reuse, corrupt-file refusal and mismatched fence/fault/kind/
+binding refusal. A TransferRegistryTest case shows the unscoped-legacy preflight is
+read-only, ignores completed/context-scoped records and detects restored
+quarantined intents. Four ConnectorGameTests use real commands/copied holders: a
+23-item chest with5 held keeps contents/holds, old mod ports are inert, the same
+backing is reacquired and the same-tick rate stays spent; failed audit IO and a
+persisted provider fault refuse unchanged; accepted context staging and unscoped
+legacy staging without a remembered binding refuse without provider calls.
+A MachinePresetGameTest repairs a machine with an accepted Import preset, proves
+the old lease never runs, denies native redeploy after DEPLOY revocation, accepts
+explicit redeploy after restoration with19 items conserved, and refuses a
+mismatched physical/canonical fence. Positive cases use dedicated batches for the
+shared repair throttle. No graphical client, remote multiplayer or interrupted
+independent-save proof is inferred.

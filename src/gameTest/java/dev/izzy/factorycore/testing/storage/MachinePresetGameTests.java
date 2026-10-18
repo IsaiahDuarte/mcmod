@@ -1059,4 +1059,225 @@ public final class MachinePresetGameTests {
             })
         .thenSucceed();
   }
+
+  @SuppressWarnings("removal")
+  @GameTest(template = "empty", batch = "machine_recovery", timeoutTicks = 500)
+  public static void auditedMachineRepairKeepsFenceAndRequiresAuthenticatedRedeployment(
+      GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    var player = h.makeMockServerPlayerInLevel();
+    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
+        player.connection.getConnection());
+    player.getInventory().clearContent();
+    player.moveTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(MACHINE)));
+    h.assertTrue(
+        !player.hasPermissions(2), "Recovered machine deployer is an ordinary registered player");
+    var deployer = new NetworkPermissions.Actor(player.getUUID(), false);
+    var old = f.machine.handle();
+    var settings =
+        new ConnectorSettings(ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 7, 0, 1, 3);
+    MachinePresets.Deployment[] accepted = {null};
+    long[] fence = {0};
+    WorldConnectors.Handle[] registration = {null};
+    net.minecraft.nbt.CompoundTag[] original = {null};
+    MachineInterfaceEntity[] clone = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved
+                  .network(f.runtime.membership(f.machine.position()).scope().network())
+                  .setGrants(
+                      f.actor, deployer.id(), EnumSet.allOf(NetworkPermissions.Permission.class));
+              h.assertTrue(
+                  f.machine.applySettings(f.actor, settings, "repaired_furnace")
+                      == NetworkAuthority.Decision.ALLOWED,
+                  "Configure labeled selected machine window");
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenIdle(20)
+        .thenExecute(
+            () -> {
+              seed(h, ResourceKind.ITEM, 19);
+              accepted[0] =
+                  f.machine.deployPreset(deployer, MachinePresets.Mode.IMPORT, exact(f), 19);
+              fence[0] = f.saved.machinePresets().configuration(old.id());
+              f.runtime.machinePresets().tick();
+              registration[0] = f.runtime.connectors().bind(f.machine).handle();
+              h.assertTrue(
+                  registration[0] != null, "Remember actual provider registration before conflict");
+              var stalePort = f.runtime.connectors().port(registration[0]);
+              ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+              var provider = chest.saveWithFullMetadata(h.getLevel().registryAccess());
+              original[0] = f.machine.saveWithFullMetadata(h.getLevel().registryAccess());
+              clone[0] = copyMachineForRecovery(h, f.machine, original[0]);
+              h.assertTrue(
+                  f.saved.nodes().validate(old) == NodeRegistry.Failure.CONFLICT
+                      && registration[0].equals(
+                          f.runtime.connectors().recoveryRegistration(f.machine)),
+                  "Current conflicted machine retains metadata witness");
+              var console = h.getLevel().getServer().createCommandSourceStack();
+              var repair = "factorycore recovery port repair " + old.id() + " " + old.generation();
+              h.assertTrue(
+                  command(console.withPermission(0), repair) < 1, "Operator permission required");
+              h.assertTrue(
+                  command(console, "factorycore recovery port show " + old.id()) == 1,
+                  "Inspect original accepted principal/fence");
+              h.assertTrue(
+                  command(console, repair) == 1,
+                  "Actual command repairs original Machine Interface");
+              h.assertTrue(
+                  f.machine.handle().generation() == old.generation() + 1
+                      && f.machine.settings().equals(settings)
+                      && f.machine.label().equals("repaired_furnace")
+                      && f.machine.targetDirection() == Direction.EAST
+                      && f.machine.generation() == fence[0],
+                  "Lease rotates without changing local settings/configuration/label/face");
+              h.assertTrue(
+                  accepted[0].equals(f.saved.machinePresets().get(old.id()))
+                      && fence[0] == f.saved.machinePresets().configuration(old.id())
+                      && !f.machine.presetAuthorized(accepted[0]),
+                  "Accepted deployment/fence unchanged; old lease cannot run");
+              h.assertTrue(
+                  provider.equals(chest.saveWithFullMetadata(h.getLevel().registryAccess()))
+                      && stalePort.extract(f.key, 1) == 0
+                      && stalePort.insert(f.key, 1) == 0,
+                  "Repair never mutates provider; old mod-owned port rejects mutation");
+              clone[0].loadWithComponents(original[0], h.getLevel().registryAccess());
+              clone[0].onLoad();
+              h.assertTrue(
+                  f.saved.nodes().validate(f.machine.handle()) == NodeRegistry.Failure.OK
+                      && !clone[0].diagnostic().isEmpty(),
+                  "Old copied machine cannot requarantine new lease");
+            })
+        .thenIdle(30)
+        .thenExecute(
+            () -> {
+              ready(h, f);
+              h.assertTrue(
+                  resident(h, ResourceKind.ITEM) == 19
+                      && f.saved.registry().stock(f.cell, f.key).total() == 0
+                      && accepted[0].equals(f.saved.machinePresets().get(old.id())),
+                  "Queued/retained old automation never extracts after repair");
+              var rebound = f.runtime.connectors().bind(f.machine).handle();
+              h.assertTrue(
+                  rebound != null && rebound.backing().equals(registration[0].backing()),
+                  "Normal provider reacquisition keeps backing identity");
+              var grants = EnumSet.allOf(NetworkPermissions.Permission.class);
+              grants.remove(NetworkPermissions.Permission.DEPLOY);
+              var scope = f.runtime.membership(f.machine.position()).scope();
+              f.saved.network(scope.network()).setGrants(f.actor, deployer.id(), grants);
+              h.useBlock(MACHINE, player);
+              h.assertTrue(
+                  player.containerMenu instanceof MachineSettingsMenu,
+                  "Physical use opens recovered machine settings");
+              var menu = (MachineSettingsMenu) player.containerMenu;
+              menu.broadcastChanges();
+              recoveryDeploy(menu, player);
+              h.assertTrue(
+                  menu.presetView().status().equals("denied")
+                      && accepted[0].equals(f.saved.machinePresets().get(old.id())),
+                  "Native redeploy cannot bypass revoked current DEPLOY grant");
+              f.saved
+                  .network(scope.network())
+                  .setGrants(
+                      f.actor, deployer.id(), EnumSet.allOf(NetworkPermissions.Permission.class));
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              var menu = (MachineSettingsMenu) player.containerMenu;
+              menu.broadcastChanges();
+              recoveryDeploy(menu, player);
+              var next = f.saved.machinePresets().get(old.id());
+              h.assertTrue(
+                  menu.presetView().status().equals("applied")
+                      && next.authority().principal().equals(deployer.id())
+                      && next.leaseGeneration() == f.machine.handle().generation()
+                      && next.filter().equals(accepted[0].filter())
+                      && next.target() == 19
+                      && next.revision() == accepted[0].revision() + 1
+                      && next.configuration() == fence[0] + 1,
+                  "Native explicit deployment accepts current lease under original authorized principal/policy");
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    resident(h, ResourceKind.ITEM) == 0
+                        && f.saved.registry().stock(f.cell, f.key).total() == 19,
+                    "Authorized redeployment resumes shared Import with19 conserved items"))
+        .thenExecute(
+            () -> {
+              player.closeContainer();
+              ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+              h.assertTrue(
+                  chest.getItem(1).is(Items.GOLD_INGOT) && chest.getItem(1).getCount() == 7,
+                  "Selected window and exact filter preserve excluded native stock");
+              var current = f.machine.handle();
+              var repaired = f.machine.saveWithFullMetadata(h.getLevel().registryAccess());
+              var deployment = f.saved.machinePresets().get(old.id());
+              f.machine.loadWithComponents(original[0], h.getLevel().registryAccess());
+              f.machine.onLoad();
+              rejectMachineRepair(h, f.machine, current);
+              h.assertTrue(
+                  f.saved.nodes().validate(current) == NodeRegistry.Failure.OK
+                      && deployment.equals(f.saved.machinePresets().get(old.id())),
+                  "Old original snapshot stays inert without changing accepted current deployment");
+              f.machine.loadWithComponents(repaired, h.getLevel().registryAccess());
+              f.machine.onLoad();
+              f.saved.machinePresets().observeConfiguration(current, f.machine.generation() + 1);
+              var ahead = f.saved.machinePresets().configuration(old.id());
+              copyMachineForRecovery(h, f.machine, repaired);
+              var conflicted = f.saved.nodes().evidence(old.id());
+              rejectMachineRepair(h, f.machine, current);
+              h.assertTrue(
+                  ahead == f.saved.machinePresets().configuration(old.id())
+                      && conflicted.equals(f.saved.nodes().evidence(old.id()))
+                      && deployment.equals(f.saved.machinePresets().get(old.id()))
+                      && f.saved.registry().stock(f.cell, f.key).total() == 19,
+                  "Mismatched physical/canonical fence refuses without adopting stale configuration or losing stock");
+              player.connection.disconnect(
+                  net.minecraft.network.chat.Component.literal(
+                      "Machine recovery fixture complete"));
+            })
+        .thenIdle(20)
+        .thenSucceed();
+  }
+
+  private static MachineInterfaceEntity copyMachineForRecovery(
+      GameTestHelper h, MachineInterfaceEntity original, net.minecraft.nbt.CompoundTag raw) {
+    var position = new BlockPos(3, 1, 3);
+    h.setBlock(position, original.getBlockState());
+    MachineInterfaceEntity copy = h.getBlockEntity(position);
+    copy.loadWithComponents(raw, h.getLevel().registryAccess());
+    copy.onLoad();
+    return copy;
+  }
+
+  private static void rejectMachineRepair(
+      GameTestHelper h, MachineInterfaceEntity machine, NodeRegistry.Handle expected) {
+    boolean refused = false;
+    try {
+      machine.repairConflict(expected);
+    } catch (IllegalArgumentException | IllegalStateException rejected) {
+      refused = true;
+    } catch (java.io.IOException failure) {
+      throw new AssertionError(failure);
+    }
+    h.assertTrue(refused, "Unsupported machine recovery must refuse");
+  }
+
+  private static void recoveryDeploy(
+      MachineSettingsMenu menu, net.minecraft.server.level.ServerPlayer player) {
+    menu.presetCommand(
+        player,
+        new MachinePresetPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.presetView().revision(),
+            MachinePresetPackets.DEPLOY,
+            0,
+            "",
+            new byte[32]));
+  }
 }

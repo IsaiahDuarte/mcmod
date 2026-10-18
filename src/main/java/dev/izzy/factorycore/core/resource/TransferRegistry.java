@@ -293,6 +293,21 @@ public final class TransferRegistry {
     return new Stored(id, value.saved, value.context);
   }
 
+  /**
+   * Explicit recovery preflight only: at most1024 metadata records, no provider calls or copies.
+   */
+  public boolean hasUnscopedUnresolved() {
+    checkThread();
+    for (var entry : entries.values()) {
+      var value = entry.saved;
+      if (entry.context == null
+          && (value.state() != StagedTransfer.State.COMPLETE
+              || value.pending() != StagedTransfer.PendingCall.NONE
+              || value.staged() != 0)) return true;
+    }
+    return false;
+  }
+
   public TransferContext context(UUID id) {
     checkThread();
     return entry(id).context;

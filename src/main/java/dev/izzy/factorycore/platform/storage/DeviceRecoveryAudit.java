@@ -100,6 +100,64 @@ public final class DeviceRecoveryAudit {
     return write(world, owner.id(), envelope);
   }
 
+  static Path preservePort(
+      Path world,
+      UUID namespace,
+      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
+      dev.izzy.factorycore.core.storage.MachinePresets.Deployment deployment,
+      long fence,
+      WorldConnectors.Handle registration,
+      CompoundTag blockState,
+      CompoundTag blockEntity)
+      throws IOException {
+    var state = ConnectorData.read(blockEntity.get(ConnectorData.FIELD));
+    boolean machine =
+        owner.kind() == dev.izzy.factorycore.core.network.NodeRegistry.Kind.MACHINE_INTERFACE;
+    if (!owner.conflict()
+        || owner.position() == null
+        || !machine && owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.CONNECTOR
+        || !state.lease().world().equals(namespace)
+        || !state.lease().id().equals(owner.id())
+        || state.lease().generation() != owner.generation()
+        || state.lease().kind() != owner.kind()
+        || !state.fault().isEmpty()
+        || (machine ? fence <= 0 || fence != state.generation() : fence != 0 || deployment != null)
+        || deployment != null
+            && (!deployment.node().equals(owner.id())
+                || deployment.configuration() > fence
+                || deployment.leaseGeneration() > owner.generation())
+        || registration != null
+            && (!registration.connector().equals(state.lease())
+                || registration.generation() != state.generation()
+                || registration.kind() != state.settings().kind()))
+      throw new IllegalArgumentException("Expected exact canonical port conflict evidence");
+    var envelope = new CompoundTag();
+    envelope.putInt("Schema", 5);
+    envelope.putInt("WorldSchema", 12);
+    envelope.putUUID("World", namespace);
+    envelope.putString("HolderKind", "FOREIGN_PORT");
+    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put(
+        "MachinePresets",
+        MachinePresetCodec.encode(
+            deployment == null ? java.util.List.of() : java.util.List.of(deployment),
+            machine ? java.util.Map.of(owner.id(), fence) : java.util.Map.of()));
+    if (registration != null) {
+      var binding = new CompoundTag();
+      binding.put(
+          "Node",
+          dev.izzy.factorycore.platform.network.NodeHandleData.write(registration.connector()));
+      binding.putLong("Configuration", registration.generation());
+      binding.putUUID("Provider", registration.provider());
+      binding.putUUID("Backing", registration.backing());
+      binding.putString("Kind", registration.kind().name());
+      envelope.put("Registration", binding);
+    }
+    envelope.put("BlockState", blockState.copy());
+    envelope.put("BlockEntity", blockEntity.copy());
+    return write(world, owner.id(), envelope);
+  }
+
   private static CompoundTag envelope(UUID namespace, DeviceRegistry.Stored owner, int schema) {
     if (!owner.conflict() || owner.location() == null)
       throw new IllegalArgumentException("Expected placed conflict evidence");

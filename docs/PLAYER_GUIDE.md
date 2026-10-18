@@ -482,4 +482,25 @@ or independent-save mismatches still need backup/evidence investigation.
 Node archives use standalone binary schema4 with the same device archive quotas
 and20-tick server repair throttle. List visits at most16 structural handles and
 may show zero matching records with a next cursor. Connector and Machine Interface
-conflicts are not exposed by this command.
+conflicts use the separate port command below.
+
+
+Connector and Machine Interface conflicts use operator `/factorycore recovery port
+list [after-UUID]`, `show <port-UUID>` and `repair <port-UUID> <generation>`. Only
+the loaded original canonical holder with its exact matching reference can be
+repaired. Show reports kind/generation/position and, for a machine, the accepted
+deployer/mode/revision/lease/configuration and canonical fence. Repair archives
+the node, remembered provider registration metadata, machine preset/fence and full
+physical reference before rotating the lease. It keeps settings, label, face and
+configuration; it never opens, reads or changes the attached container.
+
+Old copies and old mod ports become stale; the provider is reacquired normally
+after wiring revalidation. A repaired machine preset does not run until a player
+with current DEPLOY permission explicitly redeploys it from the machine menu; the
+operator never becomes the deployer. A saved provider fault, a mismatched machine
+fence, an unresolved transfer naming the port or its remembered provider, or any
+legacy unresolved record without device context when no provider is remembered
+blocks repair unchanged. Investigate those with backups and evidence.
+
+Port archives use standalone binary schema5 with the same device archive quotas
+and20-tick repair throttle. List visits at most16 structural handles.

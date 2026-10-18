@@ -273,3 +273,11 @@ unloads. Storage/preset work stops, stock/holds persist, probes do not reload th
 root, and the original preset resumes only after the original root revalidates.
 It also covers the finite cable-run trigger for the flat retained-seed fix.
 This does not complete staged-unload, independent-save or release recovery gates.
+
+
+Machine Interface ownership conflicts use the shared
+[connector repair](CONNECTORS.md#audited-conflict-repair). Repair keeps the accepted
+preset, revision, filter, goal and configuration fence, refuses a mismatched
+physical fence and requires explicit native redeployment under current DEPLOY
+grants; queued old-lease work stays inert. Native evidence covers revoked and
+restored grants with19 items conserved.

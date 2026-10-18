@@ -7,7 +7,9 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
@@ -2052,5 +2054,372 @@ public final class ConnectorGameTests {
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void roundRobinSkipsFullTargetAndAdvancesPersistedCursor(GameTestHelper helper) {
     priorityRoute(helper, 7);
+  }
+
+  @GameTest(template = "empty", batch = "connector_recovery", timeoutTicks = 200)
+  public static void auditedConnectorRepairPreservesProviderHoldsSettingsAndRate(GameTestHelper h) {
+    var f = setup(h);
+    h.setBlock(PROVIDER, Blocks.CHEST);
+    ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+    chest.setItem(0, marked(23));
+    var key = new PlatformResourceCodec(h.getLevel().registryAccess()).itemKey(marked(1));
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f.runtime, CONNECTOR))
+        .thenIdle(20)
+        .thenExecute(
+            () -> {
+              var settings =
+                  new ConnectorSettings(
+                      ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 7, 0, 1, 8);
+              h.assertTrue(
+                  f.connector.configure(f.actor, settings) == NetworkAuthority.Decision.ALLOWED,
+                  "Configure exact port policy");
+              var registration = f.runtime.connectors().bind(f.connector).handle();
+              h.assertTrue(registration != null, "Bind actual provider before conflict");
+              var old = f.connector.handle();
+              var token = f.connector.providerToken();
+              var configuration = f.connector.generation();
+              var port = f.runtime.connectors().port(registration);
+              var claim = UUID.randomUUID();
+              f.saved.externalClaims().reserve(registration.backing(), claim, key, 5, 23);
+              h.assertTrue(port.extract(key, 3) == 3, "Test-owned receiver takes3 of23 items");
+              var physical = f.connector.saveWithFullMetadata(h.getLevel().registryAccess());
+              var provider = chest.saveWithFullMetadata(h.getLevel().registryAccess());
+              var clone = copyPort(h, f.connector, physical);
+              h.assertTrue(
+                  f.saved.nodes().validate(old) == NodeRegistry.Failure.CONFLICT
+                      && registration.equals(
+                          f.runtime.connectors().recoveryRegistration(f.connector)),
+                  "Conflicted original retains exact metadata witness");
+              rejectPortRepair(h, clone, old);
+              var console = h.getLevel().getServer().createCommandSourceStack();
+              var repair = "factorycore recovery port repair " + old.id() + " " + old.generation();
+              h.assertTrue(
+                  portCommand(console.withPermission(0), repair) < 1, "Only operator may repair");
+              h.assertTrue(
+                  portCommand(console, "factorycore recovery port show " + old.id()) == 1,
+                  "Metadata inspection works");
+              h.assertTrue(
+                  portCommand(console, "factorycore recovery port list") >= 0,
+                  "Bounded port page executes");
+              h.assertTrue(
+                  portCommand(console, "factorycore recovery port show " + f.root.handle().id())
+                      == 0,
+                  "Root cannot be reinterpreted as port");
+              h.assertTrue(
+                  portCommand(console, repair + "0") == 0, "Wrong expected generation rejects");
+              h.assertTrue(
+                  portCommand(console, repair) == 1,
+                  "Real command repairs exact original connector");
+              var current = f.connector.handle();
+              h.assertTrue(
+                  current.generation() == old.generation() + 1
+                      && f.saved.nodes().validate(old) == NodeRegistry.Failure.STALE
+                      && f.connector.settings().equals(settings)
+                      && f.connector.generation() == configuration
+                      && f.connector.targetDirection() == Direction.EAST
+                      && !f.connector.providerToken().equals(token),
+                  "Only ownership/provider lifetime changes; policy/configuration/face retained");
+              h.assertTrue(
+                  provider.equals(chest.saveWithFullMetadata(h.getLevel().registryAccess()))
+                      && f.saved.externalClaims().held(registration.backing(), claim, key) == 5,
+                  "Repair makes no foreign contents/identity/claim change");
+              h.assertTrue(
+                  port.extract(key, 1) == 0
+                      && port.insert(key, 1) == 0
+                      && port.simulateInsert(key, 1) == 0,
+                  "Old mod-owned ResourcePort is inert");
+              for (int attempt = 0;
+                  attempt < 128
+                      && f.runtime.membership(f.connector.position()).status()
+                          != NetworkTopology.Status.VALID;
+                  attempt++) f.runtime.tick();
+              var rebound = f.runtime.connectors().bind(f.connector).handle();
+              h.assertTrue(
+                  rebound != null && rebound.backing().equals(registration.backing()),
+                  "Normal revalidation reacquires same provider identity");
+              h.assertTrue(
+                  f.runtime.connectors().port(rebound).extract(key, 20) == 5
+                      && chest.getItem(0).getCount() == 15
+                      && f.saved.externalClaims().reserved(rebound.backing(), key) == 5,
+                  "Same tick retains3 of8 spent;15 provider plus8 test-owned items conserve23 with5 held");
+              clone.loadWithComponents(physical, h.getLevel().registryAccess());
+              clone.onLoad();
+              h.assertTrue(
+                  f.saved.nodes().validate(current) == NodeRegistry.Failure.OK
+                      && !clone.diagnostic().isEmpty(),
+                  "Old copy cannot requarantine current lease");
+              var repaired = f.connector.saveWithFullMetadata(h.getLevel().registryAccess());
+              f.connector.loadWithComponents(repaired, h.getLevel().registryAccess());
+              f.connector.onLoad();
+              h.assertTrue(
+                  current.equals(f.connector.handle()) && f.connector.settings().equals(settings),
+                  "Repaired local reference reloads");
+              f.connector.loadWithComponents(physical, h.getLevel().registryAccess());
+              f.connector.onLoad();
+              rejectPortRepair(h, f.connector, current);
+              h.assertTrue(
+                  f.saved.nodes().validate(current) == NodeRegistry.Failure.OK
+                      && chest.getItem(0).getCount() == 15,
+                  "Old original snapshot stays inert without resetting foreign stock");
+            })
+        .thenIdle(20)
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void failedPortAuditAndPersistedProviderFaultPreserveEvidence(GameTestHelper h) {
+    var f = setup(h);
+    h.setBlock(PROVIDER, Blocks.CHEST);
+    ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+    chest.setItem(0, marked(19));
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f.runtime, CONNECTOR))
+        .thenExecute(
+            () -> {
+              var registration = f.runtime.connectors().bind(f.connector).handle();
+              h.assertTrue(registration != null, "Remember a normal loaded provider");
+              var old = f.connector.handle();
+              var physical = f.connector.saveWithFullMetadata(h.getLevel().registryAccess());
+              copyPort(h, f.connector, physical);
+              var owner = f.saved.nodes().evidence(old.id());
+              var provider = chest.saveWithFullMetadata(h.getLevel().registryAccess());
+              var token = f.connector.providerToken();
+              var folder =
+                  h.getLevel()
+                      .getServer()
+                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .resolve("factorycore-device-recovery");
+              try {
+                java.nio.file.Files.createDirectories(folder);
+                var blocker =
+                    java.nio.file.Files.createDirectory(
+                        folder.resolve("unexpected-port-" + UUID.randomUUID()));
+                boolean refused = false;
+                try {
+                  f.connector.repairConflict(old);
+                } catch (java.io.IOException expected) {
+                  refused = true;
+                } finally {
+                  java.nio.file.Files.delete(blocker);
+                }
+                h.assertTrue(refused, "Audit IO failure prevents repair");
+              } catch (java.io.IOException failure) {
+                throw new AssertionError(failure);
+              }
+              h.assertTrue(
+                  owner.equals(f.saved.nodes().evidence(old.id()))
+                      && physical.equals(
+                          f.connector.saveWithFullMetadata(h.getLevel().registryAccess()))
+                      && token.equals(f.connector.providerToken())
+                      && registration.equals(
+                          f.runtime.connectors().recoveryRegistration(f.connector))
+                      && provider.equals(chest.saveWithFullMetadata(h.getLevel().registryAccess())),
+                  "Failed audit changes no reference/binding/provider data");
+              f.connector.quarantine(
+                  new IllegalStateException("Persisted uncertain provider diagnostic"));
+              var faulted = f.connector.saveWithFullMetadata(h.getLevel().registryAccess());
+              rejectPortRepair(h, f.connector, old);
+              h.assertTrue(
+                  owner.equals(f.saved.nodes().evidence(old.id()))
+                      && faulted.equals(
+                          f.connector.saveWithFullMetadata(h.getLevel().registryAccess()))
+                      && f.connector.diagnostic().contains("uncertain"),
+                  "Ownership recovery never clears a persisted provider fault");
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void acceptedPortStagingBlocksRepairWithoutForeignReplay(GameTestHelper h) {
+    var f = setup(h);
+    h.setBlock(PROVIDER, Blocks.CHEST);
+    ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+    chest.setItem(0, marked(19));
+    h.setBlock(STORAGE, StorageContent.DRIVE.get());
+    StorageDriveEntity drive = h.getBlockEntity(STORAGE);
+    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    var cell = CellHandleData.read(drive.cell(0));
+    var key = new PlatformResourceCodec(h.getLevel().registryAccess()).itemKey(marked(1));
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f.runtime, CONNECTOR))
+        .thenExecute(
+            () -> {
+              var registration = f.runtime.connectors().bind(f.connector).handle();
+              var old = f.connector.handle();
+              var scope = f.runtime.membership(f.connector.position()).scope();
+              var context =
+                  new TransferContext(
+                      f.saved.registry().world(),
+                      scope.network(),
+                      scope.segment(),
+                      f.connector.position(),
+                      new TransferContext.Endpoint(
+                          TransferContext.Type.EXTERNAL,
+                          old.id(),
+                          registration.backing(),
+                          old.generation(),
+                          f.connector.generation()),
+                      new TransferContext.Endpoint(
+                          TransferContext.Type.DIGITAL,
+                          cell.backing(),
+                          cell.backing(),
+                          cell.generation(),
+                          0));
+              var destination =
+                  new ResourcePort() {
+                    public UUID backingId() {
+                      return cell.backing();
+                    }
+
+                    public long simulateInsert(ResourceKey value, long amount) {
+                      return amount;
+                    }
+
+                    public long extract(ResourceKey value, long amount) {
+                      return 0;
+                    }
+
+                    public long insert(ResourceKey value, long amount) {
+                      return 0;
+                    }
+                  };
+              var id = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(
+                      id,
+                      f.actor.id(),
+                      key,
+                      f.runtime.connectors().port(registration),
+                      destination,
+                      3,
+                      3,
+                      () -> true,
+                      context);
+              h.assertTrue(
+                  chest.getItem(0).getCount() == 16 && f.saved.transfers().get(id).staged() == 3,
+                  "Real provider16 plus owned staging3 conserve19");
+              copyPort(
+                  h, f.connector, f.connector.saveWithFullMetadata(h.getLevel().registryAccess()));
+              var owner = f.saved.nodes().evidence(old.id());
+              var record = f.saved.transfers().get(id);
+              rejectPortRepair(h, f.connector, old);
+              h.assertTrue(
+                  owner.equals(f.saved.nodes().evidence(old.id()))
+                      && record.equals(f.saved.transfers().get(id))
+                      && chest.getItem(0).getCount() == 16,
+                  "Accepted endpoint identity blocks rotation with no provider replay");
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void unboundPortWithUnscopedLegacyStagingCannotGuessBacking(GameTestHelper h) {
+    var f = setup(h);
+    h.setBlock(PROVIDER, Blocks.CHEST);
+    ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+    chest.setItem(0, marked(19));
+    h.setBlock(STORAGE, StorageContent.DRIVE.get());
+    StorageDriveEntity drive = h.getBlockEntity(STORAGE);
+    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    var cell = CellHandleData.read(drive.cell(0));
+    var key = new PlatformResourceCodec(h.getLevel().registryAccess()).itemKey(marked(1));
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f.runtime, CONNECTOR))
+        .thenWaitUntil(() -> ready(h, f.runtime, STORAGE))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(cell, key, 3);
+              var source =
+                  new ResourcePort() {
+                    public UUID backingId() {
+                      return cell.backing();
+                    }
+
+                    public long simulateInsert(ResourceKey value, long amount) {
+                      return f.saved.registry().simulateInsert(cell, value, amount).amount();
+                    }
+
+                    public long extract(ResourceKey value, long amount) {
+                      return f.saved.registry().extract(cell, value, amount, null).amount();
+                    }
+
+                    public long insert(ResourceKey value, long amount) {
+                      return f.saved.registry().insert(cell, value, amount).amount();
+                    }
+                  };
+              var destination =
+                  new ResourcePort() {
+                    private final UUID id = UUID.randomUUID();
+
+                    public UUID backingId() {
+                      return id;
+                    }
+
+                    public long simulateInsert(ResourceKey value, long amount) {
+                      return amount;
+                    }
+
+                    public long extract(ResourceKey value, long amount) {
+                      return 0;
+                    }
+
+                    public long insert(ResourceKey value, long amount) {
+                      return 0;
+                    }
+                  };
+              var id = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(id, f.actor.id(), key, source, destination, 3, 3, () -> true);
+              h.assertTrue(
+                  f.saved.transfers().hasUnscopedUnresolved()
+                      && f.runtime.connectors().recoveryRegistration(f.connector) == null,
+                  "Legacy record lacks device association and port has no remembered binding");
+              var old = f.connector.handle();
+              copyPort(
+                  h, f.connector, f.connector.saveWithFullMetadata(h.getLevel().registryAccess()));
+              var before = f.saved.nodes().evidence(old.id());
+              var provider = chest.saveWithFullMetadata(h.getLevel().registryAccess());
+              rejectPortRepair(h, f.connector, old);
+              h.assertTrue(
+                  before.equals(f.saved.nodes().evidence(old.id()))
+                      && provider.equals(chest.saveWithFullMetadata(h.getLevel().registryAccess()))
+                      && f.saved.transfers().get(id).staged() == 3,
+                  "Unscoped ambiguity neither probes nor guesses provider ownership");
+            })
+        .thenSucceed();
+  }
+
+  private static ConnectorEntity copyPort(
+      GameTestHelper h, ConnectorEntity original, net.minecraft.nbt.CompoundTag raw) {
+    var position = new BlockPos(3, 1, 3);
+    h.setBlock(position, original.getBlockState());
+    ConnectorEntity clone = h.getBlockEntity(position);
+    clone.loadWithComponents(raw, h.getLevel().registryAccess());
+    clone.onLoad();
+    return clone;
+  }
+
+  private static void rejectPortRepair(
+      GameTestHelper h, ConnectorEntity port, NodeRegistry.Handle expected) {
+    boolean refused = false;
+    try {
+      port.repairConflict(expected);
+    } catch (IllegalArgumentException | IllegalStateException rejected) {
+      refused = true;
+    } catch (java.io.IOException failure) {
+      throw new AssertionError(failure);
+    }
+    h.assertTrue(refused, "Unsupported port repair rejects");
+  }
+
+  private static int portCommand(net.minecraft.commands.CommandSourceStack source, String command) {
+    try {
+      return source.getServer().getCommands().getDispatcher().execute(command, source);
+    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException rejected) {
+      return -1;
+    }
   }
 }

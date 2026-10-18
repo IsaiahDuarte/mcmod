@@ -349,5 +349,10 @@
   "command.factorycore.recovery.node.policy": "Canonical gateway policy: branch=%s inherited=%s kinds=%s",
   "command.factorycore.recovery.node.help": "Repair supports only the loaded original controller/gateway with matching reference/generation. Original owner/grants/policy stay unchanged; normal topology validation precedes routing. Transfers remain subject to current grants and uncertainty checks. Preserve backups.",
   "command.factorycore.recovery.node.refused": "Network-node recovery refused: check kind, UUID, generation, conflict, original loaded holder/reference and unsupported endpoint records. No grants, policy or resources were changed.",
-  "command.factorycore.recovery.node.repaired": "Network node %s repaired at its original holder, generation %s. Old copies are stale; owner/grants/policy unchanged. Revalidate wiring before routing. Before-state evidence: %s"
+  "command.factorycore.recovery.node.repaired": "Network node %s repaired at its original holder, generation %s. Old copies are stale; owner/grants/policy unchanged. Revalidate wiring before routing. Before-state evidence: %s",
+  "command.factorycore.recovery.port.row": "Foreign port %s | %s generation=%s conflict=%s | %s",
+  "command.factorycore.recovery.port.deployment": "Accepted deployer=%s mode=%s revision=%s lease=%s configuration=%s canonical fence=%s",
+  "command.factorycore.recovery.port.help": "Repair requires the loaded original connector/machine, matching reference/configuration and no persisted provider fault or unresolved transfer. Provider contents are not inspected. Machine presets need authorized redeployment. Legacy records may require investigation.",
+  "command.factorycore.recovery.port.refused": "Port recovery refused: check UUID/kind/generation, original holder, provider fault, machine fence and unresolved/legacy ownership. No provider contents or preset were changed.",
+  "command.factorycore.recovery.port.repaired": "Foreign port %s repaired at its original holder, generation %s. Old mod ports are stale; provider contents/settings unchanged. Revalidate normally; machine presets need authorized redeployment. Before-state evidence: %s"
 }

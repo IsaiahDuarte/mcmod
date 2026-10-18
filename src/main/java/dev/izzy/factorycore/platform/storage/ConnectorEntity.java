@@ -118,6 +118,79 @@ public class ConnectorEntity extends BlockEntity {
     changed();
   }
 
+  /**
+   * Audited ownership repair only; persisted provider faults and accepted presets are not reset.
+   */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
+  public java.nio.file.Path repairConflict(NodeRegistry.Handle expected)
+      throws java.io.IOException {
+    var server = serverLevel();
+    var chunk =
+        server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    if (isRemoved()
+        || chunk == null
+        || server.getBlockEntity(worldPosition) != this
+        || state == null
+        || !expected.equals(state.lease())
+        || expected.kind() != leaseKind()
+        || !state.equals(ConnectorData.read(data))
+        || !state.fault().isEmpty())
+      throw new IllegalStateException("Exact loaded nonfaulted port reference required");
+    var saved = authority();
+    var owner = saved.nodes().evidence(expected.id());
+    if (owner == null
+        || saved.nodes().validate(expected) != NodeRegistry.Failure.CONFLICT
+        || !position().equals(owner.position())
+        || expected.generation() == Long.MAX_VALUE
+        || saved.transfers().unresolved(expected.id()) != null
+        || saved.transfers().unresolvedDevice(expected.id()) != null)
+      throw new IllegalStateException("Canonical port conflict cannot be repaired");
+    boolean machine = leaseKind() == NodeRegistry.Kind.MACHINE_INTERFACE;
+    long fence = machine ? saved.machinePresets().configuration(expected.id()) : 0;
+    if (machine && (fence <= 0 || fence != state.generation()))
+      throw new IllegalStateException(
+          "Machine configuration fence does not match physical reference");
+    var registration = runtime().connectors().recoveryRegistration(this);
+    if (registration != null
+        ? saved.transfers().unresolved(registration.backing()) != null
+        : saved.transfers().hasUnscopedUnresolved())
+      throw new IllegalStateException("Unresolved or unscoped foreign ownership");
+    var next =
+        new ConnectorData.State(
+            new NodeRegistry.Handle(
+                expected.world(), expected.id(), expected.generation() + 1, expected.kind()),
+            state.settings(),
+            state.generation(),
+            state.fault(),
+            state.label());
+    var nextData = ConnectorData.write(next);
+    var path =
+        DeviceRecoveryAudit.preservePort(
+            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            owner,
+            machine ? saved.machinePresets().get(expected.id()) : null,
+            fence,
+            registration,
+            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            saveWithFullMetadata(server.registryAccess()));
+    var repaired = saved.nodes().repairConflict(expected, position());
+    if (repaired.failure() != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Port conflict repair refused: " + repaired.failure());
+    WorldNetworks.connectorInvalidated(level, this);
+    if (this instanceof MachineInterfaceEntity machineOwner)
+      WorldNetworks.machineInvalidated(level, machineOwner);
+    cache = null;
+    cachedDirection = null;
+    providerToken = UUID.randomUUID();
+    state = next;
+    data = nextData;
+    diagnostic = "";
+    setChanged();
+    onLoad();
+    return path;
+  }
+
   public void validatePlaced() {
     if (!diagnostic.isEmpty()) throw new IllegalStateException(diagnostic);
     if (state == null

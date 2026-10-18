@@ -390,3 +390,13 @@ Before-state evidence is retained first; normal topology validation precedes rou
 This extends partial A05/A12/A13 support, without widening private views or replaying
 accepted transfers. Connector/machine holders, stale independent-save mismatches
 and full release recovery remain unfinished.
+
+
+Connector/Machine Interface conflict recovery now consumes the conflicted lease at
+its exact loaded original holder while preserving local settings, label, face and
+configuration. Foreign provider contents, identity and holds are never inspected or
+changed; persisted provider faults block repair. A repaired machine keeps its
+accepted preset/fence on the old lease until a currently authorized player
+explicitly redeploys. This extends partial A05/A12/A13 support. Unresolved or
+unscoped legacy staging, stale/missing holders, independent-save mismatches and
+full release recovery remain unfinished.

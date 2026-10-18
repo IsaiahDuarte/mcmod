@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.izzy.factorycore.core.resource.TransferRegistryTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-18T01:28:31.164Z" hostname="Izzys-MacBook-Pro.local" time="0.018">
+  <properties/>
+  <testcase name="uncertainHoldLookupRetainsUnboundDiskEvidenceAndMatchesOwnerKeyAndBacking()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.002"/>
+  <testcase name="unscopedRecoveryCheckIsReadOnlyAndIgnoresCompletedOrScopedRecords()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.001"/>
+  <testcase name="backingInvalidationDuringExtractionAndDeliveryRetainsAccountingAndUnbindsSafely()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.0"/>
+  <testcase name="countByteAndDuplicateAdmissionRejectBeforeResourceMutation()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.009"/>
+  <testcase name="multipleUnresolvedOwnersRemainBlockedAcrossReloadUntilAllKnownStagingFinishes()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.001"/>
+  <testcase name="pendingExternalIntentCannotRetireReplayOrFabricateRefund()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.0"/>
+  <testcase name="deviceIndexSurvivesUnbindAndRestoreWithoutConfusingBackingIdentity()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.001"/>
+  <testcase name="canonicalOwnerSurvivesUnbindReloadAndCurrentAuthorityWithoutDoubleExtraction()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.001"/>
+  <testcase name="ownerThreadAndReentrantMutationRejectWithoutDiscardingIntent()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.0"/>
+  <testcase name="metadataPagesAreOrderedDetachedAndExclusiveWithoutDroppingUnresolvedOwners()" classname="dev.izzy.factorycore.core.resource.TransferRegistryTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

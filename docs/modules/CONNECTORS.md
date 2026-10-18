@@ -271,3 +271,32 @@ for holds/protected extraction; ordinary unheld transfers retain their bounded
 single drain call and advisory catalog pagination remains available. If a held
 provider expands past this bound, holds remain and extraction pauses. Rates,
 access, configuration, stable backing and failure quarantine remain shared.
+
+
+## Audited conflict repair
+
+Operator `/factorycore recovery port list [after]`, `show <id>` and
+`repair <id> <expected-generation>` select connectors/Machine Interfaces only. Pages
+examine at most16 structural records with an exclusive cursor. Show reads canonical
+metadata and machine deployment/fence only; it calls no provider and loads no chunk.
+
+The trusted server-thread `ConnectorEntity.repairConflict(expected)` requires the
+loaded original holder with exact raw/parsed lease, kind, generation and position,
+an empty persisted fault and no unresolved record naming the node as backing or
+device. A Machine Interface also requires a positive canonical fence equal to its
+physical configuration. `WorldConnectors.recoveryRegistration(owner)` returns the
+remembered registration only when connector, configuration, provider token, kind
+and face still match; it is metadata and never authorizes resource access. With it,
+unresolved records naming its backing refuse; without it,
+`TransferRegistry.hasUnscopedUnresolved()` (at most1024 records, read-only) refuses
+any legacy record lacking context, since the backing cannot be proven unrelated.
+
+`DeviceRecoveryAudit.preservePort(worldPath, namespace, owner, deploymentOrNull,
+fence, registrationOrNull, blockState, blockEntity)` writes schema5 before mutation;
+IllegalArgumentException means mismatched evidence and IOException means failed/
+oversized/quota/corrupt output, both with no state change. Success rotates only
+the structural lease, invalidates old registrations/ports/cache/topology and
+issues a new provider token, preserving settings, configuration, label and face.
+Normal revalidation reacquires the same provider backing. Accepted machine presets
+and fences are unchanged and cannot run on the new lease until an authorized
+player explicitly redeploys. See [ADR0026](../decisions/0026-foreign-port-repair.md).
