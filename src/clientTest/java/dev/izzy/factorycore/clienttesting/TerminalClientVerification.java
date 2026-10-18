@@ -60,7 +60,7 @@ public final class TerminalClientVerification {
   private final RestartCheckpoint restartCheckpoint = new RestartCheckpoint();
   private DeviceRegistry.Handle cell;
   private ResourceKey key;
-  private int stage, ticks, entered, rule;
+  private int stage, ticks, entered, rule, craftStep;
   private boolean sampleSeeded;
   private long previousRevision;
 
@@ -325,11 +325,111 @@ public final class TerminalClientVerification {
       next();
       return;
     }
-    if (stage == 11 && view.rows().size() == 8 && view.next()) {
+    if (stage == 11 && craftStep < 8 && (craftStep > 0 || view.rows().size() == 8 && view.next())) {
+      craftTick(client, screen);
+      return;
+    }
+    if (stage == 11 && craftStep == 8) {
       client.player.closeContainer();
       client.options.guiScale().set(2);
       client.resizeDisplay();
       next();
+    }
+  }
+
+  /** Manual grid: cell click, own-slot ghost, Row→, right-click clear, Craft and two scales. */
+  @SuppressWarnings("PMD.CloseResource") // Borrowed active client/server/window.
+  private void craftTick(Minecraft client, TerminalScreen screen) {
+    var menu = screen.getMenu();
+    var grid = menu.gridView();
+    var server = client.getSingleplayerServer();
+    var principal = client.player.getUUID();
+    double left = (screen.width - 344) / 2.0, top = (screen.height - 232) / 2.0;
+    switch (craftStep) {
+      case 0 -> {
+        server.execute(
+            () ->
+                server
+                    .getPlayerList()
+                    .getPlayer(principal)
+                    .getInventory()
+                    .setItem(20, new ItemStack(Items.OAK_LOG)));
+        craftStep++;
+      }
+      case 1 -> {
+        if (!client.player.getInventory().getItem(20).is(Items.OAK_LOG)) return;
+        screen.mouseClicked(left + TerminalScreen.GRID_X + 9, top + TerminalScreen.GRID_Y + 9, 0);
+        var digest =
+            TerminalPackets.fingerprint(
+                new PlatformResourceCodec(client.level.registryAccess())
+                    .itemKey(client.player.getInventory().getItem(20)));
+        PacketDistributor.sendToServer(
+            new TerminalCraftingPackets.Command(
+                menu.containerId,
+                menu.session(),
+                menu.view().revision(),
+                grid.gridRevision(),
+                TerminalCraftingPackets.SET_OWN,
+                0,
+                20,
+                1,
+                digest));
+        craftStep++;
+      }
+      case 2 -> {
+        if (!grid.result().equals("minecraft:oak_planks")) return;
+        check(grid.resultCount() == 4, "Actual server recipe preview for one log");
+        capture(client, "terminal-grid-scale-4.png");
+        screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + TerminalScreen.GRID_Y + 9, 0);
+        for (var child : screen.children())
+          if (child instanceof EditBox edit) edit.setFocused(false);
+        screen.keyPressed(GLFW.GLFW_KEY_1, 0, 0);
+        click(screen, "Row→");
+        craftStep++;
+      }
+      case 3 -> {
+        if (grid.cells().get(1).isEmpty() || !grid.result().isEmpty()) return;
+        check(grid.status().equals("ready"), "Row ghost breaks the recipe without moving stock");
+        screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + TerminalScreen.GRID_Y + 9, 1);
+        craftStep++;
+      }
+      case 4 -> {
+        if (!grid.cells().get(1).isEmpty() || !grid.result().equals("minecraft:oak_planks")) return;
+        click(screen, "Craft");
+        craftStep++;
+      }
+      case 5 -> {
+        if (!grid.status().equals("crafted")
+            || !client.player.getInventory().getItem(20).is(Items.OAK_PLANKS)) return;
+        check(
+            client.player.getInventory().getItem(20).getCount() == 4,
+            "Actual Craft button consumes the log and returns four planks");
+        client.options.guiScale().set(2);
+        client.resizeDisplay();
+        entered = ticks;
+        craftStep++;
+      }
+      case 6 -> {
+        if (ticks - entered < 10) return;
+        capture(client, "terminal-grid-scale-2.png");
+        server.execute(
+            () ->
+                server
+                    .getPlayerList()
+                    .getPlayer(principal)
+                    .getInventory()
+                    .setItem(20, ItemStack.EMPTY));
+        click(screen, "Clear");
+        craftStep++;
+      }
+      case 7 -> {
+        if (!grid.cells().stream().allMatch(String::isEmpty)
+            || !client.player.getInventory().getItem(20).isEmpty()) return;
+        evidence.append(
+            "terminal-grid: own ghost, Row→, right-click clear, Craft 1 log -> 4 planks\n");
+        craftStep++;
+      }
+      default -> {}
     }
   }
 

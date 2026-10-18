@@ -92,3 +92,24 @@ records actual hopper imports, physical opening, typed search, number-key select
 Take1, a real deposit payload, paging, scale2/3/4 captures and normal shutdown.
 This is partial client evidence: Shift gesture, tooltips/focus, other resolutions,
 Return/Take64/denied/full/stale messages and full release acceptance remain pending.
+
+
+## Manual crafting grid
+
+[ADR0028](../decisions/0028-terminal-manual-crafting.md) defines the session-owned
+ghost grid. `TerminalCraftingPackets.Command(menu, session, viewRevision,
+gridRevision, action, cell, source, crafts, fingerprint)` actions are SET_OWN
+(source = own slot 0–35, exact-key fingerprint), SET_ROW (source = current row under
+`viewRevision`), CLEAR (cell -1 clears all) and CRAFT (1–64 crafts under the current
+`gridRevision`). Stale revisions, mismatched fingerprints, busy sessions and edits
+over 32 per second are ignored. `View` carries nine base registry icons, the result
+icon/name/count, status (`empty`, `ready`, `no_recipe`, `gathering`, `crafted`,
+`partial`, `shortage`, `full`, `reserved`, `unsupported`) and the last crafted
+count. The server resolves keys, matches recipes and owns all quantities.
+
+`TerminalCrafting.craft(player, crafts)` returns a deficit with nothing consumed
+when owned main-inventory units cannot cover all crafts; the menu then gathers
+through `WorldStorageRoutes.priorityGuarded` FROM_STORAGE into the player inventory,
+bounded to 64 units per route and 18 routes per request. Crafting itself is an
+atomic per-request commit over a copied inventory that proves output/remainder fit
+per craft. Only `RecipeType.CRAFTING` recipes are used; the grid holds no items.

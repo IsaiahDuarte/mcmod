@@ -94,7 +94,7 @@ row. Share navigation and components where appropriate.
 | Flow | Required coverage | Stage | Implementation / client evidence |
 | --- | --- | --- | --- |
 | Terminal Items | Search/sort, exact counts, available/reserved/offline, bounded actions, full inventory and stale state | P3 | Item search, Home/Next paging, exact counts, deposit/withdraw/owned-return and typed status implemented; sorting/offline cache missing / Partial graphical evidence at scales2–4; manual Shift/hover/focus and additional states pending |
-| Terminal manual crafting and patterns | Ghost grid, remainders, JEI/manual selection, pattern editing | P4, P6 | Missing / Pending |
+| Terminal manual crafting and patterns | Ghost grid, remainders, JEI/manual selection, pattern editing | P4, P6 | Native ghost grid/result/Craft/×64/Clear/Row→ controls, translated status/tooltips and keyboard C/Shift+C implemented; JEI transfer and patterns missing / Pending |
 | Crafting jobs | Preview/shortages/cycles, progress, cancellation, busy/cleanup state | P4–P6 | Missing / Pending |
 | Fluids and Energy | Real container/charge actions, units, observable capacities/rates and unsupported errors | P3, P6 | Missing / Pending |
 | Presets and machine binding | Sides/slots/labels, filters, priorities, rates, stock targets and preview | P3 | Native buffered Import/Export/Stock rules/goal/inventory and machine label/type/access/windows/priority/rate editor implemented / Actual settings controls at scales2–4 recorded; machine preset authoring/Stock client flow now verified; selected tanks, multiport/preview and broader states remain pending |

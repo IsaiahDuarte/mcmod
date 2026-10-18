@@ -407,3 +407,11 @@ burn tick, a 100,000 FE buffer and an 80 FE/tick shared output cap, with remaind
 kept and full-buffer pauses that waste no fuel. It pushes to adjacent receivers and
 keeps exact state when broken. This is partial A04/A14/A17 evidence; a screen,
 finished visuals and survival power progression remain unfinished.
+
+
+The terminal now has a server-owned 3×3 ghost crafting grid. Ghosts come from own
+inventory slots or authorized network rows and hold no items. Crafting uses only the
+player's main inventory, first gathering missing ingredients through the shared
+permission-checked withdraw route, and commits bounded batches (up to 64) only when
+outputs and remainders fit. This is partial A11 evidence; JEI transfer, patterns,
+autocrafting and graphical grid checks remain unfinished.

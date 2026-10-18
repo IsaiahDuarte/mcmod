@@ -98,7 +98,7 @@ Maintain these rows as implementation proceeds. Replace “Not implemented” wi
 | A08 | P4, P5 | Not implemented. |
 | A09 | P5 | Not implemented. |
 | A10 | P1, P5, P7 | Partial foundation: FairSchedulerTest verifies bounded queues, deadlines, independent shares, coalescing, cancellation and failure isolation. Six WasmProbeTest tests execute real Rust and enforce instruction/host/memory/stack bounds, malformed admission and trap discard. Production host/event/log limits and world overload integration remain pending. |
-| A11 | P3, P4, P6 | Partial prerequisite: bounded server registry-text search and stable exact-count pages are implemented; physical item terminal/menu controls and headless flows are implemented; partial graphical item-screen evidence is [recorded](evidence/terminal-client-v1-2026-10-13.md); remaining R08 checks are pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
+| A11 | P3, P4, P6 | Partial prerequisite: a native server-owned [manual crafting grid](decisions/0028-terminal-manual-crafting.md) now crafts from the player inventory with storage gathering, exact remainders and bounded batches (four TerminalCraftingGameTests); bounded server registry-text search and stable exact-count pages are implemented; physical item terminal/menu controls and headless flows are implemented; partial graphical item-screen evidence is [recorded](evidence/terminal-client-v1-2026-10-13.md); remaining R08 checks are pending; [asset inventory](ASSETS.md) records placeholders and missing content. |
 | A12 | P2, P6 | Partial: private current grants, separate operations, explicit ownership transfer, operator administration and execution-time queued revocation pass core tests. [NetworkPersistenceTest](modules/NETWORK_PERSISTENCE.md) verifies canonical schema-two identities/grants, fixed bits, admission/reclamation, ownership transfer/revocation on compressed disk reload and schema-one migration. NodeRegistryTest/NodePersistenceTest and four required NetworkNodeGameTests add physical controller/gateway leases and preserve grants across movement. Live wired scope/activation and execution-time scheduled physical transfer permissions/private segments are implemented with seven WorldStorageTransfersGameTests. Connector cases additionally verify source/target current grants, denied parent/private-child transfers, config revocation and stale provider handles. Player permissions UI and multiplayer checks remain pending. |
 | A13 | P2, P4, P6, P7 | Partial: [audited canonical cell/bank conflict repair](decisions/0023-canonical-cell-repair.md) and [buffer repair](decisions/0024-buffer-conflict-repair.md) now support exact original holders without unresolved transfers, preserving owned quantities/configuration and bank rate spending; repaired buffer presets need authorized reapply. [Controller/gateway repair](decisions/0025-network-node-repair.md) now retains grants/policy and logical identities under fresh topology validation. [Connector/machine repair](decisions/0026-foreign-port-repair.md) preserves local configuration and foreign contents/holds and requires authorized machine redeployment; unresolved/unscoped legacy staging and independent-save mismatches remain open. operator inspection, audited original-owner known cleanup and empty completed-record retirement now have server command/native evidence; full ownership reconciliation remains open. required dedicated two-JVM recovery now preserves accepted known/uncertain staging and verifies delivery/return without replay; independent saves/administration remain open. a separate-JVM orderly integrated-server reopen now preserves complete canonical/physical state and resumes item Stock (see 2026-10-17 restart evidence); a native one-chunk unload/reload also preserves ownership and stops offline mutations; independent saves/interrupted calls remain open. Exact ledger/schema recovery, generation-based owner registry, real SavedData disk save/reload and corrupt-file preservation. Ten required StorageDriveGameTests cover physical lease transitions, block-entity lifecycle reload, copied blocks, break drops and preserved future schemas. Schema-three metadata preserves exact offline stock/claims/grants through legacy migration and disk reload, with canonical structural policies and cloned-node quarantine. Seven EnergyBankGameTests add bank lease/reload/copy/recovery paths, with a strict bank schema fixture in the JVM suite. TransferRegistryTest and TransferPersistenceTest add schema-four canonical staged-resource disk recovery and preserved uncertain intents. Connector schema-one fixtures, compressed structural lease reload, movement/future-data cases and indexed in-call backing invalidation add partial evidence. World-scoped provider identity markers have compressed chest NBT and copied/future identity checks; accepted operation context now persists under schema five; explicit saved-staging progress/cleanup now has headless evidence including chest NBT reacquisition; automatic recovery dispatch, persisted jobs, interrupted external-write/save integration and the supported administrative recovery workflow remain pending. |
 | A14 | P0, P3, P6 | Partial: P0 client/dedicated server loaded with only Minecraft, NeoForge and Factory Core on macOS arm64; see work log. Real vanilla/NeoForge resource handler tests and headless storage-drive GameTests pass with optional mods absent. Client/optional-mod UI and complete network integration remain pending. |
@@ -2747,3 +2747,28 @@ component. Final `python3 scripts/verify.py` passed (tooling, docs, PMD/format/a
 
 Next: P4 crafting begins with the terminal manual crafting grid, then patterns,
 Crafting Units and recursive jobs. Recovery gaps from earlier checkpoints remain open.
+
+## Terminal manual crafting grid checkpoint — 2026-10-17
+
+P4/R08/A11 adds the session-owned ghost grid ([ADR0028](decisions/0028-terminal-manual-crafting.md),
+[terminal module](modules/STORAGE_TERMINAL.md#manual-crafting-grid)): portable
+`GridRequirement`, platform `TerminalCrafting`, separate bounded grid packets, menu
+gathering through the existing priority withdraw route, and a widened (344-pixel)
+native screen with ghost cells, result preview, Row→/Craft/×64/Clear and C/Shift+C.
+
+GridRequirementTest and TerminalCraftingPacketsTest add five JVM cases (242→247);
+four TerminalCraftingGameTests add native cases (232→236). Development runs caught
+a test helper crash when the terminal opened before network validation, early
+assertions against asynchronous gathering, and the shared two-tick throttle dropping
+same-tick ghost edits (now a separate 32-per-second edit budget). Final
+`python3 scripts/verify.py` passed (247 JVM, 236 GameTests, PMD after removing an
+empty catch, dedicated staging seed/restore).
+
+`./gradlew runTerminalClient` passed once on this host with the widened screen
+(existing terminal/buffer/machine stages and all prior captures). A new graphical
+grid stage (cell click, own-slot ghost, Row→, right-click clear, actual Craft
+button, scale 4/2 captures) was then added; its run could not start because no
+display was available ("Failed to find a primary monitor"), so the grid's graphical
+behavior is compiled but unverified. JEI transfer and patterns remain open.
+
+Next: patterns and Crafting Units (P4), then recursive autocrafting jobs.

@@ -894,3 +894,23 @@ emptied, a full buffer retaining coal while capability extraction caps at 80 FE/
 conserved push into a starter bank only after its network validates, break/place
 preservation of FE/burn/fuel/remainder, unchanged future-schema data across break
 and place, and the vanilla-only recipe/unlock. No client rendering is inferred.
+
+
+## Terminal manual crafting checks
+
+GridRequirementTest covers exact per-craft key counts in cell order, component
+distinctness, first-deficit reporting for all requested crafts and invalid shapes,
+kinds and counts. TerminalCraftingPacketsTest round-trips bounded commands/views and
+rejects out-of-range actions, cells, slots, crafts, fingerprints and view fields.
+Four TerminalCraftingGameTests drive the real menu: a cake from own inventory
+returns three buckets and uses exact ingredients, then a second craft gathers,
+finds no milk and consumes nothing; a full inventory refuses a stick craft before
+consuming, then a ×64 request crafts exactly 16 into the one free slot; network
+logs are withdrawn and crafted (4 crafts → 16 planks, storage 5 → 1), then a
+storage shortage crafts the one gathered log as *partial*; mismatched fingerprints
+and stale grid revisions change nothing, and closing with ghosts set drops or
+loses nothing. The screen layout is compiled but not graphically verified here.
+`runTerminalClient` now also requires `terminal-grid-scale-4.png` and
+`terminal-grid-scale-2.png` from a grid stage that clicks a cell, sets an own-slot
+ghost, uses Row→, clears by right-click and crafts one log into four planks with
+the actual Craft button. That stage has not yet run on a display.

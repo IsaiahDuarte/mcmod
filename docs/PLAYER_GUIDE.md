@@ -280,8 +280,26 @@ already owns known staged items, Return requests their return to the original
 source; free that source's space first. Uncertain writes are frozen and need
 administrator recovery. If all View permission or the original network is gone,
 the terminal cannot provide cleanup; the admin recovery interface remains pending.
-Crafting, sorting, fluid containers, energy actions and job controls are not yet
-implemented in this screen. Manual Shift-click/hover/focus, other resolutions, multiplayer, restart and full
+Sorting, fluid containers, energy actions and job controls are not yet
+implemented in this screen; see the crafting grid below.
+
+### Terminal crafting grid
+
+The right side of the terminal has a 3×3 crafting grid of *ghost* cells. Click a
+cell to highlight it, then Ctrl-click an item in your inventory, or select a network
+row and press **Row→**. The cell shows a faded icon; no item moves into the grid,
+so closing the screen never loses anything. Right-click a cell to clear it, or press
+**Clear**. The result appears beside the grid when the pattern matches a crafting
+recipe.
+
+**Craft** (or C) crafts once; **×64** (or Shift+C) crafts up to 64 times. Ingredients
+come from your main inventory (not armor, offhand or cursor). If some are missing
+and you have Withdraw permission, the terminal first withdraws them from storage
+into your inventory, then crafts. If storage runs short it crafts as many as it can
+and shows *Partial*. The output and any container remainders (for example buckets
+from milk) go to your inventory; if they would not fit, that craft is refused before
+anything is used, and *Inventory full* is shown. Withdrawn ingredients that were not
+used stay in your inventory. Manual Shift-click/hover/focus, other resolutions, multiplayer, restart and full
 survival walkthrough remain unverified.
 
 

@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import java.math.BigInteger;
@@ -24,11 +25,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private EditBox search;
   private int selected;
   private long shownRevision;
-  private Button one, stack, next, returning;
+  private Button one, stack, next, returning, useRow, craftOne, craftMany, clearGrid;
+  private int target;
+  public static final int GRID_X = 236, GRID_Y = 146, RESULT_X = 314, RESULT_Y = 170;
 
   public TerminalScreen(TerminalMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
-    imageWidth = 280;
+    imageWidth = 344;
     imageHeight = 232;
     inventoryLabelX = 59;
     inventoryLabelY = 136;
@@ -71,6 +74,66 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     button("home", 114, 48, () -> send(TerminalPackets.HOME, 0, 1, new byte[32]));
     next = button("next", 166, 48, () -> send(TerminalPackets.NEXT, 0, 1, new byte[32]));
     returning = button("return", 218, 52, () -> send(TerminalPackets.RETURN, 0, 1, new byte[32]));
+    useRow =
+        gridButton(
+            "use_row",
+            296,
+            GRID_Y,
+            44,
+            () -> grid(TerminalCraftingPackets.SET_ROW, target, selected, 1, new byte[32]));
+    craftOne =
+        gridButton(
+            "craft_one",
+            GRID_X,
+            210,
+            34,
+            () -> grid(TerminalCraftingPackets.CRAFT, -1, 0, 1, new byte[32]));
+    craftMany =
+        gridButton(
+            "craft_stack",
+            272,
+            210,
+            34,
+            () -> grid(TerminalCraftingPackets.CRAFT, -1, 0, 64, new byte[32]));
+    clearGrid =
+        gridButton(
+            "clear",
+            308,
+            210,
+            32,
+            () -> grid(TerminalCraftingPackets.CLEAR, -1, 0, 1, new byte[32]));
+  }
+
+  private Button gridButton(String key, int x, int y, int width, Runnable action) {
+    return addRenderableWidget(
+        Button.builder(
+                Component.translatable("gui.factorycore.terminal.grid." + key),
+                button -> action.run())
+            .bounds(leftPos + x, topPos + y, width, 18)
+            .tooltip(
+                Tooltip.create(
+                    Component.translatable("gui.factorycore.terminal.grid." + key + ".help")))
+            .build());
+  }
+
+  private void grid(int action, int cell, int source, int crafts, byte[] fingerprint) {
+    PacketDistributor.sendToServer(
+        new TerminalCraftingPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.view().revision(),
+            menu.gridView().gridRevision(),
+            action,
+            cell,
+            source,
+            crafts,
+            fingerprint));
+  }
+
+  private int cellAt(double mouseX, double mouseY) {
+    int column = (int) Math.floor((mouseX - leftPos - GRID_X) / 18);
+    int row = (int) Math.floor((mouseY - topPos - GRID_Y) / 18);
+    return column < 0 || column > 2 || row < 0 || row > 2 ? -1 : row * 3 + column;
   }
 
   private Button button(String key, int x, int width, Runnable action) {
@@ -110,12 +173,16 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     next.active = !view.busy() && view.next();
     returning.active =
         !view.busy() && !view.staged().equals("0") && !view.status().equals("uncertain");
+    useRow.active = !view.busy() && selected < view.rows().size();
+    craftOne.active = !view.busy() && !menu.gridView().result().isEmpty();
+    craftMany.active = craftOne.active;
+    clearGrid.active = !view.busy();
   }
 
   @Override
   protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
     graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xff282c30);
-    graphics.fill(leftPos + 4, topPos + 4, leftPos + 276, topPos + 228, 0xff44484d);
+    graphics.fill(leftPos + 4, topPos + 4, leftPos + 340, topPos + 228, 0xff44484d);
     graphics.fill(leftPos + 8, topPos + 42, leftPos + 272, topPos + 115, 0xff171d22);
     for (var slot : menu.slots) {
       graphics.fill(
@@ -137,6 +204,31 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
           topPos + slot.y + 15,
           0xff30373e);
     }
+    var grid = menu.gridView();
+    for (int cell = 0; cell < 9; cell++) {
+      int x = leftPos + GRID_X + 18 * (cell % 3), y = topPos + GRID_Y + 18 * (cell / 3);
+      graphics.fill(x, y, x + 18, y + 18, cell == target ? 0xffbb8659 : 0xff151b20);
+      graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xff30373e);
+      var ghost = icon(grid.cells().get(cell));
+      if (ghost != null) {
+        graphics.renderFakeItem(ghost.getDefaultInstance(), x + 1, y + 1);
+        // Translucent veil marks a ghost selection rather than a held item.
+        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x6630373e);
+      }
+    }
+    graphics.fill(
+        leftPos + RESULT_X - 1,
+        topPos + RESULT_Y - 1,
+        leftPos + RESULT_X + 21,
+        topPos + RESULT_Y + 21,
+        0xff151b20);
+    var output = icon(grid.result());
+    if (output != null) {
+      var shown = output.getDefaultInstance();
+      shown.setCount(Math.max(1, grid.resultCount()));
+      graphics.renderFakeItem(shown, leftPos + RESULT_X + 2, topPos + RESULT_Y + 2);
+      graphics.renderItemDecorations(font, shown, leftPos + RESULT_X + 2, topPos + RESULT_Y + 2);
+    }
     var rows = menu.view().rows();
     for (int index = 0; index < rows.size(); index++) {
       int x = leftPos + 12 + 32 * index;
@@ -151,6 +243,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       graphics.drawCenteredString(
           font, compact(rows.get(index).available()), x + 14, topPos + 65, 0xffffff);
     }
+  }
+
+  private static net.minecraft.world.item.Item icon(String id) {
+    if (id.isEmpty()) return null;
+    var location = ResourceLocation.tryParse(id);
+    return location == null || !BuiltInRegistries.ITEM.containsKey(location)
+        ? Items.BARRIER
+        : BuiltInRegistries.ITEM.get(location);
   }
 
   private static String compact(String decimal) {
@@ -168,6 +268,25 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     graphics.drawString(font, title, 8, 7, 0xffffff, false);
     graphics.drawString(font, playerInventoryTitle, 59, 136, 0xeeeeee, false);
+    graphics.drawString(
+        font,
+        Component.translatable("gui.factorycore.terminal.grid"),
+        GRID_X,
+        136,
+        0xeeeeee,
+        false);
+    graphics.drawString(
+        font,
+        font.plainSubstrByWidth(
+            Component.translatable(
+                    "gui.factorycore.terminal.grid.status." + menu.gridView().status(),
+                    menu.gridView().crafted())
+                .getString(),
+            48),
+        294,
+        196,
+        0xe4bc83,
+        false);
     var view = menu.view();
     if (selected < view.rows().size()) {
       var row = view.rows().get(selected);
@@ -221,6 +340,25 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
           Optional.empty(),
           mouseX,
           mouseY);
+    } else if (cellAt(mouseX, mouseY) >= 0) {
+      graphics.renderTooltip(
+          font, Component.translatable("gui.factorycore.terminal.grid.cell.help"), mouseX, mouseY);
+    } else if (mouseX >= leftPos + RESULT_X
+        && mouseX < leftPos + RESULT_X + 20
+        && mouseY >= topPos + RESULT_Y
+        && mouseY < topPos + RESULT_Y + 20
+        && !menu.gridView().result().isEmpty()) {
+      graphics.renderTooltip(
+          font,
+          List.of(
+              Component.literal(menu.gridView().resultName()),
+              Component.translatable(
+                  "gui.factorycore.terminal.grid.status." + menu.gridView().status(),
+                  menu.gridView().crafted()),
+              Component.translatable("gui.factorycore.terminal.grid.result.help")),
+          Optional.empty(),
+          mouseX,
+          mouseY);
     } else if (mouseY >= topPos + 136 && mouseY < topPos + 228 && getSlotUnderMouse() != null)
       graphics.renderTooltip(
           font, Component.translatable("gui.factorycore.terminal.deposit.help"), mouseX, mouseY);
@@ -239,7 +377,34 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         return true;
       }
     }
+    int cell = cellAt(mouseX, mouseY);
+    if (cell >= 0) {
+      if (button == 1) grid(TerminalCraftingPackets.CLEAR, cell, 0, 1, new byte[32]);
+      else target = cell;
+      return true;
+    }
     var slot = getSlotUnderMouse();
+    if (button == 0
+        && hasControlDown()
+        && slot != null
+        && slot.container == minecraft.player.getInventory()
+        && slot.hasItem()) {
+      try {
+        var key =
+            new PlatformResourceCodec(minecraft.level.registryAccess()).itemKey(slot.getItem());
+        grid(
+            TerminalCraftingPackets.SET_OWN,
+            target,
+            slot.getContainerSlot(),
+            1,
+            TerminalPackets.fingerprint(key));
+        target = (target + 1) % 9;
+      } catch (IllegalArgumentException unsupported) {
+        minecraft.player.displayClientMessage(
+            Component.translatable("gui.factorycore.terminal.status.unsupported"), true);
+      }
+      return true;
+    }
     if (button == 0
         && hasShiftDown()
         && slot != null
@@ -270,6 +435,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   public boolean keyPressed(int key, int scan, int modifiers) {
     if (search.isFocused() && (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER)) {
       send(TerminalPackets.SEARCH, 0, 1, new byte[32]);
+      return true;
+    }
+    if (!search.isFocused() && key == GLFW.GLFW_KEY_C && craftOne.active) {
+      grid(TerminalCraftingPackets.CRAFT, -1, 0, hasShiftDown() ? 64 : 1, new byte[32]);
       return true;
     }
     if (!search.isFocused() && key >= GLFW.GLFW_KEY_1 && key <= GLFW.GLFW_KEY_8) {
