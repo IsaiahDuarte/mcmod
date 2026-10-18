@@ -58,3 +58,12 @@ state, message, FE, runtime status, deployed flag, up to eight `line:column mess
 diagnostics and eight recent logs; `Draft` sends the saved draft once on open.
 `ProgramTemplates.ALL` lists seven compiling starters (import, export, stock,
 round-robin, fluids, energy, craft-when-low).
+
+
+## Wasm programs
+
+`core.wasm.WasmPreflight.validate(bytes)` and `new WasmProgram(bytes, clock)` (throws on
+invalid artifacts or failed init); `rules()` lists `RuleSpec(key, interval)`;
+`invoke(index, host)` returns `Outcome(commands, instructions)` or throws
+`ProgramEvaluator.Trap`, after which `failed()` is true. ABI and limits:
+[ADR 0037](../decisions/0037-wasm-factory-v1.md); SDK: [sdk/rust](../../sdk/rust/README.md).

@@ -1,0 +1,11 @@
+[package]
+name = "factorycore-smelter"
+version = "1.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+factorycore = { path = "../../factorycore" }

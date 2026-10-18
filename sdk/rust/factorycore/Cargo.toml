@@ -1,0 +1,9 @@
+[package]
+name = "factorycore"
+version = "1.0.0"
+edition = "2021"
+publish = false
+description = "Rust SDK for Factory Core factory_v1 Wasm programs"
+
+[lib]
+crate-type = ["rlib"]

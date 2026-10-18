@@ -128,7 +128,13 @@ tasks.named('runServer', JavaExec) {
 }
 
 dependencies {
-    testImplementation 'com.dylibso.chicory:runtime:1.7.5'
+    // Production guest runtime (ADR 0037): embedded in the mod jar and on dev run classpaths.
+    implementation 'com.dylibso.chicory:runtime:1.7.5'
+    implementation 'com.dylibso.chicory:wasm:1.7.5'
+    additionalRuntimeClasspath 'com.dylibso.chicory:runtime:1.7.5'
+    additionalRuntimeClasspath 'com.dylibso.chicory:wasm:1.7.5'
+    jarJar('com.dylibso.chicory:runtime') { version { strictly '[1.7.5]'; prefer '1.7.5' } }
+    jarJar('com.dylibso.chicory:wasm') { version { strictly '[1.7.5]'; prefer '1.7.5' } }
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
     testImplementation('com.tngtech.archunit:archunit:1.4.1') {
@@ -154,15 +160,16 @@ tasks.withType(Test).configureEach {
 
 tasks.register('verifyRustGuest', Exec) {
     commandLine(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows') ? 'python' : 'python3', 'scripts/verify_guest.py')
-    inputs.files(fileTree('experiments/wasm-guest'), file('scripts/verify_guest.py'))
-    outputs.file('build/test-guests/probe.wasm')
+    inputs.files(fileTree('experiments/wasm-guest'), fileTree('sdk/rust') { exclude 'target/**' }, file('scripts/verify_guest.py'))
+    outputs.files('build/test-guests/probe.wasm', 'build/test-guests/smelter.wasm')
 }
 
 tasks.named('test') {
     dependsOn tasks.named('jar'), tasks.named('verifyRustGuest')
     systemProperty 'factorycore.test.jar', tasks.named('jar').get().archiveFile.get().asFile.absolutePath
     systemProperty 'factorycore.test.guest', file('build/test-guests/probe.wasm').absolutePath
-    inputs.file('build/test-guests/probe.wasm')
+    systemProperty 'factorycore.test.smelter', file('build/test-guests/smelter.wasm').absolutePath
+    inputs.files('build/test-guests/probe.wasm', 'build/test-guests/smelter.wasm')
 }
 
 spotless {

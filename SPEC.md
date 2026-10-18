@@ -484,3 +484,10 @@ deployer's current grants, FE costs per ADR 0006, traps that publish nothing, bo
 command queues executed through the same routes/connectors/crafting jobs as presets,
 and per-outcome logs. This adds partial A08/A09/A10/A12 evidence; the editor,
 templates and Rust/Wasm parity remain unfinished.
+
+
+The production Wasm runtime and `factory_v1` ABI exist (ADR 0037): Chicory is embedded,
+guests are preflighted, bounded per callback and stage the same commands as the
+friendly language. A Rust SDK and starter example build with pinned tooling, and a real
+Rust guest matches its friendly twin command-for-command. This adds A09/A10 evidence;
+in-game artifact upload and deployment remain unfinished.

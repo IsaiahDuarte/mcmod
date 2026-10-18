@@ -78,6 +78,15 @@ class RepositoryVerificationTests(unittest.TestCase):
         (self.root / "scripts/verify_guest.py").unlink()
         self.assertIn("Missing required file: scripts/verify_guest.py", verifier.verify(self.root))
 
+    def test_wired_sdk_source_is_allowed_but_other_sdk_rust_is_not(self):
+        source = self.root / "sdk/rust/factorycore/src/lib.rs"
+        source.parent.mkdir(parents=True)
+        source.write_text("pub fn f() {}\n", encoding="utf-8")
+        self.assertEqual([], verifier.verify(self.root))
+        stray = self.root / "sdk/rust/build.rs"
+        stray.write_text("fn main() {}\n", encoding="utf-8")
+        self.assertTrue(any("sdk/rust/build.rs" in error for error in verifier.verify(self.root)))
+
     def test_build_dispatches_real_required_command(self):
         with patch.object(verifier.subprocess, "run") as run:
             run.return_value.returncode = 0

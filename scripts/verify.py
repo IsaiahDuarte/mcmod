@@ -40,12 +40,17 @@ REQUIRED_FILES = (
     "experiments/wasm-guest/Cargo.toml",
     "experiments/wasm-guest/Cargo.lock",
     "experiments/wasm-guest/rust-toolchain.toml",
+    "sdk/rust/Cargo.toml",
+    "sdk/rust/Cargo.lock",
+    "sdk/rust/rust-toolchain.toml",
 )
 IGNORED_DIRS = {
     ".git", ".agents", ".codex", ".venv", "__pycache__", ".gradle",
     "build", "target", "node_modules", "run",
 }
 UNWIRED_SOURCE_SUFFIXES = {".kt", ".kts", ".rs"}
+# Rust trees whose fmt/clippy/test/Wasm builds run in scripts/verify_guest.py.
+WIRED_RUST = ("experiments/wasm-guest/src", "sdk/rust/factorycore/src", "sdk/rust/examples")
 INLINE_LINK = re.compile(
     r'!?\[[^\]\n]*\]\((<[^>\n]+>|[^)\s]+)(?:\s+"[^"\n]*")?\)'
 )
@@ -128,7 +133,8 @@ def verify(root: Path) -> list[str]:
     for path in repository_files(root):
         relative = path.relative_to(root).as_posix()
         if path.suffix.lower() in UNWIRED_SOURCE_SUFFIXES and not (
-            path.suffix.lower() == ".rs" and path.is_relative_to(root / "experiments/wasm-guest/src")
+            path.suffix.lower() == ".rs"
+            and any(path.is_relative_to(root / wired) for wired in WIRED_RUST)
         ):
             errors.append(
                 f"{relative}: implementation verification is not configured. "

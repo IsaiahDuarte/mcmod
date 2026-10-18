@@ -1057,3 +1057,17 @@ view bounds. ProgramEditorGameTests drives the real menu: a saved bad draft retu
 exactly; pause, resume and stop work and stop keeps the draft; a View-only player
 cannot save (Edit diagnostic) or deploy. The screen is compiled, not graphically
 verified.
+
+
+## Wasm program checks
+
+`python3 scripts/verify_guest.py` (run by `verifyRustGuest`) now also checks the
+`sdk/rust` workspace: fmt, clippy native and wasm, `cargo test` (nonempty) and the
+release build of the example guest copied to `build/test-guests/smelter.wasm`.
+`verify.py` allows Rust only under the probe and SDK source trees; a tooling test
+checks that stray SDK Rust is still rejected. WasmProgramTest: the real Rust guest
+registers `smelt`/`planks` and stages exactly the friendly twin's commands at four
+stock levels with instruction counts within budget; preflight rejects probe imports,
+oversized and malformed artifacts; a hand-assembled infinite loop traps at the
+instruction budget and the instance stays failed; registering a rule outside init
+traps; unknown imports are refused.
