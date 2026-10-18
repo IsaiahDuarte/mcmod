@@ -22,5 +22,17 @@ machine-scale-4-reopened.png framebuffer=2560x1920 gui=640x480 scale=4.0
 machine-preset-scale-2-draft.png framebuffer=2560x1920 gui=1280x960 scale=2.0
 machine-preset-scale-3-draft.png framebuffer=2560x1920 gui=854x640 scale=3.0
 machine-preset-scale-4-stock.png framebuffer=2560x1920 gui=640x480 scale=4.0
+gateway-policy-scale-2.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+gateway-policy-scale-4.png framebuffer=2560x1920 gui=640x480 scale=4.0
+gateway-policy: owner toggled the first branch permission
+program-editor-scale-2.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+guide-page-1.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+guide-page-2.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+guide: item use opened the Factory Guide; paged 1 -> 2
+terminal-fluids-scale-2.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+terminal-Fluids: [Lava=300, Water=1200]
+terminal-energy-scale-2.png framebuffer=2560x1920 gui=1280x960 scale=2.0
+terminal-Energy: [Energy (FE)=500]
+Tour: gateway policy toggle (actual sneak-use C2S), program editor, Factory Guide pages 1-2 (actual item use), terminal Fluids/Energy views; no overlapping controls.
 Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.
 Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample. Restart checkpoint adds1200mB water (400 held),300mB lava and500FE.

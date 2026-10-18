@@ -38,5 +38,46 @@ layout passes.
 The run covers: actual server recipe preview, own-slot ghost by click and `1` key, Row→,
 right-click clear, Craft (1 log → 4 planks) and Clear.
 
-**Not covered:** fluid/energy terminal kinds, the wireless terminal, the gateway policy
-editor, the Factory Guide, the program editor, JEI, physical HID input and multiplayer.
+## Screen tour (second pass, same day)
+
+The fixture now continues past the machine presets. Before the restart checkpoint, it
+covers:
+- **Gateway policy editor:** opened by a real sneak-use packet; the owner clicks the
+  first toggle, and exactly that bit flips server-side; captured at scales 2 and 4.
+- **Program editor:** captured at scale 2.
+- **Factory Guide:** opened by actual item use; pages 1 and 2 captured.
+
+After the checkpoint has stocked fluids and FE, it covers the terminal **Fluids** view
+(Lava 300, Water 1,200 mB) and **Energy** view (500 FE). The task requires 29 captures.
+
+Every capture asserts that no controls overlap and every button label fits. Inspecting
+the screenshots found four more product bugs, now fixed:
+1. Gateway policy column headers were cut off ("Branch grants (ch…"). They are now
+   *Branch grants / Inherited access / Resource kinds*. The fixture checks they fit.
+2. The gateway policy footer was cut off mid-word. It now wraps.
+3. Energy view buttons "Charge held"/"Discharge held" overflowed. They are now
+   **Charge**/**Drain**.
+4. The Fluids and Energy views showed the item hint. Each now shows its own hint.
+
+The program editor's character counter was also drawn over the log pane; the editor is
+now shorter.
+
+Screenshots: [policy ×2](terminal-grid-client-v1-2026-10-18/gateway-policy-scale-2.png),
+[program](terminal-grid-client-v1-2026-10-18/program-editor-scale-2.png),
+[guide 1](terminal-grid-client-v1-2026-10-18/guide-page-1.png)/[2](terminal-grid-client-v1-2026-10-18/guide-page-2.png),
+[fluids](terminal-grid-client-v1-2026-10-18/terminal-fluids-scale-2.png),
+[energy](terminal-grid-client-v1-2026-10-18/terminal-energy-scale-2.png).
+
+## Restart run reliability
+
+`runTerminalRestartClient` passed in 5 of 7 runs after the tour was added. It failed
+twice:
+- once at restart stage 4 (the reopened machine Presets tab);
+- once in the split-root fixture: the child branch stayed `NO_ROOT` for 1,000 ticks; it
+  normally validates within 100.
+
+Neither failure has been reproduced or explained. Both failure messages now report the
+open screen, the root/gateway membership and the network diagnostic. This is an open
+flaky failure, not a pass.
+
+**Not covered:** the wireless terminal, JEI, physical HID input and multiplayer.

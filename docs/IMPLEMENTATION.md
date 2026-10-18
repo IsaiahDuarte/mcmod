@@ -2995,3 +2995,16 @@ were fixed:
 
 The harness now fails on overlapping controls. Remaining graphical gaps: fluid/energy
 terminal kinds, wireless terminal, gateway policy editor, guide, program editor and JEI.
+
+## Graphical screen tour checkpoint — 2026-10-18
+
+`runTerminalClient` now also drives the gateway policy editor, program editor, Factory
+Guide and terminal Fluids/Energy views (29 captures,
+[evidence](evidence/terminal-grid-client-v1-2026-10-18.md)). Screenshots exposed and
+fixed truncated policy headers and footer, overflowing Charge/Drain labels, item hints in
+the fluid/energy views, and the program counter overlap. Captures now fail on overlapping
+controls and on labels too wide for their buttons.
+
+Open: `runTerminalRestartClient` failed 2 of 7 runs (restart stage 4; a split-root
+`NO_ROOT` deadline). Neither is explained yet; diagnostics are added. Not covered
+graphically: the wireless terminal and JEI.

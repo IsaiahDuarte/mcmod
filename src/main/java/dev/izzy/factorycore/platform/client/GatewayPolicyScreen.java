@@ -20,7 +20,7 @@ public final class GatewayPolicyScreen extends AbstractContainerScreen<GatewayPo
   public GatewayPolicyScreen(GatewayPolicyMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
     imageWidth = 300;
-    imageHeight = 196;
+    imageHeight = 204;
   }
 
   @Override
@@ -89,7 +89,10 @@ public final class GatewayPolicyScreen extends AbstractContainerScreen<GatewayPo
             menu.editable()
                 ? "gui.factorycore.gateway_policy.help"
                 : "gui.factorycore.gateway_policy.readonly");
-    graphics.drawString(
-        font, font.plainSubstrByWidth(footer.getString(), 284), 8, 180, 0xd8dee9, false);
+    int y = 176;
+    for (var line : font.split(footer, 284)) {
+      graphics.drawString(font, line, 8, y, 0xd8dee9, false);
+      y += 10;
+    }
   }
 }

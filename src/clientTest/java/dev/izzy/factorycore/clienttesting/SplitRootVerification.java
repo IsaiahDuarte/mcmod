@@ -114,7 +114,13 @@ final class SplitRootVerification {
             + " membership="
             + runtime.membership(machine.position()).status()
             + " preset="
-            + runtime.machinePresets().status(machine));
+            + runtime.machinePresets().status(machine)
+            + " root="
+            + runtime.membership(root.position()).status()
+            + " gateway="
+            + runtime.membership(gateway.position()).status()
+            + " diagnostic="
+            + runtime.diagnostic());
     if (phase == 1) {
       if (runtime.membership(machine.position()).status() != NetworkTopology.Status.VALID)
         return false;

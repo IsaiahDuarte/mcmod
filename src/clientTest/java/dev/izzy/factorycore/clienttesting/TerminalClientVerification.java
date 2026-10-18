@@ -1,6 +1,8 @@
 package dev.izzy.factorycore.clienttesting;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NetworkTopology;
+import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
@@ -60,7 +62,11 @@ public final class TerminalClientVerification {
   private final RestartCheckpoint restartCheckpoint = new RestartCheckpoint();
   private DeviceRegistry.Handle cell;
   private ResourceKey key;
-  private int stage, ticks, entered, rule, craftStep;
+  private static final int DONE = 99;
+  private static final BlockPos GATEWAY = new BlockPos(0, 65, 1),
+      BRANCH = new BlockPos(-1, 65, 1),
+      PROGRAM = new BlockPos(1, 65, 0);
+  private int stage, ticks, entered, rule, craftStep, policyMask;
   private boolean sampleSeeded;
   private long previousRevision;
 
@@ -80,7 +86,7 @@ public final class TerminalClientVerification {
   private void tick(ClientTickEvent.Post event) {
     Minecraft client = Minecraft.getInstance();
     ticks++;
-    if (stage == 70) return;
+    if (stage == DONE) return;
     if (failure.get() != null)
       throw new IllegalStateException("Graphical terminal fixture failed", failure.get());
     if (ticks - entered > 1200)
@@ -94,6 +100,10 @@ public final class TerminalClientVerification {
                   : "")
               + " screen="
               + (client.screen == null ? "none" : client.screen.getClass().getName()));
+    if (stage >= 61) {
+      tourTick(client);
+      return;
+    }
     if (stage >= 39) {
       machineTick(client);
       return;
@@ -850,7 +860,7 @@ public final class TerminalClientVerification {
       capture(client, "machine-preset-scale-4-stock.png");
       client.player.closeContainer();
       checked.set(false);
-      next();
+      jump(61);
       return;
     }
     if (stage == 60 && !checked.get()) {
@@ -870,24 +880,263 @@ public final class TerminalClientVerification {
       return;
     }
     if (stage == 60 && checked.get()) {
-      try {
-        Files.writeString(
-            report,
-            "PASS\n"
-                + evidence
-                + "Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
-                + "Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample. Restart checkpoint adds1200mB water (400 held),300mB lava and500FE.\n");
-      } catch (IOException error) {
-        throw new IllegalStateException(error);
-      }
-      stage = 70;
-      client.level.disconnect();
-      client.disconnect();
-      client.stop();
+      checked.set(false);
+      jump(72);
       return;
     }
     if (!(client.screen instanceof MachineSettingsScreen screen)
         || !screen.getMenu().view().editable()) return;
+    machineScreenTick(client, screen);
+  }
+
+  private void writeReport(Minecraft client) {
+    try {
+      Files.writeString(
+          report,
+          "PASS\n"
+              + evidence
+              + "Tour: gateway policy toggle (actual sneak-use C2S), program editor, Factory Guide pages 1-2 (actual item use), terminal Fluids/Energy views; no overlapping controls.\n"
+              + "Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
+              + "Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample. Restart checkpoint adds1200mB water (400 held),300mB lava and500FE.\n");
+    } catch (IOException error) {
+      throw new IllegalStateException(error);
+    }
+    stage = DONE;
+    client.level.disconnect();
+    client.disconnect();
+    client.stop();
+  }
+
+  /**
+   * Screens added after the original flow. Before the restart checkpoint (61–71): gateway policy
+   * editor, program editor and Factory Guide. After it, with fluids and FE stocked (72–76):
+   * terminal Fluids/Energy views. Every capture also asserts that no visible controls overlap.
+   */
+  @SuppressWarnings("PMD.CloseResource") // Borrowed active client and integrated server.
+  private void tourTick(Minecraft client) {
+    if (ticks - entered < 5) return;
+    var server = client.getSingleplayerServer();
+    var principal = client.player.getUUID();
+    switch (stage) {
+      case 61 -> {
+        if (client.screen != null) return;
+        client.options.guiScale().set(2);
+        client.resizeDisplay();
+        server.execute(
+            () -> {
+              try {
+                var player = server.getPlayerList().getPlayer(principal);
+                var level = player.serverLevel();
+                level.setBlock(
+                    GATEWAY,
+                    NetworkContent.GATEWAY
+                        .get()
+                        .defaultBlockState()
+                        .setValue(
+                            net.minecraft.world.level.block.state.properties.BlockStateProperties
+                                .FACING,
+                            Direction.WEST),
+                    3);
+                ((NetworkNodeEntity) level.getBlockEntity(GATEWAY)).commission(null);
+                level.setBlock(BRANCH, NetworkContent.CABLE.get().defaultBlockState(), 3);
+                level.setBlock(
+                    PROGRAM,
+                    dev.izzy.factorycore.platform.program.ProgramContent.BLOCK
+                        .get()
+                        .defaultBlockState(),
+                    3);
+                player.teleportTo(0.5, 65, 3.5);
+                player.setYRot(180);
+                player.setXRot(20);
+              } catch (RuntimeException error) {
+                failure.set(error);
+              }
+            });
+        next();
+      }
+      case 62 -> {
+        if (!checked.get()) {
+          server.execute(
+              () -> {
+                var membership =
+                    WorldNetworks.get(server)
+                        .membership(
+                            new NodeRegistry.Position("minecraft:overworld", BRANCH.asLong()));
+                if (membership.status() == NetworkTopology.Status.VALID) checked.set(true);
+              });
+          return;
+        }
+        checked.set(false);
+        shift(client, true);
+        client.gameMode.useItemOn(
+            client.player,
+            InteractionHand.MAIN_HAND,
+            new BlockHitResult(Vec3.atCenterOf(GATEWAY), Direction.UP, GATEWAY, false));
+        next();
+      }
+      case 63 -> {
+        if (!(client.screen
+                instanceof dev.izzy.factorycore.platform.client.GatewayPolicyScreen screen)
+            || !screen.getMenu().editable()) return;
+        shift(client, false);
+        policyMask = screen.getMenu().policy().mask();
+        var first =
+            screen.children().stream()
+                .filter(child -> child instanceof Button)
+                .map(child -> (Button) child)
+                .findFirst()
+                .orElseThrow();
+        screen.mouseClicked(
+            first.getX() + first.getWidth() / 2.0, first.getY() + first.getHeight() / 2.0, 0);
+        next();
+      }
+      case 64 -> {
+        if (!(client.screen
+                instanceof dev.izzy.factorycore.platform.client.GatewayPolicyScreen screen)
+            || screen.getMenu().policy().mask() == policyMask) return;
+        check(
+            (screen.getMenu().policy().mask() ^ policyMask) == 1,
+            "Actual policy click flips exactly the first branch permission");
+        for (var header : new String[] {"branch", "inherited", "kinds"})
+          check(
+              client.font.width(Component.translatable("gui.factorycore.gateway_policy." + header))
+                  <= 94,
+              "Policy column header fits: " + header);
+        checkNoOverlap(screen);
+        capture(client, "gateway-policy-scale-2.png");
+        client.options.guiScale().set(4);
+        client.resizeDisplay();
+        next();
+      }
+      case 65 -> {
+        if (ticks - entered < 10) return;
+        checkNoOverlap(client.screen);
+        capture(client, "gateway-policy-scale-4.png");
+        client.player.closeContainer();
+        client.options.guiScale().set(2);
+        client.resizeDisplay();
+        evidence.append("gateway-policy: owner toggled the first branch permission\n");
+        next();
+      }
+      case 66 -> {
+        if (client.screen != null) return;
+        client.gameMode.useItemOn(
+            client.player,
+            InteractionHand.MAIN_HAND,
+            new BlockHitResult(Vec3.atCenterOf(PROGRAM), Direction.UP, PROGRAM, false));
+        next();
+      }
+      case 67 -> {
+        if (!(client.screen instanceof dev.izzy.factorycore.platform.client.ProgramScreen screen)
+            || ticks - entered < 10) return;
+        checkNoOverlap(screen);
+        capture(client, "program-editor-scale-2.png");
+        client.player.closeContainer();
+        server.execute(
+            () ->
+                server
+                    .getPlayerList()
+                    .getPlayer(principal)
+                    .getInventory()
+                    .setItem(
+                        0,
+                        new ItemStack(
+                            dev.izzy.factorycore.platform.guide.GuideContent.GUIDE.get())));
+        next();
+      }
+      case 68 -> {
+        if (client.screen != null
+            || !client
+                .player
+                .getInventory()
+                .getItem(0)
+                .is(dev.izzy.factorycore.platform.guide.GuideContent.GUIDE.get())) return;
+        client.player.getInventory().selected = 0;
+        client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND);
+        next();
+      }
+      case 69 -> {
+        if (!(client.screen
+            instanceof net.minecraft.client.gui.screens.inventory.BookViewScreen screen)) return;
+        capture(client, "guide-page-1.png");
+        screen.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
+        next();
+      }
+      case 70 -> {
+        capture(client, "guide-page-2.png");
+        client.screen.onClose();
+        server.execute(
+            () -> {
+              var player = server.getPlayerList().getPlayer(principal);
+              player.getInventory().setItem(0, ItemStack.EMPTY);
+              player.teleportTo(4.5, 65, 4.5);
+              player.setYRot(135);
+              player.setXRot(10);
+            });
+        evidence.append("guide: item use opened the Factory Guide; paged 1 -> 2\n");
+        next();
+      }
+      case 71 -> {
+        if (client.screen != null || !client.player.getInventory().getItem(0).isEmpty()) return;
+        jump(60);
+      }
+      case 72 -> {
+        if (client.screen != null) return;
+        client.gameMode.useItemOn(
+            client.player,
+            InteractionHand.MAIN_HAND,
+            new BlockHitResult(Vec3.atCenterOf(TERMINAL), Direction.UP, TERMINAL, false));
+        next();
+      }
+      case 73 -> {
+        if (!(client.screen instanceof TerminalScreen screen)
+            || !screen.getMenu().view().status().equals("ready")) return;
+        previousRevision = screen.getMenu().view().revision();
+        click(screen, "Items");
+        next();
+      }
+      case 74, 75 -> {
+        if (!(client.screen instanceof TerminalScreen screen)) return;
+        var view = screen.getMenu().view();
+        if (view.revision() <= previousRevision
+            || view.busy()
+            || view.rows().isEmpty()
+            || ticks - entered < 10) return;
+        String name = stage == 74 ? "Fluids" : "Energy";
+        checkNoOverlap(screen);
+        capture(client, "terminal-" + name.toLowerCase(java.util.Locale.ROOT) + "-scale-2.png");
+        evidence.append(
+            "terminal-"
+                + name
+                + ": "
+                + view.rows().stream().map(row -> row.name() + "=" + row.total()).toList()
+                + "\n");
+        previousRevision = view.revision();
+        click(screen, name);
+        next();
+      }
+      case 76 -> {
+        client.player.closeContainer();
+        writeReport(client);
+      }
+      default -> throw new IllegalStateException("Unknown tour stage " + stage);
+    }
+  }
+
+  /** Sends the actual sneak state the server reads for gateway sneak-use. */
+  private static void shift(Minecraft client, boolean down) {
+    client.player.connection.send(
+        new net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket(
+            client.player,
+            down
+                ? net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
+                    .PRESS_SHIFT_KEY
+                : net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
+                    .RELEASE_SHIFT_KEY));
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Borrowed active client.
+  private void machineScreenTick(Minecraft client, MachineSettingsScreen screen) {
     switch (stage) {
       case 41 -> {
         edit(screen, 0, "discarded", false);
@@ -1052,6 +1301,11 @@ public final class TerminalClientVerification {
             digest));
   }
 
+  private void jump(int target) {
+    stage = target - 1;
+    next();
+  }
+
   private void next() {
     stage++;
     entered = ticks;
@@ -1106,7 +1360,7 @@ public final class TerminalClientVerification {
     throw new IllegalStateException("Search widget missing");
   }
 
-  /** Visible controls must not overlap at the current GUI scale. */
+  /** Visible controls must not overlap, and button labels must fit, at the current GUI scale. */
   private static void checkNoOverlap(Screen screen) {
     var widgets =
         screen.children().stream()
@@ -1127,6 +1381,12 @@ public final class TerminalClientVerification {
                 || b.getBottom() <= a.getY(),
             "Controls overlap: " + a.getMessage().getString() + " / " + b.getMessage().getString());
       }
+    var font = Minecraft.getInstance().font;
+    for (var widget : widgets)
+      if (widget instanceof Button button)
+        check(
+            font.width(button.getMessage()) <= button.getWidth() - 4,
+            "Label does not fit its button: " + button.getMessage().getString());
   }
 
   private static void click(Screen screen, String text) {

@@ -660,7 +660,9 @@ original-owner staged return through the physical menu and shared scheduler.
 
 `./gradlew runTerminalClient` now requires20 captures and the prior terminal/buffer/
 binding checks plus preset Stock authoring, exact sample/goal/Deploy and selected
-slot conservation. It now requires 22 captures: the two terminal-grid captures add
+slot conservation. It now requires 29 captures (gateway policy, program editor, guide pages and terminal
+Fluids/Energy views were added on 2026-10-18), and every capture also asserts that
+button labels fit. The two terminal-grid captures add
 an actual recipe preview, own-slot ghost, Row→, right-click clear and Craft, and the
 fixture fails if visible terminal controls overlap at GUI scales 4 and 2. It does not prove physical Shift, remote multiplayer, restart,
 independent saves or complete release acceptance.

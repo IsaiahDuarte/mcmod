@@ -563,7 +563,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     graphics.drawString(
         font,
         font.plainSubstrByWidth(
-            Component.translatable("gui.factorycore.terminal.status." + view.status()).getString(),
+            Component.translatable(
+                    "gui.factorycore.terminal.status."
+                        + view.status()
+                        + (view.status().equals("ready") && kind != 0 ? "." + kind : ""))
+                .getString(),
             254),
         12,
         103,

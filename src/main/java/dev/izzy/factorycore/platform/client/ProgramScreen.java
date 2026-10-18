@@ -36,7 +36,8 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
                 leftPos + 8,
                 topPos + 18,
                 220,
-                160,
+                // The character counter renders just below the box; keep it above the log pane.
+                148,
                 Component.translatable("gui.factorycore.program.placeholder"),
                 Component.translatable("gui.factorycore.program.editor")));
     editor.setCharacterLimit(

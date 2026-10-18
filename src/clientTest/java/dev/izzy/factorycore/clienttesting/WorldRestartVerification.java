@@ -68,7 +68,14 @@ final class WorldRestartVerification {
     if (failure.get() != null)
       throw new IllegalStateException("World restart fixture failed", failure.get());
     if (ticks - entered > 1200)
-      throw new IllegalStateException("World restart timeout stage=" + stage);
+      throw new IllegalStateException(
+          "World restart timeout stage="
+              + stage
+              + " screen="
+              + (client.screen == null ? "none" : client.screen.getClass().getName())
+              + (client.screen instanceof MachineSettingsScreen machine
+                  ? " preset=" + machine.getMenu().presetView()
+                  : ""));
     if (stage == 0 && client.screen instanceof TitleScreen) {
       client.options.pauseOnLostFocus = false;
       client
