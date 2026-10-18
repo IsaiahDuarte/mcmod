@@ -113,3 +113,17 @@ through `WorldStorageRoutes.priorityGuarded` FROM_STORAGE into the player invent
 bounded to 64 units per route and 18 routes per request. Crafting itself is an
 atomic per-request commit over a copied inventory that proves output/remainder fit
 per craft. Only `RecipeType.CRAFTING` recipes are used; the grid holds no items.
+
+
+## Autocrafting jobs view
+
+`TerminalJobPackets.Command(menu, session, revision, action, selection, amount)`
+actions: HOME/NEXT page craftables, PREVIEW (current craftable row 0–7, amount
+1–4,096, current `revision`), START (the server-held preview under the current
+revision), CANCEL (job row 0–3). Stale revisions are ignored; commands share the
+menu's two-tick throttle. `View` carries up to eight craftable entries, the preview
+entry/reason/steps/crafts, up to three missing entries with exact amounts, up to four
+of the viewer's jobs (output, done, total, state, reason) and a status key. Craftables
+are the sorted output keys of `WorldCrafting.index` for the terminal's segment,
+refreshed on open and paging. Preview/start/cancel delegate to
+[`WorldCraftingJobs`](CRAFTING.md#jobs); the client never names a resource key.

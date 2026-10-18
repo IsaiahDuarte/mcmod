@@ -567,5 +567,13 @@ into storage. Cancelling releases unused ingredients and returns any items the j
 holding; ingredients already crafted are not restored. If a pattern is removed, the
 network goes offline, your Craft permission is revoked or storage is full, the job
 waits with a reason and continues when the problem is fixed. Jobs survive a normal
-save and restart. The terminal screen for previewing, starting and cancelling jobs is
-not available yet.
+save and restart.
+
+In the terminal, press **Jobs** to switch from stored items to craftable items (the
+outputs of the patterns in your segment's Crafting Units). Select one (click or 1–8)
+and press **×1**, **×8** or **×64** to preview: the screen shows how many steps and
+crafts are needed, or the first missing ingredient. Nothing is reserved by a preview.
+Press **Start** to begin; you need Craft permission. Your jobs appear in the column on
+the right with crafts done/total and a state symbol (▶ running, ⏸ waiting, ⇩ storing
+results, ✕ cancelling); hover for the reason. Select a job and press **Cancel** to stop
+it. You can run up to eight jobs; a network holds at most 64.

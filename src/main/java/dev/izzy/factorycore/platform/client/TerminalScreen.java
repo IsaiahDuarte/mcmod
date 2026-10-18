@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
+import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import java.math.BigInteger;
@@ -25,8 +26,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private EditBox search;
   private int selected;
   private long shownRevision;
-  private Button one, stack, next, returning, useRow, craftOne, craftMany, clearGrid, encode;
-  private int target;
+  private Button one, stack, home, next, returning, useRow, craftOne, craftMany, clearGrid, encode;
+  private Button mode, previewOne, previewEight, previewMany, startJob, jobHome, jobNext, cancelJob;
+  private boolean jobsMode;
+  private int target, craftSelected, jobSelected;
+  public static final int JOBS_X = 276;
   public static final int GRID_X = 236, GRID_Y = 146, RESULT_X = 314, RESULT_Y = 170;
 
   public TerminalScreen(TerminalMenu menu, Inventory inventory, Component title) {
@@ -71,7 +75,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             62,
             48,
             () -> send(TerminalPackets.WITHDRAW, selected, 64, new byte[32]));
-    button("home", 114, 48, () -> send(TerminalPackets.HOME, 0, 1, new byte[32]));
+    home = button("home", 114, 48, () -> send(TerminalPackets.HOME, 0, 1, new byte[32]));
     next = button("next", 166, 48, () -> send(TerminalPackets.NEXT, 0, 1, new byte[32]));
     returning = button("return", 218, 52, () -> send(TerminalPackets.RETURN, 0, 1, new byte[32]));
     useRow =
@@ -103,6 +107,70 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             32,
             () -> grid(TerminalCraftingPackets.CLEAR, -1, 0, 1, new byte[32]));
     addEncode();
+    addJobControls();
+  }
+
+  private void addJobControls() {
+    mode =
+        addRenderableWidget(
+            Button.builder(
+                    modeLabel(),
+                    button -> {
+                      jobsMode = !jobsMode;
+                      button.setMessage(modeLabel());
+                    })
+                .bounds(leftPos + 274, topPos + 20, 66, 18)
+                .tooltip(
+                    Tooltip.create(
+                        Component.translatable("gui.factorycore.terminal.job.mode.help")))
+                .build());
+    previewOne =
+        jobButton("preview_one", 10, 40, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 1));
+    previewEight =
+        jobButton("preview_eight", 54, 40, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 8));
+    previewMany =
+        jobButton("preview_many", 98, 44, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 64));
+    startJob = jobButton("start", 146, 52, () -> job(TerminalJobPackets.START, 0, 1));
+    jobHome = jobButton("home", 202, 32, () -> job(TerminalJobPackets.HOME, 0, 1));
+    jobNext = jobButton("next", 238, 32, () -> job(TerminalJobPackets.NEXT, 0, 1));
+    cancelJob =
+        addRenderableWidget(
+            Button.builder(
+                    Component.translatable("gui.factorycore.terminal.job.cancel"),
+                    button -> job(TerminalJobPackets.CANCEL, jobSelected, 1))
+                .bounds(leftPos + 274, topPos + 118, 66, 18)
+                .tooltip(
+                    Tooltip.create(
+                        Component.translatable("gui.factorycore.terminal.job.cancel.help")))
+                .build());
+  }
+
+  private Component modeLabel() {
+    return Component.translatable(
+        jobsMode ? "gui.factorycore.terminal.job.items" : "gui.factorycore.terminal.job.jobs");
+  }
+
+  private Button jobButton(String key, int x, int width, Runnable action) {
+    return addRenderableWidget(
+        Button.builder(
+                Component.translatable("gui.factorycore.terminal.job." + key),
+                button -> action.run())
+            .bounds(leftPos + x, topPos + 118, width, 18)
+            .tooltip(
+                Tooltip.create(
+                    Component.translatable("gui.factorycore.terminal.job." + key + ".help")))
+            .build());
+  }
+
+  private void job(int action, int selection, int amount) {
+    PacketDistributor.sendToServer(
+        new TerminalJobPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.jobView().revision(),
+            action,
+            selection,
+            amount));
   }
 
   private void addEncode() {
@@ -189,6 +257,20 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     craftMany.active = craftOne.active;
     clearGrid.active = !view.busy();
     encode.active = craftOne.active;
+    var jobs = menu.jobView();
+    craftSelected = Math.min(craftSelected, Math.max(0, jobs.craftables().size() - 1));
+    jobSelected = Math.min(jobSelected, Math.max(0, jobs.jobs().size() - 1));
+    for (var item : List.of(one, stack, home, next, returning)) item.visible = !jobsMode;
+    for (var item : List.of(previewOne, previewEight, previewMany, startJob, jobHome, jobNext))
+      item.visible = jobsMode;
+    previewOne.active = craftSelected < jobs.craftables().size();
+    previewEight.active = previewOne.active;
+    previewMany.active = previewOne.active;
+    startJob.active = !jobs.preview().icon().isEmpty() && jobs.previewReason().isEmpty();
+    jobNext.active = jobs.next();
+    cancelJob.active =
+        jobSelected < jobs.jobs().size()
+            && !jobs.jobs().get(jobSelected).state().equals("cancelling");
   }
 
   @Override
@@ -241,6 +323,34 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       graphics.renderFakeItem(shown, leftPos + RESULT_X + 2, topPos + RESULT_Y + 2);
       graphics.renderItemDecorations(font, shown, leftPos + RESULT_X + 2, topPos + RESULT_Y + 2);
     }
+    var jobRows = menu.jobView().jobs();
+    graphics.fill(leftPos + JOBS_X - 2, topPos + 42, leftPos + 340, topPos + 115, 0xff171d22);
+    for (int index = 0; index < jobRows.size(); index++) {
+      int y = topPos + 43 + 18 * index;
+      var row = jobRows.get(index);
+      if (index == jobSelected)
+        graphics.fill(leftPos + JOBS_X - 1, y - 1, leftPos + 339, y + 17, 0xffbb8659);
+      var item = icon(row.output().icon());
+      if (item != null) graphics.renderItem(item.getDefaultInstance(), leftPos + JOBS_X, y);
+      graphics.drawString(
+          font,
+          font.plainSubstrByWidth(row.done() + "/" + row.total() + " " + glyph(row.state()), 44),
+          leftPos + JOBS_X + 18,
+          y + 4,
+          row.reason().isEmpty() ? 0xc9dbed : 0xe4bc83,
+          false);
+    }
+    if (jobsMode) {
+      var craftables = menu.jobView().craftables();
+      for (int index = 0; index < craftables.size(); index++) {
+        int x = leftPos + 12 + 32 * index;
+        graphics.fill(
+            x, topPos + 45, x + 28, topPos + 74, index == craftSelected ? 0xffbb8659 : 0xff59626b);
+        var item = icon(craftables.get(index).icon());
+        if (item != null) graphics.renderItem(item.getDefaultInstance(), x + 6, topPos + 51);
+      }
+      return;
+    }
     var rows = menu.view().rows();
     for (int index = 0; index < rows.size(); index++) {
       int x = leftPos + 12 + 32 * index;
@@ -255,6 +365,17 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       graphics.drawCenteredString(
           font, compact(rows.get(index).available()), x + 14, topPos + 65, 0xffffff);
     }
+  }
+
+  /** Text symbol accompanying color so job state is readable without color vision. */
+  private static String glyph(String state) {
+    return switch (state) {
+      case "running" -> "▶";
+      case "waiting" -> "⏸";
+      case "delivering" -> "⇩";
+      case "cancelling" -> "✕";
+      default -> "?";
+    };
   }
 
   private static net.minecraft.world.item.Item icon(String id) {
@@ -299,6 +420,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         136,
         0xe4bc83,
         false);
+    if (jobsMode) {
+      renderJobLabels(graphics);
+      return;
+    }
     var view = menu.view();
     if (selected < view.rows().size()) {
       var row = view.rows().get(selected);
@@ -326,6 +451,49 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         false);
   }
 
+  private void renderJobLabels(GuiGraphics graphics) {
+    var jobs = menu.jobView();
+    Component first;
+    if (!jobs.preview().icon().isEmpty())
+      first =
+          Component.translatable(
+              "gui.factorycore.terminal.job.preview",
+              jobs.preview().amount(),
+              jobs.preview().name());
+    else if (craftSelected < jobs.craftables().size())
+      first =
+          Component.translatable(
+              "gui.factorycore.terminal.job.selected", jobs.craftables().get(craftSelected).name());
+    else first = Component.translatable("gui.factorycore.terminal.job.none");
+    graphics.drawString(
+        font, font.plainSubstrByWidth(first.getString(), 254), 12, 79, 0xffffff, false);
+    Component second = Component.empty();
+    if (!jobs.missing().isEmpty()) {
+      var missing = jobs.missing().getFirst();
+      second =
+          Component.translatable(
+              "gui.factorycore.terminal.job.missing",
+              missing.amount(),
+              missing.name(),
+              jobs.missing().size());
+    } else if (!jobs.preview().icon().isEmpty())
+      second =
+          Component.translatable(
+              "gui.factorycore.terminal.job.plan", jobs.previewSteps(), jobs.previewCrafts());
+    graphics.drawString(
+        font, font.plainSubstrByWidth(second.getString(), 254), 12, 91, 0xc9dbed, false);
+    graphics.drawString(
+        font,
+        font.plainSubstrByWidth(
+            Component.translatable("gui.factorycore.terminal.job.status." + jobs.status())
+                .getString(),
+            254),
+        12,
+        103,
+        0xe4bc83,
+        false);
+  }
+
   @Override
   public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     super.render(graphics, mouseX, mouseY, partial);
@@ -336,7 +504,39 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             && mouseX < leftPos + 268
             && mouseY >= topPos + 45
             && mouseY < topPos + 75;
-    if (over && row < menu.view().rows().size()) {
+    int jobRow = (mouseY - topPos - 43) / 18;
+    if (mouseX >= leftPos + JOBS_X
+        && mouseX < leftPos + 340
+        && mouseY >= topPos + 43
+        && jobRow < menu.jobView().jobs().size()) {
+      var value = menu.jobView().jobs().get(jobRow);
+      graphics.renderTooltip(
+          font,
+          List.of(
+              Component.translatable(
+                  "gui.factorycore.terminal.job.preview",
+                  value.output().amount(),
+                  value.output().name()),
+              Component.translatable(
+                  "gui.factorycore.terminal.job.progress", value.done(), value.total()),
+              Component.translatable("gui.factorycore.terminal.job.state." + value.state()),
+              value.reason().isEmpty()
+                  ? Component.empty()
+                  : Component.translatable(
+                      "gui.factorycore.terminal.job.reason." + value.reason())),
+          Optional.empty(),
+          mouseX,
+          mouseY);
+    } else if (jobsMode && over && row < menu.jobView().craftables().size()) {
+      graphics.renderTooltip(
+          font,
+          List.of(
+              Component.literal(menu.jobView().craftables().get(row).name()),
+              Component.translatable("gui.factorycore.terminal.job.select.help")),
+          Optional.empty(),
+          mouseX,
+          mouseY);
+    } else if (!jobsMode && over && row < menu.view().rows().size()) {
       var value = menu.view().rows().get(row);
       graphics.renderTooltip(
           font,
@@ -384,10 +584,23 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         && mouseX >= leftPos + 12
         && mouseX < leftPos + 268) {
       int index = ((int) mouseX - leftPos - 12) / 32;
-      if (index < menu.view().rows().size()) {
+      if (jobsMode && index < menu.jobView().craftables().size()) {
+        craftSelected = index;
+        return true;
+      }
+      if (!jobsMode && index < menu.view().rows().size()) {
         selected = index;
         return true;
       }
+    }
+    if (button == 0
+        && mouseX >= leftPos + JOBS_X
+        && mouseX < leftPos + 340
+        && mouseY >= topPos + 43
+        && mouseY < topPos + 115) {
+      int index = ((int) mouseY - topPos - 43) / 18;
+      if (index < menu.jobView().jobs().size()) jobSelected = index;
+      return true;
     }
     int cell = cellAt(mouseX, mouseY);
     if (cell >= 0) {
@@ -455,7 +668,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
     if (!search.isFocused() && key >= GLFW.GLFW_KEY_1 && key <= GLFW.GLFW_KEY_8) {
       int index = key - GLFW.GLFW_KEY_1;
-      if (index < menu.view().rows().size()) selected = index;
+      if (jobsMode) {
+        if (index < menu.jobView().craftables().size()) craftSelected = index;
+      } else if (index < menu.view().rows().size()) selected = index;
       return true;
     }
     return super.keyPressed(key, scan, modifiers);

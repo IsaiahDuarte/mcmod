@@ -959,3 +959,16 @@ by the requester releases the reservation and returns staging with wood conserve
 a removed stick pattern pauses with staged planks until reinserted; a full cell keeps
 undeliverable sticks staged until space returns; and a revoked CRAFT grant pauses
 before the next craft while keeping the reservation.
+
+
+## Terminal jobs view checks
+
+TerminalJobPacketsTest round-trips commands and views and rejects out-of-range
+actions, rows, amounts, oversized lists, impossible progress and long fields.
+TerminalJobGameTests drives the real menu: craftables list both pattern outputs; a
+preview without logs explains the missing log; a stale-revision start creates nothing;
+a preview with logs shows two steps/three crafts and reserves nothing; Start lists the
+job and reserves one log; the finished job leaves the list with eight sticks stored; a
+64-stick preview is missing logs until more are stored; a 24-craft job is listed and
+cancelled through the menu, then retires with its reservation released. The screen's
+Jobs mode is compiled but not graphically verified.

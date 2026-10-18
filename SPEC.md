@@ -439,3 +439,10 @@ storage, and on cancellation release reservations and deliver staging without
 replay or refund. World schema 13 stores jobs with the ledger. This is partial
 A06/A08/A13 evidence; the request UI, processing patterns, branch publication and
 keep-stock requests remain unfinished.
+
+
+The terminal now has a Jobs mode: craftable outputs of the segment's patterns, ×1/×8/
+×64 previews showing steps/crafts or the first missing ingredient, Start under CRAFT
+permission, a four-job progress column with text state symbols, and Cancel. Previews
+reserve nothing; the server holds the previewed key. This adds partial A06/A11
+evidence; graphical verification, JEI and branch/processing jobs remain unfinished.
