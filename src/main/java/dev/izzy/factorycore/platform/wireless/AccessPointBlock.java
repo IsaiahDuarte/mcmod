@@ -19,6 +19,54 @@ public final class AccessPointBlock extends BaseEntityBlock {
 
   public AccessPointBlock(Properties properties) {
     super(properties);
+    registerDefaultState(
+        stateDefinition
+            .any()
+            .setValue(
+                dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY,
+                dev.izzy.factorycore.platform.network.DeviceLamp.OFF));
+  }
+
+  @Override
+  protected void createBlockStateDefinition(
+      net.minecraft.world.level.block.state.StateDefinition.Builder<Block, BlockState> builder) {
+    builder.add(dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY);
+  }
+
+  /**
+   * Server lamp refresh, one bounded membership lookup per period: lit while connected and holding
+   * a tick of FE, fault while connected without power or on an invalid network, off when unwired.
+   */
+  @Override
+  public <T extends BlockEntity>
+      net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+          Level level,
+          BlockState state,
+          net.minecraft.world.level.block.entity.BlockEntityType<T> type) {
+    return level.isClientSide()
+        ? null
+        : createTickerHelper(
+            type,
+            WirelessContent.ACCESS_POINT_ENTITY.get(),
+            (tickLevel, position, tickState, point) -> {
+              if (!dev.izzy.factorycore.platform.network.DeviceLamp.due(tickLevel, position))
+                return;
+              var status =
+                  WorldNetworks.get(
+                          ((net.minecraft.server.level.ServerLevel) tickLevel).getServer())
+                      .membership(point.origin())
+                      .status();
+              var lamp =
+                  dev.izzy.factorycore.platform.network.DeviceLamp.of(
+                      status,
+                      tickState.getValue(
+                          dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY));
+              if (lamp == dev.izzy.factorycore.platform.network.DeviceLamp.ACTIVE
+                  && point.energy() < AccessPointEntity.TICK_COST)
+                lamp = dev.izzy.factorycore.platform.network.DeviceLamp.FAULT;
+              dev.izzy.factorycore.platform.network.DeviceLamp.show(
+                  tickLevel, position, tickState, lamp);
+            });
   }
 
   @Override
@@ -62,7 +110,8 @@ public final class AccessPointBlock extends BaseEntityBlock {
   protected void onPlace(
       BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
     super.onPlace(state, level, position, previous, moved);
-    WorldNetworks.changed(level, position);
+    if (!dev.izzy.factorycore.platform.network.DeviceLamp.onlyLampChanged(previous, state))
+      WorldNetworks.changed(level, position);
   }
 
   @Override
@@ -80,7 +129,8 @@ public final class AccessPointBlock extends BaseEntityBlock {
   @Override
   protected void onRemove(
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    WorldNetworks.changed(level, position);
+    if (!dev.izzy.factorycore.platform.network.DeviceLamp.onlyLampChanged(state, next))
+      WorldNetworks.changed(level, position);
     super.onRemove(state, level, position, next, moved);
   }
 }

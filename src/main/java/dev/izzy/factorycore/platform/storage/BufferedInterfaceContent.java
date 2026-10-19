@@ -23,7 +23,10 @@ public final class BufferedInterfaceContent {
       BLOCKS.registerBlock(
           "buffered_interface",
           BufferedInterfaceBlock::new,
-          BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops());
+          BlockBehaviour.Properties.of()
+              .strength(3.5f)
+              .requiresCorrectToolForDrops()
+              .sound(net.minecraft.world.level.block.SoundType.METAL));
   public static final DeferredItem<BufferedInterfaceItem> ITEM =
       ITEMS.register("buffered_interface", () -> new BufferedInterfaceItem(BLOCK.get()));
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BufferedInterfaceEntity>>

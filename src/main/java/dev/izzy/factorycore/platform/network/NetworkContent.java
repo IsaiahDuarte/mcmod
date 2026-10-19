@@ -81,7 +81,10 @@ public final class NetworkContent {
   private NetworkContent() {}
 
   private static BlockBehaviour.Properties properties() {
-    return BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops();
+    return BlockBehaviour.Properties.of()
+        .strength(3.5f)
+        .requiresCorrectToolForDrops()
+        .sound(net.minecraft.world.level.block.SoundType.METAL);
   }
 
   public static void register(IEventBus bus) {

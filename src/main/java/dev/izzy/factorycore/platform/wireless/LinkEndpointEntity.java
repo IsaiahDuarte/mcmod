@@ -157,6 +157,15 @@ public final class LinkEndpointEntity extends BlockEntity {
     return "";
   }
 
+  /** Presentation lamp: off while unpaired, lit while offering its port, fault otherwise. */
+  dev.izzy.factorycore.platform.network.DeviceLamp lamp() {
+    var reason = diagnostic();
+    if ("unpaired".equals(reason)) return dev.izzy.factorycore.platform.network.DeviceLamp.OFF;
+    return reason.isEmpty()
+        ? dev.izzy.factorycore.platform.network.DeviceLamp.ACTIVE
+        : dev.izzy.factorycore.platform.network.DeviceLamp.FAULT;
+  }
+
   public boolean active() {
     return current() && diagnostic().isEmpty();
   }
@@ -182,6 +191,9 @@ public final class LinkEndpointEntity extends BlockEntity {
 
   /** Pays operating power; a change in powered state re-discovers both ends. */
   void serverTick() {
+    if (level != null && dev.izzy.factorycore.platform.network.DeviceLamp.due(level, worldPosition))
+      dev.izzy.factorycore.platform.network.DeviceLamp.show(
+          level, worldPosition, getBlockState(), lamp());
     if (partner == null) return;
     boolean next = energy >= TICK_COST;
     if (next) {

@@ -1,0 +1,6 @@
+{
+  "parent": "factorycore:block/status_overlay_sides",
+  "textures": {
+    "overlay": "factorycore:block/program_controller_lamp_fault"
+  }
+}

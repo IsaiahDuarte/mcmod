@@ -1,7 +1,41 @@
 {
-  "variants": {
-    "": {
-      "model": "factorycore:block/wireless_access_point"
+  "multipart": [
+    {
+      "apply": {
+        "model": "factorycore:block/wireless_access_point"
+      }
+    },
+    {
+      "when": {
+        "lamp": "active"
+      },
+      "apply": {
+        "model": "factorycore:block/wireless_access_point_lamp_active"
+      }
+    },
+    {
+      "when": {
+        "lamp": "active"
+      },
+      "apply": {
+        "model": "factorycore:block/wireless_access_point_top_lamp_active"
+      }
+    },
+    {
+      "when": {
+        "lamp": "fault"
+      },
+      "apply": {
+        "model": "factorycore:block/wireless_access_point_lamp_fault"
+      }
+    },
+    {
+      "when": {
+        "lamp": "fault"
+      },
+      "apply": {
+        "model": "factorycore:block/wireless_access_point_top_lamp_fault"
+      }
     }
-  }
+  ]
 }

@@ -1,0 +1,6 @@
+{
+  "parent": "factorycore:block/status_overlay_north",
+  "textures": {
+    "overlay": "factorycore:block/network_controller_lamp_fault"
+  }
+}

@@ -89,6 +89,15 @@ neoForge {
             systemProperty "factorycore.client.report", file("build/reports/client-terminal/result.txt").absolutePath
             systemProperty "factorycore.noWelcomeGuide", "true"
         }
+        presentationClient {
+            client()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/client-presentation-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            systemProperty "factorycore.client.report", file("build/reports/client-presentation/result.txt").absolutePath
+            systemProperty "factorycore.noWelcomeGuide", "true"
+            systemProperty "factorycore.presentation", "true"
+        }
         terminalRestartClient {
             client()
             sourceSet = sourceSets.clientTest
@@ -388,6 +397,27 @@ tasks.named('runTerminalClient', JavaExec) {
         }) {
             throw new GradleException('Graphical terminal screenshots are missing.')
         }
+    }
+}
+
+// Presentation gallery: orientations, lamps/bays, held items, tooltips and every screen at GUI
+// scales 1-4 in the smallest supported window. Needs a display; run explicitly, not part of check.
+tasks.named('runPresentationClient', JavaExec) {
+    doFirst {
+        delete file('build/client-presentation-run/saves/factorycore-presentation-verification')
+        delete file('build/reports/client-presentation')
+    }
+    doLast {
+        def result = file('build/reports/client-presentation/result.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n'))
+            throw new GradleException('Graphical presentation verification did not complete.')
+        def screens = ['terminal', 'buffer', 'machine', 'program', 'gateway-policy', 'guide']
+        def captures = ['orientation-north-east-up.png', 'orientation-south-west-down.png', 'states-day.png', 'states-day-close.png', 'states-night.png', 'states-night-close.png', 'held-first-person-network_controller.png', 'held-first-person-network_cable.png', 'held-first-person-factory_guide.png', 'held-third-person-gateway.png', 'tooltips-edges-scale-4.png', 'tooltips-edges-scale-2.png', 'terminal-scale-2.png', 'terminal-scale-3.png'] + screens.collectMany { ["${it}-scale-1.png", "${it}-scale-4.png"] }
+        def missing = captures.findAll { name ->
+            def capture = file("build/reports/client-presentation/screenshots/${name}")
+            !capture.isFile() || capture.length() == 0
+        }
+        if (missing) throw new GradleException("Presentation screenshots are missing: ${missing}")
     }
 }
 

@@ -21,6 +21,59 @@ public final class ProgramControllerBlock extends BaseEntityBlock {
 
   public ProgramControllerBlock(Properties properties) {
     super(properties);
+    registerDefaultState(
+        stateDefinition
+            .any()
+            .setValue(
+                dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY,
+                dev.izzy.factorycore.platform.network.DeviceLamp.OFF));
+  }
+
+  @Override
+  protected void createBlockStateDefinition(
+      net.minecraft.world.level.block.state.StateDefinition.Builder<Block, BlockState> builder) {
+    builder.add(dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY);
+  }
+
+  /** Server lamp refresh: program state plus one bounded membership lookup per period. */
+  @Override
+  public <T extends BlockEntity>
+      net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+          Level level,
+          BlockState state,
+          net.minecraft.world.level.block.entity.BlockEntityType<T> type) {
+    return level.isClientSide()
+        ? null
+        : createTickerHelper(
+            type,
+            ProgramContent.ENTITY.get(),
+            (tickLevel, position, tickState, controller) -> {
+              if (!dev.izzy.factorycore.platform.network.DeviceLamp.due(tickLevel, position))
+                return;
+              dev.izzy.factorycore.platform.network.DeviceLamp.show(
+                  tickLevel, position, tickState, lamp(controller, tickState));
+            });
+  }
+
+  private static dev.izzy.factorycore.platform.network.DeviceLamp lamp(
+      ProgramControllerEntity controller, BlockState state) {
+    var current = state.getValue(dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY);
+    return switch (controller.state()) {
+      case STOPPED -> dev.izzy.factorycore.platform.network.DeviceLamp.OFF;
+      case PAUSED -> dev.izzy.factorycore.platform.network.DeviceLamp.PAUSED;
+      case TRAPPED -> dev.izzy.factorycore.platform.network.DeviceLamp.FAULT;
+      case RUNNING -> {
+        var status =
+            WorldNetworks.get(
+                    ((net.minecraft.server.level.ServerLevel) controller.getLevel()).getServer())
+                .membership(controller.origin())
+                .status();
+        var network = dev.izzy.factorycore.platform.network.DeviceLamp.of(status, current);
+        yield network == dev.izzy.factorycore.platform.network.DeviceLamp.OFF
+            ? dev.izzy.factorycore.platform.network.DeviceLamp.FAULT
+            : network;
+      }
+    };
   }
 
   @Override
@@ -70,7 +123,8 @@ public final class ProgramControllerBlock extends BaseEntityBlock {
   protected void onPlace(
       BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
     super.onPlace(state, level, position, previous, moved);
-    WorldNetworks.changed(level, position);
+    if (!dev.izzy.factorycore.platform.network.DeviceLamp.onlyLampChanged(previous, state))
+      WorldNetworks.changed(level, position);
   }
 
   @Override
@@ -88,7 +142,8 @@ public final class ProgramControllerBlock extends BaseEntityBlock {
   @Override
   protected void onRemove(
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    WorldNetworks.changed(level, position);
+    if (!dev.izzy.factorycore.platform.network.DeviceLamp.onlyLampChanged(state, next))
+      WorldNetworks.changed(level, position);
     super.onRemove(state, level, position, next, moved);
   }
 }
