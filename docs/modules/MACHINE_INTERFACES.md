@@ -5,6 +5,15 @@ Automatic machine preset runtime is implemented through a trusted server API.
 Player preset authoring and explicit selected-tank/fixed-partition adapters are implemented.
 Integrated selected-port/processing contention and complete release verification remain unfinished.
 
+Successful automatic transfers queue another bounded step through the shared
+scheduler. Each item step requests at most one native maximum stack; it does not
+combine uncertain foreign writes. Every continuation rechecks deployment authority
+and fences and still pays normal scheduling and device/provider rate limits.
+Rate-limit exhaustion retries next tick; shortage/fault backoff remains 20 ticks.
+Paid tiers can improve achieved speed, but global catalog discovery and shared
+budgets may dominate in large worlds. The isolated required workload is described
+in [TESTING.md](../TESTING.md).
+
 ## Player controls
 
 Craft ICI / CRC / ICI using iron I, copper C and redstone R. Place against the

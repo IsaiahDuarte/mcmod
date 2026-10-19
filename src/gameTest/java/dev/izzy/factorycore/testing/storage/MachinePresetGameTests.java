@@ -93,6 +93,58 @@ public final class MachinePresetGameTests {
         f.key.kind(), ResourceFilter.Mode.INCLUDE, List.of(new ResourceFilter.Exact(f.key)));
   }
 
+  public static void paidTiersIncreaseAutomaticChestImport(GameTestHelper h) {
+    var f = setup(h, ResourceKind.ITEM);
+    int[] elapsed = new int[3];
+    int[] started = new int[1];
+    var sequence = h.startSequence().thenWaitUntil(() -> ready(h, f));
+    for (var tier : ThroughputTier.values()) {
+      sequence.thenExecute(
+          () -> {
+            if (tier == ThroughputTier.BASE)
+              f.machine.configure(f.actor, ConnectorSettings.defaults(ResourceKind.ITEM));
+            else
+              h.assertTrue(
+                  f.machine.installThroughput(f.actor, tier) == NetworkAuthority.Decision.ALLOWED,
+                  "Paid tier installed");
+          });
+      sequence.thenWaitUntil(() -> ready(h, f));
+      sequence.thenExecute(
+          () -> {
+            ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+            for (int slot = 0; slot < 27; slot++)
+              chest.setItem(slot, new ItemStack(Items.IRON_INGOT, 64));
+            started[0] = h.getLevel().getServer().getTickCount();
+            f.machine.deployPreset(f.actor, MachinePresets.Mode.IMPORT, exact(f), 0);
+          });
+      sequence.thenWaitUntil(
+          () -> h.assertTrue(resident(h, ResourceKind.ITEM) == 0, "Whole chest imported"));
+      sequence.thenExecute(
+          () -> {
+            elapsed[tier.ordinal()] = h.getLevel().getServer().getTickCount() - started[0];
+            h.assertTrue(
+                f.saved.registry().stock(f.cell, f.key).total() == (tier.ordinal() + 1L) * 1728,
+                "Every imported item remains conserved across tier changes");
+            f.machine.deployPreset(f.actor, MachinePresets.Mode.PAUSED, exact(f), 0);
+          });
+    }
+    sequence
+        .thenExecute(
+            () -> {
+              System.out.println(
+                  "FACTORYCORE_AUTOMATIC_THROUGHPUT ticks="
+                      + Arrays.toString(elapsed)
+                      + " itemsPerTier=1728 source=vanilla_chest");
+              h.assertTrue(
+                  elapsed[1] < elapsed[0],
+                  "Advanced import must beat base: " + Arrays.toString(elapsed));
+              h.assertTrue(
+                  elapsed[2] < elapsed[1],
+                  "Endgame import must beat Advanced: " + Arrays.toString(elapsed));
+            })
+        .thenSucceed();
+  }
+
   private static void seed(GameTestHelper h, ResourceKind kind, int amount) {
     if (kind == ResourceKind.ITEM) {
       ChestBlockEntity chest = h.getBlockEntity(PROVIDER);

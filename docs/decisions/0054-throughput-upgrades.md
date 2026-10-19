@@ -95,3 +95,13 @@ Native ceiling tests use bounded repeated calls because a platform item handler
 may return one stack per call. They wait for a fresh server tick between tier
 measurements; upgrading does not reset spent physical-provider rate budgets.
 Exact aggregate caps, rate exhaustion and old-handle refusal remain asserted.
+
+The first automatic chest workload exposed equal achieved speed at every tier.
+After a successful transfer, presets now submit a continuation through the same
+fair queue rather than waiting for the next active-entry sweep. Automatic item
+requests use one native maximum stack, preserving per-call ownership/failure
+boundaries and proportional accounting; additional stacks require additional
+scheduled operations. Rate exhaustion waits one tick, while shortage/fault
+backoff remains 20 ticks. No scheduler quota rises and authorization/configuration
+is rechecked before each operation. A required isolated native workload compares
+all three tiers; whole-ledger discovery can still dominate in large worlds.

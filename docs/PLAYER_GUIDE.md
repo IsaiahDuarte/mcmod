@@ -863,6 +863,9 @@ reapply its filter/mode/goal to resume with your current grants. You may lower
 the rate afterwards. Buffers require the normal deployment grants; links require
 Manage or ownership of an orphan. The shared server work budget can visibly
 throttle any tier; an upgrade does not guarantee achieved throughput.
+Automatic machine item presets now schedule successive stacks through that same
+budget instead of waiting for a fresh preset sweep after every successful stack.
+Large storage catalogs can still limit achieved speed before the hardware cap.
 
 Ports and buffers retain upgrades when moved. Link endpoints take Overdrive
 directly; both ends need it to raise their shared bidirectional caps from

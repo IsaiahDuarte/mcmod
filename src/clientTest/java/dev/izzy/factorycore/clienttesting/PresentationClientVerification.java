@@ -2,6 +2,7 @@ package dev.izzy.factorycore.clienttesting;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
@@ -12,6 +13,8 @@ import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
+import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import java.io.IOException;
@@ -279,6 +282,16 @@ public final class PresentationClientVerification {
             .filter(child -> child instanceof AbstractWidget widget && widget.visible)
             .map(child -> (AbstractWidget) child)
             .toList();
+    if (screen instanceof BufferSettingsScreen) {
+      for (var widget : widgets)
+        if (widget instanceof net.minecraft.client.gui.components.EditBox field
+            && (field.getMessage().getString().equals(I18n.get("gui.factorycore.buffer.rate"))
+                || field
+                    .getMessage()
+                    .getString()
+                    .equals(I18n.get("gui.factorycore.buffer.target"))))
+          check(!field.getValue().isEmpty(), "Buffer numeric field lost its value after resize");
+    }
     for (var widget : widgets)
       check(
           widget.getX() >= 0
@@ -394,6 +407,61 @@ public final class PresentationClientVerification {
         == NetworkTopology.Status.VALID;
   }
 
+  /** Installs through the actual client interaction path, then checks consumption and synced UI. */
+  private void upgrade(BlockPos target, ThroughputTier tier, boolean buffer) {
+    String item = tier == ThroughputTier.ADVANCED ? "throughput_upgrade" : "overdrive_upgrade";
+    String name = (buffer ? "buffer-" : "machine-") + item.replace("_upgrade", "");
+    int maximum =
+        buffer
+            ? tier.bufferRate()
+            : tier.portRate(dev.izzy.factorycore.core.resource.ResourceKind.ITEM);
+    server(
+        player -> {
+          player.setGameMode(GameType.SURVIVAL);
+          player.getInventory().clearContent();
+          player.getInventory().selected = 0;
+          player.getInventory().setItem(0, stack(item));
+        });
+    step(client -> client.player.getMainHandItem().is(stack(item).getItem()));
+    use(target, Direction.SOUTH, false);
+    serverUntil(
+        player -> {
+          var entity = player.serverLevel().getBlockEntity(target);
+          boolean installed =
+              buffer
+                  ? entity instanceof BufferedInterfaceEntity device && device.tier() == tier
+                  : entity instanceof MachineInterfaceEntity machine && machine.tier() == tier;
+          return installed && player.getMainHandItem().isEmpty() && valid(player, target);
+        });
+    step(client -> client.player.getMainHandItem().isEmpty());
+    use(target, Direction.SOUTH, false);
+    step(
+        client -> {
+          if (buffer) {
+            if (!(client.screen instanceof BufferSettingsScreen screen)
+                || screen.getMenu().view().rate() != maximum) return false;
+          } else {
+            if (!(client.screen instanceof MachineSettingsScreen screen)
+                || screen.getMenu().view().maxRate() != maximum
+                || screen.getMenu().view().form().rate() != maximum) return false;
+            check(
+                screen
+                    .getMenu()
+                    .view()
+                    .tier()
+                    .equals(tier.name().toLowerCase(java.util.Locale.ROOT)),
+                "Wrong installed tier in machine payload");
+          }
+          evidence
+              .append(name)
+              .append(": real survival use consumed one; synced rate=")
+              .append(maximum)
+              .append('\n');
+          return true;
+        });
+    scales(name, buffer ? BufferSettingsScreen.class : MachineSettingsScreen.class, false);
+  }
+
   // ------------------------------------------------------------------ tooltips
 
   /** Real item tooltips (including the ItemTooltipEvent lines) drawn at the four GUI corners. */
@@ -410,7 +478,7 @@ public final class PresentationClientVerification {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
       super.render(graphics, mouseX, mouseY, partialTick);
-      int[][] corners = {{4, 12}, {width - 4, 12}, {4, height - 4}, {width - 4, height - 4}};
+      int[][] corners = {{4, 20}, {width - 4, 20}, {4, height - 4}, {width - 4, height - 4}};
       graphics.renderTooltip(font, stacks.get(corner), corners[corner][0], corners[corner][1]);
     }
   }
@@ -668,6 +736,10 @@ public final class PresentationClientVerification {
     scales("buffer", BufferSettingsScreen.class, false);
     use(base.east(4), Direction.SOUTH, false);
     scales("machine", MachineSettingsScreen.class, false);
+    upgrade(base.east(4), ThroughputTier.ADVANCED, false);
+    upgrade(base.east(4), ThroughputTier.ENDGAME, false);
+    upgrade(base.east(3), ThroughputTier.ADVANCED, true);
+    upgrade(base.east(3), ThroughputTier.ENDGAME, true);
     use(base.east(5), Direction.SOUTH, false);
     scales("program", ProgramScreen.class, false);
     use(base.east(7), Direction.SOUTH, true);
@@ -686,7 +758,41 @@ public final class PresentationClientVerification {
           client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND);
           return true;
         });
+    step(client -> client.screen instanceof BookViewScreen);
+    for (int page = 1; page < GuideContent.PAGES; page++) {
+      step(
+          client -> {
+            check(client.screen instanceof BookViewScreen, "Guide closed while paging");
+            client.screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
+            return true;
+          });
+    }
+    scales("guide-throughput", BookViewScreen.class, false);
+    // Reopen at its first page to retain the original guide captures.
+    step(
+        client -> {
+          client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND);
+          return true;
+        });
     scales("guide", BookViewScreen.class, false);
+    for (int corner = 0; corner < 2; corner++) {
+      int targetCorner = corner;
+      step(
+          client -> {
+            client.setScreen(
+                new TooltipBoard(
+                    List.of(stack("throughput_upgrade"), stack("overdrive_upgrade")),
+                    targetCorner));
+            setScale(client, 4);
+            return true;
+          });
+      step(
+          client -> {
+            if (waited() < 6) return false;
+            capture(client, "upgrade-tooltip-" + targetCorner + "-scale-4.png");
+            return true;
+          });
+    }
     step(
         client -> {
           writeReport(client);

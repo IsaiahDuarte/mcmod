@@ -50,6 +50,8 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
   @Override
   protected void init() {
     String value = id == null ? "" : id.getValue();
+    String rateDraft = rate == null ? null : rate.getValue();
+    String targetDraft = target == null ? null : target.getValue();
     super.init();
     button(
         "settings",
@@ -167,7 +169,10 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
             186,
             72,
             () -> send(BufferSettingsPackets.RETURN, 0, 0, "", new byte[32]));
+    shown = -1;
     sync();
+    if (rateDraft != null) rate.setValue(rateDraft);
+    if (targetDraft != null) target.setValue(targetDraft);
   }
 
   private EditBox box(int x, int y, int width, String label, int limit) {

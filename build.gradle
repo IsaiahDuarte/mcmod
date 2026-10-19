@@ -236,6 +236,15 @@ neoForge {
             systemProperty 'factorycore.noWelcomeGuide', 'true'
             loadedMods = [mods.factorycore, mods.factorycore_tests]
         }
+        automaticThroughputServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gameTest
+            gameDirectory = file('build/automatic-throughput-run')
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'factorycore_throughput_tests'
+            systemProperty 'factorycore.test.report', file('build/reports/automatic-throughput/results.xml').absolutePath
+            systemProperty 'factorycore.noWelcomeGuide', 'true'
+            loadedMods = [mods.factorycore, mods.factorycore_tests]
+        }
     }
     unitTest {
         enable()
@@ -264,6 +273,24 @@ tasks.named('runGameTestServer', JavaExec) {
 }
 tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
 tasks.named('runGameTestServer') { dependsOn tasks.named('verifyRustGuest') }
+
+tasks.named('runAutomaticThroughputServer', JavaExec) {
+    doFirst {
+        delete file('build/automatic-throughput-run/world')
+        def report = file('build/reports/automatic-throughput/results.xml')
+        report.parentFile.mkdirs()
+        if (report.exists() && !report.delete()) throw new GradleException('Cannot clear throughput report.')
+    }
+    doLast {
+        def report = file('build/reports/automatic-throughput/results.xml')
+        if (!report.isFile()) throw new GradleException('Automatic throughput report missing.')
+        def parsed = new groovy.xml.XmlParser().parse(report)
+        def cases = parsed.depthFirst().findAll { it.name() == 'testcase' }
+        if (cases.size() != 1 || parsed.depthFirst().any { it.name() in ['failure', 'error', 'skipped'] })
+            throw new GradleException('The isolated automatic throughput regression must execute and pass.')
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runAutomaticThroughputServer') }
 
 tasks.named('runServer', JavaExec) {
     standardInput = System.in
@@ -414,6 +441,8 @@ tasks.named('runPresentationClient', JavaExec) {
         def screens = ['terminal', 'buffer', 'machine', 'program', 'gateway-policy', 'guide']
         def captures = ['orientation-north-east-up.png', 'orientation-south-west-down.png', 'states-day.png', 'states-day-close.png', 'states-night.png', 'states-night-close.png', 'held-first-person-network_controller.png', 'held-first-person-network_cable.png', 'held-first-person-factory_guide.png', 'held-third-person-gateway.png', 'tooltips-edges-scale-4.png', 'tooltips-edges-scale-2.png', 'terminal-scale-2.png', 'terminal-scale-3.png'] + screens.collectMany { ["${it}-scale-1.png", "${it}-scale-4.png"] }
         captures += [2, 4].collectMany { scale -> (1..3).collect { corner -> "tooltips-corner-${corner}-scale-${scale}.png" } }
+        captures += ['machine-throughput', 'machine-overdrive', 'buffer-throughput', 'buffer-overdrive', 'guide-throughput'].collectMany { ["${it}-scale-1.png", "${it}-scale-4.png"] }
+        captures += (0..1).collect { "upgrade-tooltip-${it}-scale-4.png" }
         def missing = captures.findAll { name ->
             def capture = file("build/reports/client-presentation/screenshots/${name}")
             !capture.isFile() || capture.length() == 0
