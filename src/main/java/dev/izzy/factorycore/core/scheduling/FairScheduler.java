@@ -100,7 +100,28 @@ public final class FairScheduler {
     this.failures = Objects.requireNonNull(failures);
   }
 
+  /**
+   * Slots beyond {@code queuedTotal} usable only through {@link #submitReserved}. Saturating
+   * script/job work then cannot starve bounded world maintenance such as topology rebuilds.
+   */
+  public static final int RESERVED_SLOTS = 8;
+
   public Admission submit(UUID networkId, UUID programId, String key, int cost, Runnable action) {
+    return admit(networkId, programId, key, cost, action, limits.queuedTotal());
+  }
+
+  /**
+   * World-maintenance admission with the same per-network/program/cost bounds, but which may use up
+   * to {@link #RESERVED_SLOTS} slots beyond the shared {@code queuedTotal}. Callers must keep a
+   * small fixed number of coalesced keys; execution still shares the per-tick fair rotation.
+   */
+  public Admission submitReserved(
+      UUID networkId, UUID programId, String key, int cost, Runnable action) {
+    return admit(networkId, programId, key, cost, action, limits.queuedTotal() + RESERVED_SLOTS);
+  }
+
+  private Admission admit(
+      UUID networkId, UUID programId, String key, int cost, Runnable action, int total) {
     checkThread();
     Objects.requireNonNull(networkId);
     Objects.requireNonNull(programId);
@@ -119,7 +140,7 @@ public final class FairScheduler {
     }
     boolean replacing = program != null && program.tasks.containsKey(key);
     if (!replacing
-        && (queued >= limits.queuedTotal()
+        && (queued >= total
             || (program != null && program.tasks.size() >= limits.queuedPerProgram())))
       return Admission.QUEUE_FULL;
     if (network == null) {

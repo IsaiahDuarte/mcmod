@@ -163,4 +163,45 @@ class FairSchedulerTest {
         scheduler.submit(network, program, "overflow", 1, () -> {}));
     assertEquals(8, scheduler.backlog());
   }
+
+  @Test
+  void reservedMaintenanceSlotsAdmitWorldWorkWhenScriptsSaturateTheSharedQueue() {
+    var scheduler = new FairScheduler(LIMITS, () -> 0, failure -> fail(failure.toString()));
+    var busy = UUID.randomUUID();
+    for (int p = 0; p < 4; p++) {
+      var program = new UUID(1, p);
+      for (int t = 0; t < 8; t++)
+        assertEquals(
+            FairScheduler.Admission.ACCEPTED,
+            scheduler.submit(busy, program, "script" + t, 1, () -> {}));
+    }
+    var world = UUID.randomUUID();
+    var rebuild = UUID.randomUUID();
+    assertEquals(
+        FairScheduler.Admission.QUEUE_FULL,
+        scheduler.submit(world, rebuild, "regions", 1, () -> {}),
+        "Ordinary admission is refused at the shared bound");
+    var ran = new ArrayList<String>();
+    for (int slot = 0; slot < FairScheduler.RESERVED_SLOTS; slot++) {
+      var key = "regions" + slot;
+      assertEquals(
+          FairScheduler.Admission.ACCEPTED,
+          scheduler.submitReserved(world, rebuild, key, 1, () -> ran.add(key)));
+    }
+    assertEquals(
+        FairScheduler.Admission.REPLACED,
+        scheduler.submitReserved(world, rebuild, "regions0", 1, () -> ran.add("regions0")),
+        "A coalesced maintenance key never takes a second slot");
+    assertEquals(
+        FairScheduler.Admission.QUEUE_FULL,
+        scheduler.submitReserved(world, rebuild, "regions8", 1, () -> {}),
+        "Reserved headroom is itself bounded");
+    assertEquals(32 + FairScheduler.RESERVED_SLOTS, scheduler.backlog());
+    assertEquals(
+        FairScheduler.Admission.QUEUE_FULL,
+        scheduler.submit(busy, new UUID(1, 0), "more", 1, () -> {}),
+        "Scripts cannot use the reserved headroom");
+    scheduler.tick();
+    assertFalse(ran.isEmpty(), "Maintenance runs in the next fair rotation despite the backlog");
+  }
 }

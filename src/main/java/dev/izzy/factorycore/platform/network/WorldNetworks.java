@@ -58,6 +58,7 @@ public final class WorldNetworks {
   private final Map<String, WorldWireReader> readers = new HashMap<>();
   private final ArrayDeque<Region> active = new ArrayDeque<>();
   private String diagnostic = "";
+  private static final String SCHEDULING_LIMIT = "Network scheduling limit: ";
   private final dev.izzy.factorycore.core.resource.WirelessBudget wirelessBudget =
       new dev.izzy.factorycore.core.resource.WirelessBudget();
 
@@ -253,6 +254,8 @@ public final class WorldNetworks {
     checkThread();
     if (imports != null) imports.tick();
     if (machinePresets != null) machinePresets.tick();
+    if (!active.isEmpty() && !scheduler.isQueued(WORK_NETWORK, WORK_PROGRAM, "world-regions"))
+      wake();
     scheduler.tick();
   }
 
@@ -408,11 +411,14 @@ public final class WorldNetworks {
 
   private void wake() {
     if (active.isEmpty()) return;
-    var admission = scheduler.submit(WORK_NETWORK, WORK_PROGRAM, "world-regions", STEP, this::step);
+    // Topology work uses the scheduler's reserved maintenance slots, so saturated script/job
+    // queues delay but never strand a rebuild; tick() retries a refused wake.
+    var admission =
+        scheduler.submitReserved(WORK_NETWORK, WORK_PROGRAM, "world-regions", STEP, this::step);
     if (admission != FairScheduler.Admission.ACCEPTED
         && admission != FairScheduler.Admission.REPLACED) {
-      diagnostic = "Network scheduling limit: " + admission;
-    }
+      diagnostic = SCHEDULING_LIMIT + admission;
+    } else if (diagnostic.startsWith(SCHEDULING_LIMIT)) diagnostic = "";
   }
 
   private void step() {

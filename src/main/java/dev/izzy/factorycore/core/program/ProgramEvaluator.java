@@ -18,6 +18,9 @@ public final class ProgramEvaluator {
   public static final int MAX_COMMANDS = 256;
   public static final int MAX_MACHINES_PER_LABEL = 64;
 
+  /** Host queries (label lookups and stock reads) per invocation, matching the Wasm ABI bound. */
+  public static final int MAX_HOST_CALLS = 512;
+
   /** Read-only, already-authorized view of the program's segment. */
   public interface Host {
     /** Machine interface IDs with exactly this local label, in stable order. */
@@ -38,7 +41,7 @@ public final class ProgramEvaluator {
 
   private final Host host;
   private final List<ProgramCommand> staged = new ArrayList<>();
-  private int steps;
+  private int steps, hostCalls;
 
   private ProgramEvaluator(Host host) {
     this.host = Objects.requireNonNull(host);
@@ -69,7 +72,13 @@ public final class ProgramEvaluator {
     staged.add(command);
   }
 
+  private void hostCall() {
+    if (++hostCalls > MAX_HOST_CALLS)
+      throw new Trap("Rule exceeded " + MAX_HOST_CALLS + " host queries");
+  }
+
   private List<UUID> machines(String label) {
+    hostCall();
     List<UUID> found;
     try {
       found = host.machines(label);
@@ -117,6 +126,7 @@ public final class ProgramEvaluator {
         case ProgramIr.Craft craft -> emit(new ProgramCommand.Craft(craft.item(), craft.amount()));
         case ProgramIr.If condition -> {
           long stock;
+          hostCall();
           try {
             stock = host.stock(condition.filter());
           } catch (RuntimeException failure) {

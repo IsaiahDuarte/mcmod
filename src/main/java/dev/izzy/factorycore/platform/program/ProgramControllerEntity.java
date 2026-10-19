@@ -4,7 +4,6 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
 import dev.izzy.factorycore.core.program.ProgramIr;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
-import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -28,7 +27,7 @@ public final class ProgramControllerEntity extends BlockEntity {
   public static final int MAX_DRAFT = FriendlyCompiler.MAX_SOURCE;
   public static final long CAPACITY = 10_000;
   public static final long INPUT_RATE = 1_000;
-  public static final int MAX_LOGS = 16;
+  public static final int MAX_LOGS = dev.izzy.factorycore.core.program.ProgramLog.MAX_LINES;
 
   /**
    * Schema 2 adds the optional deployed Wasm {@code Artifact}; schema 3 adds its committed {@code
@@ -55,7 +54,8 @@ public final class ProgramControllerEntity extends BlockEntity {
   private dev.izzy.factorycore.core.wasm.WasmProgram wasm;
   private byte[] guestState;
   private CompoundTag unsupported;
-  private final ArrayDeque<String> logs = new ArrayDeque<>();
+  private final dev.izzy.factorycore.core.program.ProgramLog logs =
+      new dev.izzy.factorycore.core.program.ProgramLog();
 
   private final IEnergyStorage storage =
       new IEnergyStorage() {
@@ -219,12 +219,17 @@ public final class ProgramControllerEntity extends BlockEntity {
   }
 
   public List<String> logs() {
-    return List.copyOf(logs);
+    return logs.lines();
   }
 
+  /** Appends a bounded runtime line; an immediate repeat is counted rather than appended. */
   public void log(String line) {
-    if (logs.size() == MAX_LOGS) logs.removeFirst();
-    logs.addLast(line.length() > 160 ? line.substring(0, 160) : line);
+    logs.add(line);
+  }
+
+  /** Appends one invocation's guest log lines under the per-invocation limit. */
+  public int logInvocation(String rule, List<String> lines) {
+    return logs.addInvocation(rule, lines);
   }
 
   /** Replaces the deployment with an already compiled program; trusted runtime call only. */
