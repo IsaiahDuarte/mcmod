@@ -129,3 +129,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0051 — Native program authoring and read-only previews](0051-program-authoring.md)
 
 - [0053 — Selected tanks and fixed machine ports](0053-selected-tanks-and-fixed-machine-ports.md)
+
+- [0058 — Device state presentation and client coverage](0058-device-presentation.md)

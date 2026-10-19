@@ -841,3 +841,20 @@ old cancellation cleanup. Restore the original saved machine, or cancel and
 inspect already inserted inputs/outputs manually. An older dispatch without
 provider identity asks for cancellation and inspection; it never adopts whichever
 machine is now present.
+
+## Device appearance and status
+
+The four drive bays show which slots contain cells. Removing a cell clears only
+its bay marker. Controller and gateway lamps show a connected network with a lit
+symbol and a fault with an exclamation mark; use empty-hand inspection for the
+cause. During rebuilding, the lamp keeps its previous appearance until validation
+finishes. Program lamps distinguish running, paused (two bars), trapped (fault),
+and stopped (dark). An access-point lamp follows its network and power state.
+Link lamps indicate local pairing/power; inspect gateway/network status to check
+routing. An unpaired link stays dark. Lamp refresh can take up to one second.
+Tooltips include the legend.
+
+The supported minimum framebuffer is 1708×960 for GUI scale 4 (427×240 GUI
+pixels). GUI scales 1–4 have a dedicated presentation fixture; its verification
+status is tracked in the implementation plan. Screens below this minimum are
+not established as supported by that fixture.

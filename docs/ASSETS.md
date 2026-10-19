@@ -104,6 +104,18 @@ row. Share navigation and components where appropriate.
 
 ## Client completion checklist
 
+The recovered presentation continuation adds generated lamp overlays for network,
+program and wireless devices, visible four-slot drive occupancy, translated device
+descriptions and recovery names, and a cable item model with held transforms.
+[ADR 0058](decisions/0058-device-presentation.md) documents refresh/migration rules.
+The [32-capture presentation run](evidence/presentation-v1-2026-10-19.md) now adds
+actual six-direction/four-direction gallery views, day/night state glyphs,
+representative first/third-person held items, individual tooltip corners and the
+six existing screens at scales 1–4 in the minimum 1708×960 framebuffer. Expanded
+native coverage validates every registered block-state model and local texture
+reference. These checks narrow the open family/flow gaps above: every held item,
+complete populated/blocked states, keyboard/focus and survival remain unfinished.
+
 Record revision, client/runtime/mod list, resolution/GUI scale, actions, observed
 results and evidence paths in the implementation plan. Screenshots can establish
 appearance; interaction logs/tests must establish behavior.

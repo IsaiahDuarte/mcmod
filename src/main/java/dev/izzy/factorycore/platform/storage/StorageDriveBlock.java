@@ -21,8 +21,36 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 
 public final class StorageDriveBlock extends Block implements EntityBlock {
+  /**
+   * Presentation-only bay occupancy, mirrored from the entity's four lease slots. Gameplay always
+   * reads the entity; these properties never decide installation or routing.
+   */
+  public static final List<net.minecraft.world.level.block.state.properties.BooleanProperty> BAYS =
+      List.of(
+          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_1"),
+          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_2"),
+          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_3"),
+          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_4"));
+
   public StorageDriveBlock(Properties properties) {
     super(properties);
+    var state = stateDefinition.any();
+    for (var bay : BAYS) state = state.setValue(bay, false);
+    registerDefaultState(state);
+  }
+
+  @Override
+  protected void createBlockStateDefinition(
+      net.minecraft.world.level.block.state.StateDefinition.Builder<Block, BlockState> builder) {
+    BAYS.forEach(builder::add);
+  }
+
+  /** True when {@code next} only changes bay lamps of the same drive: no topology work or drops. */
+  static boolean onlyBaysChanged(BlockState previous, BlockState next) {
+    if (previous.getBlock() != next.getBlock()) return false;
+    var normalized = previous;
+    for (var bay : BAYS) normalized = normalized.setValue(bay, next.getValue(bay));
+    return normalized == next;
   }
 
   @Override
@@ -50,9 +78,7 @@ public final class StorageDriveBlock extends Block implements EntityBlock {
       // owner.
       stack.shrink(1);
       player.displayClientMessage(
-          Component.literal(
-              "Cell installed in slot " + (slot + 1) + "; routing awaits a valid network"),
-          true);
+          Component.translatable("message.factorycore.drive_installed", slot + 1), true);
       return ItemInteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
       player.displayClientMessage(Component.literal(failure.getMessage()), true);
@@ -76,10 +102,9 @@ public final class StorageDriveBlock extends Block implements EntityBlock {
         }
       }
       player.displayClientMessage(
-          Component.literal(
-              drive.diagnostic().isEmpty()
-                  ? "Insert a cell; sneak with an empty main hand to remove a cell"
-                  : drive.diagnostic()),
+          drive.diagnostic().isEmpty()
+              ? Component.translatable("message.factorycore.drive_help")
+              : Component.literal(drive.diagnostic()),
           true);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
@@ -111,7 +136,7 @@ public final class StorageDriveBlock extends Block implements EntityBlock {
   protected void onPlace(
       BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
     super.onPlace(state, level, position, previous, moved);
-    WorldNetworks.changed(level, position);
+    if (!onlyBaysChanged(previous, state)) WorldNetworks.changed(level, position);
   }
 
   @Override
@@ -129,7 +154,7 @@ public final class StorageDriveBlock extends Block implements EntityBlock {
   @Override
   protected void onRemove(
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    WorldNetworks.changed(level, position);
+    if (!onlyBaysChanged(state, next)) WorldNetworks.changed(level, position);
     if (!state.is(next.getBlock())
         && level.getBlockEntity(position) instanceof StorageDriveEntity drive
         && !level.isClientSide()) {

@@ -1,5 +1,25 @@
 # Verification requirements
 
+## Presentation continuation fixture
+
+`./gradlew runPresentationClient` runs the isolated graphical gallery described
+in [ADR 0058](decisions/0058-device-presentation.md). It replaces only its generated
+world under `build/client-presentation-run` and report under
+`build/reports/client-presentation`. A PASS report and 32 named screenshots are
+required. It covers directional variants from opposite corners, status lamps and
+drive bays by day/night, representative held items, translated item tooltips at
+screen corners, and terminal/buffer/machine/program/gateway-policy/guide panels
+at GUI scales 1–4. Framebuffer 1708×960 establishes 427×240 GUI pixels at scale 4.
+Read the captures before claiming appearance verified. Screens added after this
+fixture need separate coverage; this run does not establish survival acceptance.
+
+`PresentationStateGameTests.lampsAndBaysMirrorDeviceState` is required by the
+canonical build. It checks native state refresh and bay occupancy and verifies a
+cosmetic lamp update leaves valid membership intact. Expanded
+`AssetCoverageGameTests` checks every registered state has models and local
+model/texture references exist. Generated JSON is parsed by the art tooling test;
+its original 16×16 RGBA PNG checks still apply to all generated textures.
+
 ## Current executable checks
 
 Run from the repository root with Python 3.11 or later:

@@ -29,7 +29,10 @@ public final class StorageContent {
       BLOCKS.registerBlock(
           "storage_drive",
           StorageDriveBlock::new,
-          BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops());
+          BlockBehaviour.Properties.of()
+              .strength(3.5f)
+              .requiresCorrectToolForDrops()
+              .sound(net.minecraft.world.level.block.SoundType.METAL));
   public static final DeferredItem<?> DRIVE_ITEM = ITEMS.registerSimpleBlockItem(DRIVE);
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<StorageDriveEntity>>
       DRIVE_ENTITY =

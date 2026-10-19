@@ -1,6 +1,7 @@
 """The committed textures must be exactly what tools/art/generate_art.py produces."""
 
 import importlib.util
+import json
 from pathlib import Path
 import struct
 import unittest
@@ -24,6 +25,10 @@ class ArtGeneratorTests(unittest.TestCase):
 
     def test_textures_are_16px_rgba_pngs(self):
         for path, data in art.outputs().items():
+            if path.suffix == ".json":
+                # Status overlays now generate models/blockstates alongside textures.
+                self.assertIsInstance(json.loads(data), dict, path)
+                continue
             if path == art.SHEET:
                 continue
             self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n", path)

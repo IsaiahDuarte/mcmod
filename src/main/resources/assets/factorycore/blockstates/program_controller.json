@@ -1,7 +1,33 @@
 {
-  "variants": {
-    "": {
-      "model": "factorycore:block/program_controller"
+  "multipart": [
+    {
+      "apply": {
+        "model": "factorycore:block/program_controller"
+      }
+    },
+    {
+      "when": {
+        "lamp": "active"
+      },
+      "apply": {
+        "model": "factorycore:block/program_controller_lamp_active"
+      }
+    },
+    {
+      "when": {
+        "lamp": "paused"
+      },
+      "apply": {
+        "model": "factorycore:block/program_controller_lamp_paused"
+      }
+    },
+    {
+      "when": {
+        "lamp": "fault"
+      },
+      "apply": {
+        "model": "factorycore:block/program_controller_lamp_fault"
+      }
     }
-  }
+  ]
 }

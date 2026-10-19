@@ -1,7 +1,41 @@
 {
-  "variants": {
-    "": {
-      "model": "factorycore:block/storage_drive"
+  "multipart": [
+    {
+      "apply": {
+        "model": "factorycore:block/storage_drive"
+      }
+    },
+    {
+      "when": {
+        "bay_1": "true"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_1"
+      }
+    },
+    {
+      "when": {
+        "bay_2": "true"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_2"
+      }
+    },
+    {
+      "when": {
+        "bay_3": "true"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_3"
+      }
+    },
+    {
+      "when": {
+        "bay_4": "true"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_4"
+      }
     }
-  }
+  ]
 }

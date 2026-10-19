@@ -49,7 +49,10 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
     registerDefaultState(
         stateDefinition
             .any()
-            .setValue(BlockStateProperties.FACING, net.minecraft.core.Direction.UP));
+            .setValue(BlockStateProperties.FACING, net.minecraft.core.Direction.UP)
+            .setValue(
+                dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY,
+                dev.izzy.factorycore.platform.network.DeviceLamp.OFF));
   }
 
   @Override
@@ -59,7 +62,8 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
 
   @Override
   protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-    builder.add(BlockStateProperties.FACING);
+    builder.add(
+        BlockStateProperties.FACING, dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY);
   }
 
   /** The back face goes against the clicked block, normally a gateway. */
@@ -181,7 +185,8 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   protected void onPlace(
       BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
     super.onPlace(state, level, position, previous, moved);
-    WorldNetworks.changed(level, position);
+    if (!dev.izzy.factorycore.platform.network.DeviceLamp.onlyLampChanged(previous, state))
+      WorldNetworks.changed(level, position);
   }
 
   @Override
@@ -199,7 +204,8 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   @Override
   protected void onRemove(
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    WorldNetworks.changed(level, position);
+    if (!dev.izzy.factorycore.platform.network.DeviceLamp.onlyLampChanged(state, next))
+      WorldNetworks.changed(level, position);
     super.onRemove(state, level, position, next, moved);
   }
 }

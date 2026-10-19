@@ -1,0 +1,33 @@
+{
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "particle": "#overlay",
+    "overlay": "factorycore:block/wireless_link_endpoint_lamp_active"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "shade": false,
+      "faces": {
+        "up": {
+          "texture": "#overlay",
+          "cullface": "up"
+        }
+      },
+      "neoforge_data": {
+        "block_light": 15,
+        "sky_light": 15,
+        "ambient_occlusion": false
+      }
+    }
+  ]
+}

@@ -1,7 +1,10 @@
 """Generate Factory Core's original 16x16 block and item textures.
 
 This script is the editable source of every PNG under
-``src/main/resources/assets/factorycore/textures``. It uses only the Python
+``src/main/resources/assets/factorycore/textures`` and of the status-lamp /
+drive-bay overlay models and the blockstates that select them (see
+``status_json``). Status overlays are the pixel difference between a device face
+drawn in its lit/fault/paused/occupied state and the same face drawn idle. It uses only the Python
 standard library, draws deterministic pixel art from the palette below and never
 reads or traces Minecraft textures. Run it from the repository root:
 
@@ -17,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import struct
 import sys
 import zlib
@@ -57,12 +61,15 @@ SCREEN = (42, 111, 176, 255)
 SCREEN_HI = (127, 208, 255, 255)
 CODE = (96, 214, 120, 255)
 CODE_DARK = (40, 110, 60, 255)
+CODE_HI = (190, 255, 200, 255)
 PAPER_DARK = (150, 160, 178, 255)
 PAPER = (205, 213, 226, 255)
 PAPER_HI = (238, 242, 248, 255)
 FIRE_DARK = (160, 40, 16, 255)
 FIRE = (240, 110, 30, 255)
 FIRE_HI = (255, 214, 90, 255)
+FAULT_DARK = (120, 24, 20, 255)
+FAULT = (236, 72, 54, 255)
 
 # Tier ramps: (dark, base, highlight). Bars/lemniscate carry the meaning.
 TIERS = {
@@ -82,7 +89,14 @@ GLYPHS = {
     "dot": [".###.", "#...#", "#.#.#", "#...#", ".###."],
     "cross": [".###.", "##.##", "#.#.#", "##.##", ".###."],
     "prompt": ["#..", ".#.", "#.."],
+    # Status shapes: fault is an exclamation mark, paused is two bars.
+    "bang": ["##", "##", "##", "..", "##"],
+    "pause": ["##.##", "##.##", "##.##", "##.##", "##.##"],
 }
+
+LAMPS = ("off", "active", "fault")
+PROGRAM_LAMPS = ("off", "active", "paused", "fault")
+
 
 
 def noise(name: str, x: int, y: int) -> int:
@@ -238,22 +252,8 @@ def block_textures():
         accent.rect(0, 0, 15, 15, base, grain=8)
         out[f"accent_{tier}"] = accent
 
-    # Network Controller: hub glyph on the front, ports on every other face.
-    front = casing("network_controller_front")
-    inset(front, 2, 2, 12, 12)
-    front.rect(6, 6, 9, 9, SIGNAL)
-    front.rect(6, 6, 7, 7, SIGNAL_HI)
-    front.hline(6, 9, 9, SIGNAL_DARK)
-    front.vline(9, 6, 9, SIGNAL_DARK)
-    for x, y in ((3, 7), (3, 8), (12, 7), (12, 8), (7, 3), (8, 3), (7, 12), (8, 12)):
-        front.px(x, y, SIGNAL)
-    front.hline(4, 5, 7, SIGNAL_DARK)
-    front.hline(10, 11, 8, SIGNAL_DARK)
-    front.vline(8, 4, 5, SIGNAL_DARK)
-    front.vline(7, 10, 11, SIGNAL_DARK)
-    for x, y in ((4, 4), (11, 4), (4, 11), (11, 11)):
-        front.px(x, y, SIGNAL_DARK)
-    out["network_controller_front"] = front
+    # Network Controller: hub glyph on the front (idle = dim), ports on every other face.
+    out["network_controller_front"] = controller_front("off")
     side = casing("network_controller_side")
     port(side, 5, 5)
     out["network_controller_side"] = side
@@ -274,16 +274,8 @@ def block_textures():
     cable.px(1, 1, SIGNAL_HI)
     out["network_cable"] = cable
 
-    # Storage Drive: four stacked bays, each with a pull handle and a status lamp.
-    drive = casing("storage_drive_front", rivets=False)
-    for i, y in enumerate((2, 5, 8, 11)):
-        drive.rect(2, y, 13, y + 2, PANEL)
-        drive.hline(2, 13, y, PANEL_SHADOW)
-        drive.hline(3, 9, y + 1, PANEL_LINE)
-        drive.rect(4, y + 1, 5, y + 1, STEEL_DARK)
-        drive.px(12, y + 1, SIGNAL if i % 2 == 0 else SIGNAL_DARK)
-        drive.hline(2, 13, y + 3, CASE_LIGHT) if y + 3 < 14 else None
-    out["storage_drive_front"] = drive
+    # Storage Drive: four stacked bays, empty in the base face; cells are bay overlays.
+    out["storage_drive_front"] = drive_front(())
     top = casing("storage_drive_top")
     inset(top, 3, 3, 11, 11)
     for x in (4, 6, 8, 10):
@@ -291,11 +283,7 @@ def block_textures():
     out["storage_drive_top"] = top
 
     # Gateway: dot = downstream (toward viewer), cross = upstream, arrow = flow.
-    out_face = casing("gateway_downstream")
-    inset(out_face, 3, 3, 11, 11)
-    out_face.glyph(5, 5, GLYPHS["dot"], SIGNAL)
-    out_face.px(7, 7, SIGNAL_HI)
-    out["gateway_downstream"] = out_face
+    out["gateway_downstream"] = gateway_downstream("off")
     in_face = casing("gateway_upstream")
     inset(in_face, 3, 3, 11, 11)
     in_face.glyph(5, 5, GLYPHS["cross"], AMBER)
@@ -358,15 +346,7 @@ def block_textures():
     out["crafting_interface_front"] = ci
 
     # Program Controller: code screen with a prompt; chip on top.
-    prog = casing("program_controller_side")
-    inset(prog, 2, 2, 13, 11, fill=(10, 20, 14, 255), grain=1)
-    prog.glyph(3, 3, GLYPHS["prompt"], CODE)
-    prog.hline(7, 11, 4, CODE_DARK)
-    prog.hline(4, 9, 7, CODE_DARK)
-    prog.hline(4, 7, 9, CODE)
-    prog.px(9, 9, CODE)
-    prog.hline(4, 11, 13, STEEL_DARK)
-    out["program_controller_side"] = prog
+    out["program_controller_side"] = program_side("off")
     ptop = casing("program_controller_top")
     inset(ptop, 3, 3, 11, 11)
     ptop.rect(5, 5, 9, 9, CASE_LIGHT)
@@ -410,30 +390,11 @@ def block_textures():
     out["fuel_generator_top"] = gtop
 
     # Wireless Access Point: broadcast arcs.
-    ap_top = casing("wireless_access_point_top")
-    inset(ap_top, 2, 2, 12, 12)
-    ap_top.rect(6, 6, 8, 8, SIGNAL)
-    ap_top.px(7, 7, SIGNAL_HI)
-    for (x0, y0, x1, y1) in ((4, 4, 10, 10),):
-        ap_top.hline(x0 + 1, x1 - 1, y0, SIGNAL_DARK)
-        ap_top.hline(x0 + 1, x1 - 1, y1, SIGNAL_DARK)
-        ap_top.vline(x0, y0 + 1, y1 - 1, SIGNAL_DARK)
-        ap_top.vline(x1, y0 + 1, y1 - 1, SIGNAL_DARK)
-    out["wireless_access_point_top"] = ap_top
-    ap_side = casing("wireless_access_point_side")
-    inset(ap_side, 2, 2, 12, 12)
-    ap_side.rect(6, 9, 8, 11, SIGNAL)
-    ap_side.px(7, 9, SIGNAL_HI)
-    arcs = [".#####.", "#.....#", "..###..", ".#...#."]
-    ap_side.glyph(4, 3, arcs, SIGNAL)
-    out["wireless_access_point_side"] = ap_side
+    out["wireless_access_point_top"] = access_point_top("off")
+    out["wireless_access_point_side"] = access_point_side("off")
 
     # Wireless Link Endpoint: emitter dish (top), arrow toward partner, wired back.
-    lt = casing("wireless_link_endpoint_top")
-    inset(lt, 2, 2, 12, 12)
-    lt.glyph(4, 4, [".#####.", "#.....#", "#.###.#", "#.#.#.#", "#.###.#", "#.....#", ".#####."], AMBER)
-    lt.px(7, 7, AMBER_HI)
-    out["wireless_link_endpoint_top"] = lt
+    out["wireless_link_endpoint_top"] = link_top("off")
     ls = casing("wireless_link_endpoint_side")
     inset(ls, 4, 2, 10, 12)
     ls.glyph(4, 3, GLYPHS["arrow_up"], AMBER)
@@ -442,7 +403,276 @@ def block_textures():
     lb = casing("wireless_link_endpoint_back")
     port(lb, 5, 5)
     out["wireless_link_endpoint_back"] = lb
+    out.update(status_overlays())
     return out
+
+
+# ---------------------------------------------------------------- status faces
+#
+# Each face function draws the complete face for one state with the same canvas
+# name (so the deterministic grain matches); overlays keep only changed pixels.
+
+
+def bang(c, x, y):
+    """Fault mark: a dark backing plate with a red exclamation mark."""
+    c.rect(x - 1, y - 1, x + 2, y + 5, PANEL_SHADOW)
+    c.glyph(x, y, GLYPHS["bang"], FAULT)
+
+
+def controller_front(lamp):
+    c = casing("network_controller_front")
+    inset(c, 2, 2, 12, 12)
+    lit = lamp == "active"
+    hub, hub_hi, spoke = (SIGNAL, SIGNAL_HI, SIGNAL) if lit else (SIGNAL_DARK, SIGNAL, PANEL_LINE)
+    c.rect(6, 6, 9, 9, hub)
+    c.rect(6, 6, 7, 7, hub_hi)
+    c.hline(6, 9, 9, SIGNAL_DARK)
+    c.vline(9, 6, 9, SIGNAL_DARK)
+    for x, y in ((3, 7), (3, 8), (12, 7), (12, 8), (7, 3), (8, 3), (7, 12), (8, 12)):
+        c.px(x, y, spoke)
+    c.hline(4, 5, 7, SIGNAL_DARK)
+    c.hline(10, 11, 8, SIGNAL_DARK)
+    c.vline(8, 4, 5, SIGNAL_DARK)
+    c.vline(7, 10, 11, SIGNAL_DARK)
+    for x, y in ((4, 4), (11, 4), (4, 11), (11, 11)):
+        c.px(x, y, SIGNAL_DARK)
+    if lamp == "fault":
+        bang(c, 7, 5)
+    return c
+
+
+def gateway_downstream(lamp):
+    c = casing("gateway_downstream")
+    inset(c, 3, 3, 11, 11)
+    lit = lamp == "active"
+    c.glyph(5, 5, GLYPHS["dot"], SIGNAL if lit else SIGNAL_DARK)
+    c.px(7, 7, SIGNAL_HI if lit else SIGNAL)
+    if lamp == "fault":
+        bang(c, 9, 5)
+    return c
+
+
+def program_side(lamp):
+    c = casing("program_controller_side")
+    inset(c, 2, 2, 13, 11, fill=(10, 20, 14, 255), grain=1)
+    lit = lamp == "active"
+    code = CODE if lit else CODE_DARK
+    c.glyph(3, 3, GLYPHS["prompt"], code)
+    c.hline(7, 11, 4, CODE_DARK)
+    c.hline(4, 9, 7, CODE_DARK)
+    c.hline(4, 7, 9, code)
+    c.px(9, 9, CODE_HI if lit else CODE_DARK)
+    c.hline(4, 11, 13, STEEL_DARK)
+    if lamp == "paused":
+        c.rect(8, 5, 13, 10, (10, 20, 14, 255))
+        c.glyph(8, 6, GLYPHS["pause"][:4], AMBER)
+    if lamp == "fault":
+        bang(c, 10, 5)
+    return c
+
+
+def access_point_top(lamp):
+    c = casing("wireless_access_point_top")
+    inset(c, 2, 2, 12, 12)
+    lit = lamp == "active"
+    c.rect(6, 6, 8, 8, SIGNAL if lit else SIGNAL_DARK)
+    c.px(7, 7, SIGNAL_HI if lit else SIGNAL)
+    ring = SIGNAL if lit else SIGNAL_DARK
+    c.hline(5, 9, 4, ring)
+    c.hline(5, 9, 10, ring)
+    c.vline(4, 5, 9, ring)
+    c.vline(10, 5, 9, ring)
+    if lamp == "fault":
+        c.rect(6, 5, 8, 9, PANEL_SHADOW)
+        c.glyph(6, 5, GLYPHS["bang"], FAULT)
+    return c
+
+
+def access_point_side(lamp):
+    c = casing("wireless_access_point_side")
+    inset(c, 2, 2, 12, 12)
+    lit = lamp == "active"
+    c.rect(6, 9, 8, 11, SIGNAL if lit else SIGNAL_DARK)
+    c.px(7, 9, SIGNAL_HI if lit else SIGNAL)
+    c.glyph(4, 3, [".#####.", "#.....#", "..###..", ".#...#."], SIGNAL if lit else SIGNAL_DARK)
+    if lamp == "fault":
+        bang(c, 10, 6)
+    return c
+
+
+def link_top(lamp):
+    c = casing("wireless_link_endpoint_top")
+    inset(c, 2, 2, 12, 12)
+    lit = lamp == "active"
+    dish = [".#####.", "#.....#", "#.###.#", "#.#.#.#", "#.###.#", "#.....#", ".#####."]
+    c.glyph(4, 4, dish, AMBER if lit else AMBER_DARK)
+    c.px(7, 7, AMBER_HI if lit else AMBER)
+    if lamp == "fault":
+        c.rect(6, 4, 8, 10, PANEL_SHADOW)
+        c.glyph(6, 5, GLYPHS["bang"], FAULT)
+    return c
+
+
+DRIVE_BAYS = (2, 5, 8, 11)
+
+
+def drive_front(occupied):
+    """Four bays; an occupied bay shows a cell face with a pull handle and lit status lamp."""
+    c = casing("storage_drive_front", rivets=False)
+    for i, y in enumerate(DRIVE_BAYS):
+        c.rect(2, y, 13, y + 2, PANEL)
+        c.hline(2, 13, y, PANEL_SHADOW)
+        c.px(12, y + 1, PANEL_LINE)
+        c.hline(2, 13, y + 3, CASE_LIGHT) if y + 3 < 14 else None
+        if i in occupied:
+            c.rect(3, y + 1, 11, y + 2, CASE_LIGHT)
+            c.hline(3, 11, y + 2, CASE_SHADOW)
+            c.rect(4, y + 1, 5, y + 1, STEEL)
+            c.hline(7, 10, y + 1, CASE_HI)
+            c.px(12, y + 1, SIGNAL)
+    return c
+
+
+def overlay(name, base, variant):
+    """Transparent canvas holding only the pixels where ``variant`` differs from ``base``."""
+    c = Canvas(name)
+    for y in range(16):
+        for x in range(16):
+            if variant.pixels[y][x] != base.pixels[y][x]:
+                c.px(x, y, variant.pixels[y][x])
+    return c
+
+
+# (texture prefix, face function, lamps with an overlay)
+LAMP_FACES = (
+    ("network_controller_lamp", controller_front, LAMPS[1:]),
+    ("gateway_lamp", gateway_downstream, LAMPS[1:]),
+    ("program_controller_lamp", program_side, PROGRAM_LAMPS[1:]),
+    ("wireless_access_point_lamp", access_point_side, LAMPS[1:]),
+    ("wireless_access_point_top_lamp", access_point_top, LAMPS[1:]),
+    ("wireless_link_endpoint_lamp", link_top, LAMPS[1:]),
+)
+
+
+def status_overlays():
+    out = {}
+    for prefix, face, lamps in LAMP_FACES:
+        base = face("off")
+        for lamp in lamps:
+            out[f"{prefix}_{lamp}"] = overlay(f"{prefix}_{lamp}", base, face(lamp))
+    empty = drive_front(())
+    for i in range(4):
+        out[f"storage_drive_bay_{i + 1}"] = overlay(f"bay_{i}", empty, drive_front((i,)))
+    return out
+
+
+# ---------------------------------------------------------------- status JSON
+
+MODELS = ROOT / "src/main/resources/assets/factorycore/models/block"
+BLOCKSTATES = ROOT / "src/main/resources/assets/factorycore/blockstates"
+FACES = ("north", "south", "east", "west", "up", "down")
+# Rotations of a north-facing model for each FACING value (network nodes).
+NODE_ROTATION = {
+    "north": {},
+    "east": {"y": 90},
+    "south": {"y": 180},
+    "west": {"y": 270},
+    "up": {"x": 270},
+    "down": {"x": 90},
+}
+# Rotations of an up-facing model for each FACING value (link endpoints).
+LINK_ROTATION = {
+    "down": {"x": 180},
+    "up": {},
+    "north": {"x": 90},
+    "south": {"x": 90, "y": 180},
+    "west": {"x": 90, "y": 270},
+    "east": {"x": 90, "y": 90},
+}
+
+
+def overlay_template(faces, emissive, fallback):
+    """A full-cube cutout overlay drawn coplanar over the base model on ``faces``."""
+    element = {
+        "from": [0, 0, 0],
+        "to": [16, 16, 16],
+        "shade": False,
+        "faces": {face: {"texture": "#overlay", "cullface": face} for face in faces},
+    }
+    if emissive:
+        element["neoforge_data"] = {"block_light": 15, "sky_light": 15, "ambient_occlusion": False}
+    return {
+        "render_type": "minecraft:cutout",
+        "textures": {"particle": "#overlay", "overlay": f"factorycore:block/{fallback}"},
+        "elements": [element],
+    }
+
+
+def child(parent, overlay_texture):
+    return {"parent": f"factorycore:block/{parent}", "textures": {"overlay": f"factorycore:block/{overlay_texture}"}}
+
+
+def part(model, rotation=None, when=None):
+    entry = {"apply": {"model": f"factorycore:block/{model}", **(rotation or {})}}
+    if when:
+        entry = {"when": when, **entry}
+    return entry
+
+
+def status_json():
+    models = {
+        "status_overlay_north": overlay_template(("north",), True, "network_controller_lamp_active"),
+        "status_overlay_sides": overlay_template(("north", "south", "east", "west"), True, "program_controller_lamp_active"),
+        "status_overlay_up": overlay_template(("up",), True, "wireless_link_endpoint_lamp_active"),
+        "status_overlay_front_back": overlay_template(("north", "south"), False, "storage_drive_bay_1"),
+    }
+    states = {}
+
+    def facing_device(block, base, prefix, rotations, template):
+        parts = []
+        for facing, rotation in rotations.items():
+            parts.append(part(base, rotation, {"facing": facing}))
+        for lamp in LAMPS[1:]:
+            name = f"{prefix}_{lamp}"
+            models[name] = child(template, name)
+            for facing, rotation in rotations.items():
+                parts.append(part(name, rotation, {"facing": facing, "lamp": lamp}))
+        states[block] = {"multipart": parts}
+
+    facing_device("network_controller", "network_controller", "network_controller_lamp", NODE_ROTATION, "status_overlay_north")
+    facing_device("gateway", "gateway", "gateway_lamp", NODE_ROTATION, "status_overlay_north")
+    facing_device("wireless_link_endpoint", "wireless_link_endpoint", "wireless_link_endpoint_lamp", LINK_ROTATION, "status_overlay_up")
+
+    parts = [part("program_controller")]
+    for lamp in PROGRAM_LAMPS[1:]:
+        name = f"program_controller_lamp_{lamp}"
+        models[name] = child("status_overlay_sides", name)
+        parts.append(part(name, when={"lamp": lamp}))
+    states["program_controller"] = {"multipart": parts}
+
+    parts = [part("wireless_access_point")]
+    for lamp in LAMPS[1:]:
+        side = f"wireless_access_point_lamp_{lamp}"
+        top = f"wireless_access_point_top_lamp_{lamp}"
+        models[side] = child("status_overlay_sides", side)
+        models[top] = child("status_overlay_up", top)
+        parts.append(part(side, when={"lamp": lamp}))
+        parts.append(part(top, when={"lamp": lamp}))
+    states["wireless_access_point"] = {"multipart": parts}
+
+    parts = [part("storage_drive")]
+    for i in range(1, 5):
+        name = f"storage_drive_bay_{i}"
+        models[name] = child("status_overlay_front_back", name)
+        parts.append(part(name, when={f"bay_{i}": "true"}))
+    states["storage_drive"] = {"multipart": parts}
+
+    def encode(value):
+        return (json.dumps(value, indent=2) + "\n").encode()
+
+    files = {MODELS / f"{k}.json": encode(v) for k, v in models.items()}
+    files.update({BLOCKSTATES / f"{k}.json": encode(v) for k, v in states.items()})
+    return files
 
 
 # ---------------------------------------------------------------- items
@@ -653,6 +883,7 @@ def outputs():
     files = {TEXTURES / "block" / f"{k}.png": v.png() for k, v in blocks.items()}
     files.update({TEXTURES / "item" / f"{k}.png": v.png() for k, v in items.items()})
     files[SHEET] = reference_sheet(blocks, items).png()
+    files.update(status_json())
     return files
 
 

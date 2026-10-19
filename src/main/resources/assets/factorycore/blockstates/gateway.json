@@ -1,27 +1,175 @@
 {
-  "variants": {
-    "facing=north": {
-      "model": "factorycore:block/gateway"
+  "multipart": [
+    {
+      "when": {
+        "facing": "north"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway"
+      }
     },
-    "facing=east": {
-      "model": "factorycore:block/gateway",
-      "y": 90
+    {
+      "when": {
+        "facing": "east"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway",
+        "y": 90
+      }
     },
-    "facing=south": {
-      "model": "factorycore:block/gateway",
-      "y": 180
+    {
+      "when": {
+        "facing": "south"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway",
+        "y": 180
+      }
     },
-    "facing=west": {
-      "model": "factorycore:block/gateway",
-      "y": 270
+    {
+      "when": {
+        "facing": "west"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway",
+        "y": 270
+      }
     },
-    "facing=up": {
-      "model": "factorycore:block/gateway",
-      "x": 270
+    {
+      "when": {
+        "facing": "up"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway",
+        "x": 270
+      }
     },
-    "facing=down": {
-      "model": "factorycore:block/gateway",
-      "x": 90
+    {
+      "when": {
+        "facing": "down"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "lamp": "active"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_active"
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "lamp": "active"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_active",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "lamp": "active"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_active",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "lamp": "active"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_active",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "lamp": "active"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_active",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "lamp": "active"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_active",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "lamp": "fault"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_fault"
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "lamp": "fault"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_fault",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "lamp": "fault"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_fault",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "lamp": "fault"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_fault",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "lamp": "fault"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_fault",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "lamp": "fault"
+      },
+      "apply": {
+        "model": "factorycore:block/gateway_lamp_fault",
+        "x": 90
+      }
     }
-  }
+  ]
 }

@@ -24,7 +24,10 @@ public final class TerminalContent {
       BLOCKS.registerBlock(
           "storage_terminal",
           TerminalBlock::new,
-          BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops());
+          BlockBehaviour.Properties.of()
+              .strength(3.5f)
+              .requiresCorrectToolForDrops()
+              .sound(net.minecraft.world.level.block.SoundType.METAL));
   public static final DeferredItem<BlockItem> ITEM =
       ITEMS.register(
           "storage_terminal", () -> new TerminalItem(BLOCK.get(), new Item.Properties()));

@@ -666,7 +666,7 @@ public final class WorldNetworks {
     if (chunk == null) return false;
     var state = chunk.getBlockState(block);
     for (var direction : Direction.values())
-      if (NetworkContent.connects(state, direction)) return true;
+      if (NetworkCableBlock.linksTo(state, direction)) return true;
     return false;
   }
 

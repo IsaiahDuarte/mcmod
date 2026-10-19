@@ -11,7 +11,9 @@ public final class VerificationClient {
 
   @SubscribeEvent
   public static void setup(FMLClientSetupEvent event) {
-    if (System.getProperty("factorycore.multiplayer.role") != null)
+    if (Boolean.getBoolean("factorycore.presentation"))
+      event.enqueueWork(PresentationClientVerification::new);
+    else if (System.getProperty("factorycore.multiplayer.role") != null)
       event.enqueueWork(MultiplayerClientVerification::new);
     else event.enqueueWork(TerminalClientVerification::new);
   }

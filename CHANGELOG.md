@@ -2,6 +2,13 @@
 
 ## 0.1.0-dev — Development bootstrap
 
+- Added device state glyphs, visible drive-bay occupancy, translated purpose/legend
+  tooltips and held cable transforms; a 32-capture client fixture checks
+  orientations, representative held items, tooltip corners and GUI scales 1–4.
+- Fixed initial discovery of isolated access points, programs, buffers and crafting
+  devices by sharing cable eligibility with region seeding. Invalid isolated
+  devices retain no usable routing scope.
+
 - Added scoped player grant administration and live terminal stock observations;
   two real clients verify concurrent transfers, private defaults and revocation.
 - Added audited legacy staging settlement and stale-save adoption for connectors

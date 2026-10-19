@@ -21,7 +21,10 @@ public final class MachineInterfaceContent {
       BLOCKS.registerBlock(
           "machine_interface",
           properties -> new ConnectorBlock(properties, true),
-          BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops());
+          BlockBehaviour.Properties.of()
+              .strength(3.5f)
+              .requiresCorrectToolForDrops()
+              .sound(net.minecraft.world.level.block.SoundType.METAL));
   public static final DeferredItem<MachineInterfaceItem> ITEM =
       ITEMS.register("machine_interface", () -> new MachineInterfaceItem(BLOCK.get()));
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MachineInterfaceEntity>>
