@@ -221,4 +221,22 @@ class WasmProgramTest {
         IllegalArgumentException.class,
         () -> new WasmProgram(counter(), System::nanoTime, new byte[WasmProgram.MAX_STATE + 1]));
   }
+
+  /**
+   * The SDK panic handler reports the guest's message and source location through {@code panic}.
+   */
+  @Test
+  void guestPanicTrapsWithItsMessageAndLocation() throws Exception {
+    var guest = new WasmProgram(counter(), System::nanoTime);
+    assertEquals(
+        List.of("count", "oversize", "fail"),
+        guest.rules().stream().map(WasmProgram.RuleSpec::key).toList());
+    assertTrue(guest.invoke(2, host(0)).commands().isEmpty(), "No bedrock: no panic");
+    var trap = assertThrows(ProgramEvaluator.Trap.class, () -> guest.invoke(2, host(1)));
+    assertTrue(
+        trap.getMessage().matches("factory_rule: guest panicked: .*counter/src/lib\\.rs:\\d+: .*"),
+        trap.getMessage());
+    assertTrue(trap.getMessage().endsWith("bedrock in storage"), trap.getMessage());
+    assertTrue(guest.failed());
+  }
 }

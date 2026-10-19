@@ -56,17 +56,18 @@ public final class WasmProgram {
       FunctionType.of(List.of(ValType.I32, ValType.I32), List.of(ValType.I64));
   private static final FunctionType MACHINE_OP =
       FunctionType.of(
-          List.of(ValType.I32, ValType.I32, ValType.I32, ValType.I32, ValType.I32, ValType.I64),
+          List.of(ValType.I32, ValType.I32, ValType.I32, ValType.I32, ValType.I64),
           List.of(ValType.I32));
   private static final FunctionType CRAFT =
       FunctionType.of(List.of(ValType.I32, ValType.I32, ValType.I64), List.of(ValType.I32));
   private static final FunctionType STOCK =
-      FunctionType.of(
-          List.of(ValType.I32, ValType.I32, ValType.I32, ValType.I32), List.of(ValType.I64));
+      FunctionType.of(List.of(ValType.I32, ValType.I32, ValType.I32), List.of(ValType.I64));
   private static final FunctionType LOG =
       FunctionType.of(List.of(ValType.I32, ValType.I32), List.of(ValType.I32));
   private static final FunctionType STATE =
       FunctionType.of(List.of(ValType.I32, ValType.I32), List.of(ValType.I32));
+  private static final FunctionType PANIC =
+      FunctionType.of(List.of(ValType.I32, ValType.I32), List.of());
 
   private final LongSupplier clock;
   private final Instance instance;
@@ -125,14 +126,15 @@ public final class WasmProgram {
         ImportValues.builder()
             .addFunction(function("register_rule", REGISTER, this::register))
             .addFunction(function("machines", LABEL, this::machines))
-            .addFunction(function("keep", MACHINE_OP, a -> machineOp(a, 0)))
-            .addFunction(function("move_from", MACHINE_OP, a -> machineOp(a, 1)))
-            .addFunction(function("move_to", MACHINE_OP, a -> machineOp(a, 2)))
+            .addFunction(function("keep_stocked", MACHINE_OP, a -> machineOp(a, 0)))
+            .addFunction(function("move_to_storage", MACHINE_OP, a -> machineOp(a, 1)))
+            .addFunction(function("move_from_storage", MACHINE_OP, a -> machineOp(a, 2)))
             .addFunction(function("craft", CRAFT, this::craft))
             .addFunction(function("stock", STOCK, this::stock))
             .addFunction(function("log", LOG, this::log))
             .addFunction(function("state_read", STATE, this::stateRead))
             .addFunction(function("state_write", STATE, this::stateWrite))
+            .addFunction(function("panic", PANIC, this::panic))
             .build();
     instance =
         Instance.builder(module)
@@ -282,22 +284,21 @@ public final class WasmProgram {
     return new long[] {(base << 32) | found.size()};
   }
 
-  /** Filter from (kind 0 item, 1 fluid, 2 energy; tag flag) and a registry ID. */
-  private ResourceFilter filter(long kind, String id, long tag) {
+  /** Filter from a resource kind (0 item, 1 fluid, 2 energy, 3 item tag) and a registry ID. */
+  private ResourceFilter filter(long kind, String id) {
     if (kind == 2) {
       return new ResourceFilter(
           ResourceKind.ENERGY,
           ResourceFilter.Mode.INCLUDE,
           List.of(new ResourceFilter.Registry(ResourceKey.ENERGY.registryId())));
     }
-    if (kind != 0 && kind != 1 || tag != 0 && (tag != 1 || kind != 0))
-      throw new Limit("invalid resource kind");
+    if (kind < 0 || kind > 3) throw new Limit("invalid resource kind");
     if (!id.contains(":")) id = "minecraft:" + id;
     try {
       return new ResourceFilter(
-          kind == 0 ? ResourceKind.ITEM : ResourceKind.FLUID,
+          kind == 1 ? ResourceKind.FLUID : ResourceKind.ITEM,
           ResourceFilter.Mode.INCLUDE,
-          List.of(tag == 1 ? new ResourceFilter.Tag(id) : new ResourceFilter.Registry(id)));
+          List.of(kind == 3 ? new ResourceFilter.Tag(id) : new ResourceFilter.Registry(id)));
     } catch (IllegalArgumentException invalid) {
       throw new Limit("invalid registry ID " + id);
     }
@@ -308,8 +309,8 @@ public final class WasmProgram {
     requireCallback();
     long handle = a[0];
     if (handle < 0 || handle >= selected.size()) throw new Limit("unknown machine handle");
-    var filter = filter(a[1], text(a[2], a[3]), a[4]);
-    long amount = a[5];
+    var filter = filter(a[1], text(a[2], a[3]));
+    long amount = a[4];
     if (amount < 1 || amount > (op == 0 ? ProgramIr.MAX_AMOUNT : 4_096))
       throw new Limit("amount out of range");
     var machine = selected.get((int) handle);
@@ -340,7 +341,7 @@ public final class WasmProgram {
   private long[] stock(long[] a) {
     call();
     requireCallback();
-    var filter = filter(a[0], text(a[1], a[2]), a[3]);
+    var filter = filter(a[0], text(a[1], a[2]));
     try {
       return new long[] {host.stock(filter)};
     } catch (RuntimeException failure) {
@@ -374,5 +375,17 @@ public final class WasmProgram {
     pending = instance.memory().readBytes((int) a[0], (int) a[1]);
     wrote = true;
     return new long[] {0};
+  }
+
+  /**
+   * {@code panic(ptr, len)}: traps with the guest's own failure message, allowed in any phase. A
+   * message over {@link #MAX_TEXT} bytes is cut to that prefix and decoded leniently, because the
+   * call is already a failure report.
+   */
+  private long[] panic(long[] a) {
+    call();
+    if (a[1] < 0) throw new Limit("guest panicked");
+    var bytes = instance.memory().readBytes((int) a[0], (int) Math.min(a[1], MAX_TEXT));
+    throw new Limit("guest panicked: " + new String(bytes, StandardCharsets.UTF_8));
   }
 }

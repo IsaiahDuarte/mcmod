@@ -3219,3 +3219,30 @@ program-authoring stage 2 ("Native item picker inserts a working escaped express
 The expanded 47-capture tour, separate-JVM preference restoration and `runJeiClient`
 against the new editor have not passed. The user paused graphical E2E runs on
 2026-10-18; ADR 0050–0053 client behaviour stays unverified until those runs pass.
+
+## Rust SDK v2 checkpoint — 2026-10-19
+
+P5/D04 rewrites the Rust SDK and revises the unreleased `factory_v1` ABI
+([ADR 0054](decisions/0054-rust-sdk-v2.md)). Guests build for `wasm32v1-none` with
+`cargo guest`; `#[factorycore::program]`/`#[rule(...)]` generate registration and exports
+with compile-time interval/key/signature checks; host calls go through a `Rule` context with
+borrowed machine handles; `factorycore::testing` runs rules natively against a mock that
+mirrors the server's trap rules. The ABI folds the tag flag into resource kind 3, renames the
+machine imports to `keep_stocked`/`move_to_storage`/`move_from_storage`, and adds
+`panic(text, len)` so guest panics reach the controller log with message and location.
+Artifacts: smelter 706→9,237 bytes, counter 5,616→13,311 bytes (`core::fmt` for panic
+reports). JVM 349→350 (guest panic trap); tooling 29→32 (artifact size/import checks); SDK
+native tests now cover rule commands, state commit/rollback, server limits and trybuild
+macro diagnostics.
+
+Verified on Linux (x86_64, Rust 1.95.0, JDK 21): `python3 scripts/verify_guest.py` passed;
+`./gradlew --no-daemon build` passed (350 JVM tests and all 305 required GameTests, including
+the two Wasm deployment GameTests on the rebuilt artifacts) when run with a temporary
+init script setting `dependencyLocking { lockMode = LockMode.LENIENT }`.
+
+Blocked: `python3 scripts/verify.py` passed its documentation/tooling stage (32 tests) but its
+Gradle stage fails on this Linux host before compilation, because the committed dependency
+lock state lists `ca.weblite:java-objc-bridge:1.1` and lacks
+`io.netty:netty-transport-native-epoll:4.1.97.Final` for `neoFormRuntimeDependencies`. The
+lockfile is unchanged by this checkpoint; a lock refresh that covers each supported OS is
+needed separately. CI has not run this change.

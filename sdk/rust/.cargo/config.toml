@@ -1,0 +1,12 @@
+# Guest builds: `cargo guest` writes target/wasm32v1-none/release/<crate>.wasm.
+# wasm32v1-none emits only WebAssembly 1.0 (MVP) instructions, matching the
+# factory_v1 preflight; the link arguments set the 2 MiB memory cap and 64 KiB stack.
+[alias]
+guest = "build --release --target wasm32v1-none"
+
+[target.wasm32v1-none]
+rustflags = [
+  "-C", "link-arg=--max-memory=2097152",
+  "-C", "link-arg=--initial-memory=131072",
+  "-C", "link-arg=-zstack-size=65536",
+]

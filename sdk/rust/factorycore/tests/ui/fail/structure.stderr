@@ -1,0 +1,19 @@
+error: a program needs at least one rule, e.g. `#[rule(seconds = 1)] fn tick(cx: &Rule) {}`
+ --> tests/ui/fail/structure.rs:4:5
+  |
+4 | mod empty {}
+  |     ^^^^^
+
+error: #[program] takes no arguments; put intervals on each #[rule(...)]
+ --> tests/ui/fail/structure.rs:6:24
+  |
+6 | #[factorycore::program(seconds = 1)]
+  |                        ^^^^^^^
+
+error: #[rule] only works on functions inside a #[factorycore::program] module
+  --> tests/ui/fail/structure.rs:14:1
+   |
+14 | #[factorycore::rule(seconds = 1)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `factorycore::rule` (in Nightly builds, run with -Z macro-backtrace for more info)

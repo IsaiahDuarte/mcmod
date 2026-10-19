@@ -80,7 +80,8 @@ handler GameTests become mandatory when their owning modules arrive.
 
 ## Rust/Wasm feasibility checks
 
-Install Rust 1.95.0 with rustfmt, clippy and wasm32-unknown-unknown as shown in
+Install Rust 1.95.0 with rustfmt, clippy and the wasm32-unknown-unknown (experiment)
+and wasm32v1-none (SDK) targets as shown in the repository README and
 [the experiment guide](../experiments/wasm-guest/README.md). `build` depends on
 `verifyRustGuest` and executes `scripts/verify_guest.py`: locked native/guest
 clippy with warnings as errors, fmt check, nonempty/unskipped native tests and a
@@ -1067,12 +1068,17 @@ verified.
 ## Wasm program checks
 
 `python3 scripts/verify_guest.py` (run by `verifyRustGuest`) now also checks the
-`sdk/rust` workspace: fmt, clippy native and wasm, `cargo test` (nonempty) and the
-release build of the example guest copied to `build/test-guests/smelter.wasm`.
-`verify.py` allows Rust only under the probe and SDK source trees; a tooling test
-checks that stray SDK Rust is still rejected. WasmProgramTest: the real Rust guest
-registers `smelt`/`planks` and stages exactly the friendly twin's commands at four
-stock levels with instruction counts within budget; preflight rejects probe imports,
+`sdk/rust` workspace from its own directory (so `.cargo/config.toml` applies): fmt, clippy
+native and `wasm32v1-none`, `cargo test` (nonempty) and the `wasm32v1-none` release builds
+of the smelter and counter examples. Each artifact must be at most 131,072 bytes and import
+only `factory_v1` before it is copied to `build/test-guests`. SDK tests run the examples'
+rules against the `factorycore::testing` mock (commands, state commit/rollback and the
+server's trap limits) and pin the program macro's compile errors with trybuild
+(`factorycore/tests/ui`). `verify.py` allows Rust only under the probe and SDK source
+trees; a tooling test checks that stray SDK Rust is still rejected. WasmProgramTest: the
+real Rust guest registers `smelt`/`planks` and stages exactly the friendly twin's commands
+at four stock levels with instruction counts within budget; a guest panic traps with its
+message and `file:line` and fails the instance; preflight rejects probe imports,
 oversized and malformed artifacts; a hand-assembled infinite loop traps at the
 instruction budget and the instance stays failed; registering a rule outside init
 traps; unknown imports are refused.

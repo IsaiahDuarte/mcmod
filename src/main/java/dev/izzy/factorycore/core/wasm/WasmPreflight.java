@@ -16,14 +16,15 @@ public final class WasmPreflight {
       java.util.Set.of(
           "register_rule",
           "machines",
-          "keep",
-          "move_from",
-          "move_to",
+          "keep_stocked",
+          "move_to_storage",
+          "move_from_storage",
           "craft",
           "stock",
           "log",
           "state_read",
-          "state_write");
+          "state_write",
+          "panic");
   private static final byte[] HEADER = {0, 97, 115, 109, 1, 0, 0, 0};
 
   private WasmPreflight() {}

@@ -50,7 +50,7 @@ acceptance are still open. See the [current implementation evidence and next wor
 Requires Python 3.11 or later, JDK 21 and pinned Rust guest tools:
 
 ```text
-rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
+rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown --target wasm32v1-none
 ```
 
 The checked-in Gradle wrapper downloads

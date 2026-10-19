@@ -1,8 +1,9 @@
 [package]
 name = "factorycore-counter"
-version = "1.0.0"
-edition = "2021"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]

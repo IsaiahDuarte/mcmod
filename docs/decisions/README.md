@@ -129,3 +129,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0051 — Native program authoring and read-only previews](0051-program-authoring.md)
 
 - [0053 — Selected tanks and fixed machine ports](0053-selected-tanks-and-fixed-machine-ports.md)
+
+- [0054 — Rust SDK v2 and the revised factory_v1 ABI](0054-rust-sdk-v2.md)
