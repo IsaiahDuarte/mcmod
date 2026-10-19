@@ -1,0 +1,1 @@
+fit jobs scale=4: TerminalScreen panel=344x232 gui=427x240 controls=18

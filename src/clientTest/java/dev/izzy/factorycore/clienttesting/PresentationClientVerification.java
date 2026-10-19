@@ -375,6 +375,109 @@ public final class PresentationClientVerification {
     step(client -> client.screen == null && waited() > 4);
   }
 
+  /**
+   * Terminal Jobs mode through real clicks: a pattern's craftable row, ×8 preview, Start, the
+   * finished delivery, then a ×64 shortage preview at scale 4 with fit checks.
+   */
+  private void jobsTour(BlockPos base) {
+    server(PresentationScenes::jobs);
+    serverUntil(player -> valid(player, PresentationScenes.JOB_UNIT) && planks(player) == 0);
+    server(PresentationScenes::stockJobs);
+    use(base.east(2), Direction.SOUTH, false);
+    step(
+        client -> client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Jobs"));
+    step(client -> !jobView(client).craftables().isEmpty() && press(client, "×8"));
+    step(
+        client -> {
+          var view = jobView(client);
+          if (view.preview().icon().isEmpty() || waited() < 6) return false;
+          check(
+              view.previewReason().isEmpty(),
+              "Eight planks are craftable: "
+                  + view.previewReason()
+                  + " "
+                  + view.missing()
+                  + " "
+                  + view.preview());
+          capture(client, "jobs-preview-scale-2.png");
+          return press(client, "Start");
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          capture(client, "jobs-started-scale-2.png");
+          return true;
+        });
+    serverUntil(
+        player ->
+            dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
+                    .craftingJobs()
+                    .all()
+                    .isEmpty()
+                && planks(player) == 8);
+    step(client -> waited() > 10 && jobView(client).jobs().isEmpty() && press(client, "×64"));
+    step(
+        client -> {
+          var view = jobView(client);
+          if (view.missing().isEmpty() || waited() < 4) return false;
+          check(!view.previewReason().isEmpty(), "A 64-plank plan reports its shortage");
+          setScale(client, 4);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          evidence
+              .append("fit jobs scale=4: ")
+              .append(checkFits(client, client.screen))
+              .append('\n');
+          capture(client, "jobs-missing-scale-4.png");
+          setScale(client, 2);
+          press(client, "Items");
+          client.screen.onClose();
+          return true;
+        });
+    step(client -> client.screen == null && waited() > 4);
+  }
+
+  @SuppressWarnings("PMD.CloseResource")
+  private static long planks(ServerPlayer player) {
+    var level = player.serverLevel();
+    var drive =
+        (dev.izzy.factorycore.platform.storage.StorageDriveEntity)
+            level.getBlockEntity(PresentationScenes.SCREENS.east());
+    var cell = dev.izzy.factorycore.platform.storage.CellHandleData.read(drive.cell(0));
+    var key =
+        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(level.registryAccess())
+            .itemKey(new ItemStack(net.minecraft.world.item.Items.OAK_PLANKS));
+    var stock =
+        dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
+            .registry()
+            .stock(cell, key);
+    // -1 while the cell is offline, so waits never mistake a rebuilding network for an empty one.
+    return stock.loaded() ? stock.total() : -1;
+  }
+
+  private static dev.izzy.factorycore.platform.storage.TerminalJobPackets.View jobView(
+      Minecraft client) {
+    check(client.screen instanceof TerminalScreen, "Terminal closed during the jobs tour");
+    return ((TerminalScreen) client.screen).getMenu().jobView();
+  }
+
+  /** Presses the visible, active button with this exact label; false when none is pressable. */
+  private static boolean press(Minecraft client, String label) {
+    for (var child : client.screen.children())
+      if (child instanceof Button button
+          && button.visible
+          && button.active
+          && button.getMessage().getString().equals(label)) {
+        client.screen.mouseClicked(
+            button.getX() + button.getWidth() / 2.0, button.getY() + button.getHeight() / 2.0, 0);
+        return true;
+      }
+    return false;
+  }
+
   private void use(BlockPos target, Direction face, boolean sneak) {
     step(
         client -> {
@@ -734,6 +837,7 @@ public final class PresentationClientVerification {
     serverUntil(player -> valid(player, base.east(2)) && valid(player, base.east(8)));
     use(base.east(2), Direction.SOUTH, false);
     scales("terminal", TerminalScreen.class, true);
+    jobsTour(base);
     use(base.east(3), Direction.SOUTH, false);
     scales("buffer", BufferSettingsScreen.class, false);
     use(base.east(4), Direction.SOUTH, false);

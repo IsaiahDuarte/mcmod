@@ -283,6 +283,48 @@ final class PresentationScenes {
    * Functional screen network along x at z=0: root, drive, terminal, buffer, machine interface
    * (socket north into a chest), program controller, cable, gateway (downstream east) and branch.
    */
+  /** Planks from one oak log on a Crafting Unit beside the screens drive; 8 logs stored. */
+  static final BlockPos JOB_UNIT = SCREENS.east().north();
+
+  @SuppressWarnings("PMD.CloseResource")
+  static void jobs(ServerPlayer player) {
+    var level = player.serverLevel();
+    level.setBlock(JOB_UNIT, CraftingContent.UNIT.get().defaultBlockState(), 3);
+    var cells =
+        new java.util.ArrayList<ItemStack>(java.util.Collections.nCopies(9, ItemStack.EMPTY));
+    cells.set(0, new ItemStack(Items.OAK_LOG));
+    var pattern = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
+    pattern.set(
+        CraftingContent.PATTERN.get(),
+        new dev.izzy.factorycore.platform.crafting.PatternContents(
+            java.util.UUID.randomUUID(),
+            1,
+            0,
+            cells,
+            new ItemStack(Items.OAK_PLANKS, 4),
+            List.of()));
+    ((dev.izzy.factorycore.platform.crafting.CraftingUnitEntity) level.getBlockEntity(JOB_UNIT))
+        .patterns()
+        .insertItem(0, pattern, false);
+  }
+
+  /** Stores the 8 oak logs once the rebuilt network has the cell online again. */
+  @SuppressWarnings("PMD.CloseResource")
+  static void stockJobs(ServerPlayer player) {
+    var level = player.serverLevel();
+    var drive = (StorageDriveEntity) level.getBlockEntity(SCREENS.east());
+    var cell = dev.izzy.factorycore.platform.storage.CellHandleData.read(drive.cell(0));
+    var key =
+        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(level.registryAccess())
+            .itemKey(new ItemStack(Items.OAK_LOG));
+    var stored =
+        dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
+            .registry()
+            .insert(cell, key, 8);
+    if (stored.amount() != 8)
+      throw new IllegalStateException("Jobs scene stores 8 oak logs: " + stored);
+  }
+
   @SuppressWarnings("PMD.CloseResource")
   static void screens(ServerPlayer player) {
     var level = player.serverLevel();
