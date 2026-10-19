@@ -84,8 +84,18 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
             == NetworkAuthority.Decision.ALLOWED;
   }
 
+  /** Button id that reopens this gateway as a Network Access session (ADR 0055). */
+  public static final int ACCESS_BUTTON = 64;
+
   @Override
   public boolean clickMenuButton(Player player, int button) {
+    if (button == ACCESS_BUTTON
+        && gateway != null
+        && player instanceof ServerPlayer server
+        && stillValid(player)) {
+      NetworkAccessMenu.open(server, gateway);
+      return true;
+    }
     if (gateway == null
         || !(player instanceof ServerPlayer server)
         || button < 0

@@ -31,6 +31,7 @@ public final class FactoryCoreMod {
     dev.izzy.factorycore.platform.guide.GuideContent.register(bus);
     dev.izzy.factorycore.platform.upgrade.ThroughputContent.register(bus);
     NetworkContent.register(bus);
+    dev.izzy.factorycore.platform.storage.RecoveryContent.register(bus);
     NeoForge.EVENT_BUS.addListener(DeviceSavedData::serverStarted);
     NeoForge.EVENT_BUS.addListener(
         dev.izzy.factorycore.platform.storage.RecoveryCommands::register);

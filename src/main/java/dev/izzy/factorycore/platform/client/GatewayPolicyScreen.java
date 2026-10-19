@@ -40,6 +40,18 @@ public final class GatewayPolicyScreen extends AbstractContainerScreen<GatewayPo
                   .bounds(leftPos + 8 + column * 98, topPos + 34 + row * 20, 92, 18)
                   .build()));
     }
+    // Free space under the three resource-kind toggles: open this gateway's access screen.
+    addRenderableWidget(
+        Button.builder(
+                Component.translatable("gui.factorycore.gateway_policy.access"),
+                button ->
+                    minecraft.gameMode.handleInventoryButtonClick(
+                        menu.containerId, GatewayPolicyMenu.ACCESS_BUTTON))
+            .bounds(leftPos + 8 + 2 * 98, topPos + 34 + 6 * 20, 92, 18)
+            .tooltip(
+                net.minecraft.client.gui.components.Tooltip.create(
+                    Component.translatable("gui.factorycore.gateway_policy.access.tooltip")))
+            .build());
   }
 
   private static Component name(int bit) {

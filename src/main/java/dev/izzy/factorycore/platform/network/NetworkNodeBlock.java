@@ -137,6 +137,14 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
             buffer -> buffer.writeBlockPos(position));
         return InteractionResult.CONSUME;
       }
+      // Sneak-use on a controller opens the Network Access screen (ADR 0055).
+      if (kind == NodeRegistry.Kind.CONTROLLER
+          && player.isShiftKeyDown()
+          && player instanceof net.minecraft.server.level.ServerPlayer server
+          && node.handle() != null) {
+        NetworkAccessMenu.open(server, node);
+        return InteractionResult.CONSUME;
+      }
       player.displayClientMessage(message, true);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
