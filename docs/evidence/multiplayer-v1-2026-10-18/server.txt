@@ -1,0 +1,18 @@
+PASS
+joined FactoryGuest uuid=e76ead4a-b335-3fab-a197-c0d8eb8dd694 operator=false address=/127.0.0.1:51613
+joined FactoryOwner uuid=52c7ab99-d518-3b90-bffd-20b9ef57444d operator=false address=/127.0.0.1:51612
+step 1 verified: stock=64 owner=0 stranger=0 grants=[] policyMask=1ffff
+step 2 verified: stock=64 owner=0 stranger=0 grants=[] policyMask=1fffe
+step 3 verified: stock=64 owner=0 stranger=0 grants=[] policyMask=1fffe
+step 4 verified: stock=64 owner=0 stranger=0 grants=[VIEW] policyMask=1fffe
+step 5 verified: stock=64 owner=0 stranger=0 grants=[VIEW] policyMask=1fffe
+step 6 verified: stock=64 owner=0 stranger=0 grants=[VIEW, DEPOSIT, WITHDRAW] policyMask=1fffe
+step 7 verified: stock=64 owner=0 stranger=0 grants=[VIEW, DEPOSIT, WITHDRAW] policyMask=1fffe
+step 8 verified: stock=63 owner=0 stranger=1 grants=[VIEW, DEPOSIT, WITHDRAW] policyMask=1fffe
+step 9 verified: stock=62 owner=1 stranger=1 grants=[VIEW, DEPOSIT, WITHDRAW] policyMask=1fffe
+step 10 verified: stock=63 owner=1 stranger=0 grants=[VIEW, DEPOSIT, WITHDRAW] policyMask=1fffe
+concurrent Take 1: owner landed at +1 ticks, stranger at +1 ticks after the step was published
+step 11 verified: stock=61 owner=2 stranger=1 grants=[VIEW, DEPOSIT, WITHDRAW] policyMask=1fffe
+step 12 verified: stock=61 owner=2 stranger=1 grants=[] policyMask=1fffe
+step 13 verified: stock=61 owner=2 stranger=1 grants=[VIEW] policyMask=1fffe
+Both clients disconnected only after the final step; no unexpected logout.

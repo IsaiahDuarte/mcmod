@@ -35,8 +35,11 @@ public final class ProgramMenu extends AbstractContainerMenu {
   private long revision = 1;
   private int lastAction = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE;
   private boolean draftSent;
+  private int lastAuthor = Integer.MIN_VALUE;
+  private ProgramPackets.AuthorView authorView;
   private ProgramPackets.View view;
   private String draft = "";
+  private boolean draftReceived;
 
   public ProgramMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
     this(id, inventory, null, buffer.readBlockPos(), buffer.readUUID());
@@ -86,8 +89,53 @@ public final class ProgramMenu extends AbstractContainerMenu {
   }
 
   public void accept(ProgramPackets.Draft packet) {
-    if (controller == null && packet.menu() == containerId && packet.session().equals(session))
+    if (controller == null && packet.menu() == containerId && packet.session().equals(session)) {
       draft = packet.text();
+      draftReceived = true;
+    }
+  }
+
+  public boolean draftReceived() {
+    return draftReceived;
+  }
+
+  public ProgramPackets.AuthorView authorView() {
+    return authorView;
+  }
+
+  public void accept(ProgramPackets.AuthorView packet) {
+    if (controller == null && packet.menu() == containerId && packet.session().equals(session))
+      authorView = packet;
+  }
+
+  /** Current-scope authoring snapshot; VIEW is rechecked, and no runtime commands are published. */
+  public void author(ServerPlayer sender, ProgramPackets.AuthorRequest request) {
+    if (sender != viewer
+        || request.menu() != containerId
+        || !request.session().equals(session)
+        || !authorized()) return;
+    int tick = sender.server.getTickCount();
+    if (lastAuthor != Integer.MIN_VALUE && tick - lastAuthor < 5) return;
+    lastAuthor = tick;
+    var networks = WorldNetworks.get(sender.server);
+    var member = networks.membership(controller.origin());
+    var scope = member.scope().network() + "/" + member.scope().segment();
+    var labels = networks.labels(actor(), controller.origin(), request.after(), 16);
+    var preview =
+        request.preview()
+            ? WorldPrograms.get(sender.server).preview(actor(), controller, request.rule())
+            : new dev.izzy.factorycore.core.program.ProgramPreview.Result(0, 0, List.of());
+    authorView =
+        new ProgramPackets.AuthorView(
+            containerId,
+            session,
+            scope,
+            labels.labels(),
+            labels.more(),
+            preview.rule(),
+            preview.total(),
+            preview.lines());
+    PacketDistributor.sendToPlayer(sender, authorView);
   }
 
   private ServerPlayer player() {

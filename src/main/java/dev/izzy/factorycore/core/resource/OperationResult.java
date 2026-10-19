@@ -17,7 +17,8 @@ public record OperationResult(long amount, Reason reason) {
     UNCERTAIN,
     RATE_LIMIT,
     OVERLAP,
-    UNSUPPORTED
+    UNSUPPORTED,
+    BUSY
   }
 
   public OperationResult {

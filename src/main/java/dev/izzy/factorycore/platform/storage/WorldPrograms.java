@@ -307,6 +307,21 @@ public final class WorldPrograms {
     }
   }
 
+  /** Evaluates one saved native draft rule against the viewer's current read-only scope. */
+  public dev.izzy.factorycore.core.program.ProgramPreview.Result preview(
+      NetworkPermissions.Actor actor, ProgramControllerEntity controller, int rule) {
+    if (networks().authorize(actor, controller.origin(), NetworkPermissions.Permission.VIEW)
+        != NetworkAuthority.Decision.ALLOWED)
+      return new dev.izzy.factorycore.core.program.ProgramPreview.Result(
+          0, 0, List.of("View permission required"));
+    var compiled = dev.izzy.factorycore.core.program.FriendlyCompiler.compile(controller.draft());
+    if (!compiled.ok())
+      return new dev.izzy.factorycore.core.program.ProgramPreview.Result(
+          0, 0, List.of("Fix compiler diagnostics before previewing the saved draft"));
+    return dev.izzy.factorycore.core.program.ProgramPreview.evaluate(
+        compiled.program(), rule, host(controller, actor));
+  }
+
   private ProgramEvaluator.Host host(
       ProgramControllerEntity controller, NetworkPermissions.Actor actor) {
     return new ProgramEvaluator.Host() {

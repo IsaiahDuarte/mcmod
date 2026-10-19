@@ -103,6 +103,14 @@ public final class NetworkAuthority {
         page.more());
   }
 
+  /** VIEW-gated local label catalog; a denied or stale scope reveals no labels. */
+  public NetworkTopology.LabelPage labels(Actor actor, Scope origin, String after, int limit) {
+    checkThread();
+    if (authorize(actor, origin, Permission.VIEW) != Decision.ALLOWED)
+      return new NetworkTopology.LabelPage(List.of(), false);
+    return topology.labels(origin, after, limit);
+  }
+
   public MachineQuery oneMachine(Actor actor, Scope origin, String label) {
     var result = machines(actor, origin, label, null, 2);
     return result.machines().size() > 1

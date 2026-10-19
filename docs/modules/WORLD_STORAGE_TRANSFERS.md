@@ -9,6 +9,13 @@ automatic buffer import and original-owner cleanup controls are implemented belo
 
 ## Contract and ownership
 
+Every live endpoint mutation meters its path to/from the authenticated staging
+origin through shared [wireless pair budgets](WIRELESS.md). Known partial calls
+refund unused quota; uncertain calls retain their offer for that tick. Pure wired
+paths retain existing device limits. Saved validated progress/return uses its
+accepted origin; context-less legacy settlement is restoration of known owned
+staging, with no guessed route. See [ADR0050](../decisions/0050-shared-wireless-throughput.md).
+
 Call `submit(id, actor, origin, source, destination, key, amount, completion)` on
 the server thread with a unique operation UUID, a server-authenticated actor,
 origin dimension/packed block position, current endpoints and exact resource
@@ -153,6 +160,34 @@ checks, not full server restart, client UI or automatic recovery evidence.
 
 Scheduled advisory foreign stock pages also use this service; see [observation contract](CONNECTORS.md#bounded-advisory-stock-pages). Their counts are never a reservation or transfer promise.
 
+## Legacy settlement
+
+`settleLegacy(id, authenticatedActor, completion)` finishes known staging of a record
+saved without endpoint context ([ADR0047](../decisions/0047-legacy-staging-settlement.md)).
+It runs on the server thread for the recorded principal only.
+
+- **Target:** `LegacySettlement.of` chooses by canonical identity. A cell, bank or Buffered
+  Interface source receives a return; otherwise a cell or bank destination receives a
+  delivery; anything else rejects `UNSUPPORTED`.
+- **Checks:**
+  - Delivery needs current DEPOSIT access to the destination holder; a return needs no
+    grant.
+  - The holder must be loaded, unconflicted and on a VALID network, or the result is
+    `OFFLINE`.
+  - Pending or quarantined records reject `UNCERTAIN`; context-scoped or complete records
+    reject `UNSUPPORTED`; another principal is `DENIED`.
+- **Execution:**
+  - Scheduled on the holder's current network.
+  - At most one recovery quantum per step; the other end is an inert port, so nothing is
+    extracted.
+  - Admission conditions, the chosen target, its admitted network/segment and DEPOSIT
+    are rechecked at execution; a full target keeps the remainder staged. If the holder
+    moved into another network or segment, the old ticket is `DENIED` without mutation;
+    an explicit retry schedules against its current scope.
+
+`/factorycore recovery settle <id>` is the player command; it writes the schema-1
+before-state audit first.
+
 ## Scheduled principal-owned foreign holds
 
 `claim(id, authenticatedActor, origin, connectorHandle, key, amount, releasing,
@@ -169,7 +204,8 @@ all or nothing, and holds stock for `actor.id()` in the canonical saved registry
 no client-specified owner ID is accepted. SHORTAGE and RESERVATION_LIMIT preserve
 metadata/resources. Read faults quarantine with HANDLER_FAULT and no hold change.
 Fresh totals inspect the complete configured item window (at most 64 positions),
-at most 64 fluid tanks, or one FE provider. More than 64 fluid tanks returns
+at most64 selected fluid tanks (or64 whole-capability tanks), or one FE provider.
+A larger whole fluid capability returns
 UNSUPPORTED for reservation/protected extraction, without quarantining a valid
 provider. Advisory paginated catalog reads still support larger tank catalogs.
 No stock cache, chunk loads or retained foreign contents are created.

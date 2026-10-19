@@ -31,7 +31,7 @@ public final class NetworkContent {
       BLOCKS.registerBlock(
           "gateway", p -> new NetworkNodeBlock(p, NodeRegistry.Kind.GATEWAY), properties());
   public static final DeferredBlock<NetworkCableBlock> CABLE =
-      BLOCKS.registerBlock("network_cable", NetworkCableBlock::new, properties());
+      BLOCKS.registerBlock("network_cable", NetworkCableBlock::new, properties().noOcclusion());
   public static final DeferredItem<NetworkNodeItem> CONTROLLER_ITEM =
       ITEMS.register("network_controller", () -> new NetworkNodeItem(CONTROLLER.get()));
   public static final DeferredItem<NetworkNodeItem> GATEWAY_ITEM =

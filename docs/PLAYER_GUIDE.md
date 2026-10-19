@@ -5,8 +5,7 @@ modules on Minecraft 1.21.1 / NeoForge 21.1.252. Network Controllers, Gateways a
 ownership. Valid wired networks now activate installed cells after bounded server rebuilding.
 Finite Energy Banks expose real NeoForge energy ports on valid wired networks.
 Buffered Interfaces now import real hopper items into permitted storage without code.
-Storage Terminals now provide item search/deposit/withdrawal controls. Automated client checks cover item search/Take1/paging and GUI scales2–4; advanced presets, crafting, other terminal tabs and
-wireless access are still unfinished.
+Storage Terminals provide item transfers, a manual crafting grid, saved patterns/jobs, and fluid/container and energy-item actions. Presets, friendly/Rust programs, wireless access/links and an in-game guide are implemented. Client and native checks cover parts of these flows; this remains an incomplete development build. The implementation plan records remaining behavior and verification gaps.
 
 ## Cells and drives
 
@@ -35,17 +34,37 @@ All recipes use vanilla materials. The recipe book unlocks each recipe when
 you obtain its relevant material. Cells and modules are also in the Factory Core
 creative tab. Initial icons reference vanilla textures.
 
-| Recipe | Materials |
-| --- | --- |
-| Starter Item Cell | 4 iron ingots, 4 redstone dust, 1 chest |
-| Starter Fluid Cell | 7 glass blocks, 1 empty bucket, 1 redstone dust |
-| Storage Drive | 4 iron ingots, 4 redstone dust, 1 hopper |
-| Storage Terminal | 4 iron ingots, 3 glass blocks, 2 redstone dust |
-| Buffered Interface | 4 iron ingots, 2 glass blocks, 2 redstone dust, 1 hopper |
-| Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
-| Expansion Module | 4 gold ingots, 2 redstone dust, 1 diamond |
-| Advanced Module | 4 diamonds, 2 redstone dust, 1 netherite ingot |
-| Infinite Module | 8 netherite ingots, 1 Nether star |
+No other mod is needed. Tiers follow the materials you reach: Starter needs only iron, copper,
+redstone, glass and simple vanilla blocks; Expanded adds gold, Nether quartz and ender
+pearls; Advanced adds diamonds, eyes of ender and netherite; Infinite needs a Nether
+star. Higher cells and banks are made by applying modules, never by a recipe that
+consumes a cell or bank. Patterns are encoded from Blank Patterns in the terminal.
+
+| Tier | Recipe | Materials |
+| --- | --- | --- |
+| Starter | Factory Guide | 1 book, 1 redstone dust (shapeless) |
+| Starter | Network Controller | 4 iron ingots, 4 redstone dust, 1 glass block |
+| Starter | Network Cable ×8 | 6 iron ingots, 3 redstone dust |
+| Starter | Storage Drive | 4 iron ingots, 4 redstone dust, 1 hopper |
+| Starter | Starter Item Cell | 4 iron ingots, 4 redstone dust, 1 chest |
+| Starter | Starter Fluid Cell | 7 glass blocks, 1 empty bucket, 1 redstone dust |
+| Starter | Storage Terminal | 4 iron ingots, 3 glass blocks, 2 redstone dust |
+| Starter | Buffered Interface | 4 iron ingots, 2 glass blocks, 2 redstone dust, 1 hopper |
+| Starter | Storage Connector | 4 copper ingots, 4 redstone dust, 1 hopper |
+| Starter | Machine Interface | 4 iron ingots, 4 copper ingots, 1 redstone dust |
+| Starter | Fuel Generator | 4 iron ingots, 3 copper ingots, 1 furnace, 1 redstone dust |
+| Starter | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
+| Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
+| Expanded | Expansion Module | 4 gold ingots, 2 redstone dust, 1 Nether quartz |
+| Expanded | Crafting Unit | 4 iron ingots, 2 gold ingots, 2 redstone dust, 1 crafting table |
+| Expanded | Crafting Interface | 4 iron ingots, 2 gold ingots, 2 redstone dust, 1 hopper |
+| Expanded | Program Controller | 4 iron ingots, 1 gold ingot, 3 redstone dust, 1 redstone repeater |
+| Expanded | Gateway | 4 iron ingots, 2 Nether quartz, 2 redstone dust, 1 ender pearl |
+| Expanded | Wireless Access Point | 5 iron ingots, 1 gold ingot, 2 redstone dust, 1 ender pearl |
+| Expanded | Wireless Terminal | 1 Storage Terminal, 5 copper ingots, 2 redstone dust, 1 ender pearl |
+| Advanced | Advanced Module | 4 diamonds, 2 redstone dust, 1 netherite ingot |
+| Advanced | Wireless Link Endpoint | 1 Wireless Access Point, 2 diamonds, 1 eye of ender, 2 gold ingots, 3 iron ingots |
+| Infinite | Infinite Module | 8 netherite ingots, 1 Nether star |
 
 Remove a cell from its drive. Hold it in your offhand and use an upgrade module
 from your main hand. Apply Expansion, Advanced and then Infinite in that order.
@@ -377,11 +396,12 @@ CRC / ICI). Place its socket against a machine and connect wires to another face
 With an empty main hand, use renamed paper/name tag in your offhand to copy a
 local label; sneak-paper clears it. Tools are not consumed. Labels are case-sensitive
 and private to the current segment, even when storage is shared through a gateway.
-Machine stock stays out of the storage terminal. Use with both hands empty to edit label, resource, access, priority, item window
+Machine stock stays out of the storage terminal. Use with both hands empty to edit label, resource, access, priority, slot/tank window
 and per-tick rate. Apply & Close saves the complete form; Reset restores saved
 values; Cancel discards local edits. Enter in a field also saves. Changing resource
 resets the draft window/rate to that resource’s defaults. Slots start at zero;
-fluid/energy bind the whole selected capability. A stale form reloads current
+fluid0/64 selects the whole capability, while other fluid windows require indexed
+tank support from the provider. Energy uses0/64. A stale form reloads current
 server values before retry.
 Open Presets to author Paused, Import (machine → storage), Export (storage →
 machine), or Stock (fill matching resident units to a goal). Binding settings must
@@ -404,8 +424,11 @@ provider side, access and rate in Binding if work is blocked; the Return
 button tooltip explains the latest runtime reason. Return recovers only
 your known staging to its original source, even after edit/deploy revocation while
 VIEW remains. An unavailable source can block recovery; uncertain provider calls
-never replay or fabricate refunds. Selected-tank adapters and coordinated disjoint
-ports remain pending.
+never replay or fabricate refunds. Providers with explicit fixed global partitions
+can bind separate interfaces to their exact disjoint slot/tank windows. Ordinary
+providers remain exclusive for each resource kind, and unsupported tank selection
+blocks without moving fluid. Disjoint windows share the physical provider's
+128 item or1000mB per-tick ceiling plus each interface's configured rate.
 See [binding contract](modules/MACHINE_INTERFACES.md) for current limits.
 
 The compact machine editor fits Minecraft’s minimum240-pixel GUI height. Rules show four at a time; Prev/Next selects across all sixteen supported rules.
@@ -441,6 +464,28 @@ archive existing files outside that directory when it fills; do not overwrite
 corrupt evidence or treat audit files as resource-restoration instructions.
 Commands throttle recovery requests; wait one second before retrying. Slow storage
 can delay these explicit recovery commands. Unknown foreign outcomes still need backup/manual investigation.
+
+
+### Old records without context
+
+A transfer from before accepted endpoints were recorded may show "No accepted
+endpoint context". Its original logged-in owner can run
+`/factorycore recovery settle <UUID>` instead of `return`:
+
+- Staging from a Factory Core cell, bank or Buffered Interface returns there under
+  the owned-cleanup exemption, without requiring a new resource grant.
+- Otherwise, staging destined for a Factory Core cell or bank can be delivered
+  there only with current Deposit permission.
+- Foreign or unknown targets remain preserved for investigation. Uncertain records
+  never settle, and operators cannot impersonate the recorded owner.
+
+The chosen canonical holder must be loaded and on a valid network. A known source
+always takes precedence, even when offline; settlement does not switch to another
+end just because it is available. Evidence is saved first, no new extraction occurs,
+and each scheduled step offers at most 128 items or 1,000 mB/FE. A full holder
+retains the remainder. Retry explicitly after space returns or after a moved
+holder invalidates the admitted network/segment. An operator may retire a known
+complete, empty record.
 
 
 Operators can inspect digital cell ownership with `/factorycore recovery cell list`
@@ -539,9 +584,11 @@ Old copies and old mod ports become stale; the provider is reacquired normally
 after wiring revalidation. A repaired machine preset does not run until a player
 with current DEPLOY permission explicitly redeploys it from the machine menu; the
 operator never becomes the deployer. A saved provider fault, a mismatched machine
-fence, an unresolved transfer naming the port or its remembered provider, or any
-legacy unresolved record without device context when no provider is remembered
-blocks repair unchanged. Investigate those with backups and evidence.
+fence, an unresolved transfer naming the port or its remembered provider, or an
+uncertain context-less record naming an unknown foreign backing (when no provider
+is remembered) blocks repair unchanged. Investigate those with backups and
+evidence. Known legacy staging can settle into canonical storage through the
+original-owner workflow above and does not by itself block port repair.
 
 Port archives use standalone binary schema5 with the same device archive quotas
 and20-tick repair throttle. List visits at most16 structural handles.
@@ -630,6 +677,20 @@ for errors (shown as line:column under the editor), **Deploy**, **Pause/Resume**
 **Stop**. **Template** cycles through built-in examples you can edit. Saving needs Edit
 permission; the running program only changes when you deploy.
 
+The editor colors the language and underlines local errors; hover for the first
+positioned error. Ctrl+Z undoes, Ctrl+Y (or Ctrl+Shift+Z) redoes, and Tab indents.
+**Insert / complete** searches items, fluids, local labels and keywords without JEI;
+click its category to switch. Ctrl+Space completes the token at your cursor. Choose a
+row, or Escape to return. Local-label results cover your current segment only and
+page separately; **View scope** shows its network/segment IDs on hover.
+
+**Preview next rule** saves your draft and shows one rule's current resolved targets
+and actions. Repeated clicks select the next rule; arrows page long text. This needs
+View, and saving also needs Edit. A View-only player previews the already saved draft.
+The preview moves nothing, creates no job and spends no FE. It samples present stock
+and labels; actual execution still checks authority, power, stock and machine ports.
+Escape returns to editing. Wasm programs use their upload validation instead.
+
 To run a Rust program, build it with the SDK (see `sdk/rust/README.md`), copy the
 `.wasm` file into `factorycore/programs` in your game folder and press **Upload Wasm**:
 the newest file is sent and deployed. A Wasm rule run needs about 260 FE available and
@@ -656,6 +717,12 @@ Each endpoint needs its own FE and uses 32 FE per tick. The branch disconnects i
 end loses power or is broken, and gateway rules still decide what it can see. Use an
 endpoint without sneaking to see its state.
 
+Each pair shares 256 items, 4,000 mB and 8,000 FE per tick across both directions,
+players, presets, programs and crafting. Crossing several pairs uses each one's
+allowance. Container fills/empties and table crafts wait until the complete action
+fits; charging can use a partial allowance. Operating FE is separate from energy
+sent through the link. Wired connections retain their device limits.
+
 
 ## Gateway rules
 
@@ -669,7 +736,8 @@ them; others see them read-only. Wait a moment between clicks while the branch u
 ## Factory Guide
 
 You receive a **Factory Guide** the first time you join a world with this mod. Use it to
-read the step-by-step guide from your first network to wireless links. Craft another
+read the step-by-step guide from your first network to wireless links; its last page lists
+which materials each progression tier needs. Craft another
 from a book and a redstone dust.
 
 
@@ -709,3 +777,67 @@ Ownership, grants and gateway rules stay as they were.
 
 Buffered Interfaces: `/factorycore recovery buffer adopt <id> <generation> <x y z>`. Their
 items stay. Re-enable Import, Export or Stock afterwards.
+
+
+Connectors and Machine Interfaces also support `/factorycore recovery port adopt
+<id> <generation> <x y z>`. The old canonical position must be loaded and no longer
+reference the port; the selected stale holder must have matching identity and
+casing with no provider fault. Provider contents are untouched. Machine presets
+remain paused until a player with current permissions deploys them again.
+
+## Sharing a network
+
+Networks start private. At a loaded block in your valid network, use
+`/factorycore access list <x> <y> <z>` to inspect the owner and grants. The owner,
+a player with Manage, or an operator can grant specific rights:
+
+```text
+/factorycore access grant <x> <y> <z> <online-name-or-UUID> view,deposit,withdraw
+/factorycore access revoke <x> <y> <z> <online-name-or-UUID> withdraw
+/factorycore access revoke <x> <y> <z> <online-name-or-UUID>
+```
+
+Available rights are `view`, `deposit`, `withdraw`, `craft`, `edit`, `deploy` and
+`manage`; `all` names every right. Grant adds rights, and revoke without rights
+removes every explicit grant. Offline players require their UUID. Manage allows
+administration, so grant it deliberately. Gateway branch policies still apply at
+the chosen block. Operators have management access but must receive resource rights
+to use someone else's stock. A grant change invalidates old observations; open
+terminal stock views also refresh after other players or automation move resources.
+
+
+## Server configuration
+
+Server owners can set the maximum nested gateways in the world's
+`serverconfig/factorycore-server.toml`: under `[network]`, set `gatewayDepth = 8`
+to an integer from 1 through 32. Reopen the world or restart the server after editing.
+Every gateway on a root-to-branch path counts once, including wireless-linked
+gateways. A network exceeding the setting reports `DEPTH_LIMIT` and pauses access
+without deleting stored resources; shorten the branch path or raise the setting.
+
+
+Terminal search accepts names or registry IDs, `@minecraft` for a mod ID, and
+`#minecraft:planks` for a loaded item/fluid tag. Use Name/Qty to switch between A–Z
+and highest total quantity first. Exact component variants stay separate, and
+reserved/available counts remain visible. Your accepted search and sort follow
+you between terminal screens and normal saves; each screen opens in Items.
+Display-name matching uses the server's language and custom item names.
+
+
+Processing jobs lease their exact physical machine across multiple Crafting
+Interfaces and Factory Core script/preset ports. Busy ports retry after the job's
+cleanup; other machines keep working. Keep external pipes/hoppers from feeding
+processing machines. If you rotate a dispatched interface, restore its original
+orientation before it can continue. An old saved dispatch without a proven
+target asks you to cancel and inspect the original machine; known staging is
+returned, but already inserted ingredients and unproven outputs stay in that
+machine. The old cleanup fence expires after its bounded passes without a
+guessed refund.
+
+
+A processing job also remembers the original machine's persistent identity. A new
+machine at the same position cannot continue that job or donate its outputs to
+old cancellation cleanup. Restore the original saved machine, or cancel and
+inspect already inserted inputs/outputs manually. An older dispatch without
+provider identity asks for cancellation and inspection; it never adopts whichever
+machine is now present.

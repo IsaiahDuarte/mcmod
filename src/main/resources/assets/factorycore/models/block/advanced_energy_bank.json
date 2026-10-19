@@ -1,10 +1,10 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "case": "minecraft:block/polished_deepslate",
-    "panel": "minecraft:block/black_concrete",
-    "accent": "minecraft:block/diamond_block",
-    "particle": "minecraft:block/polished_deepslate"
+    "case": "factorycore:block/casing",
+    "panel": "factorycore:block/panel",
+    "accent": "factorycore:block/accent_advanced",
+    "particle": "factorycore:block/casing"
   },
   "elements": [
     {

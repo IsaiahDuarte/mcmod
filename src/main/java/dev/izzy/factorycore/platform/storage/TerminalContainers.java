@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -29,7 +30,7 @@ final class TerminalContainers {
   /** Largest fluid amount moved in one fill/empty action. */
   static final int FLUID_PER_ACTION = 16_000;
 
-  private record Cell(DeviceRegistry.Handle handle, long available) {}
+  private record Cell(DeviceRegistry.Handle handle) {}
 
   private final ServerPlayer player;
   private final NodeRegistry.Position origin;
@@ -61,7 +62,7 @@ final class TerminalContainers {
             || registry.definition(handle).location() == null
             || registry.definition(handle).kind() != key.kind()
             || !transfers.digitalAllowed(actor, origin, handle, key, operation)) continue;
-        result.add(new Cell(handle, registry.stock(handle, key).available()));
+        result.add(new Cell(handle));
       }
       after = page.next();
     } while (after != null);
@@ -74,46 +75,98 @@ final class TerminalContainers {
     return null;
   }
 
-  /** Removes up to {@code amount} unreserved units from storage; returns what was removed. */
-  private long take(ResourceKey key, long amount) {
-    long taken = 0;
-    for (var cell : cells(key, NetworkPermissions.Permission.WITHDRAW)) {
-      if (taken == amount) break;
-      long want = Math.min(amount - taken, cell.available());
-      if (want <= 0) continue;
-      if (key.kind() == ResourceKind.ENERGY) {
-        var tier = tier(saved.registry(), cell.handle());
-        if (tier == null) continue;
-        taken += saved.energyBanks().extract(cell.handle(), tier, want, false).amount();
-      } else taken += saved.registry().extract(cell.handle(), key, want, null).amount();
+  private record Leg(DeviceRegistry.Handle handle, long amount, WirelessBudget.Permit permit) {}
+
+  /** All admission precedes owned mutations; compensation targets only these exact holders. */
+  private final class Plan {
+    final ResourceKey key;
+    final boolean take;
+    final List<Leg> legs = new ArrayList<>();
+    long amount;
+    String failure;
+
+    Plan(ResourceKey key, boolean take) {
+      this.key = key;
+      this.take = take;
+      failure = take ? "shortage" : "full";
     }
-    return taken;
+
+    void release() {
+      for (var leg : legs) leg.permit().finish(0);
+    }
+
+    boolean commit() {
+      var changed = new ArrayList<Long>();
+      boolean complete = true;
+      for (var leg : legs) {
+        long actual = apply(leg.handle(), key, leg.amount(), take, false);
+        changed.add(actual);
+        if (actual != leg.amount()) {
+          complete = false;
+          break;
+        }
+      }
+      if (!complete) {
+        // No foreign handler or other tick can interleave. Restore exact owned holders, without
+        // requesting a second wireless or bank-rate allowance for this compensation.
+        for (int index = changed.size() - 1; index >= 0; index--) {
+          long actual = changed.get(index);
+          var handle = legs.get(index).handle();
+          long restored =
+              take
+                  ? saved.registry().insert(handle, key, actual).amount()
+                  : saved.registry().extract(handle, key, actual, null).amount();
+          if (restored != actual)
+            throw new IllegalStateException("Owned terminal compensation failed");
+        }
+        release();
+        return false;
+      }
+      for (var leg : legs) leg.permit().finish(leg.amount());
+      return true;
+    }
   }
 
-  /** Inserts up to {@code amount} units into storage; returns what was accepted. */
-  private long put(ResourceKey key, long amount, boolean simulate) {
-    long placed = 0;
-    for (var cell : cells(key, NetworkPermissions.Permission.DEPOSIT)) {
-      if (placed == amount) break;
-      long remaining = amount - placed;
-      if (key.kind() == ResourceKind.ENERGY) {
-        var tier = tier(saved.registry(), cell.handle());
-        if (tier == null) continue;
-        placed += saved.energyBanks().receive(cell.handle(), tier, remaining, simulate).amount();
-      } else
-        placed +=
-            simulate
-                ? saved.registry().simulateInsert(cell.handle(), key, remaining).amount()
-                : saved.registry().insert(cell.handle(), key, remaining).amount();
+  private long apply(
+      DeviceRegistry.Handle handle, ResourceKey key, long amount, boolean take, boolean simulate) {
+    if (key.kind() == ResourceKind.ENERGY) {
+      var tier = tier(saved.registry(), handle);
+      if (tier == null) return 0;
+      return take
+          ? saved.energyBanks().extract(handle, tier, amount, simulate).amount()
+          : saved.energyBanks().receive(handle, tier, amount, simulate).amount();
     }
-    return placed;
+    if (take)
+      return simulate
+          ? Math.min(amount, saved.registry().stock(handle, key).available())
+          : saved.registry().extract(handle, key, amount, null).amount();
+    return simulate
+        ? saved.registry().simulateInsert(handle, key, amount).amount()
+        : saved.registry().insert(handle, key, amount).amount();
   }
 
-  private long available(ResourceKey key) {
-    long total = 0;
-    for (var cell : cells(key, NetworkPermissions.Permission.WITHDRAW))
-      total = Math.addExact(total, cell.available());
-    return total;
+  private Plan plan(ResourceKey key, long requested, boolean take) {
+    var plan = new Plan(key, take);
+    var runtime = WorldNetworks.get(player.server);
+    var permission =
+        take ? NetworkPermissions.Permission.WITHDRAW : NetworkPermissions.Permission.DEPOSIT;
+    for (var cell : cells(key, permission)) {
+      if (plan.amount == requested) break;
+      long offer = apply(cell.handle(), key, requested - plan.amount, take, true);
+      if (offer == 0) continue;
+      var location = saved.registry().definition(cell.handle()).location();
+      var position = new NodeRegistry.Position(location.dimension(), location.position());
+      var permit = runtime.movement(take ? position : origin, take ? origin : position, key, offer);
+      if (permit.amount() < offer)
+        plan.failure = permit.reason().name().toLowerCase(java.util.Locale.ROOT);
+      if (permit.amount() == 0) {
+        permit.finish(0);
+        continue;
+      }
+      plan.legs.add(new Leg(cell.handle(), permit.amount(), permit));
+      plan.amount += permit.amount();
+    }
+    return plan;
   }
 
   /** Puts {@code result} where one unit of the stack in {@code slot} was; false if no room. */
@@ -140,7 +193,12 @@ final class TerminalContainers {
     if (key.kind() != ResourceKind.FLUID) return "wrong_resource";
     var inventory = player.getInventory();
     var fluid = codec.fluidStack(key, 1);
-    long have = available(key);
+    long have = 0;
+    for (var cell : cells(key, NetworkPermissions.Permission.WITHDRAW)) {
+      have +=
+          Math.min(FLUID_PER_ACTION - have, saved.registry().stock(cell.handle(), key).available());
+      if (have == FLUID_PER_ACTION) break;
+    }
     if (have == 0) return "shortage";
     for (int slot = 0; slot < 36; slot++) {
       var stack = inventory.getItem(slot);
@@ -151,23 +209,20 @@ final class TerminalContainers {
       int offer = (int) Math.min(have, FLUID_PER_ACTION);
       int accept = handler.fill(fluid.copyWithAmount(offer), IFluidHandler.FluidAction.SIMULATE);
       if (accept <= 0) continue;
+      if (accept > offer) return "handler_fault";
       // Simulate on a disposable copy to learn the resulting container before moving fluid.
       var trial = stack.copyWithCount(1).getCapability(Capabilities.FluidHandler.ITEM);
       if (trial == null
           || trial.fill(fluid.copyWithAmount(accept), IFluidHandler.FluidAction.EXECUTE) != accept)
         return "handler_fault";
       if (!replaceOne(slot, trial.getContainer(), true)) return "full";
-      long taken = take(key, accept);
-      if (taken != accept) {
-        put(key, taken, false);
-        return "shortage";
+      var plan = plan(key, accept, true);
+      if (plan.amount != accept) {
+        plan.release();
+        return plan.failure;
       }
-      int filled = handler.fill(fluid.copyWithAmount(accept), IFluidHandler.FluidAction.EXECUTE);
-      if (filled != accept) {
-        put(key, taken, false);
-        return "handler_fault";
-      }
-      replaceOne(slot, handler.getContainer(), false);
+      if (!plan.commit()) return "handler_fault";
+      replaceOne(slot, trial.getContainer(), false);
       inventory.setChanged();
       return "filled";
     }
@@ -183,19 +238,18 @@ final class TerminalContainers {
     if (handler == null) return "no_container";
     var simulated = handler.drain(FLUID_PER_ACTION, IFluidHandler.FluidAction.SIMULATE);
     if (simulated.isEmpty()) return "empty";
+    if (simulated.getAmount() > FLUID_PER_ACTION) return "handler_fault";
     var key = codec.fluidKey(simulated);
-    long room = put(key, simulated.getAmount(), true);
-    if (room < simulated.getAmount()) return "full";
     var drained = handler.drain(simulated.copy(), IFluidHandler.FluidAction.EXECUTE);
     if (drained.getAmount() != simulated.getAmount() || !codec.fluidKey(drained).equals(key))
       return "handler_fault";
     if (!replaceOne(slot, handler.getContainer(), true)) return "full";
-    long placed = put(key, drained.getAmount(), false);
-    if (placed != drained.getAmount()) {
-      // Should not happen after the room check; keep what could not be stored in the container.
-      take(key, placed);
-      return "full";
+    var plan = plan(key, drained.getAmount(), false);
+    if (plan.amount != drained.getAmount()) {
+      plan.release();
+      return plan.failure;
     }
+    if (!plan.commit()) return "handler_fault";
     replaceOne(slot, handler.getContainer(), false);
     inventory.setChanged();
     return "emptied";
@@ -206,28 +260,46 @@ final class TerminalContainers {
     var inventory = player.getInventory();
     var stack = inventory.getItem(slot);
     if (stack.isEmpty() || stack.getCount() != 1) return "no_energy_item";
-    var item = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+    var changed = stack.copy();
+    var item = changed.getCapability(Capabilities.EnergyStorage.ITEM);
     if (item == null) return "no_energy_item";
     var key = ResourceKey.ENERGY;
     if (charge) {
       if (!item.canReceive()) return "no_energy_item";
       int want = item.receiveEnergy((int) ENERGY_PER_ACTION, true);
       if (want <= 0) return "item_full";
-      long taken = take(key, want);
-      if (taken == 0) return "shortage";
-      int received = Math.max(0, Math.min((int) taken, item.receiveEnergy((int) taken, false)));
-      if (received < taken) put(key, taken - received, false);
+      if (want > ENERGY_PER_ACTION) return "handler_fault";
+      var plan = plan(key, want, true);
+      if (plan.amount == 0) {
+        plan.release();
+        return plan.failure;
+      }
+      int received = item.receiveEnergy((int) plan.amount, false);
+      if (received != plan.amount) {
+        plan.release();
+        return "handler_fault";
+      }
+      if (!plan.commit()) return "handler_fault";
+      inventory.setItem(slot, changed);
       inventory.setChanged();
       return "charged";
     }
     if (!item.canExtract()) return "no_energy_item";
     int offer = item.extractEnergy((int) ENERGY_PER_ACTION, true);
     if (offer <= 0) return "item_empty";
-    long room = put(key, offer, true);
-    if (room == 0) return "full";
-    int extracted = Math.max(0, Math.min((int) room, item.extractEnergy((int) room, false)));
-    long placed = put(key, extracted, false);
-    if (placed < extracted) item.receiveEnergy((int) (extracted - placed), false);
+    if (offer > ENERGY_PER_ACTION) return "handler_fault";
+    var plan = plan(key, offer, false);
+    if (plan.amount == 0) {
+      plan.release();
+      return plan.failure;
+    }
+    int extracted = item.extractEnergy((int) plan.amount, false);
+    if (extracted != plan.amount) {
+      plan.release();
+      return "handler_fault";
+    }
+    if (!plan.commit()) return "handler_fault";
+    inventory.setItem(slot, changed);
     inventory.setChanged();
     return "discharged";
   }

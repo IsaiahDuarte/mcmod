@@ -1,0 +1,19 @@
+PASS
+owner connected as FactoryOwner to 127.0.0.1:51584 over TCP
+owner-policy-editable.png framebuffer=2048x1536 scale=2.0
+owner: gateway policy editable; first branch bit toggled
+owner: /factorycore access grant view accepted
+owner: /factorycore access grant deposit withdraw accepted
+owner-terminal-concurrent.png framebuffer=2048x1536 scale=2.0
+owner: terminal open showing 64
+owner: idle terminal updated to 63 after 14 client ticks
+owner-sees-stranger-take.png framebuffer=2048x1536 scale=2.0
+owner-took-one.png framebuffer=2048x1536 scale=2.0
+owner: Take 1 -> holds 1, terminal shows 62 (stale-revision retries so far 0)
+owner: idle terminal updated to 63 after 14 client ticks
+owner-sees-stranger-deposit.png framebuffer=2048x1536 scale=2.0
+owner-concurrent-take.png framebuffer=2048x1536 scale=2.0
+owner: Take 1 -> holds 2, terminal shows 61 (stale-revision retries so far 0)
+owner: /factorycore access revoke (all) accepted
+owner-after-revoke.png framebuffer=2048x1536 scale=2.0
+owner: own session remains usable with 61 after revoking the stranger

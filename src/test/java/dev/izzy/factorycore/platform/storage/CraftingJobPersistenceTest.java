@@ -119,7 +119,7 @@ class CraftingJobPersistenceTest {
       var tag = world(true, 3);
       var entry = tag.getCompound("CraftingJobs").getList("Jobs", Tag.TAG_COMPOUND).getCompound(0);
       switch (i) {
-        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 4);
+        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 6);
         case 1 -> entry.putString("State", "FUTURE");
         case 2 -> entry.putString("Unknown", "x");
         case 3 -> entry.getList("Steps", Tag.TAG_COMPOUND).getCompound(0).putLong("Done", 9);
@@ -187,5 +187,132 @@ class CraftingJobPersistenceTest {
     assertFalse(
         DeviceSavedData.load(orphan, registries).diagnostic().isEmpty(),
         "A rule for an unknown network quarantines the world");
+  }
+
+  @Test
+  void exactTargetPersistsWhileLegacyDispatchesKeepUnknownTargetAndWrongTypesReject() {
+    var loaded = DeviceSavedData.load(world(true, 3), registries);
+    var job = loaded.craftingJobs().all().getFirst();
+    job.resume();
+    var machine = new NodeRegistry.Position("minecraft:overworld", 99);
+    var target = new NodeRegistry.Position("minecraft:overworld", 100);
+    job.dispatch(machine, target);
+    job.inserted(STICK, 2);
+    var saved = loaded.save(new CompoundTag(), registries);
+    assertEquals(5, saved.getCompound("CraftingJobs").getInt("Schema"));
+    assertEquals(
+        target,
+        DeviceSavedData.load(saved, registries)
+            .craftingJobs()
+            .all()
+            .getFirst()
+            .dispatch()
+            .target());
+    var legacy = saved.copy();
+    legacy.getCompound("CraftingJobs").putInt("Schema", 3);
+    legacy
+        .getCompound("CraftingJobs")
+        .getList("Jobs", Tag.TAG_COMPOUND)
+        .getCompound(0)
+        .getCompound("Dispatch")
+        .remove("Target");
+    legacy
+        .getCompound("CraftingJobs")
+        .getList("Jobs", Tag.TAG_COMPOUND)
+        .getCompound(0)
+        .getCompound("Dispatch")
+        .remove("Providers");
+    var migrated = DeviceSavedData.load(legacy, registries);
+    assertEquals("", migrated.diagnostic());
+    assertNull(migrated.craftingJobs().all().getFirst().dispatch().target());
+    var rewritten = migrated.save(new CompoundTag(), registries);
+    assertEquals(5, rewritten.getCompound("CraftingJobs").getInt("Schema"));
+    assertNull(
+        DeviceSavedData.load(rewritten, registries)
+            .craftingJobs()
+            .all()
+            .getFirst()
+            .dispatch()
+            .target());
+    var malformed = saved.copy();
+    malformed
+        .getCompound("CraftingJobs")
+        .getList("Jobs", Tag.TAG_COMPOUND)
+        .getCompound(0)
+        .getCompound("Dispatch")
+        .putString("Target", "100");
+    var rejected = DeviceSavedData.load(malformed, registries);
+    assertFalse(rejected.diagnostic().isEmpty());
+    assertEquals(malformed, rejected.save(new CompoundTag(), registries));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CraftingJob.Dispatch(
+                machine,
+                new NodeRegistry.Position("minecraft:the_nether", 100),
+                Map.of(),
+                Map.of()));
+  }
+
+  @Test
+  void providerIdentitiesRoundTripAndSchemaFourMigratesWithoutGuessing() {
+    var loaded = DeviceSavedData.load(world(true, 3), registries);
+    var job = loaded.craftingJobs().all().getFirst();
+    job.resume();
+    var providers =
+        Map.of(
+            ResourceKind.ITEM,
+            UUID.randomUUID(),
+            ResourceKind.FLUID,
+            UUID.randomUUID(),
+            ResourceKind.ENERGY,
+            UUID.randomUUID());
+    job.dispatch(
+        new NodeRegistry.Position("minecraft:overworld", 99),
+        new NodeRegistry.Position("minecraft:overworld", 100),
+        providers);
+    job.inserted(STICK, 2);
+    var saved = loaded.save(new CompoundTag(), registries);
+    assertEquals(
+        providers,
+        DeviceSavedData.load(saved, registries)
+            .craftingJobs()
+            .all()
+            .getFirst()
+            .dispatch()
+            .providers());
+    var legacy = saved.copy();
+    legacy.getCompound("CraftingJobs").putInt("Schema", 4);
+    legacy
+        .getCompound("CraftingJobs")
+        .getList("Jobs", Tag.TAG_COMPOUND)
+        .getCompound(0)
+        .getCompound("Dispatch")
+        .remove("Providers");
+    var migrated = DeviceSavedData.load(legacy, registries);
+    assertEquals("", migrated.diagnostic());
+    assertTrue(migrated.isDirty());
+    assertEquals(
+        job.dispatch().target(), migrated.craftingJobs().all().getFirst().dispatch().target());
+    assertTrue(migrated.craftingJobs().all().getFirst().dispatch().providers().isEmpty());
+    for (int fault = 0; fault < 3; fault++) {
+      var malformed = saved.copy();
+      var entry =
+          malformed
+              .getCompound("CraftingJobs")
+              .getList("Jobs", Tag.TAG_COMPOUND)
+              .getCompound(0)
+              .getCompound("Dispatch")
+              .getCompound("Providers");
+      switch (fault) {
+        case 0 -> entry.putString("ITEM", "not UUID");
+        case 1 -> entry.remove("FLUID");
+        case 2 -> entry.putUUID("FUTURE", UUID.randomUUID());
+        default -> throw new AssertionError();
+      }
+      var rejected = DeviceSavedData.load(malformed, registries);
+      assertFalse(rejected.diagnostic().isEmpty(), "Fault " + fault);
+      assertEquals(malformed, rejected.save(new CompoundTag(), registries));
+    }
   }
 }

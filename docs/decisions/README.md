@@ -116,3 +116,16 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0044 — Persistent guest state](0044-persistent-guest-state.md)
 - [0045 — Fluid processing patterns](0045-fluid-processing.md)
 - [0046 — Independent-save mismatch adoption for storage and structural holders](0046-independent-save-adoption.md)
+- [0048 — D06 balance version two: recipes, tiers and power curve](0048-final-balance.md)
+
+- [0047 — Legacy staged-transfer settlement](0047-legacy-staging-settlement.md)
+
+- [0049 — Player access administration and live terminal observations](0049-player-access-administration.md)
+
+- [0050 — Shared wireless resource throughput](0050-shared-wireless-throughput.md)
+
+- [0052 — Bounded terminal search, sort and player preferences](0052-terminal-search-preferences.md)
+
+- [0051 — Native program authoring and read-only previews](0051-program-authoring.md)
+
+- [0053 — Selected tanks and fixed machine ports](0053-selected-tanks-and-fixed-machine-ports.md)

@@ -12,6 +12,29 @@ class ExternalClaimsTest {
       new ResourceKey(ResourceKind.ITEM, "minecraft:iron_ingot", new byte[0]);
 
   @Test
+  void backingOwnershipIndexSurvivesMultipleOwnersKeysConsumptionAndRestore() {
+    var backing = UUID.randomUUID();
+    var a = UUID.randomUUID();
+    var b = UUID.randomUUID();
+    var gold = new ResourceKey(ResourceKind.ITEM, "minecraft:gold_ingot", new byte[0]);
+    var book = new ExternalClaims();
+    assertFalse(book.hasBacking(backing));
+    book.reserve(backing, a, KEY, 3, 10);
+    book.reserve(backing, a, KEY, 2, 10);
+    book.reserve(backing, b, gold, 4, 10);
+    assertTrue(book.hasBacking(backing));
+    var restored = new ExternalClaims(book.snapshot());
+    assertTrue(restored.hasBacking(backing));
+    restored.consume(backing, a, KEY, 4);
+    assertTrue(restored.hasBacking(backing));
+    restored.release(backing, a, KEY);
+    assertTrue(restored.hasBacking(backing));
+    restored.release(backing, b, gold);
+    assertFalse(restored.hasBacking(backing));
+    assertTrue(restored.snapshot().isEmpty());
+  }
+
+  @Test
   void competingClaimsRespectShortageAndBackgroundAccess() {
     var book = new ExternalClaims();
     var backing = UUID.randomUUID();

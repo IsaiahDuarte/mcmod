@@ -29,8 +29,16 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private List<CatalogCounts.Row> selections = List.of();
   private String text = "", status = "loading";
   private ResourceKind kind = ResourceKind.ITEM;
+  private int sort = TerminalSearchSupport.NAME;
   private long revision = 1;
-  private int lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE;
+  private int lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE, scanned;
+
+  /**
+   * A completed observation is re-read after this many ticks so changes made by other sessions,
+   * automation or grant edits reach an idle viewer; the old rows stay visible meanwhile.
+   */
+  static final int RESCAN_TICKS = 20;
+
   private boolean active = true, loaded, busy, reachRegistered;
   private TerminalPackets.View view;
   private final TerminalCrafting crafting = new TerminalCrafting();
@@ -64,12 +72,28 @@ public final class TerminalMenu extends AbstractContainerMenu {
     this.terminal = terminal;
     this.position = position;
     this.session = session;
+    if (terminal != null) {
+      var preferences =
+          viewer
+              .getPersistentData()
+              .getCompound(Player.PERSISTED_NBT_TAG)
+              .getCompound("FactoryCoreTerminal");
+      if (preferences.getInt("Schema") == 1) {
+        String stored = preferences.getString("Search");
+        if (stored.length() <= 128) text = stored;
+        int storedSort = preferences.getInt("Sort");
+        if (storedSort >= TerminalSearchSupport.NAME
+            && storedSort <= TerminalSearchSupport.QUANTITY) sort = storedSort;
+      }
+    }
     for (int row = 0; row < 3; row++)
       for (int column = 0; column < 9; column++)
         addSlot(new Slot(inventory, 9 + row * 9 + column, 59 + 18 * column, 148 + 18 * row));
     for (int column = 0; column < 9; column++)
       addSlot(new Slot(inventory, column, 59 + 18 * column, 210));
-    view = new TerminalPackets.View(id, session, revision, status, List.of(), false, false, "0");
+    view =
+        new TerminalPackets.View(
+            id, session, revision, status, List.of(), false, false, "0", text, sort);
     jobView =
         new TerminalJobPackets.View(
             id,
@@ -220,7 +244,17 @@ public final class TerminalMenu extends AbstractContainerMenu {
     }
     if (query != null && !busy) {
       var result = transfers().search().result(query, actor(), after, 8);
-      if (result.reason() != OperationResult.Reason.OK) {
+      if (result.reason() == OperationResult.Reason.DENIED) {
+        // A captured scope/grant or the exclusive sorted-page anchor went stale.
+        after = null;
+        rescan(tick);
+        result = query == null ? null : transfers().search().result(query, actor(), after, 8);
+      }
+      if (result == null) {
+        selections = List.of();
+        next = null;
+        revision++;
+      } else if (result.reason() != OperationResult.Reason.OK) {
         selections = List.of();
         next = null;
         status = result.reason().name().toLowerCase(Locale.ROOT);
@@ -236,8 +270,33 @@ public final class TerminalMenu extends AbstractContainerMenu {
         status = "ready";
         revision++;
       }
+      if (result != null && result.complete() && tick - scanned >= RESCAN_TICKS) rescan(tick);
     }
     publish();
+  }
+
+  /** Restarts the observation of the same kind/text/page without clearing the visible rows. */
+  private void rescan(int tick) {
+    closeSearch();
+    scanned = tick;
+    query = UUID.randomUUID();
+    var submission =
+        transfers().search().start(query, actor(), terminal.origin(), kind, text, sort);
+    if (submission.rejection() != OperationResult.Reason.OK) {
+      query = null;
+      status = submission.rejection().name().toLowerCase(Locale.ROOT);
+    }
+  }
+
+  private void savePreferences() {
+    var persistent = viewer.getPersistentData();
+    var kept = persistent.getCompound(Player.PERSISTED_NBT_TAG);
+    var preferences = new net.minecraft.nbt.CompoundTag();
+    preferences.putInt("Schema", 1);
+    preferences.putString("Search", text);
+    preferences.putInt("Sort", sort);
+    kept.put("FactoryCoreTerminal", preferences);
+    persistent.put(Player.PERSISTED_NBT_TAG, kept);
   }
 
   private void closeSearch() {
@@ -254,8 +313,10 @@ public final class TerminalMenu extends AbstractContainerMenu {
     selections = List.of();
     revision++;
     status = "loading";
+    scanned = player().server.getTickCount();
     query = UUID.randomUUID();
-    var submission = transfers().search().start(query, actor(), terminal.origin(), kind, text);
+    var submission =
+        transfers().search().start(query, actor(), terminal.origin(), kind, text, sort);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
       status = submission.rejection().name().toLowerCase(Locale.ROOT);
@@ -276,7 +337,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
         action == TerminalPackets.WITHDRAW
             || action == TerminalPackets.DEPOSIT
             || action == TerminalPackets.RETURN
-            || action >= TerminalPackets.FILL;
+            || (action >= TerminalPackets.FILL && action <= TerminalPackets.DISCHARGE);
     if (mutating && !terminal.spendAction(sender)) {
       status = "no_power";
       revision++;
@@ -285,6 +346,15 @@ public final class TerminalMenu extends AbstractContainerMenu {
     }
     if (command.action() == TerminalPackets.SEARCH) {
       text = command.text();
+      savePreferences();
+      refresh();
+      publish();
+      return;
+    }
+    if (command.action() == TerminalPackets.SORT) {
+      if (command.selection() > TerminalSearchSupport.QUANTITY) return;
+      sort = command.selection();
+      savePreferences();
       refresh();
       publish();
       return;
@@ -852,7 +922,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     }
     var packet =
         new TerminalPackets.View(
-            containerId, session, revision, status, rows, next != null, busy, staged);
+            containerId, session, revision, status, rows, next != null, busy, staged, text, sort);
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);

@@ -2,8 +2,8 @@
 
 [SPEC.md](../SPEC.md) R08 owns presentation requirements. This inventory tracks
 delivery; [IMPLEMENTATION.md](IMPLEMENTATION.md) owns sequence and acceptance
-evidence. Initial audit: 2026-10-11. Energy-bank native model geometry is now
-implemented; actual client visual checks remain pending for every family.
+evidence. Initial audit: 2026-10-11; original-art integration: 2026-10-18. Native models and
+original textures are implemented; [gallery and item-icon client inspection passed](evidence/art-client-v1-2026-10-18.md), with remaining orientation/state/held checks open.
 
 ## Style and implementation direction
 
@@ -39,52 +39,49 @@ listed tiers and block-item forms must be covered before closing a row.
 
 ## Blocks and items
 
-Existing models are under [models](../src/main/resources/assets/factorycore/models),
-with [blockstates](../src/main/resources/assets/factorycore/blockstates) and
-[English names](../src/main/resources/assets/factorycore/lang/en_us.json).
-The current ten blockstate families and twenty item models reference vanilla
-textures; custom texture/audio assets remain absent. The initial four-block audit
-has been extended by three bank tiers, the connector, Buffered Interface and Storage Terminal.
+Original assets now live under [textures](../src/main/resources/assets/factorycore/textures),
+[models](../src/main/resources/assets/factorycore/models), and
+[blockstates](../src/main/resources/assets/factorycore/blockstates). The editable
+[Python generator](../tools/art/generate_art.py) uses only the standard library and
+creates deterministic original 16×16 RGBA textures plus a
+[reference sheet](art/reference-sheet.png). Assets and source use the repository
+license; no Minecraft image is copied. Run `python3 tools/art/generate_art.py --check`
+to check reproducibility.
 
-The bank family establishes a native-model direction: dark polished-deepslate
-casings, black inset panels, iron/gold/diamond resource symbols, and one/two/three
-geometric tier bars. Geometry uses a 16-unit block grid and the game's existing
-16-pixel texture materials. The symbol and bar count carry meaning independent
-of color. Original editable JSON geometry is in the
-[Starter](../src/main/resources/assets/factorycore/models/block/starter_energy_bank.json),
-[Expanded](../src/main/resources/assets/factorycore/models/block/expanded_energy_bank.json),
-and [Advanced](../src/main/resources/assets/factorycore/models/block/advanced_energy_bank.json)
-models, with corresponding item parents and blockstates in the directories above.
-These files are original repository assets under the repository license; referenced
-Minecraft textures are supplied by the game and are not copied into the mod.
-No custom bitmap, audio, animation or charge-state renderer is used for banks;
-inspection provides exact charge and routing feedback. The assembled appearance
-and model inventory transforms remain pending real-client inspection.
+The palette uses dark steel casing (44/47/54), copper (181/104/60), cyan signal
+(54/197/240), amber energy (255/181/46), and blue fluid (58/123/213), in sRGB.
+Cube/droplet/lightning symbols identify resource kinds; tier bars and the Infinite
+lemniscate distinguish tiers without color alone. Original JSON geometry uses a
+16-unit block grid. Sounds, particles and animation remain vanilla; no custom
+sound or animated renderer is required for these status contracts.
 
-| Family / variants | Required presentation and feedback | Stage | Asset status | Client evidence |
-| --- | --- | --- | --- | --- |
-| Network Controller + block item | Recognizable hub; ready/rebuilding/offline/fault inspection | P2–P3 | Placeholder: iron cube | Pending |
-| Network Cable + block item | Connected segments/junctions; matching hit/selection shapes | P2–P3 | Placeholder: full redstone cube | Pending |
-| Storage Drive + block item | Four bays; installed-cell and unavailable/recovery inspection | P2–P3 | Placeholder: iron/furnace textures | Pending |
-| Gateway + block item | Upstream/downstream on all six orientations; policy/offline/fault inspection | P2–P3 | Placeholder: observer textures | Pending |
-| Item cells: Starter, Expanded, Advanced, Infinite | Unique cell icons, tier markings, exact capacity/ownership tooltips | P2 | Placeholder: vanilla item icons | Pending |
-| Fluid cells: Starter, Expanded, Advanced | Fluid symbol, tier markings, mB capacity tooltips | P2 | Placeholder: vanilla bucket icons | Pending |
-| Expansion, Advanced, Infinite modules | Related upgrade icons; discoverable compatible tier/application instructions | P2 | Placeholder: vanilla material icons | Pending |
-| Energy Banks: Starter, Expanded, Advanced + block items | Lightning symbol and tier bars; observable stored/capacity/rate/routing inspection | P2 | Implemented native JSON models and item parents; appearance not yet reviewed in client | Pending |
-| Storage Connector + block item | Connection face, resource/access/priority inspection | P2–P3 | Implemented native six-direction socket model, matching shape, tooltips and translated chat inspection; advanced settings screen remains pending | Pending |
-| Storage Terminal + block item | Recognizable access screen and connection state | P3 | Implemented native four-facing casing/screen/contact JSON and translated access tooltip; rendering pending | Pending |
-| Machine Interface + block item | Port/side/label identification and preset state | P3 | Native six-facing blue-inset socket/item and translated local label/window/resource inspection implemented; preset authoring implemented | Settings controls verified at scales2–4; full casing/state inspection pending |
-| Buffered Interface + block item | Buffer/input/output identity and full/blocked state | P3 | Implemented native nine-slot top geometry, item parent, tooltip and authorized item/slot/mode/status inspection and Import/Paused/owned-cleanup controls; full preset/inventory screens remain pending | Pending |
-| Crafting Interface + block item | Processing ports and busy/blocked state | P4 | Six-facing smithing-table/deepslate stand-in, translated busy/not-clean/full/processing job reasons, exclusive-use tooltip on processing patterns | Pending |
-| Crafting Unit + block item | Distinct crafting role and working/blocked state | P4 | Stand-in crafting-table/deepslate model, translated pattern-count/network status and full/invalid messages; working/blocked state awaits jobs | Pending |
-| Pattern items, if used by selected implementation | Distinguish recipe/processing identity and invalid patterns | P4 | Blank, Crafting and Processing Pattern items (vanilla paper/map/filled-map stand-ins), output/input/ID/exclusive-use tooltips and invalid-data tooltip | Pending |
-| Program Controller + block item | Distinct program role; deployed/paused/trapped/power state | P5 | Observer-texture stand-in, translated status line, native editor screen (multi-line draft, Save/Check/Deploy/Pause/Stop/Template, diagnostics/log panel); not graphically verified | Pending |
-| Fuel Generator + block item | Fuel/remainder access and observable generation/buffer state | P5–P6, before powered demonstration | Implemented facing/lit stand-in models from vanilla blast-furnace/copper textures, translated status/blocked reasons and stored-FE tooltip; no screen | Pending |
-| Wireless Access Point + block item | Range/power/access status | P6 | Missing | Pending |
-| Rechargeable handheld terminal | Inventory/held appearance, charge and connection status | P6 | Missing | Pending |
-| Wireless Link Endpoint + block item | Pair/direction/range/power status | P6 | Missing | Pending |
-| Binding/pairing/configuration tools, if physical items are selected | Mode/target feedback, safe cancel and scoped selections | P3–P6 | Missing; representation to be selected | Pending |
-| Throughput/concurrency/link upgrades selected by D06 | Distinguish function/tier; explain rates versus server quotas | P4–P6 | Missing; variants to be selected | Pending |
+| Family / variants | Implemented presentation | Client evidence |
+| --- | --- | --- |
+| Network Controller | Hub texture and status inspection | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Network Cable | Six reciprocal eligible arms, cached matching shape, junction item model | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Storage Drive | Four bays, dark casing, cell ownership/status inspection | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Gateway | Six-direction upstream/downstream markings and policy inspection | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Item cells: Starter/Expanded/Advanced/Infinite | Original icons with tier bars/Infinite symbol | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Fluid cells: Starter/Expanded/Advanced | Original droplet icons with tier bars | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Expansion/Advanced/Infinite modules | Original upgrade icons and tier markings | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Energy Banks: Starter/Expanded/Advanced | Original lightning textures and tier geometry | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Storage Connector and Machine Interface | Six-direction socket geometry, distinct textures, translated side/type/status inspection | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Storage Terminal | Casing, screen and contacts with original textures | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Buffered Interface | Nine-slot tray geometry and original texture | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Crafting Interface and Crafting Unit | Distinct process/crafting symbols, ports and original textures | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Blank/Crafting/Processing Patterns | Distinct original icons; invalid/exclusive-use tooltips | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Program Controller | Program symbol, original texture, deployment status | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Fuel Generator | Facing and lit variants with original textures; FE/fuel feedback | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Wireless Access Point and Link Endpoint | Original antenna/link textures and power/pair status | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Wireless Terminal | Original handheld icon, binding and charge tooltip | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Factory Guide | Original guide icon, translated progression/help pages | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+
+The new-art gallery is wired into `runTerminalClient`: front/top device views,
+connected cables and item inventory views at GUI scales 2 and 4. The integrated
+tour passed all 35 captures and was [visually inspected](evidence/art-client-v1-2026-10-18.md).
+`AssetReferencesTest`, `AssetCoverageGameTests` and `CableConnectionGameTests` passed
+in the combined 327-JVM / 289-GameTest gate. The recovered worktree's earlier
+exit-137 attempt remains historical. The first integrated restart failed reopening the editor; a revised readiness barrier then passed the complete separate-process restart and saved editor check. Both outcomes and limits are [recorded](evidence/art-client-v1-2026-10-18.md).
 
 ## Screens, text and help
 
@@ -94,16 +91,16 @@ row. Share navigation and components where appropriate.
 | Flow | Required coverage | Stage | Implementation / client evidence |
 | --- | --- | --- | --- |
 | Terminal Items | Search/sort, exact counts, available/reserved/offline, bounded actions, full inventory and stale state | P3 | Item search, Home/Next paging, exact counts, deposit/withdraw/owned-return and typed status implemented; sorting/offline cache missing / Partial graphical evidence at scales2–4; manual Shift/hover/focus and additional states pending |
-| Terminal manual crafting and patterns | Ghost grid, remainders, JEI/manual selection, pattern editing | P4, P6 | Native ghost grid/result/Craft/×64/Clear/Row→ controls, translated status/tooltips and keyboard C/Shift+C implemented; JEI transfer and patterns missing / Pending |
-| Crafting jobs | Preview/shortages/cycles, progress, cancellation, busy/cleanup state | P4–P6 | Native terminal Jobs mode: craftable rows, ×1/×8/×64 preview with plan or first missing item, Start, four-job column with progress and text state glyphs, Cancel, translated states/reasons/tooltips; not graphically verified / Pending |
-| Fluids and Energy | Real container/charge actions, units, observable capacities/rates and unsupported errors | P3, P6 | Missing / Pending |
+| Terminal manual crafting and patterns | Ghost grid, remainders, JEI/manual selection, pattern editing | P4, P6 | Native ghost grid/result/Craft/×64/Clear/Row→ controls, translated status/tooltips and keyboard C/Shift+C implemented; JEI transfer and pattern encoding implemented; [grid client](evidence/terminal-grid-client-v1-2026-10-18.md) and [JEI callbacks](evidence/jei-client-v1-2026-10-18.md) recorded; physical JEI drag/+ gestures remain unverified |
+| Crafting jobs | Preview/shortages/cycles, progress, cancellation, busy/cleanup state | P4–P6 | Native terminal Jobs mode: preview/Start/progress/Cancel, translated states/reasons/tooltips; headless menu checks pass. Actual Jobs/processing-mode client interactions remain unverified; other terminal modes have screen-tour evidence |
+| Fluids and Energy | Real container/charge actions, units, observable capacities/rates and unsupported errors | P3, P6 | Explicit fill/empty and charge/discharge actions implemented with native conservation checks; [Fluids/Energy client captures](evidence/terminal-grid-client-v1-2026-10-18.md); capacity/rate presentation and wider state coverage remain incomplete |
 | Presets and machine binding | Sides/slots/labels, filters, priorities, rates, stock targets and preview | P3 | Native buffered Import/Export/Stock rules/goal/inventory and machine label/type/access/windows/priority/rate editor implemented / Actual settings controls at scales2–4 recorded; machine preset authoring/Stock client flow now verified; selected tanks, multiport/preview and broader states remain pending |
-| Permissions and gateway policies | Authorized view/edit/ownership transfer, inherited limits and revocation feedback | P2–P6 | Missing / Pending |
-| Friendly editor and deployment | Highlighting, completion, errors, undo, templates, draft/deployed, logs/quotas, bounded Wasm upload | P5–P6 | Missing / Pending |
-| Wireless setup | Pairing, direction, range, authorization, power loss and reconnection | P6 | Missing / Pending |
+| Permissions and gateway policies | Authorized view/edit/ownership transfer, inherited limits and revocation feedback | P2–P6 | Gateway policy editor implemented and [graphically exercised](evidence/terminal-grid-client-v1-2026-10-18.md); scoped grant commands implemented (ADR 0049), [integrated two-client multiplayer verified](evidence/multiplayer-v1-2026-10-18.md); ownership-transfer player controls remain incomplete |
+| Friendly editor and deployment | Highlighting, completion, errors, undo, templates, draft/deployed, logs/quotas, bounded Wasm upload | P5–P6 | Draft/deploy/pause/stop/templates, diagnostics/logs and bounded Wasm upload implemented; [editor client](evidence/terminal-grid-client-v1-2026-10-18.md) and [JEI expression insertion](evidence/jei-client-v1-2026-10-18.md) evidence; highlighting/completion/undo and wider keyboard checks remain incomplete |
+| Wireless setup | Pairing, direction, range, authorization, power loss and reconnection | P6 | Access point, handheld binding and paired links implemented; [handheld client capture](evidence/terminal-grid-client-v1-2026-10-18.md); graphical pairing/fault workflow remains unverified |
 | Device diagnostics and recovery | Safe next actions, preserved evidence, authorized reconciliation and unresolved quarantine | P2–P6 | Partial translated operator inspection/known cleanup/canonical cell/bank/buffer/controller/gateway/connector/machine repair; broader reconciliation missing / Native command behavior checked, graphical walkthrough pending |
-| In-game help and progression | First-network diagram, hopper walkthrough, offhand upgrades, factory examples and next unlocks | P3–P6 | Missing; external player guide and recipe unlocks exist / Pending |
-| Shared UI assets and localization | Consistent controls/icons/tooltips/focus, translation keys, readable scales and non-color status cues | P3–P6 | Registered names and bank/connector/buffer tooltips/chat feedback translated; native item terminal screen implemented; other shared screens pending / Pending |
+| In-game help and progression | First-network diagram, hopper walkthrough, offhand upgrades, factory examples and next unlocks | P3–P6 | 15-page in-game guide implemented; [guide captures](evidence/terminal-grid-client-v1-2026-10-18.md), external player guide and recipe unlocks exist; survival walkthrough remains unverified |
+| Shared UI assets and localization | Consistent controls/icons/tooltips/focus, translation keys, readable scales and non-color status cues | P3–P6 | Native terminal, settings, policy, editor and book screens implemented with translatable controls; client evidence exists for each screen; complete focus, tooltip-edge, keyboard and blocked-state coverage remains pending |
 
 ## Client completion checklist
 
@@ -111,7 +108,7 @@ Record revision, client/runtime/mod list, resolution/GUI scale, actions, observe
 results and evidence paths in the implementation plan. Screenshots can establish
 appearance; interaction logs/tests must establish behavior.
 
-- [ ] Select style/reference sheet and inventory all final variants.
+- [x] Select style/reference sheet and inventory all current variants (remaining gameplay upgrades still need assets).
 - [ ] Inspect block/item/held appearance, connected cables and six gateway orientations in a real client; verify interaction shapes.
 - [ ] Exercise relevant ready/working/paused/full/offline/rebuilding/fault states; confirm text/symbol meaning and permitted information.
 - [ ] Verify screens, tooltip edges, focus, keyboard actions and supported resolution/scale combinations without clipping.
@@ -121,99 +118,6 @@ appearance; interaction logs/tests must establish behavior.
 - [ ] Link passing evidence for every required family and flow before P6/P7 completion.
 
 
-Connector assets: [block model](../src/main/resources/assets/factorycore/models/block/storage_connector.json),
-[item parent](../src/main/resources/assets/factorycore/models/item/storage_connector.json),
-[six-facing blockstates](../src/main/resources/assets/factorycore/blockstates/storage_connector.json)
-and English keys in the language file above. Original JSON uses deepslate casing,
-copper socket and three iron contacts, with matching six-way selection/collision
-shapes. Vanilla texture references are supplied by Minecraft, not copied assets.
-Status/type/access/side/rate/priority inspection wraps through native chat; short
-tooltip lines document controls. Headless shape/interaction/recipe checks exist;
-real rendering, tooltip wrapping/GUI scales and onboarding remain unverified.
-
-
-The [Buffered Interface model](../src/main/resources/assets/factorycore/models/block/buffered_interface.json)
-uses the established polished-deepslate/black/copper/iron materials with a recessed
-tray and nine raised slot markers. Its [item parent](../src/main/resources/assets/factorycore/models/item/buffered_interface.json)
-and [blockstate](../src/main/resources/assets/factorycore/blockstates/buffered_interface.json)
-are wired into the creative tab and recipe. Original editable JSON uses the same
-16-unit grid and repository license; vanilla textures are supplied by Minecraft.
-Translated inspection reports exact item and occupied-slot counts. Headless recipe,
-hopper and ownership tests passed; actual client appearance/transforms/GUI-scale
-checks remain pending. Import/Paused and owned-cleanup controls now have translated
-tooltips/chat states; basic registry/exact/tag include/exclude and shared rate controls now have translated tooltips/chat with headless native evidence; basic Export/Stock and compass/chest controls now have translated inspection/help and headless evidence; native [settings/inventory screen](../src/main/java/dev/izzy/factorycore/platform/client/BufferSettingsScreen.java) and translated draft/rule/inventory controls are implemented; actual new-control client checks remain pending.
-
-
-Storage Terminal: [editable model](../src/main/resources/assets/factorycore/models/block/storage_terminal.json),
-[item parent](../src/main/resources/assets/factorycore/models/item/storage_terminal.json),
-[four-facing blockstate](../src/main/resources/assets/factorycore/blockstates/storage_terminal.json),
-and [native screen](../src/main/java/dev/izzy/factorycore/platform/client/TerminalScreen.java).
-The dark casing, copper bezel, blue inset screen and three iron contacts reuse
-Minecraft-supplied textures with original repository geometry. The 280×232 item
-screen uses native slots/widgets, translatable search/actions/status/help, focusable
-buttons, keyboard row selection and exact-count hover text. [Graphical screen evidence](evidence/terminal-client-v1-2026-10-13.md) now covers
-scales2–4, search, Take1, paging and a real deposit payload. Block geometry/held
-transforms, physical Shift gesture, hover/focus completeness and remaining states
-are still unverified.
-
-
-The buffer settings fixture is prepared for rule paging, exact ghost samples,
-draft Apply and inventory/full/partial results at scales2–4. Its latest actual
-launch was [blocked before execution](evidence/buffer-client-attempt-2026-10-13.md)
-by zero active macOS displays. The new buffer-screen client evidence therefore
-remains Pending; no prepared capture is counted as an observed result.
-
-
-Machine Interface: native six-facing [blockstate](../src/main/resources/assets/factorycore/blockstates/machine_interface.json),
-[blue-inset socket model](../src/main/resources/assets/factorycore/models/block/machine_interface.json)
-and [item model](../src/main/resources/assets/factorycore/models/item/machine_interface.json)
-reuse the connector geometry with matching collision/selection shape. Translated
-label/window/resource/status inspection and native tooltips are implemented.
-Actual client appearance and interactions remain Pending; no new graphical pass
-is inferred from headless controls.
-
-
-[Settings client evidence](evidence/settings-client-v1-2026-10-17.md) now verifies
-buffer rule paging/exact samples/Apply/Stock/inventory results and machine
-Reset/Cancel/Apply/draft retention at GUI scales2–4. The native
-[machine screen](../src/main/java/dev/izzy/factorycore/platform/client/MachineSettingsScreen.java)
-is implemented with translated form/tooltips/status. This updates settings evidence,
-not full block/model/state/permissions/accessibility or first-playable acceptance.
-The earlier no-display attempt remains historical rather than a current blocker.
-
-Machine preset Binding/Presets tabs, bounded rules, sample selection and Stock deployment now have [graphical evidence](evidence/machine-preset-client-v1-2026-10-17.md) at scales2–4. Selected tanks, multiport/preview and full device state visuals remain open.
-
-The machine panel now fits a427×240 GUI without clipping: [default-window restart evidence](evidence/world-restart-v1-2026-10-17.md). The rules remain bounded to sixteen; four render per page.
-
-
-Operator recovery now includes translated transfer inspection/cleanup and canonical
-cell conflict inspection/repair feedback. Native command checks cover permission,
-formatting and safe refusal; real chat layout/accessibility and a full recovery
-walkthrough remain Pending. These commands do not finish the recovery asset row.
-
-
-Finite bank recovery now shares translated operator metadata/repair/refusal
-feedback. Native commands verify quantities, lease rotation, permission gates and
-safe failure; actual graphical chat/accessibility/recovery walkthrough remain Pending.
-
-
-Buffered Interface recovery adds translated operator inspection, retained-deployer/
-settings, safe refusal and explicit reapply guidance. Native menu Apply after repair
-is checked under revoked/restored grants; graphical chat/accessibility and the
-complete client recovery walkthrough remain Pending.
-
-
-Controller/gateway recovery adds translated operator owner/grant/policy metadata,
-safe refusal and wiring-revalidation guidance. Native commands check formatting
-and behavior; graphical chat/accessibility/full recovery walkthrough remain Pending.
-
-
-Connector/Machine Interface recovery adds translated operator metadata, accepted
-deployment/fence display, safe refusal and redeployment guidance. Native commands
-check behavior; graphical chat/accessibility/full recovery walkthrough remain Pending.
-| Wireless Access Point + block item | Range/power state | P6 | Copper/beacon cube stand-in, translated status message | Pending |
-| Wireless Terminal item | Bound/unbound, FE | P6 | Recovery-compass stand-in, tooltip with FE and binding | Pending |
-| Wireless Link Endpoint + block item | Facing, paired/active/no-power state | P6 | Oxidized copper/end rod cube stand-in, translated status message | Pending |
-| Gateway policy editor screen | Toggle on/off, read-only state | P6 | Flat panel, translated headers and toggle labels; not graphically verified | Pending |
-| Factory Guide item | Read-only book pages | P6 | Knowledge-book stand-in, vanilla book screen, 14 translated pages; not graphically verified | Pending |
-| Fluid processing cells in the terminal grid | Fluid id + 250 mB unit count | P4 | Uses the existing cell/count rendering; no mB label yet; not graphically verified | Pending |
+Existing screen and integration evidence is indexed in the implementation plan.
+New artwork does not replace the required interaction, accessibility, onboarding
+and survival evidence. Recovery chat layout and full walkthrough remain unverified.

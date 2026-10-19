@@ -2,8 +2,8 @@
 
 Implemented P3 binding prerequisite; see [ADR 0019](../decisions/0019-local-machine-bindings.md).
 Automatic machine preset runtime is implemented through a trusted server API.
-Player preset authoring is implemented. Selected-tank adapters, multiport coordination, processing
-jobs and complete release verification remain unfinished.
+Player preset authoring and explicit selected-tank/fixed-partition adapters are implemented.
+Integrated selected-port/processing contention and complete release verification remain unfinished.
 
 ## Player controls
 
@@ -46,9 +46,13 @@ actor/root authority. No direct provider mutation is authorized by label lookup.
 The same adapter supports whole sided fluid capabilities in mB and FE capabilities
 in FE. Defaults are64 items or1000 mB/FE per tick, independently each direction;
 current connector technical maxima are128 items/1000 mB/FE per request/rate.
-Item windows cover1–64 positions. Unsupported capabilities/backing identity are
-rejected; overlap is conservative across an entire backing group/resource kind.
-Indexed tank mutation and simultaneous disjoint-window bindings are not promised.
+Item/tank windows cover1–64 positions. Fluid0/64 keeps whole-capability semantics;
+other fluid windows require genuine `IndexedFluidHandler` support. Unsupported
+capabilities/backing identity are rejected. Overlap remains conservative across
+an entire backing group/resource kind unless the provider explicitly declares
+fixed canonical partitions under [ADR0053](../decisions/0053-selected-tanks-and-fixed-machine-ports.md).
+Only exact disjoint declared partitions may bind concurrently; their stock/holds
+stay separate and physical provider rates stay shared.
 Inherited storage access never authorizes cross-segment machine access.
 
 Relabel/configuration invalidates prior handles; relabel also schedules a bounded
@@ -96,8 +100,9 @@ Native initialization is passive until Minecraft installs the new menu. Display
 polls are bounded to one per five server ticks and publish only changed state.
 Payload version1 uses label0–64/no control characters, resource/access enums,
 priority-1000..1000, nonnegative first slot, count1–64 and rate1–128 items or1–1000
-mB/FE. Whole utility capabilities require first0/count64. Provider availability,
-selected tanks and automatic presets remain separate contracts. No persistence
+mB/FE. Energy requires first0/count64; fluids accept bounded tank windows with
+explicit provider support and keep0/64 as whole capability. Provider availability
+is validated by the shared adapter at execution. No persistence
 schema changed; applying writes existing machine reference schema2/world11.
 
 Four native menu cases exercise open/cancel/complete atomic save, nonce/stale
@@ -281,3 +286,26 @@ preset, revision, filter, goal and configuration fence, refuses a mismatched
 physical fence and requires explicit native redeployment under current DEPLOY
 grants; queued old-lease work stays inert. Native evidence covers revoked and
 restored grants with19 items conserved.
+
+
+## Selected tanks and coordinated fixed partitions
+
+The Binding tab's First index/Window fields apply to item slots and fluid tanks.
+Fluid0/64 is the existing whole-capability setting; select another window only
+when the provider supports indexed mutation. Unsupported adapters block before
+mutation. Stock/Import/Export and program endpoints use the same selected catalog
+and shared transfers; no separate mutation path is introduced.
+
+A provider declaring fixed canonical partitions permits concurrent bindings to
+exact disjoint windows. Their backing IDs remain stable when an interface
+reconfigures or reloads, so the original partition's holds stay protected. A
+duplicate, overlapping, undeclared subrange or union is refused. Per-connector
+rates remain configured locally; all partitions share128 items or1000mB/tick per
+direction for the physical backing. Item/fluid/energy capabilities remain distinct
+resources on the same machine. Ordinary providers and vanilla sided wrappers
+retain conservative whole-resource exclusivity. See the [adapter/API contract](CONNECTORS.md#selected-tanks-and-fixed-provider-partitions).
+
+Focused JVM/native regressions are authored; integrated run evidence is tracked
+in the implementation plan. Full processing lease interoperability, real
+third-party adapters, graphical/restart/multiplayer and performance acceptance
+remain separate requirements.

@@ -4,7 +4,9 @@
 
 This file is the authoritative product contract for the first playable release. It consolidates user requirements and design defaults chosen under delegated authority. All requirements below apply unless explicitly marked **Later** or assigned to a decision gate in [IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 
-The repository has a locally verified loader/build bootstrap, accounting/scheduling foundations, a Rust/Wasm probe and initial P2 cells/drives with portable ownership. Automatic wired membership, cell availability, physical finite energy banks and explicit connector/transfer primitives, bounded scheduled external stock observations and principal-owned utility holds are implemented; bounded all-key digital/foreign discovery and registry-text search are implemented; crafting-job reservations and advanced coordination remain unimplemented; physical item terminal/menu controls have headless and partial graphical evidence; remaining client checks are pending; filtered buffer Import and configurable shared network rates are implemented with native control evidence; the first playable release is incomplete. Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
+The development build implements wired storage/topology, bounded shared transfers and presets, manual and recursive crafting, processing/publication/keep-stock jobs, friendly/Rust-Wasm programs, fluid/energy terminal actions, wireless access/paired links, and an in-game guide. Component, native and partial graphical evidence exists; original assets and recovered worktree changes are undergoing integrated verification. The first playable release remains incomplete. See the implementation plan's current evidence and open gaps, including shared wireless resource caps, remaining UI/adapter/upgrade behavior, recovery verification, controlled performance measurements and survival progression.
+
+Requirements are not evidence of implementation. This spec owns behavior and scope; the implementation plan owns sequence and unresolved technical decisions; [AGENTS.md](AGENTS.md) and engineering/testing documents own contributor rules. An ADR explains a choice and cannot silently override this contract. Resolve conflicts and update all affected contracts before implementing different behavior.
 
 ## R01 — Release scope
 
@@ -62,7 +64,7 @@ The nine-slot owned item inventory and NeoForge hopper-handler adapter now exist
 as a P3 prerequisite, with exact component/stack limits and backpressure tests.
 Canonical slot ownership/persistence, physical placement and actual hopper-to-buffer
 flow now have local evidence; explicit shared buffer transfers and recovery now have local evidence. Automatic
-Import/Paused controls, real hopper-to-cell imports and full-storage backpressure now have headless world evidence. Canonical registry/exact/tag include/exclude selection and shared configurable network rates now have component/world evidence; buffered Export/Stock now has component/world evidence; full settings/client and remaining machine-interface work remain unfinished.
+Import/Paused controls, real hopper-to-cell imports and full-storage backpressure now have headless world evidence. Canonical registry/exact/tag include/exclude selection and shared configurable network rates now have component/world evidence; buffered Export/Stock now has component/world evidence; buffer and machine settings have graphical evidence, while complete adapter/player acceptance remains unfinished.
 The physical item terminal loop now has a server menu implementation; full release/client/restart acceptance remains unfinished and A01 has partial evidence.
 [Buffered Interface contract](docs/modules/BUFFERED_INTERFACES.md) records this scope.
 
@@ -72,7 +74,7 @@ authorized physical controls cycle resource/access and set priority without
 consuming materials. Opaque aliases require explicit backing metadata and fail
 closed otherwise. This is partial P2/P3 evidence, not an automatic preset/catalog
 or complete A04/A13 acceptance. [Connector contract](docs/modules/CONNECTORS.md)
-records units, schemas, limits and unfinished restart/context integration.
+records units, schemas, limits and remaining release verification.
 
 
 ## R03 — Storage identity, capacities, and views
@@ -111,7 +113,7 @@ through shared authorization/accounting. Partial/uncertain outcomes retain actua
 operation identity; fallback requires an untouched source. Priority is global
 across collected pages; rotation is stable-ID/scoped metadata and grants no stock.
 Basic buffer Import and bounded all-key registry-text search now have server/headless
-evidence. A player terminal and complete preset/client path remain unfinished.
+evidence. Player terminal and preset controls now have native and graphical evidence; complete release acceptance remains unfinished.
 See [routing contract](docs/modules/WORLD_STORAGE_TRANSFERS.md).
 
 ## R04 — Segments, topology, and multiplayer authority
@@ -344,8 +346,13 @@ Machine preset acceptance evidence is partial: the authenticated physical editor
 now drafts mode/filters/goal and deploys through shared authorization/scheduling.
 Actual client Stock fills only the selected item window with exact conservation;
 headless cases cover typed samples and original-owner known return. This adds
-A04/A12/A13/A14 evidence without completing selected tanks, multiport coordination,
-actual restart, multiplayer or the first-playable acceptance set.
+A04/A12/A13/A14 evidence; selected-tank mutation and fixed disjoint provider
+partitions now have explicit adapter implementations and authored regressions
+([ADR0053](docs/decisions/0053-selected-tanks-and-fixed-machine-ports.md)). Fluid
+selection must leave identical fluid in excluded tanks untouched; duplicate or
+undeclared overlapping partitions must refuse without bypassing saved holds;
+concurrent ports must share physical-provider rates. Actual integrated verification,
+third-party compatibility, multiplayer and the first-playable acceptance set remain open.
 
 Orderly restart now has a small actual two-JVM integrated-world experiment for canonical/physical identity, item/fluid/FE quantities, retained reservations and resumed Stock. This is partial A13 evidence; interrupted external writes, independent saves, job recovery and complete release acceptance remain unverified.
 
@@ -402,33 +409,38 @@ unscoped legacy staging, stale/missing holders, independent-save mismatches and
 full release recovery remain unfinished.
 
 
+Legacy staged transfers without endpoint context can now be settled by their
+authenticated original owner ([ADR 0047](docs/decisions/0047-legacy-staging-settlement.md)).
+Known staging returns to a canonical Factory Core source (cell, bank or Buffered
+Interface). Otherwise it is delivered to a canonical cell/bank destination, only with
+current DEPOSIT access. It is never extracted again and foreign backings are never
+guessed; uncertain records stay frozen. Known legacy staging no longer blocks
+connector/Machine Interface recovery; only uncertain legacy records that name a foreign
+backing do. This is partial A03/A13 evidence.
+
+
 The Fuel Generator is implemented as a standalone vanilla-fuel FE source: 20 FE per
 burn tick, a 100,000 FE buffer and an 80 FE/tick shared output cap, with remainders
 kept and full-buffer pauses that waste no fuel. It pushes to adjacent receivers and
-keeps exact state when broken. This is partial A04/A14/A17 evidence; a screen,
-finished visuals and survival power progression remain unfinished.
+keeps exact state when broken. This is partial A04/A14/A17 evidence; original textures are implemented, while new-art inspection and survival power progression remain unverified. Inspection provides status without a dedicated generator screen.
 
 
 The terminal now has a server-owned 3×3 ghost crafting grid. Ghosts come from own
 inventory slots or authorized network rows and hold no items. Crafting uses only the
 player's main inventory, first gathering missing ingredients through the shared
 permission-checked withdraw route, and commits bounded batches (up to 64) only when
-outputs and remainders fit. This is partial A11 evidence; JEI transfer, patterns,
-autocrafting and graphical grid checks remain unfinished.
+outputs and remainders fit. This is partial A11 evidence; patterns, autocrafting and graphical grid/JEI integration evidence are described below. Complete crafting acceptance remains unverified.
 
 
 A portable pattern model and bounded recursive crafting planner now exist: exact
 inputs/outputs/byproducts, priority alternatives with stable-ID ties, cycle and
 shortage explanations, and a stock-only `consumed` set for a single reservation.
-Pattern items, Crafting Units, jobs and the request UI remain unimplemented, so A06
-is still unmet.
+Pattern items, Crafting Units, jobs and the request UI use this planner as described below; A06 remains partial pending complete release verification.
 
 
 Blank and Crafting Pattern items and the Crafting Unit are implemented. The terminal
 grid encodes the server-matched recipe (exact cells, output and remainders) onto a
-blank; units hold nine patterns and offer them only to their own segment, with
-bounded deduplicated indexing. Jobs and requests still do not exist, so A06/A07 stay
-unmet.
+blank; units hold nine patterns with bounded deduplicated indexing. Local patterns are segment-scoped; permitted gateway publication exposes recipe contracts upward as described below. A06/A07 remain partial.
 
 
 Persisted crafting jobs now reserve a plan's stock once (the job is the ledger
@@ -437,15 +449,14 @@ crafts through the shared scheduler at Crafting Units with exact recipe revalida
 wait with reasons on missing patterns, revoked CRAFT, offline storage or full
 storage, and on cancellation release reservations and deliver staging without
 replay or refund. World schema 13 stores jobs with the ledger. This is partial
-A06/A08/A13 evidence; the request UI, processing patterns, branch publication and
-keep-stock requests remain unfinished.
+A06/A08/A13 evidence; the request UI, processing patterns, branch publication and keep-stock requests are implemented as described below. Full job restart/interruption acceptance remains unverified.
 
 
 The terminal now has a Jobs mode: craftable outputs of the segment's patterns, ×1/×8/
 ×64 previews showing steps/crafts or the first missing ingredient, Start under CRAFT
 permission, a four-job progress column with text state symbols, and Cancel. Previews
 reserve nothing; the server holds the previewed key. This adds partial A06/A11
-evidence; graphical verification, JEI and branch/processing jobs remain unfinished.
+evidence; branch/processing jobs and JEI integration are described below. Full job UI and multiplayer acceptance remains unverified.
 
 
 Processing patterns and the Crafting Interface are implemented for items: declared
@@ -453,44 +464,40 @@ inputs/outputs encoded from the terminal grid, a persisted per-job dispatch as t
 machine lease, dispatch only into a machine holding none of the outputs, real
 per-key insertion with staged remainders, completion only from outputs collected from
 that machine, and a bounded post-cancel cleanup record. This adds partial A06/A08
-evidence; fluid processing, branch publication and keep-stock remain unfinished.
+evidence; fluid processing, branch publication and keep-stock are also implemented as described below. Full processing/recovery acceptance remains unverified.
 
 
 Branch recipe publication is implemented: patterns in a descendant branch are offered
 to an ancestor when every gateway on the path allows CRAFT for its branch. The
 requester's job reserves once from its own storage view, runs at the branch holder
 through job staging and delivers to the requester; branch storage and machine handles
-stay private. This adds A07 evidence; a gateway policy editor remains unfinished.
+stay private. This adds A07 evidence; the gateway policy editor also has native and graphical evidence. Complete branch-job acceptance remains unverified.
 
 
 Keep-stock requests are implemented: persisted per-principal rules with low/high
 thresholds evaluated every 100 ticks through the shared scheduler, at most one job per
 rule (in-flight output counted by that job), refills to the high threshold under the
 principal's current CRAFT grants, and a terminal Keep toggle. This completes the P4
-request types with headless evidence; A06/A07/A08 remain partial pending graphical,
-multiplayer and fluid processing checks.
+request types with headless evidence; fluid processing also has native evidence. A06/A07/A08 remain partial pending complete graphical, multiplayer and recovery checks.
 
 
 D05 is frozen: the friendly language version 1 grammar, semantics and limits are in
 ADR 0035, with a portable compiler (positioned diagnostics) and a bounded evaluator
 that stages Keep/Move/Craft/Log commands and traps without publishing. Program
-Controllers, deployment, the editor and Rust parity remain unimplemented, so A09/A10
-are not yet met.
+Controllers, deployment, the editor and Rust parity are implemented as described below; A09/A10 remain partial pending complete lifecycle/API acceptance.
 
 
 Program Controllers run deployed friendly-language programs: DEPLOY-gated deployment
 with compiler diagnostics, rule invocations through the shared scheduler under the
 deployer's current grants, FE costs per ADR 0006, traps that publish nothing, bounded
 command queues executed through the same routes/connectors/crafting jobs as presets,
-and per-outcome logs. This adds partial A08/A09/A10/A12 evidence; the editor,
-templates and Rust/Wasm parity remain unfinished.
+and per-outcome logs. The editor, templates and Rust/Wasm parity are also implemented. This adds partial A08/A09/A10/A12 evidence; full programming acceptance remains unverified.
 
 
 The production Wasm runtime and `factory_v1` ABI exist (ADR 0037): Chicory is embedded,
 guests are preflighted, bounded per callback and stage the same commands as the
 friendly language. A Rust SDK and starter example build with pinned tooling, and a real
-Rust guest matches its friendly twin command-for-command. This adds A09/A10 evidence;
-in-game artifact upload and deployment remain unfinished.
+Rust guest matches its friendly twin command-for-command. In-game artifact upload and deployment are implemented. This adds partial A09/A10 evidence; complete runtime/lifecycle acceptance remains unverified.
 
 Wasm artifacts upload through the Program Controller editor and run under the same
 lifecycle, authority and FE accounting as friendly programs (fresh instances on reload
@@ -500,17 +507,17 @@ or resume after a trap).
 The terminal now has Fluids and Energy views with explicit fill/empty actions for real
 fluid containers and charge/discharge for single FE items (≤ 1,000 FE per action through
 bank rates), each proving fit before moving anything. This adds partial A04/A11
-evidence; capacity and rate displays, the handheld terminal and graphical checks remain.
+evidence; fluid/energy screens and the handheld terminal have graphical evidence. Complete capacity/rate displays and release acceptance remain unfinished.
 
 
 Wireless Access Points and handheld Wireless Terminals now provide ranged terminal access
-through the shared terminal path (partial A16; paired links remain).
+through the shared terminal path (partial A16); paired links are also implemented.
 
 Paired Wireless Link Endpoints now join gateway-bounded branches as reciprocal topology
 edges under normal validation (partial A16; per-pair rate caps remain).
 
 Gateways now have a policy editor for branch grants, inherited permissions and
-inherited kinds (A07 evidence; graphical checks remain).
+inherited kinds with native and graphical evidence (partial A07).
 
 An in-game Factory Guide (book screen, first-login gift, craftable) now provides
 discoverable onboarding from first network to wireless links (R-help evidence; A17
@@ -518,7 +525,7 @@ playtest remains).
 
 Optional JEI integration now fills the terminal ghost grid from crafting recipes and
 inserts escaped resource expressions into the program editor. The integration is
-compile-only and isolated; its client behavior is unverified.
+compile-only and isolated; a graphical run verifies callback integration with JEI present. Physical ingredient drag and the recipe-view plus-button click remain unsimulated (see the implementation plan).
 
 Wasm guests now have quota-limited persistent state (4,096 bytes per deployment,
 committed per successful callback, restored into fresh instances) per R09.
@@ -528,3 +535,26 @@ machine fluid port (R06 fluid evidence; the grid shows fluid amounts as 250 mB u
 
 Independent-save mismatches of storage cells stay inert and can be adopted by an operator
 with evidence (A13 partial; two-JVM injection for older SavedData).
+
+
+Processing-port contention implementation now persists an exact physical target
+for new dispatches and fences shared Connector/Machine Interface mutations while
+that job or its cancellation cleanup owns the machine. Two interfaces facing the
+same physical machine must wait busy; unrelated adjacent machines remain usable.
+A preexisting foreign hold or unresolved provider transfer must block dispatch
+before ingredient extraction, even after connector unregister. Rotating an
+interface must not retarget an accepted dispatch. Authored native and persistence
+regressions exercise these scenarios; integrated A08/A13 evidence remains tracked
+in the implementation plan. Legacy dispatches without a proven target stay
+conservatively fenced and require explicit cancellation/inspection rather than
+guessed output attribution.
+
+
+New processing dispatches also persist their provider component/group/type
+identity before extracting any ingredient. Same-coordinate replacement must
+refuse both resumed processing and cancelled output cleanup without touching the
+replacement's stock; read-only validation must never initialize a replacement
+identity. Actual saved provider NBT must retain its identity and resume without
+replaying input extraction. Native/persistence regressions are authored for these
+A08/A13 scenarios; independent interrupted provider/world save attribution and
+full release acceptance remain unverified.

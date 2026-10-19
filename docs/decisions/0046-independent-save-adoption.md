@@ -1,8 +1,8 @@
 # ADR 0046 — Independent-save mismatch adoption for storage and structural holders
 
 Status: selected; two-JVM dedicated injection evidence for both save orders (older
-SavedData, older chunks) for cells; native single-JVM evidence for banks. Banks, buffers and
-structural nodes are not covered.
+SavedData, older chunks) for cells; native single-JVM coverage for other holder kinds.
+Port adoption has targeted regression coverage; full two-JVM port coverage remains pending.
 
 ## Context
 
@@ -44,7 +44,8 @@ cell audit **schema 3** (`HolderKind=CELL_ADOPTION`, with the before-state lease
 ## Consequences
 
 Mismatches remain inert until an operator acts. They are never duplicated or lost.
-Every canonical holder kind (cells, banks, controllers/gateways, buffered interfaces) is now adoptable; connectors/Machine Interfaces keep conflict repair only. The
+Every canonical holder kind (cells, banks, controllers/gateways, buffered interfaces,
+connectors and Machine Interfaces) has an operator adoption path. The
 injection replaces the whole data file, which is coarser than a torn write. Corrupt
 files are handled by the existing quarantine path.
 
@@ -61,8 +62,8 @@ the same rule to finite energy banks.
 - **Evidence:** bank audit **schema 4** (`HolderKind=ENERGY_BANK_ADOPTION`) records the
   before-state lease, `Target`, and the bank's native block state and block entity.
 
-FE, claims and rate spending are unchanged. Buffers and structural nodes still have only
-conflict repair.
+FE, claims and rate spending are unchanged. Later sections extend the same mechanism
+to other holder kinds.
 
 
 ## Controllers and gateways — 2026-10-18
@@ -92,3 +93,21 @@ The command `factorycore recovery buffer adopt <id> <generation> <x y z>` uses
   be reapplied with current permissions.
 - **Evidence:** schema 6 (`HolderKind=BUFFERED_INTERFACE_ADOPTION`), with slots,
   deployment, `Target` and the native holder.
+
+## Connectors and Machine Interfaces — 2026-10-18
+
+`factorycore recovery port adopt <id> <generation> <x y z>` reconciles a stale
+connector or Machine Interface in the command source's dimension. Both holders
+must be loaded; the old canonical position must contain no reference to the ID.
+The target must have the same world, ID and physical kind, a different lease
+generation, readable settings and no persisted provider fault. Portable leases,
+same-position adoption, overflow and unresolved operations naming the node are
+refused. Unscoped uncertain foreign operations also refuse under ADR 0047.
+
+Before mutation, audit schema 7 (`FOREIGN_PORT_ADOPTION`) records the canonical
+node, current canonical deployment/fence, target position and full stale physical
+holder. A Machine Interface's new configuration exceeds both saved fences and
+its old deployment is paused. Original deployer authority is never adopted.
+Settings, label and face survive; old provider caches and handles are invalidated.
+No foreign capability is read and no transfer or provider resource is replayed.
+Redeployment requires current player permissions. The world schema is unchanged.

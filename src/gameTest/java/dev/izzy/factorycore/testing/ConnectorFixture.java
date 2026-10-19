@@ -76,15 +76,18 @@ public final class ConnectorFixture {
     event.registerBlockEntity(
         Capabilities.ItemHandler.BLOCK,
         ENTITY.get(),
-        (entity, side) -> side == Direction.WEST ? entity.items : null);
+        (entity, side) -> side == Direction.WEST || entity.partitioned ? entity.items : null);
     event.registerBlockEntity(
         Capabilities.FluidHandler.BLOCK,
         ENTITY.get(),
-        (entity, side) -> side == Direction.WEST ? entity.fluids : null);
+        (entity, side) ->
+            side == Direction.WEST || entity.partitioned
+                ? entity.partitioned ? entity.indexedFluids : entity.fluids
+                : null);
     event.registerBlockEntity(
         Capabilities.EnergyStorage.BLOCK,
         ENTITY.get(),
-        (entity, side) -> side == Direction.WEST ? entity.energy : null);
+        (entity, side) -> side == Direction.WEST || entity.partitioned ? entity.energy : null);
   }
 
   public static final class FixtureBlock extends Block implements EntityBlock {
@@ -98,6 +101,60 @@ public final class ConnectorFixture {
     }
   }
 
+  /** Actual two-tank capability whose indexed methods mutate only their named real FluidTank. */
+  public static final class IndexedTanks
+      implements dev.izzy.factorycore.platform.resource.IndexedFluidHandler {
+    public final FluidTank[] tanks = {new FluidTank(2000), new FluidTank(2000)};
+
+    @Override
+    public int getTanks() {
+      return tanks.length;
+    }
+
+    @Override
+    public net.neoforged.neoforge.fluids.FluidStack getFluidInTank(int tank) {
+      return tanks[tank].getFluid();
+    }
+
+    @Override
+    public int getTankCapacity(int tank) {
+      return tanks[tank].getCapacity();
+    }
+
+    @Override
+    public boolean isFluidValid(int tank, net.neoforged.neoforge.fluids.FluidStack stack) {
+      return tanks[tank].isFluidValid(stack);
+    }
+
+    @Override
+    public int fillTank(
+        int tank, net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
+      return tanks[tank].fill(stack, action);
+    }
+
+    @Override
+    public net.neoforged.neoforge.fluids.FluidStack drainTank(
+        int tank, net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
+      return tanks[tank].drain(stack, action);
+    }
+
+    @Override
+    public int fill(net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
+      return tanks[0].fill(stack, action);
+    }
+
+    @Override
+    public net.neoforged.neoforge.fluids.FluidStack drain(
+        net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
+      return tanks[0].drain(stack, action);
+    }
+
+    @Override
+    public net.neoforged.neoforge.fluids.FluidStack drain(int amount, FluidAction action) {
+      return tanks[0].drain(amount, action);
+    }
+  }
+
   public static final class ProviderEntity extends BlockEntity
       implements dev.izzy.factorycore.platform.resource.ExternalBackingProvider {
     @Override
@@ -108,6 +165,16 @@ public final class ConnectorFixture {
           : java.util.List.of(getBlockPos());
     }
 
+    @Override
+    public java.util.List<dev.izzy.factorycore.platform.resource.ExternalBackingProvider.PortWindow>
+        factoryCorePorts(dev.izzy.factorycore.core.resource.ResourceKind kind) {
+      return partitioned && kind != dev.izzy.factorycore.core.resource.ResourceKind.ENERGY
+          ? java.util.List.of(new PortWindow(0, 1), new PortWindow(1, 1))
+          : java.util.List.of();
+    }
+
+    public boolean partitioned;
+    public final IndexedTanks indexedFluids = new IndexedTanks();
     public boolean failAfterExtraction;
     public boolean failSecondStockRead;
     public boolean extendedBacking;

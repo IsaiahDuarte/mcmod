@@ -1,7 +1,9 @@
 # ADR 0006 — Initial progression and balance defaults
 
-Status: initial D06 selection before storage block defaults. Balance version one;
-survival playtesting, powered devices and wireless comparison remain P6 validation.
+Status: initial D06 selection before storage block defaults. Balance version one.
+Superseded for recipes and the consolidated table by
+[ADR 0048](0048-final-balance.md) (balance version two, which moves the Expansion
+Module from a diamond to Nether quartz); capacities and rates here are unchanged.
 
 ## Selected defaults
 
@@ -23,6 +25,17 @@ gameplay targets, distinct from the technical metadata/ownership quotas.
 | Program Controller power | Four FE/active tick plus one FE per begun 256 guest instructions; idle native rules do not execute guests continuously. |
 | Wireless terminal access | Same dimension, 64-block range; 16 FE/active tick and 64 FE/action, bounded to 128 item units/action. |
 | Paired branch links | Same dimension, 256-block endpoint range; 32 FE/connected tick plus bounded traffic costs; 256 item / 4,000 mB / 8,000 FE units per tick, under shared quotas. |
+
+Gateway nesting is configured per world in `serverconfig/factorycore-server.toml`
+under `[network]`, `gatewayDepth = 8`, with bounds 1..32. It counts gateway crossings
+from the root to the deepest branch. NeoForge corrects out-of-range numbers to the
+nearest bound and invalid types to the default. The setting requires reopening the
+world or restarting the dedicated server: the coordinator snapshots it once, so
+all rebuilt regions use the same limit for that server lifetime. A live limit
+change would require simultaneous invalidation of every publication and queued
+authority; deferring application avoids mixed policies without a world scan.
+Over-depth components become `DEPTH_LIMIT`, keeping stored resources owned but
+unavailable until the topology or the next-start setting permits them.
 
 The current implementation includes cells/drives, physical finite banks and portable upgrades. Other
 rows freeze initial choices for subsequent modules; they are not implemented
@@ -48,7 +61,8 @@ without diamonds, Nether materials or an optional mod. A distinct bank-upgrade
 material family would add unlock complexity without a new capacity axis. These
 defaults remain subject to the complete generator/wireless survival playtest.
 
-Expansion module: four gold, two redstone, one diamond. Advanced module: four
+Expansion module: four gold, two redstone, one diamond (version one; ADR 0048 replaces
+the diamond with one Nether quartz). Advanced module: four
 diamonds, two redstone, one netherite ingot. Infinite module: eight netherite ingots
 and one Nether star. Apply modules sequentially to a cell held in the offhand by
 using the module from the main hand. Replace only the cell's tier item, preserving

@@ -308,6 +308,26 @@ public final class TransferRegistry {
     return false;
   }
 
+  /**
+   * Port-recovery preflight (ADR 0047): true when a record without endpoint context has an
+   * uncertain outcome (a pending call or quarantine) and names a backing that {@code canonical}
+   * does not recognize, so it may involve any foreign provider. Known legacy staging never blocks,
+   * because it settles only into canonical holders. At most1024 records; read-only, no provider
+   * calls or copies.
+   */
+  public boolean hasUnscopedUncertain(java.util.function.Predicate<UUID> canonical) {
+    checkThread();
+    Objects.requireNonNull(canonical);
+    for (var entry : entries.values()) {
+      var value = entry.saved;
+      if (entry.context == null
+          && (value.state() == StagedTransfer.State.QUARANTINED
+              || value.pending() != StagedTransfer.PendingCall.NONE)
+          && (!canonical.test(value.source()) || !canonical.test(value.destination()))) return true;
+    }
+    return false;
+  }
+
   public TransferContext context(UUID id) {
     checkThread();
     return entry(id).context;

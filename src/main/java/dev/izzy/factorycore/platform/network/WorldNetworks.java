@@ -45,6 +45,7 @@ public final class WorldNetworks {
   private record Structural(NodeRegistry.Handle handle, NodeRegistry.Position position) {}
 
   private final MinecraftServer server;
+  private final int gatewayDepth;
   private final DeviceSavedData saved;
   private final FairScheduler scheduler;
   private WorldStorageTransfers transfers;
@@ -57,6 +58,8 @@ public final class WorldNetworks {
   private final Map<String, WorldWireReader> readers = new HashMap<>();
   private final ArrayDeque<Region> active = new ArrayDeque<>();
   private String diagnostic = "";
+  private final dev.izzy.factorycore.core.resource.WirelessBudget wirelessBudget =
+      new dev.izzy.factorycore.core.resource.WirelessBudget();
 
   private static final class Region {
     final UUID id = UUID.randomUUID();
@@ -64,8 +67,10 @@ public final class WorldNetworks {
     final Set<NodeRegistry.Position> points = new LinkedHashSet<>();
     final DiscoverySeeds sources;
     final Map<UUID, Structural> structures = new HashMap<>();
+    final Map<UUID, dev.izzy.factorycore.core.resource.WirelessBudget.Link> wireless =
+        new HashMap<>();
     NetworkAuthority authority;
-    Region replacement;
+    final RegionReference<Region> reference = new RegionReference<>(this);
     WiredDiscovery discovery;
     Iterator<NodeRegistry.Position> preparing;
     boolean valid;
@@ -81,6 +86,7 @@ public final class WorldNetworks {
 
   private WorldNetworks(MinecraftServer server) {
     this.server = server;
+    gatewayDepth = dev.izzy.factorycore.platform.FactoryCoreConfig.gatewayDepth();
     DeviceSavedData opened = null;
     try {
       opened = DeviceSavedData.get(server);
@@ -179,6 +185,34 @@ public final class WorldNetworks {
     return resolve(owners.get(origin)).authority.authorize(actor, membership.scope(), operation);
   }
 
+  /**
+   * Replaces {@code principal}'s explicit grants on the network that owns {@code origin}. Manage is
+   * checked at {@code origin}, so gateway branch policy above it applies; {@code INVALID_SCOPE}
+   * origins return {@code DENIED} without changing anything.
+   */
+  public NetworkPermissions.Change setGrants(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      UUID principal,
+      Set<NetworkPermissions.Permission> grants) {
+    checkThread();
+    var membership = membership(origin);
+    if (membership.status() != NetworkTopology.Status.VALID)
+      return NetworkPermissions.Change.DENIED;
+    return resolve(owners.get(origin))
+        .authority
+        .setGrants(actor, membership.scope(), principal, grants);
+  }
+
+  /** Current owner/grants of the network at {@code origin}, or null without Manage there. */
+  public NetworkPermissions.State grants(
+      NetworkPermissions.Actor actor, NodeRegistry.Position origin) {
+    checkThread();
+    if (authorize(actor, origin, NetworkPermissions.Permission.MANAGE)
+        != NetworkAuthority.Decision.ALLOWED) return null;
+    return saved.network(membership(origin).scope().network()).snapshot();
+  }
+
   public FairScheduler scheduler() {
     checkThread();
     return scheduler;
@@ -259,7 +293,7 @@ public final class WorldNetworks {
   }
 
   private Region start(NodeRegistry.Position anchor, Region previous) {
-    if (previous != null && previous.replacement != null) return resolve(previous);
+    if (previous != null && previous.retired) return resolve(previous);
     if (active.size() >= MAX_QUEUED) {
       diagnostic = "Network rebuild queue limit";
       return null;
@@ -274,7 +308,7 @@ public final class WorldNetworks {
     region.discovery =
         new WiredDiscovery(
             region.id,
-            8,
+            gatewayDepth,
             region.sources,
             position -> probe(region, position),
             () -> 0,
@@ -288,13 +322,13 @@ public final class WorldNetworks {
   }
 
   private void absorb(Region target, Region previous) {
-    if (previous == target || previous.replacement != null) return;
+    if (previous == target || previous.retired) return;
     previous.valid = false;
     if (previous.discovery != null) previous.discovery.cancel();
     target.sources.appendPositions(previous.points.iterator());
     target.sources.append(previous.sources);
     previous.retired = true;
-    previous.replacement = target;
+    previous.reference.replaceWith(target.reference);
   }
 
   private WiredDiscovery.Wire probe(Region region, NodeRegistry.Position position) {
@@ -331,13 +365,24 @@ public final class WorldNetworks {
     if (index.isEmpty()) chunks.remove(key);
   }
 
-  private Region resolve(Region region) {
-    for (int i = 0; i < 32; i++) {
-      if (region.replacement == null) return region;
-      region = region.replacement;
+  /** True when discovery captured this endpoint's wireless port reciprocally at its partner. */
+  private static boolean bridged(
+      Region region,
+      dev.izzy.factorycore.platform.wireless.LinkEndpointEntity link,
+      NodeRegistry.Position position,
+      WiredDiscovery.Wire wire) {
+    long back = BlockPos.of(position.block()).relative(link.back()).asLong();
+    for (var port : wire.ports()) {
+      if (port.neighbor().block() == back) continue;
+      var other = region.discovery.captured(port.neighbor());
+      if (other != null && other.ports().stream().anyMatch(p -> p.neighbor().equals(position)))
+        return true;
     }
-    diagnostic = "Network replacement depth limit";
-    return null;
+    return false;
+  }
+
+  private Region resolve(Region region) {
+    return region.reference.current();
   }
 
   private void wake() {
@@ -418,6 +463,24 @@ public final class WorldNetworks {
           && saved.nodes().validate(lease) == NodeRegistry.Failure.OK)
         region.authority.register(saved.network(lease.id()));
     }
+    if (entity instanceof dev.izzy.factorycore.platform.wireless.LinkEndpointEntity link) {
+      var member = region.discovery.publishedTopology().membership(wire.nodes().getFirst().id());
+      // Discovery joins only reciprocal captured ports, so an unpaired, unpowered or one-sided
+      // endpoint is a dead-end node with no wireless route to meter.
+      if (bridged(region, link, position, wire)
+          && member.status() == NetworkTopology.Status.VALID) {
+        var pair = link.pair();
+        if (pair == null) {
+          // The published bridge is stale; every activity change notifies both ends, so rebuild
+          // rather than publish an unmetered route or strand the region as failed.
+          invalidate(region);
+          return;
+        }
+        var previous = region.wireless.putIfAbsent(member.scope().segment(), pair);
+        if (previous != null && !previous.equals(pair))
+          throw new IllegalStateException("Ambiguous wireless bridge segment");
+      }
+    }
     if (entity instanceof EnergyBankEntity bank && bank.handle() != null) {
       boolean valid =
           region.discovery.publishedTopology().membership(wire.nodes().getFirst().id()).status()
@@ -495,6 +558,16 @@ public final class WorldNetworks {
         .machines(actor, member.scope(), label, after, limit);
   }
 
+  /** Bounded VIEW-authorized local label catalog; rebuilding regions fail closed. */
+  public NetworkTopology.LabelPage labels(
+      NetworkPermissions.Actor actor, NodeRegistry.Position origin, String after, int limit) {
+    checkThread();
+    var member = membership(origin);
+    if (member.status() != NetworkTopology.Status.VALID)
+      return new NetworkTopology.LabelPage(List.of(), false);
+    return resolve(owners.get(origin)).authority.labels(actor, member.scope(), after, limit);
+  }
+
   /** Gateways above {@code origin}, nearest first, with their policies; empty when invalid. */
   public List<NetworkTopology.Ancestor> ancestors(NodeRegistry.Position origin) {
     checkThread();
@@ -514,6 +587,69 @@ public final class WorldNetworks {
     return resolve(owners.get(origin))
         .authority
         .storage(actor, membership.scope(), resource, operation);
+  }
+
+  /**
+   * Published unique segment path. A wireless segment is isolated between its two gateway ports;
+   * collecting ancestor segments therefore identifies each crossed pair without scanning geometry.
+   * Null means stale/unavailable; empty is a valid wired path. This grants no resource authority.
+   */
+  private List<dev.izzy.factorycore.core.resource.WirelessBudget.Link> wirelessPath(
+      NodeRegistry.Position from, NodeRegistry.Position to) {
+    var first = membership(from);
+    var second = membership(to);
+    if (first.status() != NetworkTopology.Status.VALID
+        || second.status() != NetworkTopology.Status.VALID
+        || !first.scope().network().equals(second.scope().network())) return null;
+    var region = resolve(owners.get(from));
+    if (region != resolve(owners.get(to))) return null;
+    if (first.scope().segment().equals(second.scope().segment())) return List.of();
+    var a = new java.util.ArrayList<UUID>();
+    var b = new java.util.ArrayList<UUID>();
+    a.add(first.scope().segment());
+    b.add(second.scope().segment());
+    for (var ancestor : ancestors(from)) a.add(ancestor.segment());
+    for (var ancestor : ancestors(to)) b.add(ancestor.segment());
+    var other = new java.util.HashSet<>(b);
+    UUID common = null;
+    for (var segment : a)
+      if (other.contains(segment)) {
+        common = segment;
+        break;
+      }
+    if (common == null) return null;
+    var path =
+        new java.util.LinkedHashSet<dev.izzy.factorycore.core.resource.WirelessBudget.Link>();
+    for (var chain : List.of(a, b))
+      for (var segment : chain) {
+        if (segment.equals(common)) break;
+        var pair = region.wireless.get(segment);
+        if (pair != null) path.add(pair);
+      }
+    return List.copyOf(path);
+  }
+
+  /** Advisory per-pair capacity, in whole item/mB/FE units; no quota debit or provider calls. */
+  public long movementAvailable(
+      NodeRegistry.Position from, NodeRegistry.Position to, ResourceKey key, long amount) {
+    checkThread();
+    var path = wirelessPath(from, to);
+    return path == null
+        ? 0
+        : wirelessBudget.available(path, server.getTickCount(), key.kind(), amount);
+  }
+
+  /**
+   * Reserve throughput before a synchronous mutation; finish with actual units, never guessed
+   * rollback.
+   */
+  public dev.izzy.factorycore.core.resource.WirelessBudget.Permit movement(
+      NodeRegistry.Position from, NodeRegistry.Position to, ResourceKey key, long amount) {
+    checkThread();
+    var path = wirelessPath(from, to);
+    return path == null
+        ? wirelessBudget.denied(dev.izzy.factorycore.core.resource.OperationResult.Reason.OFFLINE)
+        : wirelessBudget.claim(path, server.getTickCount(), key.kind(), amount);
   }
 
   private boolean available(DeviceRegistry.Location location) {

@@ -215,7 +215,16 @@ class CraftingJobTest {
             Map.of(CELL, Map.of(ore, 2L)));
     var machine = new NodeRegistry.Position("minecraft:overworld", 77);
     job.pulled(CELL, ore, 1);
-    job.dispatch(machine);
+    var target = new NodeRegistry.Position("minecraft:overworld", 78);
+    var providers =
+        Map.of(
+            ResourceKind.ITEM,
+            UUID.randomUUID(),
+            ResourceKind.FLUID,
+            UUID.randomUUID(),
+            ResourceKind.ENERGY,
+            UUID.randomUUID());
+    job.dispatch(machine, target, providers);
     assertThrows(
         IllegalStateException.class, () -> job.dispatch(machine), "One dispatch at a time");
     assertThrows(
@@ -227,6 +236,10 @@ class CraftingJobTest {
     assertThrows(
         IllegalArgumentException.class, () -> job.processed(Map.of(ore, 1L), Map.of(ingot, 1L)));
     job.collected(ingot, 1);
+    assertEquals(
+        target, job.dispatch().target(), "Input/output updates preserve physical lease identity");
+    assertEquals(
+        providers, job.dispatch().providers(), "Input/output updates preserve provider identities");
     job.processed(Map.of(ore, 1L), Map.of(ingot, 1L));
     assertNull(job.dispatch());
     assertEquals(1, job.steps().getFirst().done());

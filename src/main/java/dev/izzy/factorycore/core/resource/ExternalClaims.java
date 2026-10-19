@@ -29,6 +29,7 @@ public final class ExternalClaims {
   private final Thread thread = Thread.currentThread();
   private final Map<Identity, Long> claims = new HashMap<>();
   private final Map<Stock, Long> reserved = new HashMap<>();
+  private final Map<UUID, Integer> backingClaims = new HashMap<>();
   private final Runnable changed;
   private long bytes;
   private boolean extracting;
@@ -56,6 +57,7 @@ public final class ExternalClaims {
         throw new IllegalArgumentException("External claims overflow", overflow);
       }
       claims.put(identity, entry.amount());
+      backingClaims.merge(entry.backing(), 1, Integer::sum);
       bytes += charge;
     }
   }
@@ -69,6 +71,12 @@ public final class ExternalClaims {
                     entry.getKey().stock().backing(), entry.getKey().owner(),
                     entry.getKey().stock().key(), entry.getValue()))
         .toList();
+  }
+
+  /** Constant-time metadata query; orphaned restored holds remain visible without reading stock. */
+  public boolean hasBacking(UUID backing) {
+    checkThread();
+    return backingClaims.containsKey(Objects.requireNonNull(backing));
   }
 
   public long reserved(UUID backing, ResourceKey key) {
@@ -96,7 +104,10 @@ public final class ExternalClaims {
       return new OperationResult(0, RESERVATION_LIMIT);
     if (requested > available(backing, null, key, observed))
       return new OperationResult(0, SHORTAGE);
-    if (!claims.containsKey(identity)) bytes += charge(key);
+    if (!claims.containsKey(identity)) {
+      bytes += charge(key);
+      backingClaims.merge(backing, 1, Integer::sum);
+    }
     claims.merge(identity, requested, Math::addExact);
     reserved.merge(stock, requested, Math::addExact);
     changed.run();
@@ -127,6 +138,7 @@ public final class ExternalClaims {
     long remaining = old - actual;
     if (remaining == 0) {
       claims.remove(identity);
+      backingClaims.compute(backing, (unused, count) -> count == 1 ? null : count - 1);
       bytes -= charge(key);
     } else claims.put(identity, remaining);
     long total = reserved.get(stock) - actual;

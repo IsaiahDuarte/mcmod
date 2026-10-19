@@ -35,7 +35,9 @@ final class WorldRestartVerification {
   private final Properties expected;
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean initial = new AtomicBoolean(), replenished = new AtomicBoolean();
-  private int stage, ticks, entered;
+  private int stage, ticks, entered, openAttempts, lastOpen = Integer.MIN_VALUE;
+  private final AtomicBoolean reopenReady = new AtomicBoolean(), reopenProbe = new AtomicBoolean();
+  private final AtomicReference<String> reopenDiagnostic = new AtomicReference<>("not probed");
   private final ChunkLifecycleVerification chunks = new ChunkLifecycleVerification();
   private final StagedRecoveryVerification staging = new StagedRecoveryVerification();
   private final AtomicBoolean stagingDone = new AtomicBoolean();
@@ -64,7 +66,7 @@ final class WorldRestartVerification {
   private void tick(ClientTickEvent.Post event) {
     var client = Minecraft.getInstance();
     ticks++;
-    if (stage == 5) return;
+    if (stage == 7) return;
     if (failure.get() != null)
       throw new IllegalStateException("World restart fixture failed", failure.get());
     if (ticks - entered > 1200)
@@ -73,6 +75,10 @@ final class WorldRestartVerification {
               + stage
               + " screen="
               + (client.screen == null ? "none" : client.screen.getClass().getName())
+              + " attempts="
+              + openAttempts
+              + " server="
+              + reopenDiagnostic.get()
               + (client.screen instanceof MachineSettingsScreen machine
                   ? " preset=" + machine.getMenu().presetView()
                   : ""));
@@ -187,17 +193,68 @@ final class WorldRestartVerification {
           });
       return;
     }
-    if (stage == 2
+    // Split-root returns as soon as the home chunk exists. Its ordinary network may still be
+    // rebuilding; a client block packet alone does not prove that the server accepts this menu.
+    if ((stage == 2 || stage == 3) && splitDone.get() && reopenProbe.compareAndSet(false, true))
+      server.execute(
+          () -> {
+            try {
+              var player = server.getPlayerList().getPlayer(principal);
+              if (player == null) {
+                reopenReady.set(false);
+                reopenDiagnostic.set("player absent");
+                return;
+              }
+              var chunk =
+                  player
+                      .serverLevel()
+                      .getChunkSource()
+                      .getChunkNow(MACHINE.getX() >> 4, MACHINE.getZ() >> 4);
+              var entity = chunk == null ? null : chunk.getBlockEntity(MACHINE);
+              var machine = entity instanceof MachineInterfaceEntity found ? found : null;
+              boolean canUse = machine != null && machine.canUse(player);
+              reopenReady.set(
+                  canUse
+                      && player.getMainHandItem().isEmpty()
+                      && player.getOffhandItem().isEmpty()
+                      && !player.isShiftKeyDown());
+              var runtime = WorldNetworks.get(server);
+              reopenDiagnostic.set(
+                  "canUse="
+                      + canUse
+                      + " membership="
+                      + (machine == null
+                          ? "absent"
+                          : runtime.membership(machine.position()).status())
+                      + " main="
+                      + player.getMainHandItem()
+                      + " off="
+                      + player.getOffhandItem()
+                      + " diagnostic="
+                      + runtime.diagnostic());
+            } catch (RuntimeException error) {
+              failure.set(error);
+            } finally {
+              reopenProbe.set(false);
+            }
+          });
+    if ((stage == 2 || stage == 3)
         && splitDone.get()
+        && reopenReady.get()
+        && (openAttempts == 0 || ticks - lastOpen >= 20)
         && ticks - entered > 30
         && client.screen == null
         && client.player.distanceToSqr(4.5, 65, 4.5) < 4
         && client.level.getBlockState(MACHINE).is(MachineInterfaceContent.BLOCK.get())) {
+      lastOpen = ticks;
+      openAttempts++;
+      System.out.println(
+          "FACTORYCORE_RESTART_OPEN attempt=" + openAttempts + " server=" + reopenDiagnostic.get());
       client.gameMode.useItemOn(
           client.player,
           InteractionHand.MAIN_HAND,
           new BlockHitResult(Vec3.atCenterOf(MACHINE), Direction.NORTH, MACHINE, false));
-      next();
+      if (stage == 2) next();
       return;
     }
     if (stage == 3
@@ -240,6 +297,39 @@ final class WorldRestartVerification {
           "restarted-machine-stock.png",
           client.getMainRenderTarget(),
           c -> System.out.println("FACTORYCORE_RESTART_SCREENSHOT " + c.getString()));
+      client.player.closeContainer();
+      next();
+      return;
+    }
+    if (stage == 5 && client.screen == null && ticks - entered > 5) {
+      var terminal = new net.minecraft.core.BlockPos(1, 65, 2);
+      client.gameMode.useItemOn(
+          client.player,
+          InteractionHand.MAIN_HAND,
+          new BlockHitResult(Vec3.atCenterOf(terminal), Direction.NORTH, terminal, false));
+      next();
+      return;
+    }
+    if (stage == 6
+        && ticks - entered > 10
+        && client.screen instanceof dev.izzy.factorycore.platform.client.TerminalScreen screen) {
+      var view = screen.getMenu().view();
+      if (!view.status().equals("ready") || view.rows().isEmpty()) return;
+      require(
+          view.search().equals("@minecraft") && view.sort() == TerminalSearchSupport.QUANTITY,
+          "Fresh JVM terminal projects saved nondefault player query and quantity sort");
+      require(
+          screen.children().stream()
+              .anyMatch(
+                  child ->
+                      child instanceof net.minecraft.client.gui.components.EditBox edit
+                          && edit.getValue().equals("@minecraft")),
+          "Actual reopened search widget restores text");
+      Screenshot.grab(
+          report.getParent().toFile(),
+          "restarted-terminal-preferences.png",
+          client.getMainRenderTarget(),
+          c -> System.out.println("FACTORYCORE_RESTART_SCREENSHOT " + c.getString()));
       try {
         Files.writeString(
             report,
@@ -248,6 +338,7 @@ final class WorldRestartVerification {
                 + " restartPid="
                 + ProcessHandle.current().pid()
                 + "\nFresh JVM opened existing world without seeding or restoring from expected state.\n"
+                + "Per-player schema1 terminal query @minecraft and quantity sort survived normal save and fresh JVM; actual reopened terminal and search widget project them.\n"
                 + "Accepted known staging delivered5 after restart (source12 + provider8 =20); owned cleanup returned5 (source17 + provider3 =20). Post-insert uncertainty stayed frozen with no replay/refund.\n"
                 + "Full canonical SavedData matched before mutation; physical/player resources and provider identity matched.\n"
                 + "1200mB water:400 held/800 available;300mB lava;500FE. Native Stock editor retained goal8/exact rule.\n"
@@ -276,6 +367,13 @@ final class WorldRestartVerification {
         saved.registry().world().toString().equals(expected.getProperty("world"))
             && player.getUUID().toString().equals(expected.getProperty("principal")),
         "World and authenticated principal preserved");
+    require(
+        player
+            .getPersistentData()
+            .getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG)
+            .getCompound("FactoryCoreTerminal")
+            .equals(TagParser.parseTag(expected.getProperty("terminalPreferences"))),
+        "Exact player terminal preference compound matches pre-save observation");
     var root = (NetworkNodeEntity) level.getBlockEntity(ROOT);
     require(
         root.handle().id().toString().equals(expected.getProperty("root"))

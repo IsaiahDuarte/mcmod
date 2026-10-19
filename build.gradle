@@ -54,6 +54,25 @@ neoForge {
         factorycore_jei_tests { sourceSet(sourceSets.jeiTest) }
     }
     runs {
+        gatewayDepthServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/gateway-depth-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.wireless.server", "true"
+            systemProperty "factorycore.wireless.depthLimited", "true"
+            systemProperty "factorycore.wireless.report", file("build/reports/gateway-depth/result.txt").absolutePath
+        }
+        wirelessLifecycleServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/wireless-lifecycle-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.wireless.server", "true"
+            systemProperty "factorycore.wireless.report", file("build/reports/wireless-lifecycle/result.txt").absolutePath
+        }
         jeiClient {
             client()
             sourceSet = sourceSets.jeiTest
@@ -154,6 +173,37 @@ neoForge {
             systemProperty "factorycore.saveorder.restore", "true"
             systemProperty "factorycore.saveorder.report", file("build/reports/save-order-chunks/restore.txt").absolutePath
             systemProperty "factorycore.saveorder.expected", file("build/reports/save-order-chunks/expected.properties").absolutePath
+        }
+        // Multiplayer check (manual, needs a display): one dedicated server and two real clients.
+        multiplayerServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/multiplayer-server-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.multiplayer.server", "true"
+            systemProperty "factorycore.multiplayer.dir", file("build/reports/multiplayer").absolutePath
+            systemProperty "factorycore.noWelcomeGuide", "true"
+        }
+        multiplayerOwnerClient {
+            client()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/multiplayer-owner-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArguments.addAll('--username', 'FactoryOwner')
+            systemProperty "factorycore.multiplayer.role", "owner"
+            systemProperty "factorycore.multiplayer.dir", file("build/reports/multiplayer").absolutePath
+            systemProperty "factorycore.noWelcomeGuide", "true"
+        }
+        multiplayerStrangerClient {
+            client()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/multiplayer-stranger-run")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArguments.addAll('--username', 'FactoryGuest')
+            systemProperty "factorycore.multiplayer.role", "stranger"
+            systemProperty "factorycore.multiplayer.dir", file("build/reports/multiplayer").absolutePath
+            systemProperty "factorycore.noWelcomeGuide", "true"
         }
         client {
             client()
@@ -331,7 +381,7 @@ tasks.named('runTerminalClient', JavaExec) {
         if (!result.isFile() || !result.text.startsWith('PASS\n')) {
             throw new GradleException('Graphical terminal verification did not complete.')
         }
-        def captures = ['scale-2-all-items.png', 'scale-3-iron.png', 'scale-4-iron.png', 'scale-4-next-page.png', 'buffer-scale-2-settings.png', 'buffer-scale-2-rules-page-1.png', 'buffer-scale-2-rules-page-2.png', 'buffer-scale-2-stock.png', 'buffer-scale-2-full.png', 'buffer-scale-3-inventory.png', 'buffer-scale-3-settings.png', 'buffer-scale-4-settings.png', 'buffer-scale-4-inventory.png', 'machine-scale-2-draft.png', 'machine-scale-3-draft.png', 'machine-scale-4-draft.png', 'machine-scale-4-reopened.png', 'machine-preset-scale-2-draft.png', 'machine-preset-scale-3-draft.png', 'machine-preset-scale-4-stock.png', 'terminal-grid-scale-4.png', 'terminal-grid-scale-2.png', 'gateway-policy-scale-2.png', 'gateway-policy-scale-4.png', 'program-editor-scale-2.png', 'guide-page-1.png', 'guide-page-2.png', 'terminal-fluids-scale-2.png', 'terminal-energy-scale-2.png', 'wireless-terminal-scale-2.png']
+        def captures = ['scale-2-all-items.png', 'terminal-search-display-name.png', 'terminal-search-mod.png', 'terminal-search-tag.png', 'terminal-sort-quantity.png', 'terminal-search-reopened.png', 'terminal-preferences-before-restart.png', 'scale-3-iron.png', 'scale-4-iron.png', 'scale-4-next-page.png', 'buffer-scale-2-settings.png', 'buffer-scale-2-rules-page-1.png', 'buffer-scale-2-rules-page-2.png', 'buffer-scale-2-stock.png', 'buffer-scale-2-full.png', 'buffer-scale-3-inventory.png', 'buffer-scale-3-settings.png', 'buffer-scale-4-settings.png', 'buffer-scale-4-inventory.png', 'machine-scale-2-draft.png', 'machine-scale-3-draft.png', 'machine-scale-4-draft.png', 'machine-scale-4-reopened.png', 'machine-preset-scale-2-draft.png', 'machine-preset-scale-3-draft.png', 'machine-preset-scale-4-stock.png', 'terminal-grid-scale-4.png', 'terminal-grid-scale-2.png', 'gateway-policy-scale-2.png', 'gateway-policy-scale-4.png', 'program-editor-scale-2.png', 'program-inline-error-scale-2.png', 'program-native-items-scale-2.png', 'program-native-labels-scale-2.png', 'program-highlighted-scale-2.png', 'program-highlighted-scale-4.png', 'program-rule-preview-scale-4.png', 'guide-page-1.png', 'guide-page-2.png', 'terminal-fluids-scale-2.png', 'terminal-energy-scale-2.png', 'wireless-terminal-scale-2.png', 'art-blocks-front.png', 'art-blocks-top.png', 'art-cables.png', 'art-items-scale-2.png', 'art-items-scale-4.png']
         if (captures.any { name ->
             def capture = file("build/reports/client-terminal/screenshots/${name}")
             !capture.isFile() || capture.length() == 0
@@ -341,12 +391,49 @@ tasks.named('runTerminalClient', JavaExec) {
     }
 }
 
+tasks.named('runWirelessLifecycleServer', JavaExec) {
+    doFirst {
+        delete file('build/wireless-lifecycle-run/world')
+        delete file('build/reports/wireless-lifecycle')
+        def settings = file('build/wireless-lifecycle-run/server.properties')
+        settings.parentFile.mkdirs()
+        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+    }
+    doLast {
+        def result = file('build/reports/wireless-lifecycle/result.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n'))
+            throw new GradleException('Native wireless endpoint lifecycle did not complete.')
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runWirelessLifecycleServer'), tasks.named('runGatewayDepthServer') }
+tasks.named('runGatewayDepthServer', JavaExec) {
+    doFirst {
+        delete file('build/gateway-depth-run/world')
+        delete file('build/reports/gateway-depth')
+        def settings = file('build/gateway-depth-run/server.properties')
+        settings.parentFile.mkdirs()
+        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+        def config = file('build/gateway-depth-run/world/serverconfig/factorycore-server.toml')
+        config.parentFile.mkdirs()
+        config.text = '[network]\ngatewayDepth=1\n'
+    }
+    doLast {
+        def result = file('build/reports/gateway-depth/result.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n'))
+            throw new GradleException('Configured gateway nesting verification did not complete.')
+    }
+}
+
 // Separate JVM: reopen the completed seed world instead of recreating or repairing it.
 tasks.named('runTerminalRestartClient', JavaExec) {
     dependsOn tasks.named('runTerminalClient')
     doFirst { delete file('build/reports/client-restart') }
     doLast {
         def result = file('build/reports/client-restart/result.txt')
+        def terminalCapture = file('build/reports/client-restart/screenshots/restarted-terminal-preferences.png')
+        if (!terminalCapture.isFile() || terminalCapture.length() < 1000) {
+            throw new GradleException('Restarted terminal preference screenshot is missing.')
+        }
         def capture = file('build/reports/client-restart/screenshots/restarted-machine-stock.png')
         if (!result.isFile() || !result.text.startsWith('PASS\n') || !capture.isFile() || capture.length() == 0) {
             throw new GradleException('Separate-process world restart verification did not complete.')
@@ -450,5 +537,79 @@ tasks.named('runBenchmarkServer', JavaExec) {
     doLast {
         def result = file('build/benchmarks/server-v1-summary.txt')
         if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Server benchmark did not pass conservation.')
+    }
+}
+
+// Manual multiplayer check (not part of check; needs a display). Gradle runs JavaExec tasks of one
+// project one at a time, so this task starts the three configured run command lines as concurrent
+// processes: a dedicated server on a free localhost port and two graphical clients that join it
+// over TCP. Each process gates on its own PASS file; required screenshots must exist.
+def multiplayerRuns = ['runMultiplayerServer', 'runMultiplayerOwnerClient', 'runMultiplayerStrangerClient']
+tasks.register('runMultiplayerCheck') {
+    group = 'verification'
+    description = 'Dedicated server plus two real graphical clients: permissions, concurrent terminals, policy.'
+    dependsOn { multiplayerRuns.collect { tasks.named(it).get().taskDependencies } }
+    doLast {
+        def reports = file('build/reports/multiplayer')
+        delete reports
+        delete file('build/multiplayer-server-run/world')
+        reports.mkdirs()
+        int port = new ServerSocket(0, 0, InetAddress.getLoopbackAddress()).withCloseable { it.localPort }
+        def settings = file('build/multiplayer-server-run/server.properties')
+        settings.parentFile.mkdirs()
+        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=' + port + '\nonline-mode=false\nenforce-secure-profile=false\nspawn-protection=0\nallow-flight=true\ngamemode=survival\ndifficulty=peaceful\nspawn-monsters=false\nmax-players=4\nview-distance=4\nsimulation-distance=4\n'
+        new File(reports, 'port.txt').text = "${port}\n"
+        // Mirrors RunGameTask.exec(): its classpath, environment and game directory are applied at
+        // execution time, so the command line is assembled from the same configured properties.
+        def launch = { String name, String log ->
+            def run = tasks.named(name, JavaExec).get()
+            def directory = run.gameDirectory.get().asFile
+            directory.mkdirs()
+            def command = [run.javaLauncher.get().executablePath.asFile.absolutePath]
+            command.addAll(run.allJvmArgs)
+            command.addAll(['-cp', (run.classpath + run.classpathProvider).asPath, run.mainClass.get()])
+            command.addAll(run.args)
+            def builder = new ProcessBuilder(command.collect { it.toString() })
+                .directory(directory)
+                .redirectErrorStream(true)
+                .redirectOutput(new File(reports, log))
+            run.environmentProperty.get().each { key, value -> builder.environment().put(key, value.toString()) }
+            builder.start()
+        }
+        def processes = []
+        try {
+            processes << launch('runMultiplayerServer', 'server.log')
+            def ready = new File(reports, 'server.ready')
+            long serverDeadline = System.currentTimeMillis() + 300_000
+            while (!ready.isFile()) {
+                if (!processes[0].alive) throw new GradleException('Multiplayer server exited before it was ready; see build/reports/multiplayer/server.log.')
+                if (System.currentTimeMillis() > serverDeadline) throw new GradleException('Multiplayer server did not become ready.')
+                Thread.sleep(500)
+            }
+            processes << launch('runMultiplayerOwnerClient', 'owner.log')
+            processes << launch('runMultiplayerStrangerClient', 'stranger.log')
+            long deadline = System.currentTimeMillis() + 900_000
+            processes.each { process ->
+                long remaining = deadline - System.currentTimeMillis()
+                if (remaining <= 0 || !process.waitFor(remaining, java.util.concurrent.TimeUnit.MILLISECONDS))
+                    throw new GradleException('Multiplayer check timed out; see build/reports/multiplayer/*.log.')
+            }
+        } finally {
+            processes.each { process -> if (process.alive) process.destroyForcibly() }
+        }
+        ['server', 'owner', 'stranger'].each { role ->
+            def result = file("build/reports/multiplayer/${role}/result.txt")
+            if (!result.isFile() || !result.text.startsWith('PASS\n'))
+                throw new GradleException("Multiplayer ${role} did not pass; see build/reports/multiplayer/${role}/result.txt and ${role}.log.")
+        }
+        def captures = [
+            'owner': ['owner-policy-editable.png', 'owner-terminal-concurrent.png', 'owner-sees-stranger-take.png', 'owner-took-one.png', 'owner-sees-stranger-deposit.png', 'owner-concurrent-take.png', 'owner-after-revoke.png'],
+            'stranger': ['stranger-terminal-denied.png', 'stranger-self-grant-refused.png', 'stranger-policy-readonly.png', 'stranger-view-only.png', 'stranger-take-denied.png', 'stranger-terminal-concurrent.png', 'stranger-took-one.png', 'stranger-sees-owner-take.png', 'stranger-deposited.png', 'stranger-concurrent-take.png', 'stranger-revoked-closed.png', 'stranger-operator-granted.png']]
+        captures.each { role, names ->
+            names.each { name ->
+                def capture = file("build/reports/multiplayer/${role}/screenshots/${name}")
+                if (!capture.isFile() || capture.length() == 0) throw new GradleException("Multiplayer screenshot missing: ${role}/${name}")
+            }
+        }
     }
 }

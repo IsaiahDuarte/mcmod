@@ -8,11 +8,14 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeSet;
 import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
 
@@ -40,6 +43,8 @@ public final class WorldStorageSearch {
     final NodeRegistry.Position origin;
     final ResourceKind kind;
     final String text;
+    final Map<ResourceKey, String> names = new HashMap<>();
+    final TreeSet<CatalogCounts.Row> ordered;
     final NetworkTopology.Scope scope;
     final long grantsGeneration;
     CatalogCounts counts = new CatalogCounts();
@@ -57,6 +62,7 @@ public final class WorldStorageSearch {
         NodeRegistry.Position origin,
         ResourceKind kind,
         String text,
+        int sort,
         NetworkTopology.Scope scope,
         long grantsGeneration,
         int tick) {
@@ -65,6 +71,7 @@ public final class WorldStorageSearch {
       this.origin = origin;
       this.kind = kind;
       this.text = text;
+      ordered = new TreeSet<>(TerminalSearchSupport.order(sort, names::get));
       this.scope = scope;
       this.grantsGeneration = grantsGeneration;
       touched = tick;
@@ -92,6 +99,18 @@ public final class WorldStorageSearch {
       NodeRegistry.Position origin,
       ResourceKind kind,
       String text) {
+    return start(id, actor, origin, kind, text, TerminalSearchSupport.NAME);
+  }
+
+  public WorldStorageTransfers.Submission start(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      ResourceKind kind,
+      String text,
+      int sort) {
+    if (sort < TerminalSearchSupport.NAME || sort > TerminalSearchSupport.QUANTITY)
+      throw new IllegalArgumentException("Invalid terminal sort");
     checkThread();
     Objects.requireNonNull(id);
     Objects.requireNonNull(actor);
@@ -111,6 +130,7 @@ public final class WorldStorageSearch {
             origin,
             kind,
             text.toLowerCase(Locale.ROOT),
+            sort,
             member.scope(),
             saved.network(member.scope().network()).generation(),
             server.getTickCount());
@@ -144,8 +164,27 @@ public final class WorldStorageSearch {
     if (!search.complete)
       return new Result(OperationResult.Reason.OK, false, search.pages, List.of(), null);
     if (after != null && after.kind() != search.kind) return failed(OperationResult.Reason.DENIED);
-    var page = search.counts.page(after, limit);
-    return new Result(OperationResult.Reason.OK, true, search.pages, page.rows(), page.next());
+    var anchor = after == null ? null : search.counts.row(after);
+    if (after != null && anchor == null) return failed(OperationResult.Reason.DENIED);
+    var iterator =
+        (anchor == null ? search.ordered : search.ordered.tailSet(anchor, false)).iterator();
+    var rows = new ArrayList<CatalogCounts.Row>();
+    long charge = 0;
+    ResourceKey last = null;
+    boolean more = false;
+    while (iterator.hasNext()) {
+      var row = iterator.next();
+      long size = 256L + 3L * row.key().registryId().length() + row.key().componentByteCount();
+      if (rows.size() == limit
+          || charge > dev.izzy.factorycore.core.resource.ResourceLedger.CATALOG_PAGE_BYTES - size) {
+        more = true;
+        break;
+      }
+      rows.add(row);
+      last = row.key();
+      charge += size;
+    }
+    return new Result(OperationResult.Reason.OK, true, search.pages, rows, more ? last : null);
   }
 
   public boolean close(UUID id, NetworkPermissions.Actor actor) {
@@ -202,10 +241,20 @@ public final class WorldStorageSearch {
                   bytes += 384;
                 }
                 for (var row : page.rows()) {
-                  if (!row.key().registryId().contains(search.text)) continue;
+                  var codec = new PlatformResourceCodec(server.registryAccess());
+                  String name;
+                  try {
+                    if (!TerminalSearchSupport.matches(codec, row.key(), search.text)) continue;
+                    name = TerminalSearchSupport.name(codec, row.key());
+                  } catch (IllegalArgumentException unsupported) {
+                    fail(search, OperationResult.Reason.UNSUPPORTED);
+                    return;
+                  }
+                  var previousRow = search.counts.row(row.key());
+                  long indexCharge = previousRow == null ? 1024 : 0;
                   long before = search.counts.bytes();
                   long worst = search.counts.additionalBytes(source, row.key());
-                  if (bytes > MAX_BYTES - worst) {
+                  if (bytes > MAX_BYTES - worst - indexCharge) {
                     fail(search, OperationResult.Reason.TECHNICAL_LIMIT);
                     return;
                   }
@@ -216,7 +265,12 @@ public final class WorldStorageSearch {
                     fail(search, reason);
                     return;
                   }
-                  long delta = search.counts.bytes() - before;
+                  if (previousRow != null) search.ordered.remove(previousRow);
+                  else {
+                    search.names.put(row.key(), name.substring(0, Math.min(256, name.length())));
+                  }
+                  search.ordered.add(search.counts.row(row.key()));
+                  long delta = search.counts.bytes() - before + indexCharge;
                   bytes += delta;
                   search.charge += delta;
                 }
@@ -246,6 +300,8 @@ public final class WorldStorageSearch {
     bytes -= search.charge - 2048;
     search.charge = 2048;
     search.sources.clear();
+    search.ordered.clear();
+    search.names.clear();
     search.ticket = null;
     search.reason = reason;
     search.complete = true;
@@ -260,6 +316,8 @@ public final class WorldStorageSearch {
         bytes -= search.charge;
         search.counts = null;
         search.sources.clear();
+        search.ordered.clear();
+        search.names.clear();
         iterator.remove();
       } else if (!search.complete
           && search.ticket != null
@@ -267,6 +325,8 @@ public final class WorldStorageSearch {
         bytes -= search.charge;
         search.counts = null;
         search.sources.clear();
+        search.ordered.clear();
+        search.names.clear();
         iterator.remove();
       }
     }
@@ -277,6 +337,8 @@ public final class WorldStorageSearch {
       bytes -= search.charge;
       search.counts = null;
       search.sources.clear();
+      search.ordered.clear();
+      search.names.clear();
     }
   }
 

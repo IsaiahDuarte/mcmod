@@ -3,7 +3,7 @@
   "category": "misc",
   "pattern": [
     " G ",
-    "GDG",
+    "GQG",
     "RGR"
   ],
   "key": {
@@ -13,8 +13,8 @@
     "R": {
       "item": "minecraft:redstone"
     },
-    "D": {
-      "item": "minecraft:diamond"
+    "Q": {
+      "item": "minecraft:quartz"
     }
   },
   "result": {

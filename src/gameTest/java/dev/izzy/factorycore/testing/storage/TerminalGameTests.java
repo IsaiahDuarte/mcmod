@@ -102,6 +102,125 @@ public final class TerminalGameTests {
     f.player.connection.disconnect(Component.literal("Terminal fixture complete"));
   }
 
+  private static void search(Fixture f, String text) {
+    var menu = menu(f);
+    menu.command(
+        f.player,
+        new TerminalPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.view().revision(),
+            TerminalPackets.SEARCH,
+            0,
+            1,
+            text,
+            new byte[32]));
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void displayRegistryModTagSearchAndPlayerSortSurviveReopen(GameTestHelper helper) {
+    var f = setup(helper);
+    var codec = new PlatformResourceCodec(f.player.registryAccess());
+    var gold = codec.itemKey(new ItemStack(Items.GOLD_INGOT));
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 32);
+              f.saved.registry().insert(f.cell, gold, 48);
+              open(helper, f);
+            })
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  menu(f).view().rows().getFirst().icon().equals("minecraft:gold_ingot"),
+                  "Default name sorting uses the display name");
+              search(f, "component variant");
+            })
+        .thenWaitUntil(
+            () -> {
+              loaded(helper, f);
+              helper.assertTrue(
+                  menu(f).view().rows().size() == 1,
+                  "Display-name-only query finds exact custom component item");
+            })
+        .thenIdle(3)
+        .thenExecute(() -> search(f, "minecraft:gold_ingot"))
+        .thenWaitUntil(
+            () -> {
+              loaded(helper, f);
+              helper.assertTrue(
+                  menu(f).view().rows().getFirst().icon().equals("minecraft:gold_ingot"),
+                  "Registry query selects gold");
+            })
+        .thenIdle(3)
+        .thenExecute(() -> search(f, "@minecraft"))
+        .thenWaitUntil(
+            () -> {
+              loaded(helper, f);
+              helper.assertTrue(
+                  menu(f).view().rows().size() == 2, "Namespace query finds both variants");
+            })
+        .thenIdle(3)
+        .thenExecute(() -> search(f, "#minecraft:planks"))
+        .thenWaitUntil(
+            () -> {
+              loaded(helper, f);
+              helper.assertTrue(
+                  menu(f).view().rows().isEmpty(), "Nonmatching loaded tag has no rows");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              var planks = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
+              f.saved.registry().insert(f.cell, planks, 64);
+              search(f, "#minecraft:planks");
+            })
+        .thenWaitUntil(
+            () -> {
+              loaded(helper, f);
+              helper.assertTrue(
+                  menu(f).view().rows().size() == 1
+                      && menu(f).view().rows().getFirst().icon().equals("minecraft:oak_planks"),
+                  "Loaded registry tag matches its member only");
+            })
+        .thenIdle(3)
+        .thenExecute(() -> search(f, "@minecraft"))
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenIdle(3)
+        .thenExecute(
+            () -> command(f, TerminalPackets.SORT, TerminalSearchSupport.QUANTITY, 1, new byte[32]))
+        .thenWaitUntil(
+            () -> {
+              loaded(helper, f);
+              helper.assertTrue(
+                  menu(f).view().rows().getFirst().total().equals("64"),
+                  "Quantity sort orders exact aggregate totals descending");
+            })
+        .thenExecute(
+            () -> {
+              f.player.closeContainer();
+              open(helper, f);
+            })
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  menu(f).view().search().equals("@minecraft")
+                      && menu(f).view().sort() == TerminalSearchSupport.QUANTITY
+                      && menu(f).view().rows().getFirst().total().equals("64"),
+                  "Per-player persisted query and sort are restored on reopen");
+              helper.assertTrue(
+                  f.player.getInventory().isEmpty()
+                      && f.saved.registry().stock(f.cell, f.key).total() == 32,
+                  "All searches and sorts are read-only");
+              logout(f);
+            })
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void nativeMenuSearchWithdrawAndExactShiftDeposit(GameTestHelper helper) {
     var f = setup(helper);
@@ -432,6 +551,90 @@ public final class TerminalGameTests {
               helper.assertTrue(
                   !(guest.containerMenu instanceof TerminalMenu),
                   "Reopening a copied access shell grants no access");
+              logout(f);
+              logout(owner);
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Two open sessions on one terminal: stock changed by the other session (or by the owner's grant
+   * administration) reaches an idle viewer without any action of its own.
+   */
+  @SuppressWarnings("removal") // Real authenticated second principal.
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void idleViewerSeesOtherSessionsChangesAndGrantEdits(GameTestHelper helper) {
+    var owner = setup(helper);
+    var guest = helper.makeMockServerPlayerInLevel();
+    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
+        guest.connection.getConnection());
+    guest.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
+    guest.getInventory().clearContent();
+    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
+    var actor = new NetworkPermissions.Actor(owner.player.getUUID(), false);
+    var grants = owner.saved.network(root.handle().id());
+    var f = new Fixture(guest, owner.terminal, owner.saved, owner.cell, owner.key);
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, owner))
+        .thenExecute(
+            () -> {
+              grants.setGrants(
+                  actor,
+                  guest.getUUID(),
+                  java.util.Set.of(
+                      NetworkPermissions.Permission.VIEW, NetworkPermissions.Permission.WITHDRAW));
+              f.saved.registry().insert(f.cell, f.key, 32);
+              open(helper, owner);
+              open(helper, f);
+            })
+        .thenWaitUntil(
+            () -> {
+              loaded(helper, owner);
+              loaded(helper, f);
+              helper.assertTrue(
+                  menu(owner).view().rows().getFirst().total().equals("32")
+                      && menu(f).view().rows().getFirst().total().equals("32"),
+                  "Both sessions show 32");
+            })
+        .thenExecute(() -> command(f, TerminalPackets.WITHDRAW, 0, 12, new byte[32]))
+        .thenWaitUntil(
+            () -> {
+              menu(f).broadcastChanges();
+              menu(owner).broadcastChanges();
+              helper.assertTrue(
+                  f.saved.registry().stock(f.cell, f.key).total() == 20
+                      && menu(owner).view().rows().getFirst().total().equals("20"),
+                  "Idle owner session shows the guest's withdrawal: " + menu(owner).view());
+            })
+        .thenExecute(
+            () ->
+                grants.setGrants(
+                    actor, UUID.randomUUID(), java.util.Set.of(NetworkPermissions.Permission.VIEW)))
+        .thenWaitUntil(
+            () -> {
+              menu(f).broadcastChanges();
+              menu(owner).broadcastChanges();
+              helper.assertTrue(
+                  menu(owner).view().status().equals("ready")
+                      && menu(owner).view().rows().size() == 1
+                      && menu(owner).view().rows().getFirst().total().equals("20"),
+                  "A grant edit re-reads instead of leaving the owner denied: "
+                      + menu(owner).view());
+              helper.assertTrue(
+                  !menu(f).view().busy()
+                      && menu(f).view().status().equals("ok")
+                      && menu(f).view().rows().size() == 1
+                      && menu(f).view().rows().getFirst().total().equals("20"),
+                  "The acting session retains its successful result while refreshing current stock");
+            })
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  f.saved.registry().stock(f.cell, f.key).total()
+                          + guest.getInventory().countItem(Items.IRON_INGOT)
+                      == 32,
+                  "Exactly 32 conserved");
               logout(f);
               logout(owner);
             })

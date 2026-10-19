@@ -12,7 +12,7 @@ import net.neoforged.neoforge.items.IItemHandler;
 public record ExternalStockPage(List<Entry> entries, int next) {
   public static final int PAGE_SIZE = 16;
 
-  /** Index is relative to the configured item window, or the provider tank index. */
+  /** Index is relative to the configured item window, or configured tank window. */
   public record Entry(int index, ResourceKey key, long stored, Long capacity) {
     public Entry {
       if (index < 0 || key == null || stored < 0 || capacity != null && capacity < stored)
@@ -42,7 +42,14 @@ public record ExternalStockPage(List<Entry> entries, int next) {
               throw new IllegalStateException("Invalid foreign item window");
             yield Math.min(slotCount, slots - firstSlot);
           }
-          case FLUID -> ((IFluidHandler) handler).getTanks();
+          case FLUID -> {
+            int tanks = ((IFluidHandler) handler).getTanks();
+            if (tanks < 0 || firstSlot < 0 || firstSlot > tanks || slotCount < 1 || slotCount > 64)
+              throw new IllegalStateException("Invalid foreign tank window");
+            yield firstSlot == 0 && slotCount == 64
+                ? tanks
+                : Math.min(slotCount, tanks - firstSlot);
+          }
           case ENERGY -> 1;
         };
     if (total < 0) throw new IllegalStateException("Negative foreign catalog size");
@@ -58,14 +65,14 @@ public record ExternalStockPage(List<Entry> entries, int next) {
         }
         case FLUID -> {
           var fluids = (IFluidHandler) handler;
-          var stack = fluids.getFluidInTank(index);
+          var stack = fluids.getFluidInTank(firstSlot + index);
           if (!stack.isEmpty())
             entries.add(
                 new Entry(
                     index,
                     codec.fluidKey(stack),
                     stack.getAmount(),
-                    (long) fluids.getTankCapacity(index)));
+                    (long) fluids.getTankCapacity(firstSlot + index)));
         }
         case ENERGY -> {
           var energy = (IEnergyStorage) handler;

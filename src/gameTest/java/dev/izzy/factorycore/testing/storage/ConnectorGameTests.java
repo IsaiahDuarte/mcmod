@@ -2314,8 +2314,8 @@ public final class ConnectorGameTests {
         .thenSucceed();
   }
 
-  @GameTest(template = "empty", timeoutTicks = 200)
-  public static void unboundPortWithUnscopedLegacyStagingCannotGuessBacking(GameTestHelper h) {
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void knownLegacyStagingNeitherBlocksPortRepairNorGuessesBacking(GameTestHelper h) {
     var f = setup(h);
     h.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
@@ -2325,6 +2325,8 @@ public final class ConnectorGameTests {
     drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(h.getLevel().registryAccess()).itemKey(marked(1));
+    UUID[] id = {null};
+    WorldStorageTransfers.Result[] settled = {null};
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f.runtime, CONNECTOR))
         .thenWaitUntil(() -> ready(h, f.runtime, STORAGE))
@@ -2369,10 +2371,10 @@ public final class ConnectorGameTests {
                       return 0;
                     }
                   };
-              var id = UUID.randomUUID();
+              id[0] = UUID.randomUUID();
               f.saved
                   .transfers()
-                  .start(id, f.actor.id(), key, source, destination, 3, 3, () -> true);
+                  .start(id[0], f.actor.id(), key, source, destination, 3, 3, () -> true);
               h.assertTrue(
                   f.saved.transfers().hasUnscopedUnresolved()
                       && f.runtime.connectors().recoveryRegistration(f.connector) == null,
@@ -2380,14 +2382,145 @@ public final class ConnectorGameTests {
               var old = f.connector.handle();
               copyPort(
                   h, f.connector, f.connector.saveWithFullMetadata(h.getLevel().registryAccess()));
-              var before = f.saved.nodes().evidence(old.id());
+              var record = f.saved.transfers().get(id[0]);
               var provider = chest.saveWithFullMetadata(h.getLevel().registryAccess());
-              rejectPortRepair(h, f.connector, old);
+              try {
+                f.connector.repairConflict(old);
+              } catch (java.io.IOException failure) {
+                throw new AssertionError(failure);
+              }
+              // ADR 0047: known legacy staging settles only into canonical holders, never through
+              // a port, so it no longer blocks port recovery. Only uncertain legacy records that
+              // name a non-canonical backing still do (TransferRegistryTest).
               h.assertTrue(
-                  before.equals(f.saved.nodes().evidence(old.id()))
+                  f.connector.handle().generation() == old.generation() + 1
                       && provider.equals(chest.saveWithFullMetadata(h.getLevel().registryAccess()))
-                      && f.saved.transfers().get(id).staged() == 3,
-                  "Unscoped ambiguity neither probes nor guesses provider ownership");
+                      && record.equals(f.saved.transfers().get(id[0])),
+                  "Repair neither probes the provider nor touches the known legacy record");
+            })
+        .thenWaitUntil(() -> ready(h, f.runtime, STORAGE))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.runtime
+                            .transfers()
+                            .settleLegacy(id[0], f.actor, value -> settled[0] = value)
+                            .rejection()
+                        == OperationResult.Reason.OK,
+                    "The owner settles the legacy staging into its source cell"))
+        .thenWaitUntil(() -> h.assertTrue(settled[0] != null, "Settlement step"))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    settled[0].transfer().returned() == 3
+                        && settled[0].transfer().staged() == 0
+                        && f.saved.registry().stock(cell, key).total() == 3
+                        && chest.getItem(0).getCount() == 19,
+                    "Exactly 3 items return to the cell; the chest is untouched"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", batch = "connector_adoption", timeoutTicks = 400)
+  public static void operatorAdoptsStaleConnectorAfterIndependentSaveMismatch(GameTestHelper h) {
+    portAdoption(h, false);
+  }
+
+  @GameTest(template = "empty", batch = "machine_adoption", timeoutTicks = 400)
+  public static void operatorAdoptsStaleMachineAfterIndependentSaveMismatch(GameTestHelper h) {
+    portAdoption(h, true);
+  }
+
+  private static void portAdoption(GameTestHelper h, boolean machine) {
+    var f = setup(h);
+    if (machine) {
+      h.setBlock(
+          CONNECTOR,
+          MachineInterfaceContent.BLOCK
+              .get()
+              .defaultBlockState()
+              .setValue(BlockStateProperties.FACING, Direction.EAST));
+      MachineInterfaceEntity port = h.getBlockEntity(CONNECTOR);
+      port.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    }
+    ConnectorEntity port = h.getBlockEntity(CONNECTOR);
+    h.setBlock(PROVIDER, Blocks.CHEST);
+    ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+    chest.setItem(0, marked(19));
+    var far = new BlockPos(3, 1, 3);
+    var access = h.getLevel().registryAccess();
+    long[] canonical = {0};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f.runtime, CONNECTOR))
+        .thenIdle(21)
+        .thenExecute(
+            () -> {
+              if (machine)
+                ((MachineInterfaceEntity) port)
+                    .deployPreset(
+                        f.actor,
+                        dev.izzy.factorycore.core.storage.MachinePresets.Mode.STOCK,
+                        dev.izzy.factorycore.core.resource.ResourceFilter.all(ResourceKind.ITEM),
+                        0);
+              var original = port.handle();
+              var before = port.saveWithFullMetadata(access);
+              var oldConfiguration = port.generation();
+              var portable = port.portableForBreak();
+              h.setBlock(far, port.getBlockState());
+              ConnectorEntity placed = h.getBlockEntity(far);
+              placed.place(portable);
+              canonical[0] = placed.handle().generation();
+              h.assertTrue(canonical[0] == original.generation() + 2, "Break/place rotates lease");
+              port.loadWithComponents(before, access);
+              port.onLoad();
+              h.assertTrue(!port.diagnostic().isEmpty(), "Stale crash survivor is inert");
+              var expected =
+                  new NodeRegistry.Handle(
+                      original.world(), original.id(), canonical[0], original.kind());
+              boolean refused = false;
+              try {
+                port.adoptPort(expected);
+              } catch (IllegalStateException rejected) {
+                refused = true;
+              } catch (java.io.IOException failure) {
+                throw new AssertionError(failure);
+              }
+              h.assertTrue(
+                  refused && f.saved.nodes().evidence(original.id()).generation() == canonical[0],
+                  "Existing canonical holder prevents adoption without mutation");
+              placed.loadWithComponents(new net.minecraft.nbt.CompoundTag(), access);
+              var console = h.getLevel().getServer().createCommandSourceStack();
+              var pos = h.absolutePos(CONNECTOR);
+              var adopt =
+                  "factorycore recovery port adopt %s %d %d %d %d"
+                      .formatted(original.id(), canonical[0], pos.getX(), pos.getY(), pos.getZ());
+              h.assertTrue(
+                  portCommand(console.withPermission(0), adopt) < 1, "Only operator can adopt");
+              h.assertTrue(portCommand(console, adopt) == 1, "Operator adopts stale holder");
+              h.assertTrue(
+                  port.handle().generation() == canonical[0] + 1
+                      && port.diagnostic().isEmpty()
+                      && chest.getItem(0).getCount() == 19,
+                  "One canonical lease and untouched foreign contents");
+              if (machine) {
+                var deployment = f.saved.machinePresets().get(original.id());
+                h.assertTrue(
+                    port.generation() > oldConfiguration
+                        && f.saved.machinePresets().configuration(original.id())
+                            == port.generation()
+                        && deployment.mode()
+                            == dev.izzy.factorycore.core.storage.MachinePresets.Mode.PAUSED
+                        && !((MachineInterfaceEntity) port).presetAuthorized(deployment),
+                    "Old deployment paused with advanced fence; operator cannot adopt deployer authority");
+              }
+            })
+        .thenWaitUntil(() -> ready(h, f.runtime, CONNECTOR))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  f.runtime.connectors().bind(port).handle() != null,
+                  "Adopted provider revalidates");
+              h.assertTrue(
+                  chest.getItem(0).getCount() == 19, "Rebinding never replays resource operations");
             })
         .thenSucceed();
   }

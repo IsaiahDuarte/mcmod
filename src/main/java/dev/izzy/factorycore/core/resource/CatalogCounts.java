@@ -99,6 +99,20 @@ public final class CatalogCounts {
     return bytes;
   }
 
+  /** Current exact aggregate, for bounded derived indexes on the same owner thread. */
+  public Row row(ResourceKey key) {
+    checkThread();
+    var value = rows.get(Objects.requireNonNull(key));
+    return value == null
+        ? null
+        : new Row(
+            key,
+            value.total,
+            value.reserved,
+            value.available,
+            value.unknownCapacity == 0 ? value.capacity : null);
+  }
+
   public Page page(ResourceKey after, int limit) {
     checkThread();
     if (limit < 1 || limit > 32)

@@ -1,0 +1,76 @@
+package dev.izzy.factorycore.core.program;
+
+import dev.izzy.factorycore.core.resource.ResourceFilter;
+import java.util.ArrayList;
+import java.util.List;
+
+/** One bounded, read-only invocation; it never submits commands, reserves stock or charges FE. */
+public final class ProgramPreview {
+  public static final int MAX_LINES = 8;
+
+  public record Result(int rule, int total, List<String> lines) {
+    public Result {
+      lines = List.copyOf(lines);
+    }
+  }
+
+  private ProgramPreview() {}
+
+  public static Result evaluate(ProgramIr.Program program, int index, ProgramEvaluator.Host host) {
+    if (program.rules().isEmpty()) return new Result(0, 0, List.of("No rules in this draft"));
+    int selected = Math.min(Math.max(index, 0), program.rules().size() - 1);
+    var rule = program.rules().get(selected);
+    var lines = new ArrayList<String>();
+    lines.add(
+        "Rule "
+            + (selected + 1)
+            + "/"
+            + program.rules().size()
+            + ": "
+            + rule.key()
+            + " ("
+            + rule.interval()
+            + " ticks)");
+    try {
+      var commands = ProgramEvaluator.invoke(rule, host);
+      if (commands.isEmpty()) lines.add("No actions at the current stock and local labels");
+      for (var command : commands) {
+        if (lines.size() == MAX_LINES - 1 && commands.size() > MAX_LINES - 1) {
+          lines.add("More actions omitted; total " + commands.size());
+          break;
+        }
+        var line = describe(command);
+        lines.add(line.length() > 192 ? line.substring(0, 189) + "..." : line);
+      }
+    } catch (ProgramEvaluator.Trap failure) {
+      var line = "Preview refused: " + failure.getMessage();
+      lines.add(line.length() > 192 ? line.substring(0, 189) + "..." : line);
+    }
+    return new Result(selected, program.rules().size(), lines);
+  }
+
+  private static String filter(ResourceFilter filter) {
+    var term = filter.terms().isEmpty() ? "all" : filter.terms().getFirst();
+    return filter.kind().name().toLowerCase(java.util.Locale.ROOT)
+        + " "
+        + (term instanceof ResourceFilter.Registry registry
+            ? registry.id()
+            : term instanceof ResourceFilter.Tag tag ? "#" + tag.id() : term.toString());
+  }
+
+  private static String describe(ProgramCommand command) {
+    return switch (command) {
+      case ProgramCommand.Keep keep ->
+          "Keep " + keep.amount() + " " + filter(keep.filter()) + " at " + keep.machine();
+      case ProgramCommand.Move move ->
+          "Move <= "
+              + move.limit()
+              + " "
+              + filter(move.filter())
+              + " "
+              + (move.from() == null ? "storage -> " + move.to() : move.from() + " -> storage");
+      case ProgramCommand.Craft craft -> "Craft " + craft.amount() + " " + craft.item();
+      case ProgramCommand.Log log -> "Log: " + log.text();
+    };
+  }
+}

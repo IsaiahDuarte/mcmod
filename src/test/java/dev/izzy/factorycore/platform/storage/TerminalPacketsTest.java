@@ -84,7 +84,9 @@ class TerminalPacketsTest {
                     "47214441456659597361153")),
             true,
             false,
-            "64");
+            "64",
+            "@minecraft",
+            TerminalSearchSupport.QUANTITY);
     var output = buffer();
     try {
       TerminalPackets.View.CODEC.encode(output, packet);
@@ -103,7 +105,7 @@ class TerminalPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.DISCHARGE + 1, 0, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.SORT + 1, 0, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalPackets.Command(1, session, 1, 4, 36, 1, "", new byte[32]));
@@ -113,6 +115,15 @@ class TerminalPacketsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalPackets.Command(1, session, 1, 0, 0, 1, "a".repeat(129), new byte[32]));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.Command(
+                1, session, 1, TerminalPackets.SORT, 2, 1, "", new byte[32]));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.View(1, session, 1, "ready", List.of(), false, false, "0", "", 2));
     var output = buffer();
     try {
       output.writeVarInt(1);

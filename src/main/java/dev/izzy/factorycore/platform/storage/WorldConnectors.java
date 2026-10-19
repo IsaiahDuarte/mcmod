@@ -163,14 +163,20 @@ public final class WorldConnectors {
     final ResourcePort delegate;
     final ResourcePort port;
     final Direction face;
+    final UUID group;
+    final boolean indexed;
 
     Binding(
         ConnectorEntity owner,
         Object handler,
         List<Provider> providers,
         ResourcePort delegate,
-        UUID backing) {
+        UUID backing,
+        UUID group,
+        boolean indexed) {
       this.owner = owner;
+      this.group = group;
+      this.indexed = indexed;
       face = owner.targetDirection();
       this.handler = handler;
       this.providers = providers;
@@ -212,11 +218,12 @@ public final class WorldConnectors {
   private final DeviceSavedData saved;
   private final Map<UUID, Binding> bindings = new HashMap<>();
   private final Map<ConnectorEntity, Binding> owners = new IdentityHashMap<>();
-  private final Map<Provider, Binding> providers = new HashMap<>();
-  private final Map<Object, Binding> handlers = new IdentityHashMap<>();
+  private final Map<Provider, java.util.List<Binding>> providers = new HashMap<>();
+  private final Map<Object, java.util.List<Binding>> handlers = new IdentityHashMap<>();
   private final Map<UUID, Binding> backingOwners = new HashMap<>();
   private final Map<UUID, long[]> rateBudgets = new HashMap<>();
   private final Map<RateOwner, long[]> connectorBudgets = new HashMap<>();
+  private int providerClaims;
   private int rateTick = -1;
   private boolean probing;
   private boolean calling;
@@ -283,14 +290,43 @@ public final class WorldConnectors {
       }
       if (vanilla && !vanillaBacking(owner, handler, selected))
         return new Registration(OperationResult.Reason.UNSUPPORTED, null);
-      UUID backing;
+      var settings = owner.settings();
+      java.util.List<dev.izzy.factorycore.platform.resource.ExternalBackingProvider.PortWindow>
+          partitions;
       try {
-        backing = persistentBacking(owner, selected);
+        var describedPorts =
+            providerBlock
+                    instanceof
+                    dev.izzy.factorycore.platform.resource.ExternalBackingProvider described
+                ? described.factoryCorePorts(settings.kind())
+                : java.util.List
+                    .<dev.izzy.factorycore.platform.resource.ExternalBackingProvider.PortWindow>
+                        of();
+        if (describedPorts == null || describedPorts.size() > 64)
+          return new Registration(OperationResult.Reason.UNSUPPORTED, null);
+        partitions = java.util.List.copyOf(describedPorts);
+      } catch (RuntimeException fault) {
+        owner.quarantine(fault);
+        invalidate(owner);
+        return new Registration(OperationResult.Reason.HANDLER_FAULT, null);
+      }
+      if (!validPartitions(partitions, settings))
+        return new Registration(OperationResult.Reason.UNSUPPORTED, null);
+      boolean indexed = !partitions.isEmpty();
+      if (settings.kind() == ResourceKind.FLUID
+          && !settings.wholeFluidHandler()
+          && !(handler instanceof dev.izzy.factorycore.platform.resource.IndexedFluidHandler))
+        return new Registration(OperationResult.Reason.UNSUPPORTED, null);
+      UUID group;
+      try {
+        group = persistentBacking(owner, selected);
       } catch (IllegalArgumentException invalidIdentity) {
         owner.quarantine(invalidIdentity);
         invalidate(owner);
         return new Registration(OperationResult.Reason.DENIED, null);
       }
+      UUID backing =
+          indexed ? indexedBacking(group, settings.firstSlot(), settings.slotCount()) : group;
       var previous = bindings.get(owner.handle().id());
       if (previous != null
           && previous.owner == owner
@@ -298,24 +334,24 @@ public final class WorldConnectors {
           && previous.handle.generation() == owner.generation()
           && previous.handle.provider().equals(owner.providerToken())
           && previous.providers.equals(selected)
-          && previous.handle.backing().equals(backing))
+          && previous.handle.backing().equals(backing)
+          && previous.indexed == indexed)
         return new Registration(OperationResult.Reason.OK, previous.handle);
       if (previous != null && previous.owner != owner)
         return new Registration(OperationResult.Reason.DENIED, null);
       invalidate(owner);
       for (var provider : selected)
-        if (providers.containsKey(provider))
+        if (overlaps(providers.get(provider), owner, group, indexed))
           return new Registration(OperationResult.Reason.OVERLAP, null);
-      if (handlers.containsKey(handler))
+      if (overlaps(handlers.get(handler), owner, group, indexed))
         return new Registration(OperationResult.Reason.OVERLAP, null);
-      if (bindings.size() >= NodeRegistry.MAX_NODES || providers.size() > 16384 - selected.size())
+      if (bindings.size() >= NodeRegistry.MAX_NODES || providerClaims > 16384 - selected.size())
         return new Registration(OperationResult.Reason.TECHNICAL_LIMIT, null);
       if (backingOwners.containsKey(backing))
         return new Registration(OperationResult.Reason.OVERLAP, null);
       if (saved.registry().containsBacking(backing) || saved.nodes().contains(backing))
         throw new IllegalArgumentException("Provider/digital identity collision");
       var codec = new PlatformResourceCodec(owner.serverLevel().registryAccess());
-      var settings = owner.settings();
       ResourcePort delegate =
           switch (settings.kind()) {
             case ITEM -> {
@@ -325,19 +361,77 @@ public final class WorldConnectors {
                 throw new IllegalArgumentException("Selected item window is unavailable");
               yield new ItemHandlerPort(backing, items, codec, settings.firstSlot(), count);
             }
-            case FLUID -> new FluidHandlerPort(backing, (IFluidHandler) handler, codec);
+            case FLUID ->
+                new FluidHandlerPort(
+                    backing,
+                    (IFluidHandler) handler,
+                    codec,
+                    settings.firstSlot(),
+                    settings.slotCount());
             case ENERGY -> new EnergyHandlerPort(backing, (IEnergyStorage) handler);
           };
-      var binding = new Binding(owner, handler, selected, delegate, backing);
+      var binding = new Binding(owner, handler, selected, delegate, backing, group, indexed);
       bindings.put(owner.handle().id(), binding);
       owners.put(owner, binding);
-      for (var provider : selected) providers.put(provider, binding);
-      handlers.put(handler, binding);
+      for (var provider : selected)
+        providers.computeIfAbsent(provider, unused -> new java.util.ArrayList<>()).add(binding);
+      providerClaims += selected.size();
+      handlers.computeIfAbsent(handler, unused -> new java.util.ArrayList<>()).add(binding);
       backingOwners.put(backing, binding);
       return new Registration(OperationResult.Reason.OK, binding.handle);
     } catch (IllegalArgumentException | IllegalStateException unavailable) {
       return new Registration(OperationResult.Reason.DENIED, null);
     }
+  }
+
+  private static boolean validPartitions(
+      java.util.List<dev.izzy.factorycore.platform.resource.ExternalBackingProvider.PortWindow>
+          partitions,
+      ConnectorSettings settings) {
+    if (partitions == null || partitions.size() > 64) return false;
+    if (partitions.isEmpty()) return true;
+    if (settings.kind() == ResourceKind.ENERGY || settings.wholeFluidHandler()) return false;
+    boolean selected = false;
+    for (int index = 0; index < partitions.size(); index++) {
+      var part = partitions.get(index);
+      if (part == null
+          || settings.kind() == ResourceKind.FLUID && part.first() == 0 && part.count() == 64)
+        return false;
+      if (part.first() == settings.firstSlot() && part.count() == settings.slotCount())
+        selected = true;
+      for (int otherIndex = 0; otherIndex < index; otherIndex++) {
+        var other = partitions.get(otherIndex);
+        if ((long) part.first() < (long) other.first() + other.count()
+            && (long) other.first() < (long) part.first() + part.count()) return false;
+      }
+    }
+    return selected;
+  }
+
+  private static <K> void removeClaim(
+      Map<K, java.util.List<Binding>> claims, K key, Binding binding) {
+    var list = claims.get(key);
+    if (list == null) return;
+    list.remove(binding);
+    if (list.isEmpty()) claims.remove(key);
+  }
+
+  private boolean overlaps(
+      java.util.List<Binding> existing, ConnectorEntity owner, UUID group, boolean indexed) {
+    if (existing == null) return false;
+    var settings = owner.settings();
+    for (var binding : existing) {
+      var other = binding.owner.settings();
+      if (!indexed
+          || !binding.indexed
+          || !group.equals(binding.group)
+          || settings.wholeFluidHandler()
+          || other.wholeFluidHandler()
+          || (long) settings.firstSlot() < (long) other.firstSlot() + other.slotCount()
+              && (long) other.firstSlot() < (long) settings.firstSlot() + settings.slotCount())
+        return true;
+    }
+    return false;
   }
 
   /** Remembered metadata only, including ownership conflicts; never authorizes resource access. */
@@ -360,9 +454,10 @@ public final class WorldConnectors {
     if (binding == null) return;
     bindings.remove(binding.handle.connector().id(), binding);
     saved.transfers().unbindBacking(binding.handle.backing());
-    handlers.remove(binding.handler);
+    removeClaim(handlers, binding.handler, binding);
     backingOwners.remove(binding.handle.backing(), binding);
-    for (var provider : binding.providers) providers.remove(provider, binding);
+    for (var provider : binding.providers) removeClaim(providers, provider, binding);
+    providerClaims -= binding.providers.size();
   }
 
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
@@ -520,7 +615,9 @@ public final class WorldConnectors {
     if (binding == null) return new OperationResult(0, OperationResult.Reason.OFFLINE);
     calling = true;
     try {
-      if (key.kind() == ResourceKind.FLUID && ((IFluidHandler) binding.handler).getTanks() > 64)
+      if (key.kind() == ResourceKind.FLUID
+          && binding.owner.settings().wholeFluidHandler()
+          && ((IFluidHandler) binding.handler).getTanks() > 64)
         return new OperationResult(0, OperationResult.Reason.UNSUPPORTED);
       return new OperationResult(freshTotal(binding, key), OperationResult.Reason.OK);
     } catch (RuntimeException fault) {
@@ -563,6 +660,7 @@ public final class WorldConnectors {
     calling = true;
     try {
       if (binding.handle.kind() == ResourceKind.FLUID
+          && binding.owner.settings().wholeFluidHandler()
           && ((IFluidHandler) binding.handler).getTanks() > 64)
         return new OperationResult(0, OperationResult.Reason.UNSUPPORTED);
       var settings = binding.owner.settings();
@@ -622,8 +720,9 @@ public final class WorldConnectors {
   }
 
   private long freshTotal(Binding binding, ResourceKey key) {
-    if (key.kind() == ResourceKind.FLUID && ((IFluidHandler) binding.handler).getTanks() > 64)
-      return 0;
+    if (key.kind() == ResourceKind.FLUID
+        && binding.owner.settings().wholeFluidHandler()
+        && ((IFluidHandler) binding.handler).getTanks() > 64) return 0;
     var settings = binding.owner.settings();
     var codec = new PlatformResourceCodec(binding.owner.serverLevel().registryAccess());
     long total = 0;
@@ -655,13 +754,14 @@ public final class WorldConnectors {
     OperationResult.requireQuantity(requested);
     var binding = current(handle);
     if (binding == null) return new OperationResult(0, OperationResult.Reason.OFFLINE);
+    if (processingLeased(binding)) return new OperationResult(0, OperationResult.Reason.BUSY);
     int tick = server.getTickCount();
     if (tick != rateTick) {
       rateTick = tick;
       rateBudgets.clear();
       connectorBudgets.clear();
     }
-    var budget = rateBudgets.get(binding.handle.backing());
+    var budget = rateBudgets.get(binding.group);
     var identity = new RateOwner(binding.handle.connector().id(), binding.handle.kind());
     if (requested > 0
         && (budget == null && rateBudgets.size() >= NodeRegistry.MAX_NODES
@@ -670,12 +770,190 @@ public final class WorldConnectors {
       return new OperationResult(0, OperationResult.Reason.TECHNICAL_LIMIT);
     var local = connectorBudgets.get(identity);
     int direction = insertion ? 0 : 1;
-    long used =
-        Math.max(budget == null ? 0 : budget[direction], local == null ? 0 : local[direction]);
-    long amount = Math.min(requested, Math.max(0, binding.owner.settings().rate() - used));
+    long amount =
+        Math.min(
+            requested,
+            rateRoom(
+                binding,
+                budget == null ? 0 : budget[direction],
+                local == null ? 0 : local[direction]));
     return new OperationResult(
         amount,
         amount == requested ? OperationResult.Reason.OK : OperationResult.Reason.RATE_LIMIT);
+  }
+
+  /**
+   * Metadata-only reciprocal processing admission: foreign holds or accepted staging retain their
+   * provider ownership even after every interface unregisters. Never queries a capability or stock.
+   */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
+  public OperationResult.Reason processingAdmission(NodeRegistry.Position target) {
+    checkThread();
+    var dimension =
+        net.minecraft.resources.ResourceKey.create(
+            net.minecraft.core.registries.Registries.DIMENSION,
+            net.minecraft.resources.ResourceLocation.parse(target.dimension()));
+    var level = server.getLevel(dimension);
+    if (level == null) return OperationResult.Reason.RESERVED;
+    var position = BlockPos.of(target.block());
+    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    if (chunk == null) return OperationResult.Reason.RESERVED;
+    var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
+    if (entity == null) return OperationResult.Reason.OK;
+    try {
+      for (var kind : ResourceKind.values()) {
+        var providers = providerPositions(level, position, kind);
+        if (providers == null) return OperationResult.Reason.RESERVED;
+        var processing = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(server);
+        for (var provider : providers)
+          if (processing.machineLeased(provider.position())) return OperationResult.Reason.BUSY;
+        var ids = new java.util.ArrayList<UUID>();
+        for (var provider : providers) {
+          var block = BlockPos.of(provider.position().block());
+          var partChunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+          var part =
+              partChunk == null
+                  ? null
+                  : partChunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
+          if (part == null) return OperationResult.Reason.RESERVED;
+          var id =
+              ExternalProviderIdentity.read(
+                  part.getPersistentData().get(ExternalProviderIdentity.FIELD),
+                  saved.registry().world());
+          if (id != null) ids.add(id);
+        }
+        if (ids.isEmpty()) continue;
+        if (ids.size() != providers.size()) return OperationResult.Reason.RESERVED;
+        var group = ExternalProviderIdentity.group(saved.registry().world(), kind, ids);
+        if (ownedBacking(group)) return OperationResult.Reason.RESERVED;
+        if (entity
+            instanceof dev.izzy.factorycore.platform.resource.ExternalBackingProvider described) {
+          var ports = described.factoryCorePorts(kind);
+          if (ports == null || ports.size() > 64) return OperationResult.Reason.RESERVED;
+          for (var port : ports) {
+            if (port == null) return OperationResult.Reason.RESERVED;
+            var backing = indexedBacking(group, port.first(), port.count());
+            if (ownedBacking(backing)) return OperationResult.Reason.RESERVED;
+          }
+        }
+      }
+      return OperationResult.Reason.OK;
+    } catch (RuntimeException invalidMetadata) {
+      return OperationResult.Reason.RESERVED;
+    }
+  }
+
+  /**
+   * Capture/read processing provider fingerprints using only loaded persistent component metadata.
+   * Initialization is allowed only before new dispatch; resume/cleanup must pass false. Empty means
+   * unavailable/unprovable identity. No capability getter or resource method is invoked.
+   */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
+  public Map<ResourceKind, UUID> processingIdentity(
+      NodeRegistry.Position target, boolean initialize) {
+    checkThread();
+    var dimension =
+        net.minecraft.resources.ResourceKey.create(
+            net.minecraft.core.registries.Registries.DIMENSION,
+            net.minecraft.resources.ResourceLocation.parse(target.dimension()));
+    var level = server.getLevel(dimension);
+    if (level == null) return Map.of();
+    var position = BlockPos.of(target.block());
+    var targetChunk =
+        level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var targetEntity =
+        targetChunk == null
+            ? null
+            : targetChunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
+    if (!(targetEntity instanceof dev.izzy.factorycore.platform.resource.ExternalBackingProvider)
+        && !(targetEntity instanceof net.minecraft.world.Container
+            && targetEntity
+                .getClass()
+                .getPackageName()
+                .equals("net.minecraft.world.level.block.entity"))) return Map.of();
+    var identities = new IdentityHashMap<BlockEntity, UUID>();
+    var missing = new java.util.ArrayList<BlockEntity>();
+    var result = new java.util.EnumMap<ResourceKind, UUID>(ResourceKind.class);
+    try {
+      for (var kind : ResourceKind.values()) {
+        var members = providerPositions(level, position, kind);
+        if (members == null) return Map.of();
+        var components = new java.util.ArrayList<UUID>();
+        var types = new StringBuilder();
+        for (var member : members) {
+          var block = BlockPos.of(member.position().block());
+          var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+          var entity =
+              chunk == null
+                  ? null
+                  : chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
+          if (entity == null || entity.isRemoved()) return Map.of();
+          var id = identities.get(entity);
+          if (id == null) {
+            id =
+                ExternalProviderIdentity.read(
+                    entity.getPersistentData().get(ExternalProviderIdentity.FIELD),
+                    saved.registry().world());
+            if (id == null) {
+              if (!initialize) return Map.of();
+              id = UUID.randomUUID();
+              missing.add(entity);
+            }
+            identities.put(entity, id);
+          }
+          components.add(id);
+          types
+              .append(':')
+              .append(member.position().block())
+              .append(':')
+              .append(
+                  net.minecraft.core.registries.BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(
+                      entity.getType()));
+        }
+        var group = ExternalProviderIdentity.group(saved.registry().world(), kind, components);
+        result.put(
+            kind,
+            UUID.nameUUIDFromBytes(
+                ("factorycore:processing-provider:v1:" + group + types)
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+      }
+      // Validate every group before initializing any persistent identity marker.
+      for (var entity : missing) {
+        entity
+            .getPersistentData()
+            .put(
+                ExternalProviderIdentity.FIELD,
+                ExternalProviderIdentity.write(saved.registry().world(), identities.get(entity)));
+        entity.setChanged();
+      }
+      return Map.copyOf(result);
+    } catch (RuntimeException invalidMetadata) {
+      return Map.of();
+    }
+  }
+
+  private boolean ownedBacking(UUID backing) {
+    return saved.externalClaims().hasBacking(backing)
+        || saved.transfers().unresolved(backing) != null;
+  }
+
+  private static UUID indexedBacking(UUID group, int first, int count) {
+    return UUID.nameUUIDFromBytes(
+        ("factorycore:indexed-port:v1:" + group + ":" + first + ":" + count)
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+  }
+
+  private boolean processingLeased(Binding binding) {
+    var jobs = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(server);
+    for (var provider : binding.providers) if (jobs.machineLeased(provider.position())) return true;
+    return false;
+  }
+
+  private long rateRoom(Binding binding, long groupUsed, long localUsed) {
+    var settings = binding.owner.settings();
+    int groupRate =
+        binding.indexed ? settings.kind() == ResourceKind.ITEM ? 128 : 1000 : settings.rate();
+    return Math.max(0, Math.min(groupRate - groupUsed, settings.rate() - localUsed));
   }
 
   private long change(
@@ -707,6 +985,7 @@ public final class WorldConnectors {
     OperationResult.requireQuantity(requested);
     if (requested == 0 || key.kind() != binding.handle.kind() || current(binding.handle) != binding)
       return 0;
+    if (processingLeased(binding)) return 0;
     var settings = binding.owner.settings();
     if (insertion && settings.access() == ConnectorSettings.Access.READ_ONLY
         || !insertion && settings.access() == ConnectorSettings.Access.WRITE_ONLY) return 0;
@@ -716,7 +995,7 @@ public final class WorldConnectors {
       rateBudgets.clear();
       connectorBudgets.clear();
     }
-    var budgetKey = binding.handle.backing();
+    var budgetKey = binding.group;
     if (!rateBudgets.containsKey(budgetKey) && rateBudgets.size() >= NodeRegistry.MAX_NODES)
       return 0;
     var identity = new RateOwner(binding.handle.connector().id(), binding.handle.kind());
@@ -725,10 +1004,7 @@ public final class WorldConnectors {
     var local = connectorBudgets.computeIfAbsent(identity, unused -> new long[2]);
     var budget = rateBudgets.computeIfAbsent(budgetKey, unused -> new long[2]);
     int direction = insertion ? 0 : 1;
-    long amount =
-        Math.min(
-            requested,
-            Math.max(0, settings.rate() - Math.max(budget[direction], local[direction])));
+    long amount = Math.min(requested, rateRoom(binding, budget[direction], local[direction]));
     if (insertion && !ownedReturn) amount = stockRoom(binding, key, amount);
     if (amount == 0) return 0;
     final long offered = amount;
@@ -809,11 +1085,10 @@ public final class WorldConnectors {
   }
 
   private boolean vanillaBacking(ConnectorEntity owner, Object handler, List<Provider> selected) {
-    if (!(handler instanceof net.neoforged.neoforge.items.wrapper.InvWrapper wrapper)
-        || handler.getClass() != net.neoforged.neoforge.items.wrapper.InvWrapper.class
-            && handler.getClass() != net.neoforged.neoforge.items.wrapper.SidedInvWrapper.class)
+    boolean sided =
+        handler.getClass() == net.neoforged.neoforge.items.wrapper.SidedInvWrapper.class;
+    if (!sided && handler.getClass() != net.neoforged.neoforge.items.wrapper.InvWrapper.class)
       return false;
-    var container = wrapper.getInv();
     for (var provider : selected) {
       var position = BlockPos.of(provider.position().block());
       var chunk =
@@ -823,12 +1098,26 @@ public final class WorldConnectors {
               .getChunkNow(position.getX() >> 4, position.getZ() >> 4);
       if (chunk == null) return false;
       var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
-      if (container != entity
-          && !(container instanceof net.minecraft.world.CompoundContainer combined
-              && entity instanceof net.minecraft.world.Container part
-              && combined.contains(part))) return false;
+      if (!(sided ? sidedView(handler, entity) : invView(handler, entity))) return false;
     }
     return true;
+  }
+
+  private static boolean invView(Object handler, Object entity) {
+    var container = ((net.neoforged.neoforge.items.wrapper.InvWrapper) handler).getInv();
+    return container == entity
+        || container instanceof net.minecraft.world.CompoundContainer combined
+            && entity instanceof net.minecraft.world.Container part
+            && combined.contains(part);
+  }
+
+  /** SidedInvWrapper exposes no container getter; its equality compares container and face. */
+  private static boolean sidedView(Object handler, Object entity) {
+    if (!(entity instanceof net.minecraft.world.WorldlyContainer worldly)) return false;
+    for (var side : net.minecraft.core.Direction.values())
+      if (handler.equals(new net.neoforged.neoforge.items.wrapper.SidedInvWrapper(worldly, side)))
+        return true;
+    return false;
   }
 
   private BlockEntity providerEntity(ConnectorEntity owner) {
@@ -846,8 +1135,20 @@ public final class WorldConnectors {
   /** Normalize vanilla double chests and check both chunks before any capability lookup. */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private List<Provider> providerPositions(ConnectorEntity owner) {
-    ServerLevel level = owner.serverLevel();
-    var position = owner.getBlockPos().relative(owner.targetDirection());
+    try {
+      return providerPositions(
+          owner.serverLevel(),
+          owner.getBlockPos().relative(owner.targetDirection()),
+          owner.settings().kind());
+    } catch (RuntimeException fault) {
+      owner.quarantine(fault);
+      throw fault;
+    }
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
+  private List<Provider> providerPositions(
+      ServerLevel level, BlockPos position, ResourceKind kind) {
     var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
     if (chunk == null) return null;
     BlockEntity entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
@@ -859,13 +1160,7 @@ public final class WorldConnectors {
           "Digital storage uses canonical handles, not foreign registration");
     if (entity
         instanceof dev.izzy.factorycore.platform.resource.ExternalBackingProvider described) {
-      List<BlockPos> blocks;
-      try {
-        blocks = described.factoryCoreBackingPositions(owner.settings().kind());
-      } catch (RuntimeException fault) {
-        owner.quarantine(fault);
-        throw fault;
-      }
+      List<BlockPos> blocks = described.factoryCoreBackingPositions(kind);
       if (blocks == null)
         throw new IllegalArgumentException("Invalid provider backing description");
       int count = blocks.size();
@@ -896,7 +1191,7 @@ public final class WorldConnectors {
                   new Provider(
                       new NodeRegistry.Position(
                           level.dimension().location().toString(), block.asLong()),
-                      owner.settings().kind()))
+                      kind))
           .sorted(java.util.Comparator.comparingLong(provider -> provider.position().block()))
           .toList();
     }
@@ -904,7 +1199,7 @@ public final class WorldConnectors {
     var first =
         new Provider(
             new NodeRegistry.Position(level.dimension().location().toString(), position.asLong()),
-            owner.settings().kind());
+            kind);
     if (!(state.getBlock() instanceof ChestBlock)
         || state.getValue(ChestBlock.TYPE) == ChestType.SINGLE) return List.of(first);
     var otherPosition = position.relative(ChestBlock.getConnectedDirection(state));
@@ -915,7 +1210,7 @@ public final class WorldConnectors {
         new Provider(
             new NodeRegistry.Position(
                 level.dimension().location().toString(), otherPosition.asLong()),
-            owner.settings().kind());
+            kind);
     return position.asLong() < otherPosition.asLong()
         ? List.of(first, second)
         : List.of(second, first);

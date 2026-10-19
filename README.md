@@ -2,7 +2,15 @@
 
 A mod under development: unified item/fluid/energy storage, a crafting terminal, segmented factories, recipe-based autocrafting, and Rust/WebAssembly automation alongside a friendly language. Progression starts with wired storage and adds bounded wireless access/links and infinite item capacity.
 
-Status: P0 bootstrap implemented and locally verified for Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. The minimal loader entry and real JVM verification are in place. Initial P2 Storage Drives, item/fluid cells, upgrade modules and physical controllers/gateways/cables are implemented with headless world tests; automatic wired cell availability is implemented, while terminal frontends and remaining presets remain pending. Automatic hopper buffer Import/Paused controls and bounded server storage search are implemented. P1 accounting/scheduling foundations and a real Rust/Wasm sandbox probe are locally verified. See [resource contracts](docs/modules/RESOURCE_ACCOUNTING.md), [runtime decision](docs/decisions/0004-wasm-feasibility.md), [platform ADR](docs/decisions/0001-platform.md) and [implementation evidence](docs/IMPLEMENTATION.md).
+Status: incomplete development build for Minecraft 1.21.1 / NeoForge 21.1.252 /
+Java 21. Wired item/fluid/energy storage, shared transfers and presets, terminal
+crafting/jobs/container actions, friendly/Rust-Wasm programs, wireless access/links,
+onboarding and original assets are implemented in part. Local canonical checks,
+two-client terminal permissions, graphical screens/art and a separate-process
+restart have passing evidence within their recorded scope. Shared wireless resource
+caps, remaining adapter/UI/upgrade behavior and full survival/performance/release
+acceptance are still open. See the [current implementation evidence and next work](docs/IMPLEMENTATION.md),
+[player guide](docs/PLAYER_GUIDE.md) and [asset inventory](docs/ASSETS.md).
 
 ## Start here
 
@@ -55,8 +63,8 @@ python3 scripts/verify.py
 On Windows use `python scripts/verify.py`. This canonical check validates docs,
 acceptance tracking and nonempty tooling tests, then runs Gradle `build` for
 compilation, packaging, formatting, PMD, Rust fmt/clippy/tests/build and nonempty
-JVM/architecture/real-Wasm tests and required headless Minecraft GameTests. Rust is checked only in the experiment's wired
-source tree; other unwired Kotlin/Rust source still fails. Passing this command
+JVM/architecture/real-Wasm tests and required headless Minecraft GameTests. Rust is checked in the wired experiment and `sdk/rust` workspace; other unwired
+Kotlin/Rust source still fails. Passing this command
 proves only its covered behaviors, not full gameplay acceptance or actual client interactions.
 
 Development commands:

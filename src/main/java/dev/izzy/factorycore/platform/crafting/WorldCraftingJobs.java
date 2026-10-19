@@ -410,7 +410,14 @@ public final class WorldCraftingJobs {
     int passes = cleanups.merge(job.id(), 1, Integer::sum);
     var holder = interfaceAt(job.dispatch().machine());
     var offer = holder == null ? null : findDispatched(job);
-    if (offer != null && reachable(holder, offer.pattern())) {
+    if (offer != null
+        && job.dispatch().target() != null
+        && !job.dispatch().providers().isEmpty()
+        && job.dispatch().target().equals(machineTarget(holder))
+        && job.dispatch()
+            .providers()
+            .equals(networks().connectors().processingIdentity(job.dispatch().target(), false))
+        && reachable(holder, offer.pattern())) {
       var outputs = expected(offer.pattern());
       var codec = new PlatformResourceCodec(server.registryAccess());
       if (holder.machine() != null) collect(job, outputs, holder.machine(), codec);
@@ -476,7 +483,20 @@ public final class WorldCraftingJobs {
     }
     var outputs = assemble(job.id(), offer);
     if (outputs == null) return "recipe_changed";
+    var permits = new ArrayList<dev.izzy.factorycore.core.resource.WirelessBudget.Permit>();
+    for (var changes : List.of(inputs, outputs))
+      for (var entry : changes.entrySet()) {
+        var permit =
+            networks()
+                .movement(scopeAnchor, offer.unit().origin(), entry.getKey(), entry.getValue());
+        permits.add(permit);
+        if (permit.amount() != entry.getValue()) {
+          for (var held : permits) held.finish(0);
+          return permit.reason().name().toLowerCase(java.util.Locale.ROOT);
+        }
+      }
     job.crafted(inputs, outputs);
+    for (var permit : permits) permit.finish(permit.amount());
     return null;
   }
 
@@ -494,11 +514,35 @@ public final class WorldCraftingJobs {
     return null;
   }
 
-  private boolean leasedByOther(NodeRegistry.Position machine, UUID job) {
-    for (var other : saved().craftingJobs().all())
-      if (!other.id().equals(job)
-          && other.dispatch() != null
-          && other.dispatch().machine().equals(machine)) return true;
+  private static NodeRegistry.Position machineTarget(CraftingInterfaceEntity holder) {
+    return new NodeRegistry.Position(
+        holder.origin().dimension(), holder.getBlockPos().relative(holder.facing()).asLong());
+  }
+
+  /**
+   * Metadata-only lease query for the shared connector path. Dispatch saves the interface position,
+   * and target; legacy dispatches without a proven target fence all six neighbors. Never loads a
+   * chunk.
+   */
+  public boolean machineLeased(NodeRegistry.Position target) {
+    if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
+    return leasedByOther(target, null);
+  }
+
+  private boolean leasedByOther(NodeRegistry.Position target, UUID job) {
+    var block = net.minecraft.core.BlockPos.of(target.block());
+    for (var other : saved().craftingJobs().all()) {
+      if (other.id().equals(job) || other.dispatch() == null) continue;
+      var dispatch = other.dispatch();
+      if (dispatch.target() != null) {
+        if (dispatch.target().equals(target)) return true;
+      } else {
+        var leased = dispatch.machine();
+        if (!leased.dimension().equals(target.dimension())) continue;
+        var port = net.minecraft.core.BlockPos.of(leased.block());
+        if (port.equals(block) || port.distManhattan(block) == 1) return true;
+      }
+    }
     return false;
   }
 
@@ -541,20 +585,35 @@ public final class WorldCraftingJobs {
     if (job.dispatch() == null) {
       var holder = (CraftingInterfaceEntity) offer.unit();
       if (!reachable(holder, pattern)) return "machine_missing";
-      if (leasedByOther(holder.origin(), job.id())) return "busy";
+      if (leasedByOther(machineTarget(holder), job.id())) return "busy";
+      var admission = networks().connectors().processingAdmission(machineTarget(holder));
+      if (admission == dev.izzy.factorycore.core.resource.OperationResult.Reason.BUSY)
+        return "busy";
+      if (admission != dev.izzy.factorycore.core.resource.OperationResult.Reason.OK)
+        return "reserved";
       for (var key : outputs.keySet())
         if (key.kind() == ResourceKind.FLUID
             ? containsFluid(holder.fluidMachine(), key)
             : contains(holder.machine(), key, codec)) return "output_not_clean";
+      var providers = networks().connectors().processingIdentity(machineTarget(holder), true);
+      if (providers.isEmpty()) return "machine_identity";
       for (var input : pattern.inputs().entrySet()) {
         long missing = input.getValue() - job.stagedAmount(input.getKey());
         if (missing > 0) pull(job, input.getKey(), missing);
         if (job.stagedAmount(input.getKey()) < input.getValue()) return "offline";
       }
-      job.dispatch(holder.origin());
+      job.dispatch(holder.origin(), machineTarget(holder), providers);
     }
     var holder = interfaceAt(job.dispatch().machine());
-    if (holder == null || !reachable(holder, pattern)) return "machine_missing";
+    if (holder == null) return "machine_missing";
+    if (job.dispatch().target() == null) return "legacy_machine";
+    if (job.dispatch().providers().isEmpty()) return "legacy_provider";
+    if (!job.dispatch().target().equals(machineTarget(holder))) return "machine_changed";
+    if (!job.dispatch()
+        .providers()
+        .equals(networks().connectors().processingIdentity(job.dispatch().target(), false)))
+      return "machine_replaced";
+    if (!reachable(holder, pattern)) return "machine_missing";
     if (holder.machine() != null) {
       insert(job, pattern.inputs(), holder.machine(), codec);
       collect(job, outputs, holder.machine(), codec);
@@ -600,11 +659,13 @@ public final class WorldCraftingJobs {
   }
 
   /** Fills exactly what the machine accepts of each staged fluid input; the rest stays staged. */
-  private static void insertFluids(
+  private void insertFluids(
       CraftingJob job,
       Map<ResourceKey, Long> inputs,
       net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
       PlatformResourceCodec codec) {
+    tanks = meteredFluids(job, tanks, codec);
+    if (tanks == null) return;
     for (var input : inputs.entrySet()) {
       if (input.getKey().kind() != ResourceKind.FLUID) continue;
       long remaining =
@@ -621,11 +682,13 @@ public final class WorldCraftingJobs {
   }
 
   /** Drains only the expected fluid outputs from the leased machine into job staging. */
-  private static void collectFluids(
+  private void collectFluids(
       CraftingJob job,
       Map<ResourceKey, Long> outputs,
       net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
       PlatformResourceCodec codec) {
+    tanks = meteredFluids(job, tanks, codec);
+    if (tanks == null) return;
     for (var output : outputs.entrySet()) {
       if (output.getKey().kind() != ResourceKind.FLUID) continue;
       long remaining =
@@ -642,11 +705,13 @@ public final class WorldCraftingJobs {
     }
   }
 
-  private static void insert(
+  private void insert(
       CraftingJob job,
       Map<ResourceKey, Long> inputs,
       net.neoforged.neoforge.items.IItemHandler machine,
       PlatformResourceCodec codec) {
+    machine = meteredItems(job, machine, codec);
+    if (machine == null) return;
     for (var input : inputs.entrySet()) {
       if (input.getKey().kind() != ResourceKind.ITEM) continue;
       long remaining =
@@ -667,11 +732,13 @@ public final class WorldCraftingJobs {
   }
 
   /** Extracts expected outputs from the leased machine; anything else extracted is staged too. */
-  private static void collect(
+  private void collect(
       CraftingJob job,
       Map<ResourceKey, Long> outputs,
       net.neoforged.neoforge.items.IItemHandler machine,
       PlatformResourceCodec codec) {
+    machine = meteredItems(job, machine, codec);
+    if (machine == null) return;
     for (var output : outputs.entrySet())
       for (int slot = 0;
           output.getKey().kind() == ResourceKind.ITEM && slot < machine.getSlots();
@@ -699,7 +766,17 @@ public final class WorldCraftingJobs {
       if (held == 0) continue;
       var ownership = registry.ownership(cell.getKey());
       if (ownership == null || ownership.conflict()) continue;
-      var result = registry.extract(ownership.handle(), key, Math.min(held, amount), job.id());
+      var origin = anchor(job, null);
+      var location = registry.definition(ownership.handle()).location();
+      if (origin == null || location == null) continue;
+      var position = new NodeRegistry.Position(location.dimension(), location.position());
+      var permit = networks().movement(position, origin, key, Math.min(held, amount));
+      if (permit.amount() == 0) {
+        permit.finish(0);
+        continue;
+      }
+      var result = registry.extract(ownership.handle(), key, permit.amount(), job.id());
+      permit.finish(result.amount());
       if (result.amount() > 0) {
         job.pulled(cell.getKey(), key, result.amount());
         amount -= result.amount();
@@ -761,7 +838,16 @@ public final class WorldCraftingJobs {
       long remaining = entry.getValue();
       for (var cell : cells(actor, anchor, entry.getKey())) {
         if (remaining == 0) break;
-        var result = registry.insert(cell.handle(), entry.getKey(), remaining);
+        var location = registry.definition(cell.handle()).location();
+        if (location == null) continue;
+        var position = new NodeRegistry.Position(location.dimension(), location.position());
+        var permit = networks().movement(anchor, position, entry.getKey(), remaining);
+        if (permit.amount() == 0) {
+          permit.finish(0);
+          continue;
+        }
+        var result = registry.insert(cell.handle(), entry.getKey(), permit.amount());
+        permit.finish(result.amount());
         if (result.amount() > 0) {
           job.delivered(entry.getKey(), result.amount());
           remaining -= result.amount();
@@ -772,6 +858,161 @@ public final class WorldCraftingJobs {
       job.waiting("full");
       retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
     }
+  }
+
+  /** Job staging resides in its request segment; external machine dispatch is a separate leg. */
+  private long meterMachine(
+      CraftingJob job,
+      ResourceKey key,
+      long amount,
+      boolean simulate,
+      java.util.function.LongUnaryOperator operation) {
+    var origin = anchor(job, null);
+    if (origin == null || job.dispatch() == null) return 0;
+    var machine = job.dispatch().machine();
+    if (simulate) {
+      long offer = networks().movementAvailable(origin, machine, key, amount);
+      return offer == 0 ? 0 : operation.applyAsLong(offer);
+    }
+    var permit = networks().movement(origin, machine, key, amount);
+    if (permit.amount() == 0) {
+      permit.finish(0);
+      return 0;
+    }
+    long actual = operation.applyAsLong(permit.amount());
+    permit.finish(actual);
+    return actual;
+  }
+
+  private net.neoforged.neoforge.items.IItemHandler meteredItems(
+      CraftingJob job,
+      net.neoforged.neoforge.items.IItemHandler delegate,
+      PlatformResourceCodec codec) {
+    if (anchor(job, null) == null || job.dispatch() == null) return null;
+    return new net.neoforged.neoforge.items.IItemHandler() {
+      @Override
+      public int getSlots() {
+        return delegate.getSlots();
+      }
+
+      @Override
+      public ItemStack getStackInSlot(int slot) {
+        return delegate.getStackInSlot(slot);
+      }
+
+      @Override
+      public int getSlotLimit(int slot) {
+        return delegate.getSlotLimit(slot);
+      }
+
+      @Override
+      public boolean isItemValid(int slot, ItemStack stack) {
+        return delegate.isItemValid(slot, stack);
+      }
+
+      @Override
+      public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+        if (stack.isEmpty()) return ItemStack.EMPTY;
+        long accepted =
+            meterMachine(
+                job,
+                codec.itemKey(stack),
+                stack.getCount(),
+                simulate,
+                offered -> {
+                  var rest =
+                      delegate.insertItem(slot, stack.copyWithCount((int) offered), simulate);
+                  if (!rest.isEmpty() && !ItemStack.isSameItemSameComponents(rest, stack))
+                    throw new IllegalStateException(
+                        "Processing handler changed an offered identity");
+                  return offered - rest.getCount();
+                });
+        return stack.copyWithCount(stack.getCount() - (int) accepted);
+      }
+
+      @Override
+      public ItemStack extractItem(int slot, int amount, boolean simulate) {
+        var present = delegate.getStackInSlot(slot);
+        if (present.isEmpty()) return ItemStack.EMPTY;
+        var extracted = new ItemStack[] {ItemStack.EMPTY};
+        meterMachine(
+            job,
+            codec.itemKey(present),
+            amount,
+            simulate,
+            offered -> {
+              extracted[0] = delegate.extractItem(slot, (int) offered, simulate);
+              return extracted[0].getCount();
+            });
+        return extracted[0];
+      }
+    };
+  }
+
+  private net.neoforged.neoforge.fluids.capability.IFluidHandler meteredFluids(
+      CraftingJob job,
+      net.neoforged.neoforge.fluids.capability.IFluidHandler delegate,
+      PlatformResourceCodec codec) {
+    if (anchor(job, null) == null || job.dispatch() == null) return null;
+    return new net.neoforged.neoforge.fluids.capability.IFluidHandler() {
+      @Override
+      public int getTanks() {
+        return delegate.getTanks();
+      }
+
+      @Override
+      public net.neoforged.neoforge.fluids.FluidStack getFluidInTank(int tank) {
+        return delegate.getFluidInTank(tank);
+      }
+
+      @Override
+      public int getTankCapacity(int tank) {
+        return delegate.getTankCapacity(tank);
+      }
+
+      @Override
+      public boolean isFluidValid(int tank, net.neoforged.neoforge.fluids.FluidStack stack) {
+        return delegate.isFluidValid(tank, stack);
+      }
+
+      @Override
+      public int fill(net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
+        if (stack.isEmpty()) return 0;
+        return (int)
+            meterMachine(
+                job,
+                codec.fluidKey(stack),
+                stack.getAmount(),
+                action.simulate(),
+                offered -> delegate.fill(stack.copyWithAmount((int) offered), action));
+      }
+
+      @Override
+      public net.neoforged.neoforge.fluids.FluidStack drain(
+          net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
+        if (stack.isEmpty()) return net.neoforged.neoforge.fluids.FluidStack.EMPTY;
+        var got =
+            new net.neoforged.neoforge.fluids.FluidStack[] {
+              net.neoforged.neoforge.fluids.FluidStack.EMPTY
+            };
+        meterMachine(
+            job,
+            codec.fluidKey(stack),
+            stack.getAmount(),
+            action.simulate(),
+            offered -> {
+              got[0] = delegate.drain(stack.copyWithAmount((int) offered), action);
+              return got[0].getAmount();
+            });
+        return got[0];
+      }
+
+      @Override
+      public net.neoforged.neoforge.fluids.FluidStack drain(int amount, FluidAction action) {
+        var present = delegate.drain(amount, FluidAction.SIMULATE);
+        return present.isEmpty() ? present : drain(present, action);
+      }
+    };
   }
 
   private void checkThread() {

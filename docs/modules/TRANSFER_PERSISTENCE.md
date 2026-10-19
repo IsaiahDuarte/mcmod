@@ -250,3 +250,8 @@ new schema1. Audit ownership/quotas/latency limits are documented in the ADR and
 
 This is not full ownership-conflict reconciliation or an independent-save/crash
 transaction guarantee. No uncertain evidence is deleted or refunded.
+
+Records without context (world schemas before five) can be settled by their original owner
+with `/factorycore recovery settle <id>` ([ADR0047](../decisions/0047-legacy-staging-settlement.md)).
+Known staging returns to a canonical source, or is delivered to a canonical cell/bank
+destination with current DEPOSIT access. No context is invented and no schema changes.

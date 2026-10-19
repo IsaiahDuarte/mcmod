@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "case": "minecraft:block/polished_deepslate",
-    "panel": "minecraft:block/black_concrete",
-    "rim": "minecraft:block/copper_block",
-    "slot": "minecraft:block/iron_block",
-    "particle": "minecraft:block/polished_deepslate"
+    "case": "factorycore:block/casing",
+    "panel": "factorycore:block/panel",
+    "rim": "factorycore:block/copper",
+    "slot": "factorycore:block/slot",
+    "particle": "factorycore:block/casing"
   },
   "elements": [
     {

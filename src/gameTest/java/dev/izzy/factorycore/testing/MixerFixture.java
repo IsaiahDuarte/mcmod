@@ -73,7 +73,14 @@ public final class MixerFixture {
     }
   }
 
-  public static final class MixerEntity extends BlockEntity {
+  public static final class MixerEntity extends BlockEntity
+      implements dev.izzy.factorycore.platform.resource.ExternalBackingProvider {
+    @Override
+    public java.util.List<BlockPos> factoryCoreBackingPositions(
+        dev.izzy.factorycore.core.resource.ResourceKind kind) {
+      return java.util.List.of(getBlockPos());
+    }
+
     /** Slot 0 input (cobblestone), slot 1 output (stone, extract only). */
     public final ItemStackHandler items =
         new ItemStackHandler(2) {

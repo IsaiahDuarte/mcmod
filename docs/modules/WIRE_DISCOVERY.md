@@ -84,7 +84,7 @@ for adopted queues. Splicing checks the combined count before changing either
 owner; it neither polls iterators nor copies positions. Each frame retains its
 original completion anchor. Traversal has no nested DiscoverySeeds recursion, so
 repeated interruptions no longer hit the obsolete depth32 iterator limit. Region
-replacement-depth and independent WiredDiscovery seed/probe budgets remain intact.
+ranked region-ownership lookup and independent WiredDiscovery seed/probe budgets remain bounded (see [world coordinator](WORLD_NETWORKS.md)).
 Sources are transient and grant no resource or permission authority. Five
 DiscoverySeedsTest cases cover charged transitions,512 successive transfers,
 combined rejection without callback execution or cursor loss, cycles/sharing and

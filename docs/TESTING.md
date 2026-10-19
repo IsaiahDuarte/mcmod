@@ -877,8 +877,9 @@ read-only, ignores completed/context-scoped records and detects restored
 quarantined intents. Four ConnectorGameTests use real commands/copied holders: a
 23-item chest with5 held keeps contents/holds, old mod ports are inert, the same
 backing is reacquired and the same-tick rate stays spent; failed audit IO and a
-persisted provider fault refuse unchanged; accepted context staging and unscoped
-legacy staging without a remembered binding refuse without provider calls.
+persisted provider fault refuse unchanged; accepted context staging refuses without
+provider calls. (Since ADR 0047, known unscoped legacy staging no longer blocks; see
+legacy settlement checks below.)
 A MachinePresetGameTest repairs a machine with an accepted Import preset, proves
 the old lease never runs, denies native redeploy after DEPLOY revocation, accepts
 explicit redeploy after restoration with19 items conserved, and refuses a
@@ -1114,8 +1115,22 @@ The test checks the following:
 - Once powered, the child becomes VALID in the root's network in a separate segment.
 - Draining one endpoint returns the child to NO_ROOT.
 
+`./gradlew runWirelessLifecycleServer` additionally requires real dedicated-server
+chunk eviction with the parent endpoint continuously loaded. A recorded unload and
+removed remote block entities precede 40 ticks of unavailable exact stock/holds and
+no implicit chunk loading; reloading must restore the original reciprocal pair and
+cell lease before claimed extraction resumes. Its fresh PASS report is required by
+`check`. This does not test per-pair resource caps.
+
 
 ## Gateway policy editor checks
+
+`FactoryCoreConfigTest` verifies the gateway-depth default, bounded config correction,
+world-restart marker, and topology behavior exactly at and beyond limits 1, 8 and 32.
+The required dedicated `./gradlew runGatewayDepthServer` loads a real per-world
+server config with `network.gatewayDepth=1`; the same two-gateway wireless layout
+accepted by the default-depth lifecycle fixture must report `DEPTH_LIMIT`, keeping
+the descendant cell unavailable. A fresh PASS report is required by `check`.
 
 GatewayPolicyTest round-trips the 17-bit mask and checks that toggles are isolated and
 out-of-range bits are rejected. GatewayPolicyGameTests opens the editor by sneak-use,
@@ -1129,13 +1144,43 @@ change nothing.
 
 `GuidePagesTest` checks the following in the shipped `en_us.json`:
 
-- Every one of the 14 pages exists, and there are no extra pages.
+- Every one of the 15 pages exists, and there are no extra pages.
 - Each page is at most 256 characters.
 - Together the pages cover the required onboarding topics.
 
 `GuideGameTests` checks that fixture logins skip the welcome gift, so fixture players start
 clean, and that `welcome()` gives exactly one guide and never a second. The GameTest server
 and both terminal client runs set `factorycore.noWelcomeGuide=true`.
+
+
+## Recipe and balance checks (D06, ADR 0048)
+
+`RecipeProgressionTest` (JVM) parses every recipe JSON on the classpath. It fails when:
+
+- a vanilla input has not been classified into a stage;
+- a result is not a known item, or an item has no source or two sources;
+- any item cannot be reached from vanilla inputs by a least fixpoint (this also rules
+  out circular first-craft unlocks);
+- a computed R11 stage differs from the ADR table;
+- module stages do not strictly increase;
+- a recipe consumes a cell or bank;
+- two recipes share a grid;
+- the pinned capacities, rates, ranges or upkeep constants, or the power-curve claims,
+  drift from the ADR.
+
+`RecipeGameTests` (native) checks every loaded `factorycore` crafting recipe through the
+server `RecipeManager`. Its canonical grid must resolve to that recipe, not a vanilla or
+sibling one. It must yield a registered, unbound item and have a recipe-book unlock
+advancement. Every registered `factorycore` item must have exactly one survival source:
+a recipe, or a documented module upgrade or pattern encoding. Two tests fill a vanilla
+`CraftingMenu` from a survival mock player's vanilla inventory:
+
+- one crafts the full starter base;
+- one crafts the Expanded, Advanced and Endgame items in dependency order.
+
+Each test asserts that every vanilla input is consumed exactly. The second then applies
+the crafted modules to a crafted Starter Item Cell until it is Infinite. These checks
+stand in for recipe reachability only. **The human survival playtest has not been run.**
 
 
 ## Recipe-viewer checks
@@ -1263,3 +1308,144 @@ measurement, not a correctness gate in `check`. See the
   old chunk tag. It checks that the mismatch is inert with unchanged slots, that ordinary
   sources are refused, and that after console adoption exactly 19 items are served.
   `BufferRecoveryAuditTest` checks the schema-6 evidence.
+
+
+## Legacy settlement checks (ADR 0047)
+
+- **JVM tests:**
+  - `LegacySettlementTest` covers target choice: a canonical source always gets a return
+    (cell or buffer); an unknown source delivers only into a cell; a buffer is never a
+    delivery target; and records with no canonical end are never guessed.
+  - `TransferRegistryTest.portPreflightBlocksOnlyUncertainLegacyRecordsNamingANonCanonicalBacking`
+    covers the narrowed port preflight. Known legacy staging and uncertain records between
+    canonical holders do not block; an uncertain record naming a foreign backing does, and
+    the check is read-only. Scoped records are left to their device checks.
+- **Native GameTests:**
+  - `LegacySettlementGameTests.originalOwnerSettlesLegacyStagingBackToItsCell` uses a mock
+    server player with 12 staged items from a cell. Console and `execute as` are refused,
+    `return` refuses the legacy record, and the owner's real `settle` command writes the
+    audit file. The record completes with exactly 12 returned and the cell back at 40.
+  - `LegacySettlementGameTests.legacyStagingFromAnUnknownSourceNeedsDepositAndNeverGuesses`:
+    - Only the recorded principal may settle, and without DEPOSIT the guest is denied.
+    - An uncertain legacy record rejects `UNCERTAIN` unchanged; a scoped record rejects
+      `UNSUPPORTED` and still returns normally.
+    - After a DEPOSIT grant, exactly 64 staged items reach the destination cell.
+  - `ConnectorGameTests.knownLegacyStagingNeitherBlocksPortRepairNorGuessesBacking`
+    (replacing `unboundPortWithUnscopedLegacyStagingCannotGuessBacking`, whose blocking
+    expectation ADR 0047 deliberately changed) repairs a conflicted port that has no
+    remembered binding while a known cell-to-unknown legacy record exists. The record and
+    the chest are unchanged; the owner then settles exactly 3 items back to the cell.
+- **Not covered natively:**
+  - Buffer return and bank delivery have JVM classification only.
+  - An uncertain legacy record that names a foreign backing is checked in the JVM only. The
+    GameTest world is shared, so such a record would permanently block every later port
+    recovery test.
+
+
+
+## Multiplayer administration and concurrent terminals
+
+`AccessCommandGameTests` exercises the real command dispatcher with owner, stranger,
+delegated Manage and console sources. It checks exact canonical grants, current
+authority and refusal cases. `TerminalGameTests` observes a stock change from a
+second session without refreshing the first menu. Both run in `runGameTestServer`.
+
+`./gradlew runMultiplayerCheck` is a manual graphical check. It starts one dedicated
+loopback server and two clients, checks private defaults, self-grant refusal,
+read-only gateway policy, View-only withdrawal denial, concurrent stock changes,
+deposit/withdrawal conservation, revocation and operator administration. It requires
+three PASS reports and 19 screenshots under `build/reports/multiplayer`. It is not
+a headless gate; prepared fixtures and compilation are not passing client evidence.
+
+
+## Integrated worktree verification — 2026-10-18
+
+`python3 scripts/verify.py` passed the recovered balance/art/recovery/access changes
+and subsequent lifecycle/configuration fixes: 29 tooling tests, 327 JVM tests and
+289 required GameTests, zero failures/errors/skips. The required staging, save-order,
+wireless lifecycle and nondefault gateway-depth servers passed. A separate
+`./gradlew runMultiplayerCheck` passed all three process reports and 19 captures;
+[recorded scope and limits](evidence/multiplayer-v1-2026-10-18.md).
+
+An initial full gate failed on a borrowed-level PMD warning and stale Machine
+Interface runtime ownership after move/native reload. Both were fixed and the
+adoption regression retained. Initial multiplayer status expectation failure is
+documented in ADR 0049. This local verification is not full A01–A17 acceptance.
+
+
+## Terminal search, sorting and per-player preferences
+
+`TerminalSearchSupportTest` covers display-only and registry queries, namespace
+prefix matching, component variants and BigInteger quantity sorting with stable
+ties. `TerminalPacketsTest` round-trips accepted search/sort and rejects invalid
+sort bounds. The real-menu
+`TerminalGameTests.displayRegistryModTagSearchAndPlayerSortSurviveReopen` covers
+loaded `minecraft:planks` membership, positive/negative queries, read-only resource
+conservation and player preferences restored on physical reopen.
+
+The required manual `./gradlew runTerminalRestartClient` graphical tour additionally
+types a display-only query, `@minecraft`, and `#minecraft:coals`, clicks Name/Qty,
+reopens the terminal, and restores the earlier crafting/paging flows. Its final
+terminal sets nondefault `@minecraft`/Qty through real inputs, records the accepted
+player-data compound as an observation in restart.properties, and logs out normally.
+The distinct JVM verifies that exact compound before mutation and reopens the
+terminal to check actual search text and sort projection. New captures are
+terminal-search-display-name, terminal-search-mod, terminal-search-tag,
+terminal-sort-quantity, terminal-search-reopened,
+terminal-preferences-before-restart, and restarted-terminal-preferences (all PNGs).
+Implemented fixtures or compilation alone are not passing graphical evidence.
+
+
+## Program authoring checks (ADR 0051)
+
+`DraftHistoryTest` covers undo/redo text conservation, abandoned redo branches,
+identical edits, the 64-snapshot cap and rejected oversize edits. `ProgramSyntaxTest`
+checks exact source coverage, escaped strings/comments, unfinished text and
+cursor completion ranges inside item/label literals and ordinary keywords.
+`ProgramPreviewTest` resolves exact targets and stock conditions, selects one rule,
+bounds displayed actions and refuses a trapped invocation without partial actions.
+`NetworkAuthorityTest.labelCompletionIsPagedLocalAndImmediatelyRevokedOrInvalidated`
+checks sorted label pages, gateway isolation, revocation and stale scopes.
+`ProgramPacketsTest` rejects oversized authoring payloads and checks immutable views.
+
+`ProgramEditorGameTests.authoringPreviewIsViewScopedAndNeverExecutesTheDraft` uses
+the real menu and a labeled Machine Interface. A forged session reveals nothing;
+a View-only viewer previews a saved draft, sees its local label and resolved Keep/
+Craft intents, and leaves the controller undeployed with unchanged FE and no logs.
+Revocation closes the menu and later ticks still execute nothing.
+
+The graphical authoring controls require a fresh client interaction run before
+claiming complete R08 authoring acceptance. Headless tests and compilation alone
+do not verify token readability, input/focus behavior or supported GUI scales.
+
+
+`TerminalWirelessContainerGameTests.indivisibleContainersAndEnergyCopiesRespectSharedBidirectionalCap`
+uses real paired endpoints/gateways and native item capabilities. In one tick it
+preconsumes 3,500 mB/7,500 FE of the shared pair allowance, refuses both directions
+of an indivisible bucket action with only 500 mB left, charges exactly the
+remaining 500 FE, refuses reverse discharge, then confirms next-tick replenishment.
+A test-only component-backed battery intentionally disagrees with simulation;
+charge/discharge must preserve the live item, exact bank contents and unused
+movement admission. The original TerminalContainerGameTests still covers actual
+menu packets and ordinary container conservation. Fixtures are not passing native
+evidence until run.
+
+## Shared wireless throughput checks
+
+`WirelessBudgetTest` checks canonical bidirectional pair identities, separate
+256-item/4,000-mB/8,000-FE limits, independent wired/sibling paths, tightest nested
+hops, repeated-hop deduplication, known partial acceptance, conservatively retained
+uncertain offers, late old-tick completion, metadata/path limits and server-thread
+ownership. Its 2,000-operation generated sequence uses replay seed `0x571E1E55` and
+checks each hop against an independent resource-specific ledger after every call.
+
+`WirelessThroughputGameTests` builds three real endpoint pairs, including nested
+and sibling branches, digital item/fluid cells and Advanced Energy Banks. Through
+scheduled `WorldStorageTransfers` calls in one fixed Minecraft tick it checks
+200+56 items, 3,000+1,000 mB and 6,000+2,000 FE in opposite directions on distinct
+backings; the exhausted pair does not block a 400-item wired move or the sibling's
+256-item move. A nested scenario checks the tightest hop and ensures a child-to-
+descendant route does not debit its common segment's upstream pair. Exact ledger
+conservation and re-pair ownership preservation are asserted. The existing dedicated
+wireless lifecycle task owns actual chunk-eviction evidence; these tests do not
+simulate or claim chunk unload.

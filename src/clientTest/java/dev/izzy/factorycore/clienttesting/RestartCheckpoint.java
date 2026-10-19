@@ -87,6 +87,24 @@ final class RestartCheckpoint {
     return true;
   }
 
+  static void recordTerminalPreferences(ServerPlayer player, Path path) throws IOException {
+    var preferences =
+        player
+            .getPersistentData()
+            .getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG)
+            .getCompound("FactoryCoreTerminal");
+    require(
+        preferences.getInt("Schema") == 1
+            && preferences.getString("Search").equals("@minecraft")
+            && preferences.getInt("Sort") == TerminalSearchSupport.QUANTITY,
+        "Explicit nondefault terminal preferences accepted before normal save");
+    var expected = read(path);
+    expected.setProperty("terminalPreferences", preferences.toString());
+    try (var output = Files.newOutputStream(path)) {
+      expected.store(output, "Expected observation only; never restored into production state");
+    }
+  }
+
   static Properties read(Path path) throws IOException {
     var properties = new Properties();
     try (var input = Files.newInputStream(path)) {

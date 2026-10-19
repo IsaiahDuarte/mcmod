@@ -122,7 +122,7 @@ capability, with no optional mod dependency:
 | --- | --- |
 | `LedgerPort` | Digital ledger, optional reservation owner; all mutations obey ledger availability. |
 | `ItemHandlerPort` | Explicit slot window of 1–64 slots on the selected side; scans at most that window and mutates at most one slot per call. Insertion returns accepted units from NeoForge's remainder-stack result. Extraction rejects wrong metadata/quantity. Repeated scheduled calls progress through stock. |
-| `FluidHandlerPort` | One resource-sensitive fill/drain call in mB; preserves fluid components and validates returned identity/amount. A handler's internal tank traversal is external work; performance evidence only covers supported representative handlers. |
+| `FluidHandlerPort` | Whole capability: one resource-sensitive fill/drain call in mB. Explicit selected windows: at most64 genuine indexed tank calls. Both preserve components and validate returned identity/amount; no whole-handler/refund fallback. A handler's internal work is external; performance evidence only covers supported representative handlers. |
 | `EnergyHandlerPort` | One receive/extract call in FE with actual returned amount and handler rate limits; no implicit energy consumption. |
 
 Each external amount is capped at `Integer.MAX_VALUE`; item handlers normally

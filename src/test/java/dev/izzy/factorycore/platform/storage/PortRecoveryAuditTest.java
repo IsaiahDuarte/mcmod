@@ -129,6 +129,75 @@ class PortRecoveryAuditTest {
   }
 
   @Test
+  void schemaSevenAdoptionPreservesBothSaveVersionsAndRefusesCurrentOrFaultedHolder()
+      throws Exception {
+    for (boolean machine : new boolean[] {false, true}) {
+      var owner = owner(machine);
+      var current = reference(machine);
+      var stale =
+          new ConnectorData.State(
+              new NodeRegistry.Handle(WORLD, ID, 1, owner.kind()),
+              current.settings(),
+              3,
+              "",
+              current.label());
+      var target = new NodeRegistry.Position("minecraft:overworld", 456);
+      var file =
+          DeviceRecoveryAudit.preservePortAdoption(
+              folder,
+              WORLD,
+              owner,
+              machine ? deployment() : null,
+              machine ? 5 : 0,
+              target,
+              new CompoundTag(),
+              physical(stale));
+      try (var input = new DataInputStream(Files.newInputStream(file))) {
+        var root = NbtIo.read(input, NbtAccounter.create(DeviceRecoveryAudit.MAX_FILE_BYTES * 2L));
+        assertEquals(7, root.getInt("Schema"));
+        assertEquals(DeviceSavedData.SCHEMA, root.getInt("WorldSchema"));
+        assertEquals("FOREIGN_PORT_ADOPTION", root.getString("HolderKind"));
+        var canonical = root.copy();
+        canonical.putInt("Schema", DeviceSavedData.SCHEMA);
+        assertEquals(List.of(owner), NodeStateCodec.decode(canonical));
+        assertEquals(456, root.getCompound("Target").getLong("Position"));
+        assertEquals(physical(stale), root.getCompound("BlockEntity"));
+        assertEquals(
+            machine ? Map.of(ID, 5L) : Map.of(),
+            MachinePresetCodec.configurations(root.getCompound("MachinePresets")));
+        assertFalse(root.contains("ProviderContents"));
+      }
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              DeviceRecoveryAudit.preservePortAdoption(
+                  folder,
+                  WORLD,
+                  owner,
+                  machine ? deployment() : null,
+                  machine ? 5 : 0,
+                  target,
+                  new CompoundTag(),
+                  physical(current)));
+      var fault =
+          new ConnectorData.State(
+              stale.lease(), stale.settings(), 3, "uncertain call", stale.label());
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              DeviceRecoveryAudit.preservePortAdoption(
+                  folder,
+                  WORLD,
+                  owner,
+                  machine ? deployment() : null,
+                  machine ? 5 : 0,
+                  target,
+                  new CompoundTag(),
+                  physical(fault)));
+    }
+  }
+
+  @Test
   void mismatchedConfigurationFaultOrCorruptEvidenceNeverGetsReinterpreted() throws Exception {
     var reference = reference(true);
     var physical = physical(reference);

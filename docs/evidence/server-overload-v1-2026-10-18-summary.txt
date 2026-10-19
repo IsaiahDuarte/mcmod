@@ -1,0 +1,28 @@
+PASS
+idle mod_ms median=0.0337 p95=0.0535 p99=0.0753 max=0.1825 | server_tick_ms median=0.2271 p99=0.4941 max=5.8614
+idle mod_ticks_over 2ms=0 5ms=0 10ms=0 of 1000
+idle scheduler_backlog median=0 p99=0 max=0 used_heap=232259584
+idle items_in_machine_chests=0
+idle probe state=STOPPED message= energy=10000 logs=[]
+small mod_ms median=0.5453 p95=1.3348 p99=1.6980 max=7.1073 | server_tick_ms median=0.7402 p99=2.6619 max=9.9161
+small mod_ticks_over 2ms=9 5ms=4 10ms=0 of 1000
+small scheduler_backlog median=4 p99=8 max=8 used_heap=430139552
+small items_in_machine_chests=960
+small probe state=RUNNING message= energy=10000 logs=[]
+large mod_ms median=1.6515 p95=2.3666 p99=3.6215 max=11.7166 | server_tick_ms median=1.8325 p99=5.5204 max=22.6435
+large mod_ticks_over 2ms=174 5ms=4 10ms=1 of 1000
+large scheduler_backlog median=42 p99=108 max=122 used_heap=228093824
+large items_in_machine_chests=15616
+large probe state=RUNNING message= energy=10000 logs=[move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit]
+overload mod_ms median=1.7075 p95=2.5068 p99=2.8573 max=15.2029 | server_tick_ms median=1.9887 p99=6.2280 max=16.1552
+overload mod_ticks_over 2ms=313 5ms=8 10ms=2 of 1000
+overload scheduler_backlog median=961 p99=1092 max=1118 used_heap=309494440
+overload items_in_machine_chests=17392
+overload probe state=RUNNING message= energy=9995 logs=[move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit, move minecraft:cobblestone: technical_limit]
+conservation expected=524288 actual=524288 true
+idle-wide networks=1024
+idle-wide mod_ms median=0.0421 p95=0.0573 p99=0.0786 max=0.1185 | server_tick_ms median=0.2351 p99=0.3721 max=53.1791
+idle-wide mod_ticks_over 2ms=0 5ms=0 10ms=0 of 1000
+idle-wide scheduler_backlog median=0 p99=0 max=0 used_heap=458195248
+idle-wide scheduler_quiet=true
+java=21.0.12 os=Mac OS X 15.3.1 arch=aarch64 cpus=8 max_heap=2147483648 used_heap=458195248

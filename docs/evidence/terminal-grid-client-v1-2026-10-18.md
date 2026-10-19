@@ -77,10 +77,20 @@ the last 10 in a row. It failed twice:
   normally validates within 100.
 
 Both failures were in heavier runs: one directly after the first tour run, and one with
-`--rerun-tasks` recompiling everything. That suggests a timing race under load, but
-neither failure has been reproduced or explained. Both failure messages now report the
-open screen, the root/gateway membership and the network diagnostic. This is an open
-flaky failure, not a pass.
+`--rerun-tasks` recompiling everything. Load alone does not establish the cause. Both
+failure messages now report the open screen, membership and network diagnostic.
+
+Recovery audit: the interrupted art worktree retained `client-art.log`, whose split-root
+wait repeatedly reports `diagnostic=Network replacement depth limit` before restart
+stage 2 times out. This is concrete evidence of a production ownership-redirect limit,
+not merely a slow fixture. `WorldNetworks.resolve` previously followed a linear chain
+of at most 32 retired regions. The integrated fix uses ranked region references, so
+replacement generations no longer determine lookup depth. A direct `javac`/`java`
+harness passed 4,096 sequential replacements and 1,024 balanced merges; the committed
+`RegionReferenceTest` covers retained owners and unrelated-region isolation. Integrated
+JVM tests and the graphical restart rerun remain required before closing this issue.
+The stage-4 Presets failure remains unexplained and open; its original failing log is
+not present among the retained authoritative artifacts inspected during this audit.
 
 ## Wireless terminal
 
@@ -94,3 +104,28 @@ Stages 80–83 run before the restart checkpoint:
 The task now requires 30 captures.
 
 **Not covered:** JEI, physical HID input and multiplayer.
+
+
+## Integrated restart opening audit — 2026-10-18
+
+The integrated art run completed the 35-capture terminal tour. Its separate restart
+matched canonical state and passed staging, chunk lifecycle and split-root checks,
+then failed `World restart timeout stage=3 screen=none` (crash 15:12:53).
+The retained run log shows `FACTORYCORE_SPLIT_ROOT_PASS` immediately followed by
+restart stage 3. This is different from the earlier ownership-depth failure.
+
+Source inspection found a fixture synchronization gap: split-root completion waits
+only for the home chunk to exist, while restart stage 2 sent one right-click after
+checking client position/block data. Production `MachineInterfaceEntity.canUse`
+requires live server membership and current View access; the fixture never waited
+for that server condition and never retried a refused click. The failed log does
+not record the server state at that click, so transient rebuilding is a supported
+candidate, not a proven production failure.
+
+The fixture now probes the real server-side `canUse`, current membership and empty
+hands before sending the real right-click. If no screen arrives, it retries at most
+once per 20 client ticks while readiness remains true. It preserves the original
+1,200-tick stage deadlines, menu Edit check, saved exact Stock settings and layout
+assertions. Attempts and server readiness/membership/hand/diagnostic snapshots are
+logged and included in timeout failures. No production admission check is bypassed.
+The graphical rerun is pending; this fixture change is not yet verified.

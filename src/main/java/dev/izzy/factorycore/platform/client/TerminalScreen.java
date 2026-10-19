@@ -34,7 +34,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   /** Client-selected storage kind (0 items, 1 fluids, 2 energy); the server switches its search. */
   private int kind;
 
-  private Button kindButton;
+  private Button kindButton, sortButton;
+  private String syncedSearch;
   private Button gridMode;
 
   /** 0 = crafting grid, 1 = processing inputs, 2 = processing outputs (first row = 3 outputs). */
@@ -54,7 +55,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   @Override
   protected void init() {
-    String previousSearch = search == null ? "" : search.getValue();
+    String previousSearch = search == null ? menu.view().search() : search.getValue();
     super.init();
     search =
         addRenderableWidget(
@@ -62,12 +63,22 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 font,
                 leftPos + 10,
                 topPos + 20,
-                158,
+                110,
                 18,
                 Component.translatable("gui.factorycore.terminal.search")));
     search.setMaxLength(128);
     search.setValue(previousSearch);
     search.setHint(Component.translatable("gui.factorycore.terminal.search"));
+    sortButton =
+        addRenderableWidget(
+            Button.builder(
+                    sortLabel(),
+                    button ->
+                        send(TerminalPackets.SORT, (menu.view().sort() + 1) % 2, 1, new byte[32]))
+                .bounds(leftPos + 124, topPos + 20, 44, 18)
+                .tooltip(
+                    Tooltip.create(Component.translatable("gui.factorycore.terminal.sort.help")))
+                .build());
     addRenderableWidget(
         Button.builder(
                 Component.translatable("gui.factorycore.terminal.search"),
@@ -157,6 +168,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                     Tooltip.create(
                         Component.translatable("gui.factorycore.terminal.grid.mode.help")))
                 .build());
+  }
+
+  private Component sortLabel() {
+    return Component.translatable("gui.factorycore.terminal.sort." + menu.view().sort());
   }
 
   private Component gridModeLabel() {
@@ -325,6 +340,12 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   protected void containerTick() {
     super.containerTick();
     var view = menu.view();
+    if (!view.search().equals(syncedSearch)) {
+      search.setValue(view.search());
+      syncedSearch = view.search();
+    }
+    sortButton.setMessage(sortLabel());
+    sortButton.active = !view.busy();
     if (shownRevision != view.revision()) {
       selected = Math.min(selected, Math.max(0, view.rows().size() - 1));
       shownRevision = view.revision();

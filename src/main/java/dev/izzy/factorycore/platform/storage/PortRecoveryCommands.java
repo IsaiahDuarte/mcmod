@@ -48,7 +48,65 @@ final class PortRecoveryCommands {
                                         inspect(
                                             c.getSource(),
                                             StringArgumentType.getString(c, "backing"),
-                                            LongArgumentType.getLong(c, "generation"))))));
+                                            LongArgumentType.getLong(c, "generation"))))))
+        .then(
+            Commands.literal("adopt")
+                .then(
+                    Commands.argument("backing", StringArgumentType.word())
+                        .then(
+                            Commands.argument("generation", LongArgumentType.longArg(1))
+                                .then(
+                                    Commands.argument(
+                                            "port",
+                                            net.minecraft.commands.arguments.coordinates
+                                                .BlockPosArgument.blockPos())
+                                        .executes(
+                                            c ->
+                                                adopt(
+                                                    c.getSource(),
+                                                    StringArgumentType.getString(c, "backing"),
+                                                    LongArgumentType.getLong(c, "generation"),
+                                                    net.minecraft.commands.arguments.coordinates
+                                                        .BlockPosArgument.getBlockPos(
+                                                        c, "port")))))));
+  }
+
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
+  private static int adopt(
+      CommandSourceStack source, String backing, long generation, BlockPos at) {
+    try {
+      var saved = DeviceSavedData.get(source.getServer());
+      var id = parse(backing);
+      var owner = saved.nodes().evidence(id);
+      var level = source.getLevel();
+      if (owner == null
+          || owner.generation() != generation
+          || owner.kind() != NodeRegistry.Kind.CONNECTOR
+              && owner.kind() != NodeRegistry.Kind.MACHINE_INTERFACE
+          || level.getChunkSource().getChunkNow(at.getX() >> 4, at.getZ() >> 4) == null
+          || !(level.getBlockEntity(at) instanceof ConnectorEntity port))
+        throw new IllegalStateException("Adopting port unavailable");
+      if (!DeviceRecoveryCommands.admitRepair(source)) return 0;
+      var path =
+          port.adoptPort(
+              new NodeRegistry.Handle(saved.registry().world(), id, generation, owner.kind()));
+      source.sendSuccess(
+          () ->
+              Component.translatable(
+                  "command.factorycore.recovery.port.adopted",
+                  backing,
+                  at.toShortString(),
+                  generation + 1,
+                  path.getFileName().toString()),
+          true);
+      return 1;
+    } catch (IOException auditFailure) {
+      source.sendFailure(Component.translatable("command.factorycore.recovery.audit"));
+      return 0;
+    } catch (IllegalArgumentException | IllegalStateException | ArithmeticException rejected) {
+      source.sendFailure(Component.translatable("command.factorycore.recovery.port.adopt_refused"));
+      return 0;
+    }
   }
 
   private static UUID parse(String text) {

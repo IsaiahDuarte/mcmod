@@ -2,7 +2,7 @@
 
 Portable P5 contracts. The language is frozen in [ADR 0035](../decisions/0035-friendly-language.md).
 The Program Controller runtime is in [ADR 0036](../decisions/0036-program-controller-runtime.md);
-the editor is below; Wasm programs are not implemented yet.
+the editor is below; bounded Wasm programs and persistent guest state are implemented.
 
 ## API
 
@@ -82,3 +82,42 @@ Wasm guests may keep one blob of at most 4,096 bytes per deployment through
 `state_read`/`state_write` ([ADR0044](../decisions/0044-persistent-guest-state.md)). Writes
 commit only with a successful callback. Friendly-language programs have no persistent
 variables; their rules are stateless.
+
+
+## Native authoring controls
+
+[ADR 0051](../decisions/0051-program-authoring.md) documents the authoring contracts.
+The friendly editor colors keywords/calls/literals/comments and underlines current
+local compiler diagnostics; Save/Check/Deploy still compile on the server. Ctrl+Z
+undoes, Ctrl+Y or Ctrl+Shift+Z redoes, and Tab inserts four spaces. History retains at
+most 64 text snapshots per open screen and survives a GUI resize. Undo places the
+cursor at the end. Paste, template replacement and resource insertion each make
+one history step.
+
+**Insert / complete** opens an in-place picker: click its category to cycle Items,
+Fluids, Local labels and Keywords, type a search, page with arrows and select a row.
+Escape returns to the draft. JEI is optional. Items/fluids insert escaped expressions;
+labels insert `machines("label")`. Ctrl+Space instead completes the identifier or
+literal at the cursor and initially picks its enclosing call's category. Local labels
+are VIEW-authorized, case-sensitive, segment-only snapshots, 16 per server page.
+Filtering applies to the current label page; Next fetches further pages. Other
+categories search the public local registry, without exposing stored identities or
+quantities. Ports are configured on Machine Interfaces, selected through labels.
+
+**Preview next rule** saves then evaluates one saved native rule using your current
+VIEW scope. Saving needs EDIT; a View-only user can preview the existing saved draft.
+Repeated clicks advance through rules. Wrapped preview text pages with arrows;
+Escape returns to the draft. The snapshot shows resolved machine IDs, actions and
+amounts or an explicit failure. It never deploys, moves resources, creates jobs,
+reserves stock, emits program logs or spends FE. It samples current conditions;
+future execution rechecks permissions, stock, power, ports and budgets. It returns
+at most eight lines and states when more actions are omitted. Hover **View scope**
+for the current response's full network/segment IDs; click to refresh it. A snapshot
+is advisory and may become stale after rewiring or grant changes.
+
+`ProgramPackets.AuthorRequest(menu, session, preview, rule, after)` requests a
+16-label page after a case-sensitive label, or previews one native rule index 0–63.
+The menu rechecks VIEW/reach/loaded scope and accepts at most one query per five
+ticks. `AuthorView` carries scope IDs, at most 16 labels of 64 characters, the page's
+`more` flag, selected/total rules and up to eight 192-character preview lines. Invalid
+session requests disclose nothing. The payloads do not alter saved schema or ABI.

@@ -69,6 +69,9 @@ public final class TerminalClientVerification {
       ACCESS_POINT = new BlockPos(1, 66, 1);
   private int stage, ticks, entered, rule, craftStep, policyMask;
   private boolean sampleSeeded;
+  private int searchStep;
+  private final ProgramAuthoringClientVerification programAuthoring =
+      new ProgramAuthoringClientVerification();
   private long previousRevision;
 
   public TerminalClientVerification() {
@@ -224,15 +227,20 @@ public final class TerminalClientVerification {
       next();
       return;
     }
+    if (stage == 3 && searchStep == 6 && client.screen == null && ticks - entered > 4) {
+      client.gameMode.useItemOn(
+          client.player,
+          InteractionHand.MAIN_HAND,
+          new BlockHitResult(Vec3.atCenterOf(TERMINAL), Direction.NORTH, TERMINAL, false));
+      searchStep = 7;
+      entered = ticks;
+      return;
+    }
     if (!(client.screen instanceof TerminalScreen screen)) return;
     var menu = screen.getMenu();
     var view = menu.view();
-    if (stage == 3 && view.status().equals("ready") && view.rows().size() == 8) {
-      check(view.next(), "Initial eight-row page has additional stock");
-      capture(client, "scale-2-all-items.png");
-      previousRevision = view.revision();
-      search(screen, "iron");
-      next();
+    if (stage == 3) {
+      searchTick(client, screen);
       return;
     }
     if (stage == 4
@@ -351,6 +359,77 @@ public final class TerminalClientVerification {
       client.resizeDisplay();
       next();
     }
+  }
+
+  /** Real typed queries, native sort button, and a physically reopened terminal. */
+  private void searchTick(Minecraft client, TerminalScreen screen) {
+    var view = screen.getMenu().view();
+    if (!view.status().equals("ready") || view.busy() || ticks - entered < 5) return;
+    switch (searchStep) {
+      case 0 -> {
+        if (view.rows().size() != 8) return;
+        check(view.next(), "Initial eight-row page has additional stock");
+        check(
+            view.sort() == TerminalSearchSupport.NAME
+                && view.rows().getFirst().name().equals("Client hopper variant"),
+            "Name sorting uses display names rather than registry order");
+        checkNoOverlap(screen);
+        capture(client, "scale-2-all-items.png");
+        search(screen, "hopper variant");
+      }
+      case 1 -> {
+        if (!view.search().equals("hopper variant") || view.rows().size() != 1) return;
+        check(view.rows().getFirst().total().equals("23"), "Display-only query finds named stock");
+        capture(client, "terminal-search-display-name.png");
+        search(screen, "@minecraft");
+      }
+      case 2 -> {
+        if (!view.search().equals("@minecraft") || view.rows().size() != 8) return;
+        capture(client, "terminal-search-mod.png");
+        search(screen, "#minecraft:coals");
+      }
+      case 3 -> {
+        if (!view.search().equals("#minecraft:coals") || view.rows().size() != 1) return;
+        check(view.rows().getFirst().icon().equals("minecraft:coal"), "Loaded tag finds only coal");
+        capture(client, "terminal-search-tag.png");
+        search(screen, "@minecraft");
+      }
+      case 4 -> {
+        if (!view.search().equals("@minecraft") || view.rows().size() != 8) return;
+        click(screen, "Name");
+      }
+      case 5 -> {
+        if (view.sort() != TerminalSearchSupport.QUANTITY) return;
+        check(view.rows().getFirst().total().equals("23"), "Exact quantity sort puts23 ahead of3");
+        capture(client, "terminal-sort-quantity.png");
+        client.player.closeContainer();
+      }
+      case 7 -> {
+        if (!view.search().equals("@minecraft") || view.sort() != TerminalSearchSupport.QUANTITY)
+          return;
+        check(view.rows().getFirst().total().equals("23"), "Reopen restores player's sorted query");
+        capture(client, "terminal-search-reopened.png");
+        click(screen, "Qty");
+      }
+      case 8 -> {
+        if (view.sort() != TerminalSearchSupport.NAME) return;
+        search(screen, "");
+      }
+      case 9 -> {
+        if (!view.search().isEmpty() || view.rows().size() != 8) return;
+        evidence.append(
+            "terminal-search: display name, registry, @mod, #loaded tag; name/quantity sort; physical reopen preserves accepted query/sort\n");
+        previousRevision = view.revision();
+        search(screen, "iron");
+        next();
+        return;
+      }
+      default -> {
+        return;
+      }
+    }
+    searchStep++;
+    entered = ticks;
   }
 
   private int plankSlot = -1;
@@ -897,6 +976,7 @@ public final class TerminalClientVerification {
           "PASS\n"
               + evidence
               + "Tour: gateway policy toggle (actual sneak-use C2S), program editor, Factory Guide pages 1-2 (actual item use), wireless handheld terminal beyond wired reach, terminal Fluids/Energy views; no overlapping controls.\n"
+              + "Art: every Factory Core block in a front/top view, connected cable run with a sideways gateway, and every item in a double chest at GUI scales 2 and 4.\n"
               + "Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
               + "Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample. Restart checkpoint adds1200mB water (400 held),300mB lava and500FE.\n");
     } catch (IOException error) {
@@ -911,8 +991,8 @@ public final class TerminalClientVerification {
   /**
    * Screens added after the original flow. Before the restart checkpoint (61–71): gateway policy
    * editor, program editor, Factory Guide and wireless terminal (80–83). After it, with fluids and
-   * FE stocked (72–76): terminal Fluids/Energy views. Every capture also asserts that no visible
-   * controls overlap.
+   * FE stocked (72–76): terminal Fluids/Energy views. Then the art gallery (90–97): block rows,
+   * cable run and item icons. Every screen capture also asserts that no visible controls overlap.
    */
   @SuppressWarnings("PMD.CloseResource") // Borrowed active client and integrated server.
   private void tourTick(Minecraft client) {
@@ -1032,7 +1112,11 @@ public final class TerminalClientVerification {
         if (!(client.screen instanceof dev.izzy.factorycore.platform.client.ProgramScreen screen)
             || ticks - entered < 10) return;
         checkNoOverlap(screen);
+        if (!programAuthoring.tick(client, screen, ticks, name -> capture(client, name))) return;
+        checkNoOverlap(screen);
         capture(client, "program-editor-scale-2.png");
+        evidence.append(
+            "program-authoring: typed source, atomic undo/redo, native item/local-label selection, cursor completion, highlighted GUI scales2/4 and read-only resolved rule preview\n");
         client.player.closeContainer();
         server.execute(
             () ->
@@ -1197,10 +1281,147 @@ public final class TerminalClientVerification {
       }
       case 76 -> {
         client.player.closeContainer();
-        writeReport(client);
+        jump(90);
+      }
+      case 90 -> {
+        if (client.screen != null) return;
+        server.execute(
+            () -> {
+              try {
+                var player = server.getPlayerList().getPlayer(principal);
+                int placed = ArtGallery.build(player.serverLevel());
+                evidence.append("art-gallery: placed ").append(placed).append(" blocks\n");
+                ArtGallery.teleport(player, ArtGallery.FRONT);
+              } catch (RuntimeException error) {
+                failure.set(error);
+              }
+            });
+        client.options.hideGui = true;
+        next();
+      }
+      case 91, 92, 93 -> {
+        var view =
+            stage == 91 ? ArtGallery.FRONT : stage == 92 ? ArtGallery.TOP : ArtGallery.CABLES;
+        if (!aim(client, view) || ticks - entered < 80) return;
+        capture(
+            client,
+            stage == 91
+                ? "art-blocks-front.png"
+                : stage == 92 ? "art-blocks-top.png" : "art-cables.png");
+        var following =
+            stage == 91 ? ArtGallery.TOP : stage == 92 ? ArtGallery.CABLES : ArtGallery.CHEST_VIEW;
+        boolean chest = stage == 93;
+        server.execute(
+            () -> {
+              try {
+                var player = server.getPlayerList().getPlayer(principal);
+                if (chest)
+                  evidence
+                      .append("art-items: chest holds ")
+                      .append(ArtGallery.fillChest(player.serverLevel()))
+                      .append(" Factory Core items\n");
+                ArtGallery.teleport(player, following);
+              } catch (RuntimeException error) {
+                failure.set(error);
+              }
+            });
+        if (chest) client.options.hideGui = false;
+        next();
+      }
+      case 94 -> {
+        if (!aim(client, ArtGallery.CHEST_VIEW)
+            || ticks - entered < 20
+            || !client.level.getBlockState(ArtGallery.CHEST).is(Blocks.CHEST)) return;
+        client.gameMode.useItemOn(
+            client.player,
+            InteractionHand.MAIN_HAND,
+            new BlockHitResult(
+                Vec3.atCenterOf(ArtGallery.CHEST), Direction.NORTH, ArtGallery.CHEST, false));
+        next();
+      }
+      case 95 -> {
+        if (!(client.screen
+                instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen screen)
+            || screen.getMenu().getItems().stream().filter(stack -> !stack.isEmpty()).count() < 32
+            || ticks - entered < 10) return;
+        capture(client, "art-items-scale-2.png");
+        client.options.guiScale().set(4);
+        client.resizeDisplay();
+        next();
+      }
+      case 96 -> {
+        if (ticks - entered < 10) return;
+        capture(client, "art-items-scale-4.png");
+        client.player.closeContainer();
+        client.options.guiScale().set(2);
+        client.resizeDisplay();
+        // Return to the functional fixture so the separate restart run reopens there.
+        server.execute(
+            () -> {
+              var player = server.getPlayerList().getPlayer(principal);
+              player.getAbilities().flying = false;
+              player.onUpdateAbilities();
+              player.teleportTo(player.serverLevel(), 4.5, 65, 4.5, 135, 10);
+            });
+        next();
+      }
+      case 97 -> {
+        if (client.screen != null || client.player.distanceToSqr(4.5, 65, 4.5) > 1) return;
+        checked.set(false);
+        searchStep = 0;
+        client.gameMode.useItemOn(
+            client.player,
+            InteractionHand.MAIN_HAND,
+            new BlockHitResult(Vec3.atCenterOf(TERMINAL), Direction.NORTH, TERMINAL, false));
+        next();
+      }
+      case 98 -> {
+        if (checked.get()) {
+          writeReport(client);
+          return;
+        }
+        if (searchStep == 3 || !(client.screen instanceof TerminalScreen screen)) return;
+        var view = screen.getMenu().view();
+        if (!view.status().equals("ready") || view.busy()) return;
+        if (searchStep == 0) {
+          search(screen, "@minecraft");
+          searchStep++;
+        } else if (searchStep == 1 && view.search().equals("@minecraft")) {
+          click(screen, "Name");
+          searchStep++;
+        } else if (searchStep == 2 && view.sort() == TerminalSearchSupport.QUANTITY) {
+          capture(client, "terminal-preferences-before-restart.png");
+          client.player.closeContainer();
+          searchStep++;
+          server.execute(
+              () -> {
+                try {
+                  RestartCheckpoint.recordTerminalPreferences(
+                      server.getPlayerList().getPlayer(principal),
+                      report.getParent().resolve("restart.properties"));
+                  checked.set(true);
+                } catch (IOException | RuntimeException error) {
+                  failure.set(error);
+                }
+              });
+        }
       }
       default -> throw new IllegalStateException("Unknown tour stage " + stage);
     }
+  }
+
+  /** Holds the camera on an art view once the server teleport has arrived; false until then. */
+  private static boolean aim(Minecraft client, ArtGallery.View view) {
+    var player = client.player;
+    if (player.distanceToSqr(view.x(), view.y(), view.z()) > 1) return false;
+    player.getAbilities().flying = true;
+    player.setDeltaMovement(Vec3.ZERO);
+    player.setYRot(view.yaw());
+    player.setXRot(view.pitch());
+    player.yRotO = view.yaw();
+    player.xRotO = view.pitch();
+    player.setYHeadRot(view.yaw());
+    return true;
   }
 
   /** Keeps the fixture access point above its 16 FE/tick upkeep while the handheld is in use. */

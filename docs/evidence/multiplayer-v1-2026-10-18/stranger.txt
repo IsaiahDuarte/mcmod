@@ -1,0 +1,26 @@
+PASS
+stranger connected as FactoryGuest to 127.0.0.1:51584 over TCP
+stranger-terminal-denied.png framebuffer=2048x1536 scale=2.0
+stranger-self-grant-refused.png framebuffer=2048x1536 scale=2.0
+stranger: terminal use refused (action bar) and self-grant refused
+stranger-policy-readonly.png framebuffer=2048x1536 scale=2.0
+stranger: gateway policy read-only; forged click refused
+stranger: access change notification 1
+stranger-view-only.png framebuffer=2048x1536 scale=2.0
+stranger-take-denied.png framebuffer=2048x1536 scale=2.0
+stranger: View-only terminal shows 64; Take 1 refused (denied)
+stranger: access change notification 2
+stranger-terminal-concurrent.png framebuffer=2048x1536 scale=2.0
+stranger: terminal open showing 64
+stranger-took-one.png framebuffer=2048x1536 scale=2.0
+stranger: Take 1 -> holds 1, terminal shows 63 (stale-revision retries so far 0)
+stranger: idle terminal updated to 62 after 9 client ticks
+stranger-sees-owner-take.png framebuffer=2048x1536 scale=2.0
+stranger-deposited.png framebuffer=2048x1536 scale=2.0
+stranger: deposited 1 through the real C2S payload; shows 63
+stranger-concurrent-take.png framebuffer=2048x1536 scale=2.0
+stranger: Take 1 -> holds 1, terminal shows 61 (stale-revision retries so far 0)
+stranger-revoked-closed.png framebuffer=2048x1536 scale=2.0
+stranger: revocation closed the open terminal; reopen refused
+stranger-operator-granted.png framebuffer=2048x1536 scale=2.0
+stranger: operator console grant restored View; terminal shows 61

@@ -1,9 +1,9 @@
 {
   "parent": "minecraft:block/cube_bottom_top",
   "textures": {
-    "top": "minecraft:block/end_rod",
-    "bottom": "minecraft:block/polished_deepslate",
-    "side": "minecraft:block/oxidized_copper",
-    "particle": "minecraft:block/oxidized_copper"
+    "top": "factorycore:block/wireless_link_endpoint_top",
+    "bottom": "factorycore:block/wireless_link_endpoint_back",
+    "side": "factorycore:block/wireless_link_endpoint_side",
+    "particle": "factorycore:block/wireless_link_endpoint_side"
   }
 }

@@ -1,9 +1,9 @@
 {
   "parent": "minecraft:block/cube_bottom_top",
   "textures": {
-    "top": "minecraft:block/beacon",
-    "bottom": "minecraft:block/polished_deepslate",
-    "side": "minecraft:block/copper_block",
-    "particle": "minecraft:block/copper_block"
+    "top": "factorycore:block/wireless_access_point_top",
+    "bottom": "factorycore:block/casing",
+    "side": "factorycore:block/wireless_access_point_side",
+    "particle": "factorycore:block/wireless_access_point_side"
   }
 }

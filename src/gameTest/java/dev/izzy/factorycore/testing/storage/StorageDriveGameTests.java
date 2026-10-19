@@ -425,7 +425,7 @@ public final class StorageDriveGameTests {
             "starter_item_cell", Map.of("iron_ingot", 4, "redstone", 4, "chest", 1),
             "starter_fluid_cell", Map.of("glass", 7, "bucket", 1, "redstone", 1),
             "storage_drive", Map.of("iron_ingot", 4, "redstone", 4, "hopper", 1),
-            "expansion_module", Map.of("gold_ingot", 4, "redstone", 2, "diamond", 1),
+            "expansion_module", Map.of("gold_ingot", 4, "redstone", 2, "quartz", 1),
             "advanced_module", Map.of("diamond", 4, "redstone", 2, "netherite_ingot", 1),
             "infinite_module", Map.of("netherite_ingot", 8, "nether_star", 1));
     for (var id :

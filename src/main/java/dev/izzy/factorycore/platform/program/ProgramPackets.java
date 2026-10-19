@@ -232,6 +232,109 @@ public final class ProgramPackets {
                     buffer.readUtf(ProgramControllerEntity.MAX_DRAFT * 3)));
   }
 
+  /** Explicit authoring queries, independently throttled; they never deploy or execute a rule. */
+  public record AuthorRequest(int menu, UUID session, boolean preview, int rule, String after)
+      implements CustomPacketPayload {
+    public static final Type<AuthorRequest> TYPE =
+        new Type<>(
+            ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "program_author_request"));
+
+    public AuthorRequest {
+      if (rule < 0 || rule >= 64 || after.length() > 64)
+        throw new IllegalArgumentException("Invalid authoring request");
+    }
+
+    @Override
+    public Type<AuthorRequest> type() {
+      return TYPE;
+    }
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, AuthorRequest> CODEC =
+        StreamCodec.of(
+            (buffer, value) -> {
+              buffer.writeVarInt(value.menu);
+              buffer.writeUUID(value.session);
+              buffer.writeBoolean(value.preview);
+              buffer.writeVarInt(value.rule);
+              buffer.writeUtf(value.after, 192);
+            },
+            buffer ->
+                new AuthorRequest(
+                    buffer.readVarInt(),
+                    buffer.readUUID(),
+                    buffer.readBoolean(),
+                    buffer.readVarInt(),
+                    buffer.readUtf(192)));
+  }
+
+  /** A single local-label page or read-only rule preview, with the exact current segment scope. */
+  public record AuthorView(
+      int menu,
+      UUID session,
+      String scope,
+      List<String> labels,
+      boolean more,
+      int rule,
+      int total,
+      List<String> preview)
+      implements CustomPacketPayload {
+    public static final Type<AuthorView> TYPE =
+        new Type<>(
+            ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "program_author_view"));
+
+    public AuthorView {
+      labels = List.copyOf(labels);
+      preview = List.copyOf(preview);
+      if (scope.length() > 80
+          || labels.size() > 16
+          || labels.stream().anyMatch(label -> label.length() > 64)
+          || rule < 0
+          || rule >= 64
+          || total < 0
+          || total > 64
+          || preview.size() > LINES
+          || preview.stream().anyMatch(line -> line.length() > 192))
+        throw new IllegalArgumentException("Invalid authoring view");
+    }
+
+    @Override
+    public Type<AuthorView> type() {
+      return TYPE;
+    }
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, AuthorView> CODEC =
+        StreamCodec.of(
+            (buffer, value) -> {
+              buffer.writeVarInt(value.menu);
+              buffer.writeUUID(value.session);
+              buffer.writeUtf(value.scope, 240);
+              buffer.writeVarInt(value.labels.size());
+              for (var label : value.labels) buffer.writeUtf(label, 192);
+              buffer.writeBoolean(value.more);
+              buffer.writeVarInt(value.rule);
+              buffer.writeVarInt(value.total);
+              View.lines(buffer, value.preview);
+            },
+            buffer -> {
+              int menu = buffer.readVarInt();
+              var session = buffer.readUUID();
+              var scope = buffer.readUtf(240);
+              int count = buffer.readVarInt();
+              if (count < 0 || count > 16) throw new IllegalArgumentException("Label count");
+              var labels = new ArrayList<String>();
+              for (int index = 0; index < count; index++) labels.add(buffer.readUtf(192));
+              return new AuthorView(
+                  menu,
+                  session,
+                  scope,
+                  labels,
+                  buffer.readBoolean(),
+                  buffer.readVarInt(),
+                  buffer.readVarInt(),
+                  View.lines(buffer));
+            });
+  }
+
   private ProgramPackets() {}
 
   /** Splits text into the bounded chunk commands that replace a draft. */
@@ -261,6 +364,19 @@ public final class ProgramPackets {
         (value, context) -> {
           if (context.player() instanceof ServerPlayer player
               && player.containerMenu instanceof ProgramMenu menu) menu.command(player, value);
+        });
+    registrar.playToServer(
+        AuthorRequest.TYPE,
+        AuthorRequest.CODEC,
+        (value, context) -> {
+          if (context.player() instanceof ServerPlayer player
+              && player.containerMenu instanceof ProgramMenu menu) menu.author(player, value);
+        });
+    registrar.playToClient(
+        AuthorView.TYPE,
+        AuthorView.CODEC,
+        (value, context) -> {
+          if (context.player().containerMenu instanceof ProgramMenu menu) menu.accept(value);
         });
     registrar.playToServer(
         Artifact.TYPE,

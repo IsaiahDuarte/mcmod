@@ -48,6 +48,30 @@ class ConnectorDataTest {
   }
 
   @Test
+  void selectedFluidWindowPersistsWithoutChangingLegacyWholeCapabilityBytes() {
+    var lease =
+        new NodeRegistry.Handle(
+            UUID.randomUUID(), UUID.randomUUID(), 1, NodeRegistry.Kind.CONNECTOR);
+    var settings =
+        new ConnectorSettings(
+            ResourceKind.FLUID, ConnectorSettings.Access.READ_WRITE, 0, Integer.MAX_VALUE, 1, 1000);
+    var state = new ConnectorData.State(lease, settings, 1, "");
+    assertEquals(state, ConnectorData.read(ConnectorData.write(state)));
+    assertFalse(settings.wholeFluidHandler());
+    assertTrue(ConnectorSettings.defaults(ResourceKind.FLUID).wholeFluidHandler());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ConnectorSettings(
+                ResourceKind.FLUID, ConnectorSettings.Access.READ_WRITE, 0, -1, 1, 1000));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ConnectorSettings(
+                ResourceKind.FLUID, ConnectorSettings.Access.READ_WRITE, 0, 1, 65, 1000));
+  }
+
+  @Test
   void limitsWrongKindAndOverflowGenerationReject() {
     assertThrows(
         IllegalArgumentException.class,
@@ -58,7 +82,7 @@ class ConnectorDataTest {
         IllegalArgumentException.class,
         () ->
             new ConnectorSettings(
-                ResourceKind.FLUID, ConnectorSettings.Access.READ_WRITE, 0, 1, 64, 1000));
+                ResourceKind.ENERGY, ConnectorSettings.Access.READ_WRITE, 0, 1, 64, 1000));
     assertThrows(
         IllegalArgumentException.class,
         () ->

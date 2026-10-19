@@ -167,4 +167,113 @@ public final class ProgramEditorGameTests {
             })
         .thenSucceed();
   }
+
+  @GameTest(template = "empty", timeoutTicks = 250)
+  public static void authoringPreviewIsViewScopedAndNeverExecutesTheDraft(GameTestHelper h) {
+    var owner = player(h);
+    var viewer = player(h);
+    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
+    NetworkNodeEntity root = h.getBlockEntity(ROOT);
+    root.commission(owner.getUUID());
+    h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
+    ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
+    var machinePos = new BlockPos(2, 1, 1);
+    h.setBlock(
+        machinePos, dev.izzy.factorycore.platform.storage.MachineInterfaceContent.BLOCK.get());
+    dev.izzy.factorycore.platform.storage.MachineInterfaceEntity machine =
+        h.getBlockEntity(machinePos);
+    machine.place(
+        new net.minecraft.world.item.ItemStack(
+            dev.izzy.factorycore.platform.storage.MachineInterfaceContent.ITEM.get()));
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    WorldNetworks.get(h.getLevel().getServer())
+                            .membership(controller.origin())
+                            .status()
+                        == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                    "Controller wired"))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    machine.relabel(
+                            new NetworkPermissions.Actor(owner.getUUID(), false), "fuel input")
+                        == dev.izzy.factorycore.core.network.NetworkAuthority.Decision.ALLOWED,
+                    "Local label configured"))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    WorldNetworks.get(h.getLevel().getServer())
+                            .membership(controller.origin())
+                            .status()
+                        == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                    "Relabel published"))
+        .thenExecute(
+            () -> {
+              controller.energyStorage().receiveEnergy(100, false);
+              controller.draft(
+                  "every 10 ticks { for m in machines(\"fuel input\") { keep m stocked with 16 of item(\"coal\") from storage } craft 4 of item(\"oak_planks\") log \"never emitted\" }");
+              var network =
+                  WorldNetworks.get(h.getLevel().getServer())
+                      .membership(controller.origin())
+                      .scope()
+                      .network();
+              DeviceSavedData.get(h.getLevel().getServer())
+                  .network(network)
+                  .setGrants(
+                      new NetworkPermissions.Actor(owner.getUUID(), false),
+                      viewer.getUUID(),
+                      EnumSet.of(NetworkPermissions.Permission.VIEW));
+              h.useBlock(CONTROLLER, viewer);
+              var m = menu(h, viewer);
+              m.author(
+                  viewer,
+                  new ProgramPackets.AuthorRequest(
+                      m.containerId, java.util.UUID.randomUUID(), true, 0, ""));
+              h.assertTrue(m.authorView() == null, "Forged session reveals no scope or labels");
+              m.author(
+                  viewer,
+                  new ProgramPackets.AuthorRequest(m.containerId, m.session(), true, 0, ""));
+              h.assertTrue(
+                  m.authorView().labels().equals(java.util.List.of("fuel input")),
+                  "VIEW sees permitted local labels");
+              h.assertTrue(
+                  m.authorView().preview().stream()
+                      .anyMatch(line -> line.contains("Keep 16 item minecraft:coal")),
+                  "Preview resolves machine target");
+              h.assertTrue(
+                  m.authorView().preview().stream()
+                      .anyMatch(line -> line.contains("Craft 4 minecraft:oak_planks")),
+                  "Preview describes craft intent");
+              h.assertTrue(
+                  !controller.deployed()
+                      && controller.energy() == 100
+                      && controller.logs().isEmpty(),
+                  "Snapshot does not deploy, charge FE or emit logs");
+              DeviceSavedData.get(h.getLevel().getServer())
+                  .network(network)
+                  .setGrants(
+                      new NetworkPermissions.Actor(owner.getUUID(), false),
+                      viewer.getUUID(),
+                      EnumSet.noneOf(NetworkPermissions.Permission.class));
+            })
+        .thenIdle(6)
+        .thenExecute(
+            () -> {
+              viewer.containerMenu.broadcastChanges();
+              // The regular validity path closes the revoked viewer before another snapshot.
+              h.assertTrue(
+                  !(viewer.containerMenu instanceof ProgramMenu),
+                  "Revoked View closes authoring session");
+              h.assertTrue(
+                  !controller.deployed()
+                      && controller.energy() == 100
+                      && controller.logs().isEmpty(),
+                  "Preview remains inert after later ticks");
+              owner.connection.disconnect(Component.literal("done"));
+              viewer.connection.disconnect(Component.literal("done"));
+            })
+        .thenSucceed();
+  }
 }

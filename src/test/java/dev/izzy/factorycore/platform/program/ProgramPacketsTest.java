@@ -56,4 +56,42 @@ class ProgramPacketsTest {
                 java.util.Collections.nCopies(9, "x"),
                 List.of()));
   }
+
+  @Test
+  void authoringPayloadBoundsRejectOversizedCatalogsAndSnapshots() {
+    var id = UUID.randomUUID();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ProgramPackets.AuthorRequest(1, id, true, 64, ""));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ProgramPackets.AuthorRequest(1, id, false, 0, "x".repeat(65)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProgramPackets.AuthorView(
+                1,
+                id,
+                "scope",
+                java.util.Collections.nCopies(17, "label"),
+                false,
+                0,
+                0,
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProgramPackets.AuthorView(
+                1, id, "scope", List.of(), false, 0, 1, java.util.Collections.nCopies(9, "line")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProgramPackets.AuthorView(
+                1, id, "scope", List.of(), false, 0, 1, List.of("x".repeat(193))));
+    var view =
+        new ProgramPackets.AuthorView(
+            1, id, "scope", List.of("a"), false, 0, 1, List.of("snapshot"));
+    assertThrows(UnsupportedOperationException.class, () -> view.labels().clear());
+    assertThrows(UnsupportedOperationException.class, () -> view.preview().clear());
+  }
 }

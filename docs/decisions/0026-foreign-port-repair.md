@@ -68,3 +68,11 @@ reacquisition, freeze old queued presets, deny redeployment after grant revocati
 resume only on explicit authenticated deployment, and refuse failed audit/provider
 fault/unresolved ownership without mutation. Headless evidence is not client,
 remote multiplayer or interrupted-file proof.
+
+
+## Amendment — 2026-10-18
+
+[ADR 0047](0047-legacy-staging-settlement.md) narrows the legacy check. Without a remembered
+registration, only an uncertain legacy record (pending call or quarantine) that names a
+backing that is not a Factory Core identity blocks repair. Known legacy staging settles only
+into canonical holders and never through a port, so it no longer blocks.

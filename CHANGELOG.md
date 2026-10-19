@@ -2,6 +2,16 @@
 
 ## 0.1.0-dev — Development bootstrap
 
+- Added scoped player grant administration and live terminal stock observations;
+  two real clients verify concurrent transfers, private defaults and revocation.
+- Added audited legacy staging settlement and stale-save adoption for connectors
+  and Machine Interfaces. Uncertain foreign outcomes remain quarantined.
+- Fixed interface runtime teardown across movement/native reload and bounded
+  network ownership redirects across repeated rebuilds.
+- Added per-world gateway depth configuration (1–32, default 8, restart required),
+  real wireless partner unload/reload coverage and original-art client evidence.
+
+
 - Added bounded global priority and persisted stable-ID round-robin storage routes
   through the shared scheduler, retaining actual partial/uncertain transfer IDs.
   World schema seven migrates prior authorities with empty routing preferences;
@@ -104,3 +114,7 @@ See [implementation evidence](docs/IMPLEMENTATION.md).
 - Added explicit authenticated player-inventory transfer/known-cleanup endpoints,
   shared rates and accepted player context persistence (world ten/context three).
   Terminal menus/client controls and independent-file crash verification remain pending.
+- D06 balance version two (ADR 0048): the Expansion Module now costs four gold, two
+  redstone and one Nether quartz instead of a diamond. The Factory Guide gains a
+  progression page. Recipe reachability, stage ordering and numbers are checked
+  automatically. No human survival playtest was run.

@@ -46,7 +46,9 @@ class GuidePagesTest {
           "Pattern",
           "Program Controller",
           "Wireless",
-          "Gateway"
+          "Gateway",
+          "Progression",
+          "Nether star"
         }) assertTrue(all.toString().contains(topic), "Guide is missing topic: " + topic);
   }
 }

@@ -24,8 +24,13 @@ public record ConnectorSettings(
         || rate < 1
         || rate > maximum)
       throw new IllegalArgumentException("Connector settings exceed bounded limits");
-    if (kind != ResourceKind.ITEM && (firstSlot != 0 || slotCount != 64))
-      throw new IllegalArgumentException("Slot windows are supported only for items");
+    if (kind == ResourceKind.ENERGY && (firstSlot != 0 || slotCount != 64))
+      throw new IllegalArgumentException("Energy has no indexed window");
+  }
+
+  /** Legacy fluid defaults mean the whole capability, including paginated large catalogs. */
+  public boolean wholeFluidHandler() {
+    return kind == ResourceKind.FLUID && firstSlot == 0 && slotCount == 64;
   }
 
   public static ConnectorSettings defaults(ResourceKind kind) {

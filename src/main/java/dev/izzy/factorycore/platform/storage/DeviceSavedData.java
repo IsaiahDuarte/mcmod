@@ -317,6 +317,14 @@ public final class DeviceSavedData extends SavedData {
     return nodes;
   }
 
+  /**
+   * True when {@code backing} is a Factory Core-owned identity (a cell/bank ledger or a structural
+   * node, including Buffered Interfaces), which can never be a foreign provider's backing.
+   */
+  public boolean canonicalIdentity(java.util.UUID backing) {
+    return registry().containsBacking(backing) || nodes().evidence(backing) != null;
+  }
+
   /** Preflight both authorities before creating a root; owner is authenticated by the adapter. */
   public NodeRegistry.Handle createController(UUID owner, NodeRegistry.Position position) {
     Objects.requireNonNull(owner);
@@ -494,8 +502,9 @@ public final class DeviceSavedData extends SavedData {
                   : CraftingJobCodec.decodeAll(tag.getCompound("CraftingJobs")),
               null,
               "");
-      if (schema < SCHEMA || tag.getCompound("MachinePresets").getInt("Schema") < 2)
-        loaded.setDirty();
+      if (schema < SCHEMA
+          || tag.getCompound("MachinePresets").getInt("Schema") < 2
+          || tag.getCompound("CraftingJobs").getInt("Schema") < 5) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
       String message =

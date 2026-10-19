@@ -473,4 +473,73 @@ class TransferRegistryTest {
                 List.of(new TransferRegistry.Stored(UUID.randomUUID(), unknown)), () -> {})
             .hasUnscopedUnresolved());
   }
+
+  @Test
+  void portPreflightBlocksOnlyUncertainLegacyRecordsNamingANonCanonicalBacking() {
+    var cellA = UUID.randomUUID();
+    var cellB = UUID.randomUUID();
+    var provider = UUID.randomUUID();
+    java.util.function.Predicate<UUID> canonical = id -> id.equals(cellA) || id.equals(cellB);
+    java.util.function.BiFunction<UUID, Boolean, StagedTransfer.Snapshot> legacy =
+        (destination, uncertain) ->
+            new StagedTransfer.Snapshot(
+                UUID.randomUUID(),
+                KEY,
+                cellA,
+                destination,
+                4,
+                0,
+                0,
+                uncertain ? StagedTransfer.State.QUARANTINED : StagedTransfer.State.STAGED,
+                uncertain ? OperationResult.Reason.UNCERTAIN : OperationResult.Reason.FULL,
+                "",
+                uncertain ? StagedTransfer.PendingCall.DELIVER : StagedTransfer.PendingCall.NONE,
+                uncertain ? 4 : 0);
+    var known =
+        new TransferRegistry(
+            List.of(new TransferRegistry.Stored(UUID.randomUUID(), legacy.apply(provider, false))),
+            () -> fail("Inspection changed evidence"));
+    assertTrue(known.hasUnscopedUnresolved());
+    assertFalse(
+        known.hasUnscopedUncertain(canonical), "Known legacy staging settles without any port");
+    var betweenCells =
+        new TransferRegistry(
+            List.of(new TransferRegistry.Stored(UUID.randomUUID(), legacy.apply(cellB, true))),
+            () -> fail("Inspection changed evidence"));
+    assertFalse(
+        betweenCells.hasUnscopedUncertain(canonical),
+        "An uncertain record between canonical holders cannot involve a foreign provider");
+    var foreign =
+        new TransferRegistry(
+            List.of(new TransferRegistry.Stored(UUID.randomUUID(), legacy.apply(provider, true))),
+            () -> fail("Inspection changed evidence"));
+    var before = foreign.snapshot();
+    assertTrue(foreign.hasUnscopedUncertain(canonical), "It may name any port's provider");
+    assertEquals(before, foreign.snapshot());
+    var scoped = UUID.randomUUID();
+    var registry = new TransferRegistry(List.of(), () -> {});
+    var source = new Port(cellA, 4);
+    var target = new Port(provider, 0);
+    target.acceptance = 0;
+    registry.start(
+        scoped,
+        UUID.randomUUID(),
+        KEY,
+        source,
+        target,
+        4,
+        4,
+        () -> true,
+        new TransferContext(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new dev.izzy.factorycore.core.network.NodeRegistry.Position("minecraft:overworld", 0),
+            new TransferContext.Endpoint(TransferContext.Type.DIGITAL, cellA, cellA, 1, 0),
+            new TransferContext.Endpoint(
+                TransferContext.Type.EXTERNAL, UUID.randomUUID(), provider, 1, 1)));
+    assertFalse(
+        registry.hasUnscopedUncertain(id -> false),
+        "Scoped records are checked through their device context instead");
+  }
 }

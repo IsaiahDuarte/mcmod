@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.LegacySettlement;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
@@ -825,9 +826,12 @@ public final class WorldStorageTransfers {
     var input =
         bounded(
             returning && source instanceof Buffered buffer
-                ? new BufferPort(buffer, true)
+                ? routedPort(source, context.origin(), new BufferPort(buffer, true))
                 : returning && source instanceof External external
-                    ? networks.connectors().returnPort(external.handle())
+                    ? routedPort(
+                        source,
+                        context.origin(),
+                        networks.connectors().returnPort(external.handle()))
                     : port(source, context.origin()),
             snapshot.key());
     var output =
@@ -857,6 +861,157 @@ public final class WorldStorageTransfers {
                         snapshot.key(),
                         NetworkPermissions.Permission.DEPOSIT));
     var outcome = returning ? saved.transfers().cancel(id) : saved.transfers().deliver(id);
+    completion.accept(new Result(id, outcome.reason(), saved.transfers().get(id)));
+  }
+
+  /**
+   * Legacy settlement (ADR 0047): finishes the known staging of a record saved without endpoint
+   * context, for its authenticated original owner only. If the source backing is a canonical
+   * Factory Core identity (a cell/bank ledger or a Buffered Interface), staging returns there under
+   * the existing owned-cleanup exemption; otherwise, if the destination backing is a canonical cell
+   * or bank, staging is delivered there only while the owner currently has DEPOSIT access to it.
+   * Foreign/unknown backings are never guessed (UNSUPPORTED). It never extracts; pending or
+   * quarantined records reject UNCERTAIN; steps are bounded by the recovery quantum and scheduled
+   * on the target holder's current network.
+   */
+  public Submission settleLegacy(
+      UUID id, NetworkPermissions.Actor actor, Consumer<Result> completion) {
+    checkThread();
+    Objects.requireNonNull(id);
+    Objects.requireNonNull(actor);
+    Objects.requireNonNull(completion);
+    var rejection = legacyAdmission(id, actor);
+    if (rejection != null) return new Submission(null, rejection);
+    var snapshot = saved.transfers().get(id);
+    var target = legacyTarget(snapshot);
+    if (target == null) return new Submission(null, OperationResult.Reason.UNSUPPORTED);
+    var endpoint = legacyEndpoint(target.backing());
+    if (endpoint == null) return new Submission(null, OperationResult.Reason.OFFLINE);
+    if (!compatible(endpoint, snapshot.key()))
+      return new Submission(null, OperationResult.Reason.WRONG_RESOURCE);
+    var position = holderPosition(endpoint);
+    var member = networks.membership(position);
+    if (member.status() != NetworkTopology.Status.VALID)
+      return new Submission(null, OperationResult.Reason.OFFLINE);
+    if (!target.returning()
+        && !allowed(
+            actor, position, endpoint, snapshot.key(), NetworkPermissions.Permission.DEPOSIT))
+      return new Submission(null, OperationResult.Reason.DENIED);
+    return enqueue(
+        id,
+        actor,
+        member.scope().network(),
+        member.scope().segment(),
+        snapshot.key(),
+        ticket -> executeLegacy(id, actor, target, ticket, completion));
+  }
+
+  private OperationResult.Reason legacyAdmission(UUID id, NetworkPermissions.Actor actor) {
+    if (!saved.transfers().contains(id) || !saved.transfers().get(id).owner().equals(actor.id()))
+      return OperationResult.Reason.DENIED;
+    var snapshot = saved.transfers().get(id);
+    if (snapshot.state() == StagedTransfer.State.QUARANTINED
+        || snapshot.pending() != StagedTransfer.PendingCall.NONE)
+      return OperationResult.Reason.UNCERTAIN;
+    if (saved.transfers().context(id) != null || snapshot.state() == StagedTransfer.State.COMPLETE)
+      return OperationResult.Reason.UNSUPPORTED;
+    return null;
+  }
+
+  private LegacySettlement legacyTarget(StagedTransfer.Snapshot snapshot) {
+    return LegacySettlement.of(
+        snapshot,
+        backing -> {
+          if (saved.registry().containsBacking(backing)) return true;
+          var node = saved.nodes().evidence(backing);
+          return node != null && node.kind() == NodeRegistry.Kind.BUFFERED_INTERFACE;
+        },
+        saved.registry()::containsBacking);
+  }
+
+  /** Current loaded, unconflicted holder of a canonical backing, or null while unavailable. */
+  private Endpoint legacyEndpoint(UUID backing) {
+    try {
+      var device = saved.registry().ownership(backing);
+      if (device != null)
+        return device.conflict() || physical(device.handle()) == null
+            ? null
+            : new Digital(device.handle());
+      var node = saved.nodes().evidence(backing);
+      if (node == null || node.kind() != NodeRegistry.Kind.BUFFERED_INTERFACE || node.conflict())
+        return null;
+      var handle =
+          new NodeRegistry.Handle(
+              saved.registry().world(), backing, node.generation(), node.kind());
+      var holder = physical(new Buffered(handle, 1), true);
+      return holder == null ? null : new Buffered(handle, holder.reference().configuration());
+    } catch (IllegalArgumentException | IllegalStateException unavailable) {
+      return null;
+    }
+  }
+
+  private NodeRegistry.Position holderPosition(Endpoint endpoint) {
+    if (endpoint instanceof Buffered buffer)
+      return saved.nodes().definition(buffer.handle()).position();
+    var location = saved.registry().definition(((Digital) endpoint).handle()).location();
+    return new NodeRegistry.Position(location.dimension(), location.position());
+  }
+
+  private void executeLegacy(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      LegacySettlement target,
+      Queued ticket,
+      Consumer<Result> completion) {
+    var rejection = legacyAdmission(id, actor);
+    var snapshot = saved.transfers().contains(id) ? saved.transfers().get(id) : null;
+    if (rejection == null && !target.equals(legacyTarget(snapshot)))
+      rejection = OperationResult.Reason.DENIED;
+    if (rejection != null) {
+      completion.accept(new Result(id, rejection, snapshot));
+      return;
+    }
+    var endpoint = legacyEndpoint(target.backing());
+    var position = endpoint == null ? null : holderPosition(endpoint);
+    if (endpoint == null
+        || networks.membership(position).status() != NetworkTopology.Status.VALID) {
+      completion.accept(new Result(id, OperationResult.Reason.OFFLINE, snapshot));
+      return;
+    }
+    var current = networks.membership(position).scope();
+    if (!current.network().equals(ticket.network())
+        || !current.segment().equals(ticket.segment())) {
+      completion.accept(new Result(id, OperationResult.Reason.DENIED, snapshot));
+      return;
+    }
+    var key = snapshot.key();
+    if (!compatible(endpoint, key)) {
+      completion.accept(new Result(id, OperationResult.Reason.WRONG_RESOURCE, snapshot));
+      return;
+    }
+    if (!target.returning()
+        && !allowed(actor, position, endpoint, key, NetworkPermissions.Permission.DEPOSIT)) {
+      completion.accept(new Result(id, OperationResult.Reason.DENIED, snapshot));
+      return;
+    }
+    var port =
+        bounded(
+            endpoint instanceof Buffered buffer
+                ? new BufferPort(buffer, true)
+                : new Port(((Digital) endpoint).handle()),
+            key);
+    saved.transfers().unbind(id);
+    saved
+        .transfers()
+        .bind(
+            id,
+            target.returning() ? port : unavailable(snapshot.source()),
+            target.returning() ? unavailable(snapshot.destination()) : port,
+            () ->
+                !target.returning()
+                    && allowed(
+                        actor, position, endpoint, key, NetworkPermissions.Permission.DEPOSIT));
+    var outcome = target.returning() ? saved.transfers().cancel(id) : saved.transfers().deliver(id);
     completion.accept(new Result(id, outcome.reason(), saved.transfers().get(id)));
   }
 
@@ -1044,7 +1199,10 @@ public final class WorldStorageTransfers {
     }
     var input =
         claimed
-            ? networks.connectors().claimedPort(((External) source).handle(), actor.id())
+            ? routedPort(
+                source,
+                origin,
+                networks.connectors().claimedPort(((External) source).handle(), actor.id()))
             : port(source, origin);
     var output = port(destination, origin);
     if (input.backingId().equals(output.backingId())) {
@@ -1113,6 +1271,18 @@ public final class WorldStorageTransfers {
       completion.accept(new Result(id, admission.reason(), null));
       return;
     }
+    var sourcePosition = endpointPosition(source, origin);
+    var targetPosition = endpointPosition(destination, origin);
+    if (sourcePosition == null || targetPosition == null) {
+      completion.accept(new Result(id, OperationResult.Reason.OFFLINE, null));
+      return;
+    }
+    if (amount > 0
+        && (networks.movementAvailable(sourcePosition, origin, key, amount) == 0
+            || networks.movementAvailable(origin, targetPosition, key, amount) == 0)) {
+      completion.accept(new Result(id, OperationResult.Reason.RATE_LIMIT, null));
+      return;
+    }
     var snapshot =
         saved
             .transfers()
@@ -1178,11 +1348,82 @@ public final class WorldStorageTransfers {
   }
 
   private ResourcePort port(Endpoint endpoint, NodeRegistry.Position origin) {
-    if (endpoint instanceof PlayerInventory player) return players().port(player, origin);
-    if (endpoint instanceof Buffered buffer) return new BufferPort(buffer);
-    return endpoint instanceof Digital digital
-        ? new Port(digital.handle())
-        : networks.connectors().port(((External) endpoint).handle());
+    ResourcePort delegate;
+    if (endpoint instanceof PlayerInventory player) delegate = players().port(player, origin);
+    else if (endpoint instanceof Buffered buffer) delegate = new BufferPort(buffer);
+    else
+      delegate =
+          endpoint instanceof Digital digital
+              ? new Port(digital.handle())
+              : networks.connectors().port(((External) endpoint).handle());
+    return routedPort(endpoint, origin, delegate);
+  }
+
+  /** Current endpoint coordinate; stale holders never acquire a new route implicitly. */
+  private NodeRegistry.Position endpointPosition(Endpoint endpoint, NodeRegistry.Position origin) {
+    try {
+      if (endpoint instanceof PlayerInventory) return origin;
+      if (endpoint instanceof Digital digital) {
+        var location = saved.registry().definition(digital.handle()).location();
+        return location == null
+            ? null
+            : new NodeRegistry.Position(location.dimension(), location.position());
+      }
+      var handle =
+          endpoint instanceof Buffered buffer
+              ? buffer.handle()
+              : ((External) endpoint).handle().connector();
+      return saved.nodes().definition(handle).position();
+    } catch (IllegalArgumentException | IllegalStateException stale) {
+      return null;
+    }
+  }
+
+  /**
+   * Transfer staging belongs to the accepted origin segment; each actual endpoint leg is metered.
+   */
+  private ResourcePort routedPort(
+      Endpoint endpoint, NodeRegistry.Position origin, ResourcePort delegate) {
+    return new ResourcePort() {
+      @Override
+      public UUID backingId() {
+        return delegate.backingId();
+      }
+
+      @Override
+      public long simulateInsert(ResourceKey key, long offered) {
+        var position = endpointPosition(endpoint, origin);
+        if (position == null) return 0;
+        long fit = networks.movementAvailable(origin, position, key, offered);
+        return fit == 0 ? 0 : delegate.simulateInsert(key, fit);
+      }
+
+      @Override
+      public long insert(ResourceKey key, long offered) {
+        return mutate(key, offered, true);
+      }
+
+      @Override
+      public long extract(ResourceKey key, long offered) {
+        return mutate(key, offered, false);
+      }
+
+      private long mutate(ResourceKey key, long offered, boolean inserting) {
+        var position = endpointPosition(endpoint, origin);
+        if (position == null) return 0;
+        var permit = networks.movement(origin, position, key, offered);
+        if (permit.amount() == 0) {
+          permit.finish(0);
+          return 0;
+        }
+        long actual =
+            inserting
+                ? delegate.insert(key, permit.amount())
+                : delegate.extract(key, permit.amount());
+        permit.finish(actual);
+        return actual;
+      }
+    };
   }
 
   private static final class BufferBudget {

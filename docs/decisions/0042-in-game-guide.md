@@ -6,8 +6,8 @@ graphically verified.
 ## Decision
 
 The **Factory Guide** is a craftable item (book + redstone, shapeless) that opens the
-vanilla read-only `BookViewScreen` on the client with 14 translatable pages
-(`guide.factorycore.page.0..13`). The pages cover these steps in order:
+vanilla read-only `BookViewScreen` on the client with 15 translatable pages
+(`guide.factorycore.page.0..14`). The pages cover these steps in order:
 
 - first network;
 - drive and cell;
@@ -21,7 +21,8 @@ vanilla read-only `BookViewScreen` on the client with 14 translatable pages
 - programs;
 - gateways;
 - wireless access;
-- links.
+- links;
+- material progression by tier (added by [ADR 0048](0048-final-balance.md)).
 
 Basic storage and preset pages need neither scripts nor optional mods.
 

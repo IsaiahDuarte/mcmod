@@ -508,4 +508,366 @@ public final class ProcessingJobGameTests {
                     "Cancel returns everything"))
         .thenSucceed();
   }
+
+  @GameTest(template = "empty", timeoutTicks = 1600)
+  public static void differentInterfacesAndScriptPortsShareThePhysicalProcessingLease(
+      GameTestHelper h) {
+    var f = setup(h);
+    var secondPos = new BlockPos(0, 1, 3);
+    h.setBlock(new BlockPos(0, 1, 2), NetworkContent.CABLE.get());
+    h.setBlock(
+        secondPos,
+        CraftingContent.INTERFACE
+            .get()
+            .defaultBlockState()
+            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    CraftingInterfaceEntity second = h.getBlockEntity(secondPos);
+    var goldPattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    goldPattern.set(
+        CraftingContent.PROCESSING.get(),
+        new ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.RAW_GOLD)),
+            List.of(new ItemStack(Items.GOLD_INGOT))));
+    second.patterns().insertItem(0, goldPattern, false);
+    h.setBlock(new BlockPos(2, 1, 2), NetworkContent.CABLE.get());
+    var portPos = new BlockPos(2, 1, 3);
+    h.setBlock(
+        portPos,
+        dev.izzy.factorycore.platform.storage.MachineInterfaceContent.BLOCK
+            .get()
+            .defaultBlockState()
+            .setValue(BlockStateProperties.FACING, Direction.WEST));
+    dev.izzy.factorycore.platform.storage.MachineInterfaceEntity port = h.getBlockEntity(portPos);
+    port.place(
+        new ItemStack(dev.izzy.factorycore.platform.storage.MachineInterfaceContent.ITEM.get()));
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var gold = codec.itemKey(new ItemStack(Items.GOLD_INGOT));
+    var rawGold = codec.itemKey(new ItemStack(Items.RAW_GOLD));
+    var coal = codec.itemKey(new ItemStack(Items.COAL));
+    var runtime = WorldNetworks.get(h.getLevel().getServer());
+    UUID[] ids = {null, null};
+    boolean[] busy = {false};
+    dev.izzy.factorycore.platform.storage.WorldConnectors.Handle[] handle = {null};
+    dev.izzy.factorycore.core.resource.ResourcePort[] cached = {null};
+    dev.izzy.factorycore.platform.storage.WorldStorageTransfers.Result[] moved = {null};
+    h.startSequence()
+        .thenWaitUntil(
+            () -> {
+              ready(h, f);
+              h.assertTrue(
+                  runtime.membership(port.position()).status() == NetworkTopology.Status.VALID,
+                  "Script port joins same local network");
+            })
+        .thenExecute(
+            () -> {
+              var registration = runtime.connectors().bind(port);
+              h.assertTrue(
+                  registration.handle() != null,
+                  "Script port binds the furnace: " + registration.reason());
+              handle[0] = registration.handle();
+              cached[0] = runtime.connectors().port(handle[0]);
+              h.assertTrue(
+                  cached[0].simulateInsert(coal, 1) == 1,
+                  "Real sided furnace fuel port initially available");
+              f.saved.registry().insert(f.cell, f.ore, 1);
+              f.saved.registry().insert(f.cell, rawGold, 1);
+              f.saved.registry().insert(f.cell, coal, 1);
+              ids[0] = jobs(h).submit(actor(f.owner), f.origin, f.ingot, 1).job();
+              ids[1] = jobs(h).submit(actor(f.owner), second.origin(), gold, 1).job();
+              h.assertTrue(
+                  ids[0] != null && ids[1] != null,
+                  "Distinct patterns submitted through two physical interfaces");
+            })
+        .thenWaitUntil(
+            () -> {
+              var first = f.saved.craftingJobs().get(ids[0]);
+              var other = f.saved.craftingJobs().get(ids[1]);
+              h.assertTrue(
+                  first != null
+                      && other != null
+                      && (first.reason().equals("busy") || other.reason().equals("busy")),
+                  "Second interface waits for the same physical machine");
+            })
+        // The furnace lighting up is a neighbor change that briefly rebuilds the network, during
+        // which ports truthfully report OFFLINE; probe the lease once it is published again.
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    runtime.membership(port.position()).status() == NetworkTopology.Status.VALID,
+                    "Network republished after the furnace state change"))
+        .thenExecute(
+            () -> {
+              busy[0] = true;
+              var target =
+                  new NodeRegistry.Position(f.origin.dimension(), h.absolutePos(FURNACE).asLong());
+              var scriptLimit = runtime.connectors().limit(handle[0], true, 1);
+              h.assertTrue(
+                  jobs(h).machineLeased(target)
+                      && scriptLimit.reason()
+                          == dev.izzy.factorycore.core.resource.OperationResult.Reason.BUSY,
+                  "Processing lease exposes actionable busy to scripts and automatic presets: "
+                      + jobs(h).machineLeased(target)
+                      + " "
+                      + scriptLimit);
+              h.assertTrue(
+                  cached[0].insert(coal, 1) == 0,
+                  "Cached direct port cannot insert into leased machine");
+              runtime
+                  .transfers()
+                  .submit(
+                      UUID.randomUUID(),
+                      actor(f.owner),
+                      port.position(),
+                      new dev.izzy.factorycore.platform.storage.WorldStorageTransfers.Digital(
+                          f.cell),
+                      new dev.izzy.factorycore.platform.storage.WorldStorageTransfers.External(
+                          handle[0]),
+                      coal,
+                      1,
+                      value -> moved[0] = value);
+            })
+        .thenWaitUntil(
+            () -> h.assertTrue(moved[0] != null, "Scheduled competing script transfer returned"))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    moved[0].reason()
+                            == dev.izzy.factorycore.core.resource.OperationResult.Reason.BUSY
+                        && moved[0].transfer() == null
+                        && f.stock(coal) == 1,
+                    "Busy scheduled move extracted no fuel into staging"))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.craftingJobs().get(ids[0]) == null
+                        && f.saved.craftingJobs().get(ids[1]) == null,
+                    "Both distinct jobs finish sequentially"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  busy[0]
+                      && f.stock(f.ingot) == 1
+                      && f.stock(gold) == 1
+                      && f.stock(f.ore) == 0
+                      && f.stock(rawGold) == 0,
+                  "Each job collects exactly its own smelted output");
+              h.assertTrue(
+                  cached[0].insert(coal, 1) == 1,
+                  "Script fuel port resumes after both processing leases release");
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void persistedTargetKeepsOldMachineLeasedWhenInterfaceRotates(GameTestHelper h) {
+    var f = setup(h);
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.ore, 1);
+              id[0] = jobs(h).submit(actor(f.owner), f.origin, f.ingot, 1).job();
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.craftingJobs().get(id[0]).dispatch() != null,
+                    "New dispatch acquired physical target"))
+        .thenExecute(
+            () -> {
+              var target =
+                  new NodeRegistry.Position(f.origin.dimension(), h.absolutePos(FURNACE).asLong());
+              var job = f.saved.craftingJobs().get(id[0]);
+              h.assertTrue(
+                  target.equals(job.dispatch().target()),
+                  "Dispatch saves exact original furnace coordinate");
+              var unrelated =
+                  new NodeRegistry.Position(
+                      f.origin.dimension(), h.absolutePos(INTERFACE.east()).asLong());
+              h.assertTrue(
+                  !jobs(h).machineLeased(unrelated),
+                  "New dispatch does not block an unrelated adjacent machine");
+              h.setBlock(
+                  INTERFACE,
+                  f.face.getBlockState().setValue(BlockStateProperties.FACING, Direction.EAST));
+              h.assertTrue(
+                  jobs(h).machineLeased(target) && !jobs(h).machineLeased(unrelated),
+                  "Rotation does not retarget the persisted physical lease");
+            })
+        .thenIdle(30)
+        .thenExecute(
+            () -> {
+              var job = f.saved.craftingJobs().get(id[0]);
+              h.assertTrue(
+                  job != null && job.dispatch() != null && f.stock(f.ingot) == 0,
+                  "Rotated interface cannot collect outputs from a different target");
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 1600)
+  public static void sameCoordinateReplacementCannotInheritProcessingOrCancelledCleanup(
+      GameTestHelper h) {
+    var f = setup(h);
+    UUID[] id = {null};
+    BlastFurnaceBlockEntity[] replacement = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.ore, 2);
+              id[0] = jobs(h).submit(actor(f.owner), f.origin, f.ingot, 2).job();
+            })
+        .thenWaitUntil(
+            () -> {
+              var job = f.saved.craftingJobs().get(id[0]);
+              h.assertTrue(
+                  job != null
+                      && job.dispatch() != null
+                      && job.dispatch().inserted().getOrDefault(f.ore, 0L) == 1,
+                  "One input accepted by original machine");
+            })
+        .thenExecute(
+            () -> {
+              var job = f.saved.craftingJobs().get(id[0]);
+              h.assertTrue(
+                  !job.dispatch().providers().isEmpty(),
+                  "New dispatch persists provider identities");
+              var detached = new CraftingJob(job.snapshot());
+              h.assertTrue(
+                  detached.dispatch().providers().equals(job.dispatch().providers()),
+                  "Restored dispatch retains original provider identities");
+              h.setBlock(FURNACE, Blocks.AIR);
+              h.setBlock(FURNACE, Blocks.BLAST_FURNACE);
+              replacement[0] = h.getBlockEntity(FURNACE);
+              replacement[0].setItem(2, new ItemStack(Items.IRON_INGOT, 4));
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.craftingJobs().get(id[0]).reason().equals("machine_replaced"),
+                    "Replacement machine cannot inherit the old dispatch even at identical coordinates"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  f.stock(f.ingot) == 0
+                      && replacement[0].getItem(2).getCount() == 4
+                      && replacement[0].getItem(0).isEmpty(),
+                  "Old job inserted and collected nothing from replacement");
+              h.assertTrue(
+                  jobs(h).cancel(actor(f.owner), id[0]),
+                  "Cancel preserves old dispatch cleanup fence");
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.craftingJobs().get(id[0]) == null,
+                    "Unproven replacement cleanup ends at the original bounded pass limit"))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.stock(f.ingot) == 0
+                        && f.stock(f.ore) == 1
+                        && f.saved.registry().stock(f.cell, f.ore).reserved() == 0
+                        && replacement[0].getItem(2).getCount() == 4
+                        && replacement[0].getItem(0).isEmpty(),
+                    "Only unused reservation returned; replacement outputs remain owned and no input was replayed/refunded"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 800)
+  public static void providerMetadataReloadPreservesIdentityWithoutInitializingReplacement(
+      GameTestHelper h) {
+    var f = setup(h);
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.ore, 1);
+              id[0] = jobs(h).submit(actor(f.owner), f.origin, f.ingot, 1).job();
+            })
+        .thenWaitUntil(
+            () -> {
+              var job = f.saved.craftingJobs().get(id[0]);
+              h.assertTrue(
+                  job != null && job.dispatch() != null && !job.dispatch().inserted().isEmpty(),
+                  "Processing input inserted before persistence probe");
+            })
+        .thenExecute(
+            () -> {
+              var dispatch = f.saved.craftingJobs().get(id[0]).dispatch();
+              var runtime = WorldNetworks.get(h.getLevel().getServer());
+              var persisted = f.furnace.saveWithFullMetadata(h.getLevel().registryAccess());
+              h.setBlock(FURNACE, Blocks.AIR);
+              h.setBlock(FURNACE, Blocks.BLAST_FURNACE);
+              BlastFurnaceBlockEntity restored = h.getBlockEntity(FURNACE);
+              var beforeRead = restored.saveWithFullMetadata(h.getLevel().registryAccess());
+              h.assertTrue(
+                  runtime.connectors().processingIdentity(dispatch.target(), false).isEmpty(),
+                  "An unmarked replacement has no matching persisted provider identity");
+              // Reading NeoForge persistent data lazily creates an empty compound; that is not a
+              // marker, so compare with it normalized away and require no other change.
+              var afterRead = restored.saveWithFullMetadata(h.getLevel().registryAccess());
+              if (afterRead.getCompound("NeoForgeData").isEmpty()) afterRead.remove("NeoForgeData");
+              h.assertTrue(
+                  beforeRead.equals(afterRead),
+                  "Resume validation initializes no markers or resources on a replacement: "
+                      + beforeRead
+                      + " -> "
+                      + afterRead);
+              restored.loadWithComponents(persisted, h.getLevel().registryAccess());
+              h.assertTrue(
+                  dispatch
+                      .providers()
+                      .equals(runtime.connectors().processingIdentity(dispatch.target(), false)),
+                  "Reloading actual saved machine metadata restores the same identity groups");
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.craftingJobs().get(id[0]) == null,
+                    "Original saved provider state resumes and finishes"))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.stock(f.ingot) == 1 && f.stock(f.ore) == 0,
+                    "Reload retains exactly one accepted input/output without replay"))
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void opaqueCapabilityWithoutBackingEvidenceCannotStartProcessing(GameTestHelper h) {
+    var f = setup(h);
+    h.setBlock(FURNACE, dev.izzy.factorycore.testing.ConnectorFixture.OPAQUE.get());
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.ore, 1);
+              id[0] = jobs(h).submit(actor(f.owner), f.origin, f.ingot, 1).job();
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.craftingJobs().get(id[0]).reason().equals("machine_identity"),
+                    "Capability presence cannot establish independent persistent machine ownership"))
+        .thenExecute(
+            () -> {
+              var job = f.saved.craftingJobs().get(id[0]);
+              h.assertTrue(
+                  job.dispatch() == null
+                      && job.snapshot().staged().isEmpty()
+                      && f.stock(f.ore) == 1
+                      && f.saved.registry().stock(f.cell, f.ore).reserved() == 1,
+                  "Unsupported opaque machine received no input and reservations remain owned");
+              jobs(h).cancel(actor(f.owner), id[0]);
+            })
+        .thenSucceed();
+  }
 }

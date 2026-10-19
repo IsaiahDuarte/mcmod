@@ -44,6 +44,12 @@ slot that supplied a pattern. The index is advisory and grants no authority.
 
 ## Jobs
 
+Staging belongs to the request segment. Pull/delivery, remote processing
+insertion/collection and published table input/output legs use the same wireless
+pair allowances as terminal/preset/script moves. Table crafts reserve all their
+legs before consuming ingredients; insufficient quota leaves staging intact and
+waits. See [shared wireless throughput](../decisions/0050-shared-wireless-throughput.md).
+
 `core.crafting.CraftingJob` holds `(id, principal, network, segment, origin, request,
 amount, steps, reserved, staged, state, reason)`. States: RUNNING, WAITING (reason),
 DELIVERING, CANCELLING. Mutators: `pulled(backing, key, n)` (reserved → staged),
@@ -100,3 +106,38 @@ faced machine's fluid handler for them ([ADR0045](../decisions/0045-fluid-proces
 Requests and keep-stock rules accept item and fluid keys. Wait reasons: `machine_missing`
 also covers a missing fluid port; `output_not_clean` also covers tanks holding the output
 fluid.
+
+
+## Physical machine leases and migration
+
+New processing dispatches persist the exact physical machine coordinate in nested
+job schema4. Interfaces facing the same machine share one lease; scripts/presets
+and all shared external transfers report BUSY and extract nothing until that
+job or its cancellation cleanup releases it. A job also waits `reserved` before
+pulling ingredients while any existing provider group/partition hold or unresolved
+staging retains that machine, even if its connector has unregistered. Release the
+actual hold or recover the original transfer; restarting or rebinding never erases
+that ownership. Cached external primitive mutations
+also stop. Other adjacent machines remain usable. Rotating a dispatched interface
+returns `machine_changed` and cannot transfer the job to another target; restore
+its original orientation. External pipes/hoppers remain outside Factory Core's
+lease path and must not feed processing machines concurrently.
+
+Legacy schemas1–3 lack a target for active dispatches. They retain their exact
+inserted/collected/staging records, fence all six neighboring coordinates without
+loading chunks, and report `legacy_machine`. Cancel to return known staging and
+let bounded cleanup finish; inspect the actual machine for already inserted
+inputs/outputs. No target, output attribution or refund is guessed. See the
+[processing decision](../decisions/0032-processing-patterns.md#physical-target-lease-correction-2026-10-18).
+
+
+Nested job schema5 additionally persists provider-group/component/type fingerprints
+before new dispatch. Every active and cancellation-cleanup mutation first checks
+the original identity read-only. Replacing a machine at the same coordinates
+cannot inherit the old job or have its existing outputs collected; the job reports
+`machine_replaced`. Restore the original provider state or cancel and inspect the
+old machine; never replay already inserted inputs. Normal provider NBT reload
+preserves existing identity markers and can resume without another extraction.
+Schema1–4 dispatches without identity proof remain fenced and require explicit
+cancellation/inspection (`legacy_provider` when the target is known). See the
+[identity/migration boundary](../decisions/0032-processing-patterns.md#provider-identity-fence-nested-schema5).

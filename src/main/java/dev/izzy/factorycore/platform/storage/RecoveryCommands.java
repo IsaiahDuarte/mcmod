@@ -83,7 +83,22 @@ public final class RecoveryCommands {
                                             c ->
                                                 returning(
                                                     c.getSource(),
-                                                    StringArgumentType.getString(c, "id")))))));
+                                                    StringArgumentType.getString(c, "id"),
+                                                    false))))
+                        .then(
+                            Commands.literal("settle")
+                                .requires(
+                                    s ->
+                                        s.getEntity() instanceof ServerPlayer player
+                                            && s.source == player)
+                                .then(
+                                    Commands.argument("id", StringArgumentType.word())
+                                        .executes(
+                                            c ->
+                                                returning(
+                                                    c.getSource(),
+                                                    StringArgumentType.getString(c, "id"),
+                                                    true))))));
   }
 
   private static UUID parse(CommandSourceStack source, String value) {
@@ -237,8 +252,13 @@ public final class RecoveryCommands {
     }
   }
 
+  /**
+   * Original-owner known cleanup ({@code return}) or legacy settlement ({@code settle}, ADR 0047)
+   * for a record without endpoint context. Both preserve before-state evidence first, use shared
+   * scheduling and never extract.
+   */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
-  private static int returning(CommandSourceStack source, String text) {
+  private static int returning(CommandSourceStack source, String text, boolean settle) {
     UUID id = parse(source, text);
     if (id == null) return 0;
     var player = (ServerPlayer) source.getEntity();
@@ -266,8 +286,8 @@ public final class RecoveryCommands {
         fail(source, "complete");
         return 0;
       }
-      if (records.context(id) == null) {
-        fail(source, "legacy");
+      if ((records.context(id) == null) != settle) {
+        fail(source, settle ? "settle_scoped" : "legacy");
         return 0;
       }
       var times = REQUESTS.computeIfAbsent(server, s -> new HashMap<>());
@@ -288,24 +308,24 @@ public final class RecoveryCommands {
               server.getWorldPath(LevelResource.ROOT),
               saved.registry().world(),
               new TransferRegistry.Stored(id, move, records.context(id)));
+      var actor = new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2));
+      java.util.function.Consumer<WorldStorageTransfers.Result> report =
+          completed ->
+              source.sendSuccess(
+                  () ->
+                      Component.translatable(
+                          "command.factorycore.recovery." + (settle ? "settled" : "result"),
+                          id.toString(),
+                          completed.reason().name(),
+                          completed.transfer() == null ? 0 : completed.transfer().returned(),
+                          completed.transfer() == null ? 0 : completed.transfer().delivered(),
+                          completed.transfer() == null ? 0 : completed.transfer().staged()),
+                  false);
+      var transfers = WorldNetworks.get(server).transfers();
       var result =
-          WorldNetworks.get(server)
-              .transfers()
-              .progress(
-                  id,
-                  new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                  true,
-                  completed ->
-                      source.sendSuccess(
-                          () ->
-                              Component.translatable(
-                                  "command.factorycore.recovery.result",
-                                  id.toString(),
-                                  completed.reason().name(),
-                                  completed.transfer() == null
-                                      ? 0
-                                      : completed.transfer().returned()),
-                          false));
+          settle
+              ? transfers.settleLegacy(id, actor, report)
+              : transfers.progress(id, actor, true, report);
       source.sendSuccess(
           () ->
               Component.translatable(

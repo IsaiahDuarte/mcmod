@@ -20,5 +20,26 @@ paired tick. `WorldWireReader` emits the partner port only while `active()`. Dia
 `unpaired`, `needs_gateway`, `out_of_range`, `no_power`. Pairing results: `paired`,
 `out_of_range`, `missing`, `denied`.
 
-Not implemented: per-pair resource rate caps, measured throughput comparison beyond the
-shared scheduled path.
+Shared per-pair limits are 256 items, 4,000 mB and 8,000 FE per server tick,
+aggregated across both directions and all callers. A route crossing several pairs
+uses every pair's remaining allowance. Wired/sibling routes do not consume an
+unrelated upstream pair. Partial FE actions can use remaining capacity; an
+indivisible container or table craft waits for its whole transaction to fit.
+Endpoint operating FE is separate. See [ADR0050](../decisions/0050-shared-wireless-throughput.md)
+for staging legs, uncertain calls, bounds and the legacy-restoration boundary.
+Controlled throughput comparison remains unverified.
+
+## Endpoint lifecycle verification
+
+`./gradlew runWirelessLifecycleServer` runs a dedicated server with a root and one
+wireless endpoint kept loaded, and a remote endpoint/gateway/drive in another chunk.
+It releases the remote chunk's fixture ticket, requires an actual chunk-unload event
+and removed block entities, then checks 40 ticks without implicitly loading it.
+The remote cell's exact stock and principal-owned reservation must remain unchanged
+and unavailable. Reload must restore the reciprocal pair and original cell lease
+before the reserved extraction can resume. The task fails on missing observations,
+timeouts, or a missing fresh `build/reports/wireless-lifecycle/result.txt` report.
+This is a required `check` dependency. It covers orderly endpoint eviction and
+reload. Separate `WirelessThroughputGameTests`, `WirelessCraftingGameTests` and
+`TerminalWirelessContainerGameTests` exercise resource limits; interrupted foreign
+writes and controlled performance acceptance remain separate.

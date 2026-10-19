@@ -18,7 +18,9 @@ import net.minecraft.nbt.Tag;
 /**
  * Nested crafting-job schema inside world schema thirteen. Schema two adds the optional processing
  * {@code Dispatch}; schema three adds keep-stock {@code Rules} and an optional job {@code Rule}.
- * Older nested schemas still load. Unknown fields reject.
+ * Schema four persists the exact physical target; schema five adds component/type provider
+ * fingerprints. Older dispatches retain unknown target/provider identity without inference. Older
+ * nested schemas still load. Unknown fields reject.
  */
 public final class CraftingJobCodec {
   static final long MAX_BYTES = 4L * 1024 * 1024;
@@ -91,7 +93,7 @@ public final class CraftingJobCodec {
       List<CraftingJob.Snapshot> jobs,
       List<dev.izzy.factorycore.core.crafting.KeepStockRule> rules) {
     var root = new CompoundTag();
-    root.putInt("Schema", 3);
+    root.putInt("Schema", 5);
     var ruleList = new ListTag();
     for (var rule : rules) {
       var entry = new CompoundTag();
@@ -144,6 +146,13 @@ public final class CraftingJobCodec {
         var dispatch = new CompoundTag();
         dispatch.putString("Dimension", job.dispatch().machine().dimension());
         dispatch.putLong("Position", job.dispatch().machine().block());
+        if (job.dispatch().target() != null)
+          dispatch.putLong("Target", job.dispatch().target().block());
+        var providers = new CompoundTag();
+        job.dispatch()
+            .providers()
+            .forEach((kind, identity) -> providers.putUUID(kind.name(), identity));
+        dispatch.put("Providers", providers);
         dispatch.put("Inserted", amounts(job.dispatch().inserted()));
         dispatch.put("Collected", amounts(job.dispatch().collected()));
         entry.put("Dispatch", dispatch);
@@ -162,7 +171,7 @@ public final class CraftingJobCodec {
   public static Decoded decodeAll(CompoundTag root) {
     if (!root.contains("Schema", Tag.TAG_INT)
         || root.getInt("Schema") < 1
-        || root.getInt("Schema") > 3)
+        || root.getInt("Schema") > 5)
       throw new IllegalArgumentException("Unsupported crafting job schema");
     int schema = root.getInt("Schema");
     NetworkStateCodec.fields(
@@ -241,13 +250,38 @@ public final class CraftingJobCodec {
         if (!entry.contains("Dispatch", Tag.TAG_COMPOUND))
           throw new IllegalArgumentException("Malformed dispatch");
         var saved = entry.getCompound("Dispatch");
-        NetworkStateCodec.fields(saved, Set.of("Dimension", "Position", "Inserted", "Collected"));
+        NetworkStateCodec.fields(
+            saved,
+            schema >= 5
+                ? Set.of("Dimension", "Position", "Target", "Providers", "Inserted", "Collected")
+                : schema >= 4
+                    ? Set.of("Dimension", "Position", "Target", "Inserted", "Collected")
+                    : Set.of("Dimension", "Position", "Inserted", "Collected"));
+        if (saved.contains("Target") && !saved.contains("Target", Tag.TAG_LONG))
+          throw new IllegalArgumentException("Malformed processing target");
         if (!saved.contains("Dimension", Tag.TAG_STRING)
             || !saved.contains("Position", Tag.TAG_LONG))
           throw new IllegalArgumentException("Malformed dispatch");
+        var providerIds = new java.util.EnumMap<ResourceKind, UUID>(ResourceKind.class);
+        if (schema >= 5) {
+          if (!saved.contains("Providers", Tag.TAG_COMPOUND))
+            throw new IllegalArgumentException("Malformed processing providers");
+          var providers = saved.getCompound("Providers");
+          for (var name : providers.getAllKeys()) {
+            var kind = ResourceKind.valueOf(name);
+            if (!providers.hasUUID(name))
+              throw new IllegalArgumentException("Malformed processing provider identity");
+            providerIds.put(kind, providers.getUUID(name));
+          }
+        }
         dispatch =
             new CraftingJob.Dispatch(
                 new NodeRegistry.Position(saved.getString("Dimension"), saved.getLong("Position")),
+                saved.contains("Target", Tag.TAG_LONG)
+                    ? new NodeRegistry.Position(
+                        saved.getString("Dimension"), saved.getLong("Target"))
+                    : null,
+                providerIds,
                 amounts(list(saved, "Inserted")),
                 amounts(list(saved, "Collected")));
       }

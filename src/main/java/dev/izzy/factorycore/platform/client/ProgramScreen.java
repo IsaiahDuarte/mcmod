@@ -1,11 +1,14 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.core.program.DraftHistory;
 import dev.izzy.factorycore.core.program.ProgramTemplates;
+import dev.izzy.factorycore.core.program.ResourceExpressions;
 import dev.izzy.factorycore.platform.program.ProgramMenu;
 import dev.izzy.factorycore.platform.program.ProgramPackets;
+import java.util.List;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.MultiLineEditBox;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -14,7 +17,18 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /** Program editor: draft text, inline diagnostics, deployment controls, templates and logs. */
 public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
-  private MultiLineEditBox editor;
+  private ProgramTextEditor editor;
+  private DraftHistory history;
+  private EditBox search;
+  private Button category;
+  private final java.util.List<Button> choices = new java.util.ArrayList<>();
+  private Button previousPage, nextPage;
+  private boolean selecting, completing, previewing;
+  private int kind, page, previewRule, previewPage;
+  private Button scope;
+  private List<String> options = List.of();
+  private ProgramPackets.AuthorView observedAuthor;
+  private String labelAfter = "";
   private Button pause;
   private int template = -1;
   private boolean loaded;
@@ -28,34 +42,262 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   @Override
   protected void init() {
     String previous = editor == null ? menu.draft() : editor.getValue();
+    imageWidth = Math.min(344, width);
     super.init();
+    if (history == null) history = new DraftHistory(previous);
     editor =
         addRenderableWidget(
-            new MultiLineEditBox(
+            new ProgramTextEditor(
+                font, leftPos + 8, topPos + 18, editorWidth(), 148, previous, history));
+    button("save", controlsX(), 18, () -> upload(-1));
+    button(
+        "check",
+        controlsX(),
+        36,
+        () -> {
+          previewing = false;
+          rebuildChoices();
+          upload(ProgramPackets.CHECK);
+        });
+    button("deploy", controlsX(), 54, () -> upload(ProgramPackets.DEPLOY));
+    pause = button("pause", controlsX(), 72, this::togglePause);
+    button("stop", controlsX(), 90, () -> action(ProgramPackets.STOP));
+    button("template", controlsX(), 108, this::nextTemplate);
+    button("wasm", controlsX(), 126, this::uploadWasm);
+    button("insert", controlsX(), 144, () -> openSelector(false));
+    button("preview", controlsX(), 162, this::preview);
+    category =
+        addRenderableWidget(
+            Button.builder(
+                    Component.empty(),
+                    b -> {
+                      kind = (kind + 1) % 4;
+                      page = 0;
+                      labelAfter = "";
+                      if (kind == 2) requestAuthor(false, "");
+                      rebuildChoices();
+                    })
+                .bounds(leftPos + 8, topPos + 18, editorWidth(), 18)
+                .build());
+    search =
+        addRenderableWidget(
+            new EditBox(
                 font,
                 leftPos + 8,
-                topPos + 18,
-                220,
-                // The character counter renders just below the box; keep it above the log pane.
-                148,
-                Component.translatable("gui.factorycore.program.placeholder"),
-                Component.translatable("gui.factorycore.program.editor")));
-    editor.setCharacterLimit(
-        dev.izzy.factorycore.platform.program.ProgramControllerEntity.MAX_DRAFT);
-    editor.setValue(previous);
-    button("save", 234, 18, () -> upload(-1));
-    button("check", 234, 40, () -> upload(ProgramPackets.CHECK));
-    button("deploy", 234, 62, () -> upload(ProgramPackets.DEPLOY));
-    pause = button("pause", 234, 84, this::togglePause);
-    button("stop", 234, 106, () -> action(ProgramPackets.STOP));
-    button("template", 234, 128, this::nextTemplate);
-    button("wasm", 234, 150, this::uploadWasm);
+                topPos + 40,
+                editorWidth(),
+                18,
+                Component.translatable("gui.factorycore.program.select.search")));
+    search.setMaxLength(128);
+    search.setResponder(
+        text -> {
+          page = 0;
+          rebuildChoices();
+        });
+    choices.clear();
+    for (int index = 0; index < 7; index++) {
+      final int row = index;
+      choices.add(
+          addRenderableWidget(
+              Button.builder(Component.empty(), b -> choose(row))
+                  .bounds(leftPos + 8, topPos + 62 + index * 13, editorWidth(), 12)
+                  .build()));
+    }
+    scope =
+        addRenderableWidget(
+            Button.builder(
+                    Component.translatable("gui.factorycore.program.scope"),
+                    b -> {
+                      requestAuthor(false, "");
+                    })
+                .bounds(leftPos + 8, topPos + 169, 90, 11)
+                .build());
+    previousPage =
+        addRenderableWidget(
+            Button.builder(
+                    Component.literal("<"),
+                    b -> {
+                      if (previewing) {
+                        previewPage = Math.max(0, previewPage - 1);
+                      } else if (page > 0) page--;
+                      else if (kind == 2) {
+                        labelAfter = "";
+                        requestAuthor(false, "");
+                      }
+                      rebuildChoices();
+                    })
+                .bounds(leftPos + 8, topPos + 156, 35, 18)
+                .build());
+    nextPage =
+        addRenderableWidget(
+            Button.builder(
+                    Component.literal(">"),
+                    b -> {
+                      if (previewing) {
+                        previewPage++;
+                        rebuildChoices();
+                      } else if ((page + 1) * choices.size() < options.size()) page++;
+                      else if (kind == 2 && menu.authorView() != null && menu.authorView().more()) {
+                        var labels = menu.authorView().labels();
+                        labelAfter = labels.getLast();
+                        page = 0;
+                        requestAuthor(false, labelAfter);
+                      }
+                      rebuildChoices();
+                    })
+                .bounds(leftPos + 47, topPos + 156, 35, 18)
+                .build());
+    rebuildChoices();
+  }
+
+  private int editorWidth() {
+    return imageWidth - 124;
+  }
+
+  private int controlsX() {
+    return imageWidth - 110;
+  }
+
+  private void openSelector(boolean complete) {
+    selecting = !selecting;
+    completing = complete;
+    previewing = false;
+    var context = editor.completion();
+    if (complete)
+      kind =
+          switch (context.call()) {
+            case "item" -> 0;
+            case "fluid" -> 1;
+            case "machines" -> 2;
+            default -> 3;
+          };
+    labelAfter = "";
+    page = 0;
+    search.setValue(complete ? context.prefix() : "");
+    requestAuthor(false, "");
+    rebuildChoices();
+    setFocused(selecting ? search : editor);
+  }
+
+  private void requestAuthor(boolean preview, String after) {
+    PacketDistributor.sendToServer(
+        new ProgramPackets.AuthorRequest(
+            menu.containerId, menu.session(), preview, previewRule, after));
+  }
+
+  private void preview() {
+    previewing = true;
+    selecting = false;
+    previewPage = 0;
+    rebuildChoices();
+    var author = menu.authorView();
+    if (author != null && author.total() > 0) previewRule = (author.rule() + 1) % author.total();
+    upload(-1);
+    requestAuthor(true, "");
+  }
+
+  private void rebuildChoices() {
+    if (category == null || search == null) return;
+    category.setMessage(Component.translatable("gui.factorycore.program.select.kind." + kind));
+    var needle = search.getValue().toLowerCase(java.util.Locale.ROOT);
+    java.util.stream.Stream<String> values =
+        switch (kind) {
+          case 0 ->
+              net.minecraft.core.registries.BuiltInRegistries.ITEM.keySet().stream()
+                  .map(Object::toString);
+          case 1 ->
+              net.minecraft.core.registries.BuiltInRegistries.FLUID.keySet().stream()
+                  .map(Object::toString);
+          case 2 ->
+              menu.authorView() == null
+                  ? java.util.stream.Stream.empty()
+                  : menu.authorView().labels().stream();
+          default ->
+              List.of(
+                  "every",
+                  "ticks",
+                  "seconds",
+                  "as",
+                  "for",
+                  "in",
+                  "machines",
+                  "keep",
+                  "stocked",
+                  "with",
+                  "of",
+                  "from",
+                  "storage",
+                  "move",
+                  "to",
+                  "limit",
+                  "craft",
+                  "if",
+                  "stock",
+                  "item",
+                  "fluid",
+                  "tag",
+                  "energy",
+                  "log")
+                  .stream();
+        };
+    options =
+        values
+            .filter(value -> value.toLowerCase(java.util.Locale.ROOT).contains(needle))
+            .sorted()
+            .toList();
+    editor.visible = !selecting && !previewing;
+    if (scope != null) scope.visible = !selecting && !previewing;
+    category.visible = selecting;
+    search.visible = selecting;
+    for (int index = 0; index < choices.size(); index++) {
+      var button = choices.get(index);
+      int option = page * choices.size() + index;
+      button.visible = selecting;
+      button.active = option < options.size();
+      var text = option < options.size() ? options.get(option) : "";
+      button.setMessage(Component.literal(font.plainSubstrByWidth(text, editorWidth() - 12)));
+      button.setTooltip(Tooltip.create(Component.literal(text)));
+    }
+    if (previousPage != null) {
+      previousPage.visible = selecting || previewing;
+      nextPage.visible = selecting || previewing;
+      previousPage.active = previewing ? previewPage > 0 : page > 0 || !labelAfter.isEmpty();
+      nextPage.active =
+          previewing
+              ? (previewPage + 1) * 13 < previewLines().size()
+              : (page + 1) * choices.size() < options.size()
+                  || kind == 2 && menu.authorView() != null && menu.authorView().more();
+    }
+  }
+
+  private void choose(int row) {
+    int index = page * choices.size() + row;
+    if (index >= options.size()) return;
+    var value = options.get(index);
+    // Inside a quoted call, completion inserts its identifier; outside, insert a working
+    // expression.
+    String text =
+        completing && editor.completion().quoted()
+            ? ResourceExpressions.literal(value)
+                .substring(1, ResourceExpressions.literal(value).length() - 1)
+            : switch (kind) {
+              case 0 -> ResourceExpressions.item(value);
+              case 1 -> ResourceExpressions.fluid(value);
+              case 2 -> "machines(" + ResourceExpressions.literal(value) + ")";
+              default -> value;
+            };
+    if (completing) editor.complete(text);
+    else insert(text);
+    selecting = false;
+    rebuildChoices();
+    setFocused(editor);
+    editor.setFocused(true);
   }
 
   private Button button(String key, int x, int y, Runnable action) {
     return addRenderableWidget(
         Button.builder(Component.translatable("gui.factorycore.program." + key), b -> action.run())
-            .bounds(leftPos + x, topPos + y, 102, 18)
+            .bounds(leftPos + x, topPos + y, 102, 16)
             .tooltip(
                 Tooltip.create(Component.translatable("gui.factorycore.program." + key + ".help")))
             .build());
@@ -107,10 +349,10 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   public void insert(String text) {
     setFocused(editor);
     editor.setFocused(true);
-    var current = editor.getValue();
-    if (!current.isEmpty() && !Character.isWhitespace(current.charAt(current.length() - 1)))
-      editor.charTyped(' ', 0);
-    for (int index = 0; index < text.length(); index++) editor.charTyped(text.charAt(index), 0);
+    int cursor = editor.cursor();
+    String prefix =
+        cursor > 0 && !Character.isWhitespace(editor.getValue().charAt(cursor - 1)) ? " " : "";
+    editor.insert(prefix + text);
   }
 
   private void action(int action) {
@@ -130,9 +372,14 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   @Override
   protected void containerTick() {
     super.containerTick();
-    if (!loaded && !menu.draft().isEmpty()) {
+    if (!loaded && menu.draftReceived()) {
       loaded = true;
-      editor.setValue(menu.draft());
+      // A delayed opening snapshot must not replace text already entered by the player.
+      if (editor.getValue().isEmpty()) editor.load(menu.draft());
+    }
+    if (menu.authorView() != observedAuthor) {
+      observedAuthor = menu.authorView();
+      rebuildChoices();
     }
     var view = menu.view();
     pause.active = view.deployed();
@@ -144,8 +391,8 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   @Override
   protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
     graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xff282c30);
-    graphics.fill(leftPos + 4, topPos + 4, leftPos + 340, topPos + 236, 0xff44484d);
-    graphics.fill(leftPos + 8, topPos + 182, leftPos + 336, topPos + 232, 0xff171d22);
+    graphics.fill(leftPos + 4, topPos + 4, leftPos + imageWidth - 4, topPos + 236, 0xff44484d);
+    graphics.fill(leftPos + 8, topPos + 182, leftPos + imageWidth - 8, topPos + 232, 0xff171d22);
   }
 
   @Override
@@ -165,7 +412,23 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
               .append(" · ")
               .append(Component.translatable("gui.factorycore.program.status." + view.status()));
     graphics.drawString(
-        font, font.plainSubstrByWidth(state.getString(), 104), 234, 172, 0xe4bc83, false);
+        font, font.plainSubstrByWidth(state.getString(), 104), controlsX(), 6, 0xe4bc83, false);
+    if (menu.authorView() != null)
+      scope.setTooltip(Tooltip.create(Component.literal(menu.authorView().scope())));
+    if (previewing) {
+      graphics.fill(8, 18, 8 + editorWidth(), 154, 0xff171d22);
+      graphics.drawString(
+          font,
+          Component.translatable("gui.factorycore.program.snapshot"),
+          12,
+          20,
+          0xe4bc83,
+          false);
+      var snapshot = previewLines();
+      int end = Math.min(snapshot.size(), (previewPage + 1) * 13);
+      for (int index = previewPage * 13; index < end; index++)
+        graphics.drawString(font, snapshot.get(index), 12, 32 + (index % 13) * 9, 0xd8dee9, false);
+    }
     int y = 185;
     var lines = new java.util.ArrayList<String>();
     if (!view.message().isEmpty()) lines.add(view.message());
@@ -174,7 +437,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     for (int i = Math.max(0, lines.size() - 4); i < lines.size(); i++) {
       graphics.drawString(
           font,
-          font.plainSubstrByWidth(lines.get(i), 324),
+          font.plainSubstrByWidth(lines.get(i), imageWidth - 20),
           12,
           y,
           view.diagnostics().contains(lines.get(i)) ? 0xff8a80 : 0xd8dee9,
@@ -183,8 +446,31 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     }
   }
 
+  private java.util.List<net.minecraft.util.FormattedCharSequence> previewLines() {
+    var lines = new java.util.ArrayList<net.minecraft.util.FormattedCharSequence>();
+    if (menu.authorView() != null)
+      for (var line : menu.authorView().preview())
+        lines.addAll(font.split(Component.literal(line), editorWidth() - 12));
+    return lines;
+  }
+
   @Override
   public boolean keyPressed(int key, int scan, int modifiers) {
+    if ((hasControlDown()
+            || (modifiers
+                    & (org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL | org.lwjgl.glfw.GLFW.GLFW_MOD_SUPER))
+                != 0)
+        && key == org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE) {
+      openSelector(true);
+      return true;
+    }
+    if ((selecting || previewing) && key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+      selecting = false;
+      previewing = false;
+      rebuildChoices();
+      setFocused(editor);
+      return true;
+    }
     // Typing in the editor must not close the screen on the inventory key.
     if (editor.isFocused() && key != org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE)
       return editor.keyPressed(key, scan, modifiers) || true;

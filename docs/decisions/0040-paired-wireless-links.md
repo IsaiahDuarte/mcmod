@@ -1,7 +1,8 @@
 # ADR 0040 — Paired wireless links
 
-Status: selected; native headless evidence. Per-resource link rate caps, unload-while-
-linked GameTests, measured wired/wireless throughput and graphical checks remain open.
+Status: selected; native headless pairing/power and actual endpoint chunk-unload
+evidence. Shared resource caps extend this decision in [ADR 0050](0050-shared-wireless-throughput.md).
+Measured wired/wireless throughput and complete graphical checks remain open.
 
 ## Decision
 
@@ -28,11 +29,22 @@ chunk lookup uses `getChunkNow`.
 
 A link-specific router with its own rate caps would duplicate the transfer scheduler.
 Modelling the link as a topology edge keeps authorization and visibility in one place.
-Per-resource caps are deferred to a later change on the scheduler side.
+Shared per-resource accounting is specified in ADR 0050 and applies to scheduled
+transfers and direct container/crafting mutations.
 
 ## Consequences
 
-Transfers over a link currently use the same scheduled throughput as cables, so wired
-throughput is equal, not higher, for now. R11's per-pair resource caps are still to
-be implemented. Operating power is accounted separately from any delivered energy, and
+Transfers share the scheduler with cables and additionally use per-pair limits
+(256 items, 4,000 mB and 8,000 FE per tick in aggregate across directions).
+Operating power is accounted separately from any delivered energy, and
 endpoints can't power their own bootstrap.
+
+## Endpoint eviction evidence
+
+The required dedicated `runWirelessLifecycleServer` probe observes a genuine remote
+chunk-unload event while the parent endpoint stays loaded. For 40 ticks, discovery
+does not reload the remote chunk and cached cell stock/claims remain unavailable and
+unchanged. Reload restores the original pair and cell lease before claimed extraction
+resumes. [Local evidence](../evidence/wireless-lifecycle-v1-2026-10-18.md) records the
+command and observations. This does not establish resource rate caps or interrupted
+external-write recovery.

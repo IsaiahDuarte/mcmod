@@ -66,12 +66,22 @@ loaded entities and subsequent edits. Existing registry schema three and local
 lease formats do not change.
 
 Admission ceilings/server: 65,536 indexed physical positions, 8,192 queued entries
-(including retired entries awaiting charged removal), replacement traversal 32.
+(including retired entries awaiting charged removal), ranked ownership lookup at most 32 references.
 Each scheduled step costs 32 credits and processes at most 32 visits; fair scheduler
 global/network/program limits and deadline remain in force. A visit advances one
 discovery/validation operation, skips one retired entry, creates one replacement,
 or prepares one position. Discovery independently caps graph vertices at 4,096,
-seed visits at 8,192, pending neighbors at 24,576 and probes at 32,768. Portable `DiscoverySeeds` now holds a flat, ownership-transferred queue capped at8,192 aggregate frames, including charged completion visits; the former iterator-depth32 limit is obsolete because traversal no longer nests. Region replacement-depth32 remains unchanged.
+seed visits at 8,192, pending neighbors at 24,576 and probes at 32,768. Portable `DiscoverySeeds` now holds a flat, ownership-transferred queue capped at8,192 aggregate frames, including charged completion visits; the former iterator-depth32 limit is obsolete because traversal no longer nests. Region redirects now use union by rank, so repeated replacements do not create an ever-longer ownership chain. Each lookup has a hard 32-reference bound; a rank-n root requires at least 2^n merged references. Merging updates only two roots, preserves the selected replacement owner, and never scans known positions. Retired non-root references release their owner value. This state is server-thread-owned and ephemeral; canonical IDs, authority and persistence do not change.
+
+Gateway nesting uses the world's `serverconfig/factorycore-server.toml` setting
+`network.gatewayDepth` (default 8, range 1..32). Each gateway from root to leaf counts
+once, including gateways connected through wireless pairs. A coordinator captures
+the loaded setting once at creation and passes it to every region discovery.
+NeoForge marks it as requiring a world restart; file edits apply after world reopen
+or dedicated-server restart, preventing mixed limits among existing and rebuilt
+regions. Over-depth components report `DEPTH_LIMIT` and remain unavailable without
+changing resource ownership. Invalid numeric settings are bounded by NeoForge's
+config correction; nonnumeric values return to the default.
 Borrowing freezes a source against further appends and prevents sharing its mutable
 cursor, excluding indirect cycles. Empty source transitions consume a seed visit.
 Depth/queue rejection leaves old sources intact and marks the affected publication
@@ -131,3 +141,15 @@ unloads. Storage/preset work stops, stock/holds persist, probes do not reload th
 root, and the original preset resumes only after the original root revalidates.
 It also covers the finite cable-run trigger for the flat retained-seed fix.
 This does not complete staged-unload, independent-save or release recovery gates.
+
+
+## Replacement-chain regression
+
+A recovered graphical restart log repeatedly reported `Network replacement depth limit`
+while the split-root child remained `NO_ROOT`. The old owner lookup followed a linear
+chain capped at 32, so a position retained through enough rebuilds could lose its usable
+owner. `RegionReferenceTest` exercises 4,096 successive replacements while querying the
+oldest owner, preserves an unrelated region, and merges 1,024 equally sized groups to
+check redirects in both rank directions. Integrated JVM and graphical rerun results
+must be recorded separately; the other recorded restart-stage-4 failure remains
+unexplained.

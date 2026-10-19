@@ -161,6 +161,17 @@ public final class LinkEndpointEntity extends BlockEntity {
     return current() && diagnostic().isEmpty();
   }
 
+  /** Current reciprocal pair identity, without loading either endpoint's chunk. */
+  public dev.izzy.factorycore.core.resource.WirelessBudget.Link pair() {
+    if (!(level instanceof ServerLevel server) || !active()) return null;
+    var other = loaded(server, partner());
+    if (other == null || !other.active() || !worldPosition.equals(other.partner())) return null;
+    String dimension = server.dimension().location().toString();
+    return new dev.izzy.factorycore.core.resource.WirelessBudget.Link(
+        new NodeRegistry.Position(dimension, worldPosition.asLong()),
+        new NodeRegistry.Position(dimension, other.getBlockPos().asLong()));
+  }
+
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel server)) return false;
     var chunk =

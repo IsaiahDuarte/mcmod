@@ -95,7 +95,7 @@ public final class NetworkTopology {
 
   private static final class Segment {
     final int representative;
-    final Map<String, TreeMap<UUID, Scope>> machines = new HashMap<>();
+    final TreeMap<String, TreeMap<UUID, Scope>> machines = new TreeMap<>();
     final List<Gateway> children = new ArrayList<>();
     UUID minimum;
     UUID root;
@@ -282,6 +282,26 @@ public final class NetworkTopology {
     var iterator = candidates.values().iterator();
     while (page.size() < limit && iterator.hasNext()) page.add(iterator.next());
     return new MachinePage(page, iterator.hasNext());
+  }
+
+  /** Sorted local labels from the published segment; no inherited or child interfaces. */
+  public record LabelPage(List<String> labels, boolean more) {
+    public LabelPage {
+      labels = List.copyOf(labels);
+    }
+  }
+
+  public LabelPage labels(Scope origin, String after, int limit) {
+    checkThread();
+    Objects.requireNonNull(after);
+    if (limit < 1 || limit > MAX_PAGE || after.length() > 64)
+      throw new IllegalArgumentException("Invalid label page");
+    requireScope(origin);
+    var labels = publication.entries().get(origin.node()).segment().machines.tailMap(after, false);
+    var iterator = labels.keySet().iterator();
+    var page = new ArrayList<String>();
+    while (page.size() < limit && iterator.hasNext()) page.add(iterator.next());
+    return new LabelPage(page, iterator.hasNext());
   }
 
   /**

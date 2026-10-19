@@ -50,6 +50,22 @@ class MachineSettingsPacketsTest {
   }
 
   @Test
+  void selectedTankFormRoundTripsWithExactWindow() {
+    var form =
+        new MachineSettingsPackets.Form(
+            "coolant", ResourceKind.FLUID, ConnectorSettings.Access.READ_WRITE, 3, 7, 2, 500);
+    var packet = new MachineSettingsPackets.Apply(1, UUID.randomUUID(), 4, form);
+    var output = buffer();
+    try {
+      MachineSettingsPackets.Apply.CODEC.encode(output, packet);
+      assertEquals(packet, MachineSettingsPackets.Apply.CODEC.decode(output));
+      assertFalse(output.isReadable());
+    } finally {
+      output.release();
+    }
+  }
+
+  @Test
   void malformedFieldsRejectBeforeAnyMenuOrProviderCall() {
     var access = ConnectorSettings.Access.READ_WRITE;
     assertThrows(
@@ -73,7 +89,7 @@ class MachineSettingsPacketsTest {
         () -> new MachineSettingsPackets.Form("", ResourceKind.ITEM, access, 0, 0, 1, 129));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new MachineSettingsPackets.Form("", ResourceKind.FLUID, access, 0, 1, 64, 1000));
+        () -> new MachineSettingsPackets.Form("", ResourceKind.ENERGY, access, 0, 1, 64, 1000));
     assertThrows(
         IllegalArgumentException.class,
         () -> new MachineSettingsPackets.Form("", ResourceKind.ENERGY, access, 0, 0, 64, 1001));

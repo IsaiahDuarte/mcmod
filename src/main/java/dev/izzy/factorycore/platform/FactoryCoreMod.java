@@ -6,7 +6,9 @@ import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 
 /** Loader entry point. Gameplay modules are added only after their decision gates. */
@@ -14,7 +16,8 @@ import net.neoforged.neoforge.common.NeoForge;
 public final class FactoryCoreMod {
   public static final String MOD_ID = "factorycore";
 
-  public FactoryCoreMod(IEventBus bus) {
+  public FactoryCoreMod(IEventBus bus, ModContainer container) {
+    container.registerConfig(ModConfig.Type.SERVER, FactoryCoreConfig.SERVER);
     StorageContent.register(bus);
     dev.izzy.factorycore.platform.storage.TerminalContent.register(bus);
     dev.izzy.factorycore.platform.storage.BufferedInterfaceContent.register(bus);
@@ -31,6 +34,7 @@ public final class FactoryCoreMod {
     NeoForge.EVENT_BUS.addListener(
         dev.izzy.factorycore.platform.storage.RecoveryCommands::register);
     NeoForge.EVENT_BUS.addListener(dev.izzy.factorycore.platform.storage.RecoveryCommands::stopped);
+    NeoForge.EVENT_BUS.addListener(dev.izzy.factorycore.platform.network.AccessCommands::register);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::postTick);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::stopped);
     NeoForge.EVENT_BUS.addListener(dev.izzy.factorycore.platform.crafting.WorldCrafting::stopped);

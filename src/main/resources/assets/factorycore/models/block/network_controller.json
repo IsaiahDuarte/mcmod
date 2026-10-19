@@ -1,6 +1,12 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/cube",
   "textures": {
-    "all": "minecraft:block/iron_block"
+    "particle": "factorycore:block/network_controller_side",
+    "north": "factorycore:block/network_controller_front",
+    "south": "factorycore:block/network_controller_side",
+    "east": "factorycore:block/network_controller_side",
+    "west": "factorycore:block/network_controller_side",
+    "up": "factorycore:block/network_controller_side",
+    "down": "factorycore:block/network_controller_side"
   }
 }

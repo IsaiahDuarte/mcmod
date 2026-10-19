@@ -63,8 +63,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     presetWidgets.clear();
     label = box(10, 43, 280, 64, "label");
     priority = box(80, 96, 65, 5, "priority");
-    firstSlot = box(225, 96, 65, 10, "first");
-    count = box(80, 123, 65, 2, "count");
+    firstSlot = box(225, 96, 65, 10, "window_first");
+    count = box(80, 123, 65, 2, "window_count");
     rate = box(225, 123, 65, 4, "rate");
     kindButton =
         button(
@@ -228,8 +228,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     label.setEditable(view.editable());
     priority.setEditable(view.editable());
     rate.setEditable(view.editable());
-    firstSlot.setEditable(view.editable() && kind == ResourceKind.ITEM);
-    count.setEditable(view.editable() && kind == ResourceKind.ITEM);
+    firstSlot.setEditable(view.editable() && kind != ResourceKind.ENERGY);
+    count.setEditable(view.editable() && kind != ResourceKind.ENERGY);
     kindButton.active = view.editable();
     accessButton.active = view.editable();
     for (var widget : bindingWidgets) widget.visible = !presets;
@@ -374,8 +374,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     }
     text(g, "label", 10, 30);
     text(g, "priority", 10, 100);
-    text(g, "first", 160, 100);
-    text(g, "count", 10, 127);
+    text(g, "window_first", 160, 100);
+    text(g, "window_count", 10, 127);
     text(g, "rate", 160, 127);
     var view = menu.view();
     g.drawString(

@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:block/cube",
   "textures": {
-    "particle": "minecraft:block/iron_block",
-    "down": "minecraft:block/iron_block",
-    "up": "minecraft:block/iron_block",
-    "north": "minecraft:block/furnace_front",
-    "south": "minecraft:block/furnace_front",
-    "west": "minecraft:block/iron_block",
-    "east": "minecraft:block/iron_block"
+    "particle": "factorycore:block/casing",
+    "north": "factorycore:block/storage_drive_front",
+    "south": "factorycore:block/storage_drive_front",
+    "east": "factorycore:block/casing_vent",
+    "west": "factorycore:block/casing_vent",
+    "up": "factorycore:block/storage_drive_top",
+    "down": "factorycore:block/casing"
   }
 }

@@ -50,12 +50,12 @@ resource order come from the server query. Current counts are advisory, not clai
 The query's bounded session memory and idle expiry are specified in
 [storage search](STORAGE_SEARCH.md); this menu touches its query while open.
 
-The native 280×232 screen includes registry-text search, Home/Next paging, Take 1,
+The native 280×232 screen includes name/registry/mod/tag search and name/quantity sorting, Home/Next paging, Take 1,
 Take 64, Return and native main inventory slots. Shift-click deposits up to 64;
 1–8 select rows when the search field is unfocused, Enter submits focused search,
 and action buttons use native keyboard focus/tooltips. Labels abbreviate counts
 using integer division; row hover shows exact decimal amounts. Icons deliberately
-omit native components. Metadata-rich tooltips, display-name/tag search, sorting,
+omit native components. Metadata-rich tooltips,
 offline cache, crafting/fluid/energy/job tabs remain unfinished release work.
 
 Example: craft the terminal with four iron, three glass and two redstone; connect
@@ -144,3 +144,63 @@ Status keys: `filled`, `emptied`, `charged`, `discharged`, `no_container`, `empt
 It sets crafting-mode ghost cells by registry identity; unknown IDs clear a cell. It shares
 the ghost-edit budget and moves nothing. The JEI handler is in
 `platform.client.integration.jei` ([ADR0043](../decisions/0043-jei-integration.md)).
+
+
+## Search, sort and player preferences (R08/A11)
+
+Items opens by default. Search plain text matches the registry ID or server-language
+display name, including custom names; `@minecraft` matches a mod namespace and
+`#minecraft:planks` matches a loaded item/fluid tag. Name sorts A–Z; Qty sorts exact
+total units descending (reservations remain separately visible). Matching variants
+remain distinct. Name sorting uses the first 256 characters and exact identity breaks
+ties. Search/sort are read-only and use the same VIEW authorization and bounded
+scheduled catalog as transfers. Selecting a sort restarts the query at Home; a stale
+page anchor also returns Home. No raw catalog cursor is sent to clients.
+
+The Name/Qty button is keyboard-focusable. Search/sort state is stored per player
+under `ForgeData.PlayerPersisted.FactoryCoreTerminal`, schema 1 (`Search`, at most
+128 UTF-16 characters; `Sort`, 0 or 1). Missing data uses empty search/name order;
+invalid known fields default without granting authority. Unknown schemas are left
+untouched until the player explicitly changes a preference. Each authenticated
+change writes only this preference compound. It survives screen closure, normal
+player save/reload and NeoForge's persisted-player death cloning. These advisory
+preferences contain no stock or ownership; interrupted writes can only restore an
+older preference. The menu syncs accepted preferences; other players and terminal
+blocks do not share them. Local unsent typing survives screen reinitialization.
+
+`TerminalSearchSupportTest` exercises case-insensitive display/registry/mod matching,
+exact component separation and arbitrary-precision stable sort order;
+`TerminalGameTests.displayRegistryModTagSearchAndPlayerSortSurviveReopen` exercises
+loaded tags, read-only totals and restored menu state. Packet tests round-trip
+accepted preferences and reject invalid inbound bounds. `runTerminalRestartClient` now requires typed display-name/mod/tag queries, actual
+Name/Qty clicks, physical close/reopen and nondefault preference capture, then a
+fresh JVM compares the persisted preference compound and reopens the terminal.
+The fixture is implemented; successful integrated/graphical outcomes remain to be
+recorded.
+
+
+## Container actions across wireless pairs
+
+Fill/empty and FE item actions reserve the shared bidirectional movement allowance
+on every wireless hop between the terminal and each owned cell/bank, before
+changing owned resources. A fluid action is indivisible at the container's simulated
+amount: a bucket needs its full 1,000 mB allowance, and a rejected partial plan
+releases its reservation without extracting or inserting fluid. Energy actions may
+use the remaining allowance, up to 1,000 FE per action and each bank's own rate.
+
+Item capability execution uses disposable component-backed stack copies. Only an
+exact successful storage plan publishes the changed item into the player's slot.
+A simulation/execution disagreement reports handler_fault, preserves the live
+item and owned resources, and releases unspent movement allowance. No compensation
+is attempted against foreign inventories/tanks. Unexpected partial owned writes
+are reversed into/from their exact original holders in the same synchronous
+server-thread call; verified compensation bypasses another movement/rate admission
+and only then releases the original permit. Bank rate debits may remain consumed
+for the tick after compensation; quantities never become budget credits.
+
+`TerminalWirelessContainerGameTests` builds an actual powered paired gateway path
+and root storage used from a child terminal. It checks a residual 500 mB cannot
+fill/empty a bucket, residual 500 FE limits charging, reverse discharge shares the
+exhausted cap, the next tick replenishes it, and dishonest item execution changes
+only disposable copies. This fixture remains unverified until the native suite
+runs successfully.

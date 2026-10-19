@@ -153,7 +153,7 @@ public class ConnectorEntity extends BlockEntity {
     var registration = runtime().connectors().recoveryRegistration(this);
     if (registration != null
         ? saved.transfers().unresolved(registration.backing()) != null
-        : saved.transfers().hasUnscopedUnresolved())
+        : saved.transfers().hasUnscopedUncertain(saved::canonicalIdentity))
       throw new IllegalStateException("Unresolved or unscoped foreign ownership");
     var next =
         new ConnectorData.State(
@@ -187,6 +187,95 @@ public class ConnectorEntity extends BlockEntity {
     data = nextData;
     diagnostic = "";
     setChanged();
+    onLoad();
+    return path;
+  }
+
+  /** Reconcile a stale crash-surviving holder without reading or moving foreign contents. */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed levels.
+  public java.nio.file.Path adoptPort(NodeRegistry.Handle expected) throws java.io.IOException {
+    var server = serverLevel();
+    var saved = authority();
+    var owner = saved.nodes().evidence(expected.id());
+    if (isRemoved()
+        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
+            == null
+        || server.getBlockEntity(worldPosition) != this
+        || state == null
+        || !state.equals(ConnectorData.read(data))
+        || !state.fault().isEmpty()
+        || expected.kind() != leaseKind()
+        || owner == null
+        || owner.position() == null
+        || owner.kind() != expected.kind()
+        || owner.generation() != expected.generation()
+        || !state.lease().world().equals(expected.world())
+        || !state.lease().id().equals(expected.id())
+        || state.lease().generation() == expected.generation()
+        || expected.generation() == Long.MAX_VALUE
+        || position().equals(owner.position())
+        || saved.transfers().unresolved(expected.id()) != null
+        || saved.transfers().unresolvedDevice(expected.id()) != null
+        || saved.transfers().hasUnscopedUncertain(saved::canonicalIdentity))
+      throw new IllegalStateException("Port lease cannot be adopted");
+    var old = owner.position();
+    var oldLevel =
+        server
+            .getServer()
+            .getLevel(
+                net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION,
+                    net.minecraft.resources.ResourceLocation.parse(old.dimension())));
+    var oldPos = BlockPos.of(old.block());
+    if (oldLevel == null
+        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+      throw new IllegalStateException("Old canonical port must be loaded");
+    if (oldLevel.getBlockEntity(oldPos) instanceof ConnectorEntity previous
+        && previous.handle() != null
+        && previous.handle().id().equals(expected.id()))
+      throw new IllegalStateException("Old canonical holder still references the port");
+    boolean machine = leaseKind() == NodeRegistry.Kind.MACHINE_INTERFACE;
+    long fence = machine ? saved.machinePresets().configuration(expected.id()) : 0;
+    long configuration =
+        machine ? Math.incrementExact(Math.max(fence, state.generation())) : state.generation();
+    if (machine) saved.machinePresets().prepareInvalidation(expected.id());
+    var next =
+        new ConnectorData.State(
+            new NodeRegistry.Handle(
+                expected.world(), expected.id(), expected.generation() + 1, expected.kind()),
+            state.settings(),
+            configuration,
+            "",
+            state.label());
+    var nextData = ConnectorData.write(next);
+    var path =
+        DeviceRecoveryAudit.preservePortAdoption(
+            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            expected.world(),
+            owner,
+            machine ? saved.machinePresets().get(expected.id()) : null,
+            fence,
+            position(),
+            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            saveWithFullMetadata(server.registryAccess()));
+    var adopted = saved.nodes().adopt(expected, position());
+    if (adopted.failure() != NodeRegistry.Failure.OK)
+      throw new IllegalStateException("Port adoption refused: " + adopted.failure());
+    WorldNetworks.connectorInvalidated(level, this);
+    if (this instanceof MachineInterfaceEntity machineOwner)
+      WorldNetworks.machineInvalidated(level, machineOwner);
+    if (machine) {
+      saved.machinePresets().invalidate(expected.id());
+      saved.machinePresets().observeConfiguration(adopted.handle(), configuration);
+    }
+    cache = null;
+    cachedDirection = null;
+    providerToken = UUID.randomUUID();
+    state = next;
+    data = nextData;
+    diagnostic = "";
+    setChanged();
+    WorldNetworks.changed(oldLevel, oldPos);
     onLoad();
     return path;
   }
@@ -336,6 +425,14 @@ public class ConnectorEntity extends BlockEntity {
   }
 
   public ItemStack portableForBreak() {
+    if (level instanceof ServerLevel) {
+      WorldNetworks.connectorInvalidated(level, this);
+      if (this instanceof MachineInterfaceEntity machineOwner)
+        WorldNetworks.machineInvalidated(level, machineOwner);
+    }
+    cache = null;
+    cachedDirection = null;
+    providerToken = UUID.randomUUID();
     var stack = new ItemStack(portableItem());
     if (state != null && diagnostic.isEmpty()) {
       try {
@@ -381,7 +478,11 @@ public class ConnectorEntity extends BlockEntity {
   @Override
   protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.loadAdditional(tag, registries);
-    if (level instanceof ServerLevel) WorldNetworks.connectorInvalidated(level, this);
+    if (level instanceof ServerLevel) {
+      WorldNetworks.connectorInvalidated(level, this);
+      if (this instanceof MachineInterfaceEntity machineOwner)
+        WorldNetworks.machineInvalidated(level, machineOwner);
+    }
     data = tag.contains(ConnectorData.FIELD) ? tag.get(ConnectorData.FIELD).copy() : null;
     parse();
     cache = null;

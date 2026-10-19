@@ -1,7 +1,7 @@
 {
   "parent": "factorycore:block/storage_connector",
   "textures": {
-    "panel": "minecraft:block/light_blue_concrete",
-    "contact": "minecraft:block/iron_block"
+    "panel": "factorycore:block/interface_panel",
+    "contact": "factorycore:block/contact"
   }
 }

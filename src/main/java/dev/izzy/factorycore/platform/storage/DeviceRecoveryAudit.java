@@ -225,6 +225,53 @@ public final class DeviceRecoveryAudit {
     return write(world, owner.id(), envelope);
   }
 
+  static Path preservePortAdoption(
+      Path world,
+      UUID namespace,
+      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
+      dev.izzy.factorycore.core.storage.MachinePresets.Deployment deployment,
+      long fence,
+      dev.izzy.factorycore.core.network.NodeRegistry.Position target,
+      CompoundTag blockState,
+      CompoundTag blockEntity)
+      throws IOException {
+    var state = ConnectorData.read(blockEntity.get(ConnectorData.FIELD));
+    boolean machine =
+        owner.kind() == dev.izzy.factorycore.core.network.NodeRegistry.Kind.MACHINE_INTERFACE;
+    if (owner.position() == null
+        || target.equals(owner.position())
+        || !machine && owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.CONNECTOR
+        || !state.lease().world().equals(namespace)
+        || !state.lease().id().equals(owner.id())
+        || state.lease().kind() != owner.kind()
+        || state.lease().generation() == owner.generation()
+        || !state.fault().isEmpty()
+        || (machine ? fence < 0 : fence != 0 || deployment != null)
+        || deployment != null
+            && (!deployment.node().equals(owner.id())
+                || deployment.configuration() > fence
+                || deployment.leaseGeneration() > owner.generation()))
+      throw new IllegalArgumentException("Expected stale foreign-port adoption evidence");
+    var envelope = new CompoundTag();
+    envelope.putInt("Schema", 7);
+    envelope.putInt("WorldSchema", DeviceSavedData.SCHEMA);
+    envelope.putUUID("World", namespace);
+    envelope.putString("HolderKind", "FOREIGN_PORT_ADOPTION");
+    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put(
+        "MachinePresets",
+        MachinePresetCodec.encode(
+            deployment == null ? java.util.List.of() : java.util.List.of(deployment),
+            machine && fence > 0 ? java.util.Map.of(owner.id(), fence) : java.util.Map.of()));
+    var adopted = new CompoundTag();
+    adopted.putString("Dimension", target.dimension());
+    adopted.putLong("Position", target.block());
+    envelope.put("Target", adopted);
+    envelope.put("BlockState", blockState.copy());
+    envelope.put("BlockEntity", blockEntity.copy());
+    return write(world, owner.id(), envelope);
+  }
+
   static Path preservePort(
       Path world,
       UUID namespace,

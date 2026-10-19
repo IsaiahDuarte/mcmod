@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "minecraft:item/filled_map"
+    "layer0": "factorycore:item/processing_pattern"
   }
 }

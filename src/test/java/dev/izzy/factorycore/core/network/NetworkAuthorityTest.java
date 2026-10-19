@@ -150,6 +150,35 @@ class NetworkAuthorityTest {
   }
 
   @Test
+  void labelCompletionIsPagedLocalAndImmediatelyRevokedOrInvalidated() {
+    var topology = tree();
+    topology.putNode(new Node(id(11), Role.INTERFACE, "root_only", true));
+    topology.putNode(new Node(id(12), Role.INTERFACE, "branch_a", true));
+    topology.putNode(new Node(id(13), Role.INTERFACE, "descendant_private", true));
+    topology.putNode(new Node(id(14), Role.INTERFACE, "sibling_private", true));
+    topology.putNode(new Node(id(15), Role.INTERFACE, "branch_z", true));
+    topology.connect(id(2), id(15));
+    NetworkTopologyTest.finish(topology, 16);
+    var grants = new NetworkPermissions(id(1), id(20), () -> {});
+    grants.setGrants(actor(20), id(21), Set.of(Permission.VIEW));
+    var authority = authority(topology, grants);
+    var branch = topology.membership(id(2)).scope();
+    var first = authority.labels(actor(21), branch, "", 1);
+    assertEquals(List.of("branch_a"), first.labels());
+    assertTrue(first.more());
+    var second = authority.labels(actor(21), branch, "branch_a", 1);
+    assertEquals(List.of("branch_z"), second.labels());
+    assertFalse(second.more());
+    assertEquals(
+        List.of("root_only"),
+        authority.labels(actor(20), topology.membership(id(1)).scope(), "", 16).labels());
+    grants.setGrants(actor(20), id(21), Set.of());
+    assertTrue(authority.labels(actor(21), branch, "", 16).labels().isEmpty());
+    topology.invalidate();
+    assertTrue(authority.labels(actor(20), branch, "", 16).labels().isEmpty());
+  }
+
+  @Test
   void inheritedViewsIntersectAllAncestorsWithoutEnumeratingChildPrivateStock() {
     var topology = tree();
     var grants = new NetworkPermissions(id(1), id(20), () -> {});

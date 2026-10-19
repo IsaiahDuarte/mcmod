@@ -22,7 +22,7 @@ public final class TerminalPackets {
    * container from fluid row {@code selection}; EMPTY empties own slot {@code selection};
    * CHARGE/DISCHARGE move up to 1,000 FE into/out of the energy item in a slot.
    */
-  public static final int KIND = 6, FILL = 7, EMPTY = 8, CHARGE = 9, DISCHARGE = 10;
+  public static final int KIND = 6, FILL = 7, EMPTY = 8, CHARGE = 9, DISCHARGE = 10, SORT = 11;
 
   public record Command(
       int menu,
@@ -41,9 +41,10 @@ public final class TerminalPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > DISCHARGE
+          || action > SORT
           || selection < 0
           || selection >= 36
+          || (action == SORT && selection > TerminalSearchSupport.QUANTITY)
           || amount < 1
           || amount > 64
           || text.length() > 128
@@ -107,12 +108,40 @@ public final class TerminalPackets {
       List<Row> rows,
       boolean next,
       boolean busy,
-      String staged)
+      String staged,
+      String search,
+      int sort)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_view"));
 
+    public View(
+        int menu,
+        UUID session,
+        long revision,
+        String status,
+        List<Row> rows,
+        boolean next,
+        boolean busy,
+        String staged) {
+      this(
+          menu,
+          session,
+          revision,
+          status,
+          rows,
+          next,
+          busy,
+          staged,
+          "",
+          TerminalSearchSupport.NAME);
+    }
+
     public View {
+      if (search.length() > 128
+          || sort < TerminalSearchSupport.NAME
+          || sort > TerminalSearchSupport.QUANTITY)
+        throw new IllegalArgumentException("Invalid terminal preferences");
       rows = List.copyOf(rows);
       if (rows.size() > 8 || status.length() > 64 || staged.length() > 32)
         throw new IllegalArgumentException("Invalid terminal view bounds");
@@ -142,6 +171,8 @@ public final class TerminalPackets {
               buffer.writeBoolean(value.next);
               buffer.writeBoolean(value.busy);
               buffer.writeUtf(value.staged, 32);
+              buffer.writeUtf(value.search, 128);
+              buffer.writeVarInt(value.sort);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -168,7 +199,9 @@ public final class TerminalPackets {
                   rows,
                   buffer.readBoolean(),
                   buffer.readBoolean(),
-                  buffer.readUtf(32));
+                  buffer.readUtf(32),
+                  buffer.readUtf(128),
+                  buffer.readVarInt());
             });
   }
 
@@ -186,7 +219,7 @@ public final class TerminalPackets {
   }
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("1");
+    var registrar = event.registrar("2");
     registrar.playToServer(
         Command.TYPE,
         Command.CODEC,

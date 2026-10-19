@@ -2,7 +2,7 @@
 
 The P3 server-side all-key catalog and transient search collector are implemented.
 They support items, mB and FE with exact components and arbitrary-precision aggregate
-counts. There is no terminal/menu/network frontend yet. See
+counts. The authenticated terminal is its network frontend. See
 [search decision](../decisions/0015-bounded-storage-search.md) and
 [exact-key routing/transfer contract](WORLD_STORAGE_TRANSFERS.md).
 
@@ -80,16 +80,27 @@ saturate, wrap, use floats or reject merely for exceeding Long.MAX_VALUE.
 
 `service.search().start(id, actor, origin, kind, text)` creates one server-owned
 session and schedules discovery. Text is at most 128 UTF-16 characters, matched
-case-insensitively against namespaced registry identity using Locale.ROOT. Exact
-component variants stay separate. This is registry text search, not display-name,
-tag or component matching. Client/UI selection and those additional filters
-remain owning-stage work.
+case-insensitively against namespaced registry identity or server-language display
+name (including custom item names), using Locale.ROOT. `@text` matches a registry
+namespace (mod ID); `#text` matches loaded item/fluid tag IDs by substring. Energy has
+no tags. The tag walk rejects resources exceeding 1,024 tags as UNSUPPORTED, never
+silently truncates. Exact component variants stay separate. This does not inspect
+arbitrary component fields or translate names using the client's language.
+
+The overload `start(..., text, sort)` accepts NAME (0, default) and QUANTITY (1).
+Name order is case-insensitive A–Z, using at most 256 display-name characters;
+quantity order uses descending exact aggregate total, then name. Both use exact
+resource identity as the final stable tiebreaker. An incremental ordered index
+updates with each bounded source page; results never sort the whole catalog in a
+tick. Each retained aggregate index entry adds 1,024 estimated bytes to the shared
+session budget. There is no uncharged global name cache.
 
 `result(id, actor, afterKey, limit)` authenticates the same actor and current scope/
 grant generation. Limit is 1–32 with an estimated 128-KiB result metadata ceiling.
 While scanning it returns complete=false, observed page count and no partial rows.
-A successful complete session returns immutable exact aggregates in stable resource
-kind/registry/unsigned-component order and an exclusive next position. Every result
+A successful complete session returns immutable exact aggregates in the selected
+order and an exclusive exact-key next position. The anchor must still belong to
+that session; an absent anchor rejects DENIED and the terminal returns to Home. Every result
 read refreshes the idle timer. Known topology or grant changes invalidate cached
 results even if the original owner still has VIEW. Another actor receives DENIED
 and cannot close/reuse a session. This server API accepts no client-supplied root,

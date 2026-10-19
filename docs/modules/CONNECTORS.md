@@ -55,7 +55,8 @@ the original. Reload/future-data replacement also releases old registrations.
 Vanilla item wrappers must refer to the actual container or normalized combined
 chest. Double-chest halves and different faces cannot become independent stock.
 All kinds of a backing group are independent resources, but same-kind registrations
-claim the whole group even if their item windows are disjoint. Shared handler
+claim the whole group even if their item windows are disjoint, unless explicit
+fixed indexed partitions are declared below. Shared handler
 instances reject overlap too. Canonical banks/drives use digital handles, not
 foreign aliases. Opaque mod providers need a backing adapter; capability presence
 alone never proves independent inventory ownership.
@@ -86,8 +87,8 @@ These are workload bounds, not representative full-server timing measurements.
 non-null type/access, priority -1,000..1,000, nonnegative platform item index,
 1..64 selected slots and positive rate up to 128 items or 1,000 mB/FE. The item
 window means up to `slotCount` slots starting at `firstSlot`, clamped to current
-handler size. Fluid/energy have no indexed-tank/slot selection; they require
-firstSlot=0 and slotCount=64 and use one resource-sensitive handler call.
+handler size. Energy requires firstSlot=0 and slotCount=64. Fluid0/64 retains whole-handler
+semantics; other bounded tank windows require explicit indexed mutation support.
 An unavailable item window rejects. Negative handler slot counts cannot overflow
 admission. Quantity requests count whole items, mB (1,000/bucket), or FE.
 
@@ -288,8 +289,11 @@ physical configuration. `WorldConnectors.recoveryRegistration(owner)` returns th
 remembered registration only when connector, configuration, provider token, kind
 and face still match; it is metadata and never authorizes resource access. With it,
 unresolved records naming its backing refuse; without it,
-`TransferRegistry.hasUnscopedUnresolved()` (at most1024 records, read-only) refuses
-any legacy record lacking context, since the backing cannot be proven unrelated.
+`TransferRegistry.hasUnscopedUncertain(DeviceSavedData::canonicalIdentity)` (at most1024
+records, read-only) refuses any uncertain legacy record lacking context that names a
+backing that is not a Factory Core identity, since that backing cannot be proven unrelated.
+Known legacy staging no longer blocks; its owner settles it into canonical holders
+([ADR0047](../decisions/0047-legacy-staging-settlement.md)).
 
 `DeviceRecoveryAudit.preservePort(worldPath, namespace, owner, deploymentOrNull,
 fence, registrationOrNull, blockState, blockEntity)` writes schema5 before mutation;
@@ -300,3 +304,103 @@ issues a new provider token, preserving settings, configuration, label and face.
 Normal revalidation reacquires the same provider backing. Accepted machine presets
 and fences are unchanged and cannot run on the new lease until an authorized
 player explicitly redeploys. See [ADR0026](../decisions/0026-foreign-port-repair.md).
+
+
+## Independent-save adoption
+
+Operator `/factorycore recovery port adopt <id> <expected-generation> <x y z>`
+selects a loaded stale connector or Machine Interface in the source dimension.
+The canonical lease must be placed at a different loaded position with no holder
+referencing that ID. The target must preserve its world, ID and casing kind with a
+different generation and no persisted provider fault. Unresolved node operations
+or unscoped uncertain foreign calls refuse adoption; known legacy staging retains
+its existing settlement path. No chunk is loaded and no foreign capability is read.
+
+`ConnectorEntity.adoptPort(expected)` runs only on the server thread. It writes
+schema-7 `FOREIGN_PORT_ADOPTION` evidence before moving the single canonical lease
+and advancing its generation. Evidence contains both the canonical metadata and
+stale physical holder, including settings, label and face. IOException or invalid
+preconditions leave ownership unchanged. Machine configuration advances beyond
+both physical and canonical fences; the accepted deployment is paused and requires
+explicit redeployment with current grants. Caches and old handles are invalidated;
+foreign inventories, claims, rates and operation ownership are unchanged.
+See [ADR0046](../decisions/0046-independent-save-adoption.md).
+
+Portable removal and native holder-state replacement unregister connector and machine
+runtime ownership before changing the parsed lease. This prevents a detached or replaced
+holder from retaining a preset registration that conflicts with the current placement.
+
+
+## Selected tanks and fixed provider partitions
+
+[ADR0053](../decisions/0053-selected-tanks-and-fixed-machine-ports.md) defines the
+indexed integration boundary. `IndexedFluidHandler` extends `IFluidHandler` with
+`fillTank(index, exactStack, action)` returning accepted mB and
+`drainTank(index, exactStack, action)` returning the actual exact-component fluid.
+They may touch only the named tank, and SIMULATE must not mutate. Indexes match
+`getFluidInTank`. The adapter visits at most64 selected tanks, checks quantities
+and returned identities, and propagates handler faults into existing uncertain
+staging/quarantine. No whole-handler/refund fallback is allowed.
+
+For example, after current EDIT authorization,
+`machine.configure(actor, new ConnectorSettings(ResourceKind.FLUID,
+ConnectorSettings.Access.READ_WRITE, 0, 1, 1, 500))` selects tank1 at500mB/tick.
+Bind/discover and submit through `WorldStorageTransfers` as in the existing
+compiled examples; observe/Stock/holds use only that tank. Defaults0/64 retain
+whole-capability compatibility. Unsupported indexed mutation reports UNSUPPORTED.
+
+Providers may additionally override `factoryCorePorts(kind)` to return immutable
+`PortWindow(first,count)` values, at most64 nonoverlapping fixed partitions, each
+with nonnegative global first index/count1–64. Empty keeps legacy exclusive
+backing accounting. Every alias/face must declare the same permanent catalog and
+expose identical global indexes, including through sided wrappers. Nonempty
+catalogs admit only an exact declared window. Do not return partitions for FE.
+
+For a provider with separate global input/output item slots, return
+`List.of(new PortWindow(0,1), new PortWindow(1,1))`; two interfaces configured0/1
+and1/1 may bind concurrently. Their stable derived backing IDs keep foreign
+holds/staging distinct. Duplicate/overlapping/undeclared windows refuse; concurrent
+partitions share the existing physical-group128 item or1000mB per-direction tick
+ceiling plus each connector's configured rate. Different resource kinds keep
+independent budgets. Closing/reconfiguring one binding removes only its own
+claims, never another port registration or resource hold.
+
+The fixed catalog must never change for an existing provider backing identity.
+Integration authors must explicitly migrate identity/pending ownership when
+changing physical partitions; changing ranges silently can bypass saved holds.
+Factory Core never infers this guarantee from arbitrary NeoForge wrappers.
+Provider contents remain foreign-owned; local connector/machine and world
+schemas are unchanged. Existing adapters default to exclusive behavior.
+
+`IndexedMachinePortsGameTests` exercises real sided item/fluid/FE capabilities,
+selected same-fluid isolation, shared rates, rebind with retained holds and
+duplicate/union rejection. `SelectedFluidPortTest` adds exact components, partial
+insertion, nonmutating simulation, bounds and malformed/unsupported adapter cases.
+Run evidence belongs in the implementation plan; third-party compatibility and
+full processing-job/script lease interoperability are not established by this slice.
+
+
+`processingAdmission(targetPosition)` is a trusted server-thread metadata query
+used only for processing acquisition. It reads already loaded component markers
+and fixed partition declarations for item/fluid/energy kinds, checks canonical
+foreign holds and unresolved transfer indexes, and returns BUSY for an existing processing lease on any backing member,
+RESERVED for foreign ownership or unavailable/invalid identity metadata, and OK
+when neither retains the provider. It never initializes markers, resolves capabilities,
+reads resource quantities or loads chunks. A non-OK result blocks dispatch before
+any ingredient is pulled. The ordinary permission/segment checks still authorize
+the job; this query grants no resource or cross-segment access. Existing dispatched
+jobs fence shared connector mutations through the reciprocal physical-target
+lease check, including when the processing interface itself is offline.
+
+
+`processingIdentity(targetPosition, initialize)` returns an immutable complete
+item/fluid/energy kind→UUID fingerprint map, or an empty map when loaded identity
+cannot be proven. It uses the same normalized physical groups and persistent
+provider component markers; the fingerprint also includes member positions and
+registered block-entity types. It reads at most3×64 already loaded components and
+never resolves capabilities or observes quantities. `initialize=true` is reserved
+for newly authorized processing capture before ingredient extraction: all existing
+markers/groups validate before any missing marker is written. Resumed work and
+cleanup must pass false, which writes nothing and cannot adopt a replacement.
+This server-thread metadata hook grants no resource or segment authority. The
+compiled replacement/reload examples are in `ProcessingJobGameTests`.

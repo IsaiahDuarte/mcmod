@@ -2,6 +2,7 @@ package dev.izzy.factorycore.core.crafting;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -51,10 +52,37 @@ public final class CraftingJob {
   /** Active processing craft at one interface: exact units inserted and collected so far. */
   public record Dispatch(
       NodeRegistry.Position machine,
+      NodeRegistry.Position target,
+      Map<ResourceKind, UUID> providers,
       Map<ResourceKey, Long> inserted,
       Map<ResourceKey, Long> collected) {
+    /** Legacy dispatched saves lack a proven physical target and remain fenced until cancelled. */
+    public Dispatch(
+        NodeRegistry.Position machine,
+        Map<ResourceKey, Long> inserted,
+        Map<ResourceKey, Long> collected) {
+      this(machine, null, Map.of(), inserted, collected);
+    }
+
+    /** Target-only schema-four dispatches still lack proven provider identity. */
+    public Dispatch(
+        NodeRegistry.Position machine,
+        NodeRegistry.Position target,
+        Map<ResourceKey, Long> inserted,
+        Map<ResourceKey, Long> collected) {
+      this(machine, target, Map.of(), inserted, collected);
+    }
+
     public Dispatch {
       Objects.requireNonNull(machine);
+      if (target != null
+          && (!machine.dimension().equals(target.dimension()) || machine.equals(target)))
+        throw new IllegalArgumentException("Invalid processing target");
+      providers = Map.copyOf(providers);
+      if (!providers.isEmpty()
+          && (target == null
+              || !providers.keySet().equals(java.util.Set.of(ResourceKind.values()))))
+        throw new IllegalArgumentException("Incomplete processing provider identity");
       inserted = Snapshot.positive(inserted, "inserted");
       collected = Snapshot.positive(collected, "collected");
       if (inserted.size() > Pattern.MAX_INPUT_KEYS
@@ -360,9 +388,21 @@ public final class CraftingJob {
 
   /** Leases a machine for the current processing craft; only one dispatch exists at a time. */
   public void dispatch(NodeRegistry.Position machine) {
+    dispatch(machine, null);
+  }
+
+  /** Persist the exact physical target before inserting the first input. */
+  public void dispatch(NodeRegistry.Position machine, NodeRegistry.Position target) {
+    dispatch(machine, target, Map.of());
+  }
+
+  public void dispatch(
+      NodeRegistry.Position machine,
+      NodeRegistry.Position target,
+      Map<ResourceKind, UUID> providers) {
     if (state != State.RUNNING || dispatch != null || current() < 0)
       throw new IllegalStateException("Cannot dispatch now");
-    dispatch = new Dispatch(machine, Map.of(), Map.of());
+    dispatch = new Dispatch(machine, target, providers, Map.of(), Map.of());
   }
 
   /** Staged units accepted by the dispatched machine; they now belong to the external process. */
@@ -371,7 +411,9 @@ public final class CraftingJob {
     unstage(key, amount);
     var map = new LinkedHashMap<>(dispatch.inserted());
     map.merge(key, amount, Math::addExact);
-    dispatch = new Dispatch(dispatch.machine(), map, dispatch.collected());
+    dispatch =
+        new Dispatch(
+            dispatch.machine(), dispatch.target(), dispatch.providers(), map, dispatch.collected());
   }
 
   /** Units extracted from the dispatched machine as expected outputs; they become job staging. */
@@ -380,7 +422,9 @@ public final class CraftingJob {
     stage(key, amount);
     var map = new LinkedHashMap<>(dispatch.collected());
     map.merge(key, amount, Math::addExact);
-    dispatch = new Dispatch(dispatch.machine(), dispatch.inserted(), map);
+    dispatch =
+        new Dispatch(
+            dispatch.machine(), dispatch.target(), dispatch.providers(), dispatch.inserted(), map);
   }
 
   /** Completes the dispatched craft once every input is inserted and every output collected. */
