@@ -31,3 +31,8 @@ Screenshots: [items picker](program-authoring-client-v1-2026-10-19/program-nativ
 [reopened search](program-authoring-client-v1-2026-10-19/terminal-search-reopened.png),
 [restored preferences after restart](program-authoring-client-v1-2026-10-19/restarted-terminal-preferences.png),
 [JEI ghost drops](program-authoring-client-v1-2026-10-19/jei-program-ghost.png).
+
+Selected tanks (ADR 0053): the tour now switches the Machine Interface draft to Fluids and types
+first tank 1 / window 1 before the scale-4 capture, asserting both values were accepted by the
+editable fields; Cancel then discards the draft as before.
+[Capture](program-authoring-client-v1-2026-10-19/machine-fluid-tank-window-scale-4.png).
