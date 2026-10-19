@@ -434,6 +434,29 @@ See [binding contract](modules/MACHINE_INTERFACES.md) for current limits.
 The compact machine editor fits Minecraft’s minimum240-pixel GUI height. Rules show four at a time; Prev/Next selects across all sixteen supported rules.
 
 
+## Network Access screen
+
+Sneak-use a Network Controller, or press **Access…** on a gateway's policy screen, to manage who can use the network.
+
+- **Rows.** Each player has a row of seven toggles: V view, D deposit, W withdraw, C craft, E edit
+  interfaces/patterns, P deploy programs and M manage.
+- **Gateway limits.** The header shows the limits that gateways above this point apply. A toggle
+  marked `*` is granted but blocked by a gateway here.
+- **Revoke** removes all of that player's grants.
+- **Owner** hands the network to that player. You must press **Confirm** within 10 seconds. Only
+  the owner or a server operator can transfer ownership; a player who was given Manage cannot.
+- **Losing Manage.** If you lose Manage while the screen is open, it says so and turns read-only.
+  Without Manage you see only your own access.
+- **Recovery….** This button opens the Transfer Recovery screen.
+
+## Transfer Recovery screen
+
+`/factorycore recovery screen` lists interrupted transfers you own; operators see everyone's.
+
+- Pick a record to see its safe next step, then press **Return**, **Settle** or **Retire**.
+  These follow the same rules as the recovery commands below.
+- Uncertain transfers offer no action. They are never replayed or refunded automatically.
+
 ## Recovery commands
 
 Operators (permission level2) and server console can use

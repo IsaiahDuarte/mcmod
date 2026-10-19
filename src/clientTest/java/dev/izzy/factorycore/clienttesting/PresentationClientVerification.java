@@ -8,7 +8,9 @@ import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.ItemDescriptions;
 import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
+import dev.izzy.factorycore.platform.client.NetworkAccessScreen;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
+import dev.izzy.factorycore.platform.client.RecoveryScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
@@ -750,6 +752,42 @@ public final class PresentationClientVerification {
           return true;
         });
     scales("gateway-policy", GatewayPolicyScreen.class, false);
+    // Network Access (ADR 0055): a second principal row so grant toggles are on screen.
+    server(
+        player ->
+            check(
+                WorldNetworks.get(player.getServer())
+                        .setGrants(
+                            new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                                player.getUUID(), false),
+                            at(player, base),
+                            java.util.UUID.nameUUIDFromBytes(
+                                "presentation-guest"
+                                    .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                            java.util.EnumSet.of(
+                                dev.izzy.factorycore.core.network.NetworkPermissions.Permission
+                                    .VIEW,
+                                dev.izzy.factorycore.core.network.NetworkPermissions.Permission
+                                    .DEPOSIT))
+                    == dev.izzy.factorycore.core.network.NetworkPermissions.Change.OK,
+                "Owner grants a second principal before opening Network Access"));
+    use(base, Direction.SOUTH, true);
+    step(
+        client -> {
+          if (!(client.screen instanceof NetworkAccessScreen)) return false;
+          shift(client, false);
+          return true;
+        });
+    scales("access", NetworkAccessScreen.class, false);
+    // Transfer Recovery opens through its real player command.
+    server(
+        player ->
+            player
+                .getServer()
+                .getCommands()
+                .performPrefixedCommand(
+                    player.createCommandSourceStack(), "factorycore recovery screen"));
+    scales("recovery", RecoveryScreen.class, false);
     server(player -> player.getInventory().setItem(0, new ItemStack(GuideContent.GUIDE.get())));
     step(
         client -> {
@@ -821,7 +859,7 @@ public final class PresentationClientVerification {
               + "Orientation: every FACING device in all six facings, horizontal devices in four;"
               + " two opposite corner views show every front.\n"
               + "Screens: terminal, buffer settings, machine settings, program editor, gateway"
-              + " policy and guide at GUI scales 1-4 in a "
+              + " policy, network access, transfer recovery and guide at GUI scales 1-4 in a "
               + MIN_WIDTH
               + "x"
               + MIN_HEIGHT

@@ -438,7 +438,7 @@ tasks.named('runPresentationClient', JavaExec) {
         def result = file('build/reports/client-presentation/result.txt')
         if (!result.isFile() || !result.text.startsWith('PASS\n'))
             throw new GradleException('Graphical presentation verification did not complete.')
-        def screens = ['terminal', 'buffer', 'machine', 'program', 'gateway-policy', 'guide']
+        def screens = ['terminal', 'buffer', 'machine', 'program', 'gateway-policy', 'access', 'recovery', 'guide']
         def captures = ['orientation-north-east-up.png', 'orientation-south-west-down.png', 'states-day.png', 'states-day-close.png', 'states-night.png', 'states-night-close.png', 'held-first-person-network_controller.png', 'held-first-person-network_cable.png', 'held-first-person-factory_guide.png', 'held-third-person-gateway.png', 'tooltips-edges-scale-4.png', 'tooltips-edges-scale-2.png', 'terminal-scale-2.png', 'terminal-scale-3.png'] + screens.collectMany { ["${it}-scale-1.png", "${it}-scale-4.png"] }
         captures += [2, 4].collectMany { scale -> (1..3).collect { corner -> "tooltips-corner-${corner}-scale-${scale}.png" } }
         captures += ['machine-throughput', 'machine-overdrive', 'buffer-throughput', 'buffer-overdrive', 'guide-throughput'].collectMany { ["${it}-scale-1.png", "${it}-scale-4.png"] }

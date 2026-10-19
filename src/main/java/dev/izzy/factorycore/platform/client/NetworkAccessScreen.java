@@ -57,7 +57,7 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
               Button.builder(
                       Component.translatable("gui.factorycore.access.revoke"),
                       button -> act(index, AccessPackets.REVOKE_ALL))
-                  .bounds(leftPos + 218, y, 36, 16)
+                  .bounds(leftPos + 216, y, 40, 16)
                   .tooltip(
                       Tooltip.create(
                           Component.translatable("gui.factorycore.access.revoke.tooltip")))
@@ -67,7 +67,7 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
               Button.builder(
                       Component.translatable("gui.factorycore.access.make_owner"),
                       button -> act(index, AccessPackets.TRANSFER))
-                  .bounds(leftPos + 256, y, 36, 16)
+                  .bounds(leftPos + 258, y, 34, 16)
                   .tooltip(
                       Tooltip.create(
                           Component.translatable("gui.factorycore.access.make_owner.tooltip")))
