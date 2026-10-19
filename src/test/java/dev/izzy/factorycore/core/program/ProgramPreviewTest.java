@@ -32,7 +32,8 @@ class ProgramPreviewTest {
     var first = ProgramPreview.evaluate(program, 0, host(0, List.of(machine)));
     assertEquals(0, first.rule());
     assertEquals(2, first.total());
-    assertTrue(first.lines().get(1).contains(machine.toString()));
+    assertTrue(first.lines().get(1).contains("at \"fuel\" #1"), first.lines().get(1));
+    assertFalse(first.lines().get(1).contains(machine.toString()), "No internal machine IDs");
     assertTrue(first.lines().get(1).contains("16 item minecraft:coal"));
     assertTrue(
         ProgramPreview.evaluate(program, 1, host(0, List.of()))

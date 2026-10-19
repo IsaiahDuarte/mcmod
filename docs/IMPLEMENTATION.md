@@ -3214,8 +3214,8 @@ Verified: `python3 scripts/verify.py` passed in 2m28s — 29 tooling tests, 349 
 and 305 GameTests with zero failures/errors/skips, plus the dedicated-server and
 format/static/architecture/packaging/guest gates.
 
-Not verified: `caffeinate -d -i ./gradlew runTerminalRestartClient` **failed** in the new
-program-authoring stage 2 ("Native item picker inserts a working escaped expression").
-The expanded 47-capture tour, separate-JVM preference restoration and `runJeiClient`
-against the new editor have not passed. The user paused graphical E2E runs on
-2026-10-18; ADR 0050–0053 client behaviour stays unverified until those runs pass.
+Graphical follow-up (2026-10-19): the first run of `runTerminalRestartClient` failed at
+program-authoring stage 2. It exposed three editor bugs (a hidden editor swallowing picker
+clicks, focus left on the clicked row, raw machine UUIDs in the rule preview), all fixed. The
+47-capture tour, separate-JVM preference restoration and `runJeiClient` against the new
+editor then passed: [evidence](evidence/program-authoring-client-v1-2026-10-19.md).

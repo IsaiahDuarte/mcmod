@@ -1,6 +1,6 @@
 # ADR 0053 — Selected tanks and fixed machine partitions
 
-Status: Accepted implementation decision; integrated verification pending.
+Status: Accepted implementation decision; native GameTests pass in the canonical verifier (2026-10-18). The settings UI change has no dedicated graphical capture yet.
 
 ## Context
 

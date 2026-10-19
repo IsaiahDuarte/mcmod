@@ -1,6 +1,6 @@
 # ADR 0051 — Native program authoring and read-only previews
 
-Status: implemented; verification is recorded separately in the implementation plan.
+Status: implemented; graphical and JEI checks passed 2026-10-19 after three editor fixes ([evidence](../evidence/program-authoring-client-v1-2026-10-19.md)).
 
 ## Decision
 

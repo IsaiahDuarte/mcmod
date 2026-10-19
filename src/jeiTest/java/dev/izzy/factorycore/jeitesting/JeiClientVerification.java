@@ -2,6 +2,7 @@ package dev.izzy.factorycore.jeitesting;
 
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
+import dev.izzy.factorycore.platform.client.ProgramTextEditor;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
@@ -27,7 +28,6 @@ import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
-import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -256,8 +256,8 @@ final class JeiClientVerification {
                     () -> new IllegalStateException("JEI resolves the program ghost handler"));
         var editor =
             screen.children().stream()
-                .filter(child -> child instanceof MultiLineEditBox)
-                .map(child -> (MultiLineEditBox) child)
+                .filter(child -> child instanceof ProgramTextEditor)
+                .map(child -> (ProgramTextEditor) child)
                 .findFirst()
                 .orElseThrow();
         editor.setValue("");
