@@ -1,5 +1,5 @@
 [workspace]
-members = ["factorycore", "factorycore-macros", "examples/smelter", "examples/counter"]
+members = ["factorycore", "factorycore-macros", "examples/smelter", "examples/counter", "examples/restock"]
 resolver = "3"
 
 [workspace.package]

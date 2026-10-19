@@ -76,7 +76,7 @@ game folder and press **Upload Wasm** in the Program Controller.
 `wasm32v1-none` emits only WebAssembly 1.0 instructions, which is what the controller
 accepts, so ordinary Rust such as `copy_from_slice` and `core::fmt` works. The artifact must
 be at most 128 KiB, import only `factory_v1` functions and use at most 32 memory pages
-(set by `.cargo/config.toml`). The examples are about 9–13 KiB.
+(set by `.cargo/config.toml`). The examples are 9–14 KB.
 
 ## Testing
 
@@ -105,10 +105,33 @@ permissions or what the server later does with the commands.
 
 ## Persistent state
 
-`cx.load_state(&mut buffer)` returns the committed state's length (or `None`), and
-`cx.save_state(&bytes)` stages up to `factorycore::MAX_STATE` (4,096) bytes. The write
-commits only if the rule finishes. State survives reloads and resumes, but a new deployment
-starts empty. Version your own byte layout; see `examples/counter`.
+Each deployment keeps one state value of at most 4,096 bytes. A write commits only if the
+rule finishes; state survives reloads and resumes, and a new deployment starts empty.
+
+With the `serde` feature, any serde type can be the state:
+
+```toml
+[dependencies]
+factorycore = { path = "...", features = ["serde"] }
+serde = { version = "1", default-features = false, features = ["derive"] }
+```
+
+```rust
+#[derive(Default, Serialize, Deserialize)]
+struct Stats { runs: u32, crafts: u32 }
+
+let mut stats: Stats = cx.state().unwrap_or_default();
+stats.runs += 1;
+cx.set_state(&stats);
+```
+
+Values are encoded with postcard 1.x on the stack (no allocator). An encoding over 4,096
+bytes, or saved bytes that do not decode as the requested type, trap with a message. See
+`examples/restock`.
+
+Without the feature, `cx.load_state(&mut buffer)` returns the committed length (or `None`)
+and `cx.save_state(&bytes)` stages raw bytes whose layout you version yourself; see
+`examples/counter`.
 
 ## Limits per rule
 

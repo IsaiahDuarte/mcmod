@@ -300,7 +300,7 @@ tasks.withType(Test).configureEach {
 tasks.register('verifyRustGuest', Exec) {
     commandLine(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows') ? 'python' : 'python3', 'scripts/verify_guest.py')
     inputs.files(fileTree('experiments/wasm-guest'), fileTree('sdk/rust') { exclude 'target/**' }, file('scripts/verify_guest.py'))
-    outputs.files('build/test-guests/probe.wasm', 'build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm')
+    outputs.files('build/test-guests/probe.wasm', 'build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm', 'build/test-guests/restock.wasm')
 }
 
 tasks.named('test') {
@@ -309,7 +309,8 @@ tasks.named('test') {
     systemProperty 'factorycore.test.guest', file('build/test-guests/probe.wasm').absolutePath
     systemProperty 'factorycore.test.smelter', file('build/test-guests/smelter.wasm').absolutePath
     systemProperty 'factorycore.test.counter', file('build/test-guests/counter.wasm').absolutePath
-    inputs.files('build/test-guests/probe.wasm', 'build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm')
+    systemProperty 'factorycore.test.restock', file('build/test-guests/restock.wasm').absolutePath
+    inputs.files('build/test-guests/probe.wasm', 'build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm', 'build/test-guests/restock.wasm')
 }
 
 spotless {

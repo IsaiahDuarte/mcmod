@@ -622,6 +622,42 @@ mod tests {
         assert_eq!(world.saved_state(), Some(&[1, 2, 3][..]));
     }
 
+    #[cfg(feature = "serde")]
+    #[test]
+    fn typed_state_round_trips_and_reports_misuse() {
+        let mut world = World::new();
+        world.run(
+            &rules(|cx| {
+                assert_eq!(cx.state::<(u32, bool)>(), None);
+                cx.set_state(&(7u32, true));
+                assert_eq!(cx.state(), Some((7u32, true)));
+            }),
+            "rule",
+        );
+        let bytes = world.saved_state().unwrap().to_vec();
+        assert_eq!(bytes, [7, 1], "postcard: varint 7, then true");
+
+        let trap = world
+            .try_run(&rules(|cx| cx.set_state(&[0u8; MAX_STATE][..])), "rule")
+            .unwrap_err();
+        assert_eq!(trap.message(), "state over 4096 bytes when encoded");
+        let trap = World::new()
+            .state(&[])
+            .try_run(
+                &rules(|cx| {
+                    let _ = cx.state::<u64>();
+                }),
+                "rule",
+            )
+            .unwrap_err();
+        assert_eq!(trap.message(), "saved state does not decode as u64");
+        assert_eq!(
+            world.saved_state(),
+            Some(&bytes[..]),
+            "traps keep the old state"
+        );
+    }
+
     #[test]
     fn invalid_registrations_trap_at_initialization() {
         let duplicate = [rules(|_| {})[0], rules(|_| {})[0]];

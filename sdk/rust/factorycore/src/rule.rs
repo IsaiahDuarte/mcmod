@@ -77,6 +77,39 @@ impl Rule {
     pub fn save_state(&self, data: &[u8]) {
         sys::state_write(data);
     }
+
+    /// Decodes the committed persistent state as a `T`, or returns `None` if this deployment
+    /// has never saved any. Requires the `serde` feature; see [`Rule::set_state`].
+    ///
+    /// # Panics
+    /// If the saved bytes do not decode as a `T`. State is reset by every deployment, so this
+    /// only happens when a program saves one type and loads another.
+    #[cfg(feature = "serde")]
+    pub fn state<T: serde::de::DeserializeOwned>(&self) -> Option<T> {
+        let mut buffer = [0; crate::MAX_STATE];
+        let len = self.load_state(&mut buffer)?;
+        match postcard::from_bytes(&buffer[..len.min(crate::MAX_STATE)]) {
+            Ok(value) => Some(value),
+            Err(_) => panic!(
+                "saved state does not decode as {}",
+                core::any::type_name::<T>()
+            ),
+        }
+    }
+
+    /// Stages `value`, encoded with postcard 1.x, as the persistent state, with the same commit
+    /// rules as [`Rule::save_state`]. Requires the `serde` feature.
+    ///
+    /// # Panics
+    /// If the encoding is over [`MAX_STATE`](crate::MAX_STATE) bytes.
+    #[cfg(feature = "serde")]
+    pub fn set_state<T: serde::Serialize + ?Sized>(&self, value: &T) {
+        let mut buffer = [0; crate::MAX_STATE];
+        match postcard::to_slice(value, &mut buffer) {
+            Ok(bytes) => self.save_state(bytes),
+            Err(_) => panic!("state over {} bytes when encoded", crate::MAX_STATE),
+        }
+    }
 }
 
 /// A machine interface selected by label during one rule.

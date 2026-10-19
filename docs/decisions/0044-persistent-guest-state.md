@@ -26,7 +26,8 @@ unchanged and `WasmPreflight.IMPORTS` simply allows them:
 - **Versioning:** guests version their own blob layout. The host never interprets it.
 - **Concurrency:** server thread only.
 
-The SDK exposes `Rule::load_state`/`Rule::save_state` and `MAX_STATE`
+The SDK exposes `Rule::load_state`/`Rule::save_state` and `MAX_STATE`, plus typed
+`Rule::state`/`Rule::set_state` (postcard) behind its `serde` feature
 ([ADR 0054](0054-rust-sdk-v2.md); originally `factorycore::state::{load, save, MAX}`). The
 `examples/counter` guest persists a count and has conditional over-quota and panicking
 rules. Building for `wasm32v1-none` removed the original restriction on slice copies, which

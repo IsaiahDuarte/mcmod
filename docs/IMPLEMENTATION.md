@@ -3230,13 +3230,15 @@ borrowed machine handles; `factorycore::testing` runs rules natively against a m
 mirrors the server's trap rules. The ABI folds the tag flag into resource kind 3, renames the
 machine imports to `keep_stocked`/`move_to_storage`/`move_from_storage`, and adds
 `panic(text, len)` so guest panics reach the controller log with message and location.
-Artifacts: smelter 706→9,237 bytes, counter 5,616→13,311 bytes (`core::fmt` for panic
-reports). JVM 349→350 (guest panic trap); tooling 29→32 (artifact size/import checks); SDK
+The `serde` feature adds typed persistent state (`Rule::state`/`set_state`, postcard),
+shown by the new restock example. Artifacts: smelter 706→9,237 bytes, counter
+5,616→13,311 bytes (`core::fmt` for panic reports), restock 11,549 bytes. JVM 349→351
+(guest panic trap, typed state through the host and a reload); tooling 29→32 (artifact size/import checks); SDK
 native tests now cover rule commands, state commit/rollback, server limits and trybuild
 macro diagnostics.
 
 Verified on Linux (x86_64, Rust 1.95.0, JDK 21): `python3 scripts/verify_guest.py` passed;
-`./gradlew --no-daemon build` passed (350 JVM tests and all 305 required GameTests, including
+`./gradlew --no-daemon build` passed (351 JVM tests and all 305 required GameTests, including
 the two Wasm deployment GameTests on the rebuilt artifacts) when run with a temporary
 init script setting `dependencyLocking { lockMode = LockMode.LENIENT }`.
 

@@ -239,4 +239,32 @@ class WasmProgramTest {
     assertTrue(trap.getMessage().endsWith("bedrock in storage"), trap.getMessage());
     assertTrue(guest.failed());
   }
+
+  private static byte[] restock() throws Exception {
+    return Files.readAllBytes(Path.of(System.getProperty("factorycore.test.restock")));
+  }
+
+  private static List<String> logs(WasmProgram.Outcome outcome) {
+    return outcome.commands().stream()
+        .filter(ProgramCommand.Log.class::isInstance)
+        .map(command -> ((ProgramCommand.Log) command).text())
+        .toList();
+  }
+
+  /** The SDK's serde feature stores a postcard-encoded struct through the real host. */
+  @Test
+  void typedGuestStateRoundTripsThroughTheHostAndAReload() throws Exception {
+    var guest = new WasmProgram(restock(), System::nanoTime);
+    assertEquals(
+        List.of("planks", "reset"), guest.rules().stream().map(WasmProgram.RuleSpec::key).toList());
+    var first = guest.invoke(0, host(10));
+    assertEquals(List.of("run 1, 1 crafts"), logs(first));
+    assertTrue(first.commands().stream().anyMatch(ProgramCommand.Craft.class::isInstance));
+    // postcard: runs 1, crafts 1, lowest Some(10).
+    assertArrayEquals(new byte[] {1, 1, 1, 10}, guest.state());
+    var restored = new WasmProgram(restock(), System::nanoTime, guest.state());
+    var second = restored.invoke(0, host(50));
+    assertEquals(List.of("run 2, 1 crafts"), logs(second));
+    assertArrayEquals(new byte[] {2, 1, 1, 10}, restored.state());
+  }
 }

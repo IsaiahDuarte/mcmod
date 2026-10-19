@@ -1070,7 +1070,8 @@ verified.
 `python3 scripts/verify_guest.py` (run by `verifyRustGuest`) now also checks the
 `sdk/rust` workspace from its own directory (so `.cargo/config.toml` applies): fmt, clippy
 native and `wasm32v1-none`, `cargo test` (nonempty) and the `wasm32v1-none` release builds
-of the smelter and counter examples. Each artifact must be at most 131,072 bytes and import
+of the smelter and counter examples and, separately so its `serde` feature does not unify
+into them, the typed-state restock example. Each artifact must be at most 131,072 bytes and import
 only `factory_v1` before it is copied to `build/test-guests`. SDK tests run the examples'
 rules against the `factorycore::testing` mock (commands, state commit/rollback and the
 server's trap limits) and pin the program macro's compile errors with trybuild
@@ -1078,7 +1079,8 @@ server's trap limits) and pin the program macro's compile errors with trybuild
 trees; a tooling test checks that stray SDK Rust is still rejected. WasmProgramTest: the
 real Rust guest registers `smelt`/`planks` and stages exactly the friendly twin's commands
 at four stock levels with instruction counts within budget; a guest panic traps with its
-message and `file:line` and fails the instance; preflight rejects probe imports,
+message and `file:line` and fails the instance; the restock guest's postcard-encoded
+state has the expected bytes and continues after a reload into a fresh instance; preflight rejects probe imports,
 oversized and malformed artifacts; a hand-assembled infinite loop traps at the
 instruction budget and the instance stays failed; registering a rule outside init
 traps; unknown imports are refused.

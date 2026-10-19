@@ -11,9 +11,14 @@ default = ["panic-handler"]
 # Installs a panic handler that reports the panic message and location to the
 # controller log before trapping. Disable it to provide your own handler.
 panic-handler = []
+# Typed persistent state: Rule::state / Rule::set_state for any serde type, stored with
+# postcard. Programs also depend on serde (with "derive") for their own types.
+serde = ["dep:serde", "dep:postcard"]
 
 [dependencies]
 factorycore-macros = { path = "../factorycore-macros", version = "2.0.0" }
+postcard = { version = "1.1", default-features = false, optional = true }
+serde = { version = "1", default-features = false, optional = true }
 
 [dev-dependencies]
 trybuild = "1"

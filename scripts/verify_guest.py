@@ -132,6 +132,8 @@ def main() -> int:
         common + ["test", "--locked", "--workspace"],
         common + ["build", "--locked", "--release", "--target", GUEST_TARGET,
                   "-p", "factorycore-smelter", "-p", "factorycore-counter"],
+        # Built alone so its `serde` feature does not unify into the other examples' builds.
+        common + ["build", "--locked", "--release", "--target", GUEST_TARGET, "-p", "factorycore-restock"],
     ]
     for command in sdk_commands:
         print("SDK CHECK:", " ".join(command), flush=True)
@@ -151,7 +153,7 @@ def main() -> int:
             print("FAIL: required SDK tests must be nonempty and unskipped.", file=sys.stderr)
             return 1
     (root / "build/test-guests").mkdir(parents=True, exist_ok=True)
-    for name in ("smelter", "counter"):
+    for name in ("smelter", "counter", "restock"):
         built = sdk_target / GUEST_TARGET / "release" / f"factorycore_{name}.wasm"
         problem = guest_artifact_problem(built.read_bytes() if built.is_file() else b"")
         if problem:

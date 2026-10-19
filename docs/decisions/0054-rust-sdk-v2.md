@@ -34,6 +34,13 @@ so a handle cannot outlive the callback whose table issued it. Staging methods r
 because every staging import returns 0 or traps. `log!` formats into a 128-byte stack
 buffer.
 
+**Typed state.** The optional `serde` feature adds `Rule::state::<T>()` and
+`Rule::set_state(&T)` for any serde type, encoded with postcard 1.x (stable wire format,
+`no_std`, no allocator) through a 4,096-byte stack buffer over the unchanged byte imports.
+An over-quota encoding or undecodable saved bytes panic, so the rule traps with a message;
+because each deployment starts with empty state, a decode failure can only mean a program
+saved one type and loaded another. The byte API (`load_state`/`save_state`) remains.
+
 **Native test host.** On non-wasm targets the same API calls `factorycore::testing`, a
 thread-local mock that mirrors `WasmProgram`'s trap conditions and messages and commits
 state only when a rule completes. It does not model instruction budgets or FE.
@@ -68,8 +75,12 @@ controller reports "Deployed Wasm no longer loads", as for any invalid artifact.
   works reliably on `wasm32` linkers; the module attribute sees every rule directly.
 - **Nightly `-Zbuild-std` with bulk memory disabled.** Same instruction set as
   `wasm32v1-none` but requires a nightly toolchain.
-- **Typed state via `serde`/`postcard`.** Deferred; the byte API is sufficient and the
-  example's 8-byte layout is relied on by tests.
+- **Other typed-state encodings.** Postcard was chosen as the common `no_std` serde format
+  with a documented stable wire format; other serde formats were not evaluated. A
+  hand-written fixed-layout trait would not cover user structs and enums. The
+  counter example keeps the byte API because its 8-byte layout is asserted by tests.
+- **Typed state that returns `None` on decode errors.** It would silently reset a program's
+  state after a bug; a trap reports it.
 - **Recoverable `Result` errors from host calls.** Rejected: a callback's commands are
   all-or-nothing, matching the friendly language's traps.
 
@@ -78,7 +89,8 @@ controller reports "Deployed Wasm no longer loads", as for any invalid artifact.
 - Program crates are shorter and rule mistakes surface at compile time; `cargo test` runs
   rules without the game.
 - The proc macro adds `syn`/`quote`/`proc-macro2` (build-time only) and `trybuild` (dev only)
-  to `sdk/rust/Cargo.lock`.
+  to `sdk/rust/Cargo.lock`; the `serde` feature adds `serde`, `postcard` and `cobs` to
+  programs that enable it. The `restock` example (typed state) is 11,549 bytes.
 - `core::fmt` is linked for panic reports: the smelter example grew from 706 to 9,237 bytes
   and the counter from 5,616 to 13,311 bytes, both far below 131,072. Disabling
   `panic-handler` (and supplying a handler) removes it.
