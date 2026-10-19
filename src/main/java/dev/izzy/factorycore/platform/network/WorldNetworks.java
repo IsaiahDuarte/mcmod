@@ -67,7 +67,7 @@ public final class WorldNetworks {
     final Set<NodeRegistry.Position> points = new LinkedHashSet<>();
     final DiscoverySeeds sources;
     final Map<UUID, Structural> structures = new HashMap<>();
-    final Map<UUID, dev.izzy.factorycore.core.resource.WirelessBudget.Link> wireless =
+    final Map<UUID, dev.izzy.factorycore.core.resource.WirelessBudget.Hop> wireless =
         new HashMap<>();
     NetworkAuthority authority;
     final RegionReference<Region> reference = new RegionReference<>(this);
@@ -476,8 +476,11 @@ public final class WorldNetworks {
           invalidate(region);
           return;
         }
-        var previous = region.wireless.putIfAbsent(member.scope().segment(), pair);
-        if (previous != null && !previous.equals(pair))
+        var previous =
+            region.wireless.putIfAbsent(
+                member.scope().segment(),
+                new dev.izzy.factorycore.core.resource.WirelessBudget.Hop(pair, link.pairScale()));
+        if (previous != null && !previous.link().equals(pair))
           throw new IllegalStateException("Ambiguous wireless bridge segment");
       }
     }
@@ -594,7 +597,7 @@ public final class WorldNetworks {
    * collecting ancestor segments therefore identifies each crossed pair without scanning geometry.
    * Null means stale/unavailable; empty is a valid wired path. This grants no resource authority.
    */
-  private List<dev.izzy.factorycore.core.resource.WirelessBudget.Link> wirelessPath(
+  private List<dev.izzy.factorycore.core.resource.WirelessBudget.Hop> wirelessPath(
       NodeRegistry.Position from, NodeRegistry.Position to) {
     var first = membership(from);
     var second = membership(to);
@@ -618,8 +621,7 @@ public final class WorldNetworks {
         break;
       }
     if (common == null) return null;
-    var path =
-        new java.util.LinkedHashSet<dev.izzy.factorycore.core.resource.WirelessBudget.Link>();
+    var path = new java.util.LinkedHashSet<dev.izzy.factorycore.core.resource.WirelessBudget.Hop>();
     for (var chain : List.of(a, b))
       for (var segment : chain) {
         if (segment.equals(common)) break;
@@ -636,7 +638,7 @@ public final class WorldNetworks {
     var path = wirelessPath(from, to);
     return path == null
         ? 0
-        : wirelessBudget.available(path, server.getTickCount(), key.kind(), amount);
+        : wirelessBudget.availableHops(path, server.getTickCount(), key.kind(), amount);
   }
 
   /**
@@ -649,7 +651,7 @@ public final class WorldNetworks {
     var path = wirelessPath(from, to);
     return path == null
         ? wirelessBudget.denied(dev.izzy.factorycore.core.resource.OperationResult.Reason.OFFLINE)
-        : wirelessBudget.claim(path, server.getTickCount(), key.kind(), amount);
+        : wirelessBudget.claimHops(path, server.getTickCount(), key.kind(), amount);
   }
 
   private boolean available(DeviceRegistry.Location location) {

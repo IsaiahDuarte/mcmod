@@ -65,7 +65,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     priority = box(80, 96, 65, 5, "priority");
     firstSlot = box(225, 96, 65, 10, "window_first");
     count = box(80, 123, 65, 2, "window_count");
-    rate = box(225, 123, 65, 4, "rate");
+    rate = box(225, 123, 65, 5, "rate");
     kindButton =
         button(
             "kind",
@@ -388,6 +388,24 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
         10,
         153,
         0xd3e5ed,
+        false);
+    g.drawString(
+        font,
+        font.plainSubstrByWidth(
+            Component.translatable(
+                    "gui.factorycore.machine.throughput",
+                    Component.translatable("throughput.factorycore.tier." + view.tier()),
+                    view.maxRate(),
+                    Component.translatable(
+                        "gui.factorycore.machine.units."
+                            + view.form().kind().name().toLowerCase(Locale.ROOT)),
+                    Component.translatable(
+                        "throughput.factorycore.server." + (view.throttled() ? "throttled" : "ok")))
+                .getString(),
+            280),
+        10,
+        163,
+        view.throttled() ? 0xe4bc83 : 0xd3e5ed,
         false);
     String state = invalid ? "invalid" : view.editable() ? view.status() : "denied";
     g.drawString(

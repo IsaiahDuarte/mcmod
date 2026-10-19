@@ -9,6 +9,28 @@ import org.junit.jupiter.api.Test;
 
 class FairSchedulerTest {
   @Test
+  void deferredBudgetWorkReportsThrottlingThenExpiresWithoutVisitingIdleOwners() {
+    var scheduler = new FairScheduler(LIMITS, () -> 0, failure -> fail(failure.toString()));
+    var network = UUID.randomUUID();
+    var program = UUID.randomUUID();
+    var ran = new AtomicLong();
+    assertFalse(scheduler.throttled(network, 2));
+    for (int index = 0; index < 3; index++)
+      scheduler.submit(network, program, "t" + index, 2, ran::incrementAndGet);
+    scheduler.tick();
+    assertEquals(1, ran.get());
+    assertTrue(scheduler.throttled(network, 2));
+    scheduler.tick();
+    scheduler.tick();
+    assertEquals(3, ran.get());
+    scheduler.tick();
+    assertFalse(scheduler.throttled(network, 2));
+    assertEquals(0, scheduler.tick().visits());
+    assertFalse(scheduler.throttled(UUID.randomUUID(), 2));
+    assertThrows(IllegalArgumentException.class, () -> scheduler.throttled(network, 0));
+  }
+
+  @Test
   void cancellingOneTaskKeepsOtherWorkAndReleasesEmptyProgram() {
     var scheduler = new FairScheduler(LIMITS, () -> 0, failure -> fail(failure.toString()));
     var network = UUID.randomUUID();

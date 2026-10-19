@@ -19,7 +19,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  */
 public final class GuideContent {
   /** Page count; page {@code n} text is the {@code guide.factorycore.page.n} lang key. */
-  public static final int PAGES = 15;
+  public static final int PAGES = 16;
 
   private static final String GIVEN = FactoryCoreMod.MOD_ID + ":guide_given";
   private static final DeferredRegister.Items ITEMS =

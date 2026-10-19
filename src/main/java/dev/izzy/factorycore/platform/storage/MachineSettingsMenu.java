@@ -79,6 +79,9 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
                 "", ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 64),
             "north",
             "ready",
+            false,
+            "base",
+            dev.izzy.factorycore.core.resource.ThroughputTier.BASE.portRate(ResourceKind.ITEM),
             false);
   }
 
@@ -140,7 +143,11 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
                 settings.rate()),
             machine.targetDirection().getOpposite().getName(),
             status,
-            editable());
+            editable(),
+            machine.tier().name().toLowerCase(java.util.Locale.ROOT),
+            machine.tier().portRate(settings.kind()),
+            dev.izzy.factorycore.platform.upgrade.ThroughputStatus.throttled(
+                machine.serverLevel().getServer(), machine.position()));
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);
@@ -187,6 +194,11 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
       return;
     }
     try {
+      if (!packet.form().settings().fits(machine.tier())) {
+        status = "upgrade";
+        publish();
+        return;
+      }
       if (machine.applySettings(actor(), packet.form().settings(), packet.form().label())
           != NetworkAuthority.Decision.ALLOWED) {
         status = "denied";

@@ -128,6 +128,8 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
                 case 16 -> 8;
                 case 8 -> 4;
                 case 4 -> 1;
+                // An upgraded buffer wraps to its installed maximum (ADR 0054); base stays 64.
+                case 1 -> buffer.tier().bufferRate();
                 default -> 64;
               };
           policy =
@@ -242,6 +244,10 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
           false);
       player.displayClientMessage(
           Component.translatable("message.factorycore.buffer_target", policy.target()), false);
+      player.displayClientMessage(
+          dev.izzy.factorycore.platform.upgrade.ThroughputStatus.buffer(
+              buffer.serverLevel().getServer(), buffer),
+          false);
       var status = WorldNetworks.get(buffer.serverLevel().getServer()).imports().status(buffer);
       player.displayClientMessage(
           Component.translatable(

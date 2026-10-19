@@ -1,5 +1,9 @@
 # Interrupted-session recovery — 2026-10-19
 
+Latest checkpoint: [HANDOFF-2026-10-19.md](HANDOFF-2026-10-19.md). It supersedes
+the initial slice statuses below: presentation is verified and committed;
+throughput has an integrated WIP checkpoint; three slices remain unmerged.
+
 This durable checkpoint supersedes the temporary
 `/private/tmp/factorycore-ai-handoff-2026-10-19.md` for locating interrupted work.
 [IMPLEMENTATION.md](IMPLEMENTATION.md) remains the acceptance/evidence authority.

@@ -28,9 +28,14 @@ class StockTargetTest {
     assertEquals(1000, new StockTarget(ResourceKind.FLUID, 4000, 1000).missing(0, 0));
     assertEquals(1000, new StockTarget(ResourceKind.ENERGY, Long.MAX_VALUE, 1000).missing(0, 0));
     assertThrows(IllegalArgumentException.class, () -> new StockTarget(ResourceKind.ITEM, -1, 1));
-    assertThrows(IllegalArgumentException.class, () -> new StockTarget(ResourceKind.ITEM, 1, 129));
+    assertEquals(1024, new StockTarget(ResourceKind.ITEM, 2000, 1024).missing(0, 0));
+    assertEquals(16000, new StockTarget(ResourceKind.FLUID, 32000, 16000).missing(0, 0));
+    assertEquals(32000, new StockTarget(ResourceKind.ENERGY, 64000, 32000).missing(0, 0));
+    assertThrows(IllegalArgumentException.class, () -> new StockTarget(ResourceKind.ITEM, 1, 1025));
     assertThrows(
-        IllegalArgumentException.class, () -> new StockTarget(ResourceKind.FLUID, 1, 1001));
+        IllegalArgumentException.class, () -> new StockTarget(ResourceKind.FLUID, 1, 16001));
+    assertThrows(
+        IllegalArgumentException.class, () -> new StockTarget(ResourceKind.ENERGY, 1, 32001));
     assertThrows(IllegalArgumentException.class, () -> new StockTarget(ResourceKind.ITEM, 1, 0));
     assertThrows(IllegalArgumentException.class, () -> goal.missing(-1, 0));
     assertThrows(IllegalArgumentException.class, () -> goal.missing(0, -1));
@@ -43,7 +48,7 @@ class StockTargetTest {
       long target = random.nextLong() & Long.MAX_VALUE,
           resident = random.nextLong() & Long.MAX_VALUE,
           inbound = random.nextLong() & Long.MAX_VALUE;
-      long quantum = 1 + random.nextInt(128);
+      long quantum = 1 + random.nextInt(1024);
       var expected =
           BigInteger.valueOf(target)
               .subtract(BigInteger.valueOf(resident))

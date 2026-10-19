@@ -96,9 +96,25 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
       Level level, BlockPos position, BlockState state, LivingEntity placer, ItemStack stack) {
     super.setPlacedBy(level, position, state, placer, stack);
     if (!level.isClientSide()
-        && placer instanceof Player player
-        && level.getBlockEntity(position) instanceof LinkEndpointEntity link)
-      link.owner(player.getUUID());
+        && level.getBlockEntity(position) instanceof LinkEndpointEntity link) {
+      if (placer instanceof Player player) link.owner(player.getUUID());
+      link.restoreRecovery(stack, level.registryAccess());
+    }
+  }
+
+  /** An upgrade in hand installs through the item instead of starting a pairing selection. */
+  @Override
+  protected net.minecraft.world.ItemInteractionResult useItemOn(
+      ItemStack stack,
+      BlockState state,
+      Level level,
+      BlockPos position,
+      Player player,
+      net.minecraft.world.InteractionHand hand,
+      BlockHitResult hit) {
+    if (stack.getItem() instanceof dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeItem)
+      return net.minecraft.world.ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+    return super.useItemOn(stack, state, level, position, player, hand, hit);
   }
 
   @Override
@@ -117,6 +133,8 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
               link.energy(),
               LinkEndpointEntity.CAPACITY),
           true);
+      player.displayClientMessage(
+          dev.izzy.factorycore.platform.upgrade.ThroughputStatus.link(server.server, link), false);
       return InteractionResult.CONSUME;
     }
     var dimension = level.dimension().location().toString();
@@ -140,7 +158,7 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   /**
    * May {@code player} configure this endpoint: Manage on its valid network, or owner of an orphan.
    */
-  private static boolean mayConfigure(ServerPlayer player, LinkEndpointEntity link) {
+  public static boolean mayConfigure(ServerPlayer player, LinkEndpointEntity link) {
     var origin =
         new NodeRegistry.Position(
             link.getLevel().dimension().location().toString(), link.getBlockPos().asLong());
@@ -163,6 +181,7 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
     var a = LinkEndpointEntity.loaded(level, first);
     var b = LinkEndpointEntity.loaded(level, second);
     if (a == null || b == null || !a.current() || !b.current()) return "missing";
+    if (a.needsRecovery() || b.needsRecovery()) return "unknown_data";
     if (!mayConfigure(player, a) || !mayConfigure(player, b)) return "denied";
     for (var link : new LinkEndpointEntity[] {a, b}) {
       var old = link.partner();
@@ -179,6 +198,17 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
     b.partner(first);
     a.refresh();
     return "paired";
+  }
+
+  @Override
+  protected java.util.List<ItemStack> getDrops(
+      BlockState state, net.minecraft.world.level.storage.loot.LootParams.Builder parameters) {
+    if (parameters.getOptionalParameter(
+                net.minecraft.world.level.storage.loot.parameters.LootContextParams.BLOCK_ENTITY)
+            instanceof LinkEndpointEntity link
+        && link.needsRecovery())
+      return java.util.List.of(); // onRemove emits the single evidence-bearing recovery item.
+    return super.getDrops(state, parameters);
   }
 
   @Override
@@ -206,6 +236,14 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
     if (!dev.izzy.factorycore.platform.network.DeviceLamp.onlyLampChanged(state, next))
       WorldNetworks.changed(level, position);
+    // The block itself drops through its loot table; an installed Overdrive Upgrade is returned
+    // separately so breaking an endpoint never destroys a paid upgrade.
+    if (!state.is(next.getBlock())
+        && !level.isClientSide()
+        && level.getBlockEntity(position) instanceof LinkEndpointEntity link)
+      for (var drop : link.upgradeDrops())
+        net.minecraft.world.Containers.dropItemStack(
+            level, position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5, drop);
     super.onRemove(state, level, position, next, moved);
   }
 }

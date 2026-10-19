@@ -951,8 +951,9 @@ public final class WorldConnectors {
 
   private long rateRoom(Binding binding, long groupUsed, long localUsed) {
     var settings = binding.owner.settings();
+    // Indexed ports share their machine's group budget, bounded by this port's installed tier.
     int groupRate =
-        binding.indexed ? settings.kind() == ResourceKind.ITEM ? 128 : 1000 : settings.rate();
+        binding.indexed ? binding.owner.tier().portRate(settings.kind()) : settings.rate();
     return Math.max(0, Math.min(groupRate - groupUsed, settings.rate() - localUsed));
   }
 

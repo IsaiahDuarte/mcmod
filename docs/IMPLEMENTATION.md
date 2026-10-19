@@ -3259,3 +3259,25 @@ the interrupted access agent's handoff; added diagnostics, then a full native ru
 and the canonical rerun passed. Its cause remains unexplained, with no assertion
 or deadline weakened. Final document/source inventory and `git diff --check`
 passed. Four WIP slices and all remaining release gates are still open.
+
+## Throughput WIP checkpoint — 2026-10-19
+
+Integrated the saved paid-upgrade slice with additional installation, rate-cap,
+permission, conservation, tier-codec and unsupported-link recovery coverage
+([ADR 0054](decisions/0054-throughput-upgrades.md)). Latest
+`./gradlew spotlessApply runGameTestServer` passed all 312 required native
+GameTests. Initial JVM/canonical runs exposed an obsolete buffer-limit test,
+tooltip PMD findings and a wireless fixture using an unauthorized root view;
+corrected them without weakening checks. Full rerun status is recorded in the
+[durable handoff](HANDOFF-2026-10-19.md). Throughput graphical verification,
+actual automatic high-tier workload measurements and documentation reconciliation
+remain open. Three recovered slices remain unmerged. All A01–A17 remain partial;
+the checkpoint does not close the full release or required human playtest.
+
+Checkpoint rerun: `python3 scripts/verify.py` passed in 2m27s with 30 tooling
+tests, 357 JVM tests and 312 required native GameTests, zero failures/errors/skips,
+plus required dedicated probes and format/static/architecture/packaging gates.
+Unchanged Rust guest verification reused up-to-date outputs. The log is
+`/tmp/factorycore-codex-checkpoint-verify.log`. The earlier corrected failures
+are superseded by this result; no throughput graphical or controlled performance
+pass is claimed. `git diff --check` and final staged review passed.

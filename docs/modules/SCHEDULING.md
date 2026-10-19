@@ -99,3 +99,19 @@ It runs on the owner thread at a tick boundary and rejects during execution.
 it is false once dispatch takes the action. [World transfers](WORLD_STORAGE_TRANSFERS.md)
 use these primitives for individual cancellation and bounded reclamation after
 whole-principal cancellation. Neither primitive refunds already executed resources.
+
+## Paid throughput and visible deferral
+
+[ADR 0054](../decisions/0054-throughput-upgrades.md) keeps all fair limits unchanged.
+New transfer offers cost 16 credits per begun 128-item or 1,000-mB/FE base quantum;
+the largest item/fluid/FE requests cost 128/256/512 credits. Metadata-only claims,
+catalog pages and the unchanged small recovery quantum retain their existing
+bounded costs. A paid tier never creates another worker thread or raises shares.
+
+`throttled(networkId, window)` reports whether that network's pending work waited
+for credits, visits, execution count or time within a positive number of scheduler
+ticks. It checks owner-thread access, returns false for unknown/never-deferred
+owners, and grants no execution rights. Deferral stamping visits only the bounded
+active-network queue (at most 1,024); it does not scan idle owners. UI inspection
+uses a 20-tick window. Representative measurement of this additional metadata work
+remains part of the controlled performance gate.

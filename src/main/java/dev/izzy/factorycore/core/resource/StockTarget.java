@@ -9,7 +9,7 @@ public record StockTarget(ResourceKind kind, long target, long quantum) {
   public StockTarget {
     Objects.requireNonNull(kind);
     OperationResult.requireQuantity(target);
-    if (quantum < 1 || quantum > (kind == ResourceKind.ITEM ? 128 : 1000))
+    if (quantum < 1 || quantum > ThroughputTier.maxQuantum(kind))
       throw new IllegalArgumentException("Stock request exceeds shared transfer quantum");
   }
 

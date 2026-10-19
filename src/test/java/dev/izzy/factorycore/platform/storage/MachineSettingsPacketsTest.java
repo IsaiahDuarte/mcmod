@@ -40,7 +40,8 @@ class MachineSettingsPacketsTest {
       assertEquals(packet, MachineSettingsPackets.Apply.CODEC.decode(output));
       assertFalse(output.isReadable());
       var view =
-          new MachineSettingsPackets.View(17, packet.session(), 42, form, "west", "stale", true);
+          new MachineSettingsPackets.View(
+              17, packet.session(), 42, form, "west", "stale", true, "ENDGAME", 1024, true);
       MachineSettingsPackets.View.CODEC.encode(output, view);
       assertEquals(view, MachineSettingsPackets.View.CODEC.decode(output));
       assertFalse(output.isReadable());
@@ -86,13 +87,13 @@ class MachineSettingsPacketsTest {
         () -> new MachineSettingsPackets.Form("", ResourceKind.ITEM, access, 0, 0, 65, 1));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new MachineSettingsPackets.Form("", ResourceKind.ITEM, access, 0, 0, 1, 129));
+        () -> new MachineSettingsPackets.Form("", ResourceKind.ITEM, access, 0, 0, 1, 1025));
     assertThrows(
         IllegalArgumentException.class,
         () -> new MachineSettingsPackets.Form("", ResourceKind.ENERGY, access, 0, 1, 64, 1000));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new MachineSettingsPackets.Form("", ResourceKind.ENERGY, access, 0, 0, 64, 1001));
+        () -> new MachineSettingsPackets.Form("", ResourceKind.ENERGY, access, 0, 0, 64, 32001));
     var output = buffer();
     try {
       output.writeVarInt(1);

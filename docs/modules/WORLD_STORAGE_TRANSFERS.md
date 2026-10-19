@@ -21,8 +21,8 @@ the server thread with a unique operation UUID, a server-authenticated actor,
 origin dimension/packed block position, current endpoints and exact resource
 identity. Frontends must derive origin from the server-validated physical
 terminal/deployment context; it is not a client-selected scope override. Item quantities count items, fluids count mB and energy counts FE.
-Negative quantities and null arguments fail; requests over 128 items or 1,000
-mB/FE fail before queueing. Zero is legal. Split larger operations into bounded
+Negative quantities and null arguments fail; requests over 1,024 items, 16,000 mB or 32,000 FE fail before queueing.
+Physical device tiers still enforce their smaller configured ceilings. Zero is legal. Split larger operations into bounded
 requests through the same authority; these quanta are work bounds, not throughput
 promises.
 
@@ -30,7 +30,8 @@ Admission returns `Submission`: an invalid/offline origin has null scheduler
 admission and OFFLINE rejection. Queue/cost limits return a scheduler rejection
 and TECHNICAL_LIMIT. ACCEPTED/REPLACED means queued, with OK rejection; only the
 completion reports a resource outcome. Rejected submissions do not call completion.
-Each request costs 16 shared scheduler credits, uses its network and actor UUID
+Each new move costs 16 credits per begun base quantum (128 items or 1,000 mB/FE),
+uses its network and actor UUID
 for fairness, and occupies a unique `storage-transfer:<id>` key. The service
 retains at most 256 requests and a conservative 2 MiB estimated payload budget
 (1,536 bytes plus key component bytes and registry-ID characters per request).
@@ -192,7 +193,7 @@ before-state audit first.
 
 `claim(id, authenticatedActor, origin, connectorHandle, key, amount, releasing,
 completion)` queues a bounded reservation or release. Amount uses items/mB/FE,
-is nonnegative and cannot exceed 128 items or 1,000 mB/FE. Ticket IDs, admission,
+is nonnegative and cannot exceed 1,024 items, 16,000 mB or 32,000 FE. Ticket IDs, admission,
 16 credits, fair actor queues, 256 tickets/2 MiB payload, callback and cancellation
 rules match ordinary moves. Endpoint kind/world mismatch or a malformed current
 resource identity rejects WRONG_RESOURCE without queueing/probing. Invalid origin
@@ -332,13 +333,13 @@ are revalidated through the existing shared transfer path. Catalog rows expose
 separate `withdrawable` and `depositable` flags; VIEW alone never grants mutation.
 
 Calls and completions belong to the server thread. Quantities use items/mB/FE,
-with the existing 128-item or 1,000-mB/FE quantum. Null/negative/oversized requests
+with a maximum quantum of 1,024 items, 16,000 mB or 32,000 FE. Null/negative/oversized requests
 fail before queueing; typed admission failures produce no completion. Callbacks
 must be bounded and nonthrowing. At most 32 discovery requests share a 2-MiB
 estimated metadata budget: 2,048 base bytes plus exact-key bytes/registry ID,
 and 384 bytes per candidate. Each request collects at most 5,120 distinct backing
-IDs over at most 640 eight-record pages. Every page and attempted move consumes
-16 shared scheduler credits; collection does not scan all endpoints in one tick.
+IDs over at most 640 eight-record pages. Every discovery page consumes 16 credits; actual moves pay proportional
+credits per begun base quantum; collection does not scan all endpoints in one tick.
 These are work/admission bounds, not measured throughput promises.
 
 A request performs one actual move quantum. A preferred source may supply only
@@ -426,12 +427,13 @@ buffer stock. Missing/changed/foreign references reject without extraction.
 No chunk is loaded by validation. Priority/round-robin routes can use a fixed
 buffer endpoint while discovering only ordinary digital/foreign storage targets.
 
-Network operations share a 64-item input and a separate 64-item output allowance
-per buffer backing ID/server tick, across all ports/requests. The rate map holds
+Network operations share the configured input and a separate output allowance
+per buffer backing ID/server tick, across all ports/requests. Installed tier caps
+are 64/256/576 items for Base/Advanced/Endgame. The rate map holds
 at most the 256 canonical buffers; movement/configuration cannot allocate a fresh
 allowance for the same ID. Simulations do not spend it; known actual quantities
 alone consume credits. These bounds do not cap direct local hopper mechanics or
-promise measured throughput. Quanta remain at most 128 items per request; use
+promise measured throughput. Quanta remain at most 1,024 items per request; use
 actual delivered counts when the buffer rate supplies a smaller move.
 
 Destination slot/metadata/rate preflight happens before extraction and canonical

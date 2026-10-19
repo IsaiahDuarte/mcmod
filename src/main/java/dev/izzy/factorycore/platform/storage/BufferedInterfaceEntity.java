@@ -163,7 +163,8 @@ public final class BufferedInterfaceEntity extends BlockEntity
             new NodeRegistry.Handle(
                 expected.world(), expected.id(), expected.generation() + 1, expected.kind()),
             state.principal(),
-            state.configuration());
+            state.configuration(),
+            state.tier());
     var nextData = BufferData.write(next);
     var path =
         DeviceRecoveryAudit.preserveBuffer(
@@ -246,7 +247,9 @@ public final class BufferedInterfaceEntity extends BlockEntity
     WorldNetworks.bufferInvalidated(level, this);
     saved.transfers().unbindBacking(expected.id());
     handler = null;
-    state = new BufferData.State(adopted.handle(), state.principal(), state.configuration());
+    state =
+        new BufferData.State(
+            adopted.handle(), state.principal(), state.configuration(), state.tier());
     data = BufferData.write(state);
     diagnostic = "";
     setChanged();
@@ -282,11 +285,51 @@ public final class BufferedInterfaceEntity extends BlockEntity
             : previous.policy());
   }
 
+  /** Installed paid throughput tier (ADR 0054); BASE before placement. */
+  public dev.izzy.factorycore.core.resource.ThroughputTier tier() {
+    return state == null ? dev.izzy.factorycore.core.resource.ThroughputTier.BASE : state.tier();
+  }
+
+  /**
+   * Installs one upgrade: re-deploys the current mode and policy with the new tier's maximum rate
+   * under the installer's current EDIT/DEPLOY (and, while active, transfer) authority, exactly like
+   * a settings change. Throws before any change when the upgrade does not apply or is denied; the
+   * caller consumes the item only after this returns.
+   */
+  public BufferRegistry.Deployment installThroughput(
+      NetworkPermissions.Actor actor, dev.izzy.factorycore.core.resource.ThroughputTier upgrade) {
+    validatePlaced();
+    var next = state.tier().upgradeWith(upgrade, false);
+    if (next == null) throw new IllegalStateException("upgrade_not_applicable");
+    var previous = authority().buffers().deployment(state.lease().id());
+    var policy =
+        previous == null
+            ? dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT
+            : previous.policy();
+    return configure(
+        actor,
+        previous == null ? BufferRegistry.Mode.PAUSED : previous.mode(),
+        new dev.izzy.factorycore.core.storage.BufferPolicy(
+            policy.filter(), next.bufferRate(), policy.target()),
+        next);
+  }
+
   public BufferRegistry.Deployment configure(
       NetworkPermissions.Actor actor,
       BufferRegistry.Mode mode,
       dev.izzy.factorycore.core.storage.BufferPolicy policy) {
     validatePlaced();
+    return configure(actor, mode, policy, state.tier());
+  }
+
+  private BufferRegistry.Deployment configure(
+      NetworkPermissions.Actor actor,
+      BufferRegistry.Mode mode,
+      dev.izzy.factorycore.core.storage.BufferPolicy policy,
+      dev.izzy.factorycore.core.resource.ThroughputTier tier) {
+    if (!policy.fits(tier))
+      throw new IllegalStateException(
+          "Rate exceeds the installed throughput upgrade (max " + tier.bufferRate() + ")");
     var networks = WorldNetworks.get(serverLevel().getServer());
     var member = networks.membership(position());
     if (member.status() != NetworkTopology.Status.VALID)
@@ -319,7 +362,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
                 mode,
                 policy);
     authority().transfers().unbindBacking(state.lease().id());
-    state = new BufferData.State(state.lease(), state.principal(), deployment.revision());
+    state = new BufferData.State(state.lease(), state.principal(), deployment.revision(), tier);
     write();
     return deployment;
   }
@@ -384,7 +427,9 @@ public final class BufferedInterfaceEntity extends BlockEntity
       var result = saved.nodes().attach(state.lease(), position());
       if (result.failure() != NodeRegistry.Failure.OK)
         throw new IllegalStateException("Buffer lease binding: " + result.failure());
-      state = new BufferData.State(result.handle(), state.principal(), state.configuration());
+      state =
+          new BufferData.State(
+              result.handle(), state.principal(), state.configuration(), state.tier());
       if (!saved.buffers().bind(state.lease(), position(), this))
         throw new IllegalStateException("Buffer inventory already has an active owner");
       var lease = state.lease();
@@ -434,7 +479,9 @@ public final class BufferedInterfaceEntity extends BlockEntity
         var result = authority().nodes().detach(state.lease(), position());
         if (result.failure() != NodeRegistry.Failure.OK)
           throw new IllegalStateException("Buffer removal: " + result.failure());
-        state = new BufferData.State(result.handle(), state.principal(), state.configuration());
+        state =
+            new BufferData.State(
+                result.handle(), state.principal(), state.configuration(), state.tier());
         handler = null;
         write();
       } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {

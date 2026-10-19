@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.UUID;
@@ -60,6 +61,11 @@ public class ConnectorEntity extends BlockEntity {
 
   public ConnectorSettings settings() {
     return state == null ? ConnectorSettings.defaults(ResourceKind.ITEM) : state.settings();
+  }
+
+  /** Installed paid throughput tier (ADR 0054); BASE for an unplaced or faulted casing. */
+  public ThroughputTier tier() {
+    return state == null ? ThroughputTier.BASE : state.tier();
   }
 
   public long generation() {
@@ -162,7 +168,8 @@ public class ConnectorEntity extends BlockEntity {
             state.settings(),
             state.generation(),
             state.fault(),
-            state.label());
+            state.label(),
+            state.tier());
     var nextData = ConnectorData.write(next);
     var path =
         DeviceRecoveryAudit.preservePort(
@@ -246,7 +253,8 @@ public class ConnectorEntity extends BlockEntity {
             state.settings(),
             configuration,
             "",
-            state.label());
+            state.label(),
+            state.tier());
     var nextData = ConnectorData.write(next);
     var path =
         DeviceRecoveryAudit.preservePortAdoption(
@@ -305,7 +313,13 @@ public class ConnectorEntity extends BlockEntity {
     validatePlaced();
     if (generation <= state.generation())
       throw new IllegalArgumentException("Configuration must advance");
-    var candidate = new ConnectorData.State(state.lease(), settings, generation, "", label);
+    if (!settings.fits(state.tier()))
+      throw new IllegalArgumentException(
+          "Rate exceeds the installed throughput upgrade (max "
+              + state.tier().portRate(settings.kind())
+              + ")");
+    var candidate =
+        new ConnectorData.State(state.lease(), settings, generation, "", label, state.tier());
     var result = runtime().authorize(actor, position(), NetworkPermissions.Permission.EDIT);
     if (result != NetworkAuthority.Decision.ALLOWED) return result;
     boolean relabel = !label.equals(label());
@@ -315,6 +329,59 @@ public class ConnectorEntity extends BlockEntity {
     state = candidate;
     write();
     if (relabel) changed();
+    return result;
+  }
+
+  /**
+   * Installs one upgrade item under current EDIT authority. The port's rate becomes the new tier's
+   * maximum for its resource (a configuration change like any other control; lower it afterwards in
+   * settings). Throws with a translatable reason key before any change when the upgrade does not
+   * apply; the caller consumes the item only after ALLOWED.
+   */
+  public NetworkAuthority.Decision installThroughput(
+      NetworkPermissions.Actor actor, ThroughputTier upgrade) {
+    validatePlaced();
+    var next = state.tier().upgradeWith(upgrade, false);
+    if (next == null) throw new IllegalStateException("upgrade_not_applicable");
+    var current = state.settings();
+    var settings =
+        new ConnectorSettings(
+            current.kind(),
+            current.access(),
+            current.priority(),
+            current.firstSlot(),
+            current.slotCount(),
+            next.portRate(current.kind()));
+    return configureTier(actor, settings, next);
+  }
+
+  /**
+   * Shared tier commit; a machine interface overrides it to advance its preset configuration fence
+   * like every other machine configuration change.
+   */
+  protected NetworkAuthority.Decision configureTier(
+      NetworkPermissions.Actor actor, ConnectorSettings settings, ThroughputTier next) {
+    return commitTier(actor, settings, next, Math.incrementExact(state.generation()));
+  }
+
+  protected final NetworkAuthority.Decision commitTier(
+      NetworkPermissions.Actor actor,
+      ConnectorSettings settings,
+      ThroughputTier next,
+      long generation) {
+    validatePlaced();
+    if (generation <= state.generation())
+      throw new IllegalArgumentException("Configuration must advance");
+    var candidate =
+        new ConnectorData.State(state.lease(), settings, generation, "", state.label(), next);
+    var result = runtime().authorize(actor, position(), NetworkPermissions.Permission.EDIT);
+    if (result != NetworkAuthority.Decision.ALLOWED) return result;
+    WorldNetworks.connectorInvalidated(level, this);
+    cache = null;
+    providerToken = UUID.randomUUID();
+    state = candidate;
+    write();
+    changed();
     return result;
   }
 
@@ -372,7 +439,12 @@ public class ConnectorEntity extends BlockEntity {
     diagnostic = bounded(failure);
     state =
         new ConnectorData.State(
-            state.lease(), state.settings(), state.generation(), diagnostic, state.label());
+            state.lease(),
+            state.settings(),
+            state.generation(),
+            diagnostic,
+            state.label(),
+            state.tier());
     write();
     changed();
   }
@@ -408,7 +480,12 @@ public class ConnectorEntity extends BlockEntity {
         throw new IllegalStateException("Connector binding: " + result.failure());
       state =
           new ConnectorData.State(
-              result.handle(), state.settings(), state.generation(), state.fault(), state.label());
+              result.handle(),
+              state.settings(),
+              state.generation(),
+              state.fault(),
+              state.label(),
+              state.tier());
       write();
     } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
       diagnostic = bounded(failure);
@@ -441,7 +518,12 @@ public class ConnectorEntity extends BlockEntity {
           throw new IllegalStateException("Connector removal: " + result.failure());
         state =
             new ConnectorData.State(
-                result.handle(), state.settings(), state.generation(), "", state.label());
+                result.handle(),
+                state.settings(),
+                state.generation(),
+                "",
+                state.label(),
+                state.tier());
         write();
       } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
         diagnostic = bounded(failure);

@@ -29,6 +29,22 @@ Endpoint operating FE is separate. See [ADR0050](../decisions/0050-shared-wirele
 for staging legs, uncertain calls, bounds and the legacy-restoration boundary.
 Controlled throughput comparison remains unverified.
 
+With Overdrive installed on both endpoints, shared pair caps become 1,024 items,
+16,000 mB and 32,000 FE per server tick. One upgraded end retains base pair caps.
+Pair identity/spending stays unchanged during same-tick upgrades; nested paths
+still use the tightest pair. Device/bank rates and operating FE remain separate.
+Installation uses current Manage or the existing orphan-owner pairing rule.
+Known upgrades drop separately on break for reinstallation.
+
+The optional version-one `Throughput` NBT field accepts ENDGAME; absence means
+legacy Base. Wrong types, unknown names or unsupported link tiers preserve the
+whole before-state and keep the endpoint inert. They accept no operating power
+and cannot pair. Break emits exactly one endpoint carrying a recovery envelope,
+with no guessed paid-item refund; placement retains unsupported data and remains
+inert. Use a compatible build or investigate the preserved item/backup. See
+[ADR 0054](../decisions/0054-throughput-upgrades.md) and
+`WirelessUpgradeRecoveryGameTests` for actual break/place verification.
+
 ## Endpoint lifecycle verification
 
 `./gradlew runWirelessLifecycleServer` runs a dedicated server with a root and one

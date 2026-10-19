@@ -842,6 +842,35 @@ inspect already inserted inputs/outputs manually. An older dispatch without
 provider identity asks for cancellation and inspection; it never adopts whichever
 machine is now present.
 
+## Paid speed upgrades
+
+Capacity modules and speed upgrades are separate. Craft a Throughput Upgrade
+from four iron, two diamonds, two redstone and a hopper. Use it on a placed
+Storage Connector, Machine Interface or Buffered Interface, then use Overdrive
+for the next step. Four netherite, four diamonds and a Nether star craft four
+Overdrives. Repeated, skipped or denied steps consume nothing.
+
+| Hardware | Base | Throughput | Overdrive |
+| --- | --- | --- | --- |
+| Connector/machine items per tick | 128 max (default 64) | 256 | 1,024 |
+| Connector/machine mB per tick | 1,000 | 4,000 | 16,000 |
+| Connector/machine FE per tick | 1,000 | 8,000 | 32,000 |
+| Buffer network items per tick | 64 | 256 | 576 |
+
+For example, place a Machine Interface facing a barrel, apply Throughput, open
+Binding and verify its 256-item rate. Installation pauses the machine preset;
+reapply its filter/mode/goal to resume with your current grants. You may lower
+the rate afterwards. Buffers require the normal deployment grants; links require
+Manage or ownership of an orphan. The shared server work budget can visibly
+throttle any tier; an upgrade does not guarantee achieved throughput.
+
+Ports and buffers retain upgrades when moved. Link endpoints take Overdrive
+directly; both ends need it to raise their shared bidirectional caps from
+256/4,000/8,000 to 1,024/16,000/32,000 items/mB/FE per tick. Breaking a known
+upgraded link drops its Overdrive separately for reinstallation. Unsupported
+link data becomes one inert recovery item with its original evidence; keep it
+for a compatible build or investigation. It never produces a guessed refund.
+
 ## Device appearance and status
 
 The four drive bays show which slots contain cells. Removing a cell clears only

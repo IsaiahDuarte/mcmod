@@ -51,7 +51,7 @@ mutation; pure live matching alone does not implement that lifecycle.
 ## Stock planning contract
 
 `StockTarget(kind, target, quantum)` uses individual items, mB or FE. Target is
-nonnegative through Long.MAX_VALUE. Quantum is1–128 items or1–1000mB/FE, matching
+nonnegative through Long.MAX_VALUE. Quantum is 1–1,024 items, 1–16,000 mB or 1–32,000 FE, matching
 the existing shared transfer request bounds; it is not a throughput guarantee.
 The physical buffer's64-item directional budget still applies when integrated.
 

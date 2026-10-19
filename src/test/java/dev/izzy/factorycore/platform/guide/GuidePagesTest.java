@@ -48,7 +48,9 @@ class GuidePagesTest {
           "Wireless",
           "Gateway",
           "Progression",
-          "Nether star"
+          "Nether star",
+          "Throughput",
+          "Overdrive"
         }) assertTrue(all.toString().contains(topic), "Guide is missing topic: " + topic);
   }
 }

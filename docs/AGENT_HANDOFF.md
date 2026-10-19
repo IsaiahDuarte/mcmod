@@ -1,5 +1,10 @@
 # Full-release implementation handoff
 
+For the latest exact revisions, integrated fixes, verification limits and next
+steps, start with [HANDOFF-2026-10-19.md](HANDOFF-2026-10-19.md). The original
+continuation prompt below preserves the full release objective; its initial
+interrupted-slice inventory predates the latest checkpoint.
+
 Copy the following task into an agent session rooted at this repository. This is
 a continuation toward the full first playable release; milestone demonstrations
 are checkpoints. No new goal skill is installed by this file.

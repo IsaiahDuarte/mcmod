@@ -126,7 +126,7 @@ public final class BufferSettingsPackets {
       if (mode.length() > 16
           || filter.length() > 16
           || rate < 1
-          || rate > 64
+          || rate > dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME.bufferRate()
           || target < 0
           || target > 576
           || rules.size() > 16
@@ -208,7 +208,7 @@ public final class BufferSettingsPackets {
   private BufferSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var r = event.registrar("2");
+    var r = event.registrar("3");
     r.playToServer(
         Command.TYPE,
         Command.CODEC,

@@ -10,6 +10,7 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
@@ -520,8 +521,7 @@ public final class WorldStorageTransfers {
     Objects.requireNonNull(authorized);
     if (!authorized.getAsBoolean()) return new Submission(null, OperationResult.Reason.DENIED);
     OperationResult.requireQuantity(amount);
-    long quantum = key.kind() == ResourceKind.ITEM ? 128 : 1000;
-    if (amount > quantum)
+    if (amount > ThroughputTier.maxQuantum(key.kind()))
       throw new IllegalArgumentException("World transfer exceeds bounded quantum");
     if (source instanceof Buffered
         || destination instanceof Buffered
@@ -555,6 +555,7 @@ public final class WorldStorageTransfers {
         member.scope().network(),
         member.scope().segment(),
         key,
+        ThroughputTier.credits(key.kind(), amount),
         ticket ->
             execute(
                 id,
@@ -589,7 +590,7 @@ public final class WorldStorageTransfers {
     Objects.requireNonNull(key);
     Objects.requireNonNull(completion);
     OperationResult.requireQuantity(amount);
-    if (amount > (key.kind() == ResourceKind.ITEM ? 128 : 1000))
+    if (amount > ThroughputTier.maxQuantum(key.kind()))
       throw new IllegalArgumentException("Claim exceeds bounded quantum");
     if (endpoint.kind() != key.kind()
         || !endpoint.connector().world().equals(saved.registry().world()))
@@ -665,6 +666,21 @@ public final class WorldStorageTransfers {
       UUID segment,
       ResourceKey key,
       Consumer<Queued> action) {
+    return enqueue(id, actor, network, segment, key, ThroughputTier.CREDITS_PER_QUANTUM, action);
+  }
+
+  /**
+   * Upgraded requests larger than one base quantum pay proportionally more shared credits (ADR
+   * 0054); the scheduler's per-principal, per-network and global limits never change.
+   */
+  private Submission enqueue(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      UUID network,
+      UUID segment,
+      ResourceKey key,
+      int cost,
+      Consumer<Queued> action) {
     pruneCancelled();
     int bytes = 1536 + key.componentByteCount() + key.registryId().length();
     if (queued.containsKey(id) || queued.size() >= 256 || queuedBytes > 2 * 1024 * 1024 - bytes)
@@ -680,7 +696,7 @@ public final class WorldStorageTransfers {
                 network,
                 actor.id(),
                 taskKey(id),
-                16,
+                cost,
                 () -> {
                   executing = id;
                   try {
@@ -1471,7 +1487,9 @@ public final class WorldStorageTransfers {
 
     private int rate() {
       var deployment = saved.buffers().deployment(backingId());
-      return deployment == null ? 64 : deployment.policy().rate();
+      int rate = deployment == null ? 64 : deployment.policy().rate();
+      // Defensive: the physical tier bounds a canonical policy even if they ever disagree.
+      return owner == null ? rate : Math.min(rate, owner.tier().bufferRate());
     }
 
     private long stockRoom(ResourceKey key, long amount) {

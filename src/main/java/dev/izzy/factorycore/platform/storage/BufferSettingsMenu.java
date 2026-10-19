@@ -244,7 +244,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
           if (filterMode == ResourceFilter.Mode.ALL) terms.clear();
         }
         case BufferSettingsPackets.RATE -> {
-          if (packet.value() < 1 || packet.value() > 64) throw new IllegalArgumentException("Rate");
+          if (packet.value() < 1 || packet.value() > holder.tier().bufferRate())
+            throw new IllegalArgumentException("Rate");
           rate = packet.value();
         }
         case BufferSettingsPackets.TARGET -> target = packet.value();

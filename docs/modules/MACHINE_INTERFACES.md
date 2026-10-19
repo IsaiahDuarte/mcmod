@@ -45,7 +45,8 @@ actor/root authority. No direct provider mutation is authorized by label lookup.
 
 The same adapter supports whole sided fluid capabilities in mB and FE capabilities
 in FE. Defaults are64 items or1000 mB/FE per tick, independently each direction;
-current connector technical maxima are128 items/1000 mB/FE per request/rate.
+absolute request/rate ceilings are 1,024 items / 16,000 mB / 32,000 FE.
+Physical tiers enforce smaller per-device limits (ADR 0054).
 Item/tank windows cover1–64 positions. Fluid0/64 keeps whole-capability semantics;
 other fluid windows require genuine `IndexedFluidHandler` support. Unsupported
 capabilities/backing identity are rejected. Overlap remains conservative across
@@ -98,12 +99,14 @@ call, then closes intentionally because relabeling rebuilds wired publication.
 The menu has no resource/container slots and makes no provider inventory calls.
 Native initialization is passive until Minecraft installs the new menu. Display
 polls are bounded to one per five server ticks and publish only changed state.
-Payload version1 uses label0–64/no control characters, resource/access enums,
-priority-1000..1000, nonnegative first slot, count1–64 and rate1–128 items or1–1000
-mB/FE. Energy requires first0/count64; fluids accept bounded tank windows with
+Payload version2 uses label0–64/no control characters, resource/access enums,
+priority-1000..1000, nonnegative first slot, count1–64 and rate up to 1,024 items,
+16,000 mB or 32,000 FE. Installed hardware further bounds accepted rates.
+Energy requires first0/count64; fluids accept bounded tank windows with
 explicit provider support and keep0/64 as whole capability. Provider availability
 is validated by the shared adapter at execution. No persistence
-schema changed; applying writes existing machine reference schema2/world11.
+world schema changed; upgraded machine references use schema4, while base
+machines retain schema2. See [ADR 0054](../decisions/0054-throughput-upgrades.md).
 
 Four native menu cases exercise open/cancel/complete atomic save, nonce/stale
 rejection, range/closed-session rejection and live EDIT/VIEW revocation. Two packet
@@ -300,8 +303,8 @@ A provider declaring fixed canonical partitions permits concurrent bindings to
 exact disjoint windows. Their backing IDs remain stable when an interface
 reconfigures or reloads, so the original partition's holds stay protected. A
 duplicate, overlapping, undeclared subrange or union is refused. Per-connector
-rates remain configured locally; all partitions share128 items or1000mB/tick per
-direction for the physical backing. Item/fluid/energy capabilities remain distinct
+rates remain configured locally; all partitions share physical-backing spending
+per direction, with each call limited by its installed tier ceiling and local rate. Item/fluid/energy capabilities remain distinct
 resources on the same machine. Ordinary providers and vanilla sided wrappers
 retain conservative whole-resource exclusivity. See the [adapter/API contract](CONNECTORS.md#selected-tanks-and-fixed-provider-partitions).
 

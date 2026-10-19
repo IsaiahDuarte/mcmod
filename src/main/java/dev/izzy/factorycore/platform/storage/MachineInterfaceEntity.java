@@ -147,6 +147,24 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     return result;
   }
 
+  /** An upgrade is a configuration change: it advances the fence and pauses the preset. */
+  @Override
+  protected NetworkAuthority.Decision configureTier(
+      NetworkPermissions.Actor actor,
+      ConnectorSettings settings,
+      dev.izzy.factorycore.core.resource.ThroughputTier next) {
+    validatePlaced();
+    var presets = DeviceSavedData.get(serverLevel().getServer()).machinePresets();
+    presets.prepareInvalidation(handle().id());
+    long generation = presets.nextConfiguration(handle(), generation());
+    var result = commitTier(actor, settings, next, generation);
+    if (result == NetworkAuthority.Decision.ALLOWED) {
+      presets.observeConfiguration(handle(), generation());
+      presets.invalidate(handle().id());
+    }
+    return result;
+  }
+
   public MachineInterfaceEntity(BlockPos position, BlockState state) {
     super(MachineInterfaceContent.ENTITY.get(), position, state);
   }

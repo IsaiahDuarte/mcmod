@@ -37,7 +37,7 @@ Diamonds now first appear at Advanced, and each module belongs to a later band t
 the previous one. The module still costs a Nether trip, the same as the Gateway, and
 its eightfold capacity step is unchanged.
 
-### Recipes (23)
+### Recipes (25, including ADR 0054 speed upgrades)
 
 | Stage | Item | Pattern | Cost |
 | --- | --- | --- | --- |
@@ -64,6 +64,8 @@ its eightfold capacity step is unchanged.
 | Advanced | Advanced Module | ` D `/DND/RDR | 4 diamonds, 1 netherite ingot, 2 redstone |
 | Advanced | Wireless Link Endpoint | DED/GAG/III | Access Point, 2 diamonds, 1 eye of ender, 2 gold, 3 iron |
 | Endgame | Infinite Module | NNN/NSN/NNN | 8 netherite ingots, 1 Nether star |
+| Advanced | Throughput Upgrade | IDI/RHR/IDI | 4 iron, 2 diamonds, 2 redstone, 1 hopper |
+| Endgame | Overdrive Upgrade ×4 | NDN/DSD/NDN | 4 netherite, 4 diamonds, 1 Nether star |
 
 Nine registered items have no recipe on purpose. Expanded/Advanced/Infinite item
 cells, Expanded/Advanced fluid cells and Expanded/Advanced energy banks come from
@@ -78,10 +80,12 @@ Totals, as the GameTests craft them:
   terminal, buffered interface, connector, machine interface, generator, bank, guide,
   four patterns): 39 iron, 35 redstone, 12 copper, 13 glass, 3 hoppers, a chest, a
   furnace, a bucket, a book and 4 paper.
-- **Later tiers**: one module of each kind, Crafting Unit and Interface, Program
+- **Later tiers before speed upgrades**: one module of each kind, Crafting Unit and Interface, Program
   Controller, Gateway, three access points, a Wireless Terminal and a link pair. These
   add 45 iron, 16 gold, 27 redstone, 3 quartz, 5 ender pearls, 8 diamonds, 9 netherite
   ingots, 2 eyes of ender and a Nether star, plus small vanilla blocks.
+- **Speed-upgrade recipe kit**: four iron, six diamonds, two redstone, one hopper,
+  four netherite and one Nether star yield one Throughput Upgrade and four Overdrives.
 
 ### Numeric table (unchanged from ADR 0006 and later ADRs; now pinned by a test)
 
@@ -91,8 +95,8 @@ Totals, as the GameTests craft them:
 | Fluid cells Starter / Expanded / Advanced | 16,000 / 256,000 / 4,096,000 mB |
 | Storage Drive | 4 cell slots |
 | Energy Bank Starter / Expanded / Advanced | 100,000 / 1,000,000 / 10,000,000 FE; 1,000 / 4,000 / 16,000 FE/tick per direction |
-| Buffered Interface | 9 slots; 64 items/tick (default and current maximum) |
-| Storage Connector | default 64 items or 1,000 mB/FE per tick; maximum 128 items or 1,000 mB/FE |
+| Buffered Interface | 9 slots; default 64 items/tick, installed tier caps 64 / 256 / 576 |
+| Storage Connector / Machine Interface | default 64 items or 1,000 mB/FE per tick; tier maxima 128/1,000/1,000, 256/4,000/8,000, 1,024/16,000/32,000 (items/mB/FE) |
 | Fuel Generator | 20 FE per burn tick (coal = 32,000 FE); 80 FE/tick output; 100,000 FE buffer; container remainders kept |
 | Crafting Unit / Crafting Interface | 9 patterns each |
 | Program Controller | 10,000 FE buffer, 1,000 FE/tick input; 4 FE per rule run plus 1 FE per begun 256 steps |
@@ -100,6 +104,7 @@ Totals, as the GameTests craft them:
 | Wireless Access Point | 64-block range in its own dimension; 20,000 FE buffer, 1,000 FE/tick input; 16 FE per open-session tick |
 | Wireless Terminal | 20,000 FE, 1,000 FE/tick charge; 64 FE per action (about 312 actions per charge) |
 | Wireless Link Endpoint | 256-block range; 20,000 FE buffer, 1,000 FE/tick input; 32 FE per connected tick on each end |
+| Wireless pair resource caps | 256 items / 4,000 mB / 8,000 FE per tick bidirectionally; 4× only with Overdrive on both ends |
 
 ### Power curve
 
@@ -109,8 +114,10 @@ generators or banked FE. One coal runs a link end for 1,000 ticks (50 s). One co
 block runs it for about 8 minutes. A full Starter Energy Bank keeps one access point
 open for 6,250 ticks. Cables, drives, cells, terminals and interfaces have no upkeep,
 so a wired network costs less to build and to run than a wireless one, as R11
-requires. Links currently use the same scheduler throughput as cables, so wired
-throughput is never lower than wireless (ADR 0040).
+requires. Links share the same fair scheduler as cables and additionally meter
+each pair's resource caps (ADR 0050/0054). Equivalent-tier wired port ceilings
+are at least the pair caps, and wired paths have no additional wireless-pair
+counter. Controlled achieved-throughput comparison remains separate evidence.
 
 ## Alternatives
 
@@ -154,8 +161,8 @@ quartz. Existing worlds keep their items, because only the crafting cost changes
 
 - Human survival playtest (A17): pacing, fun and onboarding clarity. Not run.
 - Gateway depth is now configurable (ADR 0006); integrated default/nondefault server validation is tracked in the implementation plan.
-- The Buffered Interface maximum is 64 items/tick, not the 256 target in ADR 0006.
-- The per-resource link caps from ADR 0006 (256 items / 4,000 mB / 8,000 FE per tick)
-  are not implemented (ADR 0040).
-- Paid speed upgrades and higher per-interface Advanced throughput (R11) do not exist
-  yet. Advanced currently differs from Expanded by capacity and links only.
+- Per-resource link caps are implemented in ADR 0050. Paid speed upgrades and
+  Advanced/Endgame device ceilings are selected/implemented in
+  [ADR 0054](0054-throughput-upgrades.md); integrated results belong in the plan.
+  Controlled achieved-throughput, full factory power demand and human pacing
+  validation remain open.

@@ -212,6 +212,10 @@ public final class ConnectorBlock extends Block implements EntityBlock {
                   "reason.factorycore."
                       + binding.reason().name().toLowerCase(java.util.Locale.ROOT))),
           false);
+      player.displayClientMessage(
+          dev.izzy.factorycore.platform.upgrade.ThroughputStatus.port(
+              entity.serverLevel().getServer(), entity),
+          false);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
       player.displayClientMessage(

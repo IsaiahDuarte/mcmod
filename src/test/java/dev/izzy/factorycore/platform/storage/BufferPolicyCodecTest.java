@@ -38,7 +38,7 @@ class BufferPolicyCodecTest {
       var first = invalid.getList("Terms", Tag.TAG_COMPOUND).getCompound(0);
       if (i == 0) invalid.putInt("Schema", 3);
       if (i == 1) invalid.putLong("Rate", 16);
-      if (i == 2) invalid.putInt("Rate", 65);
+      if (i == 2) invalid.putInt("Rate", 577);
       if (i == 3) invalid.putString("Mode", "UNKNOWN");
       if (i == 4) invalid.putString("Kind", "FLUID");
       if (i == 5) first.putString("Type", "UNKNOWN");
