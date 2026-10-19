@@ -624,5 +624,17 @@
   "gui.factorycore.terminal.job.reason.reserved": "Machine has a foreign hold or unresolved transfer: release or recover it first",
   "gui.factorycore.terminal.job.reason.machine_identity": "Machine has no supported persistent identity: check its provider adapter",
   "gui.factorycore.terminal.job.reason.machine_replaced": "Original machine is offline or its identity changed: restore the original machine",
-  "gui.factorycore.terminal.job.reason.legacy_provider": "Older dispatch has no proven provider identity: cancel and inspect the original machine"
+  "gui.factorycore.terminal.job.reason.legacy_provider": "Older dispatch has no proven provider identity: cancel and inspect the original machine",
+  "gui.factorycore.terminal.job.reason.save_mismatch": "Machine and job were saved at different times: an operator must inspect the machine and run /factorycore recovery processing",
+  "gui.factorycore.terminal.job.reason.uncertain": "A machine call did not return: its outcome is unknown and is never retried; an operator must inspect the machine",
+  "gui.factorycore.terminal.job.reason.machine_journal": "Machine still records an earlier unfinished dispatch: an operator must inspect it with /factorycore recovery processing",
+  "gui.factorycore.terminal.job.reason.machine_unloaded": "Leased machine's chunk is unloaded: load it so cleanup can verify the machine",
+  "command.factorycore.recovery.processing.none": "No processing journal at that loaded block. Nothing changed.",
+  "command.factorycore.recovery.processing.unloaded": "That block is not loaded. Load the machine's chunk; recovery never loads chunks.",
+  "command.factorycore.recovery.processing.row": "Processing journal job=%s pending=%s inserted=%s collected=%s matches=%s",
+  "command.factorycore.recovery.processing.job": "Job %s state=%s reason=%s inserted=%s collected=%s staged=%s",
+  "command.factorycore.recovery.processing.orphan": "No saved job dispatches to this machine; the journal is left from an earlier or lost dispatch.",
+  "command.factorycore.recovery.processing.help": "Inspect the machine first: remove any inputs or outputs that the job record already accounts for. \"resolve\" then makes the saved job record authoritative for this machine (or removes an orphaned journal). It never moves, refunds or replays resources.",
+  "command.factorycore.recovery.processing.resolved": "Processing journal at %s resolved for job %s. The job continues from its saved record. Before-state evidence: %s",
+  "command.factorycore.recovery.processing.refused": "Processing recovery refused: evidence could not be preserved or the journal is unreadable/foreign. Nothing changed."
 }

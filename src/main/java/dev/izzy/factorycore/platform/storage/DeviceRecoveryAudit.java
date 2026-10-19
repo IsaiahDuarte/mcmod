@@ -330,6 +330,41 @@ public final class DeviceRecoveryAudit {
     return write(world, owner.id(), envelope);
   }
 
+  /**
+   * Before-state evidence for an operator processing-journal resolution (ADR 0057): audit schema 8,
+   * {@code HolderKind=PROCESSING_JOURNAL}, the machine's raw journal, the named job's canonical
+   * record when it exists, the target and the machine's native block state and block entity.
+   */
+  public static Path preserveProcessingJournal(
+      Path world,
+      UUID namespace,
+      UUID journalJob,
+      Tag journal,
+      dev.izzy.factorycore.core.crafting.CraftingJob.Snapshot job,
+      dev.izzy.factorycore.core.network.NodeRegistry.Position target,
+      CompoundTag blockState,
+      CompoundTag blockEntity)
+      throws IOException {
+    if (journal == null || job != null && !job.id().equals(journalJob))
+      throw new IllegalArgumentException("Expected processing journal evidence");
+    var envelope = new CompoundTag();
+    envelope.putInt("Schema", 8);
+    envelope.putInt("WorldSchema", DeviceSavedData.SCHEMA);
+    envelope.putUUID("World", namespace);
+    envelope.putString("HolderKind", "PROCESSING_JOURNAL");
+    envelope.put("Journal", journal.copy());
+    envelope.put(
+        "CraftingJobs",
+        CraftingJobCodec.encode(job == null ? java.util.List.of() : java.util.List.of(job)));
+    var machine = new CompoundTag();
+    machine.putString("Dimension", target.dimension());
+    machine.putLong("Position", target.block());
+    envelope.put("Target", machine);
+    envelope.put("BlockState", blockState.copy());
+    envelope.put("BlockEntity", blockEntity.copy());
+    return write(world, journalJob, envelope);
+  }
+
   private static CompoundTag envelope(UUID namespace, DeviceRegistry.Stored owner, int schema) {
     return envelope(namespace, owner, schema, true);
   }

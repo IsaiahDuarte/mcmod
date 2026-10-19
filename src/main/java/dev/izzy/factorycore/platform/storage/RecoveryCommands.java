@@ -41,6 +41,9 @@ public final class RecoveryCommands {
                         .then(NetworkNodeRecoveryCommands.commands())
                         .then(PortRecoveryCommands.commands())
                         .then(
+                            dev.izzy.factorycore.platform.crafting.ProcessingRecoveryCommands
+                                .commands())
+                        .then(
                             Commands.literal("list")
                                 .requires(s -> s.hasPermission(2))
                                 .executes(c -> list(c.getSource(), null))
