@@ -73,7 +73,6 @@ public final class WorldPrograms {
   private static final class Runtime {
     final Map<String, Long> due = new HashMap<>();
     final ArrayDeque<Pending> queue = new ArrayDeque<>();
-    final Map<String, UUID> crafts = new HashMap<>();
     UUID deployment, request;
     String status = "";
   }
@@ -146,7 +145,6 @@ public final class WorldPrograms {
     var runtime = controllers.computeIfAbsent(controller, c -> new Runtime());
     runtime.due.clear();
     runtime.queue.clear();
-    runtime.crafts.clear();
     runtime.deployment = controller.deployment();
     return List.of();
   }
@@ -171,7 +169,6 @@ public final class WorldPrograms {
     var runtime = controllers.computeIfAbsent(controller, c -> new Runtime());
     runtime.due.clear();
     runtime.queue.clear();
-    runtime.crafts.clear();
     runtime.deployment = controller.deployment();
     return List.of();
   }
@@ -628,18 +625,26 @@ public final class WorldPrograms {
       NetworkPermissions.Actor actor,
       String rule,
       ProgramCommand.Craft craft) {
-    var dedupe = rule + "|" + craft.item();
+    // The dedupe link is derived from the persisted deployment and saved with the job, so neither a
+    // server restart nor a controller chunk reload can submit a second job for the same request.
+    var link = craftLink(controller.deployment(), rule, craft.item());
     var jobs = WorldCraftingJobs.get(server);
-    var previous = runtime.crafts.get(dedupe);
-    if (previous != null && saved().craftingJobs().get(previous) != null) return;
+    if (jobs.linked(link)) return;
     var item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(craft.item()));
     if (item.isEmpty()) {
       controller.log(rule + ": unknown item " + craft.item());
       return;
     }
     var key = new PlatformResourceCodec(server.registryAccess()).itemKey(new ItemStack(item.get()));
-    var submission = jobs.submit(actor, controller.origin(), key, craft.amount());
-    if (submission.job() != null) runtime.crafts.put(dedupe, submission.job());
-    else controller.log(rule + ": craft " + craft.item() + " " + submission.reason());
+    var submission = jobs.submitLinked(actor, controller.origin(), key, craft.amount(), link);
+    if (submission.job() == null)
+      controller.log(rule + ": craft " + craft.item() + " " + submission.reason());
+  }
+
+  /** Name-based link for one deployment's rule/item craft request (never a random rule ID). */
+  public static UUID craftLink(UUID deployment, String rule, String item) {
+    return UUID.nameUUIDFromBytes(
+        ("factorycore:program-craft:v1:" + deployment + "|" + rule + "|" + item)
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 }

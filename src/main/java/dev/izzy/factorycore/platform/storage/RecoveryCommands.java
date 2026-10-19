@@ -42,6 +42,9 @@ public final class RecoveryCommands {
                                       return 1;
                                     }))
                         .then(
+                            dev.izzy.factorycore.platform.crafting.ProcessingRecoveryCommands
+                                .commands())
+                        .then(
                             Commands.literal("list")
                                 .requires(s -> s.hasPermission(2))
                                 .executes(c -> list(c.getSource(), null))
