@@ -115,3 +115,7 @@ owners, and grants no execution rights. Deferral stamping visits only the bounde
 active-network queue (at most 1,024); it does not scan idle owners. UI inspection
 uses a 20-tick window. Representative measurement of this additional metadata work
 remains part of the controlled performance gate.
+
+## Reserved maintenance slots (ADR 0056)
+
+`submitReserved` admits network maintenance into 8 slots beyond `queuedTotal`. `WorldNetworks` retries its rebuild wake-up every tick while regions are active, so a saturated queue delays topology work but can never stall it. See [ADR 0056](../decisions/0056-program-limits-and-overload.md).

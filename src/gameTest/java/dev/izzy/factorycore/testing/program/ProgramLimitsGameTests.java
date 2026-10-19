@@ -276,6 +276,19 @@ public final class ProgramLimitsGameTests {
                       + " "
                       + f.controller.logs());
             })
+        // A topology change while the shared queue is full must still rebuild: network
+        // maintenance uses the reserved slots instead of stalling at REBUILDING forever.
+        .thenExecute(() -> h.setBlock(new BlockPos(1, 1, 0), NetworkContent.CABLE.get()))
+        .thenWaitUntil(
+            () -> {
+              h.assertTrue(overload.active(), "Still saturated while the network rebuilds");
+              h.assertTrue(
+                  WorldNetworks.get(h.getLevel().getServer())
+                          .membership(position(h, new BlockPos(1, 1, 0)))
+                          .status()
+                      == NetworkTopology.Status.VALID,
+                  "New cable joins the network under a saturated queue");
+            })
         .thenIdle(40)
         .thenExecute(
             () -> {
