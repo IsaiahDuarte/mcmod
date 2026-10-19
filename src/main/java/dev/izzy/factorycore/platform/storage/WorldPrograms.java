@@ -83,6 +83,10 @@ public final class WorldPrograms {
 
     UUID deployment, request;
     String status = "";
+
+    /** A storage search saw matching stock that crafting reservations fully held. */
+    boolean reservedSeen;
+
     long lag;
   }
 
@@ -513,8 +517,13 @@ public final class WorldPrograms {
         controller, runtime, actor, owner, registration.handle(), keep.filter(), missing, null, 0);
   }
 
+  /** Log text for a refused operation; contention reasons say what holds the resource (A08). */
   private static String name(OperationResult.Reason reason) {
-    return reason.name().toLowerCase(java.util.Locale.ROOT);
+    return switch (reason) {
+      case BUSY -> "busy: a crafting job is using this machine; retrying next interval";
+      case RATE_LIMIT -> "rate limit reached this tick; retrying next interval";
+      default -> reason.name().toLowerCase(java.util.Locale.ROOT);
+    };
   }
 
   private static String unbound(WorldConnectors.Registration registration) {
@@ -580,6 +589,7 @@ public final class WorldPrograms {
       controller.log("storage: nothing matching in the first " + MAX_CATALOG_PAGES + " pages");
       return;
     }
+    if (pages == 0) runtime.reservedSeen = false;
     var id = UUID.randomUUID();
     runtime.request = id;
     var submission =
@@ -599,7 +609,10 @@ public final class WorldPrograms {
                     controller.log("storage: " + name(page.reason()));
                     return;
                   }
-                  for (var row : page.rows())
+                  for (var row : page.rows()) {
+                    if (row.total() > 0
+                        && row.total() - row.reserved() <= 0
+                        && filter.matches(row.key(), this::tagged)) runtime.reservedSeen = true;
                     if (row.total() - row.reserved() > 0
                         && filter.matches(row.key(), this::tagged)) {
                       route(
@@ -613,6 +626,7 @@ public final class WorldPrograms {
                           WorldStorageRoutes.Direction.FROM_STORAGE);
                       return;
                     }
+                  }
                   if (page.next() != null)
                     fromStorage(
                         controller,
@@ -624,7 +638,11 @@ public final class WorldPrograms {
                         amount,
                         page.next(),
                         pages + 1);
-                  else controller.log("storage: shortage");
+                  else
+                    controller.log(
+                        runtime.reservedSeen
+                            ? "storage: matching stock is reserved by crafting jobs; retrying"
+                            : "storage: shortage");
                 });
     if (submission.rejection() != OperationResult.Reason.OK) {
       runtime.request = null;

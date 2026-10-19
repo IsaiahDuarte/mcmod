@@ -394,6 +394,93 @@ public final class ProgramLimitsGameTests {
         .thenSucceed();
   }
 
+  /**
+   * A08: a program sees why a crafting job's machine lease blocks it, then resumes. A cancelled
+   * processing job keeps its lease through bounded output cleanup (60 passes × 20 ticks).
+   */
+  @GameTest(template = "empty", timeoutTicks = 2600)
+  public static void programReportsACraftingLeaseOnItsMachineAndResumesAfterIt(GameTestHelper h) {
+    var f = setup(h, 1);
+    // A Crafting Interface facing the same chest: its processing job leases that machine.
+    h.setBlock(new BlockPos(2, 1, 2), NetworkContent.CABLE.get());
+    var facePos = new BlockPos(3, 1, 2);
+    h.setBlock(
+        facePos,
+        dev.izzy.factorycore.platform.crafting.CraftingContent.INTERFACE
+            .get()
+            .defaultBlockState()
+            .setValue(BlockStateProperties.FACING, Direction.NORTH));
+    dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity face = h.getBlockEntity(facePos);
+    var pattern =
+        new ItemStack(
+            dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING_PATTERN.get());
+    pattern.set(
+        dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING.get(),
+        new dev.izzy.factorycore.platform.crafting.ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            java.util.List.of(new ItemStack(Items.COBBLESTONE)),
+            java.util.List.of(new ItemStack(Items.STONE))));
+    face.patterns().insertItem(0, pattern, false);
+    var jobs =
+        dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(h.getLevel().getServer());
+    UUID[] job = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(() -> label(h, f))
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved
+                  .registry()
+                  .insert(f.cell, f.codec.itemKey(new ItemStack(Items.COBBLESTONE)), 1);
+              var submission =
+                  jobs.submit(
+                      f.owner,
+                      position(h, facePos),
+                      f.codec.itemKey(new ItemStack(Items.STONE)),
+                      1);
+              h.assertTrue(submission.job() != null, "Job submitted: " + submission.reason());
+              job[0] = submission.job();
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    jobs.machineLeased(position(h, CHEST)), "The processing job leases the chest"))
+        .thenExecute(() -> deploy(h, f, f.controller, EMPTY))
+        .thenWaitUntil(
+            () -> {
+              conserved(h, f);
+              h.assertTrue(
+                  f.inChest() == 20
+                      && f.controller.logs().stream()
+                          .anyMatch(
+                              line ->
+                                  line.contains(
+                                      "move minecraft:iron_ingot: busy: a crafting job is using this machine")),
+                  "The program names the lease and takes nothing: " + f.controller.logs());
+            })
+        .thenExecute(() -> h.assertTrue(jobs.cancel(f.owner, job[0]), "Owner cancels the job"))
+        .thenWaitUntil(
+            () -> {
+              conserved(h, f);
+              h.assertTrue(
+                  f.saved.craftingJobs().get(job[0]) == null && f.stored() == 20,
+                  "After the lease ends the program moves every ingot: "
+                      + f.stored()
+                      + " job "
+                      + (f.saved.craftingJobs().get(job[0]) == null
+                          ? "gone"
+                          : f.saved.craftingJobs().get(job[0]).state()
+                              + "/"
+                              + f.saved.craftingJobs().get(job[0]).reason())
+                      + " "
+                      + f.controller.logs());
+            })
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 800)
   public static void hostWorkBudgetTrapsOneProgramWhileItsNeighbourKeepsWorking(GameTestHelper h) {
     var f = setup(h, 2);

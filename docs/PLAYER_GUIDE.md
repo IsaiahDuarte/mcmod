@@ -720,6 +720,15 @@ the newest file is sent and deployed. A Wasm rule run needs about 260 FE availab
 costs 4 FE plus 1 FE per 256 instructions it actually uses. If it traps, it stops;
 Resume starts it fresh.
 
+When a rule cannot act, its log line says why:
+- **busy: a crafting job is using this machine.** A processing job leases that machine. A
+  cancelled job keeps the lease for up to a minute while it collects outputs.
+- **matching stock is reserved by crafting jobs.** Running jobs have claimed all the matching
+  stock.
+- **rate limit reached this tick.**
+- **throttled / running late: server busy.** The server is overloaded.
+
+Every rule retries at its next interval without losing items.
 
 ## Wireless access
 
