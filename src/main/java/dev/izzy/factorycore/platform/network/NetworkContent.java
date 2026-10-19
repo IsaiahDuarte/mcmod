@@ -77,6 +77,15 @@ public final class NetworkContent {
               () ->
                   net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
                       GatewayPolicyMenu::new));
+  public static final DeferredHolder<
+          net.minecraft.world.inventory.MenuType<?>,
+          net.minecraft.world.inventory.MenuType<NetworkAccessMenu>>
+      ACCESS_MENU =
+          MENUS.register(
+              "network_access",
+              () ->
+                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
+                      NetworkAccessMenu::new));
 
   private NetworkContent() {}
 
@@ -89,5 +98,6 @@ public final class NetworkContent {
     ITEMS.register(bus);
     ENTITIES.register(bus);
     MENUS.register(bus);
+    bus.addListener(AccessPackets::register);
   }
 }

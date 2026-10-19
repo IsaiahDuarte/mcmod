@@ -204,6 +204,27 @@ public final class WorldNetworks {
         .setGrants(actor, membership.scope(), principal, grants);
   }
 
+  /**
+   * Explicit ownership transfer of the network that owns {@code origin} (ADR 0055). Only the
+   * current owner or a server operator may transfer, and only with current Manage at {@code origin}
+   * (so ancestor branch policy applies); delegated Manage holders cannot take or give away
+   * ownership. The nil UUID is never a principal. Invalid scopes return {@code DENIED}.
+   */
+  public NetworkPermissions.Change transferOwnership(
+      NetworkPermissions.Actor actor, NodeRegistry.Position origin, UUID nextOwner) {
+    checkThread();
+    if (nextOwner.equals(new UUID(0, 0))) return NetworkPermissions.Change.DENIED;
+    var membership = membership(origin);
+    if (membership.status() != NetworkTopology.Status.VALID)
+      return NetworkPermissions.Change.DENIED;
+    var current = saved.network(membership.scope().network()).snapshot();
+    if (!actor.operator() && !actor.id().equals(current.owner()))
+      return NetworkPermissions.Change.DENIED;
+    return resolve(owners.get(origin))
+        .authority
+        .transferOwnership(actor, membership.scope(), nextOwner);
+  }
+
   /** Current owner/grants of the network at {@code origin}, or null without Manage there. */
   public NetworkPermissions.State grants(
       NetworkPermissions.Actor actor, NodeRegistry.Position origin) {

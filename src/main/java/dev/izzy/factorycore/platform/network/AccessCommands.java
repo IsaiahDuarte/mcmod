@@ -13,7 +13,6 @@ import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -167,21 +166,14 @@ public final class AccessCommands {
         return 0;
       }
     }
-    if (!member(source, pos)) return 0;
-    var networks = WorldNetworks.get(source.getServer());
-    var actor = actor(source);
-    var origin = origin(source, pos);
-    var state = networks.grants(actor, origin);
-    if (state == null) {
-      source.sendFailure(Component.translatable("command.factorycore.access.denied"));
-      return 0;
-    }
-    var next = EnumSet.noneOf(Permission.class);
-    next.addAll(state.grants().getOrDefault(principal, Set.of()));
-    if (grant) next.addAll(named);
-    else next.removeAll(named);
-    var result = networks.setGrants(actor, origin, principal, next);
-    switch (result) {
+    var result =
+        grant
+            ? AccessAdministration.change(
+                source.getServer(), actor(source), origin(source, pos), principal, named, Set.of())
+            : AccessAdministration.change(
+                source.getServer(), actor(source), origin(source, pos), principal, Set.of(), named);
+    var next = result.permissions();
+    switch (result.outcome()) {
       case OK -> {
         source.sendSuccess(
             () ->
@@ -191,16 +183,13 @@ public final class AccessCommands {
                     text(pos),
                     describe(next)),
             true);
-        var target = source.getServer().getPlayerList().getPlayer(principal);
-        if (target != null && target != source.getEntity())
-          target.sendSystemMessage(
-              Component.translatable(
-                  "command.factorycore.access.notified",
-                  source.getDisplayName(),
-                  text(pos),
-                  describe(next)));
+        AccessAdministration.notifyChanged(
+            source.getServer(), source.getDisplayName(), source.getEntity(), principal, pos, next);
         return 1;
       }
+      case NO_NETWORK ->
+          source.sendFailure(
+              Component.translatable("command.factorycore.access.no_network", text(pos)));
       case OWNER_IMPLICIT ->
           source.sendFailure(Component.translatable("command.factorycore.access.owner"));
       case LIMIT ->
@@ -243,30 +232,18 @@ public final class AccessCommands {
   }
 
   private static String token(Permission permission) {
-    return permission.name().toLowerCase(Locale.ROOT);
+    return AccessAdministration.token(permission);
   }
 
   private static Component describe(Set<Permission> permissions) {
-    return permissions.isEmpty()
-        ? Component.translatable("command.factorycore.access.nothing")
-        : Component.literal(
-            permissions.stream()
-                .sorted()
-                .map(AccessCommands::token)
-                .collect(Collectors.joining(", ")));
+    return AccessAdministration.describe(permissions);
   }
 
   private static Component name(CommandSourceStack source, UUID id) {
-    var online = source.getServer().getPlayerList().getPlayer(id);
-    if (online != null) return online.getName();
-    var cache = source.getServer().getProfileCache();
-    var cached =
-        cache == null ? java.util.Optional.<com.mojang.authlib.GameProfile>empty() : cache.get(id);
-    return Component.literal(
-        cached.map(com.mojang.authlib.GameProfile::getName).orElse(id.toString()));
+    return AccessAdministration.name(source.getServer(), id);
   }
 
   private static String text(BlockPos pos) {
-    return pos.getX() + " " + pos.getY() + " " + pos.getZ();
+    return AccessAdministration.text(pos);
   }
 }
