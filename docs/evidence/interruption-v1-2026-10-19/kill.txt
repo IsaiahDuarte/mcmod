@@ -1,0 +1,3 @@
+PASS
+mode=kill pid=97249
+Resumed job 2 from S3 after SIGKILL: it finished with 4 ingots and 0 raw iron in storage; no unit duplicated or lost.

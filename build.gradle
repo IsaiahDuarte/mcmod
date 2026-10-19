@@ -160,6 +160,50 @@ neoForge {
             systemProperty "factorycore.saveorder.report", file("build/reports/save-order/restore.txt").absolutePath
             systemProperty "factorycore.saveorder.expected", file("build/reports/save-order/expected.properties").absolutePath
         }
+        interruptionSeedServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/interruption-run/seed")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.interruption.server", "true"
+            systemProperty "factorycore.interruption.variant", "seed"
+            systemProperty "factorycore.interruption.report", file("build/reports/interruption/seed.txt").absolutePath
+            systemProperty "factorycore.interruption.expected", file("build/reports/interruption/expected.properties").absolutePath
+        }
+        interruptionKillServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/interruption-run/kill")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.interruption.server", "true"
+            systemProperty "factorycore.interruption.variant", "kill"
+            systemProperty "factorycore.interruption.report", file("build/reports/interruption/kill.txt").absolutePath
+            systemProperty "factorycore.interruption.expected", file("build/reports/interruption/expected.properties").absolutePath
+        }
+        interruptionDataOldServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/interruption-run/data-old")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.interruption.server", "true"
+            systemProperty "factorycore.interruption.variant", "data-old"
+            systemProperty "factorycore.interruption.report", file("build/reports/interruption/data-old.txt").absolutePath
+            systemProperty "factorycore.interruption.expected", file("build/reports/interruption/expected.properties").absolutePath
+        }
+        interruptionChunksOldServer {
+            server()
+            sourceSet = sourceSets.clientTest
+            gameDirectory = file("build/interruption-run/chunks-old")
+            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
+            programArgument '--nogui'
+            systemProperty "factorycore.interruption.server", "true"
+            systemProperty "factorycore.interruption.variant", "chunks-old"
+            systemProperty "factorycore.interruption.report", file("build/reports/interruption/chunks-old.txt").absolutePath
+            systemProperty "factorycore.interruption.expected", file("build/reports/interruption/expected.properties").absolutePath
+        }
         saveOrderChunksSeedServer {
             server()
             sourceSet = sourceSets.clientTest
@@ -523,6 +567,44 @@ tasks.named('runStagingRecoveryServer', JavaExec) {
     }
 }
 tasks.named('check') { dependsOn tasks.named('runStagingRecoveryServer') }
+
+// Required abrupt-kill and independent-save interruption of a real processing job (ADR 0057).
+// The seed saves S1/S2/S3 then SIGKILLs itself; each restore runs on its own copy of that world.
+tasks.named('runInterruptionSeedServer', JavaExec) {
+    ignoreExitValue = true
+    doFirst {
+        delete file('build/interruption-run')
+        delete file('build/reports/interruption')
+        def settings = file('build/interruption-run/seed/server.properties')
+        settings.parentFile.mkdirs()
+        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+    }
+    doLast {
+        def result = file('build/reports/interruption/seed.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Interruption seed did not reach its kill point.')
+        if (executionResult.get().exitValue != 137) throw new GradleException("Interruption seed was not killed (exit ${executionResult.get().exitValue}).")
+    }
+}
+[kill: [:], 'data-old': ['data/factorycore_devices.dat': 's1', 'region/r.0.0.mca': 's2'], 'chunks-old': ['data/factorycore_devices.dat': 's2', 'region/r.0.0.mca': 's1']].each { variant, older ->
+    def task = 'runInterruption' + variant.split('-').collect { it.capitalize() }.join('') + 'Server'
+    tasks.named(task, JavaExec) {
+        dependsOn tasks.named('runInterruptionSeedServer')
+        doFirst {
+            def target = file("build/interruption-run/${variant}")
+            delete target
+            copy { from 'build/interruption-run/seed'; into target }
+            older.each { path, save ->
+                def source = file("${target}/world/${path.substring(0, path.lastIndexOf('.'))}.${save}")
+                java.nio.file.Files.copy(source.toPath(), file("${target}/world/${path}").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
+        doLast {
+            def result = file("build/reports/interruption/${variant}.txt")
+            if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException("Interruption ${variant} restore did not complete.")
+        }
+    }
+    tasks.named('check') { dependsOn tasks.named(task) }
+}
 
 // Required independent-save injection: canonical SavedData older than the chunks it describes.
 tasks.named('runSaveOrderSeedServer', JavaExec) {

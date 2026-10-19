@@ -74,22 +74,29 @@ public final class ProcessingRecoveryCommands {
       return 0;
     }
     var machine = chunk.getBlockEntity(at, LevelChunk.EntityCreationType.CHECK);
+    var target = new NodeRegistry.Position(level.dimension().location().toString(), at.asLong());
+    CraftingJob owner = null;
+    for (var job : saved.craftingJobs().all())
+      if (job.dispatch() != null && target.equals(job.dispatch().target())) owner = job;
     var raw = machine == null ? null : ProcessingJournal.raw(machine);
-    if (raw == null) {
+    if (machine == null || raw == null && owner == null) {
       fail(source, "none");
       return 0;
     }
+    if (raw == null) {
+      // A chunk saved after the dispatch finished (or before it began) carries no journal while
+      // the saved job still claims progress there; record that absence as the evidence.
+      var absent = new net.minecraft.nbt.CompoundTag();
+      absent.putBoolean("Absent", true);
+      raw = absent;
+    }
     var world = saved.registry().world();
-    var target = new NodeRegistry.Position(level.dimension().location().toString(), at.asLong());
     ProcessingJournal.Entry entry = null;
     try {
       entry = ProcessingJournal.read(machine, world);
     } catch (IllegalArgumentException unreadable) {
       source.sendFailure(Component.literal(unreadable.getMessage()));
     }
-    CraftingJob owner = null;
-    for (var job : saved.craftingJobs().all())
-      if (job.dispatch() != null && target.equals(job.dispatch().target())) owner = job;
     if (entry != null) {
       boolean matches =
           owner != null && ProcessingJournal.check(entry, owner.id(), owner.dispatch()) == null;

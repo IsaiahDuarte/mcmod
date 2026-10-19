@@ -12,6 +12,8 @@ public final class VerificationMod {
       new StagingServerVerification().register();
     if (Boolean.getBoolean("factorycore.bench.server")) new ServerBenchmark().register();
     if (Boolean.getBoolean("factorycore.saveorder.server")) new SaveOrderVerification().register();
+    if (Boolean.getBoolean("factorycore.interruption.server"))
+      new InterruptionVerification().register();
     if (Boolean.getBoolean("factorycore.multiplayer.server"))
       new MultiplayerServerVerification().register();
     if (Boolean.getBoolean("factorycore.wireless.server"))

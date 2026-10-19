@@ -56,6 +56,8 @@ Generated/build/dependency directories are excluded. Tooling tests exercise miss
 docs/build/guest files, broken/escaping links, unwired sources, JVM dispatch/failure,
 empty/skipped Rust summaries and valid docs.
 
+The JVM build also runs a required abrupt-kill suite ([ADR 0057](decisions/0057-processing-journal-and-interruption.md)). A seed dedicated server SIGKILLs itself mid-job (Gradle requires exit 137). Three restore servers then check, on copies of its world, plain resume plus older-SavedData and older-chunk save skew.
+
 The [CI workflow](../.github/workflows/quality.yml) runs the canonical command on Windows and Linux. It is prepared for GitHub; no remote execution or branch protection has been configured here.
 
 ## Implementation bootstrap gate

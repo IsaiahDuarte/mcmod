@@ -135,3 +135,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0054 — Paid throughput progression under unchanged fair budgets](0054-throughput-upgrades.md)
 
 - [0055 — Network Access and Transfer Recovery screens](0055-access-and-recovery-screens.md)
+
+- [0057 — Processing dispatch journal and interruption recovery](0057-processing-journal-and-interruption.md)

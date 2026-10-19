@@ -332,8 +332,9 @@ public final class DeviceRecoveryAudit {
 
   /**
    * Before-state evidence for an operator processing-journal resolution (ADR 0057): audit schema 8,
-   * {@code HolderKind=PROCESSING_JOURNAL}, the machine's raw journal, the named job's canonical
-   * record when it exists, the target and the machine's native block state and block entity.
+   * {@code HolderKind=PROCESSING_JOURNAL}, the machine's raw journal ({@code {Absent:1b}} when the
+   * machine held none), the named job's canonical record when it exists, the target and the
+   * machine's native block state and block entity.
    */
   public static Path preserveProcessingJournal(
       Path world,

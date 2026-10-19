@@ -333,6 +333,60 @@ public final class ProcessingJournalGameTests {
         .thenSucceed();
   }
 
+  /**
+   * Found by the two-JVM data-old run: older SavedData claims an insertion while the newer chunk
+   * holds no journal. The job must stop, and the operator must be able to resolve it.
+   */
+  @GameTest(template = "empty", timeoutTicks = 900)
+  public static void missingJournalForASavedDispatchIsQuarantinedAndResolvable(GameTestHelper h) {
+    var f = setup(h);
+    UUID[] id = {null};
+    int[] files = {0};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.machine.partitioned = false;
+              f.saved.registry().insert(f.cell, f.cobble, 2);
+              id[0] = jobs(h).submit(actor(f.owner), f.origin, f.stone, 1).job();
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.job(id[0]).dispatch() != null && f.journaled() == 2 && !f.pending(),
+                    "Both inputs inserted and journaled"))
+        .thenExecute(
+            () -> {
+              // The newer chunk: the machine already returned its output and dropped the journal.
+              for (int slot = 0; slot < f.machine.items.getSlots(); slot++)
+                f.machine.items.setStackInSlot(slot, ItemStack.EMPTY);
+              ProcessingJournal.clear(f.machine);
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.job(id[0]).reason().equals("save_mismatch"),
+                    "A missing journal for saved progress is diagnosed"))
+        .thenExecute(
+            () -> {
+              files[0] = recoveryFiles(h);
+              h.assertTrue(resolve(h) == 1, "Operator resolves a missing journal");
+              h.assertTrue(recoveryFiles(h) == files[0] + 1, "Absence is preserved as evidence");
+              h.assertTrue(
+                  f.journaled() == 2 && !f.pending(), "Journal now matches the saved job record");
+            })
+        .thenIdle(40)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  !f.job(id[0]).reason().equals("save_mismatch"), "Job is no longer quarantined");
+              h.assertTrue(
+                  f.stock(f.cobble) == 0 && f.stock(f.stone) == 0,
+                  "Nothing is refunded or invented for units the skew lost");
+            })
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 900)
   public static void unfinishedJournalBlocksNewDispatchBeforeAnyIngredientIsPulled(
       GameTestHelper h) {
