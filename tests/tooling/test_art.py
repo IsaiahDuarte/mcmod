@@ -50,6 +50,21 @@ class ArtGeneratorTests(unittest.TestCase):
                 self.assertNotEqual(shapes[i], shapes[j], (cells[i], cells[j]))
         self.assertNotEqual(gray("starter_item_cell"), gray("starter_fluid_cell"))
 
+    def test_throughput_upgrades_differ_from_each_other_and_modules_in_shape(self):
+        """ADR 0054: speed upgrades must read differently from capacity modules without color."""
+
+        def opaque(name):
+            canvas = art.item_textures()[name]
+            return [[a > 0 and (r * 299 + g * 587 + b * 114) // 1000 > 128 for r, g, b, a in row]
+                    for row in canvas.pixels]
+
+        names = ["throughput_upgrade", "overdrive_upgrade", "advanced_module", "infinite_module"]
+        shapes = {name: opaque(name) for name in names}
+        self.assertNotEqual(shapes["throughput_upgrade"], shapes["overdrive_upgrade"])
+        for upgrade in ("throughput_upgrade", "overdrive_upgrade"):
+            for module in ("advanced_module", "infinite_module"):
+                self.assertNotEqual(shapes[upgrade], shapes[module], (upgrade, module))
+
 
 if __name__ == "__main__":
     unittest.main()

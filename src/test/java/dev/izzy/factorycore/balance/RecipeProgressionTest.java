@@ -9,6 +9,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.izzy.factorycore.core.network.NetworkTopology;
+import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.core.storage.FuelGenerator;
@@ -115,7 +117,9 @@ class RecipeProgressionTest {
           entry("advanced_fluid_cell", Stage.ADVANCED),
           entry("advanced_energy_bank", Stage.ADVANCED),
           entry("wireless_link_endpoint", Stage.ADVANCED),
+          entry("throughput_upgrade", Stage.ADVANCED),
           entry("infinite_module", Stage.ENDGAME),
+          entry("overdrive_upgrade", Stage.ENDGAME),
           entry("infinite_item_cell", Stage.ENDGAME));
 
   private record Recipe(String file, String result, int count, List<String> inputs, String grid) {}
@@ -309,6 +313,61 @@ class RecipeProgressionTest {
         stages.get("factorycore:network_cable").compareTo(Stage.STARTER) == 0
             && stages.get("factorycore:wireless_link_endpoint").compareTo(Stage.ADVANCED) == 0,
         "R11: wired connections are cheaper than equivalent wireless pairs");
+  }
+
+  /**
+   * ADR 0054: paid speed is a separate axis. The Throughput Upgrade is Advanced (diamonds), the
+   * Overdrive Upgrade Endgame (Nether star), so R11's "higher per-interface throughput" and
+   * "high-throughput factory upgrades" land in their stages and never gate earlier storage.
+   */
+  @Test
+  void throughputUpgradesBelongToAdvancedAndEndgame() throws Exception {
+    var stages = reachableStages(recipes());
+    assertEquals(Stage.ADVANCED, stages.get("factorycore:throughput_upgrade"));
+    assertEquals(Stage.ENDGAME, stages.get("factorycore:overdrive_upgrade"));
+    for (var recipe : recipes())
+      if (!recipe.result().endsWith("_upgrade"))
+        for (var input : recipe.inputs())
+          assertFalse(input.endsWith("_upgrade"), "No storage/link recipe needs a speed upgrade");
+  }
+
+  /** ADR 0054 numeric table, pinned like the rest of the D06 balance. */
+  @Test
+  void throughputTiersMatchTheTableAndKeepWiredAtLeastAsFastAsWireless() {
+    var table = new LinkedHashMap<ThroughputTier, List<Long>>();
+    for (var tier : ThroughputTier.values())
+      table.put(
+          tier,
+          List.of(
+              (long) tier.portRate(ResourceKind.ITEM),
+              (long) tier.portRate(ResourceKind.FLUID),
+              (long) tier.portRate(ResourceKind.ENERGY),
+              (long) tier.bufferRate(),
+              (long) tier.linkScale()));
+    assertEquals(
+        Map.of(
+            ThroughputTier.BASE, List.of(128L, 1_000L, 1_000L, 64L, 1L),
+            ThroughputTier.ADVANCED, List.of(256L, 4_000L, 8_000L, 256L, 1L),
+            ThroughputTier.ENDGAME, List.of(1_024L, 16_000L, 32_000L, 576L, 4L)),
+        table,
+        "Port items/mB/FE, buffer items and link-pair multiplier per tick");
+    assertEquals(
+        (long) ItemBuffer.SLOTS * 64,
+        ThroughputTier.ENDGAME.bufferRate(),
+        "Overdrive moves a whole buffer per tick and no more");
+    // R11: an equivalent-tier wired port offers at least a wireless pair's throughput. Links are
+    // Advanced; an Overdrive pair is Endgame.
+    for (var kind : ResourceKind.values()) {
+      assertTrue(
+          ThroughputTier.ADVANCED.portRate(kind)
+              >= dev.izzy.factorycore.core.resource.WirelessBudget.limit(kind),
+          "Advanced wired port >= base link pair: " + kind);
+      assertTrue(
+          ThroughputTier.ENDGAME.portRate(kind)
+              >= dev.izzy.factorycore.core.resource.WirelessBudget.limit(kind)
+                  * ThroughputTier.ENDGAME.linkScale(),
+          "Overdrive wired port >= Overdrive link pair: " + kind);
+    }
   }
 
   @Test

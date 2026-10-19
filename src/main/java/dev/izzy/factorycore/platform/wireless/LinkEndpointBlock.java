@@ -97,6 +97,21 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
       link.owner(player.getUUID());
   }
 
+  /** An upgrade in hand installs through the item instead of starting a pairing selection. */
+  @Override
+  protected net.minecraft.world.ItemInteractionResult useItemOn(
+      ItemStack stack,
+      BlockState state,
+      Level level,
+      BlockPos position,
+      Player player,
+      net.minecraft.world.InteractionHand hand,
+      BlockHitResult hit) {
+    if (stack.getItem() instanceof dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeItem)
+      return net.minecraft.world.ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+    return super.useItemOn(stack, state, level, position, player, hand, hit);
+  }
+
   @Override
   protected InteractionResult useWithoutItem(
       BlockState state, Level level, BlockPos position, Player player, BlockHitResult hit) {
@@ -113,6 +128,8 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
               link.energy(),
               LinkEndpointEntity.CAPACITY),
           true);
+      player.displayClientMessage(
+          dev.izzy.factorycore.platform.upgrade.ThroughputStatus.link(server.server, link), false);
       return InteractionResult.CONSUME;
     }
     var dimension = level.dimension().location().toString();
@@ -136,7 +153,7 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   /**
    * May {@code player} configure this endpoint: Manage on its valid network, or owner of an orphan.
    */
-  private static boolean mayConfigure(ServerPlayer player, LinkEndpointEntity link) {
+  public static boolean mayConfigure(ServerPlayer player, LinkEndpointEntity link) {
     var origin =
         new NodeRegistry.Position(
             link.getLevel().dimension().location().toString(), link.getBlockPos().asLong());
@@ -200,6 +217,14 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   protected void onRemove(
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
     WorldNetworks.changed(level, position);
+    // The block itself drops through its loot table; an installed Overdrive Upgrade is returned
+    // separately so breaking an endpoint never destroys a paid upgrade.
+    if (!state.is(next.getBlock())
+        && !level.isClientSide()
+        && level.getBlockEntity(position) instanceof LinkEndpointEntity link)
+      for (var drop : link.upgradeDrops())
+        net.minecraft.world.Containers.dropItemStack(
+            level, position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5, drop);
     super.onRemove(state, level, position, next, moved);
   }
 }

@@ -23,6 +23,7 @@ public final class MachineInterfaceItem extends BlockItem {
     tooltip.add(Component.translatable("tooltip.factorycore.machine_access"));
     tooltip.add(Component.translatable("tooltip.factorycore.machine_priority"));
     tooltip.add(Component.translatable("tooltip.factorycore.machine_unique"));
+    ConnectorItem.throughputTooltip(stack, tooltip);
   }
 
   @Override

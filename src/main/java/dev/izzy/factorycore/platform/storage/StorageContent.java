@@ -87,6 +87,12 @@ public final class StorageContent {
                         output.accept(EXPANSION.get());
                         output.accept(ADVANCED.get());
                         output.accept(INFINITE.get());
+                        output.accept(
+                            dev.izzy.factorycore.platform.upgrade.ThroughputContent.THROUGHPUT
+                                .get());
+                        output.accept(
+                            dev.izzy.factorycore.platform.upgrade.ThroughputContent.OVERDRIVE
+                                .get());
                       })
                   .build());
 

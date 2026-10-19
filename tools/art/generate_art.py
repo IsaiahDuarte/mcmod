@@ -82,6 +82,7 @@ GLYPHS = {
     "dot": [".###.", "#...#", "#.#.#", "#...#", ".###."],
     "cross": [".###.", "##.##", "#.#.#", "##.##", ".###."],
     "prompt": ["#..", ".#.", "#.."],
+    "flow": ["#..", ".#.", "..#", ".#.", "#.."],
 }
 
 
@@ -530,6 +531,38 @@ def module(tier):
     return c
 
 
+def throughput_upgrade(kind):
+    """Speed card: heat-sink fins and right-pointing flow chevrons (">>", or ">>|" for Overdrive).
+
+    The fins and sideways chevrons separate it from the capacity modules' upward chevron, and
+    the end-stop bar separates the two tiers without relying on color.
+    """
+    tier = "advanced" if kind == "throughput" else "infinite"
+    c = Canvas(f"{kind}_upgrade")
+    dark, base, hi = TIERS[tier]
+    for x in range(3, 13, 2):
+        c.vline(x, 1, 3, COPPER)
+        c.px(x, 1, COPPER_HI)
+        c.px(x, 3, COPPER_DARK)
+    c.rect(2, 4, 13, 13, OUTLINE)
+    c.rect(3, 5, 12, 12, CASE, grain=3)
+    c.hline(3, 12, 5, base)
+    c.rect(4, 7, 11, 11, PANEL)
+    if kind == "throughput":
+        for x in (5, 8):
+            c.glyph(x, 7, GLYPHS["flow"], hi)
+    else:
+        # Overdrive: fast-forward to the end stop (">>|").
+        for x in (4, 7):
+            c.glyph(x, 7, GLYPHS["flow"], hi)
+        c.vline(10, 7, 11, AMBER_HI)
+    c.hline(3, 12, 12, dark)
+    for x in range(4, 12, 2):
+        c.px(x, 14, AMBER)
+    c.hline(2, 13, 13, OUTLINE)
+    return c
+
+
 def pattern(kind):
     c = Canvas(f"{kind}_pattern")
     # Encoded card with a folded corner; corner tab marks the kind by shape.
@@ -619,6 +652,8 @@ def item_textures():
     out["expansion_module"] = module("expanded")
     out["advanced_module"] = module("advanced")
     out["infinite_module"] = module("infinite")
+    out["throughput_upgrade"] = throughput_upgrade("throughput")
+    out["overdrive_upgrade"] = throughput_upgrade("overdrive")
     for kind in ("blank", "crafting", "processing"):
         out[f"{kind}_pattern"] = pattern(kind)
     out["wireless_terminal"] = wireless_terminal()

@@ -30,6 +30,9 @@ public final class LinkEndpointEntity extends BlockEntity {
   private Long partner;
   private UUID owner;
   private boolean powered;
+  private dev.izzy.factorycore.core.resource.ThroughputTier tier =
+      dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+  private String unknownTier;
   private long inputTick = Long.MIN_VALUE, inputThisTick;
 
   private final IEnergyStorage storage =
@@ -172,6 +175,37 @@ public final class LinkEndpointEntity extends BlockEntity {
         new NodeRegistry.Position(dimension, other.getBlockPos().asLong()));
   }
 
+  /** Installed throughput upgrade; BASE or ENDGAME (Overdrive) for link endpoints. */
+  public dev.izzy.factorycore.core.resource.ThroughputTier tier() {
+    return tier;
+  }
+
+  /**
+   * Installs an Overdrive upgrade. The caller has already checked MANAGE authority and consumes the
+   * item only after this returns. Both ends of a pair are re-discovered so the new scale is
+   * published through normal topology preparation.
+   */
+  public void install(dev.izzy.factorycore.core.resource.ThroughputTier upgrade) {
+    if (unknownTier != null) throw new IllegalStateException("upgrade_unknown_data");
+    var next = tier.upgradeWith(upgrade, true);
+    if (next == null) throw new IllegalStateException("upgrade_not_applicable");
+    tier = next;
+    setChanged();
+    refresh();
+  }
+
+  /**
+   * Per-pair multiplier on the ADR 0050 caps: the Overdrive scale only when both loaded, reciprocal
+   * ends carry it; otherwise 1. Never loads the partner chunk.
+   */
+  public int pairScale() {
+    if (!(level instanceof ServerLevel server) || partner == null) return 1;
+    var other = loaded(server, partner());
+    return other != null && worldPosition.equals(other.partner())
+        ? Math.min(tier.linkScale(), other.tier.linkScale())
+        : 1;
+  }
+
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel server)) return false;
     var chunk =
@@ -217,6 +251,9 @@ public final class LinkEndpointEntity extends BlockEntity {
     tag.putLong("Energy", energy);
     if (partner != null) tag.putLong("Partner", partner);
     if (owner != null) tag.putUUID("Owner", owner);
+    if (unknownTier != null) tag.putString("Throughput", unknownTier);
+    else if (tier != dev.izzy.factorycore.core.resource.ThroughputTier.BASE)
+      tag.putString("Throughput", tier.name());
   }
 
   @Override
@@ -226,5 +263,22 @@ public final class LinkEndpointEntity extends BlockEntity {
     partner = tag.contains("Partner") ? tag.getLong("Partner") : null;
     owner = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     powered = partner != null && energy >= TICK_COST;
+    // Absent = BASE (every pre-0054 save). An unknown future name keeps BASE limits rather than
+    // granting throughput; the stored upgrade item is not destroyed because it is never dropped
+    // for an unknown name.
+    tier = dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+    unknownTier = null;
+    if (tag.contains("Throughput", net.minecraft.nbt.Tag.TAG_STRING))
+      try {
+        tier = dev.izzy.factorycore.core.resource.ThroughputTier.parse(tag.getString("Throughput"));
+      } catch (IllegalArgumentException unknown) {
+        unknownTier = tag.getString("Throughput");
+      }
+  }
+
+  /** Upgrade items to return when the endpoint is broken; empty for BASE or unknown data. */
+  public java.util.List<net.minecraft.world.item.ItemStack> upgradeDrops() {
+    if (unknownTier != null) return java.util.List.of();
+    return dev.izzy.factorycore.platform.upgrade.ThroughputContent.installed(tier, true);
   }
 }

@@ -85,7 +85,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     reset =
         button(
             "reset", 258, 23, 52, () -> send(BufferSettingsPackets.RESET, 0, 0, "", new byte[32]));
-    rate = box(36, 48, 35, "rate", 2);
+    rate = box(36, 48, 35, "rate", 3);
     target = box(155, 48, 45, "target", 3);
     setRate = button("set", 75, 47, 35, () -> number(rate, BufferSettingsPackets.RATE));
     setTarget = button("set", 204, 47, 36, () -> number(target, BufferSettingsPackets.TARGET));

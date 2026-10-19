@@ -196,7 +196,7 @@ public final class WorldStorageRoutes {
     Objects.requireNonNull(completion);
     Objects.requireNonNull(authorized);
     OperationResult.requireQuantity(amount);
-    if (amount > (key.kind() == ResourceKind.ITEM ? 128 : 1000))
+    if (amount > dev.izzy.factorycore.core.resource.ThroughputTier.maxQuantum(key.kind()))
       throw new IllegalArgumentException("Route exceeds bounded quantum");
     prune();
     try {
