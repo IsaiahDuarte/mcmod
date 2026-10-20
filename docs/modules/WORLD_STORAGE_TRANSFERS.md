@@ -504,3 +504,7 @@ never enter catalogs/claim registration, and unresolved canonical evidence block
 fresh operations. Terminal menus/client packet boundaries remain missing.
 
 Actual accepted known/uncertain staging now has a required [two-JVM dedicated recovery record](../evidence/staged-server-v1-2026-10-17.md). The graphical variant remains separately unverified while no display is active; independent-save/interruption/administration gates remain open.
+
+## Code layout
+
+`WorldStorageTransfers` owns admission, queueing and the transfer/claim/settlement operations. `TransferEndpoints` is its endpoint layer: it resolves endpoints to live ports, checks each endpoint's current authority, recovers persisted endpoint references, and owns buffer rate budgets and player-inventory endpoints. It never schedules work.
