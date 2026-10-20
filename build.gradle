@@ -37,6 +37,7 @@ sourceSets {
 }
 configurations.clientTestImplementation.extendsFrom(configurations.implementation)
 configurations.clientTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
+sourceSets.main.resources { srcDir 'src/generated/resources'; exclude '.cache/' }
 configurations.gameTestImplementation.extendsFrom(configurations.implementation)
 configurations.gameTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 configurations.jeiTestImplementation.extendsFrom(configurations.implementation)
@@ -54,6 +55,22 @@ neoForge {
         factorycore_jei_tests { sourceSet(sourceSets.jeiTest) }
     }
     runs {
+        // runData regenerates src/generated/resources from the registry (FactoryCoreData).
+        data {
+            data()
+            gameDirectory = file('build/data-run')
+            loadedMods = [mods.factorycore]
+            programArguments.addAll('--mod', 'factorycore', '--all', '--output', file('src/generated/resources').absolutePath,
+                '--existing', file('src/main/resources').absolutePath)
+        }
+        // The same generation into build/, compared with the committed tree by checkGeneratedResources.
+        dataCheck {
+            data()
+            gameDirectory = file('build/data-check-run')
+            loadedMods = [mods.factorycore]
+            programArguments.addAll('--mod', 'factorycore', '--all', '--output', file('build/generated-check').absolutePath,
+                '--existing', file('src/main/resources').absolutePath)
+        }
         client {
             client()
             gameDirectory = file('run/client')
@@ -457,6 +474,22 @@ tasks.named('runInterruptionSeedServer', JavaExec) {
         doLast { requirePass(reportFile("${dir}/restore.txt"), 'Save-order restore did not complete.') }
     }
 }
+
+// Generated resources are committed; this fails when they no longer match the registry.
+tasks.register('checkGeneratedResources') {
+    group = 'verification'
+    description = 'Regenerates data into build/ and compares it with src/generated/resources.'
+    dependsOn tasks.named('runDataCheck')
+    doLast {
+        def tree = { File root -> root.exists() ? fileTree(root) { exclude '.cache/**' }.files.collectEntries { [(root.toPath().relativize(it.toPath()).toString()): it.text] } : [:] }
+        def committed = tree(file('src/generated/resources'))
+        def fresh = tree(file('build/generated-check'))
+        def stale = (committed.keySet() + fresh.keySet()).findAll { committed[it] != fresh[it] }.sort()
+        if (stale) throw new GradleException("Generated resources are stale; run ./gradlew runData. Differs: ${stale}")
+    }
+}
+tasks.named('runDataCheck') { doFirst { delete file('build/generated-check') } }
+tasks.named('check') { dependsOn tasks.named('checkGeneratedResources') }
 
 tasks.named('releaseCheck') {
     dependsOn(['AutomaticThroughput', 'WirelessLifecycle', 'GatewayDepth', 'StagingRecovery', 'InterruptionKill',

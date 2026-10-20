@@ -1,0 +1,21 @@
+{
+  "values": [
+    "factorycore:machine_interface",
+    "factorycore:storage_drive",
+    "factorycore:starter_energy_bank",
+    "factorycore:program_controller",
+    "factorycore:buffered_interface",
+    "factorycore:network_cable",
+    "factorycore:gateway",
+    "factorycore:wireless_link_endpoint",
+    "factorycore:storage_connector",
+    "factorycore:crafting_interface",
+    "factorycore:wireless_access_point",
+    "factorycore:storage_terminal",
+    "factorycore:crafting_unit",
+    "factorycore:expanded_energy_bank",
+    "factorycore:advanced_energy_bank",
+    "factorycore:network_controller",
+    "factorycore:fuel_generator"
+  ]
+}

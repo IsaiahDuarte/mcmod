@@ -21,6 +21,13 @@ Status details can use inspection/screens instead of expensive block animation.
 Custom sounds, particles and animations are optional; add them only with a
 specific feedback purpose and bounded rendering cost.
 
+Registry-derived resources are generated, not hand-written: `./gradlew runData`
+(`platform/client/data/FactoryCoreData`) writes every item model except the
+cable's hand-authored geometry, plus the `mineable/pickaxe` and
+`needs_iron_tool` block tags, into `src/generated/resources`. That tree is
+committed; `checkGeneratedResources` (part of `check`) fails when it is stale.
+A file lives in exactly one of `src/generated` and `src/main/resources`.
+
 Keep editable sources when used, exported game assets, and attribution/license
 information discoverable. Record actual paths when created; do not add empty
 files to satisfy this inventory. Register new variants/screens here as they land.
