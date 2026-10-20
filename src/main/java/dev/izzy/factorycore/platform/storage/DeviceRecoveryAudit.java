@@ -22,6 +22,20 @@ public final class DeviceRecoveryAudit {
 
   private DeviceRecoveryAudit() {}
 
+  /**
+   * {@code WorldSchema} in an audit names the world schema whose table encodings the envelope
+   * embeds, so its sections decode with that schema's codecs; it is not the writing world's
+   * version. Most envelopes embed tables unchanged since world schema 12 (ADR 0031). They are
+   * pinned here, not tied to {@link DeviceSavedData#SCHEMA}, so a world schema bump cannot silently
+   * change audit bytes ({@code AuditGoldenTest}).
+   */
+  static final int TABLE_SCHEMA = 12;
+
+  /**
+   * Port adoption (schema 7) and processing journal (schema 8) envelopes embed schema-13 tables.
+   */
+  static final int JOB_TABLE_SCHEMA = 13;
+
   static Path preserve(Path world, UUID namespace, DeviceRegistry.Stored owner, Tag stack)
       throws IOException {
     var envelope = envelope(namespace, owner, 1);
@@ -110,7 +124,7 @@ public final class DeviceRecoveryAudit {
       throw new IllegalArgumentException("Expected canonical buffer adoption evidence");
     var envelope = new CompoundTag();
     envelope.putInt("Schema", 6);
-    envelope.putInt("WorldSchema", 12);
+    envelope.putInt("WorldSchema", TABLE_SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "BUFFERED_INTERFACE_ADOPTION");
     envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
@@ -144,7 +158,7 @@ public final class DeviceRecoveryAudit {
       throw new IllegalArgumentException("Expected canonical buffer conflict evidence");
     var envelope = new CompoundTag();
     envelope.putInt("Schema", 3);
-    envelope.putInt("WorldSchema", 12);
+    envelope.putInt("WorldSchema", TABLE_SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "BUFFERED_INTERFACE");
     envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
@@ -181,7 +195,7 @@ public final class DeviceRecoveryAudit {
       throw new IllegalArgumentException("Expected canonical network-node adoption evidence");
     var envelope = new CompoundTag();
     envelope.putInt("Schema", 5);
-    envelope.putInt("WorldSchema", 12);
+    envelope.putInt("WorldSchema", TABLE_SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "NETWORK_NODE_ADOPTION");
     envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
@@ -214,7 +228,7 @@ public final class DeviceRecoveryAudit {
       throw new IllegalArgumentException("Expected canonical network-node conflict evidence");
     var envelope = new CompoundTag();
     envelope.putInt("Schema", 4);
-    envelope.putInt("WorldSchema", 12);
+    envelope.putInt("WorldSchema", TABLE_SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "NETWORK_NODE");
     envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
@@ -254,7 +268,7 @@ public final class DeviceRecoveryAudit {
       throw new IllegalArgumentException("Expected stale foreign-port adoption evidence");
     var envelope = new CompoundTag();
     envelope.putInt("Schema", 7);
-    envelope.putInt("WorldSchema", DeviceSavedData.SCHEMA);
+    envelope.putInt("WorldSchema", JOB_TABLE_SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "FOREIGN_PORT_ADOPTION");
     envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
@@ -304,7 +318,7 @@ public final class DeviceRecoveryAudit {
       throw new IllegalArgumentException("Expected exact canonical port conflict evidence");
     var envelope = new CompoundTag();
     envelope.putInt("Schema", 5);
-    envelope.putInt("WorldSchema", 12);
+    envelope.putInt("WorldSchema", TABLE_SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "FOREIGN_PORT");
     envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
@@ -347,7 +361,7 @@ public final class DeviceRecoveryAudit {
       throw new IllegalArgumentException("Expected processing journal evidence");
     var envelope = new CompoundTag();
     envelope.putInt("Schema", 8);
-    envelope.putInt("WorldSchema", DeviceSavedData.SCHEMA);
+    envelope.putInt("WorldSchema", JOB_TABLE_SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "PROCESSING_JOURNAL");
     envelope.put("Journal", journal.copy());
@@ -371,7 +385,7 @@ public final class DeviceRecoveryAudit {
       throw new IllegalArgumentException("Expected placed conflict evidence");
     var envelope = new CompoundTag();
     envelope.putInt("Schema", schema);
-    envelope.putInt("WorldSchema", 12);
+    envelope.putInt("WorldSchema", TABLE_SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.putLong("Generation", owner.generation());
     envelope.putBoolean("Conflict", owner.conflict());
