@@ -4,6 +4,7 @@ import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
@@ -101,11 +102,7 @@ public final class StorageDriveBlock extends NetworkedBlock implements EntityBlo
           }
         }
       }
-      player.displayClientMessage(
-          drive.diagnostic().isEmpty()
-              ? Component.translatable("message.factorycore.drive_help")
-              : Component.literal(drive.diagnostic()),
-          true);
+      if (player instanceof ServerPlayer server) DriveMenu.open(server, drive);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
       player.displayClientMessage(Component.literal(failure.getMessage()), true);

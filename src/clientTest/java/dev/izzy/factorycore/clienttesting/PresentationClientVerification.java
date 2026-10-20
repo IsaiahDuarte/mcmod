@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
+import dev.izzy.factorycore.platform.client.DriveScreen;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.ItemDescriptions;
 import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
@@ -824,6 +825,21 @@ public final class PresentationClientVerification {
     use(base.east(2), Direction.SOUTH, false);
     scales("terminal", TerminalScreen.class, true);
     jobsTour(base);
+    use(base.east(), Direction.SOUTH, false);
+    step(client -> client.screen instanceof DriveScreen && waited() > 4);
+    step(
+        client -> {
+          var screen = (DriveScreen) client.screen;
+          return screen.mouseClicked(screen.getGuiLeft() + 16, screen.getGuiTop() + 26, 0);
+        });
+    step(client -> !client.player.containerMenu.getCarried().isEmpty());
+    step(
+        client -> {
+          var screen = (DriveScreen) client.screen;
+          return screen.mouseClicked(screen.getGuiLeft() + 16, screen.getGuiTop() + 26, 0);
+        });
+    step(client -> client.player.containerMenu.getCarried().isEmpty() && waited() > 4);
+    scales("drive", DriveScreen.class, false);
     use(base.east(3), Direction.SOUTH, false);
     scales("buffer", BufferSettingsScreen.class, false);
     use(base.east(4), Direction.SOUTH, false);
@@ -942,7 +958,7 @@ public final class PresentationClientVerification {
               + evidence
               + "Orientation: every FACING device in all six facings, horizontal devices in four;"
               + " two opposite corner views show every front.\n"
-              + "Screens: terminal, buffer settings, machine settings, program editor, gateway"
+              + "Screens: terminal, drive, buffer settings, machine settings, program editor, gateway"
               + " policy, network access, transfer recovery and guide at GUI scales 1-4 in a "
               + MIN_WIDTH
               + "x"

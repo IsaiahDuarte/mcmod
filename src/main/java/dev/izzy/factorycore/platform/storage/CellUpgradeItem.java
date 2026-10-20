@@ -20,6 +20,11 @@ public final class CellUpgradeItem extends Item {
     this.targetLevel = targetLevel;
   }
 
+  /** The tier level this module upgrades to: 1 Expanded, 2 Advanced, 3 Infinite. */
+  public int targetLevel() {
+    return targetLevel;
+  }
+
   @Override
   public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
     ItemStack module = player.getItemInHand(hand);

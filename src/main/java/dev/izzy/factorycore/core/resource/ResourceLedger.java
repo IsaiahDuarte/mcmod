@@ -83,6 +83,12 @@ public final class ResourceLedger {
     return new Stock(count, held, loaded ? count - held : 0, loaded);
   }
 
+  /** Number of exact resource identities with positive stored quantities; constant-time. */
+  public int typeCount() {
+    checkThread();
+    return contents.size();
+  }
+
   public long total() {
     checkThread();
     return total;

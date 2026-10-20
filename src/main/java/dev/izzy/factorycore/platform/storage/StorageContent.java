@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.Set;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -34,6 +35,8 @@ public final class StorageContent {
       FactoryRegistries.ITEMS.registerSimpleBlockItem(DRIVE);
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<StorageDriveEntity>>
       DRIVE_ENTITY = FactoryRegistries.entity("storage_drive", StorageDriveEntity::new, DRIVE);
+  public static final DeferredHolder<MenuType<?>, MenuType<DriveMenu>> DRIVE_MENU =
+      FactoryRegistries.menu("storage_drive", DriveMenu::new);
   private static final EnumMap<CellTier, DeferredItem<CellItem>> CELLS =
       new EnumMap<>(CellTier.class);
   public static final DeferredItem<CellUpgradeItem> EXPANSION =
@@ -110,5 +113,6 @@ public final class StorageContent {
 
   public static void register(IEventBus bus) {
     // Loading this class adds its entries to FactoryRegistries before registration.
+    bus.addListener(DrivePackets::register);
   }
 }

@@ -85,15 +85,50 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
 
   public int installCell(ItemStack input) {
     requireUsable();
-    for (int slot = 0; slot < cells.length; slot++) {
-      if (cells[slot].isEmpty()) {
-        cells[slot] = CellOwnership.install(input, registry(), location(slot));
-        setChanged();
-        networkingChanged();
-        return slot;
-      }
-    }
+    for (int slot = 0; slot < cells.length; slot++)
+      if (cells[slot].isEmpty()) return installCell(slot, input);
     throw new IllegalStateException("All four drive slots are occupied");
+  }
+
+  public int installCell(int slot, ItemStack input) {
+    requireUsable();
+    checkSlot(slot);
+    if (!cells[slot].isEmpty()) throw new IllegalStateException("That drive bay holds a cell");
+    cells[slot] = CellOwnership.install(input, registry(), location(slot));
+    setChanged();
+    networkingChanged();
+    return slot;
+  }
+
+  public record UpgradeResult(ItemStack portable, boolean upgraded) {}
+
+  /**
+   * Upgrades the cell in {@code slot} where it sits, by the same detach, resize and attach steps a
+   * player takes by hand, so identity, contents and reservations are kept and routing waits for
+   * revalidation. A wrong module is refused before anything changes. Returns the cell when it could
+   * not be put back, which the caller must hand to the player. The caller consumes a module only
+   * when upgraded is true.
+   */
+  public UpgradeResult upgradeCell(int slot, int targetLevel) {
+    requireUsable();
+    checkSlot(slot);
+    if (!(cells[slot].getItem() instanceof CellItem item))
+      throw new IllegalStateException("That drive bay is empty");
+    item.tier().upgrade(targetLevel);
+    var result = removeCell(slot);
+    RuntimeException refused = null;
+    try {
+      result = CellOwnership.upgrade(result, targetLevel, registry());
+    } catch (IllegalArgumentException | IllegalStateException failure) {
+      refused = failure;
+    }
+    try {
+      installCell(slot, result);
+    } catch (IllegalArgumentException | IllegalStateException failure) {
+      return new UpgradeResult(result, refused == null);
+    }
+    if (refused != null) throw refused;
+    return new UpgradeResult(ItemStack.EMPTY, true);
   }
 
   public ItemStack removeCell(int slot) {

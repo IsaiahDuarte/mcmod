@@ -1,0 +1,4 @@
+fit drive scale=1: DriveScreen panel=230x240 gui=1708x960 controls=4
+fit drive scale=2: DriveScreen panel=230x240 gui=854x480 controls=4
+fit drive scale=3: DriveScreen panel=230x240 gui=570x320 controls=4
+fit drive scale=4: DriveScreen panel=230x240 gui=427x240 controls=4

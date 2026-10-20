@@ -53,6 +53,31 @@ Breaking/replacement calls `ejectForBreak`: healthy cells become portable; faile
 removals deactivate and retain the exact lease in a labeled inert recovery item.
 No copied ledger or speculative refund is manufactured.
 
+`installCell(slot, singleCell)` installs into one chosen empty slot and refuses an occupied one.
+`upgradeCell(slot, targetLevel)` upgrades a placed cell where it sits, using the same steps as
+the portable path: detach, resize, attach to the same slot. A module that is not the next tier is
+refused before anything changes; a refused resize puts the unchanged cell back. Identity,
+contents and reservations are preserved, the generation advances twice, and routing waits for
+normal revalidation. If the cell cannot be reattached, the method returns it for the caller to
+give to the player instead of losing it, together with whether resizing succeeded. The caller
+consumes a module only after a successful resize.
+
+### Drive screen
+
+Empty-hand use opens `DriveMenu` ([UX plan](../UX_PLAN.md) U2). It shows each bay's cell,
+tier, number of exact stored resource identities, and total/capacity bar (items or mB;
+"no limit" for Infinite). Type counts include reserved stock and are read in constant time
+from the canonical ledger; they are not a gameplay limit. Menu button `b` acts on bay
+`b % 4` with the server-side cursor stack: a cell installs, a module upgrades in place, and an
+empty cursor picks the cell up as a portable lease. Buttons 4–7 send the bay's cell to the
+inventory. Shift-clicking a cell in the inventory installs it in the first empty bay. Like
+sneak-use, the screen is physical access and checks no network grant; it closes beyond 8 blocks
+or when the drive is removed. Views carry exact longs in a session payload because vanilla data
+slots cannot. Polls occur at most once every 10 ticks (immediately after a menu action),
+and only changed views are sent. Tab/Enter or Space activates each bay; hovering a bay
+shows full exact amounts even when the row truncates a long number. No persistence
+schema changes are needed: upgrades reuse the canonical resize/lease lifecycle.
+
 Schema one stores integer `CellSchema=1` and compound list `CellSlots`, maximum
 four entries: integer `Slot`, compound `Stack` using Minecraft's item codec.
 Repeated slots, wrong types/counts, missing leases and incompatible schemas fail

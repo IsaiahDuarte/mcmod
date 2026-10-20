@@ -109,7 +109,8 @@ public final class DeviceRegistry {
         device.ledger.kind(), device.ledger.capacity(), device.ledger.infinite(), device.location);
   }
 
-  public record Ownership(Handle handle, Definition definition, boolean conflict, long total) {}
+  public record Ownership(
+      Handle handle, Definition definition, boolean conflict, long total, int types) {}
 
   /** Trusted owner-thread inspection of one owner's reserved units, including offline ledgers. */
   public long reservation(UUID backing, UUID owner, ResourceKey key) {
@@ -132,7 +133,8 @@ public final class DeviceRegistry {
                 device.ledger.infinite(),
                 device.location),
             device.conflict,
-            device.ledger.total());
+            device.ledger.total(),
+            device.ledger.typeCount());
   }
 
   /** Detached single-device evidence, including conflicts; does not authorize repair. */

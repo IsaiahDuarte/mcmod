@@ -10,8 +10,12 @@ Storage Terminals provide item transfers, a manual crafting grid, saved patterns
 ## Cells and drives
 
 Craft a Storage Drive, then use a cell on it to install the cell in its first
-empty slot. A drive holds four cells. Sneak-use the drive with an empty main
-hand to remove its first occupied cell into your hand. Breaking the drive drops
+empty slot. A drive holds four cells. Use the drive with an empty hand to open
+its screen: each bay shows its tier, number of stored types, and how full it is.
+Click a bay with a cell on your cursor to install it there, click a filled bay to pick its cell up, or
+Shift-click it to send the cell to your inventory. Click a filled bay with an
+upgrade module on your cursor to upgrade that cell without taking it out.
+Sneak-use with an empty hand still takes out the first cell. Breaking the drive drops
 its cells as portable references and drops the casing with the normal loot rules.
 Creative installation also consumes the cell reference to preserve one physical
 holder. Full drives and invalid cells reject without consuming your input.
@@ -66,12 +70,14 @@ consumes a cell or bank. Patterns are encoded from Blank Patterns in the termina
 | Advanced | Wireless Link Endpoint | 1 Wireless Access Point, 2 diamonds, 1 eye of ender, 2 gold ingots, 3 iron ingots |
 | Infinite | Infinite Module | 8 netherite ingots, 1 Nether star |
 
-Remove a cell from its drive. Hold it in your offhand and use an upgrade module
-from your main hand. Apply Expansion, Advanced and then Infinite in that order.
+Open the drive and click the cell's bay with the module on your cursor, or
+remove the cell, hold it in your offhand and use the module from your main hand.
+Apply Expansion, Advanced and then Infinite in that order.
 Fluids stop at Advanced. A successful survival upgrade consumes one module and
 preserves the cell's backing identity, stored contents, reservations and custom
-components. Creative use retains the module. Invalid, placed or copied stale
-references reject the upgrade without consuming ingredients.
+components. Creative use retains the module. Invalid or copied stale references
+reject the upgrade without consuming ingredients. The offhand path requires a
+portable cell. Tab selects a drive bay; Enter or Space activates it.
 
 ## Energy banks
 

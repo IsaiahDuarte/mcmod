@@ -6,6 +6,7 @@ import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
 import dev.izzy.factorycore.platform.storage.RecoveryContent;
+import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -19,6 +20,7 @@ public final class TerminalClient {
   @SubscribeEvent
   public static void screens(RegisterMenuScreensEvent event) {
     event.register(TerminalContent.MENU.get(), TerminalScreen::new);
+    event.register(StorageContent.DRIVE_MENU.get(), DriveScreen::new);
     event.register(MachineInterfaceContent.MENU.get(), MachineSettingsScreen::new);
     event.register(BufferedInterfaceContent.MENU.get(), BufferSettingsScreen::new);
     event.register(ProgramContent.MENU.get(), ProgramScreen::new);
