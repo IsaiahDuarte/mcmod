@@ -102,7 +102,15 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   Done when: GameTests cover choosing a slot, in-place upgrade, a rejected downgrade and a
   full drive; screenshots at scales 1 and 4.
 
-- [ ] **U3 — Terminal grid rebuild (F3).**
+- [x] **U3 — Terminal grid rebuild (F3).** Done 2026-10-20, `f1be7be`.
+  Adaptive scrolling grid (20×4 at minimum GUI), live search, explicit tabs, standard
+  cursor/inventory clicks and network item-capacity summary are implemented. Five native
+  cases cover partial/denied/stale actions, exact components, capacity scope and cursor
+  staging recovery after menu replacement. The full verifier passed (34 tooling, 386 JVM,
+  337 native tests and every release suite); the 291-stage presentation tour passed,
+  with final scale 1/4 captures inspected. The earlier terminal/restart tour passed
+  wired/wireless actions and preferences restoration. Fixed count text hidden by 3D icons
+  and removed the redundant idle “Empty grid” label. [Evidence and captures](evidence/ux-u3-terminal-2026-10-20.md).
   Replace the 8-item row with a scrolling grid sized to the screen (at least 9×4 at GUI
   scale 4, more when it fits), with a scrollbar and mouse wheel. Use standard clicks: left
   takes a stack, right takes half, shift-click goes to the inventory, clicking with a carried
