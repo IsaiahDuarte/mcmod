@@ -2,7 +2,6 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
-import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
@@ -10,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
@@ -113,13 +113,20 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     return portable;
   }
 
+  /** True when any bay holds a cell whose lease names {@code backing}. */
+  private boolean holds(UUID backing) {
+    for (var stack : cells) {
+      var held = CellHandleData.read(stack);
+      if (held != null && held.backing().equals(backing)) return true;
+    }
+    return false;
+  }
+
   /** Operator recovery adapter. Never relocates a backing or resolves pending transfer evidence. */
   public Path repairCellConflict(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
-        || isRemoved()
         || rejected != null
-        || Loaded.chunk(server, worldPosition) == null
-        || server.getBlockEntity(worldPosition) != this)
+        || !LeaseRecovery.loadedHere(this))
       throw new IllegalStateException("Canonical drive must be loaded and readable");
     var saved = DeviceSavedData.get(server.getServer());
     var registry = saved.registry();
@@ -172,10 +179,8 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
   public Path adoptCell(DeviceRegistry.Handle expected, int slot) throws IOException {
     checkSlot(slot);
     if (!(level instanceof ServerLevel server)
-        || isRemoved()
         || rejected != null
-        || Loaded.chunk(server, worldPosition) == null
-        || server.getBlockEntity(worldPosition) != this)
+        || !LeaseRecovery.loadedHere(this))
       throw new IllegalStateException("Adopting drive must be loaded and readable");
     var saved = DeviceSavedData.get(server.getServer());
     var registry = saved.registry();
@@ -198,18 +203,12 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
         || item.tier().capacity() != owner.definition().capacity()
         || item.tier().infinite() != owner.definition().infinite())
       throw new IllegalStateException("Exact mismatched cell reference required");
-    var canonical = owner.definition().location();
-    var oldLevel = server.getServer().getLevel(Loaded.dimension(canonical.dimension()));
-    var oldPos = BlockPos.of(canonical.position());
-    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
-      throw new IllegalStateException("Old canonical holder must be loaded");
-    if (oldLevel.getBlockEntity(oldPos) instanceof StorageDriveEntity old) {
-      for (int index = 0; index < old.cells.length; index++) {
-        var held = CellHandleData.read(old.cells[index]);
-        if (held != null && held.backing().equals(expected.backing()))
-          throw new IllegalStateException("Old canonical holder still references the backing");
-      }
-    }
+    var old =
+        LeaseRecovery.releasedOldHolder(
+            server.getServer(),
+            owner.definition().location(),
+            entity ->
+                entity instanceof StorageDriveEntity drive && drive.holds(expected.backing()));
     var path =
         DeviceRecoveryAudit.preserveAdoption(
             server.getServer().getWorldPath(LevelResource.ROOT),
@@ -225,7 +224,7 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     cells[slot] = replacement;
     setChanged();
     diagnostic = "";
-    WorldNetworks.changed(oldLevel, oldPos);
+    old.changed();
     onLoad(); // Recheck every slot; other faulty references keep their diagnostic.
     return path;
   }

@@ -7,7 +7,6 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
-import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -141,10 +140,7 @@ public class ConnectorEntity extends BlockEntity
    */
   public Path repairConflict(NodeRegistry.Handle expected) throws IOException {
     var server = serverLevel();
-    var chunk = Loaded.chunk(server, worldPosition);
-    if (isRemoved()
-        || chunk == null
-        || server.getBlockEntity(worldPosition) != this
+    if (!LeaseRecovery.loadedHere(this)
         || state == null
         || !expected.equals(state.lease())
         || expected.kind() != leaseKind()
@@ -212,9 +208,7 @@ public class ConnectorEntity extends BlockEntity
     var server = serverLevel();
     var saved = authority();
     var owner = saved.nodes().evidence(expected.id());
-    if (isRemoved()
-        || Loaded.chunk(server, worldPosition) == null
-        || server.getBlockEntity(worldPosition) != this
+    if (!LeaseRecovery.loadedHere(this)
         || state == null
         || !state.equals(ConnectorData.read(data))
         || !state.fault().isEmpty()
@@ -232,15 +226,14 @@ public class ConnectorEntity extends BlockEntity
         || saved.transfers().unresolvedDevice(expected.id()) != null
         || saved.transfers().hasUnscopedUncertain(saved::canonicalIdentity))
       throw new IllegalStateException("Port lease cannot be adopted");
-    var old = owner.position();
-    var oldLevel = server.getServer().getLevel(Loaded.dimension(old.dimension()));
-    var oldPos = BlockPos.of(old.block());
-    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
-      throw new IllegalStateException("Old canonical port must be loaded");
-    if (oldLevel.getBlockEntity(oldPos) instanceof ConnectorEntity previous
-        && previous.handle() != null
-        && previous.handle().id().equals(expected.id()))
-      throw new IllegalStateException("Old canonical holder still references the port");
+    var old =
+        LeaseRecovery.releasedOldHolder(
+            server.getServer(),
+            owner.position(),
+            entity ->
+                entity instanceof ConnectorEntity previous
+                    && previous.handle() != null
+                    && previous.handle().id().equals(expected.id()));
     boolean machine = leaseKind() == NodeRegistry.Kind.MACHINE_INTERFACE;
     long fence = machine ? saved.machinePresets().configuration(expected.id()) : 0;
     long configuration =
@@ -283,7 +276,7 @@ public class ConnectorEntity extends BlockEntity
     data = nextData;
     diagnostic = "";
     setChanged();
-    WorldNetworks.changed(oldLevel, oldPos);
+    old.changed();
     onLoad();
     return path;
   }

@@ -1,10 +1,10 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
-import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.LeaseRecovery;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -94,9 +94,7 @@ public final class NetworkNodeEntity extends BlockEntity {
   public Path repairConflict(NodeRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || !server.getServer().isSameThread()
-        || isRemoved()
-        || Loaded.chunk(server, worldPosition) == null
-        || server.getBlockEntity(worldPosition) != this
+        || !LeaseRecovery.loadedHere(this)
         || !expected.equals(handle)
         || !expected.equals(NodeHandleData.read(data))
         || expected.kind() != kind())
@@ -145,9 +143,7 @@ public final class NetworkNodeEntity extends BlockEntity {
   public Path adoptNode(NodeRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || !server.getServer().isSameThread()
-        || isRemoved()
-        || Loaded.chunk(server, worldPosition) == null
-        || server.getBlockEntity(worldPosition) != this
+        || !LeaseRecovery.loadedHere(this)
         || handle == null
         || expected.kind() != kind())
       throw new IllegalStateException("Adopting network node must be loaded and readable");
@@ -165,15 +161,14 @@ public final class NetworkNodeEntity extends BlockEntity {
         || saved.transfers().unresolved(expected.id()) != null
         || saved.transfers().unresolvedDevice(expected.id()) != null)
       throw new IllegalStateException("Network-node lease cannot be adopted");
-    var old = owner.position();
-    var oldLevel = server.getServer().getLevel(Loaded.dimension(old.dimension()));
-    var oldPos = BlockPos.of(old.block());
-    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
-      throw new IllegalStateException("Old canonical holder must be loaded");
-    if (oldLevel.getBlockEntity(oldPos) instanceof NetworkNodeEntity previous
-        && previous.handle != null
-        && previous.handle.id().equals(expected.id()))
-      throw new IllegalStateException("Old canonical holder still references the node");
+    var old =
+        LeaseRecovery.releasedOldHolder(
+            server.getServer(),
+            owner.position(),
+            entity ->
+                entity instanceof NetworkNodeEntity previous
+                    && previous.handle != null
+                    && previous.handle.id().equals(expected.id()));
     var path =
         DeviceRecoveryAudit.preserveNetworkNodeAdoption(
             server.getServer().getWorldPath(LevelResource.ROOT),
@@ -190,7 +185,7 @@ public final class NetworkNodeEntity extends BlockEntity {
     data = NodeHandleData.write(handle);
     diagnostic = "";
     setChanged();
-    WorldNetworks.changed(oldLevel, oldPos);
+    old.changed();
     onLoad();
     return path;
   }

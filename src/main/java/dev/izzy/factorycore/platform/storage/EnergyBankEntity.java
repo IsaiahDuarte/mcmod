@@ -6,7 +6,6 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankOwnership;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
-import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
@@ -87,9 +86,7 @@ public final class EnergyBankEntity extends BlockEntity
   /** Trusted operator recovery at the exact existing canonical holder; never relocates FE. */
   public Path repairConflict(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
-        || isRemoved()
-        || Loaded.chunk(server, worldPosition) == null
-        || server.getBlockEntity(worldPosition) != this
+        || !LeaseRecovery.loadedHere(this)
         || !expected.equals(handle)
         || !expected.equals(EnergyBankHandleData.read(data)))
       throw new IllegalStateException("Exact loaded bank reference required");
@@ -134,11 +131,7 @@ public final class EnergyBankEntity extends BlockEntity
    * different generation and a matching finite tier, and no transfer is unresolved.
    */
   public Path adoptBank(DeviceRegistry.Handle expected) throws IOException {
-    if (!(level instanceof ServerLevel server)
-        || isRemoved()
-        || Loaded.chunk(server, worldPosition) == null
-        || server.getBlockEntity(worldPosition) != this
-        || handle == null)
+    if (!(level instanceof ServerLevel server) || !LeaseRecovery.loadedHere(this) || handle == null)
       throw new IllegalStateException("Adopting bank must be loaded and readable");
     var saved = authority();
     var registry = saved.registry();
@@ -156,14 +149,14 @@ public final class EnergyBankEntity extends BlockEntity
         || owner.definition().capacity() != tier().capacity()
         || saved.transfers().unresolved(expected.backing()) != null)
       throw new IllegalStateException("Bank lease cannot be adopted");
-    var oldLevel = server.getServer().getLevel(Loaded.dimension(canonical.dimension()));
-    var oldPos = BlockPos.of(canonical.position());
-    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
-      throw new IllegalStateException("Old canonical holder must be loaded");
-    if (oldLevel.getBlockEntity(oldPos) instanceof EnergyBankEntity old
-        && old.handle != null
-        && old.handle.backing().equals(expected.backing()))
-      throw new IllegalStateException("Old canonical holder still references the backing");
+    var old =
+        LeaseRecovery.releasedOldHolder(
+            server.getServer(),
+            canonical,
+            entity ->
+                entity instanceof EnergyBankEntity previous
+                    && previous.handle != null
+                    && previous.handle.backing().equals(expected.backing()));
     var path =
         DeviceRecoveryAudit.preserveBankAdoption(
             server.getServer().getWorldPath(LevelResource.ROOT),
@@ -179,7 +172,7 @@ public final class EnergyBankEntity extends BlockEntity
     data = EnergyBankHandleData.write(handle);
     diagnostic = "";
     setChanged();
-    WorldNetworks.changed(oldLevel, oldPos);
+    old.changed();
     onLoad();
     return path;
   }

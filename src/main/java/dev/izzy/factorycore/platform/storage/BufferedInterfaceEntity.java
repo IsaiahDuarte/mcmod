@@ -215,15 +215,14 @@ public final class BufferedInterfaceEntity extends BlockEntity
         || expected.generation() == Long.MAX_VALUE
         || saved.transfers().unresolved(expected.id()) != null)
       throw new IllegalStateException("Buffer lease cannot be adopted");
-    var old = owner.position();
-    var oldLevel = server.getServer().getLevel(Loaded.dimension(old.dimension()));
-    var oldPos = BlockPos.of(old.block());
-    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
-      throw new IllegalStateException("Old canonical holder must be loaded");
-    if (oldLevel.getBlockEntity(oldPos) instanceof BufferedInterfaceEntity previous
-        && previous.state != null
-        && previous.state.lease().id().equals(expected.id()))
-      throw new IllegalStateException("Old canonical holder still references the buffer");
+    var old =
+        LeaseRecovery.releasedOldHolder(
+            server.getServer(),
+            owner.position(),
+            entity ->
+                entity instanceof BufferedInterfaceEntity previous
+                    && previous.state != null
+                    && previous.state.lease().id().equals(expected.id()));
     var path =
         DeviceRecoveryAudit.preserveBufferAdoption(
             server.getServer().getWorldPath(LevelResource.ROOT),
@@ -246,7 +245,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
     data = BufferData.write(state);
     diagnostic = "";
     setChanged();
-    WorldNetworks.changed(oldLevel, oldPos);
+    old.changed();
     onLoad();
     return path;
   }
