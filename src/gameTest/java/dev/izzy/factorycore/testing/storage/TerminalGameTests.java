@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.HashMap;
 import java.util.Map;
@@ -55,12 +56,8 @@ public final class TerminalGameTests {
     TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(helper, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM);
     helper.setBlock(TERMINAL, TerminalContent.BLOCK.get());
     return new Fixture(
         player,
@@ -422,9 +419,7 @@ public final class TerminalGameTests {
   public static void realHopperImportAppearsInSearchAndWithdrawsIntoPlayer(GameTestHelper helper) {
     var f = setup(helper);
     var bufferPos = new BlockPos(3, 1, 1);
-    helper.setBlock(bufferPos, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(bufferPos);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), f.player.getUUID());
+    BufferedInterfaceEntity buffer = Net.in(helper, f.player.getUUID()).buffer(bufferPos);
     helper.setBlock(
         bufferPos.above(),
         Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN));

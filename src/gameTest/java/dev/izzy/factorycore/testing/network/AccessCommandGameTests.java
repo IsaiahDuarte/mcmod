@@ -11,6 +11,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.Map;
 import java.util.Set;
@@ -57,9 +58,7 @@ public final class AccessCommandGameTests {
     var stranger = TestPlayers.mock(h);
     var third = TestPlayers.mock(h);
     for (var player : new ServerPlayer[] {owner, stranger, third}) TestPlayers.connect(player);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(CABLE, NetworkContent.CABLE.get());
     var at = h.absolutePos(CABLE);
     String pos = at.getX() + " " + at.getY() + " " + at.getZ();

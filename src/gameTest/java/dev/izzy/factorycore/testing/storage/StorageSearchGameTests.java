@@ -11,6 +11,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Set;
@@ -52,9 +53,7 @@ public final class StorageSearchGameTests {
 
   private static Fixture setup(GameTestHelper helper, boolean privateChild) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     var connectorPosition = privateChild ? new BlockPos(3, 1, 1) : CONNECTOR;
     var providerPosition = privateChild ? new BlockPos(4, 1, 1) : PROVIDER;
     if (privateChild) {
@@ -77,9 +76,7 @@ public final class StorageSearchGameTests {
     connector.place(new ItemStack(ConnectorContent.ITEM.get()));
     helper.setBlock(providerPosition, ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity provider = helper.getBlockEntity(providerPosition);
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM);
     return new Fixture(
         actor,
         root,
@@ -218,9 +215,7 @@ public final class StorageSearchGameTests {
     var fixture = setup(helper, false);
     var bufferPosition = new BlockPos(3, 1, 2);
     helper.setBlock(new BlockPos(2, 1, 2), NetworkContent.CABLE.get());
-    helper.setBlock(bufferPosition, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(bufferPosition);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), fixture.actor().id());
+    BufferedInterfaceEntity buffer = Net.in(helper, fixture.actor().id()).buffer(bufferPosition);
     fixture.provider().items.setStackInSlot(0, new ItemStack(Items.DIAMOND, 5));
     UUID[] query = {null};
     helper
@@ -513,9 +508,7 @@ public final class StorageSearchGameTests {
     if (energy) {
       var bankPosition = new BlockPos(2, 1, 2);
       var tier = EnergyBankTier.STARTER;
-      helper.setBlock(bankPosition, EnergyBankContent.block(tier));
-      EnergyBankEntity bank = helper.getBlockEntity(bankPosition);
-      bank.place(new ItemStack(EnergyBankContent.item(tier)));
+      EnergyBankEntity bank = Net.in(helper).bank(bankPosition, tier);
       cell[0] = bank.handle();
       resource[0] = ResourceKey.ENERGY;
       fixture.provider().energy.receiveEnergy(800, false);

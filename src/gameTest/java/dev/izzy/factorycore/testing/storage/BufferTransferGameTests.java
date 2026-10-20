@@ -8,6 +8,7 @@ import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -45,9 +46,7 @@ public final class BufferTransferGameTests {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var guest = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var drivePosition = mode == 6 ? new BlockPos(1, 1, 2) : DRIVE;
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     if (mode == 6) {
       helper.setBlock(
           new BlockPos(2, 1, 1),
@@ -58,12 +57,8 @@ public final class BufferTransferGameTests {
       NetworkNodeEntity gate = helper.getBlockEntity(new BlockPos(2, 1, 1));
       gate.commission(null);
     } else helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), actor.id());
-    helper.setBlock(drivePosition, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(drivePosition);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    BufferedInterfaceEntity buffer = Net.in(helper, actor.id()).buffer(BUFFER);
+    StorageDriveEntity drive = Net.in(helper).drive(drivePosition, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
@@ -365,13 +360,9 @@ public final class BufferTransferGameTests {
       GameTestHelper helper) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var guest = new NetworkPermissions.Actor(UUID.randomUUID(), true);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), guest.id());
+    BufferedInterfaceEntity buffer = Net.in(helper, guest.id()).buffer(BUFFER);
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
     var mode = BufferRegistry.Mode.IMPORT;

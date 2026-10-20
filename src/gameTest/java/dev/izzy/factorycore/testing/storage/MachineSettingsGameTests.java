@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.*;
 import net.minecraft.core.BlockPos;
@@ -34,9 +35,7 @@ public final class MachineSettingsGameTests {
     TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
     h.setBlock(MACHINE, MachineInterfaceContent.BLOCK.get());
     MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
     machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));

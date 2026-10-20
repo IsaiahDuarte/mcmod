@@ -27,6 +27,7 @@ import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
+import dev.izzy.factorycore.testing.Net;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -165,9 +166,7 @@ public final class ProgramLimitsGameTests {
 
   private static Fixture setup(GameTestHelper h, int cells) {
     var owner = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.id());
+    NetworkNodeEntity root = Net.in(h, owner.id()).controller(ROOT);
     h.setBlock(DRIVE, StorageContent.DRIVE.get());
     StorageDriveEntity drive = h.getBlockEntity(DRIVE);
     var handles = new ArrayList<DeviceRegistry.Handle>();

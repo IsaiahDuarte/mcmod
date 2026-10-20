@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -30,12 +31,8 @@ public final class BufferSettingsGameTests {
     TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), player.getUUID());
+    NetworkNodeEntity root = Net.in(helper, player.getUUID()).controller(ROOT);
+    BufferedInterfaceEntity buffer = Net.in(helper, player.getUUID()).buffer(BUFFER);
     return new Fixture(player, buffer);
   }
 

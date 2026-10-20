@@ -9,10 +9,10 @@ import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.platform.Actors;
-import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -56,7 +56,8 @@ public final class BufferImportGameTests {
       DeviceRegistry.Handle cell,
       DeviceSavedData saved,
       WorldNetworks runtime,
-      ResourceKey key) {}
+      ResourceKey key,
+      Net net) {}
 
   private BufferImportGameTests() {}
 
@@ -67,36 +68,18 @@ public final class BufferImportGameTests {
   }
 
   private static Fixture setup(GameTestHelper helper) {
-    var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
-    helper.setBlock(CABLE, NetworkContent.CABLE.get());
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), actor.id());
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    var net = Net.in(helper);
+    var root = net.controller(ROOT);
+    net.cable(CABLE);
+    var buffer = net.buffer(BUFFER);
+    net.drive(DRIVE, CellTier.STARTER_ITEM);
+    var cell = net.cell(DRIVE, 0);
     return new Fixture(
-        actor,
-        root,
-        buffer,
-        CellHandleData.read(drive.cell(0)),
-        DeviceSavedData.get(helper.getLevel().getServer()),
-        WorldNetworks.get(helper.getLevel().getServer()),
-        new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(named(1)));
+        net.owner(), root, buffer, cell, net.saved(), net.runtime(), net.key(named(1)), net);
   }
 
   private static void ready(GameTestHelper helper, Fixture fixture) {
-    helper.assertTrue(
-        fixture.runtime().membership(fixture.buffer().position()).status()
-            == NetworkTopology.Status.VALID,
-        "Import scope ready");
-    var drive = Positions.of(helper.getLevel(), helper.absolutePos(DRIVE));
-    helper.assertTrue(
-        fixture.runtime().membership(drive).status() == NetworkTopology.Status.VALID,
-        "Storage scope ready");
+    fixture.net().assertValid(BUFFER, DRIVE);
   }
 
   private static void enable(Fixture fixture) {
@@ -988,7 +971,8 @@ public final class BufferImportGameTests {
             original.cell(),
             original.saved(),
             original.runtime(),
-            original.key());
+            original.key(),
+            original.net());
     UUID[] record = {null};
     var grants =
         Set.of(

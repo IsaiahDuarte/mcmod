@@ -14,6 +14,7 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -77,9 +78,7 @@ public final class ThroughputUpgradeGameTests {
     BarrelBlockEntity barrel = h.getBlockEntity(PROVIDER);
     for (int slot = 0; slot < barrel.getContainerSize(); slot++)
       barrel.setItem(slot, new ItemStack(Items.IRON_INGOT, 64));
-    h.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = h.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), player.getUUID());
+    BufferedInterfaceEntity buffer = Net.in(h, player.getUUID()).buffer(BUFFER);
     return new Fixture(player, port, buffer, WorldNetworks.get(player.server));
   }
 

@@ -17,9 +17,9 @@ import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
-import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
+import dev.izzy.factorycore.testing.Net;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -50,9 +50,7 @@ public final class WorldStorageTransfersGameTests {
   private static void scenario(GameTestHelper helper, int change) {
     var owner = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var guest = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(owner.id());
+    NetworkNodeEntity root = Net.in(helper, owner.id()).controller(ROOT);
     if (change == 4) {
       helper.setBlock(
           CABLE,
@@ -63,10 +61,8 @@ public final class WorldStorageTransfersGameTests {
       NetworkNodeEntity gate = helper.getBlockEntity(CABLE);
       gate.commission(null);
     } else helper.setBlock(CABLE, NetworkContent.CABLE.get());
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive =
+        Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM, CellTier.STARTER_ITEM);
     var source = CellHandleData.read(drive.cell(0));
     var destination = CellHandleData.read(drive.cell(1));
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
@@ -163,9 +159,7 @@ public final class WorldStorageTransfersGameTests {
               if (change == 3) drive.removeCell(0);
               if (change == 6) {
                 helper.setBlock(ROOT, Blocks.AIR);
-                helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-                NetworkNodeEntity replacement = helper.getBlockEntity(ROOT);
-                replacement.commission(owner.id());
+                NetworkNodeEntity replacement = Net.in(helper, owner.id()).controller(ROOT);
               }
             })
         .thenWaitUntil(() -> helper.assertTrue(result[0] != null, "Completion reported"))
@@ -215,9 +209,7 @@ public final class WorldStorageTransfersGameTests {
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void bankTransferUsesPhysicalCapacityAndCanonicalEnergy(GameTestHelper helper) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     helper.setBlock(CABLE, NetworkContent.CABLE.get());
     var other = new BlockPos(2, 1, 2);
     var tier = EnergyBankTier.STARTER;

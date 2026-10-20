@@ -17,7 +17,6 @@ import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
@@ -25,6 +24,7 @@ import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.List;
@@ -102,9 +102,7 @@ public final class WirelessThroughputGameTests {
   }
 
   private static DeviceRegistry.Handle bank(GameTestHelper h, BlockPos position) {
-    h.setBlock(position, EnergyBankContent.block(EnergyBankTier.ADVANCED));
-    EnergyBankEntity bank = h.getBlockEntity(position);
-    bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.ADVANCED)));
+    EnergyBankEntity bank = Net.in(h).bank(position, EnergyBankTier.ADVANCED);
     return bank.handle();
   }
 
@@ -144,9 +142,7 @@ public final class WirelessThroughputGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var owner = TestPlayers.mock(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     var ends = new ArrayList<LinkEndpointEntity>();
     for (int x : new int[] {1, 7}) {
       gate(h, new BlockPos(x, 1, 1), Direction.EAST);

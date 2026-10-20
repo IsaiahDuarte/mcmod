@@ -26,6 +26,7 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -103,9 +104,7 @@ public final class ConnectorGameTests {
 
   private static Setup setup(GameTestHelper helper) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     helper.setBlock(CABLE, NetworkContent.CABLE.get());
     var entity = connector(helper, CONNECTOR, Direction.EAST);
     return new Setup(
@@ -136,9 +135,7 @@ public final class ConnectorGameTests {
                 : codec.itemKey(marked(64));
     DeviceRegistry.Handle digital;
     if (kind == ResourceKind.ENERGY) {
-      helper.setBlock(STORAGE, EnergyBankContent.block(EnergyBankTier.STARTER));
-      EnergyBankEntity bank = helper.getBlockEntity(STORAGE);
-      bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+      EnergyBankEntity bank = Net.in(helper).bank(STORAGE, EnergyBankTier.STARTER);
       digital = bank.handle();
     } else {
       helper.setBlock(STORAGE, StorageContent.DRIVE.get());
@@ -663,9 +660,7 @@ public final class ConnectorGameTests {
       GameTestHelper helper) {
     var setup = setup(helper);
     helper.setBlock(PROVIDER, ConnectorFixture.BLOCK.get());
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var handle = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(64));
     WorldStorageTransfers.Result[] result = {null};
@@ -758,9 +753,7 @@ public final class ConnectorGameTests {
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
     var parentStorage = new BlockPos(1, 1, 2);
-    helper.setBlock(parentStorage, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(parentStorage);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(parentStorage, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(64));
     var id = UUID.randomUUID();
@@ -875,9 +868,7 @@ public final class ConnectorGameTests {
     helper.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(64));
     UUID[] ids = {UUID.randomUUID(), UUID.randomUUID()};
@@ -1021,9 +1012,7 @@ public final class ConnectorGameTests {
     helper.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(64));
     var id = UUID.randomUUID();
@@ -1382,15 +1371,11 @@ public final class ConnectorGameTests {
     DeviceRegistry.Handle digital;
     if (kind == ResourceKind.ENERGY) {
       provider.energy.receiveEnergy(1000, false);
-      helper.setBlock(STORAGE, EnergyBankContent.block(EnergyBankTier.STARTER));
-      EnergyBankEntity bank = helper.getBlockEntity(STORAGE);
-      bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+      EnergyBankEntity bank = Net.in(helper).bank(STORAGE, EnergyBankTier.STARTER);
       digital = bank.handle();
     } else {
       provider.fluids.fill(new FluidStack(Fluids.WATER, 1000), FluidAction.EXECUTE);
-      helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-      StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-      drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+      StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_FLUID);
       digital = CellHandleData.read(drive.cell(0));
     }
     WorldConnectors.Handle[] endpoint = {null};
@@ -1527,9 +1512,7 @@ public final class ConnectorGameTests {
     ConnectorFixture.ProviderEntity provider = helper.getBlockEntity(PROVIDER);
     provider.items.setStackInSlot(0, marked(10));
     provider.items.setStackInSlot(1, marked(20));
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(1));
     WorldConnectors.Handle[] endpoint = {null};
@@ -1633,9 +1616,7 @@ public final class ConnectorGameTests {
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
     var parentStorage = new BlockPos(1, 1, 2);
-    helper.setBlock(parentStorage, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(parentStorage);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(parentStorage, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(1));
     var rows = new ArrayList<WorldStorageTransfers.CatalogRow>();
@@ -1763,9 +1744,7 @@ public final class ConnectorGameTests {
                       == OperationResult.Reason.DENIED,
                   "Cursor cannot mix resource filters");
               helper.setBlock(ROOT, Blocks.AIR);
-              helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-              NetworkNodeEntity replacement = helper.getBlockEntity(ROOT);
-              replacement.commission(setup.actor().id());
+              NetworkNodeEntity replacement = Net.in(helper, setup.actor().id()).controller(ROOT);
             })
         .thenWaitUntil(() -> ready(helper, setup.runtime(), CONNECTOR))
         .thenExecute(
@@ -1796,9 +1775,7 @@ public final class ConnectorGameTests {
     var high = connector(helper, highPos, Direction.EAST);
     helper.setBlock(highProviderPos, ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity preferred = helper.getBlockEntity(highProviderPos);
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(1));
     WorldStorageRoutes.Result[] result = {null};
@@ -2244,9 +2221,7 @@ public final class ConnectorGameTests {
     h.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(19));
-    h.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(h).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(h.getLevel().registryAccess()).itemKey(marked(1));
     h.startSequence()
@@ -2328,9 +2303,7 @@ public final class ConnectorGameTests {
     h.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(19));
-    h.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(h).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(h.getLevel().registryAccess()).itemKey(marked(1));
     UUID[] id = {null};

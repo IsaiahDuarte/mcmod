@@ -15,6 +15,7 @@ import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -79,9 +80,7 @@ public final class CraftingUnitGameTests {
 
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void patternsAreOfferedOnlyToTheirOwnSegmentAndDeduplicated(GameTestHelper h) {
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(UUID.randomUUID());
+    NetworkNodeEntity root = Net.in(h, UUID.randomUUID()).controller(ROOT);
     h.setBlock(
         GATEWAY,
         NetworkContent.GATEWAY
@@ -214,9 +213,7 @@ public final class CraftingUnitGameTests {
     TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
     h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
     TerminalEntity terminal = h.getBlockEntity(TERMINAL);
     var inventory = player.getInventory();

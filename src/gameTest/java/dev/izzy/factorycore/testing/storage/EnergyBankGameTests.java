@@ -1,12 +1,10 @@
 package dev.izzy.factorycore.testing.storage;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
-import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -16,6 +14,7 @@ import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.EnergyBankHandleData;
 import dev.izzy.factorycore.platform.storage.StorageContent;
+import dev.izzy.factorycore.testing.Net;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
@@ -58,14 +57,10 @@ public final class EnergyBankGameTests {
   private EnergyBankGameTests() {}
 
   private static EnergyBankEntity setup(GameTestHelper helper) {
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(UUID.randomUUID());
-    helper.setBlock(CABLE, NetworkContent.CABLE.get());
-    helper.setBlock(BANK, EnergyBankContent.block(EnergyBankTier.STARTER));
-    EnergyBankEntity bank = helper.getBlockEntity(BANK);
-    bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
-    return bank;
+    var net = Net.in(helper);
+    net.controller(ROOT);
+    net.cable(CABLE);
+    return net.bank(BANK, EnergyBankTier.STARTER);
   }
 
   private static void ready(GameTestHelper helper) {
@@ -73,11 +68,7 @@ public final class EnergyBankGameTests {
   }
 
   private static void ready(GameTestHelper helper, BlockPos bankPosition) {
-    var position = Positions.of(helper.getLevel(), helper.absolutePos(bankPosition));
-    helper.assertTrue(
-        WorldNetworks.get(helper.getLevel().getServer()).membership(position).status()
-            == NetworkTopology.Status.VALID,
-        "Bank network ready");
+    Net.in(helper).assertValid(bankPosition);
   }
 
   private static DeviceRegistry registry(GameTestHelper helper) {
@@ -87,9 +78,7 @@ public final class EnergyBankGameTests {
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void creativePlacementConsumesLeaseAndBreakDropsExactlyOnePopulatedBank(
       GameTestHelper helper) {
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(UUID.randomUUID());
+    NetworkNodeEntity root = Net.in(helper, UUID.randomUUID()).controller(ROOT);
     helper.setBlock(CABLE, NetworkContent.CABLE.get());
     helper.setBlock(BANK.below(), Blocks.STONE);
     var player = helper.makeMockPlayer(GameType.CREATIVE);

@@ -17,8 +17,8 @@ import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import dev.izzy.factorycore.testing.Net;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
@@ -30,7 +30,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.storage.LevelResource;
@@ -58,16 +57,12 @@ public final class WorldNetworksGameTests {
   }
 
   private static NetworkNodeEntity root(GameTestHelper helper, BlockPos relative, UUID owner) {
-    helper.setBlock(relative, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity node = helper.getBlockEntity(relative);
-    node.commission(owner);
+    NetworkNodeEntity node = Net.in(helper, owner).controller(relative);
     return node;
   }
 
   private static StorageDriveEntity drive(GameTestHelper helper, BlockPos relative) {
-    helper.setBlock(relative, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(relative);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(relative, CellTier.STARTER_ITEM);
     return drive;
   }
 

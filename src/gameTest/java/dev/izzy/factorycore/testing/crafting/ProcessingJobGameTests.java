@@ -33,6 +33,7 @@ import dev.izzy.factorycore.platform.storage.WorldConnectors;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import dev.izzy.factorycore.testing.ConnectorFixture;
 import dev.izzy.factorycore.testing.MixerFixture;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
 import java.util.UUID;
@@ -93,12 +94,8 @@ public final class ProcessingJobGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var owner = UUID.randomUUID();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner);
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(h, owner).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     h.setBlock(FURNACE, Blocks.BLAST_FURNACE);
     BlastFurnaceBlockEntity furnace = h.getBlockEntity(FURNACE);
     furnace.setItem(1, new ItemStack(Items.COAL, 8));
@@ -272,9 +269,7 @@ public final class ProcessingJobGameTests {
     TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
     h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
     TerminalEntity terminal = h.getBlockEntity(TERMINAL);
     var inventory = player.getInventory();
@@ -372,13 +367,9 @@ public final class ProcessingJobGameTests {
   @GameTest(template = "empty", timeoutTicks = 1200)
   public static void mixedItemAndFluidProcessingInsertsAndCollectsExactAmounts(GameTestHelper h) {
     var owner = UUID.randomUUID();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner);
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+    NetworkNodeEntity root = Net.in(h, owner).controller(ROOT);
+    StorageDriveEntity drive =
+        Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM, CellTier.STARTER_FLUID);
     var items = CellHandleData.read(drive.cell(0));
     var fluids = CellHandleData.read(drive.cell(1));
     h.setBlock(FURNACE, MixerFixture.BLOCK.get());

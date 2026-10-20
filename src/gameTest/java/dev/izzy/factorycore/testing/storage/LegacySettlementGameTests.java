@@ -13,6 +13,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,7 +24,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -51,14 +51,9 @@ public final class LegacySettlementGameTests {
       NodeRegistry.Position drive) {}
 
   private static Fixture setup(GameTestHelper h, UUID owner) {
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner);
+    NetworkNodeEntity root = Net.in(h, owner).controller(ROOT);
     h.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM, CellTier.STARTER_ITEM);
     return new Fixture(
         root,
         CellHandleData.read(drive.cell(0)),
@@ -336,9 +331,7 @@ public final class LegacySettlementGameTests {
     var f = setup(h, actor.id());
     var otherRoot = new BlockPos(1, 1, 4);
     var otherDrive = new BlockPos(3, 1, 4);
-    h.setBlock(otherRoot, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(otherRoot);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(otherRoot);
     h.setBlock(new BlockPos(2, 1, 4), NetworkContent.CABLE.get());
     h.setBlock(otherDrive, StorageContent.DRIVE.get());
     StorageDriveEntity destination = h.getBlockEntity(otherDrive);

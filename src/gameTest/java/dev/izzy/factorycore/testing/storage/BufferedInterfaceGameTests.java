@@ -7,6 +7,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -50,9 +51,7 @@ public final class BufferedInterfaceGameTests {
     NetworkNodeEntity root = helper.getBlockEntity(new BlockPos(1, 1, 1));
     root.commission(actor);
     helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), actor);
+    BufferedInterfaceEntity buffer = Net.in(helper, actor).buffer(BUFFER);
     return buffer;
   }
 

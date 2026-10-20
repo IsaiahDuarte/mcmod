@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -50,9 +51,7 @@ public final class MachinePresetGameTests {
 
   private static Fixture setup(GameTestHelper h, ResourceKind kind) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
     h.setBlock(
         MACHINE,
         MachineInterfaceContent.BLOCK
@@ -71,9 +70,7 @@ public final class MachinePresetGameTests {
                 : ResourceKey.ENERGY;
     DeviceRegistry.Handle cell;
     if (kind == ResourceKind.ENERGY) {
-      h.setBlock(DRIVE, EnergyBankContent.block(EnergyBankTier.STARTER));
-      EnergyBankEntity bank = h.getBlockEntity(DRIVE);
-      bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+      EnergyBankEntity bank = Net.in(h).bank(DRIVE, EnergyBankTier.STARTER);
       cell = bank.handle();
     } else {
       h.setBlock(DRIVE, StorageContent.DRIVE.get());

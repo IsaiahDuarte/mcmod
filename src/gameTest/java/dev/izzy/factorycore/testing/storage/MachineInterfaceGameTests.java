@@ -8,6 +8,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,18 +68,14 @@ public final class MachineInterfaceGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
     h.setBlock(CABLE, NetworkContent.CABLE.get());
     var machine = machine(h, MACHINE, Direction.EAST);
     h.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
     chest.setItem(0, new ItemStack(Items.GOLD_INGOT, 11));
     chest.setItem(1, new ItemStack(Items.IRON_INGOT, 32));
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     return new Fixture(
         actor,
@@ -309,9 +306,7 @@ public final class MachineInterfaceGameTests {
       target = CellHandleData.read(drive.cell(1));
       provider.fluids.fill(new FluidStack(Fluids.WATER, 1000), IFluidHandler.FluidAction.EXECUTE);
     } else {
-      h.setBlock(DRIVE, EnergyBankContent.block(EnergyBankTier.STARTER));
-      EnergyBankEntity bank = h.getBlockEntity(DRIVE);
-      bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+      EnergyBankEntity bank = Net.in(h).bank(DRIVE, EnergyBankTier.STARTER);
       target = bank.handle();
       provider.energy.receiveEnergy(1000, false);
     }
@@ -366,9 +361,7 @@ public final class MachineInterfaceGameTests {
     var player = TestPlayers.mock(h);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
     h.setBlock(CABLE, NetworkContent.CABLE.get());
     var machine = machine(h, MACHINE, Direction.EAST);
     h.setBlock(PROVIDER, Blocks.CHEST);

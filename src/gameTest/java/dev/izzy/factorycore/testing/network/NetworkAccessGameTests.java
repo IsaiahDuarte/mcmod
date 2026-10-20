@@ -14,6 +14,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.Set;
 import java.util.UUID;
@@ -96,9 +97,7 @@ public final class NetworkAccessGameTests {
     var owner = player(h);
     var guest = player(h);
     var third = player(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(CABLE, NetworkContent.CABLE.get());
     int view = 1 << Permission.VIEW.ordinal(), withdraw = 1 << Permission.WITHDRAW.ordinal();
     NetworkAccessMenu[] menus = new NetworkAccessMenu[2];
@@ -354,9 +353,7 @@ public final class NetworkAccessGameTests {
   public static void gatewayAccessScreenShowsAndEnforcesInheritedLimits(GameTestHelper h) {
     var owner = player(h);
     var guest = player(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(
         GATEWAY,
         NetworkContent.GATEWAY

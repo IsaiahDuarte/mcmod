@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.PolicyFixture;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.*;
@@ -52,15 +53,9 @@ public final class BufferPolicyGameTests {
 
   private static Fixture setup(GameTestHelper helper, UUID owner) {
     var actor = new NetworkPermissions.Actor(owner, false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(owner);
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), owner);
+    NetworkNodeEntity root = Net.in(helper, owner).controller(ROOT);
+    StorageDriveEntity drive = Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM);
+    BufferedInterfaceEntity buffer = Net.in(helper, owner).buffer(BUFFER);
     var codec = new PlatformResourceCodec(helper.getLevel().registryAccess());
     return new Fixture(
         actor,

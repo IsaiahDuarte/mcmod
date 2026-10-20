@@ -11,6 +11,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.*;
@@ -55,9 +56,7 @@ public final class IndexedMachinePortsGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
     h.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
     h.setBlock(new BlockPos(3, 1, 2), NetworkContent.CABLE.get());
     var first = machine(h, FIRST, Direction.EAST);
@@ -65,9 +64,7 @@ public final class IndexedMachinePortsGameTests {
     h.setBlock(PROVIDER, ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity provider = h.getBlockEntity(PROVIDER);
     provider.partitioned = true;
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_FLUID);
     return new Fixture(
         actor,
         WorldNetworks.get(h.getLevel().getServer()),

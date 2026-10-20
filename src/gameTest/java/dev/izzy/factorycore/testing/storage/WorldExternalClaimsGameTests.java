@@ -8,6 +8,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -32,9 +33,7 @@ public final class WorldExternalClaimsGameTests {
     var admin = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var actor = mode == 1 ? new NetworkPermissions.Actor(UUID.randomUUID(), false) : admin;
     var guest = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(rootPos, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(rootPos);
-    root.commission(admin.id());
+    NetworkNodeEntity root = Net.in(helper, admin.id()).controller(rootPos);
     helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
     helper.setBlock(
         connectorPos,
@@ -47,9 +46,7 @@ public final class WorldExternalClaimsGameTests {
     helper.setBlock(new BlockPos(4, 1, 1), ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity provider = helper.getBlockEntity(new BlockPos(4, 1, 1));
     provider.items.setStackInSlot(0, new ItemStack(Items.IRON_INGOT, 64));
-    helper.setBlock(drivePos, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(drivePos);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(drivePos, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     var runtime = WorldNetworks.get(helper.getLevel().getServer());

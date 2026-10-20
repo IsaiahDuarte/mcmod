@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,9 +31,7 @@ public final class MachinePresetAuthorityGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
     h.setBlock(MACHINE, MachineInterfaceContent.BLOCK.get());
     MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
     machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
@@ -162,9 +161,7 @@ public final class MachinePresetAuthorityGameTests {
             () -> {
               original[0] = deploy(f, f.owner);
               h.setBlock(ROOT, Blocks.AIR);
-              h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-              NetworkNodeEntity replacement = h.getBlockEntity(ROOT);
-              replacement.commission(f.owner.id());
+              NetworkNodeEntity replacement = Net.in(h, f.owner.id()).controller(ROOT);
             })
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(

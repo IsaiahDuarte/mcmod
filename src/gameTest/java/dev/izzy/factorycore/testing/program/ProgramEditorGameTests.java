@@ -3,7 +3,6 @@ package dev.izzy.factorycore.testing.program;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.program.ProgramContent;
@@ -13,6 +12,7 @@ import dev.izzy.factorycore.platform.program.ProgramPackets;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.EnumSet;
 import java.util.List;
@@ -55,9 +55,7 @@ public final class ProgramEditorGameTests {
   public static void editorSavesChunkedDraftsReportsErrorsAndControlsDeployment(GameTestHelper h) {
     var owner = player(h);
     var viewer = player(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
     ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
     var long_ = new StringBuilder("every 10 ticks as \"long\" {\n");
@@ -178,9 +176,7 @@ public final class ProgramEditorGameTests {
   public static void authoringPreviewIsViewScopedAndNeverExecutesTheDraft(GameTestHelper h) {
     var owner = player(h);
     var viewer = player(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
     ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
     var machinePos = new BlockPos(2, 1, 1);

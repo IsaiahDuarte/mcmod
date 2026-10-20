@@ -20,12 +20,12 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -91,9 +91,7 @@ public final class WirelessCraftingGameTests {
   }
 
   private static DeviceRegistry.Handle cell(GameTestHelper h, BlockPos position) {
-    h.setBlock(position, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(position);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(h).drive(position, CellTier.STARTER_ITEM);
     return CellHandleData.read(drive.cell(0));
   }
 
@@ -128,9 +126,7 @@ public final class WirelessCraftingGameTests {
 
   private static Fixture setup(GameTestHelper h, boolean processing) {
     var owner = TestPlayers.mock(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     for (var gate : List.of(new BlockPos(1, 1, 1), new BlockPos(5, 1, 1))) {
       h.setBlock(
           gate,
