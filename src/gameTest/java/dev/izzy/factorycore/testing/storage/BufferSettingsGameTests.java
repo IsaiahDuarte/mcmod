@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.*;
@@ -14,7 +15,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.*;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.*;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -25,10 +25,9 @@ public final class BufferSettingsGameTests {
 
   private BufferSettingsGameTests() {}
 
-  @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper helper) {
-    var player = helper.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(helper);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
     helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());

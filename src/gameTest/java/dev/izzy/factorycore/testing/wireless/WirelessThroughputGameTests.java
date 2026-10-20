@@ -24,6 +24,7 @@ import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -141,9 +142,8 @@ public final class WirelessThroughputGameTests {
     ends.add(h.getBlockEntity(position));
   }
 
-  @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper h) {
-    var owner = h.makeMockServerPlayerInLevel();
+    var owner = TestPlayers.mock(h);
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     root.commission(owner.getUUID());

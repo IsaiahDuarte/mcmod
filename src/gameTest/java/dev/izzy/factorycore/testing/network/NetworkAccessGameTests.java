@@ -12,6 +12,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -24,7 +25,6 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /**
  * Network Access screen (ADR 0055): server-owned sessions administer grants and explicit, confirmed
@@ -82,9 +82,8 @@ public final class NetworkAccessGameTests {
   }
 
   private static ServerPlayer player(GameTestHelper h) {
-    @SuppressWarnings("removal")
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     return player;
   }
 

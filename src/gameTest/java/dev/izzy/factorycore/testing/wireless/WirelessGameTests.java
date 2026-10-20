@@ -13,6 +13,7 @@ import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import dev.izzy.factorycore.platform.wireless.WirelessTerminalItem;
+import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -25,7 +26,6 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -63,11 +63,10 @@ public final class WirelessGameTests {
         .getEnergyStored();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void handheldUsesAccessPointRangePowerAndActionCost(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     NetworkNodeEntity root = h.getBlockEntity(ROOT);

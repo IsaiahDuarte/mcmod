@@ -25,6 +25,7 @@ import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -125,9 +126,8 @@ public final class WirelessCraftingGameTests {
     return pattern;
   }
 
-  @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper h, boolean processing) {
-    var owner = h.makeMockServerPlayerInLevel();
+    var owner = TestPlayers.mock(h);
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     root.commission(owner.getUUID());

@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -39,11 +40,10 @@ public final class WirelessLinkGameTests {
                 h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong()));
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void pairedLinkJoinsChildBranchOnlyWhilePoweredAndPaired(GameTestHelper h) {
-    var owner = h.makeMockServerPlayerInLevel();
-    var stranger = h.makeMockServerPlayerInLevel();
+    var owner = TestPlayers.mock(h);
+    var stranger = TestPlayers.mock(h);
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     root.commission(owner.getUUID());

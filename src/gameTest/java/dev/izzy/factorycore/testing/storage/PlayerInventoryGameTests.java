@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
@@ -46,9 +47,8 @@ public final class PlayerInventoryGameTests {
     return stack;
   }
 
-  @SuppressWarnings("removal") // Pinned helper performs real PlayerList/connection registration.
   private static ServerPlayer login(GameTestHelper helper) {
-    var player = helper.makeMockServerPlayerInLevel();
+    var player = TestPlayers.mock(helper);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
     return player;

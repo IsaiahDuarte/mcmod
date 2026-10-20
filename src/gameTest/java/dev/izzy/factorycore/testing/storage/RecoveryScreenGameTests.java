@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.UUID;
@@ -23,7 +24,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /**
  * Transfer Recovery screen (ADR 0055): the same original-owner, evidence-first and operator-only
@@ -81,9 +81,8 @@ public final class RecoveryScreenGameTests {
   }
 
   private static ServerPlayer player(GameTestHelper h) {
-    @SuppressWarnings("removal")
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     return player;
   }
 

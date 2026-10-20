@@ -18,6 +18,7 @@ import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,7 +34,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -78,11 +78,10 @@ public final class TerminalJobGameTests {
     return -1;
   }
 
-  @SuppressWarnings("removal") // Pinned helper performs actual PlayerList authentication.
   @GameTest(template = "empty", timeoutTicks = 900)
   public static void terminalPreviewsStartsTracksAndCancelsJobs(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());

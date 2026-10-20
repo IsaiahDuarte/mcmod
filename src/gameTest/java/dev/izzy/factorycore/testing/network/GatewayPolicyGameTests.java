@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -19,7 +20,6 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -48,13 +48,11 @@ public final class GatewayPolicyGameTests {
     return (GatewayPolicyMenu) player.containerMenu;
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void ownerEditsGatewayPolicyAndOthersAreReadOnly(GameTestHelper h) {
-    var owner = h.makeMockServerPlayerInLevel();
-    var stranger = h.makeMockServerPlayerInLevel();
-    for (var player : new ServerPlayer[] {owner, stranger})
-      NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var owner = TestPlayers.mock(h);
+    var stranger = TestPlayers.mock(h);
+    for (var player : new ServerPlayer[] {owner, stranger}) TestPlayers.connect(player);
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     root.commission(owner.getUUID());

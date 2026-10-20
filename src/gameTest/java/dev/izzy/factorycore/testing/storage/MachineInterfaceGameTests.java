@@ -7,6 +7,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -360,10 +361,9 @@ public final class MachineInterfaceGameTests {
     utilityTransfer(h, false);
   }
 
-  @SuppressWarnings("removal") // Actual PlayerList fixture body for native controls.
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void authenticatedPaperLabelAndRecipeHaveNoImplicitStock(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
+    var player = TestPlayers.mock(h);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());

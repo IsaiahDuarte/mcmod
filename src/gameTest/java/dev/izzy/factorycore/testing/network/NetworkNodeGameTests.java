@@ -10,6 +10,7 @@ import dev.izzy.factorycore.platform.network.NodeHandleData;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageContent;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -298,11 +299,10 @@ public final class NetworkNodeGameTests {
   }
 
   // Own batch: the audited repair/adoption throttle is shared per server.
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", batch = "node_adoption", timeoutTicks = 300)
   public static void operatorAdoptsAStaleControllerAfterAnIndependentSaveMismatch(
       GameTestHelper helper) {
-    var player = helper.makeMockServerPlayerInLevel();
+    var player = TestPlayers.mock(helper);
     var drivePos = new BlockPos(2, 1, 1);
     var far = new BlockPos(1, 1, 4);
     var access = helper.getLevel().registryAccess();

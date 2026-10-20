@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.*;
@@ -17,7 +18,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.*;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -29,10 +29,9 @@ public final class MachineSettingsGameTests {
 
   private MachineSettingsGameTests() {}
 
-  @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
@@ -152,12 +151,11 @@ public final class MachineSettingsGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void editRevocationDeniesSaveAndViewRevocationCloses(GameTestHelper h) {
     var owner = setup(h);
-    var guest = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(guest.connection.getConnection());
+    var guest = TestPlayers.mock(h);
+    TestPlayers.connect(guest);
     guest.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     guest.getInventory().clearContent();
     var f = new Fixture(guest, owner.machine, owner.root);
@@ -382,12 +380,11 @@ public final class MachineSettingsGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void presetDeploymentRechecksCurrentDeployGrant(GameTestHelper h) {
     var owner = setup(h);
-    var guest = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(guest.connection.getConnection());
+    var guest = TestPlayers.mock(h);
+    TestPlayers.connect(guest);
     guest.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     guest.getInventory().clearContent();
     var f = new Fixture(guest, owner.machine, owner.root);

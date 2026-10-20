@@ -10,6 +10,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.commands.CommandSourceStack;
@@ -20,7 +21,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /**
  * {@code /factorycore access}: Manage-checked grant administration through the shared authority.
@@ -54,14 +54,12 @@ public final class AccessCommandGameTests {
         == NetworkAuthority.Decision.ALLOWED;
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void ownersAndOperatorsAdministerGrantsAndOthersAreRefused(GameTestHelper h) {
-    var owner = h.makeMockServerPlayerInLevel();
-    var stranger = h.makeMockServerPlayerInLevel();
-    var third = h.makeMockServerPlayerInLevel();
-    for (var player : new ServerPlayer[] {owner, stranger, third})
-      NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var owner = TestPlayers.mock(h);
+    var stranger = TestPlayers.mock(h);
+    var third = TestPlayers.mock(h);
+    for (var player : new ServerPlayer[] {owner, stranger, third}) TestPlayers.connect(player);
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     root.commission(owner.getUUID());

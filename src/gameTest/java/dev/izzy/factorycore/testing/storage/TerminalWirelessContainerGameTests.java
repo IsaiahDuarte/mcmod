@@ -14,6 +14,7 @@ import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import dev.izzy.factorycore.testing.EnergyFixture;
+import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -29,7 +30,6 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /** Real paired topology, terminal sessions and native item capabilities. */
 @GameTestHolder("factorycore_tests")
@@ -72,12 +72,11 @@ public final class TerminalWirelessContainerGameTests {
     return menu.view().status();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void indivisibleContainersAndEnergyCopiesRespectSharedBidirectionalCap(
       GameTestHelper h) {
-    ServerPlayer player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    ServerPlayer player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(TERMINAL)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());

@@ -14,6 +14,7 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -34,7 +35,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /** Actual item installation, permission failure, rate enforcement and portable ownership. */
 @GameTestHolder("factorycore_tests")
@@ -57,10 +57,9 @@ public final class ThroughputUpgradeGameTests {
 
   private ThroughputUpgradeGameTests() {}
 
-  @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.setGameMode(GameType.SURVIVAL);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();

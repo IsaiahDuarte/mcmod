@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -26,7 +27,6 @@ import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.entity.HopperBlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.*;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -50,10 +50,9 @@ public final class TerminalGameTests {
     return stack;
   }
 
-  @SuppressWarnings("removal") // Pinned helper performs actual PlayerList authentication.
   private static Fixture setup(GameTestHelper helper) {
-    var player = helper.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(helper);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
     helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
@@ -514,8 +513,8 @@ public final class TerminalGameTests {
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void revokedViewerCannotReadOrFinishQueuedWithdrawal(GameTestHelper helper) {
     var owner = setup(helper);
-    var guest = helper.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(guest.connection.getConnection());
+    var guest = TestPlayers.mock(helper);
+    TestPlayers.connect(guest);
     guest.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     guest.getInventory().clearContent();
     NetworkNodeEntity root = helper.getBlockEntity(ROOT);
@@ -564,12 +563,11 @@ public final class TerminalGameTests {
    * Two open sessions on one terminal: stock changed by the other session (or by the owner's grant
    * administration) reaches an idle viewer without any action of its own.
    */
-  @SuppressWarnings("removal") // Real authenticated second principal.
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void idleViewerSeesOtherSessionsChangesAndGrantEdits(GameTestHelper helper) {
     var owner = setup(helper);
-    var guest = helper.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(guest.connection.getConnection());
+    var guest = TestPlayers.mock(helper);
+    TestPlayers.connect(guest);
     guest.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     guest.getInventory().clearContent();
     NetworkNodeEntity root = helper.getBlockEntity(ROOT);

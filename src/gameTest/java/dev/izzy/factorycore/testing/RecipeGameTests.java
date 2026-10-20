@@ -175,9 +175,8 @@ public final class RecipeGameTests {
     return preview;
   }
 
-  @SuppressWarnings("removal")
   private static ServerPlayer playerWith(GameTestHelper h, Map<Item, Integer> kit) {
-    var player = h.makeMockServerPlayerInLevel();
+    var player = TestPlayers.mock(h);
     player.setGameMode(GameType.SURVIVAL);
     player.getInventory().clearContent();
     for (var entry : kit.entrySet()) {

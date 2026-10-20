@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -23,7 +24,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /** Paid link drops and unsupported tier data retain exactly one physical owner. */
 @GameTestHolder("factorycore_tests")
@@ -33,10 +33,9 @@ public final class WirelessUpgradeRecoveryGameTests {
 
   private WirelessUpgradeRecoveryGameTests() {}
 
-  @SuppressWarnings("removal")
   private static ServerPlayer player(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.setGameMode(GameType.SURVIVAL);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(LINK)));
     return player;

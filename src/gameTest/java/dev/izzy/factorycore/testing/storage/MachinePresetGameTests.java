@@ -8,6 +8,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
@@ -27,7 +28,6 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 import net.neoforged.neoforge.gametest.*;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -849,12 +849,11 @@ public final class MachinePresetGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void authenticatedMenuReturnsOnlyOriginalOwnersKnownStaging(GameTestHelper h) {
     var f = setup(h, ResourceKind.ITEM);
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     var actor = new NetworkPermissions.Actor(player.getUUID(), false);
@@ -933,13 +932,12 @@ public final class MachinePresetGameTests {
     }
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void recoveryCommandsPreserveEvidenceAndOnlyOriginalPlayerCanReturn(
       GameTestHelper h) {
     var f = setup(h, ResourceKind.ITEM);
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     var actor = new NetworkPermissions.Actor(player.getUUID(), false);
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
@@ -1028,15 +1026,14 @@ public final class MachinePresetGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void recoveryCommandDeniesOtherOwnersAndUncertaintyWithoutAuditMutation(
       GameTestHelper h) {
     var f = setup(h, ResourceKind.ITEM);
-    var owner = h.makeMockServerPlayerInLevel();
-    var other = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(owner.connection.getConnection());
-    NetworkRegistry.configureMockConnection(other.connection.getConnection());
+    var owner = TestPlayers.mock(h);
+    var other = TestPlayers.mock(h);
+    TestPlayers.connect(owner);
+    TestPlayers.connect(other);
     var actor = new NetworkPermissions.Actor(owner.getUUID(), false);
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     f.saved
@@ -1107,13 +1104,12 @@ public final class MachinePresetGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", batch = "machine_recovery", timeoutTicks = 500)
   public static void auditedMachineRepairKeepsFenceAndRequiresAuthenticatedRedeployment(
       GameTestHelper h) {
     var f = setup(h, ResourceKind.ITEM);
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.getInventory().clearContent();
     player.moveTo(Vec3.atCenterOf(h.absolutePos(MACHINE)));
     h.assertTrue(

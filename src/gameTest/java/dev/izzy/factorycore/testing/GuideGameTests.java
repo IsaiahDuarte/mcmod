@@ -12,10 +12,9 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 public final class GuideGameTests {
   private GuideGameTests() {}
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty")
   public static void firstLoginGivesExactlyOneGuide(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
+    var player = TestPlayers.mock(h);
     h.assertTrue(
         Boolean.getBoolean("factorycore.noWelcomeGuide"), "Fixture login skips the welcome guide");
     h.assertTrue(

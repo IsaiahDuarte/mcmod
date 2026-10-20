@@ -7,6 +7,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.PolicyFixture;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.*;
 import java.util.HashMap;
 import net.minecraft.core.BlockPos;
@@ -246,11 +247,10 @@ public final class BufferPolicyGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal") // Real PlayerList authentication in the pinned native helper.
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void physicalSamplesRateClearAndTagExclusionDoNotConsumeHeldItems(
       GameTestHelper helper) {
-    ServerPlayer player = helper.makeMockServerPlayerInLevel();
+    ServerPlayer player = TestPlayers.mock(helper);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
     var f = setup(helper, player.getUUID());

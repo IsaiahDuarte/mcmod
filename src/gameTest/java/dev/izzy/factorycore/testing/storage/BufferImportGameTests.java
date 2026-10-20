@@ -11,6 +11,7 @@ import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.EnumSet;
@@ -37,7 +38,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -121,14 +121,13 @@ public final class BufferImportGameTests {
         "Bounded fixture visits admitted import preparation before the next principal task");
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", batch = "buffer_recovery", timeoutTicks = 500)
   public static void auditedBufferRepairRetainsInventoryAndRequiresAuthorizedPresetReapply(
       GameTestHelper h) {
     var f = setup(h);
     var old = f.buffer.handle();
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(BUFFER)));
     h.assertTrue(!player.hasPermissions(2), "Recovery deployer has ordinary player grants");
     var deployer = new NetworkPermissions.Actor(player.getUUID(), false);

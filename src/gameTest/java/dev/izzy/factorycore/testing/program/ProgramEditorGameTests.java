@@ -13,6 +13,7 @@ import dev.izzy.factorycore.platform.program.ProgramPackets;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
@@ -25,7 +26,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -34,10 +34,9 @@ public final class ProgramEditorGameTests {
 
   private ProgramEditorGameTests() {}
 
-  @SuppressWarnings("removal")
   private static ServerPlayer player(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     return player;
   }

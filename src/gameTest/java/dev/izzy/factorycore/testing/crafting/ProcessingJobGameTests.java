@@ -32,6 +32,7 @@ import dev.izzy.factorycore.platform.storage.WorldConnectors;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import dev.izzy.factorycore.testing.ConnectorFixture;
 import dev.izzy.factorycore.testing.MixerFixture;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -50,7 +51,6 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -266,11 +266,10 @@ public final class ProcessingJobGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal") // Pinned helper performs actual PlayerList authentication.
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void terminalEncodesDeclaredProcessingPattern(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());

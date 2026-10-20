@@ -20,6 +20,7 @@ import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -38,7 +39,6 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -59,11 +59,10 @@ public final class WasmProgramGameTests {
     }
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void uploadedRustGuestStocksALabeledMachineAndSurvivesReload(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     var owner = new NetworkPermissions.Actor(player.getUUID(), false);
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
@@ -182,10 +181,9 @@ public final class WasmProgramGameTests {
     return state == null ? 0 : ByteBuffer.wrap(state).order(ByteOrder.LITTLE_ENDIAN).getLong();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void guestStatePersistsAcrossReloadAndResetsOnRedeploy(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
+    var player = TestPlayers.mock(h);
     var owner = new NetworkPermissions.Actor(player.getUUID(), false);
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
