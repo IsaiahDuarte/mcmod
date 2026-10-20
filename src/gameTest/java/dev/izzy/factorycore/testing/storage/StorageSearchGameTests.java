@@ -163,9 +163,16 @@ public final class StorageSearchGameTests {
             () -> {
               var result =
                   fixture.runtime().transfers().search().result(query[0], fixture.actor(), null, 5);
+              // The reason and page count make an intermittent failure diagnosable: DENIED means
+              // the search was pruned, any other non-OK reason is the limit it hit.
               helper.assertTrue(
                   result.reason() == OperationResult.Reason.OK && result.complete(),
-                  "Complete bounded all-key scan");
+                  "Complete bounded all-key scan: reason="
+                      + result.reason()
+                      + " complete="
+                      + result.complete()
+                      + " pages="
+                      + result.observedPages());
             })
         .thenExecute(
             () -> {

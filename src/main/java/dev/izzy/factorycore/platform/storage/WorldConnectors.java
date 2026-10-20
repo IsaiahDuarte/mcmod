@@ -119,11 +119,7 @@ public final class WorldConnectors {
     checkThread();
     if (cursor < 0) throw new IllegalArgumentException("Negative stock cursor");
     if (calling || probing) return new Observation(OperationResult.Reason.DENIED, null);
-    var identity =
-        new ResourceKey(
-            handle.kind(),
-            handle.kind() == ResourceKind.ENERGY ? "neoforge:energy" : "factorycore:catalog",
-            new byte[0]);
+    var identity = catalogIdentity(handle.kind());
     if (!allowed(actor, origin, handle, identity, NetworkPermissions.Permission.VIEW))
       return new Observation(OperationResult.Reason.DENIED, null);
     var binding = current(handle);
@@ -155,6 +151,15 @@ public final class WorldConnectors {
 
   private record RateOwner(UUID connector, ResourceKind kind) {}
 
+  /**
+   * The provider-level identity a permission check uses for a whole port of {@code kind}: energy is
+   * one resource, items and fluids are a catalog.
+   */
+  private static ResourceKey catalogIdentity(ResourceKind kind) {
+    return new ResourceKey(
+        kind, kind == ResourceKind.ENERGY ? "neoforge:energy" : "factorycore:catalog", new byte[0]);
+  }
+
   private final class Binding {
     final ConnectorEntity owner;
     final Handle handle;
@@ -165,6 +170,16 @@ public final class WorldConnectors {
     final Direction face;
     final UUID group;
     final boolean indexed;
+
+    /**
+     * A whole-capability fluid selection covers at most 64 tanks; a handler with more is reported
+     * unsupported rather than partially counted or moved.
+     */
+    boolean unsupportedWhole(ResourceKind kind) {
+      return kind == ResourceKind.FLUID
+          && owner.settings().wholeFluidHandler()
+          && ((IFluidHandler) handler).getTanks() > 64;
+    }
 
     Binding(
         ConnectorEntity owner,
@@ -598,9 +613,7 @@ public final class WorldConnectors {
     if (binding == null) return new OperationResult(0, OperationResult.Reason.OFFLINE);
     calling = true;
     try {
-      if (key.kind() == ResourceKind.FLUID
-          && binding.owner.settings().wholeFluidHandler()
-          && ((IFluidHandler) binding.handler).getTanks() > 64)
+      if (binding.unsupportedWhole(key.kind()))
         return new OperationResult(0, OperationResult.Reason.UNSUPPORTED);
       return new OperationResult(freshTotal(binding, key), OperationResult.Reason.OK);
     } catch (RuntimeException fault) {
@@ -617,11 +630,7 @@ public final class WorldConnectors {
       Handle handle,
       ResourceFilter filter) {
     checkThread();
-    var identity =
-        new ResourceKey(
-            handle.kind(),
-            handle.kind() == ResourceKind.ENERGY ? "neoforge:energy" : "factorycore:catalog",
-            new byte[0]);
+    var identity = catalogIdentity(handle.kind());
     if (filter.kind() != handle.kind()
         || calling
         || probing
@@ -641,9 +650,7 @@ public final class WorldConnectors {
       throw new IllegalStateException("Machine stock cannot reenter provider reads");
     calling = true;
     try {
-      if (binding.handle.kind() == ResourceKind.FLUID
-          && binding.owner.settings().wholeFluidHandler()
-          && ((IFluidHandler) binding.handler).getTanks() > 64)
+      if (binding.unsupportedWhole(binding.handle.kind()))
         return new OperationResult(0, OperationResult.Reason.UNSUPPORTED);
       var settings = binding.owner.settings();
       var codec = new PlatformResourceCodec(binding.owner.serverLevel().registryAccess());
@@ -696,9 +703,7 @@ public final class WorldConnectors {
   }
 
   private long freshTotal(Binding binding, ResourceKey key) {
-    if (key.kind() == ResourceKind.FLUID
-        && binding.owner.settings().wholeFluidHandler()
-        && ((IFluidHandler) binding.handler).getTanks() > 64) return 0;
+    if (binding.unsupportedWhole(key.kind())) return 0;
     var settings = binding.owner.settings();
     var codec = new PlatformResourceCodec(binding.owner.serverLevel().registryAccess());
     long total = 0;
