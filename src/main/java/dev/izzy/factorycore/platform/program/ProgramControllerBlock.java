@@ -28,7 +28,7 @@ import net.minecraft.world.phys.BlockHitResult;
 
 /** Wired Program Controller. One deployed program runs in its segment. */
 public final class ProgramControllerBlock extends NetworkedBlock
-    implements EntityBlock, CarriedComponents {
+    implements EntityBlock, CarriedComponents, DeviceLamp.Legend {
   public static final MapCodec<ProgramControllerBlock> CODEC =
       simpleCodec(ProgramControllerBlock::new);
 
@@ -118,5 +118,10 @@ public final class ProgramControllerBlock extends NetworkedBlock
   @Override
   public List<DataComponentType<?>> carriedComponents() {
     return List.of(ProgramContent.DRAFT.get(), ProgramContent.ENERGY.get());
+  }
+
+  @Override
+  public String lampLegend() {
+    return "tooltip.factorycore.lamp_legend_program";
   }
 }

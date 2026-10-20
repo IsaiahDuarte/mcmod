@@ -593,7 +593,7 @@ public final class PresentationClientVerification {
         check(lines.contains(I18n.get(key)), "Description missing from tooltip of " + id);
         described++;
       }
-      String legend = ItemDescriptions.lampLegendKey(id.getPath());
+      String legend = ItemDescriptions.lampLegendKey(BuiltInRegistries.ITEM.get(id));
       if (legend != null)
         check(lines.contains(I18n.get(legend)), "Lamp legend missing from tooltip of " + id);
       evidence.append("tooltip ").append(id.getPath()).append(": ").append(lines).append('\n');

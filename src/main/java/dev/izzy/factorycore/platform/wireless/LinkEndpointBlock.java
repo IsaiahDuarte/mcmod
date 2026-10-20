@@ -44,7 +44,8 @@ import net.minecraft.world.phys.BlockHitResult;
  * Wireless Link Endpoint. Sneak-use one endpoint, then sneak-use another within range to pair them;
  * plain use shows the link state.
  */
-public final class LinkEndpointBlock extends NetworkedBlock implements EntityBlock {
+public final class LinkEndpointBlock extends NetworkedBlock
+    implements EntityBlock, DeviceLamp.Legend {
   public static final MapCodec<LinkEndpointBlock> CODEC = simpleCodec(LinkEndpointBlock::new);
 
   /** Server-thread pairing selections: player → first endpoint and the tick it was chosen. */
@@ -216,5 +217,10 @@ public final class LinkEndpointBlock extends NetworkedBlock implements EntityBlo
   @Override
   public boolean wiredFace(BlockState state, Direction face) {
     return face == state.getValue(BlockStateProperties.FACING).getOpposite();
+  }
+
+  @Override
+  public String lampLegend() {
+    return "tooltip.factorycore.lamp_legend_link";
   }
 }
