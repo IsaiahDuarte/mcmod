@@ -48,7 +48,6 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
     return diagnostic;
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   public DeviceRegistry.Location location() {
     if (!(level instanceof ServerLevel server))
       throw new IllegalStateException("Bank requires server level");
@@ -56,7 +55,6 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
         server.dimension().location().toString(), worldPosition.asLong(), 0);
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private DeviceSavedData authority() {
     if (!(level instanceof ServerLevel server))
       throw new IllegalStateException("Bank requires server level");
@@ -84,7 +82,6 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
   }
 
   /** Trusted operator recovery at the exact existing canonical holder; never relocates FE. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
   public Path repairConflict(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || isRemoved()
@@ -133,7 +130,6 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
    * is not a bank referencing the backing, this bank's reference has the same world/backing, a
    * different generation and a matching finite tier, and no transfer is unresolved.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
   public Path adoptBank(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || isRemoved()

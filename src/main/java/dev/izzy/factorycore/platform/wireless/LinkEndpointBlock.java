@@ -44,7 +44,6 @@ import net.minecraft.world.phys.BlockHitResult;
  * Wireless Link Endpoint. Sneak-use one endpoint, then sneak-use another within range to pair them;
  * plain use shows the link state.
  */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns borrowed levels.
 public final class LinkEndpointBlock extends BaseEntityBlock {
   public static final MapCodec<LinkEndpointBlock> CODEC = simpleCodec(LinkEndpointBlock::new);
 

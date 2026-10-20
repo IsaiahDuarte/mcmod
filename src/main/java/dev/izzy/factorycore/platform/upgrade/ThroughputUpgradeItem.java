@@ -36,7 +36,6 @@ public final class ThroughputUpgradeItem extends Item {
   }
 
   @Override
-  @SuppressWarnings("PMD.CloseResource") // Borrowed level; Minecraft owns its lifecycle.
   public InteractionResult useOn(UseOnContext context) {
     var level = context.getLevel();
     var entity = level.getBlockEntity(context.getClickedPos());

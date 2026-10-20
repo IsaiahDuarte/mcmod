@@ -534,7 +534,6 @@ public final class WorldCraftingJobs {
   private record BlockEntityRef(boolean loaded, BlockEntity entity) {}
 
   /** Reads a target without loading its chunk. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private BlockEntityRef target(NodeRegistry.Position target) {
     for (var level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(target.dimension())) continue;
@@ -647,7 +646,6 @@ public final class WorldCraftingJobs {
   }
 
   /** The loaded current interface at a dispatch position, or null. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private CraftingInterfaceEntity interfaceAt(NodeRegistry.Position position) {
     for (var level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(position.dimension())) continue;
@@ -833,7 +831,6 @@ public final class WorldCraftingJobs {
    * Revalidates the server recipe at the offering unit and returns exact outputs plus remainders,
    * or null when the unit or recipe no longer reproduces the encoded pattern.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the unit's borrowed level.
   private Map<ResourceKey, Long> assemble(UUID job, WorldCrafting.Offer offer) {
     if (!offer.unit().current()) return null;
     var level = offer.unit().getLevel();

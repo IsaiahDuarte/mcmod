@@ -29,7 +29,6 @@ final class RestartCheckpoint {
   private final StagedRecoveryVerification.Seed staging = new StagedRecoveryVerification.Seed();
   private final Properties stagedExpected = new Properties();
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the player's live level.
   boolean prepare(ServerPlayer player, Path path) throws IOException {
     var level = player.serverLevel();
     var saved = DeviceSavedData.get(player.server);

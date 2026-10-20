@@ -100,7 +100,6 @@ final class PresentationScenes {
         : state.setValue(HorizontalDirectionalBlock.FACING, direction);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   static void floor(ServerLevel level, int x0, int z0, int x1, int z1, int y) {
     for (int x = x0; x <= x1; x++)
       for (int z = z0; z <= z1; z++)
@@ -112,7 +111,6 @@ final class PresentationScenes {
    * gateway, connector, machine interface, crafting interface, link endpoint, terminal, generator
    * (the last two are horizontal-only and skip up/down). Returns the number of blocks placed.
    */
-  @SuppressWarnings("PMD.CloseResource")
   static int orientations(ServerLevel level) {
     List<Block> rows =
         List.of(
@@ -140,7 +138,6 @@ final class PresentationScenes {
     return placed;
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static NetworkNodeEntity root(ServerLevel level, BlockPos position, ServerPlayer owner) {
     level.setBlock(position, NetworkContent.CONTROLLER.get().defaultBlockState(), 3);
     var node = (NetworkNodeEntity) level.getBlockEntity(position);
@@ -148,7 +145,6 @@ final class PresentationScenes {
     return node;
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static void drive(ServerLevel level, BlockPos position, int... bays) {
     level.setBlock(position, StorageContent.DRIVE.get().defaultBlockState(), 3);
     var drive = (StorageDriveEntity) level.getBlockEntity(position);
@@ -161,7 +157,6 @@ final class PresentationScenes {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static ProgramControllerEntity program(
       ServerLevel level, BlockPos position, ProgramControllerEntity.State state) {
     level.setBlock(position, ProgramContent.BLOCK.get().defaultBlockState(), 3);
@@ -170,7 +165,6 @@ final class PresentationScenes {
     return controller;
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static LinkEndpointEntity link(ServerLevel level, BlockPos position, boolean powered) {
     level.setBlock(
         position.south(), facing(NetworkContent.GATEWAY.get(), Direction.NORTH), Block.UPDATE_ALL);
@@ -184,7 +178,6 @@ final class PresentationScenes {
    * Status row (z=40) and lamp row (z=43), each device isolated by one empty block. Returns a
    * description of what each position should show.
    */
-  @SuppressWarnings("PMD.CloseResource")
   static String states(ServerPlayer player) {
     var level = player.serverLevel();
     floor(level, 36, 30, 66, 50, 64);
@@ -296,7 +289,6 @@ final class PresentationScenes {
   /** Planks from one oak log on a Crafting Unit beside the screens drive; 8 logs stored. */
   static final BlockPos JOB_UNIT = SCREENS.east().north();
 
-  @SuppressWarnings("PMD.CloseResource")
   static void jobs(ServerPlayer player) {
     var level = player.serverLevel();
     level.setBlock(JOB_UNIT, CraftingContent.UNIT.get().defaultBlockState(), 3);
@@ -311,7 +303,6 @@ final class PresentationScenes {
   }
 
   /** Stores the 8 oak logs once the rebuilt network has the cell online again. */
-  @SuppressWarnings("PMD.CloseResource")
   static void stockJobs(ServerPlayer player) {
     var level = player.serverLevel();
     var drive = (StorageDriveEntity) level.getBlockEntity(SCREENS.east());
@@ -323,7 +314,6 @@ final class PresentationScenes {
       throw new IllegalStateException("Jobs scene stores 8 oak logs: " + stored);
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   static void screens(ServerPlayer player) {
     var level = player.serverLevel();
     floor(level, -2, -3, 12, 5, 64);

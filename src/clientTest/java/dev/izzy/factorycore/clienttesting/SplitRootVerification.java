@@ -46,7 +46,6 @@ final class SplitRootVerification {
         && event.getChunk().getPos().z == 0) unloads++;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns this fixture's world.
   boolean tick(ServerPlayer player) {
     var saved = DeviceSavedData.get(player.server);
     var runtime = WorldNetworks.get(player.server);

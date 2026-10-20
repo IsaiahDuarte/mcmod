@@ -62,7 +62,6 @@ public final class ProcessingRecoveryCommands {
     source.sendFailure(Component.translatable("command.factorycore.recovery.processing." + reason));
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private static int run(CommandSourceStack source, BlockPos at, boolean resolve) {
     var server = source.getServer();
     var level = source.getLevel();

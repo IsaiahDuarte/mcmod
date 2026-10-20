@@ -71,7 +71,6 @@ final class NetworkNodeRecoveryCommands {
   }
 
   /** Operator reconciliation of an independent-save mismatch at a loaded controller/gateway. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and level.
   private static int adopt(
       CommandSourceStack source, String backing, long generation, BlockPos at) {
     try {
@@ -159,7 +158,6 @@ final class NetworkNodeRecoveryCommands {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and level.
   private static int inspect(CommandSourceStack source, String backing, long generation) {
     try {
       var server = source.getServer();

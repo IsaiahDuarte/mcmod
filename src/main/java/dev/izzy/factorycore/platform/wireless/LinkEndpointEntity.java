@@ -32,7 +32,6 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * the pair as one reciprocal cable edge, so the normal generation, cycle, bypass and gateway policy
  * checks apply. It never loads chunks; an unloaded partner suspends the link segment.
  */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed ServerLevel.
 public final class LinkEndpointEntity extends BlockEntity {
   public static final long CAPACITY = 20_000;
   public static final long INPUT_RATE = 1_000;

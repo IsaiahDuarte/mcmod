@@ -163,7 +163,6 @@ public final class WorldNetworksGameTests {
 
   @GameTest(template = "empty", timeoutTicks = 200)
   // The fixture borrows a Minecraft-owned chunk, which must never be closed.
-  @SuppressWarnings("PMD.CloseResource")
   public static void firstNeighborChunkLoadInvalidatesExistingBoundaryPublication(
       GameTestHelper helper) {
     // Deliberate fixture loading is distinct from the production nonloading reader.

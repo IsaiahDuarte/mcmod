@@ -471,12 +471,10 @@ final class TransferEndpoints {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   BufferedInterfaceEntity physical(Buffered endpoint) {
     return physical(endpoint, false);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns this borrowed level.
   BufferedInterfaceEntity physical(Buffered endpoint, boolean ownedReturn) {
     var location = saved.nodes().definition(endpoint.handle()).position();
     if (location == null) return null;
@@ -520,7 +518,6 @@ final class TransferEndpoints {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   BlockEntity physical(DeviceRegistry.Handle handle) {
     var location = saved.registry().definition(handle).location();
     if (location == null) return null;

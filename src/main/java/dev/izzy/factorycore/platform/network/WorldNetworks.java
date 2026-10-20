@@ -156,7 +156,6 @@ public final class WorldNetworks {
     return machinePresets;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed loaded level.
   public static void machineInvalidated(Level level, MachineInterfaceEntity owner) {
     if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
       return;
@@ -165,7 +164,6 @@ public final class WorldNetworks {
   }
 
   /** Teardown does not initialize services; stale copied holders cannot unregister replacements. */
-  @SuppressWarnings("PMD.CloseResource")
   public static void bufferInvalidated(Level level, BufferedInterfaceEntity owner) {
     if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
       return;
@@ -174,7 +172,6 @@ public final class WorldNetworks {
   }
 
   /** Cleanup never constructs storage services during recovery or server shutdown. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed event level.
   public static void connectorInvalidated(Level level, ConnectorEntity owner) {
     if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
       return;
@@ -283,7 +280,6 @@ public final class WorldNetworks {
   }
 
   // Minecraft owns the borrowed level; the coordinator never closes worlds or chunk caches.
-  @SuppressWarnings("PMD.CloseResource")
   public static void changed(Level level, BlockPos position) {
     if (!(level instanceof ServerLevel serverLevel)) return;
     get(serverLevel.getServer())
@@ -469,7 +465,6 @@ public final class WorldNetworks {
   }
 
   // ServerLevel and chunk cache are borrowed from Minecraft.
-  @SuppressWarnings("PMD.CloseResource")
   private void prepare(Region region, NodeRegistry.Position position) {
     var wire = region.discovery.captured(position);
     if (wire == null) {
@@ -724,7 +719,6 @@ public final class WorldNetworks {
   }
 
   // Minecraft owns the event's borrowed world.
-  @SuppressWarnings("PMD.CloseResource")
   private static void chunkChanged(ChunkEvent event) {
     if (!(event.getLevel() instanceof ServerLevel level) || !level.getServer().isSameThread())
       return;

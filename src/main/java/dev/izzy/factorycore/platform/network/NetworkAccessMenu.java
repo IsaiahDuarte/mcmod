@@ -184,7 +184,6 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   }
 
   /** Server: one client action, accepted only from the session's own connected player. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   public void command(ServerPlayer sender, AccessPackets.Command packet) {
     if (anchor == null
         || sender != viewer
@@ -296,7 +295,6 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   }
 
   /** A principal the screen may name: an explicit grant here or a currently online player. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   private boolean listed(NetworkPermissions.Actor actor, UUID principal) {
     if (principal.equals(AccessPackets.NONE)) return false;
     var server = player().server;
@@ -314,7 +312,6 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   }
 
   /** Canonical view at this instant; pending expiry and lost Manage update the status. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   private AccessPackets.View build(long revision) {
     var server = player().server;
     var networks = WorldNetworks.get(server);

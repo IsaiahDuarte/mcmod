@@ -52,7 +52,6 @@ final class WirelessLifecycleVerification {
         && event.getChunk().getPos().z == 0) unloads++;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Server owns the level.
   private void started(ServerStartedEvent event) {
     level = event.getServer().overworld();
     started = event.getServer().getTickCount();
@@ -104,7 +103,6 @@ final class WirelessLifecycleVerification {
     return new NodeRegistry.Position(level.dimension().location().toString(), block.asLong());
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed event server/level.
   private void tick(ServerTickEvent.Post event) {
     if (level == null || phase == 4) return;
     try {

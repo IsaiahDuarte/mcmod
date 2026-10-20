@@ -17,7 +17,6 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * has FE for each open tick. It changes player access only, never machine discovery, routing or
  * chunk loading.
  */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed ServerLevel.
 public final class AccessPointEntity extends BlockEntity {
   public static final long CAPACITY = 20_000;
   public static final long INPUT_RATE = 1_000;

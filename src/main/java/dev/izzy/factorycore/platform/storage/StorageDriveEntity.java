@@ -73,7 +73,6 @@ public final class StorageDriveEntity extends BlockEntity {
   }
 
   // ServerLevel is borrowed from Minecraft; this device must never close the world.
-  @SuppressWarnings("PMD.CloseResource")
   public DeviceRegistry.Location location(int slot) {
     checkSlot(slot);
     if (!(level instanceof ServerLevel server))
@@ -113,7 +112,6 @@ public final class StorageDriveEntity extends BlockEntity {
   }
 
   /** Operator recovery adapter. Never relocates a backing or resolves pending transfer evidence. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
   public Path repairCellConflict(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || isRemoved()
@@ -169,7 +167,6 @@ public final class StorageDriveEntity extends BlockEntity {
    * matching-tier cell of the same world/backing with a different generation, and no transfer is
    * unresolved. The single ledger moves; quantities, claims and other copies are never touched.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
   public Path adoptCell(DeviceRegistry.Handle expected, int slot) throws IOException {
     checkSlot(slot);
     if (!(level instanceof ServerLevel server)
@@ -283,7 +280,6 @@ public final class StorageDriveEntity extends BlockEntity {
   }
 
   @Override
-  @SuppressWarnings("PMD.CloseResource") // Borrowed level; Minecraft owns its lifecycle.
   public void onLoad() {
     super.onLoad();
     networkingChanged();
@@ -393,7 +389,6 @@ public final class StorageDriveEntity extends BlockEntity {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private DeviceRegistry registry() {
     if (!(level instanceof ServerLevel server))
       throw new IllegalStateException("Drive requires server level");

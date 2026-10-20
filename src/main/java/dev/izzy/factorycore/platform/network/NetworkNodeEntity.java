@@ -49,7 +49,6 @@ public final class NetworkNodeEntity extends BlockEntity {
     return handle;
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   public NodeRegistry.Position position() {
     if (!(level instanceof ServerLevel server))
       throw new IllegalStateException("Structural node requires server level");
@@ -57,7 +56,6 @@ public final class NetworkNodeEntity extends BlockEntity {
         server.dimension().location().toString(), worldPosition.asLong());
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private DeviceSavedData authority() {
     if (!(level instanceof ServerLevel server))
       throw new IllegalStateException("Structural node requires server level");
@@ -93,7 +91,6 @@ public final class NetworkNodeEntity extends BlockEntity {
   }
 
   /** Trusted operator recovery at the loaded original holder; permissions/policy never change. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
   public Path repairConflict(NodeRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || !server.getServer().isSameThread()
@@ -145,7 +142,6 @@ public final class NetworkNodeEntity extends BlockEntity {
    * ID and kind with a different generation, and no transfer is unresolved. Grants and policy are
    * unchanged.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
   public Path adoptNode(NodeRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || !server.getServer().isSameThread()

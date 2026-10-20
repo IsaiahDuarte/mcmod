@@ -15,7 +15,6 @@ import net.neoforged.neoforge.items.IItemHandler;
  * Processing pattern holder facing one machine. A job's persisted dispatch is the only lease on the
  * machine port; the interface itself stores no job state and owns no resources.
  */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed ServerLevel.
 public final class CraftingInterfaceEntity extends PatternHolderEntity {
   private BlockCapabilityCache<IItemHandler, Direction> machine, sided;
   private BlockCapabilityCache<IFluidHandler, Direction> tanks, sidedTanks;

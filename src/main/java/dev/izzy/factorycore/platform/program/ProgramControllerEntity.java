@@ -27,7 +27,6 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * finite FE buffer and bounded logs. Deployment authority is the deployer's current grants checked
  * at every invocation; breaking the block keeps the draft and FE, never the deployment.
  */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns every borrowed ServerLevel.
 public final class ProgramControllerEntity extends BlockEntity {
   public static final int MAX_DRAFT = FriendlyCompiler.MAX_SOURCE;
   public static final long CAPACITY = 10_000;

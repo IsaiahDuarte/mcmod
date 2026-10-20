@@ -50,7 +50,6 @@ final class ProviderIdentity {
    * Initialization is allowed only before new dispatch; resume/cleanup must pass false. Empty means
    * unavailable/unprovable identity. No capability getter or resource method is invoked.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   Map<ResourceKind, UUID> processingIdentity(NodeRegistry.Position target, boolean initialize) {
     var dimension = Loaded.dimension(target.dimension());
     var level = server.getLevel(dimension);
@@ -191,7 +190,6 @@ final class ProviderIdentity {
   }
 
   /** Normalize vanilla double chests and check both chunks before any capability lookup. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   List<Provider> providerPositions(ConnectorEntity owner) {
     try {
       return providerPositions(
@@ -204,7 +202,6 @@ final class ProviderIdentity {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   List<Provider> providerPositions(ServerLevel level, BlockPos position, ResourceKind kind) {
     var chunk = Loaded.chunk(level, position);
     if (chunk == null) return null;

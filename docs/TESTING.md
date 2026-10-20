@@ -31,8 +31,9 @@ rmdir /tmp/factorycore-gui.lock
   - matching acceptance-ID tables in SPEC and IMPLEMENTATION;
   - the tooling unit tests, where an empty or skipped suite fails.
 - **Gradle `build`:**
-  - Spotless (google-java-format) and PMD, including the CloseResource rule; each suppression
-    needs a stated reason;
+  - Spotless (google-java-format) and PMD. CloseResource treats Minecraft's borrowed
+    server, levels and window as allowed in `config/pmd/ruleset.xml`; any other suppression needs
+    a stated reason;
   - `-Werror` compilation;
   - ArchUnit architecture rules (the portable core has no Minecraft types, and optional
     integrations stay off mandatory class loading);

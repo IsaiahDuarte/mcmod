@@ -67,7 +67,6 @@ final class WorldRestartVerification {
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns its server, world and render target.
   private void tick(ClientTickEvent.Post event) {
     var client = Minecraft.getInstance();
     ticks++;
@@ -352,7 +351,6 @@ final class WorldRestartVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed world belongs to Minecraft.
   private void verifyInitial(ServerPlayer player, MachineInterfaceEntity machine) throws Exception {
     var level = player.serverLevel();
     var saved = DeviceSavedData.get(player.server);

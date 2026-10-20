@@ -103,8 +103,6 @@ public final class TerminalClientVerification {
     return stack;
   }
 
-  @SuppressWarnings(
-      "PMD.CloseResource") // Minecraft and its integrated server are borrowed, not fixture-owned.
   private void tick(ClientTickEvent.Post event) {
     Minecraft client = Minecraft.getInstance();
     ticks++;
@@ -451,7 +449,6 @@ public final class TerminalClientVerification {
   private int plankSlot = -1;
 
   /** Manual grid: cell click, own-slot ghost, Row→, right-click clear, Craft and two scales. */
-  @SuppressWarnings("PMD.CloseResource") // Borrowed active client/server/window.
   private void craftTick(Minecraft client, TerminalScreen screen) {
     var menu = screen.getMenu();
     var grid = menu.gridView();
@@ -551,7 +548,6 @@ public final class TerminalClientVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed active client/server/window.
   private void bufferTick(Minecraft client) {
     if (stage == 12 && client.screen == null && ticks - entered > 4) {
       client.gameMode.useItemOn(
@@ -812,7 +808,6 @@ public final class TerminalClientVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed integrated server/client levels.
   private void machineTick(Minecraft client) {
     var location = new BlockPos(2, 65, 2);
     if (ticks - entered < 5) return;
@@ -1004,7 +999,6 @@ public final class TerminalClientVerification {
    * FE stocked (72–76): terminal Fluids/Energy views. Then the art gallery (90–97): block rows,
    * cable run and item icons. Every screen capture also asserts that no visible controls overlap.
    */
-  @SuppressWarnings("PMD.CloseResource") // Borrowed active client and integrated server.
   private void tourTick(Minecraft client) {
     if (ticks - entered < 5) return;
     var server = client.getSingleplayerServer();
@@ -1402,7 +1396,6 @@ public final class TerminalClientVerification {
   }
 
   /** Keeps the fixture access point above its 16 FE/tick upkeep while the handheld is in use. */
-  @SuppressWarnings("PMD.CloseResource") // Borrowed integrated server.
   private static void powerAccessPoint(MinecraftServer server) {
     server.execute(
         () -> {
@@ -1421,7 +1414,6 @@ public final class TerminalClientVerification {
                 : ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed active client.
   private void machineScreenTick(Minecraft client, MachineSettingsScreen screen) {
     switch (stage) {
       case 41 -> {
@@ -1567,8 +1559,6 @@ public final class TerminalClientVerification {
     if (enter) screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
   }
 
-  @SuppressWarnings(
-      "PMD.CloseResource") // Minecraft owns the native Window and its registered cursor callback.
   private static void pointer(Minecraft client, BufferSettingsScreen screen, int x, int y) {
     var window = client.getWindow();
     double guiX = (screen.width - 320) / 2.0 + x, guiY = (screen.height - 232) / 2.0 + y;
@@ -1616,8 +1606,6 @@ public final class TerminalClientVerification {
     System.out.println("FACTORYCORE_CLIENT_STAGE " + stage);
   }
 
-  @SuppressWarnings(
-      "PMD.CloseResource") // The player's live ServerLevel remains owned by Minecraft.
   private void setup(ServerPlayer player) {
     var level = player.serverLevel();
     level.setDayTime(6000);
@@ -1703,7 +1691,6 @@ public final class TerminalClientVerification {
     throw new IllegalStateException("Action missing: " + text);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Screenshot borrows the game's active Window.
   private void capture(Minecraft client, String name) {
     try {
       Files.createDirectories(report.getParent().resolve("screenshots"));

@@ -18,7 +18,6 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
 /** Rechargeable handheld terminal: bind it to an access point, then use it within range. */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns borrowed levels.
 public final class WirelessTerminalItem extends Item {
   public static final int CAPACITY = 20_000;
   public static final int CHARGE_RATE = 1_000;

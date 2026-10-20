@@ -132,7 +132,6 @@ public class ConnectorEntity extends BlockEntity {
   /**
    * Audited ownership repair only; persisted provider faults and accepted presets are not reset.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   public Path repairConflict(NodeRegistry.Handle expected) throws IOException {
     var server = serverLevel();
     var chunk = Loaded.chunk(server, worldPosition);
@@ -202,7 +201,6 @@ public class ConnectorEntity extends BlockEntity {
   }
 
   /** Reconcile a stale crash-surviving holder without reading or moving foreign contents. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed levels.
   public Path adoptPort(NodeRegistry.Handle expected) throws IOException {
     var server = serverLevel();
     var saved = authority();
@@ -381,7 +379,6 @@ public class ConnectorEntity extends BlockEntity {
   }
 
   /** Caller must establish every provider chunk is loaded before invoking a capability getter. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   public Object capability() {
     validatePlaced();
     if (cache != null && cachedDirection != targetDirection()) {

@@ -65,7 +65,6 @@ public final class WorldConnectors {
   public record Registration(OperationResult.Reason reason, Handle handle) {}
 
   /** Discover only a currently authorized loaded canonical connector; never loads chunks. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns borrowed levels.
   public Registration discover(
       NetworkPermissions.Actor actor,
       NodeRegistry.Position origin,
@@ -454,7 +453,6 @@ public final class WorldConnectors {
     providerClaims -= binding.providers.size();
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private Binding current(Handle handle) {
     if (saved.nodes().validate(handle.connector()) != NodeRegistry.Failure.OK) return null;
     var location = saved.nodes().definition(handle.connector()).position();
@@ -472,7 +470,6 @@ public final class WorldConnectors {
   }
 
   /** Reacquire only the saved canonical lease/configuration and exact persistent backing. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   public Registration recover(NodeRegistry.Handle connector, long configuration, UUID backing) {
     checkThread();
     try {
@@ -765,7 +762,6 @@ public final class WorldConnectors {
    * Metadata-only reciprocal processing admission: foreign holds or accepted staging retain their
    * provider ownership even after every interface unregisters. Never queries a capability or stock.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   public OperationResult.Reason processingAdmission(NodeRegistry.Position target) {
     checkThread();
     var dimension = Loaded.dimension(target.dimension());

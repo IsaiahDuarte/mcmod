@@ -69,7 +69,6 @@ final class PortRecoveryCommands {
                                                         c, "port")))))));
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private static int adopt(
       CommandSourceStack source, String backing, long generation, BlockPos at) {
     try {
@@ -156,7 +155,6 @@ final class PortRecoveryCommands {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and level.
   private static int inspect(CommandSourceStack source, String backing, long generation) {
     try {
       var server = source.getServer();

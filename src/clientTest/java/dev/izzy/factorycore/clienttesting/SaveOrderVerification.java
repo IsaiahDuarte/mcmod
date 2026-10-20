@@ -61,7 +61,6 @@ final class SaveOrderVerification {
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Server owns the level and fake-player service.
   private void started(ServerStartedEvent event) {
     try {
       Files.createDirectories(report.getParent());
@@ -92,7 +91,6 @@ final class SaveOrderVerification {
         == NetworkTopology.Status.VALID;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
   private void tick(ServerTickEvent.Post event) {
     if (principal == null || phase < 0) return;
     var server = event.getServer();
@@ -151,7 +149,6 @@ final class SaveOrderVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
   private void restore(MinecraftServer server, ServerLevel level, DeviceRegistry registry)
       throws IOException, CommandSyntaxException {
     var backing = UUID.fromString(expected.getProperty("backing"));

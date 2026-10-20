@@ -59,7 +59,6 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * (HIGHEST to LOWEST priority Post); whole server ticks are recorded alongside. Raw nanoseconds go
  * to CSV.
  */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and levels.
 final class ServerBenchmark {
   static final int FACTORIES = 64, OVERLOAD_FACTORIES = 128, SMALL = 4, WARMUP = 200;
   static final int MEASURED = 1_000;
@@ -124,7 +123,6 @@ final class ServerBenchmark {
     NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, this::postLast);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
   private void started(ServerStartedEvent event) {
     level = event.getServer().overworld();
     var principal =

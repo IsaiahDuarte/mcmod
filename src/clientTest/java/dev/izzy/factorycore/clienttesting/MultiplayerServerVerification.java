@@ -69,7 +69,6 @@ final class MultiplayerServerVerification {
     NeoForge.EVENT_BUS.addListener(this::left);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // The server owns its levels.
   private void started(ServerStartedEvent event) {
     var server = event.getServer();
     var level = server.overworld();
@@ -137,7 +136,6 @@ final class MultiplayerServerVerification {
           "Unexpected logout of " + event.getEntity().getName().getString() + " at step " + step);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed server level.
   private void tick(ServerTickEvent.Post event) {
     var server = event.getServer();
     if (finished || cell == null) return;
@@ -212,7 +210,6 @@ final class MultiplayerServerVerification {
   }
 
   /** Server-side truth after both clients acknowledged {@link #step}. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private void verify(MinecraftServer server, ServerPlayer owner, ServerPlayer stranger) {
     long stock = DeviceSavedData.get(server).registry().stock(cell, iron).total();
     int ownerNow = owner.getInventory().countItem(Items.IRON_INGOT);
@@ -315,13 +312,11 @@ final class MultiplayerServerVerification {
     return set.isEmpty() ? EnumSet.noneOf(Permission.class) : EnumSet.copyOf(set);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed server level.
   private int policyMask(MinecraftServer server) {
     var gateway = (NetworkNodeEntity) server.overworld().getBlockEntity(GATEWAY);
     return DeviceSavedData.get(server).nodes().definition(gateway.handle()).policy().mask();
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed server level.
   private static boolean valid(MinecraftServer server, BlockPos position) {
     ServerLevel level = server.overworld();
     return WorldNetworks.get(server)

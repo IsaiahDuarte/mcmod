@@ -87,7 +87,6 @@ public final class MultiplayerClientVerification {
     return received.getOrDefault(key, 0);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns its window and connection.
   private void tick(ClientTickEvent.Post event) {
     if (done) return;
     var client = Minecraft.getInstance();
@@ -700,7 +699,6 @@ public final class MultiplayerClientVerification {
                 : ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Screenshot borrows the game's active Window.
   private void capture(Minecraft client, String name) {
     try {
       Files.createDirectories(report.getParent().resolve("screenshots"));

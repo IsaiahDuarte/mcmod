@@ -133,7 +133,6 @@ public final class WireDiscoveryGameTests {
 
   @GameTest(template = "empty")
   // Minecraft owns this borrowed chunk cache; a test must never close the world cache.
-  @SuppressWarnings("PMD.CloseResource")
   public static void absentChunksNeverLoadAndLoadedAirDoesNotReuseCache(GameTestHelper helper) {
     var remote = new BlockPos(24000000, 64, 24000000);
     var position =

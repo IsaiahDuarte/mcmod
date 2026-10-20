@@ -158,7 +158,6 @@ public final class ProcessingJournalGameTests {
     return new NetworkPermissions.Actor(id, false);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   private static int resolve(GameTestHelper h) {
     var server = h.getLevel().getServer();
     var at = h.absolutePos(MACHINE);

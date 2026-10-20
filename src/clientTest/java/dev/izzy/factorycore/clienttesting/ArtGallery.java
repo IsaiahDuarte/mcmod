@@ -52,7 +52,6 @@ final class ArtGallery {
   }
 
   /** Front row (z=40) and back row (z=43); every device faces the viewer (north). */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   static int build(ServerLevel level) {
     for (int x = 36; x <= 62; x++)
       for (int z = 28; z <= 52; z++)
@@ -128,7 +127,6 @@ final class ArtGallery {
   }
 
   /** A double chest holding one of every registered Factory Core item. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   static int fillChest(ServerLevel level) {
     var chest = Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, Direction.NORTH);
     level.setBlock(CHEST, chest.setValue(ChestBlock.TYPE, ChestType.LEFT), 3);

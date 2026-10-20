@@ -122,7 +122,6 @@ public final class PresentationClientVerification {
   // ------------------------------------------------------------------ plumbing
 
   /** Keeps gallery wireless devices powered: 1,000 FE per tick each, their real input limit. */
-  @SuppressWarnings("PMD.CloseResource") // Borrowed server level.
   private void feed(ServerTickEvent.Post event) {
     var level = event.getServer().overworld();
     for (var position : List.copyOf(fed)) {
@@ -134,7 +133,6 @@ public final class PresentationClientVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed singleton; Minecraft owns its lifecycle.
   private void tick(ClientTickEvent.Post event) {
     var client = Minecraft.getInstance();
     ticks++;
@@ -209,7 +207,6 @@ public final class PresentationClientVerification {
     step(client -> waited() >= count);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed window; the client owns it.
   private void capture(Minecraft client, String name) {
     try {
       Files.createDirectories(report.getParent().resolve("screenshots"));
@@ -474,7 +471,6 @@ public final class PresentationClientVerification {
     step(client -> client.screen == null && waited() > 4);
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static long planks(ServerPlayer player) {
     var level = player.serverLevel();
     var drive = (StorageDriveEntity) level.getBlockEntity(PresentationScenes.SCREENS.east());
@@ -955,7 +951,6 @@ public final class PresentationClientVerification {
         });
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static DeviceLamp lamp(ServerLevel level, int x, int z) {
     return level.getBlockState(new BlockPos(x, 65, z)).getValue(DeviceLamp.PROPERTY);
   }

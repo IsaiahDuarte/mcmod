@@ -83,7 +83,6 @@ final class JeiClientVerification {
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft and its integrated server are borrowed.
   private void tick(ClientTickEvent.Post event) {
     var client = Minecraft.getInstance();
     ticks++;
@@ -334,8 +333,6 @@ final class JeiClientVerification {
     handler.onComplete();
   }
 
-  @SuppressWarnings(
-      "PMD.CloseResource") // The player's live ServerLevel remains owned by Minecraft.
   private void setup(ServerPlayer player) {
     var level = player.serverLevel();
     level.setDayTime(6000);
@@ -357,8 +354,6 @@ final class JeiClientVerification {
   }
 
   /** Seeds once the terminal is usable, i.e. the network has validated. */
-  @SuppressWarnings(
-      "PMD.CloseResource") // The player's live ServerLevel remains owned by Minecraft.
   private void seed(ServerPlayer player) {
     try {
       if (ready.get()
@@ -386,7 +381,6 @@ final class JeiClientVerification {
     System.out.println("FACTORYCORE_JEI_STAGE " + stage);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Screenshot borrows the game's active Window.
   private void capture(Minecraft client, String name) {
     try {
       Files.createDirectories(report.getParent().resolve("screenshots"));

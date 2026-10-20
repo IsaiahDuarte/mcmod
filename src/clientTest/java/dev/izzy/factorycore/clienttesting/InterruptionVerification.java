@@ -86,7 +86,6 @@ final class InterruptionVerification {
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Server owns the level and fake-player service.
   private void started(ServerStartedEvent event) {
     try {
       Files.createDirectories(report.getParent());
@@ -136,7 +135,6 @@ final class InterruptionVerification {
         && saved.registry().stock(cell, ore).loaded();
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
   private BlastFurnaceBlockEntity furnace() {
     return (BlastFurnaceBlockEntity) principal.serverLevel().getBlockEntity(FURNACE);
   }
@@ -165,7 +163,6 @@ final class InterruptionVerification {
     return map == null ? 0 : map.getOrDefault(key, 0L);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   private void tick(ServerTickEvent.Post event) {
     if (principal == null || phase < 0) return;
     var server = event.getServer();
@@ -179,7 +176,6 @@ final class InterruptionVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
   private void seed(MinecraftServer server) throws IOException {
     ServerLevel level = principal.serverLevel();
     switch (phase) {

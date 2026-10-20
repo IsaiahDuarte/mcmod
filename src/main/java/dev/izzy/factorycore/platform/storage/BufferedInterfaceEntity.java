@@ -105,7 +105,6 @@ public final class BufferedInterfaceEntity extends BlockEntity implements MenuPr
         serverLevel().dimension().location().toString(), worldPosition.asLong());
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns this borrowed level.
   public ServerLevel serverLevel() {
     if (!(level instanceof ServerLevel server) || !server.getServer().isSameThread())
       throw new IllegalStateException("Buffer requires server thread");
@@ -198,7 +197,6 @@ public final class BufferedInterfaceEntity extends BlockEntity implements MenuPr
    * this ID, this reference has the same world/ID with a different generation, and no transfer is
    * unresolved. Slots and the accepted deployment are unchanged; automation needs reapply.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
   public Path adoptBuffer(NodeRegistry.Handle expected) throws IOException {
     var server = serverLevel();
     if (isRemoved() || !physicallyCurrent() || state == null)

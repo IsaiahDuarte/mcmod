@@ -22,7 +22,6 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * ownership lease: copying the block copies only ordinary pattern items, and duplicate pattern IDs
  * are deduplicated by the pattern index. Unsupported saved data is retained unchanged.
  */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns every borrowed ServerLevel.
 public abstract class PatternHolderEntity extends BlockEntity {
   public static final int SLOTS = 9;
   static final int SCHEMA = 1;

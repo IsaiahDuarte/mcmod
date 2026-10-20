@@ -54,7 +54,6 @@ final class ChunkLifecycleVerification {
         && event.getChunk().getPos().z == 0) loads++;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Server/world lifetime belongs to Minecraft.
   boolean tick(ServerPlayer player) {
     var saved = DeviceSavedData.get(player.server);
     var runtime = WorldNetworks.get(player.server);

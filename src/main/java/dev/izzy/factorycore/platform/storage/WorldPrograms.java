@@ -461,7 +461,6 @@ public final class WorldPrograms {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed levels.
   private MachineInterfaceEntity machine(UUID node, ProgramControllerEntity controller) {
     var evidence = saved().nodes().evidence(node);
     if (evidence == null || evidence.position() == null) return null;

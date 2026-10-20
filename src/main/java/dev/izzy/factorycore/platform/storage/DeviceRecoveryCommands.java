@@ -80,7 +80,6 @@ final class DeviceRecoveryCommands {
    * with {@code slot < 0}, energy bank's) reference in the source's dimension as the canonical
    * holder. All proof is server-side.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and level.
   private static int adopt(
       CommandSourceStack source, String backing, long generation, BlockPos drive, int slot) {
     try {
@@ -162,7 +161,6 @@ final class DeviceRecoveryCommands {
                                             bank)))));
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   static boolean admitRepair(CommandSourceStack source) {
     var server = source.getServer();
     var previous = REPAIRS.get(server);
@@ -228,7 +226,6 @@ final class DeviceRecoveryCommands {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server and level.
   private static int inspect(
       CommandSourceStack source, String backing, long generation, boolean bank) {
     try {

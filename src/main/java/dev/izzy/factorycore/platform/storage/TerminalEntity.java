@@ -25,7 +25,6 @@ public final class TerminalEntity extends BlockEntity implements MenuProvider, T
     super(TerminalContent.ENTITY.get(), pos, state);
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   public ServerLevel serverLevel() {
     if (!(level instanceof ServerLevel server) || !server.getServer().isSameThread())
       throw new IllegalStateException("Terminal requires server thread");

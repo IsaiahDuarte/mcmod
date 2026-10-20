@@ -206,7 +206,6 @@ public final class FuelGeneratorEntity extends BlockEntity {
     if (changed) setChanged();
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private boolean push() {
     if (generator.energy() == 0 || !(level instanceof ServerLevel server)) return false;
     boolean moved = false;
