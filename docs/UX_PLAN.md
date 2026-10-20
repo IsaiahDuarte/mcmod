@@ -45,12 +45,12 @@ and acceptance evidence; each slice here updates it when acceptance evidence cha
 
 | Gate | Question | Recommendation | Status |
 | --- | --- | --- | --- |
-| UD1 | Merge Storage Connector + Machine Interface + Buffered Interface into one **Interface**, and Crafting Unit + Crafting Interface into one **Crafter**? Amends SPEC R02's role table (responsibilities stay) and needs a save migration. | Yes | Open |
-| UD2 | Fold Wireless Link Endpoint into a Gateway upgrade and Wireless Access Point into a Controller upgrade? | Yes for the link; keep the Access Point as a block for now | Open |
+| UD1 | Merge Storage Connector + Machine Interface + Buffered Interface into one **Interface**, and Crafting Unit + Crafting Interface into one **Crafter**? Amends SPEC R02's role table (responsibilities stay) and needs a save migration. | Yes | **Resolved 2026-10-20: merge both** |
+| UD2 | Fold Wireless Link Endpoint into a Gateway upgrade and Wireless Access Point into a Controller upgrade? | Yes for the link; keep the Access Point as a block for now | **Resolved 2026-10-20: link becomes a Gateway upgrade; Access Point stays a block** |
 | UD3 | Energy: keep Fuel Generator + three Energy Bank tiers, or give the Controller a small internal buffer and make the Bank optional? | Keep as-is; revisit after a playtest | Open |
-| UD4 | Player-facing display names (registry IDs never change). See the names table below. | Adopt the table | Open |
-| UD5 | Remove the offhand-item controls entirely once screens cover them, or keep them as hidden shortcuts? | Remove | Open |
-| UD6 | Add optional Jade/WTHIT look-at status (new optional dependency, ADR required)? | Yes, Jade only | Open |
+| UD4 | Player-facing display names (registry IDs never change). See the names table below. | Adopt the table | **Resolved 2026-10-20: adopt the table** |
+| UD5 | Remove the offhand-item controls entirely once screens cover them, or keep them as hidden shortcuts? | Remove | **Resolved 2026-10-20: remove** |
+| UD6 | Add optional Jade/WTHIT look-at status (new optional dependency, ADR required)? | Yes, Jade only | **Resolved 2026-10-20: no** |
 
 Proposed display names for UD4:
 
@@ -63,7 +63,7 @@ Proposed display names for UD4:
 | "Held" / "Free" in terminal counts | Reserved / Available |
 | "First index" / "Window" | Slots (picked visually) |
 
-Before UD1 is resolved, Wave A keeps the current blocks and names.
+Wave A keeps the current blocks and names; U15 applies the new names after the merges.
 
 ## Wave A — no contract change
 
@@ -171,7 +171,7 @@ Before UD1 is resolved, Wave A keeps the current blocks and names.
   pairing, power, range and shared throughput rules. Migrate placed endpoints into their
   gateway's upgrade slot.
 
-- [ ] **U14 — Jade status (needs UD6).**
+- [x] **U14 — Jade status (needs UD6).** Dropped: UD6 resolved as no; U7's on-screen status covers this.
   Optional integration showing device state, label, mode and the blocking reason when looking
   at a block. It stays off mandatory class loading (ArchUnit rule).
 
