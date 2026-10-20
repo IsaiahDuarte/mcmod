@@ -8,7 +8,6 @@ import dev.izzy.factorycore.platform.storage.ConnectorEntity;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import java.util.List;
-import java.util.Locale;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
@@ -102,8 +101,7 @@ public final class ThroughputUpgradeItem extends Item {
   public void appendHoverText(
       ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
     super.appendHoverText(stack, context, tooltip, flag);
-    String key = tier.name().toLowerCase(Locale.ROOT);
-    tooltip.add(Component.translatable("tooltip.factorycore.throughput." + key));
+    tooltip.add(ThroughputContent.describe(tier));
     tooltip.add(Component.translatable("tooltip.factorycore.throughput.install"));
     tooltip.add(Component.translatable("tooltip.factorycore.throughput.fair"));
   }

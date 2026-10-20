@@ -1,10 +1,14 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.core.resource.ThroughputTier;
+import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
 import java.util.*;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.*;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -89,6 +93,17 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
             "reset", 258, 23, 52, () -> send(BufferSettingsPackets.RESET, 0, 0, "", new byte[32]));
     rate = box(36, 48, 35, "rate", 3);
     target = box(155, 48, 45, "target", 3);
+    rate.setTooltip(
+        Tooltip.create(
+            ThroughputContent.limits(
+                "gui.factorycore.buffer.rate.help",
+                ThroughputTier.BASE.bufferRate(),
+                ThroughputTier.ADVANCED.bufferRate(),
+                ThroughputTier.ENDGAME.bufferRate())));
+    target.setTooltip(
+        Tooltip.create(
+            ThroughputContent.limits(
+                "gui.factorycore.buffer.target.help", BufferPolicy.MAX_TARGET)));
     setRate = button("set", 75, 47, 35, () -> number(rate, BufferSettingsPackets.RATE));
     setTarget = button("set", 204, 47, 36, () -> number(target, BufferSettingsPackets.TARGET));
     id = box(10, 73, 196, "id", 256);
@@ -198,7 +213,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
   private void number(EditBox box, int action) {
     try {
       int value = Integer.parseInt(box.getValue());
-      if (value < 0 || value > 576) throw new NumberFormatException();
+      if (value < 0 || value > BufferPolicy.MAX_TARGET) throw new NumberFormatException();
       send(action, 0, value, "", new byte[32]);
     } catch (NumberFormatException invalid) {
       minecraft.player.displayClientMessage(

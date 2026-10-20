@@ -1,9 +1,11 @@
 package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
 import java.util.*;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.*;
@@ -66,6 +68,13 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     firstSlot = box(225, 96, 65, 10, "window_first");
     count = box(80, 123, 65, 2, "window_count");
     rate = box(225, 123, 65, 5, "rate");
+    rate.setTooltip(
+        Tooltip.create(
+            ThroughputContent.limits(
+                "gui.factorycore.machine.rate.help",
+                ThroughputTier.BASE.portRate(ResourceKind.ITEM),
+                ThroughputTier.BASE.portRate(ResourceKind.FLUID),
+                ThroughputTier.BASE.portRate(ResourceKind.ENERGY))));
     kindButton =
         button(
             "kind",

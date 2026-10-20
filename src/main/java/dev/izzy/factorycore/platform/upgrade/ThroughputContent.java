@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.upgrade;
 
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import java.util.ArrayList;
@@ -56,6 +57,27 @@ public final class ThroughputContent {
   public static Component name(ThroughputTier tier) {
     return Component.translatable(
         "throughput.factorycore.tier." + tier.name().toLowerCase(Locale.ROOT));
+  }
+
+  /**
+   * A translatable line whose {@code %s} arguments are tier limits, so balance numbers live only in
+   * {@link ThroughputTier}. Arguments are grouped integers such as {@code 1,024}.
+   */
+  public static Component limits(String key, int... values) {
+    var args = new Object[values.length];
+    for (int i = 0; i < values.length; i++) args[i] = String.format(Locale.ROOT, "%,d", values[i]);
+    return Component.translatable(key, args);
+  }
+
+  /** The upgrade item's line: port and buffer ceilings, plus the link multiplier for Overdrive. */
+  public static Component describe(ThroughputTier tier) {
+    return limits(
+        "tooltip.factorycore.throughput." + tier.name().toLowerCase(Locale.ROOT),
+        tier.portRate(ResourceKind.ITEM),
+        tier.portRate(ResourceKind.FLUID),
+        tier.portRate(ResourceKind.ENERGY),
+        tier.bufferRate(),
+        tier.linkScale());
   }
 
   public static void register(IEventBus bus) {

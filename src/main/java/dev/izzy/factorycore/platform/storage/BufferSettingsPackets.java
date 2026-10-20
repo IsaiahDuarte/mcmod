@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.ThroughputTier;
+import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
 import java.util.*;
@@ -48,7 +49,7 @@ public final class BufferSettingsPackets {
           || selection < 0
           || selection > 35
           || value < 0
-          || value > 576
+          || value > BufferPolicy.MAX_TARGET
           || text.length() > 256
           || fingerprint.length != 32)
         throw new IllegalArgumentException("Invalid buffer command bounds");
@@ -129,7 +130,7 @@ public final class BufferSettingsPackets {
           || rate < 1
           || rate > ThroughputTier.ENDGAME.bufferRate()
           || target < 0
-          || target > 576
+          || target > BufferPolicy.MAX_TARGET
           || rules.size() > 16
           || rules.stream().anyMatch(r -> r.length() > 128)
           || slots.size() > 9

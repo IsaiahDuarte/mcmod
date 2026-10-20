@@ -120,7 +120,7 @@ public final class BufferedInterfaceBlock extends NetworkedBlock implements Enti
                 case 64 -> 128;
                 case 128 -> 256;
                 case 256 -> 512;
-                case 512 -> 576;
+                case 512 -> BufferPolicy.MAX_TARGET;
                 default -> 0;
               };
           policy = new BufferPolicy(policy.filter(), policy.rate(), target);
