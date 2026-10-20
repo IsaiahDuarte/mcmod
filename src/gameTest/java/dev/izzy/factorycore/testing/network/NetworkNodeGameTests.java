@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.NodeHandleData;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
@@ -97,12 +98,12 @@ public final class NetworkNodeGameTests {
         "Server placer owns private network");
     for (var face : Direction.values()) {
       helper.assertTrue(
-          NetworkContent.connects(first.getBlockState(), face)
-              && NetworkContent.connects(NetworkContent.CABLE.get().defaultBlockState(), face),
+          NetworkedBlock.wired(first.getBlockState(), face)
+              && NetworkedBlock.wired(NetworkContent.CABLE.get().defaultBlockState(), face),
           "Controller and cable accept every ordinary face");
     }
     helper.assertTrue(
-        !NetworkContent.connects(Blocks.STONE.defaultBlockState(), Direction.UP),
+        !NetworkedBlock.wired(Blocks.STONE.defaultBlockState(), Direction.UP),
         "Ordinary vanilla blocks are not wired ports");
     var collaborator = UUID.randomUUID();
     saved
@@ -143,7 +144,7 @@ public final class NetworkNodeGameTests {
     Direction downstream = state.getValue(BlockStateProperties.FACING);
     for (var direction : Direction.values())
       helper.assertTrue(
-          NetworkContent.GATEWAY.get().connects(state, direction)
+          NetworkContent.GATEWAY.get().wiredFace(state, direction)
               == (direction == downstream || direction == downstream.getOpposite()),
           "Only opposing gateway ports connect");
     var data = first.saveWithFullMetadata(helper.getLevel().registryAccess());

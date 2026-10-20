@@ -13,6 +13,7 @@ import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.BufferedItemHandler;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -43,7 +44,8 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /** Loaded physical holder of one canonical inventory; no stock is saved into chunk/item NBT. */
-public final class BufferedInterfaceEntity extends BlockEntity implements MenuProvider {
+public final class BufferedInterfaceEntity extends BlockEntity
+    implements MenuProvider, WiredMember, CanonicalStorage {
   private UUID opening;
 
   public boolean canUse(ServerPlayer player) {
@@ -500,5 +502,14 @@ public final class BufferedInterfaceEntity extends BlockEntity implements MenuPr
     data = tag.contains(BufferData.FIELD) ? tag.get(BufferData.FIELD).copy() : null;
     parse();
     if (level instanceof ServerLevel) WorldNetworks.changed(level, worldPosition);
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(
+        handle() == null ? null : handle().id(),
+        "unowned",
+        NetworkTopology.Role.STORAGE,
+        WiredMember.placedValid(this::validatePlaced));
   }
 }

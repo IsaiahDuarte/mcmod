@@ -207,10 +207,7 @@ final class ProviderIdentity {
     var chunk = Loaded.chunk(level, position);
     if (chunk == null) return null;
     BlockEntity entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
-    if (entity instanceof EnergyBankEntity
-        || entity instanceof BufferedInterfaceEntity
-        || entity instanceof StorageDriveEntity
-        || entity instanceof ConnectorEntity)
+    if (entity instanceof CanonicalStorage)
       throw new IllegalArgumentException(
           "Digital storage uses canonical handles, not foreign registration");
     if (entity instanceof ExternalBackingProvider described) {
@@ -233,10 +230,7 @@ final class ProviderIdentity {
         var backingChunk = Loaded.chunk(level, block);
         if (backingChunk == null) return null;
         var part = backingChunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
-        if (part instanceof EnergyBankEntity
-            || part instanceof BufferedInterfaceEntity
-            || part instanceof StorageDriveEntity
-            || part instanceof ConnectorEntity)
+        if (part instanceof CanonicalStorage)
           throw new IllegalArgumentException("Declared backing overlaps canonical digital storage");
       }
       return copied.stream()

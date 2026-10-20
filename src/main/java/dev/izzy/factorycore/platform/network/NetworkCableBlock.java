@@ -1,9 +1,5 @@
 package dev.izzy.factorycore.platform.network;
 
-import dev.izzy.factorycore.platform.crafting.CraftingUnitBlock;
-import dev.izzy.factorycore.platform.program.ProgramControllerBlock;
-import dev.izzy.factorycore.platform.storage.BufferedInterfaceBlock;
-import dev.izzy.factorycore.platform.wireless.AccessPointBlock;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -62,16 +58,11 @@ public final class NetworkCableBlock extends NetworkedBlock {
   }
 
   /**
-   * True when a cable arm should be drawn toward {@code neighbor}: it is another cable or a device
-   * whose facing face {@link WorldWireReader} treats as a wired port.
+   * True when a cable arm should be drawn toward {@code neighbor}: its face toward this cable is a
+   * wired port ({@link NetworkedBlock#wiredFace}).
    */
   public static boolean linksTo(BlockState neighbor, Direction towardNeighbor) {
-    var block = neighbor.getBlock();
-    return NetworkContent.connects(neighbor, towardNeighbor.getOpposite())
-        || block instanceof BufferedInterfaceBlock
-        || block instanceof CraftingUnitBlock
-        || block instanceof ProgramControllerBlock
-        || block instanceof AccessPointBlock;
+    return NetworkedBlock.wired(neighbor, towardNeighbor.getOpposite());
   }
 
   /** The cable state with every arm recomputed from loaded neighbors. */

@@ -1,9 +1,11 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.*;
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -20,7 +22,8 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
 
 /** Access-only holder; stock, grants and menu credentials are never copied into chunk/item NBT. */
-public final class TerminalEntity extends BlockEntity implements MenuProvider, TerminalAccess {
+public final class TerminalEntity extends BlockEntity
+    implements MenuProvider, TerminalAccess, WiredMember {
   private UUID opening;
 
   public TerminalEntity(BlockPos pos, BlockState state) {
@@ -82,5 +85,10 @@ public final class TerminalEntity extends BlockEntity implements MenuProvider, T
   public void setRemoved() {
     WorldNetworks.changed(level, worldPosition);
     super.setRemoved();
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(null, "terminal", NetworkTopology.Role.TERMINAL, current());
   }
 }

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.network;
 
 import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.Containers;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -20,6 +21,20 @@ import net.minecraft.world.level.block.state.BlockState;
 public abstract class NetworkedBlock extends Block {
   protected NetworkedBlock(Properties properties) {
     super(properties);
+  }
+
+  /**
+   * The single definition of this block's wired ports: true when {@code face} carries a network
+   * connection. Cable arms, discovery triggers and the wire reader's ports all derive from it.
+   * Default: every face.
+   */
+  public boolean wiredFace(BlockState state, Direction face) {
+    return true;
+  }
+
+  /** True when {@code state} is a networked block whose {@code face} is a wired port. */
+  public static boolean wired(BlockState state, Direction face) {
+    return state.getBlock() instanceof NetworkedBlock block && block.wiredFace(state, face);
   }
 
   /** True when only cosmetic state changed, so the network need not rebuild (default: lamp). */

@@ -4,19 +4,10 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.LeasedBlockItem;
-import dev.izzy.factorycore.platform.storage.ConnectorBlock;
-import dev.izzy.factorycore.platform.storage.EnergyBankBlock;
-import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
-import dev.izzy.factorycore.platform.storage.TerminalBlock;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
-import java.util.Objects;
-import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -57,20 +48,6 @@ public final class NetworkContent {
                   BlockEntityType.Builder.of(
                           NetworkNodeEntity::new, CONTROLLER.get(), GATEWAY.get())
                       .build(null));
-
-  /** Local port eligibility only; callers must separately validate load, identity and topology. */
-  public static boolean connects(BlockState state, Direction face) {
-    Objects.requireNonNull(face);
-    if (state.getBlock() instanceof NetworkNodeBlock node) return node.connects(state, face);
-    if (state.getBlock() instanceof ConnectorBlock)
-      return face != state.getValue(BlockStateProperties.FACING);
-    if (state.getBlock() instanceof LinkEndpointBlock)
-      return face == state.getValue(BlockStateProperties.FACING).getOpposite();
-    return state.is(CABLE.get())
-        || state.getBlock() instanceof StorageDriveBlock
-        || state.getBlock() instanceof EnergyBankBlock
-        || state.getBlock() instanceof TerminalBlock;
-  }
 
   private static final DeferredRegister<MenuType<?>> MENUS =
       DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);

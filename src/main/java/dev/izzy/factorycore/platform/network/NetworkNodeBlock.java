@@ -43,7 +43,9 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
     return kind;
   }
 
-  public boolean connects(BlockState state, Direction face) {
+  /** Controllers wire on every face; a gateway only on its upstream and downstream faces. */
+  @Override
+  public boolean wiredFace(BlockState state, Direction face) {
     return kind == NodeRegistry.Kind.CONTROLLER
         || face == state.getValue(BlockStateProperties.FACING)
         || face == state.getValue(BlockStateProperties.FACING).getOpposite();

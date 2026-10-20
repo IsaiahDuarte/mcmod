@@ -211,4 +211,10 @@ public final class LinkEndpointBlock extends NetworkedBlock implements EntityBlo
   protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
     return blockEntity instanceof LinkEndpointEntity link ? link.upgradeDrops() : List.of();
   }
+
+  /** Only the back face; the partner link is a wireless port. */
+  @Override
+  public boolean wiredFace(BlockState state, Direction face) {
+    return face == state.getValue(BlockStateProperties.FACING).getOpposite();
+  }
 }

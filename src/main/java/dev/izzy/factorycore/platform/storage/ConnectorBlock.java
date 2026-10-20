@@ -228,4 +228,10 @@ public final class ConnectorBlock extends NetworkedBlock implements EntityBlock 
         ? List.of(entity.portableForBreak())
         : List.of();
   }
+
+  /** Every face except the one facing its target machine. */
+  @Override
+  public boolean wiredFace(BlockState state, Direction face) {
+    return face != state.getValue(BlockStateProperties.FACING);
+  }
 }

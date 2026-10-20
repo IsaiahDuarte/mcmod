@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.program;
 
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
 import dev.izzy.factorycore.core.program.ProgramIr;
@@ -8,6 +9,7 @@ import dev.izzy.factorycore.core.wasm.WasmPreflight;
 import dev.izzy.factorycore.core.wasm.WasmProgram;
 import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.util.List;
@@ -28,7 +30,7 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * finite FE buffer and bounded logs. Deployment authority is the deployer's current grants checked
  * at every invocation; breaking the block keeps the draft and FE, never the deployment.
  */
-public final class ProgramControllerEntity extends BlockEntity {
+public final class ProgramControllerEntity extends BlockEntity implements WiredMember {
   public static final int MAX_DRAFT = FriendlyCompiler.MAX_SOURCE;
   public static final long CAPACITY = 10_000;
   public static final long INPUT_RATE = 1_000;
@@ -402,5 +404,11 @@ public final class ProgramControllerEntity extends BlockEntity {
     if (unsupported != null) return;
     if (!draft.isEmpty()) components.set(ProgramContent.DRAFT.get(), draft);
     if (energy > 0) components.set(ProgramContent.ENERGY.get(), energy);
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(
+        null, "program", NetworkTopology.Role.PROGRAM, current() && diagnostic().isEmpty());
   }
 }

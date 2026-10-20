@@ -1,8 +1,10 @@
 package dev.izzy.factorycore.platform.crafting;
 
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -23,7 +25,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * ownership lease: copying the block copies only ordinary pattern items, and duplicate pattern IDs
  * are deduplicated by the pattern index. Unsupported saved data is retained unchanged.
  */
-public abstract class PatternHolderEntity extends BlockEntity {
+public abstract class PatternHolderEntity extends BlockEntity implements WiredMember {
   public static final int SLOTS = 9;
   static final int SCHEMA = 1;
   private CompoundTag unsupported;
@@ -144,5 +146,11 @@ public abstract class PatternHolderEntity extends BlockEntity {
     super.collectImplicitComponents(components);
     if (unsupported != null)
       components.set(CraftingContent.RETAINED.get(), CustomData.of(unsupported));
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(
+        null, "crafting_unit", NetworkTopology.Role.CRAFTER, current() && diagnostic().isEmpty());
   }
 }

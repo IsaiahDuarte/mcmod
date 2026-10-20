@@ -21,6 +21,7 @@ import dev.izzy.factorycore.core.storage.RouteCursors;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -840,7 +841,7 @@ public final class ConnectorGameTests {
                         .setValue(BlockStateProperties.FACING, direction);
                 for (var face : Direction.values())
                   helper.assertTrue(
-                      NetworkContent.connects(state, face) == (face != direction),
+                      NetworkedBlock.wired(state, face) == (face != direction),
                       "Socket excludes only provider face from cabling");
                 double x =
                     direction == Direction.EAST ? 15.5 : direction == Direction.WEST ? 0.5 : 8;

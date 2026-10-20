@@ -1,8 +1,10 @@
 package dev.izzy.factorycore.platform.wireless;
 
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -18,7 +20,7 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * has FE for each open tick. It changes player access only, never machine discovery, routing or
  * chunk loading.
  */
-public final class AccessPointEntity extends BlockEntity {
+public final class AccessPointEntity extends BlockEntity implements WiredMember {
   public static final long CAPACITY = 20_000;
   public static final long INPUT_RATE = 1_000;
   public static final int RANGE = 64;
@@ -126,5 +128,10 @@ public final class AccessPointEntity extends BlockEntity {
   protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.loadAdditional(tag, registries);
     energy = Math.max(0, Math.min(CAPACITY, tag.getLong("Energy")));
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(null, "access_point", NetworkTopology.Role.TERMINAL, current());
   }
 }

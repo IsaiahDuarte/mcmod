@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -25,7 +27,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelResource;
 
 /** Four physical lease items; stock and reservations are never copied into chunk NBT. */
-public final class StorageDriveEntity extends BlockEntity {
+public final class StorageDriveEntity extends BlockEntity implements WiredMember, CanonicalStorage {
   public static final String RECOVERY = "FactoryCoreDriveRecovery";
   private static final String REJECTED = "RejectedCellData";
   private final ItemStack[] cells = {
@@ -404,5 +406,11 @@ public final class StorageDriveEntity extends BlockEntity {
 
   private static void checkSlot(int slot) {
     if (slot < 0 || slot >= 4) throw new IllegalArgumentException("Drive slot must be 0..3");
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(
+        null, "wire", NetworkTopology.Role.STORAGE, !isRemoved() && diagnostic().isEmpty());
   }
 }

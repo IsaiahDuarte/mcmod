@@ -2,12 +2,14 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -33,7 +35,7 @@ import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 
 /** Physical policy and reference holder; foreign contents are never copied into this block. */
-public class ConnectorEntity extends BlockEntity {
+public class ConnectorEntity extends BlockEntity implements WiredMember, CanonicalStorage {
   private Tag data;
   private ConnectorData.State state;
   private String diagnostic = "";
@@ -562,5 +564,18 @@ public class ConnectorEntity extends BlockEntity {
     cache = null;
     providerToken = UUID.randomUUID();
     if (level instanceof ServerLevel) changed();
+  }
+
+  /** Machine interfaces are labelled INTERFACE vertices; storage connectors are STORAGE. */
+  @Override
+  public Vertex wireVertex() {
+    var lease = handle();
+    boolean machine = lease != null && lease.kind() == NodeRegistry.Kind.MACHINE_INTERFACE;
+    return new Vertex(
+        lease == null ? null : lease.id(),
+        "unowned",
+        machine ? NetworkTopology.Role.INTERFACE : NetworkTopology.Role.STORAGE,
+        WiredMember.placedValid(this::validatePlaced) && !isRemoved(),
+        machine ? label() : "");
   }
 }

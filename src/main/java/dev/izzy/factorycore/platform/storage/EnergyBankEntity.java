@@ -1,11 +1,13 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankOwnership;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -27,7 +29,8 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
 /**
  * A physical reference only; canonical stock, claims and rate spending belong to world services.
  */
-public final class EnergyBankEntity extends BlockEntity implements IEnergyStorage {
+public final class EnergyBankEntity extends BlockEntity
+    implements IEnergyStorage, WiredMember, CanonicalStorage {
   private Tag data;
   private DeviceRegistry.Handle handle;
   private String diagnostic = "";
@@ -315,5 +318,11 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
   @Override
   public boolean canReceive() {
     return true;
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(
+        null, "wire", NetworkTopology.Role.STORAGE, WiredMember.placedValid(this::validatePlaced));
   }
 }
