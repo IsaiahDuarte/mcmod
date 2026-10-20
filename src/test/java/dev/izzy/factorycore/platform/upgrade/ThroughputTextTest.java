@@ -31,11 +31,11 @@ class ThroughputTextTest {
           "gui.factorycore.machine.rate.help", 3);
 
   private static JsonObject lang() throws Exception {
-    var stream =
-        ThroughputTextTest.class.getResourceAsStream("/assets/factorycore/lang/en_us.json");
-    assertNotNull(stream, "lang on the test classpath");
-    try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-      return JsonParser.parseReader(reader).getAsJsonObject();
+    try (var stream =
+        ThroughputTextTest.class.getResourceAsStream("/assets/factorycore/lang/en_us.json")) {
+      assertNotNull(stream, "lang on the test classpath");
+      return JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+          .getAsJsonObject();
     }
   }
 

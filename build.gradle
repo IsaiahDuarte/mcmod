@@ -311,6 +311,18 @@ pmd {
     consoleOutput = true
 }
 
+// PMD logs a misconfigured or crashing rule and continues, which silently disables it. Its XML
+// report records those as <error> elements; treat any as a failed check.
+tasks.withType(Pmd).configureEach { pmdTask ->
+    doLast {
+        def report = pmdTask.reports.xml.outputLocation.get().asFile
+        if (report.isFile()) {
+            def errors = new groovy.xml.XmlSlurper().parse(report).'**'.findAll { it.name() == 'error' }
+            if (errors) throw new GradleException("PMD could not apply its rules (${errors.size()} errors); see ${report}: ${errors[0].@msg}")
+        }
+    }
+}
+
 tasks.named('processResources') {
     inputs.property('version', project.version)
     filesMatching('META-INF/neoforge.mods.toml') {

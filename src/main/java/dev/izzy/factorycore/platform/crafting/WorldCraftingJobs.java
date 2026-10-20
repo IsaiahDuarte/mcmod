@@ -31,6 +31,7 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -529,7 +530,7 @@ public final class WorldCraftingJobs {
 
   /** Reads a target without loading its chunk. */
   private BlockEntityRef target(NodeRegistry.Position target) {
-    for (var level : server.getAllLevels()) {
+    for (ServerLevel level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(target.dimension())) continue;
       var pos = BlockPos.of(target.block());
       var chunk = Loaded.chunk(level, pos);
@@ -641,7 +642,7 @@ public final class WorldCraftingJobs {
 
   /** The loaded current interface at a dispatch position, or null. */
   private CraftingInterfaceEntity interfaceAt(NodeRegistry.Position position) {
-    for (var level : server.getAllLevels()) {
+    for (ServerLevel level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(position.dimension())) continue;
       var pos = BlockPos.of(position.block());
       if (Loaded.chunk(level, pos) == null) return null;

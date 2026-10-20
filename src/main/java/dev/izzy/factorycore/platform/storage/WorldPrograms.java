@@ -39,6 +39,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
@@ -459,7 +460,7 @@ public final class WorldPrograms {
     var evidence = saved().nodes().evidence(node);
     if (evidence == null || evidence.position() == null) return null;
     var position = evidence.position();
-    for (var level : server.getAllLevels()) {
+    for (ServerLevel level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(position.dimension())) continue;
       var pos = BlockPos.of(position.block());
       if (Loaded.chunk(level, pos) == null) return null;
