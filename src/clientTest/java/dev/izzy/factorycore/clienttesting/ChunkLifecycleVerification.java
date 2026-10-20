@@ -13,8 +13,10 @@ import net.minecraft.server.level.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /**
@@ -52,7 +54,6 @@ final class ChunkLifecycleVerification {
         && event.getChunk().getPos().z == 0) loads++;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Server/world lifetime belongs to Minecraft.
   boolean tick(ServerPlayer player) {
     var saved = DeviceSavedData.get(player.server);
     var runtime = WorldNetworks.get(player.server);
@@ -74,10 +75,7 @@ final class ChunkLifecycleVerification {
       oldPort = runtime.connectors().port(external);
       var codec = new PlatformResourceCodec(player.registryAccess());
       key = codec.itemKey(player.getInventory().getItem(9));
-      water =
-          codec.fluidKey(
-              new net.neoforged.neoforge.fluids.FluidStack(
-                  net.minecraft.world.level.material.Fluids.WATER, 1));
+      water = codec.fluidKey(new FluidStack(Fluids.WATER, 1));
       canonical = saved.save(new CompoundTag(), player.registryAccess());
       level.getGameRules().getRule(GameRules.RULE_SPAWN_CHUNK_RADIUS).set(0, player.server);
       started = now;

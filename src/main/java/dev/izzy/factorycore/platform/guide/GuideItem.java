@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.guide;
 
+import dev.izzy.factorycore.platform.client.GuideScreen;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
@@ -17,7 +18,7 @@ public final class GuideItem extends Item {
   public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
     var stack = player.getItemInHand(hand);
     // The client class is only resolved on the client branch.
-    if (level.isClientSide()) dev.izzy.factorycore.platform.client.GuideScreen.open();
+    if (level.isClientSide()) GuideScreen.open();
     return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
   }
 }

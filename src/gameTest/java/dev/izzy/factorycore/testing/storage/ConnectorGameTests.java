@@ -1,10 +1,12 @@
 package dev.izzy.factorycore.testing.storage;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.OperationResult;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
@@ -12,29 +14,49 @@ import dev.izzy.factorycore.core.resource.StagedTransfer;
 import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.core.storage.MachinePresets;
+import dev.izzy.factorycore.core.storage.RouteCursors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -59,8 +81,7 @@ public final class ConnectorGameTests {
       DeviceSavedData saved) {}
 
   private static NodeRegistry.Position position(GameTestHelper helper, BlockPos pos) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(pos).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(pos));
   }
 
   private static void ready(GameTestHelper helper, WorldNetworks runtime, BlockPos pos) {
@@ -83,9 +104,7 @@ public final class ConnectorGameTests {
 
   private static Setup setup(GameTestHelper helper) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     helper.setBlock(CABLE, NetworkContent.CABLE.get());
     var entity = connector(helper, CONNECTOR, Direction.EAST);
     return new Setup(
@@ -114,11 +133,9 @@ public final class ConnectorGameTests {
             : kind == ResourceKind.FLUID
                 ? codec.fluidKey(new FluidStack(Fluids.WATER, 1000))
                 : codec.itemKey(marked(64));
-    dev.izzy.factorycore.core.storage.DeviceRegistry.Handle digital;
+    DeviceRegistry.Handle digital;
     if (kind == ResourceKind.ENERGY) {
-      helper.setBlock(STORAGE, EnergyBankContent.block(EnergyBankTier.STARTER));
-      EnergyBankEntity bank = helper.getBlockEntity(STORAGE);
-      bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+      EnergyBankEntity bank = Net.in(helper).bank(STORAGE, EnergyBankTier.STARTER);
       digital = bank.handle();
     } else {
       helper.setBlock(STORAGE, StorageContent.DRIVE.get());
@@ -559,7 +576,7 @@ public final class ConnectorGameTests {
   public static void physicalControlsRequireEditAndDoNotConsumeMaterials(GameTestHelper helper) {
     var setup = setup(helper);
     helper.setBlock(PROVIDER, Blocks.CHEST);
-    var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+    var player = helper.makeMockPlayer(GameType.SURVIVAL);
     helper
         .startSequence()
         .thenWaitUntil(() -> ready(helper, setup.runtime(), CONNECTOR))
@@ -570,20 +587,18 @@ public final class ConnectorGameTests {
                   .network(setup.root().handle().id())
                   .setGrants(
                       setup.actor(), player.getUUID(), Set.of(NetworkPermissions.Permission.EDIT));
-              player.setItemInHand(
-                  net.minecraft.world.InteractionHand.OFF_HAND, new ItemStack(Items.REDSTONE, 1));
+              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.REDSTONE, 1));
               helper.useBlock(CONNECTOR, player);
               helper.assertTrue(
                   setup.connector().settings().access() == ConnectorSettings.Access.READ_ONLY
                       && player.getOffhandItem().getCount() == 1,
                   "Offhand redstone configures access without consumption");
-              player.setItemInHand(
-                  net.minecraft.world.InteractionHand.OFF_HAND, new ItemStack(Items.GOLD_INGOT, 7));
+              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.GOLD_INGOT, 7));
               helper.useBlock(CONNECTOR, player);
               helper.assertTrue(
                   setup.connector().settings().priority() == -7,
                   "Offhand gold selects negative stack-size priority");
-              player.setItemInHand(net.minecraft.world.InteractionHand.OFF_HAND, ItemStack.EMPTY);
+              player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
               player.setShiftKeyDown(true);
               helper.useBlock(CONNECTOR, player);
               helper.assertTrue(
@@ -631,9 +646,7 @@ public final class ConnectorGameTests {
               var portable = setup.connector().portableForBreak();
               helper.assertTrue(
                   portable
-                      .getOrDefault(
-                          DataComponents.CUSTOM_DATA,
-                          net.minecraft.world.item.component.CustomData.EMPTY)
+                      .getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
                       .copyTag()
                       .getCompound("FactoryCoreConnector")
                       .equals(future),
@@ -647,9 +660,7 @@ public final class ConnectorGameTests {
       GameTestHelper helper) {
     var setup = setup(helper);
     helper.setBlock(PROVIDER, ConnectorFixture.BLOCK.get());
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var handle = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(64));
     WorldStorageTransfers.Result[] result = {null};
@@ -742,9 +753,7 @@ public final class ConnectorGameTests {
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
     var parentStorage = new BlockPos(1, 1, 2);
-    helper.setBlock(parentStorage, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(parentStorage);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(parentStorage, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(64));
     var id = UUID.randomUUID();
@@ -825,14 +834,14 @@ public final class ConnectorGameTests {
                         .setValue(BlockStateProperties.FACING, direction);
                 for (var face : Direction.values())
                   helper.assertTrue(
-                      NetworkContent.connects(state, face) == (face != direction),
+                      NetworkedBlock.wired(state, face) == (face != direction),
                       "Socket excludes only provider face from cabling");
                 double x =
                     direction == Direction.EAST ? 15.5 : direction == Direction.WEST ? 0.5 : 8;
                 double y = direction == Direction.UP ? 15.5 : direction == Direction.DOWN ? 0.5 : 8;
                 double z =
                     direction == Direction.SOUTH ? 15.5 : direction == Direction.NORTH ? 0.5 : 8;
-                var point = new net.minecraft.world.phys.Vec3(x / 16, y / 16, z / 16);
+                var point = new Vec3(x / 16, y / 16, z / 16);
                 helper.assertTrue(
                     state
                         .getShape(helper.getLevel(), helper.absolutePos(CONNECTOR))
@@ -846,8 +855,7 @@ public final class ConnectorGameTests {
                       .getLevel()
                       .getRecipeManager()
                       .byKey(
-                          net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                              "factorycore", "storage_connector"))
+                          ResourceLocation.fromNamespaceAndPath("factorycore", "storage_connector"))
                       .isPresent(),
                   "Survival recipe loaded");
             })
@@ -860,9 +868,7 @@ public final class ConnectorGameTests {
     helper.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(64));
     UUID[] ids = {UUID.randomUUID(), UUID.randomUUID()};
@@ -934,7 +940,7 @@ public final class ConnectorGameTests {
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
     WorldConnectors.Handle[] initial = {null};
-    net.minecraft.nbt.CompoundTag[] disk = {null};
+    CompoundTag[] disk = {null};
     helper
         .startSequence()
         .thenWaitUntil(() -> ready(helper, setup.runtime(), CONNECTOR))
@@ -946,14 +952,12 @@ public final class ConnectorGameTests {
                   helper
                       .getLevel()
                       .getServer()
-                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .getWorldPath(LevelResource.ROOT)
                       .resolve("provider-identity-" + UUID.randomUUID() + ".dat");
               try {
-                net.minecraft.nbt.NbtIo.writeCompressed(disk[0], file);
-                disk[0] =
-                    net.minecraft.nbt.NbtIo.readCompressed(
-                        file, net.minecraft.nbt.NbtAccounter.create(1_048_576));
-              } catch (java.io.IOException failure) {
+                NbtIo.writeCompressed(disk[0], file);
+                disk[0] = NbtIo.readCompressed(file, NbtAccounter.create(1_048_576));
+              } catch (IOException failure) {
                 throw new IllegalStateException("Provider fixture disk round trip failed", failure);
               }
               helper.assertTrue(
@@ -1008,9 +1012,7 @@ public final class ConnectorGameTests {
     helper.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(64));
     var id = UUID.randomUUID();
@@ -1027,25 +1029,25 @@ public final class ConnectorGameTests {
               var endpoint = setup.runtime().connectors().bind(setup.connector()).handle();
               var scope = setup.runtime().membership(position(helper, ROOT)).scope();
               var context =
-                  new dev.izzy.factorycore.core.resource.TransferContext(
+                  new TransferContext(
                       setup.saved().registry().world(),
                       scope.network(),
                       scope.segment(),
                       position(helper, ROOT),
-                      new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
-                          dev.izzy.factorycore.core.resource.TransferContext.Type.EXTERNAL,
+                      new TransferContext.Endpoint(
+                          TransferContext.Type.EXTERNAL,
                           endpoint.connector().id(),
                           endpoint.backing(),
                           endpoint.connector().generation(),
                           endpoint.generation()),
-                      new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
-                          dev.izzy.factorycore.core.resource.TransferContext.Type.DIGITAL,
+                      new TransferContext.Endpoint(
+                          TransferContext.Type.DIGITAL,
                           cell.backing(),
                           cell.backing(),
                           cell.generation(),
                           0));
               var blocked =
-                  new dev.izzy.factorycore.core.resource.ResourcePort() {
+                  new ResourcePort() {
                     @Override
                     public UUID backingId() {
                       return cell.backing();
@@ -1122,7 +1124,7 @@ public final class ConnectorGameTests {
     helper.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
-    var marker = new net.minecraft.nbt.CompoundTag();
+    var marker = new CompoundTag();
     marker.putInt("Schema", 2);
     marker.putString("FutureEvidence", "retain exactly");
     chest.getPersistentData().put("factorycore:external_identity", marker.copy());
@@ -1366,18 +1368,14 @@ public final class ConnectorGameTests {
             ? ResourceKey.ENERGY
             : new PlatformResourceCodec(helper.getLevel().registryAccess())
                 .fluidKey(new FluidStack(Fluids.WATER, 1000));
-    dev.izzy.factorycore.core.storage.DeviceRegistry.Handle digital;
+    DeviceRegistry.Handle digital;
     if (kind == ResourceKind.ENERGY) {
       provider.energy.receiveEnergy(1000, false);
-      helper.setBlock(STORAGE, EnergyBankContent.block(EnergyBankTier.STARTER));
-      EnergyBankEntity bank = helper.getBlockEntity(STORAGE);
-      bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+      EnergyBankEntity bank = Net.in(helper).bank(STORAGE, EnergyBankTier.STARTER);
       digital = bank.handle();
     } else {
       provider.fluids.fill(new FluidStack(Fluids.WATER, 1000), FluidAction.EXECUTE);
-      helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-      StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-      drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+      StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_FLUID);
       digital = CellHandleData.read(drive.cell(0));
     }
     WorldConnectors.Handle[] endpoint = {null};
@@ -1483,7 +1481,7 @@ public final class ConnectorGameTests {
       Setup setup,
       ResourceKey key,
       WorldStorageTransfers.CatalogCursor cursor,
-      java.util.List<WorldStorageTransfers.CatalogRow> rows,
+      List<WorldStorageTransfers.CatalogRow> rows,
       boolean[] complete,
       int[] pages) {
     helper.assertTrue(++pages[0] <= 640, "Catalog steps remain bounded by registry quotas");
@@ -1514,15 +1512,13 @@ public final class ConnectorGameTests {
     ConnectorFixture.ProviderEntity provider = helper.getBlockEntity(PROVIDER);
     provider.items.setStackInSlot(0, marked(10));
     provider.items.setStackInSlot(1, marked(20));
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(1));
     WorldConnectors.Handle[] endpoint = {null};
     OperationResult[] claim = {null};
     boolean[] complete = {false};
-    var rows = new java.util.ArrayList<WorldStorageTransfers.CatalogRow>();
+    var rows = new ArrayList<WorldStorageTransfers.CatalogRow>();
     helper
         .startSequence()
         .thenWaitUntil(
@@ -1620,12 +1616,10 @@ public final class ConnectorGameTests {
     ChestBlockEntity chest = helper.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(64));
     var parentStorage = new BlockPos(1, 1, 2);
-    helper.setBlock(parentStorage, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(parentStorage);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(parentStorage, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(1));
-    var rows = new java.util.ArrayList<WorldStorageTransfers.CatalogRow>();
+    var rows = new ArrayList<WorldStorageTransfers.CatalogRow>();
     boolean[] complete = {false};
     helper
         .startSequence()
@@ -1750,9 +1744,7 @@ public final class ConnectorGameTests {
                       == OperationResult.Reason.DENIED,
                   "Cursor cannot mix resource filters");
               helper.setBlock(ROOT, Blocks.AIR);
-              helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-              NetworkNodeEntity replacement = helper.getBlockEntity(ROOT);
-              replacement.commission(setup.actor().id());
+              NetworkNodeEntity replacement = Net.in(helper, setup.actor().id()).controller(ROOT);
             })
         .thenWaitUntil(() -> ready(helper, setup.runtime(), CONNECTOR))
         .thenExecute(
@@ -1783,9 +1775,7 @@ public final class ConnectorGameTests {
     var high = connector(helper, highPos, Direction.EAST);
     helper.setBlock(highProviderPos, ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity preferred = helper.getBlockEntity(highProviderPos);
-    helper.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(marked(1));
     WorldStorageRoutes.Result[] result = {null};
@@ -1831,7 +1821,7 @@ public final class ConnectorGameTests {
               var endpoint = setup.runtime().connectors().bind(setup.connector()).handle();
               var scope = setup.runtime().membership(position(helper, ROOT)).scope();
               var rotationScope =
-                  new dev.izzy.factorycore.core.storage.RouteCursors.Scope(
+                  new RouteCursors.Scope(
                       scope.network(),
                       scope.segment(),
                       routeActor.id(),
@@ -1946,7 +1936,7 @@ public final class ConnectorGameTests {
                 var member = setup.runtime().membership(position(helper, ROOT)).scope();
                 var fixedEndpoint = setup.runtime().connectors().bind(setup.connector()).handle();
                 var rotationScope =
-                    new dev.izzy.factorycore.core.storage.RouteCursors.Scope(
+                    new RouteCursors.Scope(
                         member.network(),
                         member.segment(),
                         setup.actor().id(),
@@ -1963,11 +1953,7 @@ public final class ConnectorGameTests {
                     "Rotation records selected stable backing");
                 var restored =
                     DeviceSavedData.load(
-                        setup
-                            .saved()
-                            .save(
-                                new net.minecraft.nbt.CompoundTag(),
-                                helper.getLevel().registryAccess()),
+                        setup.saved().save(new CompoundTag(), helper.getLevel().registryAccess()),
                         helper.getLevel().registryAccess());
                 helper.assertTrue(
                     restored
@@ -2188,23 +2174,22 @@ public final class ConnectorGameTests {
               var folder =
                   h.getLevel()
                       .getServer()
-                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .getWorldPath(LevelResource.ROOT)
                       .resolve("factorycore-device-recovery");
               try {
-                java.nio.file.Files.createDirectories(folder);
+                Files.createDirectories(folder);
                 var blocker =
-                    java.nio.file.Files.createDirectory(
-                        folder.resolve("unexpected-port-" + UUID.randomUUID()));
+                    Files.createDirectory(folder.resolve("unexpected-port-" + UUID.randomUUID()));
                 boolean refused = false;
                 try {
                   f.connector.repairConflict(old);
-                } catch (java.io.IOException expected) {
+                } catch (IOException expected) {
                   refused = true;
                 } finally {
-                  java.nio.file.Files.delete(blocker);
+                  Files.delete(blocker);
                 }
                 h.assertTrue(refused, "Audit IO failure prevents repair");
-              } catch (java.io.IOException failure) {
+              } catch (IOException failure) {
                 throw new AssertionError(failure);
               }
               h.assertTrue(
@@ -2236,9 +2221,7 @@ public final class ConnectorGameTests {
     h.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(19));
-    h.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(h).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(h.getLevel().registryAccess()).itemKey(marked(1));
     h.startSequence()
@@ -2320,9 +2303,7 @@ public final class ConnectorGameTests {
     h.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
     chest.setItem(0, marked(19));
-    h.setBlock(STORAGE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(STORAGE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(h).drive(STORAGE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var key = new PlatformResourceCodec(h.getLevel().registryAccess()).itemKey(marked(1));
     UUID[] id = {null};
@@ -2386,7 +2367,7 @@ public final class ConnectorGameTests {
               var provider = chest.saveWithFullMetadata(h.getLevel().registryAccess());
               try {
                 f.connector.repairConflict(old);
-              } catch (java.io.IOException failure) {
+              } catch (IOException failure) {
                 throw new AssertionError(failure);
               }
               // ADR 0047: known legacy staging settles only into canonical holders, never through
@@ -2458,8 +2439,8 @@ public final class ConnectorGameTests {
                 ((MachineInterfaceEntity) port)
                     .deployPreset(
                         f.actor,
-                        dev.izzy.factorycore.core.storage.MachinePresets.Mode.STOCK,
-                        dev.izzy.factorycore.core.resource.ResourceFilter.all(ResourceKind.ITEM),
+                        MachinePresets.Mode.STOCK,
+                        ResourceFilter.all(ResourceKind.ITEM),
                         0);
               var original = port.handle();
               var before = port.saveWithFullMetadata(access);
@@ -2481,13 +2462,13 @@ public final class ConnectorGameTests {
                 port.adoptPort(expected);
               } catch (IllegalStateException rejected) {
                 refused = true;
-              } catch (java.io.IOException failure) {
+              } catch (IOException failure) {
                 throw new AssertionError(failure);
               }
               h.assertTrue(
                   refused && f.saved.nodes().evidence(original.id()).generation() == canonical[0],
                   "Existing canonical holder prevents adoption without mutation");
-              placed.loadWithComponents(new net.minecraft.nbt.CompoundTag(), access);
+              placed.loadWithComponents(new CompoundTag(), access);
               var console = h.getLevel().getServer().createCommandSourceStack();
               var pos = h.absolutePos(CONNECTOR);
               var adopt =
@@ -2507,8 +2488,7 @@ public final class ConnectorGameTests {
                     port.generation() > oldConfiguration
                         && f.saved.machinePresets().configuration(original.id())
                             == port.generation()
-                        && deployment.mode()
-                            == dev.izzy.factorycore.core.storage.MachinePresets.Mode.PAUSED
+                        && deployment.mode() == MachinePresets.Mode.PAUSED
                         && !((MachineInterfaceEntity) port).presetAuthorized(deployment),
                     "Old deployment paused with advanced fence; operator cannot adopt deployer authority");
               }
@@ -2526,7 +2506,7 @@ public final class ConnectorGameTests {
   }
 
   private static ConnectorEntity copyPort(
-      GameTestHelper h, ConnectorEntity original, net.minecraft.nbt.CompoundTag raw) {
+      GameTestHelper h, ConnectorEntity original, CompoundTag raw) {
     var position = new BlockPos(3, 1, 3);
     h.setBlock(position, original.getBlockState());
     ConnectorEntity clone = h.getBlockEntity(position);
@@ -2542,16 +2522,16 @@ public final class ConnectorGameTests {
       port.repairConflict(expected);
     } catch (IllegalArgumentException | IllegalStateException rejected) {
       refused = true;
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
     h.assertTrue(refused, "Unsupported port repair rejects");
   }
 
-  private static int portCommand(net.minecraft.commands.CommandSourceStack source, String command) {
+  private static int portCommand(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException rejected) {
+    } catch (CommandSyntaxException rejected) {
       return -1;
     }
   }

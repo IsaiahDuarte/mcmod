@@ -1,20 +1,32 @@
 package dev.izzy.factorycore.testing.storage;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.*;
 import net.minecraft.gametest.framework.*;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 import net.neoforged.neoforge.gametest.*;
@@ -39,9 +51,7 @@ public final class MachinePresetGameTests {
 
   private static Fixture setup(GameTestHelper h, ResourceKind kind) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
     h.setBlock(
         MACHINE,
         MachineInterfaceContent.BLOCK
@@ -60,9 +70,7 @@ public final class MachinePresetGameTests {
                 : ResourceKey.ENERGY;
     DeviceRegistry.Handle cell;
     if (kind == ResourceKind.ENERGY) {
-      h.setBlock(DRIVE, EnergyBankContent.block(EnergyBankTier.STARTER));
-      EnergyBankEntity bank = h.getBlockEntity(DRIVE);
-      bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+      EnergyBankEntity bank = Net.in(h).bank(DRIVE, EnergyBankTier.STARTER);
       cell = bank.handle();
     } else {
       h.setBlock(DRIVE, StorageContent.DRIVE.get());
@@ -839,14 +847,12 @@ public final class MachinePresetGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void authenticatedMenuReturnsOnlyOriginalOwnersKnownStaging(GameTestHelper h) {
     var f = setup(h, ResourceKind.ITEM);
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
-    player.moveTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(ROOT)));
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     var actor = new NetworkPermissions.Actor(player.getUUID(), false);
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
@@ -911,29 +917,26 @@ public final class MachinePresetGameTests {
                       && resident(h, ResourceKind.ITEM) == 0,
                   "Menu return restores all original stock without fresh extraction");
               player.closeContainer();
-              player.connection.disconnect(
-                  net.minecraft.network.chat.Component.literal("Preset cleanup fixture complete"));
+              player.connection.disconnect(Component.literal("Preset cleanup fixture complete"));
             })
         .thenSucceed();
   }
 
-  private static int command(net.minecraft.commands.CommandSourceStack source, String command) {
+  private static int command(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException denied) {
+    } catch (CommandSyntaxException denied) {
       return -1;
     }
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void recoveryCommandsPreserveEvidenceAndOnlyOriginalPlayerCanReturn(
       GameTestHelper h) {
     var f = setup(h, ResourceKind.ITEM);
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
-    player.moveTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(ROOT)));
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     var actor = new NetworkPermissions.Actor(player.getUUID(), false);
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     f.saved
@@ -981,15 +984,12 @@ public final class MachinePresetGameTests {
                   command(ordinary, "factorycore recovery return " + id[0]) == 1,
                   "Authenticated original owner queues known return");
               var folder =
-                  player
-                      .server
-                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
-                      .resolve("factorycore-recovery");
+                  player.server.getWorldPath(LevelResource.ROOT).resolve("factorycore-recovery");
               boolean evidence = false;
-              try (var paths = java.nio.file.Files.list(folder)) {
+              try (var paths = Files.list(folder)) {
                 evidence =
                     paths.anyMatch(path -> path.getFileName().toString().startsWith(id[0] + "-"));
-              } catch (java.io.IOException failure) {
+              } catch (IOException failure) {
                 throw new IllegalStateException(failure);
               }
               h.assertTrue(
@@ -1019,24 +1019,19 @@ public final class MachinePresetGameTests {
                       && !f.saved.transfers().contains(id[0])
                       && f.saved.registry().stock(f.cell, f.key).total() == 15,
                   "Operator explicitly retires only empty completion after preserving its evidence");
-              player.connection.disconnect(
-                  net.minecraft.network.chat.Component.literal(
-                      "Recovery command fixture complete"));
+              player.connection.disconnect(Component.literal("Recovery command fixture complete"));
             })
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void recoveryCommandDeniesOtherOwnersAndUncertaintyWithoutAuditMutation(
       GameTestHelper h) {
     var f = setup(h, ResourceKind.ITEM);
-    var owner = h.makeMockServerPlayerInLevel();
-    var other = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        owner.connection.getConnection());
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        other.connection.getConnection());
+    var owner = TestPlayers.mock(h);
+    var other = TestPlayers.mock(h);
+    TestPlayers.connect(owner);
+    TestPlayers.connect(other);
     var actor = new NetworkPermissions.Actor(owner.getUUID(), false);
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     f.saved
@@ -1092,38 +1087,32 @@ public final class MachinePresetGameTests {
                       && f.saved.registry().stock(f.cell, f.key).total() == 7,
                   "Original owner cannot replay/refund uncertainty or change accepted accounting");
               var folder =
-                  owner
-                      .server
-                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
-                      .resolve("factorycore-recovery");
-              if (java.nio.file.Files.exists(folder))
-                try (var paths = java.nio.file.Files.list(folder)) {
+                  owner.server.getWorldPath(LevelResource.ROOT).resolve("factorycore-recovery");
+              if (Files.exists(folder))
+                try (var paths = Files.list(folder)) {
                   h.assertTrue(
                       paths.noneMatch(path -> path.getFileName().toString().startsWith(id + "-")),
                       "Denied uncertainty writes no cleanup audit");
-                } catch (java.io.IOException failure) {
+                } catch (IOException failure) {
                   throw new IllegalStateException(failure);
                 }
-              owner.connection.disconnect(
-                  net.minecraft.network.chat.Component.literal("Recovery denial complete"));
-              other.connection.disconnect(
-                  net.minecraft.network.chat.Component.literal("Recovery denial complete"));
+              owner.connection.disconnect(Component.literal("Recovery denial complete"));
+              other.connection.disconnect(Component.literal("Recovery denial complete"));
             })
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", batch = "machine_recovery", timeoutTicks = 500)
   public static void auditedMachineRepairKeepsFenceAndRequiresAuthenticatedRedeployment(
       GameTestHelper h) {
     var f = setup(h, ResourceKind.ITEM);
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.getInventory().clearContent();
-    player.moveTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(MACHINE)));
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(MACHINE)));
     h.assertTrue(
-        !player.hasPermissions(2), "Recovered machine deployer is an ordinary registered player");
+        !player.hasPermissions(Actors.OPERATOR_LEVEL),
+        "Recovered machine deployer is an ordinary registered player");
     var deployer = new NetworkPermissions.Actor(player.getUUID(), false);
     var old = f.machine.handle();
     var settings =
@@ -1131,7 +1120,7 @@ public final class MachinePresetGameTests {
     MachinePresets.Deployment[] accepted = {null};
     long[] fence = {0};
     WorldConnectors.Handle[] registration = {null};
-    net.minecraft.nbt.CompoundTag[] original = {null};
+    CompoundTag[] original = {null};
     MachineInterfaceEntity[] clone = {null};
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f))
@@ -1288,16 +1277,14 @@ public final class MachinePresetGameTests {
                       && deployment.equals(f.saved.machinePresets().get(old.id()))
                       && f.saved.registry().stock(f.cell, f.key).total() == 19,
                   "Mismatched physical/canonical fence refuses without adopting stale configuration or losing stock");
-              player.connection.disconnect(
-                  net.minecraft.network.chat.Component.literal(
-                      "Machine recovery fixture complete"));
+              player.connection.disconnect(Component.literal("Machine recovery fixture complete"));
             })
         .thenIdle(20)
         .thenSucceed();
   }
 
   private static MachineInterfaceEntity copyMachineForRecovery(
-      GameTestHelper h, MachineInterfaceEntity original, net.minecraft.nbt.CompoundTag raw) {
+      GameTestHelper h, MachineInterfaceEntity original, CompoundTag raw) {
     var position = new BlockPos(3, 1, 3);
     h.setBlock(position, original.getBlockState());
     MachineInterfaceEntity copy = h.getBlockEntity(position);
@@ -1313,14 +1300,13 @@ public final class MachinePresetGameTests {
       machine.repairConflict(expected);
     } catch (IllegalArgumentException | IllegalStateException rejected) {
       refused = true;
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
     h.assertTrue(refused, "Unsupported machine recovery must refuse");
   }
 
-  private static void recoveryDeploy(
-      MachineSettingsMenu menu, net.minecraft.server.level.ServerPlayer player) {
+  private static void recoveryDeploy(MachineSettingsMenu menu, ServerPlayer player) {
     menu.presetCommand(
         player,
         new MachinePresetPackets.Command(

@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.EnergyBankOwnership;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -8,6 +9,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 
 public final class CellUpgradeItem extends Item {
@@ -33,12 +35,7 @@ public final class CellUpgradeItem extends Item {
         if (offhand.getCount() != 1)
           throw new IllegalArgumentException("Hold one bank in the offhand");
         var block = (EnergyBankBlock) ((BlockItem) offhand.getItem()).getBlock();
-        var data =
-            offhand
-                .getOrDefault(
-                    net.minecraft.core.component.DataComponents.CUSTOM_DATA,
-                    net.minecraft.world.item.component.CustomData.EMPTY)
-                .copyTag();
+        var data = offhand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         var handle = EnergyBankHandleData.read(data.get(EnergyBankHandleData.FIELD));
         var tier =
             new EnergyBankOwnership(DeviceSavedData.get(level.getServer()).registry())

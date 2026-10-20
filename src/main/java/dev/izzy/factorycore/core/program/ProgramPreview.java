@@ -2,7 +2,11 @@ package dev.izzy.factorycore.core.program;
 
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 
 /** One bounded, read-only invocation; it never submits commands, reserves stock or charges FE. */
 public final class ProgramPreview {
@@ -32,11 +36,11 @@ public final class ProgramPreview {
             + rule.interval()
             + " ticks)");
     // Players know machines by local label, so name each target "label" #n, not its internal ID.
-    var names = new java.util.HashMap<java.util.UUID, String>();
+    var names = new HashMap<UUID, String>();
     ProgramEvaluator.Host naming =
         new ProgramEvaluator.Host() {
           @Override
-          public List<java.util.UUID> machines(String label) {
+          public List<UUID> machines(String label) {
             var found = host.machines(label);
             for (int i = 0; i < found.size(); i++)
               names.putIfAbsent(found.get(i), "\"" + label + "\" #" + (i + 1));
@@ -68,15 +72,14 @@ public final class ProgramPreview {
 
   private static String filter(ResourceFilter filter) {
     var term = filter.terms().isEmpty() ? "all" : filter.terms().getFirst();
-    return filter.kind().name().toLowerCase(java.util.Locale.ROOT)
+    return filter.kind().name().toLowerCase(Locale.ROOT)
         + " "
         + (term instanceof ResourceFilter.Registry registry
             ? registry.id()
             : term instanceof ResourceFilter.Tag tag ? "#" + tag.id() : term.toString());
   }
 
-  private static String describe(
-      ProgramCommand command, java.util.Map<java.util.UUID, String> names) {
+  private static String describe(ProgramCommand command, Map<UUID, String> names) {
     return switch (command) {
       case ProgramCommand.Keep keep ->
           "Keep "

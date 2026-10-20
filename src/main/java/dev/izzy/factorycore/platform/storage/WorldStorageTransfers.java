@@ -8,23 +8,26 @@ import dev.izzy.factorycore.core.resource.LegacySettlement;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
-import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Shared scheduled digital/registered-foreign moves; client authentication stays at the boundary.
@@ -56,9 +59,9 @@ public final class WorldStorageTransfers {
       boolean depositable) {}
 
   public record CatalogPage(
-      OperationResult.Reason reason, java.util.List<CatalogRow> rows, CatalogCursor next) {
+      OperationResult.Reason reason, List<CatalogRow> rows, CatalogCursor next) {
     public CatalogPage {
-      rows = java.util.List.copyOf(rows);
+      rows = List.copyOf(rows);
     }
   }
 
@@ -79,8 +82,7 @@ public final class WorldStorageTransfers {
     var member = networks.membership(origin);
     if (member.status() != NetworkTopology.Status.VALID)
       return new Submission(null, OperationResult.Reason.OFFLINE);
-    if (networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-        != NetworkAuthority.Decision.ALLOWED)
+    if (!networks.allows(actor, origin, NetworkPermissions.Permission.VIEW))
       return new Submission(null, OperationResult.Reason.DENIED);
     var start =
         cursor == null
@@ -102,20 +104,18 @@ public final class WorldStorageTransfers {
           if (current.status() != NetworkTopology.Status.VALID
               || !current.scope().network().equals(ticket.network())
               || !current.scope().segment().equals(ticket.segment())
-              || networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-                  != NetworkAuthority.Decision.ALLOWED) {
-            completion.accept(
-                new CatalogPage(OperationResult.Reason.DENIED, java.util.List.of(), null));
+              || !networks.allows(actor, origin, NetworkPermissions.Permission.VIEW)) {
+            completion.accept(new CatalogPage(OperationResult.Reason.DENIED, List.of(), null));
             return;
           }
-          var rows = new java.util.ArrayList<CatalogRow>();
-          var seen = new java.util.HashSet<UUID>();
+          var rows = new ArrayList<CatalogRow>();
+          var seen = new HashSet<UUID>();
           CatalogCursor next;
           if (!start.connectors()) {
             var page = saved.registry().handles(start.after(), 8);
             for (var handle : page.handles()) {
-              if (!allowed(actor, origin, handle, key, NetworkPermissions.Permission.VIEW))
-                continue;
+              if (!endpoints.allowed(
+                  actor, origin, handle, key, NetworkPermissions.Permission.VIEW)) continue;
               var stock = saved.registry().stock(handle, key);
               if (seen.add(handle.backing()))
                 rows.add(
@@ -126,8 +126,9 @@ public final class WorldStorageTransfers {
                         stock.reserved(),
                         stock.available(),
                         0,
-                        allowed(actor, origin, handle, key, NetworkPermissions.Permission.WITHDRAW),
-                        allowed(
+                        endpoints.allowed(
+                            actor, origin, handle, key, NetworkPermissions.Permission.WITHDRAW),
+                        endpoints.allowed(
                             actor, origin, handle, key, NetworkPermissions.Permission.DEPOSIT)));
             }
             next =
@@ -202,8 +203,7 @@ public final class WorldStorageTransfers {
               || !finalMember.scope().network().equals(ticket.network())
               || !finalMember.scope().segment().equals(ticket.segment())
               || finalView.decision() != NetworkAuthority.Decision.ALLOWED) {
-            completion.accept(
-                new CatalogPage(OperationResult.Reason.DENIED, java.util.List.of(), null));
+            completion.accept(new CatalogPage(OperationResult.Reason.DENIED, List.of(), null));
             return;
           }
           rows.removeIf(
@@ -212,7 +212,7 @@ public final class WorldStorageTransfers {
                 return segment == null || !finalView.segments().contains(segment);
               });
           rows.sort(
-              java.util.Comparator.comparingInt(CatalogRow::priority)
+              Comparator.comparingInt(CatalogRow::priority)
                   .reversed()
                   .thenComparing(CatalogRow::backing));
           completion.accept(new CatalogPage(OperationResult.Reason.OK, rows, next));
@@ -247,8 +247,7 @@ public final class WorldStorageTransfers {
     var member = networks.membership(origin);
     if (member.status() != NetworkTopology.Status.VALID)
       return new Submission(null, OperationResult.Reason.OFFLINE);
-    if (networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-        != NetworkAuthority.Decision.ALLOWED)
+    if (!networks.allows(actor, origin, NetworkPermissions.Permission.VIEW))
       return new Submission(null, OperationResult.Reason.DENIED);
     return enqueue(
         id,
@@ -277,8 +276,7 @@ public final class WorldStorageTransfers {
     var member = networks.membership(origin);
     if (member.status() != NetworkTopology.Status.VALID)
       return new Submission(null, OperationResult.Reason.OFFLINE);
-    if (networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-        != NetworkAuthority.Decision.ALLOWED)
+    if (!networks.allows(actor, origin, NetworkPermissions.Permission.VIEW))
       return new Submission(null, OperationResult.Reason.DENIED);
     return enqueue(
         id,
@@ -326,7 +324,7 @@ public final class WorldStorageTransfers {
       Endpoint endpoint,
       ResourceKey key,
       NetworkPermissions.Permission operation) {
-    return allowed(actor, origin, endpoint, key, operation);
+    return endpoints.allowed(actor, origin, endpoint, key, operation);
   }
 
   boolean routeTicketActive(UUID id) {
@@ -334,7 +332,7 @@ public final class WorldStorageTransfers {
     var ticket = queued.get(id);
     return id.equals(executing)
         || ticket != null
-            && networks.scheduler().isQueued(ticket.network(), ticket.principal(), taskKey(id));
+            && networks.scheduler().isQueued(ticket.network(), ticket.principal(), ticket.key());
   }
 
   boolean inExecution() {
@@ -354,29 +352,23 @@ public final class WorldStorageTransfers {
     }
   }
 
-  private WorldPlayerInventories players;
-
   /** Registers (or clears, for 8 blocks or less) a wireless session's reach to {@code origin}. */
-  void playerReach(
-      net.minecraft.server.level.ServerPlayer player,
-      NodeRegistry.Position origin,
-      double squared) {
+  void playerReach(ServerPlayer player, NodeRegistry.Position origin, double squared) {
     players().reach(player, origin, squared);
   }
 
   private WorldPlayerInventories players() {
-    if (players == null) players = new WorldPlayerInventories(server);
-    return players;
+    return endpoints.players();
   }
 
-  public PlayerInventory inventory(net.minecraft.server.level.ServerPlayer player, int slot) {
+  public PlayerInventory inventory(ServerPlayer player, int slot) {
     checkThread();
     return players().endpoint(player, slot);
   }
 
-  public void playerDisconnected(net.minecraft.server.level.ServerPlayer player) {
+  public void playerDisconnected(ServerPlayer player) {
     checkThread();
-    if (players != null) players.disconnected(player);
+    endpoints.disconnected(player);
   }
 
   public record Buffered(NodeRegistry.Handle handle, long configuration) implements Endpoint {
@@ -399,11 +391,13 @@ public final class WorldStorageTransfers {
     }
   }
 
-  private record Queued(UUID network, UUID segment, UUID principal, int bytes) {}
+  /** {@code key} is the scheduler task key, built once per queued transfer. */
+  private record Queued(UUID network, UUID segment, UUID principal, int bytes, String key) {}
 
   private final MinecraftServer server;
   private final WorldNetworks networks;
   private final DeviceSavedData saved;
+  private final TransferEndpoints endpoints;
   private final Map<UUID, Queued> queued = new HashMap<>();
   private int queuedBytes;
   private UUID executing;
@@ -412,6 +406,7 @@ public final class WorldStorageTransfers {
     this.server = Objects.requireNonNull(server);
     this.networks = Objects.requireNonNull(networks);
     saved = DeviceSavedData.get(server);
+    endpoints = new TransferEndpoints(server, networks, saved);
   }
 
   public Submission submit(
@@ -537,9 +532,7 @@ public final class WorldStorageTransfers {
         || source instanceof PlayerInventory
         || destination instanceof PlayerInventory) {
       try {
-        var codec =
-            new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                server.registryAccess());
+        var codec = new PlatformResourceCodec(server.registryAccess());
         if (key.kind() == ResourceKind.ITEM) codec.itemStack(key, 1);
         else if (key.kind() == ResourceKind.FLUID) codec.fluidStack(key, 1);
       } catch (RuntimeException invalidIdentity) {
@@ -581,7 +574,7 @@ public final class WorldStorageTransfers {
       ResourceKey key,
       long amount,
       boolean releasing,
-      Consumer<dev.izzy.factorycore.core.resource.OperationResult> completion) {
+      Consumer<OperationResult> completion) {
     checkThread();
     Objects.requireNonNull(id);
     Objects.requireNonNull(actor);
@@ -597,9 +590,7 @@ public final class WorldStorageTransfers {
       return new Submission(null, OperationResult.Reason.WRONG_RESOURCE);
     if (!releasing) {
       try {
-        var codec =
-            new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                server.registryAccess());
+        var codec = new PlatformResourceCodec(server.registryAccess());
         if (key.kind() == ResourceKind.ITEM) codec.itemStack(key, 1);
         else if (key.kind() == ResourceKind.FLUID) codec.fluidStack(key, 1);
       } catch (RuntimeException invalid) {
@@ -686,7 +677,7 @@ public final class WorldStorageTransfers {
     if (queued.containsKey(id) || queued.size() >= 256 || queuedBytes > 2 * 1024 * 1024 - bytes)
       return new Submission(
           FairScheduler.Admission.QUEUE_FULL, OperationResult.Reason.TECHNICAL_LIMIT);
-    var ticket = new Queued(network, segment, actor.id(), bytes);
+    var ticket = new Queued(network, segment, actor.id(), bytes, taskKey(id));
     queued.put(id, ticket);
     queuedBytes += bytes;
     var admission =
@@ -695,7 +686,7 @@ public final class WorldStorageTransfers {
             .submit(
                 network,
                 actor.id(),
-                taskKey(id),
+                ticket.key(),
                 cost,
                 () -> {
                   executing = id;
@@ -758,7 +749,7 @@ public final class WorldStorageTransfers {
   private void executeProgress(
       UUID id,
       NetworkPermissions.Actor actor,
-      dev.izzy.factorycore.core.resource.TransferContext expected,
+      TransferContext expected,
       boolean returning,
       Consumer<Result> completion,
       BooleanSupplier authorized) {
@@ -788,10 +779,8 @@ public final class WorldStorageTransfers {
       return;
     }
     if (!returning
-        && (networks.authorize(actor, context.origin(), NetworkPermissions.Permission.WITHDRAW)
-                != NetworkAuthority.Decision.ALLOWED
-            || networks.authorize(actor, context.origin(), NetworkPermissions.Permission.DEPOSIT)
-                != NetworkAuthority.Decision.ALLOWED)) {
+        && (!networks.allows(actor, context.origin(), NetworkPermissions.Permission.WITHDRAW)
+            || !networks.allows(actor, context.origin(), NetworkPermissions.Permission.DEPOSIT))) {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, snapshot));
       return;
     }
@@ -799,20 +788,20 @@ public final class WorldStorageTransfers {
         context.source().type() == TransferContext.Type.PLAYER
             ? players().recover(context.source(), actor.id())
             : returning && context.source().type() == TransferContext.Type.BUFFER
-                ? recoverOwnedBufferSource(context.world(), context.source())
-                : recover(context.world(), context.source());
+                ? endpoints.recoverOwnedBufferSource(context.world(), context.source())
+                : endpoints.recover(context.world(), context.source());
     Endpoint destination =
         returning
             ? null
             : context.destination().type() == TransferContext.Type.PLAYER
                 ? players().recover(context.destination(), actor.id())
-                : recover(context.world(), context.destination());
+                : endpoints.recover(context.world(), context.destination());
     if (source == null || !returning && destination == null) {
       completion.accept(new Result(id, OperationResult.Reason.OFFLINE, snapshot));
       return;
     }
-    if (!compatible(source, snapshot.key())
-        || !returning && !compatible(destination, snapshot.key())) {
+    if (!endpoints.compatible(source, snapshot.key())
+        || !returning && !endpoints.compatible(destination, snapshot.key())) {
       completion.accept(new Result(id, OperationResult.Reason.WRONG_RESOURCE, snapshot));
       return;
     }
@@ -824,13 +813,13 @@ public final class WorldStorageTransfers {
       return;
     }
     if (!returning
-        && (!allowed(
+        && (!endpoints.allowed(
                 actor,
                 context.origin(),
                 source,
                 snapshot.key(),
                 NetworkPermissions.Permission.WITHDRAW)
-            || !allowed(
+            || !endpoints.allowed(
                 actor,
                 context.origin(),
                 destination,
@@ -840,20 +829,21 @@ public final class WorldStorageTransfers {
       return;
     }
     var input =
-        bounded(
+        TransferEndpoints.bounded(
             returning && source instanceof Buffered buffer
-                ? routedPort(source, context.origin(), new BufferPort(buffer, true))
+                ? endpoints.routedPort(source, context.origin(), endpoints.bufferPort(buffer, true))
                 : returning && source instanceof External external
-                    ? routedPort(
+                    ? endpoints.routedPort(
                         source,
                         context.origin(),
                         networks.connectors().returnPort(external.handle()))
-                    : port(source, context.origin()),
+                    : endpoints.port(source, context.origin()),
             snapshot.key());
     var output =
         returning
-            ? unavailable(snapshot.destination())
-            : bounded(port(destination, context.origin()), snapshot.key());
+            ? TransferEndpoints.unavailable(snapshot.destination())
+            : TransferEndpoints.bounded(
+                endpoints.port(destination, context.origin()), snapshot.key());
     saved.transfers().unbind(id);
     saved
         .transfers()
@@ -864,13 +854,13 @@ public final class WorldStorageTransfers {
             () ->
                 !returning
                     && authorized.getAsBoolean()
-                    && allowed(
+                    && endpoints.allowed(
                         actor,
                         context.origin(),
                         source,
                         snapshot.key(),
                         NetworkPermissions.Permission.WITHDRAW)
-                    && allowed(
+                    && endpoints.allowed(
                         actor,
                         context.origin(),
                         destination,
@@ -903,14 +893,14 @@ public final class WorldStorageTransfers {
     if (target == null) return new Submission(null, OperationResult.Reason.UNSUPPORTED);
     var endpoint = legacyEndpoint(target.backing());
     if (endpoint == null) return new Submission(null, OperationResult.Reason.OFFLINE);
-    if (!compatible(endpoint, snapshot.key()))
+    if (!endpoints.compatible(endpoint, snapshot.key()))
       return new Submission(null, OperationResult.Reason.WRONG_RESOURCE);
     var position = holderPosition(endpoint);
     var member = networks.membership(position);
     if (member.status() != NetworkTopology.Status.VALID)
       return new Submission(null, OperationResult.Reason.OFFLINE);
     if (!target.returning()
-        && !allowed(
+        && !endpoints.allowed(
             actor, position, endpoint, snapshot.key(), NetworkPermissions.Permission.DEPOSIT))
       return new Submission(null, OperationResult.Reason.DENIED);
     return enqueue(
@@ -950,7 +940,7 @@ public final class WorldStorageTransfers {
     try {
       var device = saved.registry().ownership(backing);
       if (device != null)
-        return device.conflict() || physical(device.handle()) == null
+        return device.conflict() || endpoints.physical(device.handle()) == null
             ? null
             : new Digital(device.handle());
       var node = saved.nodes().evidence(backing);
@@ -959,7 +949,7 @@ public final class WorldStorageTransfers {
       var handle =
           new NodeRegistry.Handle(
               saved.registry().world(), backing, node.generation(), node.kind());
-      var holder = physical(new Buffered(handle, 1), true);
+      var holder = endpoints.physical(new Buffered(handle, 1), true);
       return holder == null ? null : new Buffered(handle, holder.reference().configuration());
     } catch (IllegalArgumentException | IllegalStateException unavailable) {
       return null;
@@ -1001,157 +991,42 @@ public final class WorldStorageTransfers {
       return;
     }
     var key = snapshot.key();
-    if (!compatible(endpoint, key)) {
+    if (!endpoints.compatible(endpoint, key)) {
       completion.accept(new Result(id, OperationResult.Reason.WRONG_RESOURCE, snapshot));
       return;
     }
     if (!target.returning()
-        && !allowed(actor, position, endpoint, key, NetworkPermissions.Permission.DEPOSIT)) {
+        && !endpoints.allowed(
+            actor, position, endpoint, key, NetworkPermissions.Permission.DEPOSIT)) {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, snapshot));
       return;
     }
     var port =
-        bounded(
+        TransferEndpoints.bounded(
             endpoint instanceof Buffered buffer
-                ? new BufferPort(buffer, true)
-                : new Port(((Digital) endpoint).handle()),
+                ? endpoints.bufferPort(buffer, true)
+                : endpoints.digitalPort(((Digital) endpoint).handle()),
             key);
     saved.transfers().unbind(id);
     saved
         .transfers()
         .bind(
             id,
-            target.returning() ? port : unavailable(snapshot.source()),
-            target.returning() ? unavailable(snapshot.destination()) : port,
+            target.returning() ? port : TransferEndpoints.unavailable(snapshot.source()),
+            target.returning() ? TransferEndpoints.unavailable(snapshot.destination()) : port,
             () ->
                 !target.returning()
-                    && allowed(
+                    && endpoints.allowed(
                         actor, position, endpoint, key, NetworkPermissions.Permission.DEPOSIT));
     var outcome = target.returning() ? saved.transfers().cancel(id) : saved.transfers().deliver(id);
     completion.accept(new Result(id, outcome.reason(), saved.transfers().get(id)));
-  }
-
-  private boolean compatible(Endpoint endpoint, ResourceKey key) {
-    if (endpoint instanceof Buffered || endpoint instanceof PlayerInventory) {
-      if (key.kind() != ResourceKind.ITEM) return false;
-      try {
-        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(server.registryAccess())
-            .itemStack(key, 1);
-        return true;
-      } catch (RuntimeException unsupported) {
-        return false;
-      }
-    }
-    return endpoint instanceof Digital digital
-        ? saved.registry().definition(digital.handle()).kind() == key.kind()
-        : ((External) endpoint).handle().kind() == key.kind();
-  }
-
-  private Endpoint recover(
-      UUID world, dev.izzy.factorycore.core.resource.TransferContext.Endpoint reference) {
-    try {
-      if (reference.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.DIGITAL) {
-        var handle = new DeviceRegistry.Handle(world, reference.backing(), reference.generation());
-        return physical(handle) == null ? null : new Digital(handle);
-      }
-      if (reference.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.BUFFER) {
-        var endpoint =
-            new Buffered(
-                new NodeRegistry.Handle(
-                    world,
-                    reference.device(),
-                    reference.generation(),
-                    NodeRegistry.Kind.BUFFERED_INTERFACE),
-                reference.configuration());
-        return physical(endpoint) == null ? null : endpoint;
-      }
-      var registration =
-          networks
-              .connectors()
-              .recover(
-                  new NodeRegistry.Handle(
-                      world,
-                      reference.device(),
-                      reference.generation(),
-                      saved.nodes().kind(reference.device())),
-                  reference.configuration(),
-                  reference.backing());
-      return registration.handle() == null ? null : new External(registration.handle());
-    } catch (IllegalArgumentException | IllegalStateException unavailable) {
-      return null;
-    }
-  }
-
-  /** Owned returns may survive preset replacement, but never lease/world/physical replacement. */
-  private Endpoint recoverOwnedBufferSource(UUID world, TransferContext.Endpoint reference) {
-    try {
-      var handle =
-          new NodeRegistry.Handle(
-              world,
-              reference.backing(),
-              reference.generation(),
-              NodeRegistry.Kind.BUFFERED_INTERFACE);
-      var holder = physical(new Buffered(handle, reference.configuration()), true);
-      return holder == null ? null : new Buffered(handle, holder.reference().configuration());
-    } catch (IllegalArgumentException | IllegalStateException unavailable) {
-      return null;
-    }
-  }
-
-  private static ResourcePort bounded(ResourcePort delegate, ResourceKey key) {
-    long quantum = key.kind() == ResourceKind.ITEM ? 128 : 1000;
-    return new ResourcePort() {
-      @Override
-      public UUID backingId() {
-        return delegate.backingId();
-      }
-
-      @Override
-      public long simulateInsert(ResourceKey resource, long amount) {
-        return delegate.simulateInsert(resource, Math.min(amount, quantum));
-      }
-
-      @Override
-      public long insert(ResourceKey resource, long amount) {
-        return delegate.insert(resource, Math.min(amount, quantum));
-      }
-
-      @Override
-      public long extract(ResourceKey resource, long amount) {
-        throw new IllegalStateException("Recovery never repeats extraction");
-      }
-    };
-  }
-
-  private static ResourcePort unavailable(UUID backing) {
-    return new ResourcePort() {
-      @Override
-      public UUID backingId() {
-        return backing;
-      }
-
-      @Override
-      public long simulateInsert(ResourceKey key, long amount) {
-        return 0;
-      }
-
-      @Override
-      public long insert(ResourceKey key, long amount) {
-        return 0;
-      }
-
-      @Override
-      public long extract(ResourceKey key, long amount) {
-        throw new IllegalStateException("Unavailable recovery endpoint cannot extract");
-      }
-    };
   }
 
   public boolean cancelQueued(UUID id, NetworkPermissions.Actor actor) {
     checkThread();
     var ticket = queued.get(id);
     if (ticket == null || !ticket.principal().equals(actor.id())) return false;
-    networks.scheduler().cancelTask(ticket.network(), ticket.principal(), taskKey(id));
+    networks.scheduler().cancelTask(ticket.network(), ticket.principal(), ticket.key());
     release(id);
     return true;
   }
@@ -1163,9 +1038,7 @@ public final class WorldStorageTransfers {
       var entry = iterator.next();
       var ticket = entry.getValue();
       if (!entry.getKey().equals(executing)
-          && !networks
-              .scheduler()
-              .isQueued(ticket.network(), ticket.principal(), taskKey(entry.getKey()))) {
+          && !networks.scheduler().isQueued(ticket.network(), ticket.principal(), ticket.key())) {
         queuedBytes -= ticket.bytes();
         iterator.remove();
       }
@@ -1204,8 +1077,9 @@ public final class WorldStorageTransfers {
     if (!authorized.getAsBoolean()
         || !canStart.getAsBoolean()
         || saved.transfers().contains(id)
-        || !allowed(actor, origin, source, key, NetworkPermissions.Permission.WITHDRAW)
-        || !allowed(actor, origin, destination, key, NetworkPermissions.Permission.DEPOSIT)) {
+        || !endpoints.allowed(actor, origin, source, key, NetworkPermissions.Permission.WITHDRAW)
+        || !endpoints.allowed(
+            actor, origin, destination, key, NetworkPermissions.Permission.DEPOSIT)) {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, null));
       return;
     }
@@ -1215,12 +1089,12 @@ public final class WorldStorageTransfers {
     }
     var input =
         claimed
-            ? routedPort(
+            ? endpoints.routedPort(
                 source,
                 origin,
                 networks.connectors().claimedPort(((External) source).handle(), actor.id()))
-            : port(source, origin);
-    var output = port(destination, origin);
+            : endpoints.port(source, origin);
+    var output = endpoints.port(destination, origin);
     if (input.backingId().equals(output.backingId())) {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, null));
       return;
@@ -1235,9 +1109,9 @@ public final class WorldStorageTransfers {
         destination instanceof PlayerInventory player
             ? players().port(player, origin).admit(key, amount)
             : destination instanceof Digital digital
-                ? new Port(digital.handle()).admit(key, amount)
+                ? endpoints.digitalPort(digital.handle()).admit(key, amount)
                 : destination instanceof Buffered buffer
-                    ? new BufferPort(buffer).admit(key, amount)
+                    ? endpoints.bufferPort(buffer).admit(key, amount)
                     : networks.connectors().limit(((External) destination).handle(), true, amount);
     if (source instanceof PlayerInventory player) {
       var available = players().port(player, origin).available(key, amount);
@@ -1247,7 +1121,7 @@ public final class WorldStorageTransfers {
       }
     }
     if (source instanceof Buffered buffer) {
-      var available = new BufferPort(buffer).available(key, amount);
+      var available = endpoints.bufferPort(buffer).available(key, amount);
       if (available.amount() == 0 && amount > 0) {
         completion.accept(new Result(id, available.reason(), null));
         return;
@@ -1287,8 +1161,8 @@ public final class WorldStorageTransfers {
       completion.accept(new Result(id, admission.reason(), null));
       return;
     }
-    var sourcePosition = endpointPosition(source, origin);
-    var targetPosition = endpointPosition(destination, origin);
+    var sourcePosition = endpoints.endpointPosition(source, origin);
+    var targetPosition = endpoints.endpointPosition(destination, origin);
     if (sourcePosition == null || targetPosition == null) {
       completion.accept(new Result(id, OperationResult.Reason.OFFLINE, null));
       return;
@@ -1312,330 +1186,12 @@ public final class WorldStorageTransfers {
                 amount,
                 () ->
                     authorized.getAsBoolean()
-                        && allowed(
+                        && endpoints.allowed(
                             actor, origin, source, key, NetworkPermissions.Permission.WITHDRAW)
-                        && allowed(
+                        && endpoints.allowed(
                             actor, origin, destination, key, NetworkPermissions.Permission.DEPOSIT),
-                context(origin, source, destination));
+                endpoints.context(origin, source, destination));
     completion.accept(new Result(id, snapshot.reason(), snapshot));
-  }
-
-  private dev.izzy.factorycore.core.resource.TransferContext context(
-      NodeRegistry.Position origin, Endpoint source, Endpoint destination) {
-    var scope = networks.membership(origin).scope();
-    return new dev.izzy.factorycore.core.resource.TransferContext(
-        saved.registry().world(),
-        scope.network(),
-        scope.segment(),
-        origin,
-        reference(source),
-        reference(destination));
-  }
-
-  private dev.izzy.factorycore.core.resource.TransferContext.Endpoint reference(Endpoint endpoint) {
-    if (endpoint instanceof PlayerInventory player)
-      return new TransferContext.Endpoint(
-          TransferContext.Type.PLAYER,
-          player.principal(),
-          player.backing(),
-          player.connection(),
-          player.slot() < 0 ? 37 : player.slot() + 1);
-    if (endpoint instanceof Buffered buffer)
-      return new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
-          dev.izzy.factorycore.core.resource.TransferContext.Type.BUFFER,
-          buffer.handle().id(),
-          buffer.handle().id(),
-          buffer.handle().generation(),
-          buffer.configuration());
-    if (endpoint instanceof Digital digital)
-      return new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
-          dev.izzy.factorycore.core.resource.TransferContext.Type.DIGITAL,
-          digital.handle().backing(),
-          digital.handle().backing(),
-          digital.handle().generation(),
-          0);
-    var handle = ((External) endpoint).handle();
-    return new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
-        dev.izzy.factorycore.core.resource.TransferContext.Type.EXTERNAL,
-        handle.connector().id(),
-        handle.backing(),
-        handle.connector().generation(),
-        handle.generation());
-  }
-
-  private ResourcePort port(Endpoint endpoint, NodeRegistry.Position origin) {
-    ResourcePort delegate;
-    if (endpoint instanceof PlayerInventory player) delegate = players().port(player, origin);
-    else if (endpoint instanceof Buffered buffer) delegate = new BufferPort(buffer);
-    else
-      delegate =
-          endpoint instanceof Digital digital
-              ? new Port(digital.handle())
-              : networks.connectors().port(((External) endpoint).handle());
-    return routedPort(endpoint, origin, delegate);
-  }
-
-  /** Current endpoint coordinate; stale holders never acquire a new route implicitly. */
-  private NodeRegistry.Position endpointPosition(Endpoint endpoint, NodeRegistry.Position origin) {
-    try {
-      if (endpoint instanceof PlayerInventory) return origin;
-      if (endpoint instanceof Digital digital) {
-        var location = saved.registry().definition(digital.handle()).location();
-        return location == null
-            ? null
-            : new NodeRegistry.Position(location.dimension(), location.position());
-      }
-      var handle =
-          endpoint instanceof Buffered buffer
-              ? buffer.handle()
-              : ((External) endpoint).handle().connector();
-      return saved.nodes().definition(handle).position();
-    } catch (IllegalArgumentException | IllegalStateException stale) {
-      return null;
-    }
-  }
-
-  /**
-   * Transfer staging belongs to the accepted origin segment; each actual endpoint leg is metered.
-   */
-  private ResourcePort routedPort(
-      Endpoint endpoint, NodeRegistry.Position origin, ResourcePort delegate) {
-    return new ResourcePort() {
-      @Override
-      public UUID backingId() {
-        return delegate.backingId();
-      }
-
-      @Override
-      public long simulateInsert(ResourceKey key, long offered) {
-        var position = endpointPosition(endpoint, origin);
-        if (position == null) return 0;
-        long fit = networks.movementAvailable(origin, position, key, offered);
-        return fit == 0 ? 0 : delegate.simulateInsert(key, fit);
-      }
-
-      @Override
-      public long insert(ResourceKey key, long offered) {
-        return mutate(key, offered, true);
-      }
-
-      @Override
-      public long extract(ResourceKey key, long offered) {
-        return mutate(key, offered, false);
-      }
-
-      private long mutate(ResourceKey key, long offered, boolean inserting) {
-        var position = endpointPosition(endpoint, origin);
-        if (position == null) return 0;
-        var permit = networks.movement(origin, position, key, offered);
-        if (permit.amount() == 0) {
-          permit.finish(0);
-          return 0;
-        }
-        long actual =
-            inserting
-                ? delegate.insert(key, permit.amount())
-                : delegate.extract(key, permit.amount());
-        permit.finish(actual);
-        return actual;
-      }
-    };
-  }
-
-  private static final class BufferBudget {
-    int tick;
-    long inserted;
-    long extracted;
-
-    BufferBudget(int tick) {
-      this.tick = tick;
-    }
-  }
-
-  private final java.util.Map<UUID, BufferBudget> bufferBudgets = new java.util.HashMap<>();
-
-  private BufferBudget bufferBudget(UUID backing) {
-    int tick = server.getTickCount();
-    var budget = bufferBudgets.get(backing);
-    if (budget == null) {
-      if (bufferBudgets.size() == dev.izzy.factorycore.core.storage.BufferRegistry.MAX_BUFFERS)
-        throw new IllegalStateException("Buffer rate metadata limit");
-      budget = new BufferBudget(tick);
-      bufferBudgets.put(backing, budget);
-    } else if (budget.tick != tick) {
-      budget.tick = tick;
-      budget.inserted = 0;
-      budget.extracted = 0;
-    }
-    return budget;
-  }
-
-  private final class BufferPort implements ResourcePort {
-    private final Buffered endpoint;
-    private final BufferedInterfaceEntity owner;
-    private final boolean ownedReturn;
-
-    BufferPort(Buffered endpoint) {
-      this(endpoint, false);
-    }
-
-    BufferPort(Buffered endpoint, boolean ownedReturn) {
-      this.ownedReturn = ownedReturn;
-      this.endpoint = endpoint;
-      owner = physical(endpoint);
-    }
-
-    private int rate() {
-      var deployment = saved.buffers().deployment(backingId());
-      int rate = deployment == null ? 64 : deployment.policy().rate();
-      // Defensive: the physical tier bounds a canonical policy even if they ever disagree.
-      return owner == null ? rate : Math.min(rate, owner.tier().bufferRate());
-    }
-
-    private long stockRoom(ResourceKey key, long amount) {
-      var deployment = saved.buffers().deployment(backingId());
-      if (ownedReturn
-          || deployment == null
-          || deployment.mode() != dev.izzy.factorycore.core.storage.BufferRegistry.Mode.STOCK)
-        return amount;
-      var tags = new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server);
-      var filter = deployment.policy().filter();
-      if (!filter.matches(key, tags)) return amount;
-      long resident = 0;
-      for (var slot : owner.inventory().snapshot().slots())
-        if (slot.key() != null && filter.matches(slot.key(), tags)) resident += slot.count();
-      return Math.min(amount, Math.max(0, deployment.policy().target() - resident));
-    }
-
-    private boolean current() {
-      try {
-        return owner != null && physical(endpoint) == owner;
-      } catch (IllegalArgumentException | IllegalStateException unavailable) {
-        return false;
-      }
-    }
-
-    OperationResult available(ResourceKey key, long amount) {
-      if (!current()) return new OperationResult(0, OperationResult.Reason.OFFLINE);
-      long rate = Math.max(0, rate() - bufferBudget(backingId()).extracted);
-      if (rate == 0 && amount > 0) return new OperationResult(0, OperationResult.Reason.RATE_LIMIT);
-      long available = Math.min(Math.min(rate, amount), owner.inventory().total(key));
-      return new OperationResult(
-          available,
-          amount == 0 || available > 0
-              ? OperationResult.Reason.OK
-              : OperationResult.Reason.SHORTAGE);
-    }
-
-    OperationResult admit(ResourceKey key, long amount) {
-      if (!current()) return new OperationResult(0, OperationResult.Reason.OFFLINE);
-      long rate = Math.max(0, rate() - bufferBudget(backingId()).inserted);
-      if (rate == 0 && amount > 0) return new OperationResult(0, OperationResult.Reason.RATE_LIMIT);
-      long wanted = stockRoom(key, Math.min(amount, rate));
-      if (wanted == 0 && amount > 0) return new OperationResult(0, OperationResult.Reason.FULL);
-      return owner.inventory().admitInsert(key, wanted);
-    }
-
-    @Override
-    public UUID backingId() {
-      return endpoint.handle().id();
-    }
-
-    @Override
-    public long simulateInsert(ResourceKey key, long amount) {
-      OperationResult.requireQuantity(amount);
-      return admit(key, amount).amount();
-    }
-
-    @Override
-    public long insert(ResourceKey key, long amount) {
-      OperationResult.requireQuantity(amount);
-      if (!current()) return 0;
-      var budget = bufferBudget(backingId());
-      long accepted =
-          owner
-              .inventory()
-              .insert(key, stockRoom(key, Math.min(amount, Math.max(0, rate() - budget.inserted))));
-      budget.inserted += accepted;
-      return accepted;
-    }
-
-    @Override
-    public long extract(ResourceKey key, long amount) {
-      OperationResult.requireQuantity(amount);
-      if (!current()) return 0;
-      var budget = bufferBudget(backingId());
-      long extracted =
-          owner.inventory().extract(key, Math.min(amount, Math.max(0, rate() - budget.extracted)));
-      budget.extracted += extracted;
-      return extracted;
-    }
-  }
-
-  private boolean allowed(
-      NetworkPermissions.Actor actor,
-      NodeRegistry.Position origin,
-      Endpoint endpoint,
-      ResourceKey key,
-      NetworkPermissions.Permission operation) {
-    if (endpoint instanceof PlayerInventory player)
-      return key.kind() == ResourceKind.ITEM && players().allowed(actor, origin, player, operation);
-
-    if (endpoint instanceof Buffered buffer) return allowed(actor, origin, buffer, key, operation);
-    return endpoint instanceof Digital digital
-        ? allowed(actor, origin, digital.handle(), key, operation)
-        : networks
-            .connectors()
-            .allowed(actor, origin, ((External) endpoint).handle(), key, operation);
-  }
-
-  private boolean allowed(
-      NetworkPermissions.Actor actor,
-      NodeRegistry.Position origin,
-      Buffered endpoint,
-      ResourceKey key,
-      NetworkPermissions.Permission operation) {
-    try {
-      var holder = physical(endpoint);
-      if (key.kind() != ResourceKind.ITEM || holder == null) return false;
-      var target = networks.membership(holder.position());
-      var from = networks.membership(origin);
-      if (target.status() != NetworkTopology.Status.VALID
-          || from.status() != NetworkTopology.Status.VALID
-          || !target.scope().network().equals(from.scope().network())) return false;
-      var view = networks.storage(actor, origin, key, operation);
-      return view.decision() == NetworkAuthority.Decision.ALLOWED
-          && view.segments().contains(target.scope().segment());
-    } catch (IllegalArgumentException | IllegalStateException unavailable) {
-      return false;
-    }
-  }
-
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
-  private BufferedInterfaceEntity physical(Buffered endpoint) {
-    return physical(endpoint, false);
-  }
-
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns this borrowed level.
-  private BufferedInterfaceEntity physical(Buffered endpoint, boolean ownedReturn) {
-    var location = saved.nodes().definition(endpoint.handle()).position();
-    if (location == null) return null;
-    var level =
-        server.getLevel(
-            net.minecraft.resources.ResourceKey.create(
-                net.minecraft.core.registries.Registries.DIMENSION,
-                net.minecraft.resources.ResourceLocation.parse(location.dimension())));
-    if (level == null) return null;
-    var position = BlockPos.of(location.block());
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
-    if (chunk == null
-        || !(chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK)
-            instanceof BufferedInterfaceEntity holder)
-        || !endpoint.handle().equals(holder.handle())
-        || !ownedReturn && holder.reference().configuration() != endpoint.configuration())
-      return null;
-    holder.validatePlaced();
-    return holder;
   }
 
   /** Trusted scope check for a digital cell; grants nothing beyond the named operation. */
@@ -1646,116 +1202,10 @@ public final class WorldStorageTransfers {
       ResourceKey key,
       NetworkPermissions.Permission operation) {
     checkThread();
-    return allowed(actor, origin, handle, key, operation);
-  }
-
-  private boolean allowed(
-      NetworkPermissions.Actor actor,
-      NodeRegistry.Position origin,
-      DeviceRegistry.Handle handle,
-      ResourceKey key,
-      NetworkPermissions.Permission operation) {
-    try {
-      var definition = saved.registry().definition(handle);
-      if (definition.kind() != key.kind()
-          || definition.location() == null
-          || physical(handle) == null) return false;
-      var location = definition.location();
-      var target =
-          networks.membership(new NodeRegistry.Position(location.dimension(), location.position()));
-      var from = networks.membership(origin);
-      if (target.status() != NetworkTopology.Status.VALID
-          || from.status() != NetworkTopology.Status.VALID
-          || !target.scope().network().equals(from.scope().network())) return false;
-      var view = networks.storage(actor, origin, key, operation);
-      return view.decision() == NetworkAuthority.Decision.ALLOWED
-          && view.segments().contains(target.scope().segment());
-    } catch (IllegalArgumentException | IllegalStateException unavailable) {
-      return false;
-    }
-  }
-
-  @SuppressWarnings("PMD.CloseResource")
-  private net.minecraft.world.level.block.entity.BlockEntity physical(
-      DeviceRegistry.Handle handle) {
-    var location = saved.registry().definition(handle).location();
-    if (location == null) return null;
-    var dimension =
-        net.minecraft.resources.ResourceKey.create(
-            net.minecraft.core.registries.Registries.DIMENSION,
-            net.minecraft.resources.ResourceLocation.parse(location.dimension()));
-    ServerLevel level = server.getLevel(dimension);
-    if (level == null) return null;
-    var position = BlockPos.of(location.position());
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
-    if (chunk == null) return null;
-    var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
-    if (entity == null || entity.isRemoved()) return null;
-    if (entity instanceof StorageDriveEntity drive
-        && drive.diagnostic().isEmpty()
-        && location.slot() < 4) {
-      var stack = drive.cell(location.slot());
-      return !stack.isEmpty() && handle.equals(CellHandleData.read(stack)) ? drive : null;
-    }
-    if (entity instanceof EnergyBankEntity bank
-        && location.slot() == 0
-        && handle.equals(bank.handle())) {
-      bank.validatePlaced();
-      return bank;
-    }
-    return null;
-  }
-
-  private final class Port implements ResourcePort {
-    private final DeviceRegistry.Handle handle;
-
-    Port(DeviceRegistry.Handle handle) {
-      this.handle = handle;
-    }
-
-    @Override
-    public UUID backingId() {
-      return handle.backing();
-    }
-
-    OperationResult admit(ResourceKey key, long amount) {
-      var entity = physical(handle);
-      if (entity == null) return new OperationResult(0, OperationResult.Reason.OFFLINE);
-      return entity instanceof EnergyBankEntity bank
-          ? saved.energyBanks().receive(handle, bank.tier(), amount, true)
-          : saved.registry().simulateInsert(handle, key, amount);
-    }
-
-    @Override
-    public long simulateInsert(ResourceKey key, long amount) {
-      return admit(key, amount).amount();
-    }
-
-    @Override
-    public long insert(ResourceKey key, long amount) {
-      var entity = physical(handle);
-      if (entity == null || entity instanceof EnergyBankEntity && !key.equals(ResourceKey.ENERGY))
-        return 0;
-      return (entity instanceof EnergyBankEntity bank
-              ? saved.energyBanks().receive(handle, bank.tier(), amount, false)
-              : saved.registry().insert(handle, key, amount))
-          .amount();
-    }
-
-    @Override
-    public long extract(ResourceKey key, long amount) {
-      var entity = physical(handle);
-      if (entity == null || entity instanceof EnergyBankEntity && !key.equals(ResourceKey.ENERGY))
-        return 0;
-      return (entity instanceof EnergyBankEntity bank
-              ? saved.energyBanks().extract(handle, bank.tier(), amount, false)
-              : saved.registry().extract(handle, key, amount, null))
-          .amount();
-    }
+    return endpoints.allowed(actor, origin, handle, key, operation);
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("World transfers require server thread");
+    ServerThread.require(server, "World transfers");
   }
 }

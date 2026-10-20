@@ -5,16 +5,17 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -31,21 +32,15 @@ public final class TransferProgressGameTests {
   private static void scenario(GameTestHelper helper, int mode) {
     var owner = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var actor = mode == 1 ? new NetworkPermissions.Actor(UUID.randomUUID(), false) : owner;
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(owner.id());
+    NetworkNodeEntity root = Net.in(helper, owner.id()).controller(ROOT);
     helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive =
+        Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM, CellTier.STARTER_ITEM);
     var source = CellHandleData.read(drive.cell(0));
     var target = CellHandleData.read(drive.cell(1));
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
-    var origin =
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(), helper.absolutePos(ROOT).asLong());
+    var origin = Positions.of(helper.getLevel(), helper.absolutePos(ROOT));
     var location =
         new NodeRegistry.Position(origin.dimension(), helper.absolutePos(DRIVE).asLong());
     var id = UUID.randomUUID();

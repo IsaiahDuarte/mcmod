@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import java.util.List;
 import net.minecraft.core.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.*;
@@ -45,7 +46,6 @@ final class SplitRootVerification {
         && event.getChunk().getPos().z == 0) unloads++;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns this fixture's world.
   boolean tick(ServerPlayer player) {
     var saved = DeviceSavedData.get(player.server);
     var runtime = WorldNetworks.get(player.server);
@@ -137,7 +137,7 @@ final class SplitRootVerification {
           new ResourceFilter(
               ResourceKind.ITEM,
               ResourceFilter.Mode.INCLUDE,
-              java.util.List.of(new ResourceFilter.Exact(key))),
+              List.of(new ResourceFilter.Exact(key))),
           8);
       phase = 2;
       return false;

@@ -2,10 +2,13 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.CraftingJobs;
+import dev.izzy.factorycore.core.crafting.KeepStockRule;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +39,7 @@ public final class CraftingJobCodec {
   }
 
   private static ResourceKey key(CompoundTag tag) {
-    NetworkStateCodec.fields(tag, Set.of("Kind", "Registry", "Components"));
+    Nbt.fields(tag, Set.of("Kind", "Registry", "Components"));
     if (!tag.contains("Kind", Tag.TAG_STRING)
         || !tag.contains("Registry", Tag.TAG_STRING)
         || !tag.contains("Components", Tag.TAG_BYTE_ARRAY))
@@ -81,17 +84,13 @@ public final class CraftingJobCodec {
   }
 
   /** Decoded nested table: jobs and keep-stock rules, already validated together. */
-  public record Decoded(
-      List<CraftingJob.Snapshot> jobs,
-      List<dev.izzy.factorycore.core.crafting.KeepStockRule> rules) {}
+  public record Decoded(List<CraftingJob.Snapshot> jobs, List<KeepStockRule> rules) {}
 
   public static CompoundTag encode(List<CraftingJob.Snapshot> jobs) {
     return encode(jobs, List.of());
   }
 
-  public static CompoundTag encode(
-      List<CraftingJob.Snapshot> jobs,
-      List<dev.izzy.factorycore.core.crafting.KeepStockRule> rules) {
+  public static CompoundTag encode(List<CraftingJob.Snapshot> jobs, List<KeepStockRule> rules) {
     var root = new CompoundTag();
     root.putInt("Schema", 5);
     var ruleList = new ListTag();
@@ -174,16 +173,15 @@ public final class CraftingJobCodec {
         || root.getInt("Schema") > 5)
       throw new IllegalArgumentException("Unsupported crafting job schema");
     int schema = root.getInt("Schema");
-    NetworkStateCodec.fields(
-        root, schema >= 3 ? Set.of("Schema", "Jobs", "Rules") : Set.of("Schema", "Jobs"));
-    var rules = new ArrayList<dev.izzy.factorycore.core.crafting.KeepStockRule>();
+    Nbt.fields(root, schema >= 3 ? Set.of("Schema", "Jobs", "Rules") : Set.of("Schema", "Jobs"));
+    var rules = new ArrayList<KeepStockRule>();
     if (schema >= 3) {
       var ruleList = list(root, "Rules");
       if (ruleList.size() > CraftingJobs.MAX_RULES)
         throw new IllegalArgumentException("Rule limit");
       for (int index = 0; index < ruleList.size(); index++) {
         var entry = ruleList.getCompound(index);
-        NetworkStateCodec.fields(
+        Nbt.fields(
             entry,
             Set.of(
                 "Id",
@@ -204,7 +202,7 @@ public final class CraftingJobCodec {
             || !entry.contains("High", Tag.TAG_LONG))
           throw new IllegalArgumentException("Malformed keep-stock rule");
         rules.add(
-            new dev.izzy.factorycore.core.crafting.KeepStockRule(
+            new KeepStockRule(
                 entry.getUUID("Id"),
                 entry.getUUID("Principal"),
                 entry.getUUID("Network"),
@@ -225,7 +223,7 @@ public final class CraftingJobCodec {
       bytes += entry.sizeInBytes();
       if (bytes > MAX_BYTES) throw new IllegalArgumentException("Crafting job byte limit");
       var fields =
-          new java.util.HashSet<>(
+          new HashSet<>(
               Set.of(
                   "Id",
                   "Principal",
@@ -244,13 +242,13 @@ public final class CraftingJobCodec {
       if (schema >= 3) fields.add("Rule");
       if (entry.contains("Rule") && !entry.hasUUID("Rule"))
         throw new IllegalArgumentException("Malformed job rule");
-      NetworkStateCodec.fields(entry, fields);
+      Nbt.fields(entry, fields);
       CraftingJob.Dispatch dispatch = null;
       if (entry.contains("Dispatch")) {
         if (!entry.contains("Dispatch", Tag.TAG_COMPOUND))
           throw new IllegalArgumentException("Malformed dispatch");
         var saved = entry.getCompound("Dispatch");
-        NetworkStateCodec.fields(
+        Nbt.fields(
             saved,
             schema >= 5
                 ? Set.of("Dimension", "Position", "Target", "Providers", "Inserted", "Collected")
@@ -262,7 +260,7 @@ public final class CraftingJobCodec {
         if (!saved.contains("Dimension", Tag.TAG_STRING)
             || !saved.contains("Position", Tag.TAG_LONG))
           throw new IllegalArgumentException("Malformed dispatch");
-        var providerIds = new java.util.EnumMap<ResourceKind, UUID>(ResourceKind.class);
+        var providerIds = new EnumMap<ResourceKind, UUID>(ResourceKind.class);
         if (schema >= 5) {
           if (!saved.contains("Providers", Tag.TAG_COMPOUND))
             throw new IllegalArgumentException("Malformed processing providers");
@@ -300,7 +298,7 @@ public final class CraftingJobCodec {
         throw new IllegalArgumentException("Job step limit");
       for (int s = 0; s < stepList.size(); s++) {
         var step = stepList.getCompound(s);
-        NetworkStateCodec.fields(step, Set.of("Pattern", "Version", "Output", "Crafts", "Done"));
+        Nbt.fields(step, Set.of("Pattern", "Version", "Output", "Crafts", "Done"));
         if (!step.hasUUID("Pattern")
             || !step.contains("Version", Tag.TAG_LONG)
             || !step.contains("Output", Tag.TAG_COMPOUND)
@@ -319,7 +317,7 @@ public final class CraftingJobCodec {
       var cells = list(entry, "Reserved");
       for (int c = 0; c < cells.size(); c++) {
         var cell = cells.getCompound(c);
-        NetworkStateCodec.fields(cell, Set.of("Backing", "Keys"));
+        Nbt.fields(cell, Set.of("Backing", "Keys"));
         if (!cell.hasUUID("Backing")) throw new IllegalArgumentException("Malformed reservation");
         if (reserved.put(cell.getUUID("Backing"), amounts(list(cell, "Keys"))) != null)
           throw new IllegalArgumentException("Duplicate reservation backing");

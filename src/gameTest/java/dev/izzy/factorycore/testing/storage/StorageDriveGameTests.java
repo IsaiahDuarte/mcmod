@@ -1,8 +1,12 @@
 package dev.izzy.factorycore.testing.storage;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import dev.izzy.factorycore.core.network.NetworkTopology;
+import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.network.NetworkContent;
@@ -16,21 +20,29 @@ import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -87,10 +99,8 @@ public final class StorageDriveGameTests {
     try (var source =
         StorageDriveGameTests.class.getResourceAsStream("/persistence/cell-lease-v1.snbt")) {
       if (source == null) throw new IllegalStateException("Missing lease fixture");
-      fixture =
-          net.minecraft.nbt.TagParser.parseTag(
-              new String(source.readAllBytes(), StandardCharsets.UTF_8));
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException invalid) {
+      fixture = TagParser.parseTag(new String(source.readAllBytes(), StandardCharsets.UTF_8));
+    } catch (CommandSyntaxException invalid) {
       throw new IllegalStateException("Invalid lease fixture", invalid);
     }
     var drive = drive(helper, FIRST);
@@ -190,8 +200,7 @@ public final class StorageDriveGameTests {
     registry.reserve(placed, UUID.randomUUID(), IRON, 500);
     var portable = drive.removeCell(0);
     var handle = CellHandleData.read(portable);
-    portable.set(
-        DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("Owned stock"));
+    portable.set(DataComponents.CUSTOM_NAME, Component.literal("Owned stock"));
     var player = helper.makeMockPlayer(GameType.SURVIVAL);
     player.setItemInHand(InteractionHand.OFF_HAND, portable);
     for (var module :
@@ -438,10 +447,7 @@ public final class StorageDriveGameTests {
           "infinite_module"
         }) {
       var recipe =
-          manager
-              .byKey(
-                  net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("factorycore", id))
-              .orElseThrow();
+          manager.byKey(ResourceLocation.fromNamespaceAndPath("factorycore", id)).orElseThrow();
       helper.assertTrue(
           recipe.value().getResultItem(helper.getLevel().registryAccess()).getCount() == 1,
           "One recipe output");
@@ -450,21 +456,18 @@ public final class StorageDriveGameTests {
         for (var item : ingredient.getItems()) {
           helper.assertTrue(
               !(item.getItem() instanceof CellItem)
-                  && net.minecraft.core.registries.BuiltInRegistries.ITEM
+                  && BuiltInRegistries.ITEM
                       .getKey(item.getItem())
                       .getNamespace()
                       .equals("minecraft"),
               "Only vanilla inputs; no populated cell consumed");
-          costs.merge(
-              net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item.getItem()).getPath(),
-              1,
-              Integer::sum);
+          costs.merge(BuiltInRegistries.ITEM.getKey(item.getItem()).getPath(), 1, Integer::sum);
         }
       }
       helper.assertTrue(
           costs.equals(expected.get(id)), "Recipe costs match balance version one: " + id);
       helper.assertTrue(
-          net.minecraft.core.registries.BuiltInRegistries.ITEM
+          BuiltInRegistries.ITEM
               .getKey(recipe.value().getResultItem(helper.getLevel().registryAccess()).getItem())
               .toString()
               .equals("factorycore:" + id),
@@ -474,17 +477,13 @@ public final class StorageDriveGameTests {
                   .getLevel()
                   .getServer()
                   .getAdvancements()
-                  .get(
-                      net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                          "factorycore", "recipes/misc/" + id))
+                  .get(ResourceLocation.fromNamespaceAndPath("factorycore", "recipes/misc/" + id))
               != null,
           "Survival recipe unlock advancement");
     }
     helper.assertTrue(
         manager
-            .byKey(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                    "factorycore", "infinite_item_cell"))
+            .byKey(ResourceLocation.fromNamespaceAndPath("factorycore", "infinite_item_cell"))
             .isEmpty(),
         "Infinite requires sequential modules");
     helper.succeed();
@@ -503,9 +502,7 @@ public final class StorageDriveGameTests {
                 var original = drive(helper, FIRST);
                 var registry = registry(helper);
                 var input = new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM));
-                input.set(
-                    DataComponents.CUSTOM_NAME,
-                    net.minecraft.network.chat.Component.literal("Retained name"));
+                input.set(DataComponents.CUSTOM_NAME, Component.literal("Retained name"));
                 original.installCell(input);
                 var old = CellHandleData.read(original.cell(0));
                 activate(helper, original);
@@ -548,7 +545,7 @@ public final class StorageDriveGameTests {
                 var wrongTier = new ItemStack(StorageContent.cell(CellTier.EXPANDED_ITEM));
                 wrongTier.applyComponents(original.cell(0).getComponentsPatch());
                 mismatched
-                    .getList("CellSlots", net.minecraft.nbt.Tag.TAG_COMPOUND)
+                    .getList("CellSlots", Tag.TAG_COMPOUND)
                     .getCompound(0)
                     .put("Stack", wrongTier.save(helper.getLevel().registryAccess()));
                 original.loadWithComponents(mismatched, helper.getLevel().registryAccess());
@@ -587,9 +584,9 @@ public final class StorageDriveGameTests {
                 var directory =
                     console
                         .getServer()
-                        .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                        .getWorldPath(LevelResource.ROOT)
                         .resolve("factorycore-device-recovery");
-                try (var files = java.nio.file.Files.list(directory)) {
+                try (var files = Files.list(directory)) {
                   helper.assertTrue(
                       files.anyMatch(
                           file ->
@@ -655,18 +652,17 @@ public final class StorageDriveGameTests {
         helper
             .getLevel()
             .getServer()
-            .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+            .getWorldPath(LevelResource.ROOT)
             .resolve("factorycore-device-recovery");
-    java.nio.file.Files.createDirectories(directory);
-    var blocker =
-        java.nio.file.Files.createDirectory(directory.resolve("unexpected-" + UUID.randomUUID()));
+    Files.createDirectories(directory);
+    var blocker = Files.createDirectory(directory.resolve("unexpected-" + UUID.randomUUID()));
     boolean refused = false;
     try {
       original.repairCellConflict(old);
     } catch (IOException expected) {
       refused = true;
     } finally {
-      java.nio.file.Files.delete(blocker);
+      Files.delete(blocker);
     }
     helper.assertTrue(
         refused
@@ -686,7 +682,7 @@ public final class StorageDriveGameTests {
     activate(helper, original);
     registry.insert(old, IRON, 100);
     var source =
-        new dev.izzy.factorycore.core.resource.ResourcePort() {
+        new ResourcePort() {
           public UUID backingId() {
             return old.backing();
           }
@@ -704,7 +700,7 @@ public final class StorageDriveGameTests {
           }
         };
     var destination =
-        new dev.izzy.factorycore.core.resource.ResourcePort() {
+        new ResourcePort() {
           private final UUID id = UUID.randomUUID();
 
           public UUID backingId() {
@@ -753,10 +749,10 @@ public final class StorageDriveGameTests {
     helper.succeed();
   }
 
-  private static int cellCommand(net.minecraft.commands.CommandSourceStack source, String command) {
+  private static int cellCommand(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException denied) {
+    } catch (CommandSyntaxException denied) {
       return -1;
     }
   }
@@ -776,13 +772,9 @@ public final class StorageDriveGameTests {
   private static void activate(GameTestHelper helper, StorageDriveEntity drive) {
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
     var location = drive.location(0);
-    var position =
-        new dev.izzy.factorycore.core.network.NodeRegistry.Position(
-            location.dimension(), location.position());
+    var position = new NodeRegistry.Position(location.dimension(), location.position());
     for (int i = 0;
-        i < 100
-            && runtime.membership(position).status()
-                != dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID;
+        i < 100 && runtime.membership(position).status() != NetworkTopology.Status.VALID;
         i++) runtime.tick();
     helper.assertTrue(
         registry(helper).stock(CellHandleData.read(drive.cell(0)), IRON).loaded(),

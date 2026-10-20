@@ -12,7 +12,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
@@ -22,6 +21,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.tutorial.TutorialSteps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -53,6 +53,7 @@ public final class MultiplayerClientVerification {
   private final Path report = sync.directory().resolve(role).resolve("result.txt");
   private final Map<String, Integer> received = new HashMap<>();
   private final StringBuilder evidence = new StringBuilder();
+  private final Captures captures = new Captures("multiplayer-" + role, report, evidence);
   private boolean connecting, leaving, done;
   private int ticks, step, acknowledged, entered, sub, mark, policyMask, retries;
 
@@ -86,7 +87,6 @@ public final class MultiplayerClientVerification {
     return received.getOrDefault(key, 0);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns its window and connection.
   private void tick(ClientTickEvent.Post event) {
     if (done) return;
     var client = Minecraft.getInstance();
@@ -138,7 +138,7 @@ public final class MultiplayerClientVerification {
     client.getWindow().setWindowed(1024, 768);
     client.options.guiScale().set(2);
     client.options.pauseOnLostFocus = false;
-    client.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
+    client.getTutorial().setStep(TutorialSteps.NONE);
     client.resizeDisplay();
     require(
         client.getUser().getName().equals(owner ? OWNER : STRANGER),
@@ -211,7 +211,7 @@ public final class MultiplayerClientVerification {
       case 2 -> {
         if (ticks - mark < 5) return false;
         require(client.screen == null, "Still no terminal screen");
-        capture(client, "stranger-terminal-denied.png");
+        captures.grab(client, "stranger-terminal-denied.png");
         mark = count("command.factorycore.access.denied");
         client.player.connection.sendCommand(
             "factorycore access grant " + TERMINAL_ARGS + " " + STRANGER + " all");
@@ -224,7 +224,7 @@ public final class MultiplayerClientVerification {
       }
       case 4 -> {
         if (ticks - mark < 5) return false;
-        capture(client, "stranger-self-grant-refused.png");
+        captures.grab(client, "stranger-self-grant-refused.png");
         evidence.append("stranger: terminal use refused (action bar) and self-grant refused\n");
         return true;
       }
@@ -268,7 +268,7 @@ public final class MultiplayerClientVerification {
       }
       case 4 -> {
         if (ticks - mark < 5) return false;
-        capture(client, "owner-policy-editable.png");
+        captures.grab(client, "owner-policy-editable.png");
         client.player.closeContainer();
         evidence.append("owner: gateway policy editable; first branch bit toggled\n");
         return true;
@@ -309,7 +309,7 @@ public final class MultiplayerClientVerification {
         require(
             screen.getMenu().policy().mask() == policyMask,
             "A forged policy click from the stranger changes nothing");
-        capture(client, "stranger-policy-readonly.png");
+        captures.grab(client, "stranger-policy-readonly.png");
         client.player.closeContainer();
         evidence.append("stranger: gateway policy read-only; forged click refused\n");
         return true;
@@ -359,7 +359,7 @@ public final class MultiplayerClientVerification {
       }
       case 1 -> {
         if (ironTotal(client) != SEEDED_IRON) return false;
-        capture(client, "stranger-view-only.png");
+        captures.grab(client, "stranger-view-only.png");
         select(client);
         mark = ticks;
         click(terminal(client), "Take 1");
@@ -376,7 +376,7 @@ public final class MultiplayerClientVerification {
       }
       case 3 -> {
         if (ticks - mark < 5) return false;
-        capture(client, "stranger-take-denied.png");
+        captures.grab(client, "stranger-take-denied.png");
         client.player.closeContainer();
         evidence.append("stranger: View-only terminal shows 64; Take 1 refused (denied)\n");
         return true;
@@ -399,7 +399,7 @@ public final class MultiplayerClientVerification {
       }
       case 2 -> {
         if (ticks - mark < 5) return false;
-        capture(client, capture);
+        captures.grab(client, capture);
         evidence.append(role).append(": terminal open showing ").append(total).append('\n');
         return true;
       }
@@ -443,7 +443,7 @@ public final class MultiplayerClientVerification {
       }
       case 3 -> {
         if (ticks - mark < 5) return false;
-        capture(client, capture);
+        captures.grab(client, capture);
         evidence.append(role).append(": Take 1 -> holds ").append(expectedIron);
         evidence.append(", terminal shows ").append(expectedTotal);
         evidence.append(" (stale-revision retries so far ").append(retries).append(")\n");
@@ -466,7 +466,7 @@ public final class MultiplayerClientVerification {
       }
       case 1 -> {
         if (ticks - mark < 5) return false;
-        capture(client, capture);
+        captures.grab(client, capture);
         return true;
       }
       default -> {}
@@ -506,7 +506,7 @@ public final class MultiplayerClientVerification {
       }
       case 2 -> {
         if (ticks - mark < 5) return false;
-        capture(client, "stranger-deposited.png");
+        captures.grab(client, "stranger-deposited.png");
         evidence.append("stranger: deposited 1 through the real C2S payload; shows 63\n");
         return true;
       }
@@ -531,7 +531,7 @@ public final class MultiplayerClientVerification {
             || view.busy()
             || !(view.status().equals("ready") || view.status().equals("ok"))
             || ironTotal(client) != 61) return false;
-        capture(client, "owner-after-revoke.png");
+        captures.grab(client, "owner-after-revoke.png");
         evidence.append("owner: own session remains usable with 61 after revoking the stranger\n");
         return true;
       }
@@ -550,7 +550,7 @@ public final class MultiplayerClientVerification {
       }
       case 1 -> {
         if (ticks - mark < 10) return false;
-        capture(client, "stranger-revoked-closed.png");
+        captures.grab(client, "stranger-revoked-closed.png");
         mark = count("message.factorycore.terminal_unavailable");
         use(client, TERMINAL, Direction.NORTH);
         sub++;
@@ -580,7 +580,7 @@ public final class MultiplayerClientVerification {
       }
       case 2 -> {
         if (ticks - mark < 5) return false;
-        capture(client, "stranger-operator-granted.png");
+        captures.grab(client, "stranger-operator-granted.png");
         client.player.closeContainer();
         evidence.append("stranger: operator console grant restored View; terminal shows 61\n");
         return true;
@@ -697,31 +697,6 @@ public final class MultiplayerClientVerification {
             down
                 ? ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY
                 : ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
-  }
-
-  @SuppressWarnings("PMD.CloseResource") // Screenshot borrows the game's active Window.
-  private void capture(Minecraft client, String name) {
-    try {
-      Files.createDirectories(report.getParent().resolve("screenshots"));
-    } catch (IOException error) {
-      throw new IllegalStateException("Cannot prepare screenshot directory", error);
-    }
-    var window = client.getWindow();
-    evidence
-        .append(name)
-        .append(" framebuffer=")
-        .append(window.getWidth())
-        .append('x')
-        .append(window.getHeight())
-        .append(" scale=")
-        .append(window.getGuiScale())
-        .append('\n');
-    Screenshot.grab(
-        report.getParent().toFile(),
-        name,
-        client.getMainRenderTarget(),
-        component ->
-            System.out.println("FACTORYCORE_MULTIPLAYER_SCREENSHOT " + component.getString()));
   }
 
   private static void require(boolean condition, String message) {

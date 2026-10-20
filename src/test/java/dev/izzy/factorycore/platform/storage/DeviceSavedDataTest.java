@@ -14,6 +14,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.util.datafix.DataFixers;
@@ -67,26 +68,15 @@ class DeviceSavedDataTest {
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
     assertEquals(DeviceSavedData.SCHEMA, migrated.getInt("Schema"));
+    assertTrue(migrated.getCompound("Buffers").getList("Buffers", Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getCompound("RouteCursors").getList("Cursors", Tag.TAG_COMPOUND).isEmpty());
     assertTrue(
-        migrated
-            .getCompound("Buffers")
-            .getList("Buffers", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("RouteCursors")
-            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("ExternalClaims")
-            .getList("Claims", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(migrated.getList("Transfers", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty());
+        migrated.getCompound("ExternalClaims").getList("Claims", Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getList("Transfers", Tag.TAG_COMPOUND).isEmpty());
     assertEquals(fixture.get("World"), migrated.get("World"));
     assertEquals(fixture.get("Devices"), migrated.get("Devices"));
-    assertTrue(migrated.getList("Networks", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty());
-    assertTrue(migrated.getList("Nodes", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getList("Networks", Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getList("Nodes", Tag.TAG_COMPOUND).isEmpty());
     loaded.registry().availability(handle, location, true);
     assertEquals(
         7, loaded.registry().extract(handle, ResourceKey.ENERGY, 100, new UUID(0, 2)).amount());

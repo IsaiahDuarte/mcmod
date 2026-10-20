@@ -7,22 +7,33 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.entity.HopperBlockEntity;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -40,9 +51,7 @@ public final class BufferedInterfaceGameTests {
     NetworkNodeEntity root = helper.getBlockEntity(new BlockPos(1, 1, 1));
     root.commission(actor);
     helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), actor);
+    BufferedInterfaceEntity buffer = Net.in(helper, actor).buffer(BUFFER);
     return buffer;
   }
 
@@ -144,15 +153,14 @@ public final class BufferedInterfaceGameTests {
     var stack = new ItemStack(BufferedInterfaceContent.ITEM.get());
     player.setItemInHand(InteractionHand.MAIN_HAND, stack);
     var hit =
-        new net.minecraft.world.phys.BlockHitResult(
-            net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(BUFFER.below())),
+        new BlockHitResult(
+            Vec3.atCenterOf(helper.absolutePos(BUFFER.below())),
             Direction.UP,
             helper.absolutePos(BUFFER.below()),
             false);
     var context =
-        new net.minecraft.world.item.context.BlockPlaceContext(
-            helper.getLevel(), player, InteractionHand.MAIN_HAND, stack, hit);
-    var result = ((net.minecraft.world.item.BlockItem) stack.getItem()).place(context);
+        new BlockPlaceContext(helper.getLevel(), player, InteractionHand.MAIN_HAND, stack, hit);
+    var result = ((BlockItem) stack.getItem()).place(context);
     helper.assertTrue(
         result.consumesAction() && stack.isEmpty(),
         "Creative placement consumes the ownership reference");
@@ -165,8 +173,8 @@ public final class BufferedInterfaceGameTests {
         helper
             .getLevel()
             .getEntitiesOfClass(
-                net.minecraft.world.entity.item.ItemEntity.class,
-                new net.minecraft.world.phys.AABB(helper.absolutePos(BUFFER)).inflate(.8),
+                ItemEntity.class,
+                new AABB(helper.absolutePos(BUFFER)).inflate(.8),
                 e -> e.getItem().is(BufferedInterfaceContent.ITEM.get()));
     helper.assertTrue(
         drops.size() == 1 && drops.getFirst().getItem().getCount() == 1,
@@ -291,19 +299,17 @@ public final class BufferedInterfaceGameTests {
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void recipeUsesStarterMaterialsAndUnlocksWithoutExistingBufferReference(
       GameTestHelper helper) {
-    var id =
-        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-            "factorycore", "buffered_interface");
+    var id = ResourceLocation.fromNamespaceAndPath("factorycore", "buffered_interface");
     var recipe = helper.getLevel().getRecipeManager().byKey(id).orElseThrow().value();
-    var costs = new java.util.HashMap<String, Integer>();
+    var costs = new HashMap<String, Integer>();
     for (var ingredient : recipe.getIngredients())
       for (var stack : ingredient.getItems()) {
-        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+        var item = BuiltInRegistries.ITEM.getKey(stack.getItem());
         helper.assertTrue(item.getNamespace().equals("minecraft"), "Only vanilla ingredients");
         costs.merge(item.getPath(), 1, Integer::sum);
       }
     helper.assertTrue(
-        costs.equals(java.util.Map.of("iron_ingot", 4, "glass", 2, "redstone", 2, "hopper", 1)),
+        costs.equals(Map.of("iron_ingot", 4, "glass", 2, "redstone", 2, "hopper", 1)),
         "Exact starter buffer recipe");
     var result = recipe.getResultItem(helper.getLevel().registryAccess());
     helper.assertTrue(
@@ -317,7 +323,7 @@ public final class BufferedInterfaceGameTests {
                 .getServer()
                 .getAdvancements()
                 .get(
-                    net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                    ResourceLocation.fromNamespaceAndPath(
                         "factorycore", "recipes/misc/buffered_interface"))
             != null,
         "Recipe book unlock loaded");

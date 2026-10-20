@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import java.util.List;
 import net.minecraft.network.chat.Component;
@@ -26,7 +27,7 @@ public final class CellItem extends Item {
         tier.infinite()
             ? Component.translatable("tooltip.factorycore.cell_capacity_infinite")
             : Component.translatable(
-                tier.kind() == dev.izzy.factorycore.core.resource.ResourceKind.ITEM
+                tier.kind() == ResourceKind.ITEM
                     ? "tooltip.factorycore.cell_capacity_items"
                     : "tooltip.factorycore.cell_capacity_fluid",
                 tier.capacity()));

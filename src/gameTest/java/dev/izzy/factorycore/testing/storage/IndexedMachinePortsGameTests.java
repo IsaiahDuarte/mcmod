@@ -3,10 +3,16 @@ package dev.izzy.factorycore.testing.storage;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.crafting.CraftingContent;
+import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
+import dev.izzy.factorycore.platform.crafting.ProcessingContents;
+import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.*;
 import net.minecraft.gametest.framework.*;
@@ -50,9 +56,7 @@ public final class IndexedMachinePortsGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
     h.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
     h.setBlock(new BlockPos(3, 1, 2), NetworkContent.CABLE.get());
     var first = machine(h, FIRST, Direction.EAST);
@@ -60,9 +64,7 @@ public final class IndexedMachinePortsGameTests {
     h.setBlock(PROVIDER, ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity provider = h.getBlockEntity(PROVIDER);
     provider.partitioned = true;
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_FLUID);
     return new Fixture(
         actor,
         WorldNetworks.get(h.getLevel().getServer()),
@@ -244,23 +246,20 @@ public final class IndexedMachinePortsGameTests {
     var craftingPos = new BlockPos(4, 1, 0);
     h.setBlock(
         craftingPos,
-        dev.izzy.factorycore.platform.crafting.CraftingContent.INTERFACE
+        CraftingContent.INTERFACE
             .get()
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.SOUTH));
-    dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity crafting =
-        h.getBlockEntity(craftingPos);
-    var pattern =
-        new ItemStack(
-            dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING_PATTERN.get());
+    CraftingInterfaceEntity crafting = h.getBlockEntity(craftingPos);
+    var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
     pattern.set(
-        dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING.get(),
-        new dev.izzy.factorycore.platform.crafting.ProcessingContents(
+        CraftingContent.PROCESSING.get(),
+        new ProcessingContents(
             UUID.randomUUID(),
             1,
             0,
-            java.util.List.of(new ItemStack(Items.GOLD_INGOT)),
-            java.util.List.of(new ItemStack(Items.DIAMOND))));
+            List.of(new ItemStack(Items.GOLD_INGOT)),
+            List.of(new ItemStack(Items.DIAMOND))));
     crafting.patterns().insertItem(0, pattern, false);
     StorageDriveEntity drive = h.getBlockEntity(DRIVE);
     drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
@@ -272,8 +271,7 @@ public final class IndexedMachinePortsGameTests {
     var claim = UUID.randomUUID();
     UUID[] id = {null};
     WorldConnectors.Handle[] held = {null};
-    var jobs =
-        dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(h.getLevel().getServer());
+    var jobs = WorldCraftingJobs.get(h.getLevel().getServer());
     h.startSequence()
         .thenWaitUntil(
             () -> {

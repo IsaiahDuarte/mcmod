@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.power;
 
 import dev.izzy.factorycore.core.storage.FuelGenerator;
 import java.util.EnumMap;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -9,6 +10,7 @@ import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -204,7 +206,6 @@ public final class FuelGeneratorEntity extends BlockEntity {
     if (changed) setChanged();
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private boolean push() {
     if (generator.energy() == 0 || !(level instanceof ServerLevel server)) return false;
     boolean moved = false;
@@ -273,7 +274,7 @@ public final class FuelGeneratorEntity extends BlockEntity {
       generator = restored;
     } catch (IllegalArgumentException invalid) {
       unsupported = tag.copy();
-      for (var key : java.util.List.of("id", "x", "y", "z", "components")) unsupported.remove(key);
+      for (var key : List.of("id", "x", "y", "z", "components")) unsupported.remove(key);
     }
   }
 
@@ -295,9 +296,7 @@ public final class FuelGeneratorEntity extends BlockEntity {
     super.collectImplicitComponents(components);
     if (unsupported != null) {
       // Breaking must not discard retained future data; placement retains it again unchanged.
-      components.set(
-          FuelGeneratorContent.RETAINED.get(),
-          net.minecraft.world.item.component.CustomData.of(unsupported));
+      components.set(FuelGeneratorContent.RETAINED.get(), CustomData.of(unsupported));
       return;
     }
     var state = generator.snapshot();

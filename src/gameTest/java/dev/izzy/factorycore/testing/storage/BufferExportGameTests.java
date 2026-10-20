@@ -6,6 +6,8 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -36,15 +38,9 @@ public final class BufferExportGameTests {
 
   private static Fixture setup(GameTestHelper helper) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM);
+    BufferedInterfaceEntity buffer = Net.in(helper, actor.id()).buffer(BUFFER);
     var codec = new PlatformResourceCodec(helper.getLevel().registryAccess());
     return new Fixture(
         actor,
@@ -67,7 +63,7 @@ public final class BufferExportGameTests {
         new ResourceFilter(
             ResourceKind.ITEM,
             ResourceFilter.Mode.INCLUDE,
-            java.util.List.of(new ResourceFilter.Registry(f.iron.registryId()))),
+            List.of(new ResourceFilter.Registry(f.iron.registryId()))),
         16,
         target);
   }
@@ -370,9 +366,7 @@ public final class BufferExportGameTests {
       GameTestHelper helper) {
     var f = setup(helper);
     var secondPos = new BlockPos(3, 1, 2);
-    helper.setBlock(secondPos, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity other = helper.getBlockEntity(secondPos);
-    other.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), f.actor.id());
+    BufferedInterfaceEntity other = Net.in(helper, f.actor.id()).buffer(secondPos);
     var hold = UUID.randomUUID();
     helper
         .startSequence()

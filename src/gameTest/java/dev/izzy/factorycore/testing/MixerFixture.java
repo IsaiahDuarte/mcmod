@@ -1,6 +1,9 @@
 package dev.izzy.factorycore.testing;
 
 import com.mojang.serialization.MapCodec;
+import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.platform.resource.ExternalBackingProvider;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.ItemStack;
@@ -73,12 +76,10 @@ public final class MixerFixture {
     }
   }
 
-  public static final class MixerEntity extends BlockEntity
-      implements dev.izzy.factorycore.platform.resource.ExternalBackingProvider {
+  public static final class MixerEntity extends BlockEntity implements ExternalBackingProvider {
     @Override
-    public java.util.List<BlockPos> factoryCoreBackingPositions(
-        dev.izzy.factorycore.core.resource.ResourceKind kind) {
-      return java.util.List.of(getBlockPos());
+    public List<BlockPos> factoryCoreBackingPositions(ResourceKind kind) {
+      return List.of(getBlockPos());
     }
 
     /** Slot 0 input (cobblestone), slot 1 output (stone, extract only). */

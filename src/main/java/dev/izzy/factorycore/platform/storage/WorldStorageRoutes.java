@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -8,6 +7,7 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.PriorityOrder;
 import dev.izzy.factorycore.core.storage.RouteCursors;
 import dev.izzy.factorycore.core.storage.StableRotation;
@@ -196,7 +196,7 @@ public final class WorldStorageRoutes {
     Objects.requireNonNull(completion);
     Objects.requireNonNull(authorized);
     OperationResult.requireQuantity(amount);
-    if (amount > dev.izzy.factorycore.core.resource.ThroughputTier.maxQuantum(key.kind()))
+    if (amount > ThroughputTier.maxQuantum(key.kind()))
       throw new IllegalArgumentException("Route exceeds bounded quantum");
     prune();
     try {
@@ -378,15 +378,13 @@ public final class WorldStorageRoutes {
         && member.status() == NetworkTopology.Status.VALID
         && member.scope().network().equals(request.network)
         && member.scope().segment().equals(request.segment)
-        && networks.authorize(request.actor, request.origin, NetworkPermissions.Permission.VIEW)
-            == NetworkAuthority.Decision.ALLOWED
-        && networks.authorize(
-                request.actor,
-                request.origin,
-                request.direction == Direction.TO_STORAGE
-                    ? NetworkPermissions.Permission.DEPOSIT
-                    : NetworkPermissions.Permission.WITHDRAW)
-            == NetworkAuthority.Decision.ALLOWED;
+        && networks.allows(request.actor, request.origin, NetworkPermissions.Permission.VIEW)
+        && networks.allows(
+            request.actor,
+            request.origin,
+            request.direction == Direction.TO_STORAGE
+                ? NetworkPermissions.Permission.DEPOSIT
+                : NetworkPermissions.Permission.WITHDRAW);
   }
 
   private boolean fixedAllowed(Request request) {

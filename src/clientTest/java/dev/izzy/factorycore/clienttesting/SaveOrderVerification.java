@@ -3,12 +3,13 @@ package dev.izzy.factorycore.clienttesting;
 import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.require;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -24,6 +25,7 @@ import java.util.Properties;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
@@ -59,7 +61,6 @@ final class SaveOrderVerification {
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Server owns the level and fake-player service.
   private void started(ServerStartedEvent event) {
     try {
       Files.createDirectories(report.getParent());
@@ -83,14 +84,11 @@ final class SaveOrderVerification {
 
   private boolean valid(MinecraftServer server, BlockPos position) {
     return WorldNetworks.get(server)
-            .membership(
-                new NodeRegistry.Position(
-                    principal.serverLevel().dimension().location().toString(), position.asLong()))
+            .membership(Positions.of(principal.serverLevel(), position))
             .status()
         == NetworkTopology.Status.VALID;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
   private void tick(ServerTickEvent.Post event) {
     if (principal == null || phase < 0) return;
     var server = event.getServer();
@@ -149,10 +147,8 @@ final class SaveOrderVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
-  private void restore(
-      MinecraftServer server, net.minecraft.server.level.ServerLevel level, DeviceRegistry registry)
-      throws IOException, com.mojang.brigadier.exceptions.CommandSyntaxException {
+  private void restore(MinecraftServer server, ServerLevel level, DeviceRegistry registry)
+      throws IOException, CommandSyntaxException {
     var backing = UUID.fromString(expected.getProperty("backing"));
     long before = Long.parseLong(expected.getProperty("before"));
     long after = Long.parseLong(expected.getProperty("after"));

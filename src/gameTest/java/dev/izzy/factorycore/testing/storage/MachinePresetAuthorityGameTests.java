@@ -5,11 +5,15 @@ import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import java.util.*;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.*;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.*;
 
 @GameTestHolder("factorycore_tests")
@@ -27,9 +31,7 @@ public final class MachinePresetAuthorityGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
     h.setBlock(MACHINE, MachineInterfaceContent.BLOCK.get());
     MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
     machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
@@ -52,7 +54,7 @@ public final class MachinePresetAuthorityGameTests {
   public static void configurationEditAndOldChunkCannotResumeCanonicalDeployment(GameTestHelper h) {
     var f = setup(h);
     MachinePresets.Deployment[] accepted = {null};
-    net.minecraft.nbt.CompoundTag[] oldChunk = {null};
+    CompoundTag[] oldChunk = {null};
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(
@@ -159,9 +161,7 @@ public final class MachinePresetAuthorityGameTests {
             () -> {
               original[0] = deploy(f, f.owner);
               h.setBlock(ROOT, Blocks.AIR);
-              h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-              NetworkNodeEntity replacement = h.getBlockEntity(ROOT);
-              replacement.commission(f.owner.id());
+              NetworkNodeEntity replacement = Net.in(h, f.owner.id()).controller(ROOT);
             })
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(
@@ -187,12 +187,7 @@ public final class MachinePresetAuthorityGameTests {
               old[0] = deploy(f, f.owner);
               h.setBlock(
                   MACHINE,
-                  f.machine
-                      .getBlockState()
-                      .setValue(
-                          net.minecraft.world.level.block.state.properties.BlockStateProperties
-                              .FACING,
-                          net.minecraft.core.Direction.EAST));
+                  f.machine.getBlockState().setValue(BlockStateProperties.FACING, Direction.EAST));
             })
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(

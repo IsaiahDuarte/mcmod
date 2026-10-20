@@ -3,11 +3,14 @@ package dev.izzy.factorycore.platform.storage;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.network.*;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
 import net.minecraft.SharedConstants;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
@@ -25,7 +28,7 @@ class MachinePresetPersistenceTest {
     Bootstrap.bootStrap();
   }
 
-  private static net.minecraft.core.HolderLookup.Provider registries() {
+  private static HolderLookup.Provider registries() {
     return RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY);
   }
 
@@ -58,8 +61,7 @@ class MachinePresetPersistenceTest {
             new MachinePresets.Authority(
                 new UUID(0, 9), root.id(), root.id(), saved.network(root.id()).generation()),
             MachinePresets.Mode.STOCK,
-            dev.izzy.factorycore.core.resource.ResourceFilter.all(
-                dev.izzy.factorycore.core.resource.ResourceKind.ENERGY),
+            ResourceFilter.all(ResourceKind.ENERGY),
             Long.MAX_VALUE);
     saved
         .machinePresets()

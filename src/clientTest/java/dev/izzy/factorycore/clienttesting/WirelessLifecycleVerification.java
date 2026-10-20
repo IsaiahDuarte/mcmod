@@ -5,6 +5,8 @@ import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.require;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.FactoryCoreConfig;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -51,7 +53,6 @@ final class WirelessLifecycleVerification {
         && event.getChunk().getPos().z == 0) unloads++;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Server owns the level.
   private void started(ServerStartedEvent event) {
     level = event.getServer().overworld();
     started = event.getServer().getTickCount();
@@ -100,10 +101,9 @@ final class WirelessLifecycleVerification {
   }
 
   private NodeRegistry.Position position(BlockPos block) {
-    return new NodeRegistry.Position(level.dimension().location().toString(), block.asLong());
+    return Positions.of(level, block);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed event server/level.
   private void tick(ServerTickEvent.Post event) {
     if (level == null || phase == 4) return;
     try {
@@ -125,7 +125,7 @@ final class WirelessLifecycleVerification {
           if (runtime.membership(position(DRIVE)).status() != NetworkTopology.Status.DEPTH_LIMIT)
             return;
           require(
-              dev.izzy.factorycore.platform.FactoryCoreConfig.gatewayDepth() == 1,
+              FactoryCoreConfig.gatewayDepth() == 1,
               "The real world server config loaded its nondefault gateway depth");
           require(
               !saved.registry().stock(cell, key).loaded(),

@@ -1,0 +1,9 @@
+# Screenshots this suite must capture. Gradle requires each file; the verification refuses
+# to capture a name not listed here.
+owner-policy-editable.png
+owner-terminal-concurrent.png
+owner-sees-stranger-take.png
+owner-took-one.png
+owner-sees-stranger-deposit.png
+owner-concurrent-take.png
+owner-after-revoke.png

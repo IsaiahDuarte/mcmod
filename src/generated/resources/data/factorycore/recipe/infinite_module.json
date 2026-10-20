@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "S": {
+      "item": "minecraft:nether_star"
+    }
+  },
+  "pattern": [
+    "NNN",
+    "NSN",
+    "NNN"
+  ],
+  "result": {
+    "count": 1,
+    "id": "factorycore:infinite_module"
+  }
+}

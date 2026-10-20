@@ -1,6 +1,11 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.*;
+import dev.izzy.factorycore.core.network.NetworkTopology;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -14,16 +19,17 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.Vec3;
 
 /** Access-only holder; stock, grants and menu credentials are never copied into chunk/item NBT. */
-public final class TerminalEntity extends BlockEntity implements MenuProvider, TerminalAccess {
+public final class TerminalEntity extends BlockEntity
+    implements MenuProvider, TerminalAccess, WiredMember {
   private UUID opening;
 
   public TerminalEntity(BlockPos pos, BlockState state) {
     super(TerminalContent.ENTITY.get(), pos, state);
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   public ServerLevel serverLevel() {
     if (!(level instanceof ServerLevel server) || !server.getServer().isSameThread())
       throw new IllegalStateException("Terminal requires server thread");
@@ -32,16 +38,12 @@ public final class TerminalEntity extends BlockEntity implements MenuProvider, T
 
   @Override
   public NodeRegistry.Position origin() {
-    return new NodeRegistry.Position(
-        serverLevel().dimension().location().toString(), worldPosition.asLong());
+    return Positions.of(serverLevel(), worldPosition);
   }
 
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel)) return false;
-    var chunk =
-        serverLevel()
-            .getChunkSource()
-            .getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    var chunk = Loaded.chunk(serverLevel(), worldPosition);
     return chunk != null
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }
@@ -52,14 +54,9 @@ public final class TerminalEntity extends BlockEntity implements MenuProvider, T
         || !current()
         || player.serverLevel() != level
         || player.server.getPlayerList().getPlayer(player.getUUID()) != player
-        || player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(worldPosition)) > 64)
-      return false;
+        || player.distanceToSqr(Vec3.atCenterOf(worldPosition)) > 64) return false;
     return WorldNetworks.get(player.server)
-            .authorize(
-                new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                origin(),
-                NetworkPermissions.Permission.VIEW)
-        == NetworkAuthority.Decision.ALLOWED;
+        .allows(Actors.of(player), origin(), NetworkPermissions.Permission.VIEW);
   }
 
   UUID sessionForOpen() {
@@ -88,5 +85,10 @@ public final class TerminalEntity extends BlockEntity implements MenuProvider, T
   public void setRemoved() {
     WorldNetworks.changed(level, worldPosition);
     super.setRemoved();
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(null, "terminal", NetworkTopology.Role.TERMINAL, current());
   }
 }

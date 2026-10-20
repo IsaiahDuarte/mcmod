@@ -1,32 +1,48 @@
 package dev.izzy.factorycore.testing.storage;
 
-import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.storage.CellUpgradeItem;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.EnergyBankHandleData;
 import dev.izzy.factorycore.platform.storage.StorageContent;
+import dev.izzy.factorycore.testing.Net;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -41,14 +57,10 @@ public final class EnergyBankGameTests {
   private EnergyBankGameTests() {}
 
   private static EnergyBankEntity setup(GameTestHelper helper) {
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(UUID.randomUUID());
-    helper.setBlock(CABLE, NetworkContent.CABLE.get());
-    helper.setBlock(BANK, EnergyBankContent.block(EnergyBankTier.STARTER));
-    EnergyBankEntity bank = helper.getBlockEntity(BANK);
-    bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
-    return bank;
+    var net = Net.in(helper);
+    net.controller(ROOT);
+    net.cable(CABLE);
+    return net.bank(BANK, EnergyBankTier.STARTER);
   }
 
   private static void ready(GameTestHelper helper) {
@@ -56,14 +68,7 @@ public final class EnergyBankGameTests {
   }
 
   private static void ready(GameTestHelper helper, BlockPos bankPosition) {
-    var position =
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(),
-            helper.absolutePos(bankPosition).asLong());
-    helper.assertTrue(
-        WorldNetworks.get(helper.getLevel().getServer()).membership(position).status()
-            == NetworkTopology.Status.VALID,
-        "Bank network ready");
+    Net.in(helper).assertValid(bankPosition);
   }
 
   private static DeviceRegistry registry(GameTestHelper helper) {
@@ -73,24 +78,21 @@ public final class EnergyBankGameTests {
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void creativePlacementConsumesLeaseAndBreakDropsExactlyOnePopulatedBank(
       GameTestHelper helper) {
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(UUID.randomUUID());
+    NetworkNodeEntity root = Net.in(helper, UUID.randomUUID()).controller(ROOT);
     helper.setBlock(CABLE, NetworkContent.CABLE.get());
     helper.setBlock(BANK.below(), Blocks.STONE);
     var player = helper.makeMockPlayer(GameType.CREATIVE);
     var stack = new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER));
     player.setItemInHand(InteractionHand.MAIN_HAND, stack);
     var hit =
-        new net.minecraft.world.phys.BlockHitResult(
-            net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(BANK.below())),
+        new BlockHitResult(
+            Vec3.atCenterOf(helper.absolutePos(BANK.below())),
             Direction.UP,
             helper.absolutePos(BANK.below()),
             false);
     var context =
-        new net.minecraft.world.item.context.BlockPlaceContext(
-            helper.getLevel(), player, InteractionHand.MAIN_HAND, stack, hit);
-    var result = ((net.minecraft.world.item.BlockItem) stack.getItem()).place(context);
+        new BlockPlaceContext(helper.getLevel(), player, InteractionHand.MAIN_HAND, stack, hit);
+    var result = ((BlockItem) stack.getItem()).place(context);
     helper.assertTrue(
         result.consumesAction() && stack.isEmpty(),
         "Creative placement consumes physical reference");
@@ -107,8 +109,8 @@ public final class EnergyBankGameTests {
                   helper
                       .getLevel()
                       .getEntitiesOfClass(
-                          net.minecraft.world.entity.item.ItemEntity.class,
-                          new net.minecraft.world.phys.AABB(helper.absolutePos(BANK)).inflate(0.8),
+                          ItemEntity.class,
+                          new AABB(helper.absolutePos(BANK)).inflate(0.8),
                           e -> e.getItem().is(EnergyBankContent.item(EnergyBankTier.STARTER)));
               helper.assertTrue(
                   drops.size() == 1 && drops.getFirst().getItem().getCount() == 1,
@@ -225,7 +227,7 @@ public final class EnergyBankGameTests {
               var player = helper.makeMockPlayer(GameType.SURVIVAL);
               player.setItemInHand(InteractionHand.OFF_HAND, portable);
               for (var module :
-                  new dev.izzy.factorycore.platform.storage.CellUpgradeItem[] {
+                  new CellUpgradeItem[] {
                     StorageContent.EXPANSION.get(), StorageContent.ADVANCED.get()
                   }) {
                 var ingredient = new ItemStack(module);
@@ -326,8 +328,8 @@ public final class EnergyBankGameTests {
                   helper
                       .getLevel()
                       .getEntitiesOfClass(
-                          net.minecraft.world.entity.item.ItemEntity.class,
-                          new net.minecraft.world.phys.AABB(helper.absolutePos(BANK)).inflate(2),
+                          ItemEntity.class,
+                          new AABB(helper.absolutePos(BANK)).inflate(2),
                           e -> e.getItem().is(EnergyBankContent.item(EnergyBankTier.STARTER)));
               helper.assertTrue(drops.size() == 1, "One physical portable bank");
               var player = helper.makeMockPlayer(GameType.SURVIVAL);
@@ -449,14 +451,14 @@ public final class EnergyBankGameTests {
               var directory =
                   console
                       .getServer()
-                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .getWorldPath(LevelResource.ROOT)
                       .resolve("factorycore-device-recovery");
-              try (var files = java.nio.file.Files.list(directory)) {
+              try (var files = Files.list(directory)) {
                 helper.assertTrue(
                     files.anyMatch(
                         file -> file.getFileName().toString().startsWith(old.backing().toString())),
                     "Before-state audit exists when successful command returns");
-              } catch (java.io.IOException failure) {
+              } catch (IOException failure) {
                 throw new AssertionError(failure);
               }
               var runtime = WorldNetworks.get(console.getServer());
@@ -520,23 +522,22 @@ public final class EnergyBankGameTests {
                   helper
                       .getLevel()
                       .getServer()
-                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .getWorldPath(LevelResource.ROOT)
                       .resolve("factorycore-device-recovery");
               try {
-                java.nio.file.Files.createDirectories(folder);
+                Files.createDirectories(folder);
                 var blocker =
-                    java.nio.file.Files.createDirectory(
-                        folder.resolve("unexpected-bank-" + UUID.randomUUID()));
+                    Files.createDirectory(folder.resolve("unexpected-bank-" + UUID.randomUUID()));
                 boolean rejected = false;
                 try {
                   bank.repairConflict(old);
-                } catch (java.io.IOException expected) {
+                } catch (IOException expected) {
                   rejected = true;
                 } finally {
-                  java.nio.file.Files.delete(blocker);
+                  Files.delete(blocker);
                 }
                 helper.assertTrue(rejected, "Audit output failure blocks bank repair");
-              } catch (java.io.IOException failure) {
+              } catch (IOException failure) {
                 throw new AssertionError(failure);
               }
               helper.assertTrue(
@@ -560,7 +561,7 @@ public final class EnergyBankGameTests {
             () -> {
               bank.receiveEnergy(500, false);
               var source =
-                  new dev.izzy.factorycore.core.resource.ResourcePort() {
+                  new ResourcePort() {
                     public UUID backingId() {
                       return old.backing();
                     }
@@ -578,7 +579,7 @@ public final class EnergyBankGameTests {
                     }
                   };
               var destination =
-                  new dev.izzy.factorycore.core.resource.ResourcePort() {
+                  new ResourcePort() {
                     private final UUID id = UUID.randomUUID();
 
                     public UUID backingId() {
@@ -640,16 +641,16 @@ public final class EnergyBankGameTests {
       bank.repairConflict(expected);
     } catch (IllegalStateException | IllegalArgumentException denied) {
       rejected = true;
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
     helper.assertTrue(rejected, "Unsupported bank repair must refuse");
   }
 
-  private static int bankCommand(net.minecraft.commands.CommandSourceStack source, String command) {
+  private static int bankCommand(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException denied) {
+    } catch (CommandSyntaxException denied) {
       return -1;
     }
   }
@@ -657,20 +658,18 @@ public final class EnergyBankGameTests {
   @GameTest(template = "empty")
   public static void starterRecipeUsesVanillaMaterialsAndUnlocksWithoutConsumingBank(
       GameTestHelper helper) {
-    var id =
-        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-            "factorycore", "starter_energy_bank");
+    var id = ResourceLocation.fromNamespaceAndPath("factorycore", "starter_energy_bank");
     var recipe = helper.getLevel().getRecipeManager().byKey(id).orElseThrow().value();
-    var costs = new java.util.HashMap<String, Integer>();
+    var costs = new HashMap<String, Integer>();
     for (var ingredient : recipe.getIngredients())
       for (var stack : ingredient.getItems()) {
-        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+        var item = BuiltInRegistries.ITEM.getKey(stack.getItem());
         helper.assertTrue(
             item.getNamespace().equals("minecraft"), "No bank reference consumed by crafting");
         costs.merge(item.getPath(), 1, Integer::sum);
       }
     helper.assertTrue(
-        costs.equals(java.util.Map.of("iron_ingot", 4, "redstone", 4, "copper_ingot", 1)),
+        costs.equals(Map.of("iron_ingot", 4, "redstone", 4, "copper_ingot", 1)),
         "Exact starter balance recipe");
     var result = recipe.getResultItem(helper.getLevel().registryAccess());
     helper.assertTrue(
@@ -684,7 +683,7 @@ public final class EnergyBankGameTests {
                 .getServer()
                 .getAdvancements()
                 .get(
-                    net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                    ResourceLocation.fromNamespaceAndPath(
                         "factorycore", "recipes/misc/starter_energy_bank"))
             != null,
         "Recipe book unlock loaded");
@@ -692,9 +691,7 @@ public final class EnergyBankGameTests {
         helper
             .getLevel()
             .getRecipeManager()
-            .byKey(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                    "factorycore", "expanded_energy_bank"))
+            .byKey(ResourceLocation.fromNamespaceAndPath("factorycore", "expanded_energy_bank"))
             .isEmpty(),
         "Higher tiers use safe modules, not a populated-bank recipe");
     helper.succeed();

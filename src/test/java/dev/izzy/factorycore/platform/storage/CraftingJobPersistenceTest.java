@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.storage;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.KeepStockRule;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
@@ -14,6 +15,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.Bootstrap;
 import org.junit.jupiter.api.BeforeAll;
@@ -67,7 +69,7 @@ class CraftingJobPersistenceTest {
     var tag = new CompoundTag();
     tag.putInt("Schema", 1);
     tag.putUUID("World", new UUID(0, 77));
-    tag.put("Devices", new net.minecraft.nbt.ListTag());
+    tag.put("Devices", new ListTag());
     return tag;
   }
 
@@ -160,7 +162,7 @@ class CraftingJobPersistenceTest {
     var loaded = DeviceSavedData.load(tag, registries);
     var network = loaded.craftingJobs().all().getFirst().network();
     var rule =
-        new dev.izzy.factorycore.core.crafting.KeepStockRule(
+        new KeepStockRule(
             new UUID(0, 333),
             new UUID(0, 1),
             network,

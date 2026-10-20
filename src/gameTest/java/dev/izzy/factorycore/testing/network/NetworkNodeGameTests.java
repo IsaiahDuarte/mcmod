@@ -1,15 +1,24 @@
 package dev.izzy.factorycore.testing.network;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.NodeHandleData;
+import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.StorageContent;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -17,6 +26,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -87,12 +98,12 @@ public final class NetworkNodeGameTests {
         "Server placer owns private network");
     for (var face : Direction.values()) {
       helper.assertTrue(
-          NetworkContent.connects(first.getBlockState(), face)
-              && NetworkContent.connects(NetworkContent.CABLE.get().defaultBlockState(), face),
+          NetworkedBlock.wired(first.getBlockState(), face)
+              && NetworkedBlock.wired(NetworkContent.CABLE.get().defaultBlockState(), face),
           "Controller and cable accept every ordinary face");
     }
     helper.assertTrue(
-        !NetworkContent.connects(Blocks.STONE.defaultBlockState(), Direction.UP),
+        !NetworkedBlock.wired(Blocks.STONE.defaultBlockState(), Direction.UP),
         "Ordinary vanilla blocks are not wired ports");
     var collaborator = UUID.randomUUID();
     saved
@@ -133,7 +144,7 @@ public final class NetworkNodeGameTests {
     Direction downstream = state.getValue(BlockStateProperties.FACING);
     for (var direction : Direction.values())
       helper.assertTrue(
-          NetworkContent.GATEWAY.get().connects(state, direction)
+          NetworkContent.GATEWAY.get().wiredFace(state, direction)
               == (direction == downstream || direction == downstream.getOpposite()),
           "Only opposing gateway ports connect");
     var data = first.saveWithFullMetadata(helper.getLevel().registryAccess());
@@ -175,7 +186,7 @@ public final class NetworkNodeGameTests {
     int networks =
         authority(helper)
             .save(new CompoundTag(), helper.getLevel().registryAccess())
-            .getList("Networks", net.minecraft.nbt.Tag.TAG_COMPOUND)
+            .getList("Networks", Tag.TAG_COMPOUND)
             .size();
     place(helper, FIRST, player, recovery);
     helper.assertTrue(
@@ -193,23 +204,15 @@ public final class NetworkNodeGameTests {
         networks
             == authority(helper)
                 .save(new CompoundTag(), helper.getLevel().registryAccess())
-                .getList("Networks", net.minecraft.nbt.Tag.TAG_COMPOUND)
+                .getList("Networks", Tag.TAG_COMPOUND)
                 .size(),
         "No future reference manufactures grants");
     var handle =
-        authority(helper)
-            .createGateway(
-                new NodeRegistry.Position(
-                    helper.getLevel().dimension().location().toString(),
-                    helper.absolutePos(FIRST).asLong()));
+        authority(helper).createGateway(Positions.of(helper.getLevel(), helper.absolutePos(FIRST)));
     var portable =
         authority(helper)
             .nodes()
-            .detach(
-                handle,
-                new NodeRegistry.Position(
-                    helper.getLevel().dimension().location().toString(),
-                    helper.absolutePos(FIRST).asLong()))
+            .detach(handle, Positions.of(helper.getLevel(), helper.absolutePos(FIRST)))
             .handle();
     helper.setBlock(FIRST, NetworkContent.GATEWAY.get());
     var tag = node(helper, FIRST).saveWithFullMetadata(helper.getLevel().registryAccess());
@@ -264,15 +267,9 @@ public final class NetworkNodeGameTests {
               == (entry.getKey().equals("network_cable") ? 8 : 1),
           "Bounded expected output");
       helper.assertTrue(
-          helper
-                  .getLevel()
-                  .getServer()
-                  .getAdvancements()
-                  .get(
-                      ResourceLocation.fromNamespaceAndPath(
-                          "factorycore", "recipes/" + entry.getKey()))
-              != null,
-          "Recipe unlock exists");
+          helper.getLevel().getServer().getAdvancements().getAllAdvancements().stream()
+              .anyMatch(advancement -> advancement.value().rewards().recipes().contains(id)),
+          "An advancement unlocks " + id);
     }
     helper.setBlock(FIRST, NetworkContent.CONTROLLER.get());
     helper.assertTrue(
@@ -290,26 +287,21 @@ public final class NetworkNodeGameTests {
   }
 
   // Own batch: the audited repair/adoption throttle is shared per server.
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", batch = "node_adoption", timeoutTicks = 300)
   public static void operatorAdoptsAStaleControllerAfterAnIndependentSaveMismatch(
       GameTestHelper helper) {
-    var player = helper.makeMockServerPlayerInLevel();
+    var player = TestPlayers.mock(helper);
     var drivePos = new BlockPos(2, 1, 1);
     var far = new BlockPos(1, 1, 4);
     var access = helper.getLevel().registryAccess();
     place(helper, FIRST, player, new ItemStack(NetworkContent.CONTROLLER_ITEM.get()));
     var original = node(helper, FIRST).handle();
-    helper.setBlock(drivePos, dev.izzy.factorycore.platform.storage.StorageContent.DRIVE.get());
+    helper.setBlock(drivePos, StorageContent.DRIVE.get());
     var membership =
-        (java.util.function.Supplier<dev.izzy.factorycore.core.network.NetworkTopology.Status>)
+        (Supplier<NetworkTopology.Status>)
             () ->
-                dev.izzy.factorycore.platform.network.WorldNetworks.get(
-                        helper.getLevel().getServer())
-                    .membership(
-                        new NodeRegistry.Position(
-                            helper.getLevel().dimension().location().toString(),
-                            helper.absolutePos(drivePos).asLong()))
+                WorldNetworks.get(helper.getLevel().getServer())
+                    .membership(Positions.of(helper.getLevel(), helper.absolutePos(drivePos)))
                     .status();
     long[] canonical = {0};
     helper
@@ -317,8 +309,7 @@ public final class NetworkNodeGameTests {
         .thenWaitUntil(
             () ->
                 helper.assertTrue(
-                    membership.get()
-                        == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                    membership.get() == NetworkTopology.Status.VALID,
                     "Drive joins the controller's network"))
         .thenIdle(21)
         .thenExecute(
@@ -347,8 +338,7 @@ public final class NetworkNodeGameTests {
         .thenWaitUntil(
             () ->
                 helper.assertTrue(
-                    membership.get()
-                        != dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                    membership.get() != NetworkTopology.Status.VALID,
                     "Without its canonical controller the network is not valid"))
         .thenExecute(
             () -> {
@@ -370,24 +360,21 @@ public final class NetworkNodeGameTests {
         .thenWaitUntil(
             () ->
                 helper.assertTrue(
-                    membership.get()
-                            == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID
+                    membership.get() == NetworkTopology.Status.VALID
                         && authority(helper)
                             .network(original.id())
                             .snapshot()
                             .owner()
                             .equals(player.getUUID()),
                     "The network and its owner are restored"))
-        .thenExecute(
-            () ->
-                player.connection.disconnect(net.minecraft.network.chat.Component.literal("done")))
+        .thenExecute(() -> player.connection.disconnect(Component.literal("done")))
         .thenSucceed();
   }
 
-  private static int command(net.minecraft.commands.CommandSourceStack source, String command) {
+  private static int command(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException denied) {
+    } catch (CommandSyntaxException denied) {
       return -1;
     }
   }

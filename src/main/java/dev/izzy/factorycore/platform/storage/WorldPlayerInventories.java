@@ -7,7 +7,9 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.resource.TransferContext;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -16,6 +18,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Server-authenticated inventory bindings; they are neither stock rows nor canonical quantity
@@ -129,8 +132,7 @@ final class WorldPlayerInventories {
     if (binding == null || !actor.id().equals(endpoint.principal())) return false;
     var player = binding.player();
     return player.serverLevel().dimension().location().toString().equals(origin.dimension())
-        && player.distanceToSqr(
-                net.minecraft.world.phys.Vec3.atCenterOf(BlockPos.of(origin.block())))
+        && player.distanceToSqr(Vec3.atCenterOf(BlockPos.of(origin.block())))
             <= reachSquared(player.getUUID(), origin)
         && (operation != NetworkPermissions.Permission.WITHDRAW || endpoint.slot() >= 0);
   }
@@ -188,10 +190,7 @@ final class WorldPlayerInventories {
               .location()
               .toString()
               .equals(origin.dimension())
-          && captured
-                  .player()
-                  .distanceToSqr(
-                      net.minecraft.world.phys.Vec3.atCenterOf(BlockPos.of(origin.block())))
+          && captured.player().distanceToSqr(Vec3.atCenterOf(BlockPos.of(origin.block())))
               <= reachSquared(captured.player().getUUID(), origin);
     }
 
@@ -199,7 +198,7 @@ final class WorldPlayerInventories {
       if (stack.isEmpty()) return false;
       try {
         return codec.itemKey(stack).equals(key);
-      } catch (IllegalArgumentException | java.io.UncheckedIOException unsupported) {
+      } catch (IllegalArgumentException | UncheckedIOException unsupported) {
         return false;
       }
     }
@@ -302,7 +301,6 @@ final class WorldPlayerInventories {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("Player inventory requires server thread");
+    ServerThread.require(server, "Player inventory");
   }
 }

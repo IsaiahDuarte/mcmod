@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "function": "minecraft:copy_components",
+              "include": [
+                "factorycore:unit_retained"
+              ],
+              "source": "block_entity"
+            }
+          ],
+          "name": "factorycore:crafting_interface"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "factorycore:blocks/crafting_interface"
+}

@@ -4,8 +4,10 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.MachinePresets;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformFilterTags;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.*;
 import net.minecraft.server.MinecraftServer;
 
@@ -51,8 +53,7 @@ public final class WorldMachinePresets {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("Machine presets require server thread");
+    ServerThread.require(server, "Machine presets");
   }
 
   private void deploymentChanged(UUID node) {
@@ -422,8 +423,7 @@ public final class WorldMachinePresets {
         key.kind() == ResourceKind.ITEM
             ? Math.min(
                 amount,
-                new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                        server.registryAccess())
+                new PlatformResourceCodec(server.registryAccess())
                     .itemStack(key, 1)
                     .getMaxStackSize())
             : amount;

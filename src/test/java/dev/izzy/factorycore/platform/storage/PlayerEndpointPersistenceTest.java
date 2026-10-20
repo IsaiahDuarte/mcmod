@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.izzy.factorycore.core.resource.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
@@ -108,7 +109,7 @@ class PlayerEndpointPersistenceTest {
     // Encode via the production transfer table so no hand-maintained quantity format substitutes.
     var transfers =
         TransferStateCodec.encode(
-            java.util.List.of(
+            List.of(
                 new TransferRegistry.Stored(
                     new UUID(0, 999),
                     snapshot(context, new UUID(0, 9), ResourceKind.ITEM),

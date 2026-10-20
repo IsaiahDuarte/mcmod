@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -14,6 +15,8 @@ import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import dev.izzy.factorycore.testing.EnergyFixture;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -46,8 +49,7 @@ public final class TerminalWirelessContainerGameTests {
   private TerminalWirelessContainerGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos relative) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(relative));
   }
 
   private static String action(
@@ -71,18 +73,14 @@ public final class TerminalWirelessContainerGameTests {
     return menu.view().status();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void indivisibleContainersAndEnergyCopiesRespectSharedBidirectionalCap(
       GameTestHelper h) {
-    ServerPlayer player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    ServerPlayer player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(TERMINAL)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
     for (var pos : new BlockPos[] {PARENT_GATE, CHILD_GATE}) {
       h.setBlock(
           pos,
@@ -115,13 +113,9 @@ public final class TerminalWirelessContainerGameTests {
               player,
               new ItemStack(WirelessContent.LINK_ITEM.get()));
     LinkEndpointEntity a = h.getBlockEntity(A), b = h.getBlockEntity(B);
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_FLUID);
     var cell = CellHandleData.read(drive.cell(0));
-    h.setBlock(BANK, EnergyBankContent.block(EnergyBankTier.STARTER));
-    EnergyBankEntity bank = h.getBlockEntity(BANK);
-    bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+    EnergyBankEntity bank = Net.in(h).bank(BANK, EnergyBankTier.STARTER);
     h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
     var runtime = WorldNetworks.get(player.server);
     var saved = DeviceSavedData.get(player.server);

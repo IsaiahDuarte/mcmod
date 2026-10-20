@@ -2,6 +2,8 @@ package dev.izzy.factorycore.clienttesting;
 
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
+import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
+import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.power.FuelGeneratorBlock;
@@ -9,8 +11,13 @@ import dev.izzy.factorycore.platform.power.FuelGeneratorContent;
 import dev.izzy.factorycore.platform.power.FuelGeneratorEntity;
 import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
+import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
+import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.ConnectorContent;
 import dev.izzy.factorycore.platform.storage.ConnectorEntity;
+import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
@@ -20,7 +27,10 @@ import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -90,7 +100,6 @@ final class PresentationScenes {
         : state.setValue(HorizontalDirectionalBlock.FACING, direction);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   static void floor(ServerLevel level, int x0, int z0, int x1, int z1, int y) {
     for (int x = x0; x <= x1; x++)
       for (int z = z0; z <= z1; z++)
@@ -102,7 +111,6 @@ final class PresentationScenes {
    * gateway, connector, machine interface, crafting interface, link endpoint, terminal, generator
    * (the last two are horizontal-only and skip up/down). Returns the number of blocks placed.
    */
-  @SuppressWarnings("PMD.CloseResource")
   static int orientations(ServerLevel level) {
     List<Block> rows =
         List.of(
@@ -130,7 +138,6 @@ final class PresentationScenes {
     return placed;
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static NetworkNodeEntity root(ServerLevel level, BlockPos position, ServerPlayer owner) {
     level.setBlock(position, NetworkContent.CONTROLLER.get().defaultBlockState(), 3);
     var node = (NetworkNodeEntity) level.getBlockEntity(position);
@@ -138,7 +145,6 @@ final class PresentationScenes {
     return node;
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static void drive(ServerLevel level, BlockPos position, int... bays) {
     level.setBlock(position, StorageContent.DRIVE.get().defaultBlockState(), 3);
     var drive = (StorageDriveEntity) level.getBlockEntity(position);
@@ -151,7 +157,6 @@ final class PresentationScenes {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static ProgramControllerEntity program(
       ServerLevel level, BlockPos position, ProgramControllerEntity.State state) {
     level.setBlock(position, ProgramContent.BLOCK.get().defaultBlockState(), 3);
@@ -160,7 +165,6 @@ final class PresentationScenes {
     return controller;
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static LinkEndpointEntity link(ServerLevel level, BlockPos position, boolean powered) {
     level.setBlock(
         position.south(), facing(NetworkContent.GATEWAY.get(), Direction.NORTH), Block.UPDATE_ALL);
@@ -174,7 +178,6 @@ final class PresentationScenes {
    * Status row (z=40) and lamp row (z=43), each device isolated by one empty block. Returns a
    * description of what each position should show.
    */
-  @SuppressWarnings("PMD.CloseResource")
   static String states(ServerPlayer player) {
     var level = player.serverLevel();
     floor(level, 36, 30, 66, 50, 64);
@@ -286,46 +289,31 @@ final class PresentationScenes {
   /** Planks from one oak log on a Crafting Unit beside the screens drive; 8 logs stored. */
   static final BlockPos JOB_UNIT = SCREENS.east().north();
 
-  @SuppressWarnings("PMD.CloseResource")
   static void jobs(ServerPlayer player) {
     var level = player.serverLevel();
     level.setBlock(JOB_UNIT, CraftingContent.UNIT.get().defaultBlockState(), 3);
-    var cells =
-        new java.util.ArrayList<ItemStack>(java.util.Collections.nCopies(9, ItemStack.EMPTY));
+    var cells = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
     cells.set(0, new ItemStack(Items.OAK_LOG));
     var pattern = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
     pattern.set(
         CraftingContent.PATTERN.get(),
-        new dev.izzy.factorycore.platform.crafting.PatternContents(
-            java.util.UUID.randomUUID(),
-            1,
-            0,
-            cells,
-            new ItemStack(Items.OAK_PLANKS, 4),
-            List.of()));
-    ((dev.izzy.factorycore.platform.crafting.CraftingUnitEntity) level.getBlockEntity(JOB_UNIT))
-        .patterns()
-        .insertItem(0, pattern, false);
+        new PatternContents(
+            UUID.randomUUID(), 1, 0, cells, new ItemStack(Items.OAK_PLANKS, 4), List.of()));
+    ((CraftingUnitEntity) level.getBlockEntity(JOB_UNIT)).patterns().insertItem(0, pattern, false);
   }
 
   /** Stores the 8 oak logs once the rebuilt network has the cell online again. */
-  @SuppressWarnings("PMD.CloseResource")
   static void stockJobs(ServerPlayer player) {
     var level = player.serverLevel();
     var drive = (StorageDriveEntity) level.getBlockEntity(SCREENS.east());
-    var cell = dev.izzy.factorycore.platform.storage.CellHandleData.read(drive.cell(0));
+    var cell = CellHandleData.read(drive.cell(0));
     var key =
-        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(level.registryAccess())
-            .itemKey(new ItemStack(Items.OAK_LOG));
-    var stored =
-        dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
-            .registry()
-            .insert(cell, key, 8);
+        new PlatformResourceCodec(level.registryAccess()).itemKey(new ItemStack(Items.OAK_LOG));
+    var stored = DeviceSavedData.get(player.server).registry().insert(cell, key, 8);
     if (stored.amount() != 8)
       throw new IllegalStateException("Jobs scene stores 8 oak logs: " + stored);
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   static void screens(ServerPlayer player) {
     var level = player.serverLevel();
     floor(level, -2, -3, 12, 5, 64);
@@ -333,18 +321,9 @@ final class PresentationScenes {
     root(level, base, player);
     drive(level, base.east(), 0);
     level.setBlock(base.east(2), facing(TerminalContent.BLOCK.get(), Direction.SOUTH), 3);
-    level.setBlock(
-        base.east(3),
-        dev.izzy.factorycore.platform.storage.BufferedInterfaceContent.BLOCK
-            .get()
-            .defaultBlockState(),
-        3);
-    ((dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity)
-            level.getBlockEntity(base.east(3)))
-        .place(
-            new ItemStack(
-                dev.izzy.factorycore.platform.storage.BufferedInterfaceContent.ITEM.get()),
-            player.getUUID());
+    level.setBlock(base.east(3), BufferedInterfaceContent.BLOCK.get().defaultBlockState(), 3);
+    ((BufferedInterfaceEntity) level.getBlockEntity(base.east(3)))
+        .place(new ItemStack(BufferedInterfaceContent.ITEM.get()), player.getUUID());
     level.setBlock(base.east(4).north(), Blocks.CHEST.defaultBlockState(), 3);
     level.setBlock(base.east(4), facing(MachineInterfaceContent.BLOCK.get(), Direction.NORTH), 3);
     ((MachineInterfaceEntity) level.getBlockEntity(base.east(4)))

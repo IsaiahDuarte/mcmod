@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Objects;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -27,7 +28,7 @@ public final class PlatformResourceCodec {
   private final HolderLookup.Provider registries;
 
   public PlatformResourceCodec(HolderLookup.Provider registries) {
-    this.registries = java.util.Objects.requireNonNull(registries);
+    this.registries = Objects.requireNonNull(registries);
   }
 
   public ResourceKey itemKey(ItemStack stack) {
@@ -90,7 +91,7 @@ public final class PlatformResourceCodec {
       var keys = new ArrayList<>(compound.getAllKeys());
       Collections.sort(keys);
       for (var name : keys) {
-        var child = java.util.Objects.requireNonNull(compound.get(name));
+        var child = Objects.requireNonNull(compound.get(name));
         output.writeByte(child.getId());
         output.writeUTF(name);
         writePayload(child, output, depth + 1);

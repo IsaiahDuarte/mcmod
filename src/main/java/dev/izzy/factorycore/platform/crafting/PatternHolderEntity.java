@@ -1,13 +1,21 @@
 package dev.izzy.factorycore.platform.crafting;
 
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.items.ItemStackHandler;
@@ -17,8 +25,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
  * ownership lease: copying the block copies only ordinary pattern items, and duplicate pattern IDs
  * are deduplicated by the pattern index. Unsupported saved data is retained unchanged.
  */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns every borrowed ServerLevel.
-public abstract class PatternHolderEntity extends BlockEntity {
+public abstract class PatternHolderEntity extends BlockEntity implements WiredMember {
   public static final int SLOTS = 9;
   static final int SCHEMA = 1;
   private CompoundTag unsupported;
@@ -46,10 +53,7 @@ public abstract class PatternHolderEntity extends BlockEntity {
         }
       };
 
-  protected PatternHolderEntity(
-      net.minecraft.world.level.block.entity.BlockEntityType<?> type,
-      BlockPos position,
-      BlockState state) {
+  protected PatternHolderEntity(BlockEntityType<?> type, BlockPos position, BlockState state) {
     super(type, position, state);
   }
 
@@ -72,15 +76,13 @@ public abstract class PatternHolderEntity extends BlockEntity {
   }
 
   public NodeRegistry.Position origin() {
-    return new NodeRegistry.Position(
-        level.dimension().location().toString(), worldPosition.asLong());
+    return Positions.of(level, worldPosition);
   }
 
   /** True while this exact holder is the loaded block entity at its position. */
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel server)) return false;
-    var chunk =
-        server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    var chunk = Loaded.chunk(server, worldPosition);
     return chunk != null
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }
@@ -126,7 +128,7 @@ public abstract class PatternHolderEntity extends BlockEntity {
     var saved = tag.getCompound("Patterns");
     if (tag.getInt("Schema") != SCHEMA || saved.getInt("Size") != SLOTS) {
       unsupported = tag.copy();
-      for (var key : java.util.List.of("id", "x", "y", "z", "components")) unsupported.remove(key);
+      for (var key : List.of("id", "x", "y", "z", "components")) unsupported.remove(key);
       return;
     }
     patterns.deserializeNBT(registries, saved);
@@ -140,12 +142,15 @@ public abstract class PatternHolderEntity extends BlockEntity {
   }
 
   @Override
-  protected void collectImplicitComponents(
-      net.minecraft.core.component.DataComponentMap.Builder components) {
+  protected void collectImplicitComponents(DataComponentMap.Builder components) {
     super.collectImplicitComponents(components);
     if (unsupported != null)
-      components.set(
-          CraftingContent.RETAINED.get(),
-          net.minecraft.world.item.component.CustomData.of(unsupported));
+      components.set(CraftingContent.RETAINED.get(), CustomData.of(unsupported));
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(
+        null, "crafting_unit", NetworkTopology.Role.CRAFTER, current() && diagnostic().isEmpty());
   }
 }

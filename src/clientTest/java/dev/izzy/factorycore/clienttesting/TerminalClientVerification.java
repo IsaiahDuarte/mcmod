@@ -7,29 +7,43 @@ import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
+import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
+import dev.izzy.factorycore.platform.client.ProgramScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
+import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.*;
+import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
+import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.inventory.BookViewScreen;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
@@ -37,11 +51,14 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.level.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.entity.HopperBlockEntity;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -57,6 +74,7 @@ public final class TerminalClientVerification {
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean ready = new AtomicBoolean(), checked = new AtomicBoolean();
   private final StringBuilder evidence = new StringBuilder();
+  private final Captures captures = new Captures("terminal", report, evidence);
   private BufferedInterfaceEntity fixtureBuffer;
   private boolean importEnabled;
   private final RestartCheckpoint restartCheckpoint = new RestartCheckpoint();
@@ -85,8 +103,6 @@ public final class TerminalClientVerification {
     return stack;
   }
 
-  @SuppressWarnings(
-      "PMD.CloseResource") // Minecraft and its integrated server are borrowed, not fixture-owned.
   private void tick(ClientTickEvent.Post event) {
     Minecraft client = Minecraft.getInstance();
     ticks++;
@@ -116,9 +132,7 @@ public final class TerminalClientVerification {
       bufferTick(client);
       return;
     }
-    if (stage == 0
-        && client.screen
-            instanceof net.minecraft.client.gui.screens.AccessibilityOnboardingScreen onboarding) {
+    if (stage == 0 && client.screen instanceof AccessibilityOnboardingScreen onboarding) {
       onboarding.onClose();
       return;
     }
@@ -321,14 +335,14 @@ public final class TerminalClientVerification {
           screen.children().stream()
               .anyMatch(child -> child instanceof EditBox edit && edit.getValue().equals("iron")),
           "Search text survives actual GUI-scale reinitialization");
-      capture(client, "scale-3-iron.png");
+      captures.grab(client, "scale-3-iron.png");
       client.options.guiScale().set(4);
       client.resizeDisplay();
       next();
       return;
     }
     if (stage == 8 && ticks - entered > 10) {
-      capture(client, "scale-4-iron.png");
+      captures.grab(client, "scale-4-iron.png");
       search(screen, "");
       next();
       return;
@@ -344,7 +358,7 @@ public final class TerminalClientVerification {
         && view.revision() > previousRevision
         && view.rows().size() == 2
         && !view.next()) {
-      capture(client, "scale-4-next-page.png");
+      captures.grab(client, "scale-4-next-page.png");
       click(screen, "Home");
       next();
       return;
@@ -374,24 +388,24 @@ public final class TerminalClientVerification {
                 && view.rows().getFirst().name().equals("Client hopper variant"),
             "Name sorting uses display names rather than registry order");
         checkNoOverlap(screen);
-        capture(client, "scale-2-all-items.png");
+        captures.grab(client, "scale-2-all-items.png");
         search(screen, "hopper variant");
       }
       case 1 -> {
         if (!view.search().equals("hopper variant") || view.rows().size() != 1) return;
         check(view.rows().getFirst().total().equals("23"), "Display-only query finds named stock");
-        capture(client, "terminal-search-display-name.png");
+        captures.grab(client, "terminal-search-display-name.png");
         search(screen, "@minecraft");
       }
       case 2 -> {
         if (!view.search().equals("@minecraft") || view.rows().size() != 8) return;
-        capture(client, "terminal-search-mod.png");
+        captures.grab(client, "terminal-search-mod.png");
         search(screen, "#minecraft:coals");
       }
       case 3 -> {
         if (!view.search().equals("#minecraft:coals") || view.rows().size() != 1) return;
         check(view.rows().getFirst().icon().equals("minecraft:coal"), "Loaded tag finds only coal");
-        capture(client, "terminal-search-tag.png");
+        captures.grab(client, "terminal-search-tag.png");
         search(screen, "@minecraft");
       }
       case 4 -> {
@@ -401,14 +415,14 @@ public final class TerminalClientVerification {
       case 5 -> {
         if (view.sort() != TerminalSearchSupport.QUANTITY) return;
         check(view.rows().getFirst().total().equals("23"), "Exact quantity sort puts23 ahead of3");
-        capture(client, "terminal-sort-quantity.png");
+        captures.grab(client, "terminal-sort-quantity.png");
         client.player.closeContainer();
       }
       case 7 -> {
         if (!view.search().equals("@minecraft") || view.sort() != TerminalSearchSupport.QUANTITY)
           return;
         check(view.rows().getFirst().total().equals("23"), "Reopen restores player's sorted query");
-        capture(client, "terminal-search-reopened.png");
+        captures.grab(client, "terminal-search-reopened.png");
         click(screen, "Qty");
       }
       case 8 -> {
@@ -435,7 +449,6 @@ public final class TerminalClientVerification {
   private int plankSlot = -1;
 
   /** Manual grid: cell click, own-slot ghost, Row→, right-click clear, Craft and two scales. */
-  @SuppressWarnings("PMD.CloseResource") // Borrowed active client/server/window.
   private void craftTick(Minecraft client, TerminalScreen screen) {
     var menu = screen.getMenu();
     var grid = menu.gridView();
@@ -477,7 +490,7 @@ public final class TerminalClientVerification {
         if (!grid.result().equals("minecraft:oak_planks")) return;
         check(grid.resultCount() == 4, "Actual server recipe preview for one log");
         checkNoOverlap(screen);
-        capture(client, "terminal-grid-scale-4.png");
+        captures.grab(client, "terminal-grid-scale-4.png");
         screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + TerminalScreen.GRID_Y + 9, 0);
         for (var child : screen.children())
           if (child instanceof EditBox edit) edit.setFocused(false);
@@ -513,7 +526,7 @@ public final class TerminalClientVerification {
       case 6 -> {
         if (ticks - entered < 10) return;
         checkNoOverlap(screen);
-        capture(client, "terminal-grid-scale-2.png");
+        captures.grab(client, "terminal-grid-scale-2.png");
         server.execute(
             () ->
                 server
@@ -535,7 +548,6 @@ public final class TerminalClientVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed active client/server/window.
   private void bufferTick(Minecraft client) {
     if (stage == 12 && client.screen == null && ticks - entered > 4) {
       client.gameMode.useItemOn(
@@ -555,7 +567,7 @@ public final class TerminalClientVerification {
         check(
             view.mode().equals("IMPORT") && !view.dirty(),
             "Native buffer menu opens saved Import settings");
-        capture(client, "buffer-scale-2-settings.png");
+        captures.grab(client, "buffer-scale-2-settings.png");
         click(screen, "Import");
         next();
       }
@@ -595,12 +607,12 @@ public final class TerminalClientVerification {
         check(
             view.dirty() && view.filter().equals("INCLUDE"),
             "Native registry/tag edits remain separate draft");
-        capture(client, "buffer-scale-2-rules-page-1.png");
+        captures.grab(client, "buffer-scale-2-rules-page-1.png");
         click(screen, "Next");
         next();
       }
       case 18 -> {
-        capture(client, "buffer-scale-2-rules-page-2.png");
+        captures.grab(client, "buffer-scale-2-rules-page-2.png");
         if (!sampleSeeded) {
           var server = client.getSingleplayerServer();
           var principal = client.player.getUUID();
@@ -660,7 +672,7 @@ public final class TerminalClientVerification {
         next();
       }
       case 26 -> {
-        capture(client, "buffer-scale-2-stock.png");
+        captures.grab(client, "buffer-scale-2-stock.png");
         click(screen, "Take 1");
         next();
       }
@@ -679,7 +691,7 @@ public final class TerminalClientVerification {
             client.player.getInventory().getItem(9).getCount() == 3
                 && view.slots().getFirst().count() == 8,
             "Full Stock goal retains player deposit without extraction");
-        capture(client, "buffer-scale-2-full.png");
+        captures.grab(client, "buffer-scale-2-full.png");
         click(screen, "Stock");
         next();
       }
@@ -744,23 +756,23 @@ public final class TerminalClientVerification {
       }
       case 34 -> {
         if (!checked.get()) return;
-        capture(client, "buffer-scale-3-inventory.png");
+        captures.grab(client, "buffer-scale-3-inventory.png");
         click(screen, "Settings");
         next();
       }
       case 35 -> {
-        capture(client, "buffer-scale-3-settings.png");
+        captures.grab(client, "buffer-scale-3-settings.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
         next();
       }
       case 36 -> {
-        capture(client, "buffer-scale-4-settings.png");
+        captures.grab(client, "buffer-scale-4-settings.png");
         click(screen, "Inventory");
         next();
       }
       case 37 -> {
-        capture(client, "buffer-scale-4-inventory.png");
+        captures.grab(client, "buffer-scale-4-inventory.png");
         next();
       }
       case 38 -> {
@@ -778,10 +790,7 @@ public final class TerminalClientVerification {
                     MachineInterfaceContent.BLOCK
                         .get()
                         .defaultBlockState()
-                        .setValue(
-                            net.minecraft.world.level.block.state.properties.BlockStateProperties
-                                .FACING,
-                            Direction.SOUTH),
+                        .setValue(BlockStateProperties.FACING, Direction.SOUTH),
                     3);
                 ((MachineInterfaceEntity) level.getBlockEntity(new BlockPos(2, 65, 2)))
                     .place(new ItemStack(MachineInterfaceContent.ITEM.get()));
@@ -799,7 +808,6 @@ public final class TerminalClientVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed integrated server/client levels.
   private void machineTick(Minecraft client) {
     var location = new BlockPos(2, 65, 2);
     if (ticks - entered < 5) return;
@@ -883,8 +891,7 @@ public final class TerminalClientVerification {
                       && machine.settings().firstSlot() == 2
                       && machine.settings().slotCount() == 1
                       && machine.settings().priority() == -7
-                      && machine.settings().access()
-                          == dev.izzy.factorycore.core.storage.ConnectorSettings.Access.READ_ONLY,
+                      && machine.settings().access() == ConnectorSettings.Access.READ_ONLY,
                   "Native Apply publishes exact complete machine settings");
               checked.set(true);
             } catch (RuntimeException error) {
@@ -917,9 +924,7 @@ public final class TerminalClientVerification {
           () -> {
             try {
               var player = server.getPlayerList().getPlayer(principal);
-              var chest =
-                  (net.minecraft.world.level.block.entity.ChestBlockEntity)
-                      player.serverLevel().getBlockEntity(location.south());
+              var chest = (ChestBlockEntity) player.serverLevel().getBlockEntity(location.south());
               if (chest.getItem(2).getCount() != 8) return;
               check(
                   chest.getItem(0).isEmpty() && chest.getItem(1).isEmpty(),
@@ -937,7 +942,7 @@ public final class TerminalClientVerification {
       return;
     }
     if (stage == 59 && checked.get()) {
-      capture(client, "machine-preset-scale-4-stock.png");
+      captures.grab(client, "machine-preset-scale-4-stock.png");
       client.player.closeContainer();
       checked.set(false);
       jump(61);
@@ -994,7 +999,6 @@ public final class TerminalClientVerification {
    * FE stocked (72–76): terminal Fluids/Energy views. Then the art gallery (90–97): block rows,
    * cable run and item icons. Every screen capture also asserts that no visible controls overlap.
    */
-  @SuppressWarnings("PMD.CloseResource") // Borrowed active client and integrated server.
   private void tourTick(Minecraft client) {
     if (ticks - entered < 5) return;
     var server = client.getSingleplayerServer();
@@ -1014,19 +1018,11 @@ public final class TerminalClientVerification {
                     NetworkContent.GATEWAY
                         .get()
                         .defaultBlockState()
-                        .setValue(
-                            net.minecraft.world.level.block.state.properties.BlockStateProperties
-                                .FACING,
-                            Direction.WEST),
+                        .setValue(BlockStateProperties.FACING, Direction.WEST),
                     3);
                 ((NetworkNodeEntity) level.getBlockEntity(GATEWAY)).commission(null);
                 level.setBlock(BRANCH, NetworkContent.CABLE.get().defaultBlockState(), 3);
-                level.setBlock(
-                    PROGRAM,
-                    dev.izzy.factorycore.platform.program.ProgramContent.BLOCK
-                        .get()
-                        .defaultBlockState(),
-                    3);
+                level.setBlock(PROGRAM, ProgramContent.BLOCK.get().defaultBlockState(), 3);
                 player.teleportTo(0.5, 65, 3.5);
                 player.setYRot(180);
                 player.setXRot(20);
@@ -1057,9 +1053,8 @@ public final class TerminalClientVerification {
         next();
       }
       case 63 -> {
-        if (!(client.screen
-                instanceof dev.izzy.factorycore.platform.client.GatewayPolicyScreen screen)
-            || !screen.getMenu().editable()) return;
+        if (!(client.screen instanceof GatewayPolicyScreen screen) || !screen.getMenu().editable())
+          return;
         shift(client, false);
         policyMask = screen.getMenu().policy().mask();
         var first =
@@ -1073,8 +1068,7 @@ public final class TerminalClientVerification {
         next();
       }
       case 64 -> {
-        if (!(client.screen
-                instanceof dev.izzy.factorycore.platform.client.GatewayPolicyScreen screen)
+        if (!(client.screen instanceof GatewayPolicyScreen screen)
             || screen.getMenu().policy().mask() == policyMask) return;
         check(
             (screen.getMenu().policy().mask() ^ policyMask) == 1,
@@ -1085,7 +1079,7 @@ public final class TerminalClientVerification {
                   <= 94,
               "Policy column header fits: " + header);
         checkNoOverlap(screen);
-        capture(client, "gateway-policy-scale-2.png");
+        captures.grab(client, "gateway-policy-scale-2.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
         next();
@@ -1093,7 +1087,7 @@ public final class TerminalClientVerification {
       case 65 -> {
         if (ticks - entered < 10) return;
         checkNoOverlap(client.screen);
-        capture(client, "gateway-policy-scale-4.png");
+        captures.grab(client, "gateway-policy-scale-4.png");
         client.player.closeContainer();
         client.options.guiScale().set(2);
         client.resizeDisplay();
@@ -1109,12 +1103,12 @@ public final class TerminalClientVerification {
         next();
       }
       case 67 -> {
-        if (!(client.screen instanceof dev.izzy.factorycore.platform.client.ProgramScreen screen)
-            || ticks - entered < 10) return;
+        if (!(client.screen instanceof ProgramScreen screen) || ticks - entered < 10) return;
         checkNoOverlap(screen);
-        if (!programAuthoring.tick(client, screen, ticks, name -> capture(client, name))) return;
+        if (!programAuthoring.tick(client, screen, ticks, name -> captures.grab(client, name)))
+          return;
         checkNoOverlap(screen);
-        capture(client, "program-editor-scale-2.png");
+        captures.grab(client, "program-editor-scale-2.png");
         evidence.append(
             "program-authoring: typed source, atomic undo/redo, native item/local-label selection, cursor completion, highlighted GUI scales2/4 and read-only resolved rule preview\n");
         client.player.closeContainer();
@@ -1124,32 +1118,24 @@ public final class TerminalClientVerification {
                     .getPlayerList()
                     .getPlayer(principal)
                     .getInventory()
-                    .setItem(
-                        0,
-                        new ItemStack(
-                            dev.izzy.factorycore.platform.guide.GuideContent.GUIDE.get())));
+                    .setItem(0, new ItemStack(GuideContent.GUIDE.get())));
         next();
       }
       case 68 -> {
         if (client.screen != null
-            || !client
-                .player
-                .getInventory()
-                .getItem(0)
-                .is(dev.izzy.factorycore.platform.guide.GuideContent.GUIDE.get())) return;
+            || !client.player.getInventory().getItem(0).is(GuideContent.GUIDE.get())) return;
         client.player.getInventory().selected = 0;
         client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND);
         next();
       }
       case 69 -> {
-        if (!(client.screen
-            instanceof net.minecraft.client.gui.screens.inventory.BookViewScreen screen)) return;
-        capture(client, "guide-page-1.png");
+        if (!(client.screen instanceof BookViewScreen screen)) return;
+        captures.grab(client, "guide-page-1.png");
         screen.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
         next();
       }
       case 70 -> {
-        capture(client, "guide-page-2.png");
+        captures.grab(client, "guide-page-2.png");
         client.screen.onClose();
         server.execute(
             () -> {
@@ -1173,23 +1159,14 @@ public final class TerminalClientVerification {
                 var player = server.getPlayerList().getPlayer(principal);
                 var level = player.serverLevel();
                 level.setBlock(
-                    ACCESS_POINT,
-                    dev.izzy.factorycore.platform.wireless.WirelessContent.ACCESS_POINT
-                        .get()
-                        .defaultBlockState(),
-                    3);
+                    ACCESS_POINT, WirelessContent.ACCESS_POINT.get().defaultBlockState(), 3);
                 level.setBlock(new BlockPos(20, 64, 4), Blocks.STONE.defaultBlockState(), 3);
-                var handheld =
-                    new ItemStack(
-                        dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get());
+                var handheld = new ItemStack(WirelessContent.HANDHELD.get());
                 handheld.set(
-                    dev.izzy.factorycore.platform.wireless.WirelessContent.BINDING.get(),
-                    new dev.izzy.factorycore.platform.wireless.WirelessContent.Binding(
+                    WirelessContent.BINDING.get(),
+                    new WirelessContent.Binding(
                         level.dimension().location().toString(), ACCESS_POINT.asLong()));
-                handheld
-                    .getCapability(
-                        net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.ITEM)
-                    .receiveEnergy(1_000, false);
+                handheld.getCapability(Capabilities.EnergyStorage.ITEM).receiveEnergy(1_000, false);
                 player.getInventory().setItem(0, handheld);
                 player.getInventory().selected = 0;
                 player.teleportTo(20.5, 65, 4.5);
@@ -1205,11 +1182,7 @@ public final class TerminalClientVerification {
         powerAccessPoint(server);
         if (client.screen != null
             || client.player.distanceToSqr(20.5, 65, 4.5) > 1
-            || !client
-                .player
-                .getInventory()
-                .getItem(0)
-                .is(dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get())) return;
+            || !client.player.getInventory().getItem(0).is(WirelessContent.HANDHELD.get())) return;
         client.player.getInventory().selected = 0;
         client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND);
         next();
@@ -1220,7 +1193,7 @@ public final class TerminalClientVerification {
         var view = screen.getMenu().view();
         if (!view.status().equals("ready") || view.rows().isEmpty() || ticks - entered < 10) return;
         checkNoOverlap(screen);
-        capture(client, "wireless-terminal-scale-2.png");
+        captures.grab(client, "wireless-terminal-scale-2.png");
         evidence.append(
             "wireless: bound handheld opened the terminal "
                 + Math.round(Math.sqrt(client.player.distanceToSqr(Vec3.atCenterOf(ACCESS_POINT))))
@@ -1268,7 +1241,7 @@ public final class TerminalClientVerification {
             || ticks - entered < 10) return;
         String name = stage == 74 ? "Fluids" : "Energy";
         checkNoOverlap(screen);
-        capture(client, "terminal-" + name.toLowerCase(java.util.Locale.ROOT) + "-scale-2.png");
+        captures.grab(client, "terminal-" + name.toLowerCase(Locale.ROOT) + "-scale-2.png");
         evidence.append(
             "terminal-"
                 + name
@@ -1303,7 +1276,7 @@ public final class TerminalClientVerification {
         var view =
             stage == 91 ? ArtGallery.FRONT : stage == 92 ? ArtGallery.TOP : ArtGallery.CABLES;
         if (!aim(client, view) || ticks - entered < 80) return;
-        capture(
+        captures.grab(
             client,
             stage == 91
                 ? "art-blocks-front.png"
@@ -1340,18 +1313,17 @@ public final class TerminalClientVerification {
         next();
       }
       case 95 -> {
-        if (!(client.screen
-                instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen screen)
+        if (!(client.screen instanceof ContainerScreen screen)
             || screen.getMenu().getItems().stream().filter(stack -> !stack.isEmpty()).count() < 32
             || ticks - entered < 10) return;
-        capture(client, "art-items-scale-2.png");
+        captures.grab(client, "art-items-scale-2.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
         next();
       }
       case 96 -> {
         if (ticks - entered < 10) return;
-        capture(client, "art-items-scale-4.png");
+        captures.grab(client, "art-items-scale-4.png");
         client.player.closeContainer();
         client.options.guiScale().set(2);
         client.resizeDisplay();
@@ -1390,7 +1362,7 @@ public final class TerminalClientVerification {
           click(screen, "Name");
           searchStep++;
         } else if (searchStep == 2 && view.sort() == TerminalSearchSupport.QUANTITY) {
-          capture(client, "terminal-preferences-before-restart.png");
+          captures.grab(client, "terminal-preferences-before-restart.png");
           client.player.closeContainer();
           searchStep++;
           server.execute(
@@ -1425,12 +1397,10 @@ public final class TerminalClientVerification {
   }
 
   /** Keeps the fixture access point above its 16 FE/tick upkeep while the handheld is in use. */
-  @SuppressWarnings("PMD.CloseResource") // Borrowed integrated server.
-  private static void powerAccessPoint(net.minecraft.server.MinecraftServer server) {
+  private static void powerAccessPoint(MinecraftServer server) {
     server.execute(
         () -> {
-          if (server.overworld().getBlockEntity(ACCESS_POINT)
-              instanceof dev.izzy.factorycore.platform.wireless.AccessPointEntity point)
+          if (server.overworld().getBlockEntity(ACCESS_POINT) instanceof AccessPointEntity point)
             point.energyStorage().receiveEnergy(1_000, false);
         });
   }
@@ -1438,16 +1408,13 @@ public final class TerminalClientVerification {
   /** Sends the actual sneak state the server reads for gateway sneak-use. */
   private static void shift(Minecraft client, boolean down) {
     client.player.connection.send(
-        new net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket(
+        new ServerboundPlayerCommandPacket(
             client.player,
             down
-                ? net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
-                    .PRESS_SHIFT_KEY
-                : net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
-                    .RELEASE_SHIFT_KEY));
+                ? ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY
+                : ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed active client.
   private void machineScreenTick(Minecraft client, MachineSettingsScreen screen) {
     switch (stage) {
       case 41 -> {
@@ -1459,14 +1426,14 @@ public final class TerminalClientVerification {
       }
       case 42 -> {
         check(machineLabel(screen).equals("smelter"), "Machine draft populated at scale2");
-        capture(client, "machine-scale-2-draft.png");
+        captures.grab(client, "machine-scale-2-draft.png");
         client.options.guiScale().set(3);
         client.resizeDisplay();
         next();
       }
       case 43 -> {
         check(machineLabel(screen).equals("smelter"), "Machine draft survives GUI scale3");
-        capture(client, "machine-scale-3-draft.png");
+        captures.grab(client, "machine-scale-3-draft.png");
         // Select one indexed fluid tank (ADR 0053); Cancel at stage 44 discards the draft.
         click(screen, "Items");
         edit(screen, 2, "1", false);
@@ -1492,14 +1459,14 @@ public final class TerminalClientVerification {
                 // Typed through charTyped, which an uneditable box refuses.
                 && tankFields.get(3).getValue().equals("1"),
             "Fluid kind exposes an editable selected-tank window");
-        capture(client, "machine-scale-4-draft.png");
+        captures.grab(client, "machine-scale-4-draft.png");
         click(screen, "Cancel");
         checked.set(false);
         next();
       }
       case 46 -> {
         check(machineLabel(screen).isEmpty(), "Reopened form has saved values after Cancel");
-        capture(client, "machine-scale-4-reopened.png");
+        captures.grab(client, "machine-scale-4-reopened.png");
         fillMachine(screen);
         checked.set(false);
         click(screen, "Apply & Close");
@@ -1529,8 +1496,7 @@ public final class TerminalClientVerification {
       }
       case 55 -> {
         check(
-            screen.getMenu().presetView().mode()
-                == dev.izzy.factorycore.core.storage.MachinePresets.Mode.STOCK,
+            screen.getMenu().presetView().mode() == MachinePresets.Mode.STOCK,
             "Actual mode commands author Stock draft");
         click(screen, "Copy sample");
         next();
@@ -1545,13 +1511,13 @@ public final class TerminalClientVerification {
         next();
       }
       case 57 -> {
-        capture(client, "machine-preset-scale-2-draft.png");
+        captures.grab(client, "machine-preset-scale-2-draft.png");
         client.options.guiScale().set(3);
         client.resizeDisplay();
         next();
       }
       case 58 -> {
-        capture(client, "machine-preset-scale-3-draft.png");
+        captures.grab(client, "machine-preset-scale-3-draft.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
         click(screen, "Deploy");
@@ -1594,8 +1560,6 @@ public final class TerminalClientVerification {
     if (enter) screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
   }
 
-  @SuppressWarnings(
-      "PMD.CloseResource") // Minecraft owns the native Window and its registered cursor callback.
   private static void pointer(Minecraft client, BufferSettingsScreen screen, int x, int y) {
     var window = client.getWindow();
     double guiX = (screen.width - 320) / 2.0 + x, guiY = (screen.height - 232) / 2.0 + y;
@@ -1643,8 +1607,6 @@ public final class TerminalClientVerification {
     System.out.println("FACTORYCORE_CLIENT_STAGE " + stage);
   }
 
-  @SuppressWarnings(
-      "PMD.CloseResource") // The player's live ServerLevel remains owned by Minecraft.
   private void setup(ServerPlayer player) {
     var level = player.serverLevel();
     level.setDayTime(6000);
@@ -1695,11 +1657,8 @@ public final class TerminalClientVerification {
   private static void checkNoOverlap(Screen screen) {
     var widgets =
         screen.children().stream()
-            .filter(
-                child ->
-                    child instanceof net.minecraft.client.gui.components.AbstractWidget widget
-                        && widget.visible)
-            .map(child -> (net.minecraft.client.gui.components.AbstractWidget) child)
+            .filter(child -> child instanceof AbstractWidget widget && widget.visible)
+            .map(child -> (AbstractWidget) child)
             .toList();
     for (int first = 0; first < widgets.size(); first++)
       for (int second = first + 1; second < widgets.size(); second++) {
@@ -1731,33 +1690,5 @@ public final class TerminalClientVerification {
         return;
       }
     throw new IllegalStateException("Action missing: " + text);
-  }
-
-  @SuppressWarnings("PMD.CloseResource") // Screenshot borrows the game's active Window.
-  private void capture(Minecraft client, String name) {
-    try {
-      Files.createDirectories(report.getParent().resolve("screenshots"));
-    } catch (IOException error) {
-      throw new IllegalStateException("Cannot prepare screenshot directory", error);
-    }
-    var window = client.getWindow();
-    evidence
-        .append(name)
-        .append(" framebuffer=")
-        .append(window.getWidth())
-        .append('x')
-        .append(window.getHeight())
-        .append(" gui=")
-        .append(window.getGuiScaledWidth())
-        .append('x')
-        .append(window.getGuiScaledHeight())
-        .append(" scale=")
-        .append(window.getGuiScale())
-        .append('\n');
-    Screenshot.grab(
-        report.getParent().toFile(),
-        name,
-        client.getMainRenderTarget(),
-        component -> System.out.println("FACTORYCORE_CLIENT_SCREENSHOT " + component.getString()));
   }
 }

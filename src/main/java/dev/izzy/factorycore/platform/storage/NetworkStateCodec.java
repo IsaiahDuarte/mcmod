@@ -18,7 +18,7 @@ final class NetworkStateCodec {
   private NetworkStateCodec() {}
 
   static List<NetworkPermissions.State> decode(CompoundTag root) {
-    require(root, "Networks", Tag.TAG_LIST);
+    Nbt.require(root, "Networks", Tag.TAG_LIST, "network");
     var list = root.getList("Networks", Tag.TAG_COMPOUND);
     if (list.size() != ((ListTag) root.get("Networks")).size()
         || list.size() > DeviceSavedData.MAX_NETWORKS)
@@ -28,13 +28,13 @@ final class NetworkStateCodec {
     int bindings = 0;
     for (int i = 0; i < list.size(); i++) {
       var entry = list.getCompound(i);
-      fields(entry, Set.of("Id", "Owner", "Generation", "Grants"));
+      Nbt.fields(entry, Set.of("Id", "Owner", "Generation", "Grants"));
       if (!entry.hasUUID("Id") || !entry.hasUUID("Owner"))
         throw new IllegalArgumentException("Invalid network/owner UUID");
       UUID id = entry.getUUID("Id");
       if (!identities.add(id)) throw new IllegalArgumentException("Duplicate network identity");
-      require(entry, "Generation", Tag.TAG_LONG);
-      require(entry, "Grants", Tag.TAG_LIST);
+      Nbt.require(entry, "Generation", Tag.TAG_LONG, "network");
+      Nbt.require(entry, "Grants", Tag.TAG_LIST, "network");
       var grants = entry.getList("Grants", Tag.TAG_COMPOUND);
       if (grants.size() != ((ListTag) entry.get("Grants")).size()
           || grants.size() > NetworkPermissions.MAX_PRINCIPALS)
@@ -45,10 +45,10 @@ final class NetworkStateCodec {
       var permissions = new HashMap<UUID, Set<Permission>>();
       for (int j = 0; j < grants.size(); j++) {
         var grant = grants.getCompound(j);
-        fields(grant, Set.of("Principal", "Permissions"));
+        Nbt.fields(grant, Set.of("Principal", "Permissions"));
         if (!grant.hasUUID("Principal"))
           throw new IllegalArgumentException("Invalid principal UUID");
-        require(grant, "Permissions", Tag.TAG_INT);
+        Nbt.require(grant, "Permissions", Tag.TAG_INT, "network");
         int mask = grant.getInt("Permissions");
         var decoded = decodePermissions(mask, false);
         if (permissions.putIfAbsent(grant.getUUID("Principal"), decoded) != null)
@@ -108,15 +108,5 @@ final class NetworkStateCodec {
       case DEPLOY -> 32;
       case MANAGE -> 64;
     };
-  }
-
-  static void fields(CompoundTag tag, Set<String> allowed) {
-    if (!allowed.containsAll(tag.getAllKeys()))
-      throw new IllegalArgumentException("Unknown registry fields");
-  }
-
-  private static void require(CompoundTag tag, String field, int type) {
-    if (!tag.contains(field, type))
-      throw new IllegalArgumentException("Missing/wrong-type network field: " + field);
   }
 }

@@ -1,11 +1,15 @@
 package dev.izzy.factorycore.platform.network;
 
+import com.mojang.authlib.GameProfile;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import java.util.EnumSet;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -44,11 +48,11 @@ public final class AccessAdministration {
 
   /** Server-authenticated actor for a connected player; operator status is read now. */
   public static NetworkPermissions.Actor actor(ServerPlayer player) {
-    return new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2));
+    return Actors.of(player);
   }
 
   public static NodeRegistry.Position origin(Level level, BlockPos pos) {
-    return new NodeRegistry.Position(level.dimension().location().toString(), pos.asLong());
+    return Positions.of(level, pos);
   }
 
   public static boolean member(MinecraftServer server, NodeRegistry.Position origin) {
@@ -148,10 +152,8 @@ public final class AccessAdministration {
     var online = server.getPlayerList().getPlayer(id);
     if (online != null) return online.getName();
     var cache = server.getProfileCache();
-    var cached =
-        cache == null ? java.util.Optional.<com.mojang.authlib.GameProfile>empty() : cache.get(id);
-    return Component.literal(
-        cached.map(com.mojang.authlib.GameProfile::getName).orElse(id.toString()));
+    var cached = cache == null ? Optional.<GameProfile>empty() : cache.get(id);
+    return Component.literal(cached.map(GameProfile::getName).orElse(id.toString()));
   }
 
   public static String text(BlockPos pos) {

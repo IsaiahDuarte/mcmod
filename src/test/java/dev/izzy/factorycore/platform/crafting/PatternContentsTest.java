@@ -20,6 +20,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -60,10 +61,7 @@ class PatternContentsTest {
     var json = PatternContents.CODEC.encodeStart(ops, value).getOrThrow();
     assertEquals(value, PatternContents.CODEC.parse(ops, json).getOrThrow());
     var buffer =
-        new RegistryFriendlyByteBuf(
-            Unpooled.buffer(),
-            registries,
-            net.neoforged.neoforge.network.connection.ConnectionType.NEOFORGE);
+        new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
     try {
       PatternContents.STREAM_CODEC.encode(buffer, value);
       assertEquals(value, PatternContents.STREAM_CODEC.decode(buffer));

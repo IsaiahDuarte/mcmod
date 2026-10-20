@@ -1,7 +1,7 @@
 package dev.izzy.factorycore.testing.wireless;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -9,11 +9,14 @@ import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -33,19 +36,14 @@ public final class WirelessLinkGameTests {
 
   private static NetworkTopology.Membership membership(GameTestHelper h, BlockPos relative) {
     return WorldNetworks.get(h.getLevel().getServer())
-        .membership(
-            new NodeRegistry.Position(
-                h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong()));
+        .membership(Positions.of(h.getLevel(), h.absolutePos(relative)));
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void pairedLinkJoinsChildBranchOnlyWhilePoweredAndPaired(GameTestHelper h) {
-    var owner = h.makeMockServerPlayerInLevel();
-    var stranger = h.makeMockServerPlayerInLevel();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    var owner = TestPlayers.mock(h);
+    var stranger = TestPlayers.mock(h);
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     for (var gate : new BlockPos[] {PARENT_GATE, CHILD_GATE}) {
       h.setBlock(
           gate,
@@ -78,7 +76,7 @@ public final class WirelessLinkGameTests {
               h.absolutePos(end),
               h.getBlockState(end),
               owner,
-              new net.minecraft.world.item.ItemStack(WirelessContent.LINK_ITEM.get()));
+              new ItemStack(WirelessContent.LINK_ITEM.get()));
     LinkEndpointEntity a = h.getBlockEntity(A);
     LinkEndpointEntity b = h.getBlockEntity(B);
     var far = h.absolutePos(A).offset(300, 0, 0);

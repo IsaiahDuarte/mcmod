@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonParser;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
 class GuidePagesTest {
@@ -12,8 +13,7 @@ class GuidePagesTest {
     try (var input =
         GuidePagesTest.class.getResourceAsStream("/assets/factorycore/lang/en_us.json")) {
       assertNotNull(input, "Lang file on the test classpath");
-      return JsonParser.parseString(
-              new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8))
+      return JsonParser.parseString(new String(input.readAllBytes(), StandardCharsets.UTF_8))
           .getAsJsonObject();
     }
   }

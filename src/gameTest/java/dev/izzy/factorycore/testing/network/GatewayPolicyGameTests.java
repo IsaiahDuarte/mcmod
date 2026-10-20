@@ -2,13 +2,15 @@ package dev.izzy.factorycore.testing.network;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.GatewayPolicyMenu;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -31,9 +33,7 @@ public final class GatewayPolicyGameTests {
 
   private static NetworkTopology.Status status(GameTestHelper h, BlockPos relative) {
     return WorldNetworks.get(h.getLevel().getServer())
-        .membership(
-            new NodeRegistry.Position(
-                h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong()))
+        .membership(Positions.of(h.getLevel(), h.absolutePos(relative)))
         .status();
   }
 
@@ -47,17 +47,12 @@ public final class GatewayPolicyGameTests {
     return (GatewayPolicyMenu) player.containerMenu;
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void ownerEditsGatewayPolicyAndOthersAreReadOnly(GameTestHelper h) {
-    var owner = h.makeMockServerPlayerInLevel();
-    var stranger = h.makeMockServerPlayerInLevel();
-    for (var player : new ServerPlayer[] {owner, stranger})
-      net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-          player.connection.getConnection());
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    var owner = TestPlayers.mock(h);
+    var stranger = TestPlayers.mock(h);
+    for (var player : new ServerPlayer[] {owner, stranger}) TestPlayers.connect(player);
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(
         GATEWAY,
         NetworkContent.GATEWAY

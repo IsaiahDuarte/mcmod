@@ -1,11 +1,19 @@
 package dev.izzy.factorycore.core.resource;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 
 /** Canonical staging ownership; adapters expose record IDs, never mutable transfer instances. */
 public final class TransferRegistry {
@@ -39,10 +47,10 @@ public final class TransferRegistry {
   }
 
   private final Thread thread = Thread.currentThread();
-  private final java.util.NavigableMap<UUID, Entry> entries = new java.util.TreeMap<>();
-  private final Map<UUID, java.util.Set<UUID>> byBacking = new HashMap<>();
-  private final Map<UUID, java.util.SortedSet<UUID>> unresolved = new HashMap<>();
-  private final Map<UUID, java.util.SortedSet<UUID>> unresolvedDevices = new HashMap<>();
+  private final NavigableMap<UUID, Entry> entries = new TreeMap<>();
+  private final Map<UUID, Set<UUID>> byBacking = new HashMap<>();
+  private final Map<UUID, SortedSet<UUID>> unresolved = new HashMap<>();
+  private final Map<UUID, SortedSet<UUID>> unresolvedDevices = new HashMap<>();
   private final Runnable changed;
   private long bytes;
   private boolean executing;
@@ -236,8 +244,8 @@ public final class TransferRegistry {
   }
 
   private void index(UUID id, StagedTransfer.Snapshot snapshot) {
-    byBacking.computeIfAbsent(snapshot.source(), unused -> new java.util.HashSet<>()).add(id);
-    byBacking.computeIfAbsent(snapshot.destination(), unused -> new java.util.HashSet<>()).add(id);
+    byBacking.computeIfAbsent(snapshot.source(), unused -> new HashSet<>()).add(id);
+    byBacking.computeIfAbsent(snapshot.destination(), unused -> new HashSet<>()).add(id);
   }
 
   private void removeIndex(UUID id, StagedTransfer.Snapshot snapshot) {
@@ -315,7 +323,7 @@ public final class TransferRegistry {
    * because it settles only into canonical holders. At most1024 records; read-only, no provider
    * calls or copies.
    */
-  public boolean hasUnscopedUncertain(java.util.function.Predicate<UUID> canonical) {
+  public boolean hasUnscopedUncertain(Predicate<UUID> canonical) {
     checkThread();
     Objects.requireNonNull(canonical);
     for (var entry : entries.values()) {
@@ -349,7 +357,7 @@ public final class TransferRegistry {
     checkThread();
     if (limit < 1 || limit > 16) throw new IllegalArgumentException("Transfer page limit");
     var values = (after == null ? entries : entries.tailMap(after, false)).entrySet().iterator();
-    var records = new java.util.ArrayList<Stored>();
+    var records = new ArrayList<Stored>();
     UUID last = null;
     while (records.size() < limit && values.hasNext()) {
       var value = values.next();
@@ -384,11 +392,11 @@ public final class TransferRegistry {
         && snapshot.pending() == StagedTransfer.PendingCall.NONE
         && snapshot.staged() == 0) return;
     for (var backing : List.of(snapshot.source(), snapshot.destination()))
-      unresolved.computeIfAbsent(backing, ignored -> new java.util.TreeSet<>()).add(id);
+      unresolved.computeIfAbsent(backing, ignored -> new TreeSet<>()).add(id);
     var context = entry(id).context;
     if (context != null)
       for (var device : List.of(context.source().device(), context.destination().device()))
-        unresolvedDevices.computeIfAbsent(device, ignored -> new java.util.TreeSet<>()).add(id);
+        unresolvedDevices.computeIfAbsent(device, ignored -> new TreeSet<>()).add(id);
   }
 
   private void removeUnresolved(UUID id, StagedTransfer.Snapshot snapshot) {

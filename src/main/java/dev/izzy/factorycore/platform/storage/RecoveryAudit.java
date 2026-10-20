@@ -21,7 +21,7 @@ final class RecoveryAudit {
       throws IOException {
     var envelope = new CompoundTag();
     envelope.putInt("Schema", 1);
-    envelope.putInt("WorldSchema", 12);
+    envelope.putInt("WorldSchema", DeviceRecoveryAudit.TABLE_SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.put("Transfers", TransferStateCodec.encode(List.of(record)));
     byte[] bytes = (envelope + "\n").getBytes(StandardCharsets.UTF_8);

@@ -2,25 +2,25 @@ package dev.izzy.factorycore.testing.storage;
 
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
-import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
-import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.EnergyFixture;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluids;
@@ -56,25 +56,17 @@ public final class TerminalContainerGameTests {
     m.broadcastChanges();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void fluidContainersAndEnergyItemsMoveExactAmountsThroughTheTerminal(
       GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_FLUID);
     var cell = CellHandleData.read(drive.cell(0));
-    h.setBlock(BANK, EnergyBankContent.block(EnergyBankTier.STARTER));
-    EnergyBankEntity bank = h.getBlockEntity(BANK);
-    bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+    EnergyBankEntity bank = Net.in(h).bank(BANK, EnergyBankTier.STARTER);
     h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
     TerminalEntity terminal = h.getBlockEntity(TERMINAL);
     var saved = DeviceSavedData.get(h.getLevel().getServer());
@@ -180,7 +172,7 @@ public final class TerminalContainerGameTests {
         .thenSucceed();
   }
 
-  private static int countOf(ServerPlayer player, net.minecraft.world.item.Item item) {
+  private static int countOf(ServerPlayer player, Item item) {
     int total = 0;
     for (int slot = 0; slot < 36; slot++)
       if (player.getInventory().getItem(slot).is(item))
@@ -188,7 +180,7 @@ public final class TerminalContainerGameTests {
     return total;
   }
 
-  private static int slotOf(ServerPlayer player, net.minecraft.world.item.Item item) {
+  private static int slotOf(ServerPlayer player, Item item) {
     for (int slot = 0; slot < 36; slot++)
       if (player.getInventory().getItem(slot).is(item)) return slot;
     return -1;

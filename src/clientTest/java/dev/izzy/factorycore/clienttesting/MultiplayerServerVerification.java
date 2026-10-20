@@ -2,12 +2,14 @@ package dev.izzy.factorycore.clienttesting;
 
 import static dev.izzy.factorycore.clienttesting.MultiplayerSync.*;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -68,7 +70,6 @@ final class MultiplayerServerVerification {
     NeoForge.EVENT_BUS.addListener(this::left);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // The server owns its levels.
   private void started(ServerStartedEvent event) {
     var server = event.getServer();
     var level = server.overworld();
@@ -123,7 +124,7 @@ final class MultiplayerServerVerification {
         .append(" uuid=")
         .append(player.getUUID())
         .append(" operator=")
-        .append(player.hasPermissions(2))
+        .append(player.hasPermissions(Actors.OPERATOR_LEVEL))
         .append(" address=")
         .append(player.connection.getRemoteAddress())
         .append('\n');
@@ -136,7 +137,6 @@ final class MultiplayerServerVerification {
           "Unexpected logout of " + event.getEntity().getName().getString() + " at step " + step);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed server level.
   private void tick(ServerTickEvent.Post event) {
     var server = event.getServer();
     if (finished || cell == null) return;
@@ -159,7 +159,9 @@ final class MultiplayerServerVerification {
         if (joinedAt < 0) {
           joinedAt = now;
           require(
-              !owner.hasPermissions(2) && !stranger.hasPermissions(2), "No player is an operator");
+              !owner.hasPermissions(Actors.OPERATOR_LEVEL)
+                  && !stranger.hasPermissions(Actors.OPERATOR_LEVEL),
+              "No player is an operator");
           require(
               DeviceSavedData.get(server).registry().insert(cell, iron, SEEDED_IRON).amount()
                   == SEEDED_IRON,
@@ -201,7 +203,7 @@ final class MultiplayerServerVerification {
                 .execute(
                     "factorycore access grant " + TERMINAL_ARGS + " " + STRANGER + " view",
                     server.createCommandSourceStack());
-      } catch (com.mojang.brigadier.exceptions.CommandSyntaxException error) {
+      } catch (CommandSyntaxException error) {
         throw new IllegalStateException(error);
       }
       require(result == 1, "Operator console grant succeeds");
@@ -211,7 +213,6 @@ final class MultiplayerServerVerification {
   }
 
   /** Server-side truth after both clients acknowledged {@link #step}. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private void verify(MinecraftServer server, ServerPlayer owner, ServerPlayer stranger) {
     long stock = DeviceSavedData.get(server).registry().stock(cell, iron).total();
     int ownerNow = owner.getInventory().countItem(Items.IRON_INGOT);
@@ -314,20 +315,14 @@ final class MultiplayerServerVerification {
     return set.isEmpty() ? EnumSet.noneOf(Permission.class) : EnumSet.copyOf(set);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed server level.
   private int policyMask(MinecraftServer server) {
     var gateway = (NetworkNodeEntity) server.overworld().getBlockEntity(GATEWAY);
     return DeviceSavedData.get(server).nodes().definition(gateway.handle()).policy().mask();
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed server level.
   private static boolean valid(MinecraftServer server, BlockPos position) {
     ServerLevel level = server.overworld();
-    return WorldNetworks.get(server)
-            .membership(
-                new NodeRegistry.Position(
-                    level.dimension().location().toString(), position.asLong()))
-            .status()
+    return WorldNetworks.get(server).membership(Positions.of(level, position)).status()
         == NetworkTopology.Status.VALID;
   }
 

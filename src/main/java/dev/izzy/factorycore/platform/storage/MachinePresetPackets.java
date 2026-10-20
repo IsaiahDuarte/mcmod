@@ -4,12 +4,12 @@ import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.session.MenuPayloads;
 import java.util.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 /** Opaque session/draft commands and bounded display rows; no principal, topology or raw keys. */
@@ -176,20 +176,13 @@ public final class MachinePresetPackets {
 
   public static void register(RegisterPayloadHandlersEvent event) {
     var r = event.registrar("1");
-    r.playToServer(
+    MenuPayloads.toServer(
+        r,
         Command.TYPE,
         Command.CODEC,
-        (packet, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof MachineSettingsMenu menu)
-            menu.presetCommand(player, packet);
-        });
-    r.playToClient(
-        View.TYPE,
-        View.CODEC,
-        (packet, context) -> {
-          if (context.player().containerMenu instanceof MachineSettingsMenu menu)
-            menu.acceptPreset(packet);
-        });
+        MachineSettingsMenu.class,
+        MachineSettingsMenu::presetCommand);
+    MenuPayloads.toClient(
+        r, View.TYPE, View.CODEC, MachineSettingsMenu.class, MachineSettingsMenu::acceptPreset);
   }
 }

@@ -1,7 +1,8 @@
 package dev.izzy.factorycore.testing.program;
 
+import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
-import dev.izzy.factorycore.platform.network.NetworkContent;
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.program.ProgramContent;
@@ -9,12 +10,19 @@ import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.program.ProgramMenu;
 import dev.izzy.factorycore.platform.program.ProgramPackets;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.EnumSet;
+import java.util.List;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -26,11 +34,9 @@ public final class ProgramEditorGameTests {
 
   private ProgramEditorGameTests() {}
 
-  @SuppressWarnings("removal")
   private static ServerPlayer player(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     return player;
   }
@@ -49,9 +55,7 @@ public final class ProgramEditorGameTests {
   public static void editorSavesChunkedDraftsReportsErrorsAndControlsDeployment(GameTestHelper h) {
     var owner = player(h);
     var viewer = player(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
     ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
     var long_ = new StringBuilder("every 10 ticks as \"long\" {\n");
@@ -64,7 +68,7 @@ public final class ProgramEditorGameTests {
                     WorldNetworks.get(h.getLevel().getServer())
                             .membership(controller.origin())
                             .status()
-                        == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                        == NetworkTopology.Status.VALID,
                     "Controller wired"))
         .thenExecute(
             () -> {
@@ -172,19 +176,13 @@ public final class ProgramEditorGameTests {
   public static void authoringPreviewIsViewScopedAndNeverExecutesTheDraft(GameTestHelper h) {
     var owner = player(h);
     var viewer = player(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
     ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
     var machinePos = new BlockPos(2, 1, 1);
-    h.setBlock(
-        machinePos, dev.izzy.factorycore.platform.storage.MachineInterfaceContent.BLOCK.get());
-    dev.izzy.factorycore.platform.storage.MachineInterfaceEntity machine =
-        h.getBlockEntity(machinePos);
-    machine.place(
-        new net.minecraft.world.item.ItemStack(
-            dev.izzy.factorycore.platform.storage.MachineInterfaceContent.ITEM.get()));
+    h.setBlock(machinePos, MachineInterfaceContent.BLOCK.get());
+    MachineInterfaceEntity machine = h.getBlockEntity(machinePos);
+    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
     h.startSequence()
         .thenWaitUntil(
             () ->
@@ -192,14 +190,14 @@ public final class ProgramEditorGameTests {
                     WorldNetworks.get(h.getLevel().getServer())
                             .membership(controller.origin())
                             .status()
-                        == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                        == NetworkTopology.Status.VALID,
                     "Controller wired"))
         .thenExecute(
             () ->
                 h.assertTrue(
                     machine.relabel(
                             new NetworkPermissions.Actor(owner.getUUID(), false), "fuel input")
-                        == dev.izzy.factorycore.core.network.NetworkAuthority.Decision.ALLOWED,
+                        == NetworkAuthority.Decision.ALLOWED,
                     "Local label configured"))
         .thenWaitUntil(
             () ->
@@ -207,7 +205,7 @@ public final class ProgramEditorGameTests {
                     WorldNetworks.get(h.getLevel().getServer())
                             .membership(controller.origin())
                             .status()
-                        == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                        == NetworkTopology.Status.VALID,
                     "Relabel published"))
         .thenExecute(
             () -> {
@@ -229,14 +227,13 @@ public final class ProgramEditorGameTests {
               var m = menu(h, viewer);
               m.author(
                   viewer,
-                  new ProgramPackets.AuthorRequest(
-                      m.containerId, java.util.UUID.randomUUID(), true, 0, ""));
+                  new ProgramPackets.AuthorRequest(m.containerId, UUID.randomUUID(), true, 0, ""));
               h.assertTrue(m.authorView() == null, "Forged session reveals no scope or labels");
               m.author(
                   viewer,
                   new ProgramPackets.AuthorRequest(m.containerId, m.session(), true, 0, ""));
               h.assertTrue(
-                  m.authorView().labels().equals(java.util.List.of("fuel input")),
+                  m.authorView().labels().equals(List.of("fuel input")),
                   "VIEW sees permitted local labels");
               h.assertTrue(
                   m.authorView().preview().stream()

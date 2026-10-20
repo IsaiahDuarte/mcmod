@@ -1,7 +1,8 @@
 package dev.izzy.factorycore.platform.upgrade;
 
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
-import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.FactoryRegistries;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -10,7 +11,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
  * Paid throughput upgrades (ADR 0054). The Throughput Upgrade (Advanced) and Overdrive Upgrade
@@ -18,13 +18,12 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  * (Overdrive only) a Wireless Link Endpoint.
  */
 public final class ThroughputContent {
-  private static final DeferredRegister.Items ITEMS =
-      DeferredRegister.createItems(FactoryCoreMod.MOD_ID);
   public static final DeferredItem<ThroughputUpgradeItem> THROUGHPUT =
-      ITEMS.register(
+      FactoryRegistries.ITEMS.register(
           "throughput_upgrade", () -> new ThroughputUpgradeItem(ThroughputTier.ADVANCED));
   public static final DeferredItem<ThroughputUpgradeItem> OVERDRIVE =
-      ITEMS.register("overdrive_upgrade", () -> new ThroughputUpgradeItem(ThroughputTier.ENDGAME));
+      FactoryRegistries.ITEMS.register(
+          "overdrive_upgrade", () -> new ThroughputUpgradeItem(ThroughputTier.ENDGAME));
 
   private ThroughputContent() {}
 
@@ -58,7 +57,28 @@ public final class ThroughputContent {
         "throughput.factorycore.tier." + tier.name().toLowerCase(Locale.ROOT));
   }
 
+  /**
+   * A translatable line whose {@code %s} arguments are tier limits, so balance numbers live only in
+   * {@link ThroughputTier}. Arguments are grouped integers such as {@code 1,024}.
+   */
+  public static Component limits(String key, int... values) {
+    var args = new Object[values.length];
+    for (int i = 0; i < values.length; i++) args[i] = String.format(Locale.ROOT, "%,d", values[i]);
+    return Component.translatable(key, args);
+  }
+
+  /** The upgrade item's line: port and buffer ceilings, plus the link multiplier for Overdrive. */
+  public static Component describe(ThroughputTier tier) {
+    return limits(
+        "tooltip.factorycore.throughput." + tier.name().toLowerCase(Locale.ROOT),
+        tier.portRate(ResourceKind.ITEM),
+        tier.portRate(ResourceKind.FLUID),
+        tier.portRate(ResourceKind.ENERGY),
+        tier.bufferRate(),
+        tier.linkScale());
+  }
+
   public static void register(IEventBus bus) {
-    ITEMS.register(bus);
+    // Loading this class adds its entries to FactoryRegistries before registration.
   }
 }

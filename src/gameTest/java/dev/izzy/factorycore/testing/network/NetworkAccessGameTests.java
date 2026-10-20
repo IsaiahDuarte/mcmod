@@ -5,6 +5,8 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.AccessPackets;
 import dev.izzy.factorycore.platform.network.GatewayPolicyMenu;
 import dev.izzy.factorycore.platform.network.NetworkAccessMenu;
@@ -12,6 +14,8 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -41,17 +45,13 @@ public final class NetworkAccessGameTests {
   private NetworkAccessGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos relative) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(relative));
   }
 
   private static boolean allowed(
       GameTestHelper h, ServerPlayer player, BlockPos at, Permission permission) {
     return WorldNetworks.get(h.getLevel().getServer())
-            .authorize(
-                new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                position(h, at),
-                permission)
+            .authorize(Actors.of(player), position(h, at), permission)
         == NetworkAuthority.Decision.ALLOWED;
   }
 
@@ -81,10 +81,8 @@ public final class NetworkAccessGameTests {
   }
 
   private static ServerPlayer player(GameTestHelper h) {
-    @SuppressWarnings("removal")
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     return player;
   }
 
@@ -99,9 +97,7 @@ public final class NetworkAccessGameTests {
     var owner = player(h);
     var guest = player(h);
     var third = player(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(CABLE, NetworkContent.CABLE.get());
     int view = 1 << Permission.VIEW.ordinal(), withdraw = 1 << Permission.WITHDRAW.ordinal();
     NetworkAccessMenu[] menus = new NetworkAccessMenu[2];
@@ -357,9 +353,7 @@ public final class NetworkAccessGameTests {
   public static void gatewayAccessScreenShowsAndEnforcesInheritedLimits(GameTestHelper h) {
     var owner = player(h);
     var guest = player(h);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(
         GATEWAY,
         NetworkContent.GATEWAY

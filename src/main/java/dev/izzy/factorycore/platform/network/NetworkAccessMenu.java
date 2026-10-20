@@ -1,16 +1,19 @@
 package dev.izzy.factorycore.platform.network;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.RecoveryMenu;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -37,32 +40,32 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   public static final int CONFIRM_TICKS = 200;
 
   private static final int POLL_TICKS = 10;
+  private final MenuSession protocol;
   private final Player viewer;
   private final NetworkNodeEntity anchor;
   private final BlockPos position;
-  private final UUID session;
   private final NodeRegistry.Handle lease;
   private UUID network;
-  private int page, lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE;
+  private int page;
   private UUID pending = AccessPackets.NONE;
   private int pendingUntil;
   private long pendingGeneration, revision = 1;
-  private boolean hadManage, active = true;
+  private boolean hadManage;
   private String status = "ready";
   private AccessPackets.View view;
 
   /** Client constructor. */
   public NetworkAccessMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-    this(id, inventory, null, buffer.readBlockPos(), buffer.readUUID());
+    this(id, inventory, null, buffer.readBlockPos(), MenuSession.read(buffer));
   }
 
   private NetworkAccessMenu(
       int id, Inventory inventory, NetworkNodeEntity anchor, BlockPos position, UUID session) {
     super(NetworkContent.ACCESS_MENU.get(), id);
     viewer = inventory.player;
+    protocol = new MenuSession(this, viewer, session, anchor != null, POLL_TICKS);
     this.anchor = anchor;
     this.position = position;
-    this.session = session;
     lease = anchor == null ? null : anchor.handle();
     view = empty(id, session, 0, "loading");
     if (anchor != null) {
@@ -111,7 +114,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   }
 
   public UUID session() {
-    return session;
+    return protocol.id();
   }
 
   public BlockPos position() {
@@ -125,15 +128,14 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   /** Client: accept only the matching session's newer views. */
   public void accept(AccessPackets.View packet) {
     if (anchor == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.revision() >= view.revision()) view = packet;
   }
 
   /** Client: request one action; the server validates everything. */
   public void send(int action, UUID principal, int value) {
     PacketDistributor.sendToServer(
-        new AccessPackets.Command(containerId, session, action, principal, value));
+        new AccessPackets.Command(containerId, protocol.id(), action, principal, value));
   }
 
   private ServerPlayer player() {
@@ -141,7 +143,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   }
 
   private boolean current() {
-    if (!active
+    if (!protocol.active()
         || anchor.isRemoved()
         || lease == null
         || !lease.equals(anchor.handle())
@@ -168,36 +170,26 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   @Override
   public void removed(Player player) {
     super.removed(player);
-    active = false;
+    protocol.close();
   }
 
   @Override
   public void broadcastChanges() {
     super.broadcastChanges();
-    if (anchor == null || !active || player().containerMenu != this) return;
-    int tick = player().server.getTickCount();
-    if (lastPoll != Integer.MIN_VALUE && tick - lastPoll < POLL_TICKS) return;
-    lastPoll = tick;
-    publish();
+    if (protocol.admitPoll()) publish();
   }
 
   /** Server: one client action, accepted only from the session's own connected player. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   public void command(ServerPlayer sender, AccessPackets.Command packet) {
-    if (anchor == null
-        || sender != viewer
-        || packet.menu() != containerId
-        || !packet.session().equals(session)
-        || sender.containerMenu != this
-        || !stillValid(sender)) return;
+    if (!protocol.fromViewer(sender, packet.menu(), packet.session()) || !stillValid(sender))
+      return;
     var server = sender.server;
     int tick = server.getTickCount();
-    if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) {
+    if (!protocol.admitRate()) {
       status = "rate";
       publish();
       return;
     }
-    lastCommand = tick;
     var actor = AccessAdministration.actor(sender);
     var origin = anchor.position();
     var principal = packet.principal();
@@ -268,7 +260,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
         pending = AccessPackets.NONE;
       }
       case AccessPackets.RECOVERY -> {
-        dev.izzy.factorycore.platform.storage.RecoveryMenu.open(sender);
+        RecoveryMenu.open(sender);
         return;
       }
       default -> {
@@ -290,11 +282,10 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
 
   /** Only the current owner or an operator, with current Manage here, may transfer ownership. */
   private static boolean mayTransfer(ServerPlayer player, NetworkPermissions.State state) {
-    return player.getUUID().equals(state.owner()) || player.hasPermissions(2);
+    return player.getUUID().equals(state.owner()) || player.hasPermissions(Actors.OPERATOR_LEVEL);
   }
 
   /** A principal the screen may name: an explicit grant here or a currently online player. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   private boolean listed(NetworkPermissions.Actor actor, UUID principal) {
     if (principal.equals(AccessPackets.NONE)) return false;
     var server = player().server;
@@ -312,7 +303,6 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   }
 
   /** Canonical view at this instant; pending expiry and lost Manage update the status. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   private AccessPackets.View build(long revision) {
     var server = player().server;
     var networks = WorldNetworks.get(server);
@@ -320,13 +310,12 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
     var membership = networks.membership(origin);
     if (membership.status() != NetworkTopology.Status.VALID) {
       pending = AccessPackets.NONE;
-      return empty(containerId, session, revision, "rebuilding");
+      return empty(containerId, protocol.id(), revision, "rebuilding");
     }
     var actor = AccessAdministration.actor(player());
     int self = 0;
     for (var permission : Permission.values())
-      if (networks.authorize(actor, origin, permission) == NetworkAuthority.Decision.ALLOWED)
-        self |= 1 << permission.ordinal();
+      if (networks.allows(actor, origin, permission)) self |= 1 << permission.ordinal();
     boolean manage = (self & 1 << Permission.MANAGE.ordinal()) != 0;
     int branch = (1 << Permission.values().length) - 1, inherited = branch;
     int kinds = (1 << ResourceKind.values().length) - 1;
@@ -357,7 +346,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
     if (!manage)
       return new AccessPackets.View(
           containerId,
-          session,
+          protocol.id(),
           revision,
           "",
           ownerSelf,
@@ -377,7 +366,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
           0);
     var principals = new ArrayList<AccessPackets.Row>();
     canonical.grants().entrySet().stream()
-        .sorted(java.util.Map.Entry.comparingByKey())
+        .sorted(Map.Entry.comparingByKey())
         .forEach(
             entry ->
                 principals.add(
@@ -410,12 +399,12 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
     }
     return new AccessPackets.View(
         containerId,
-        session,
+        protocol.id(),
         revision,
         name(canonical.owner()),
         ownerSelf,
         true,
-        ownerSelf || player().hasPermissions(2),
+        ownerSelf || player().hasPermissions(Actors.OPERATOR_LEVEL),
         self,
         branch,
         inherited,

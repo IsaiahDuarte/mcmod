@@ -4,7 +4,7 @@
 
 Read [SPEC.md](SPEC.md), [implementation plan](docs/IMPLEMENTATION.md), [engineering rules](docs/ENGINEERING.md), and [verification requirements](docs/TESTING.md), then relevant module docs and ADRs. Inspect existing code and tests before proposing new infrastructure.
 
-This repository currently contains a design and verification tooling. Do not assume a game version, loader, build system, package name, or Wasm runtime has been selected. Resolve platform choices before adding platform-specific implementation.
+The platform is selected: Minecraft 1.21.1, NeoForge 21.1.252, Java 21, Gradle with ModDevGradle, package `dev.izzy.factorycore` ([ADR 0001](docs/decisions/0001-platform.md)), and the Wasm runtime in [ADR 0004](docs/decisions/0004-wasm-feasibility.md). V1 is feature-complete; most work is now cleanup, iteration and closing acceptance gaps. Run `python3 scripts/verify.py` for every change and `--full` before merging (see [TESTING.md](docs/TESTING.md)).
 
 ## Working rules
 

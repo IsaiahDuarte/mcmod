@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "function": "minecraft:copy_components",
+              "include": [
+                "factorycore:program_draft",
+                "factorycore:program_energy"
+              ],
+              "source": "block_entity"
+            }
+          ],
+          "name": "factorycore:program_controller"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "factorycore:blocks/program_controller"
+}

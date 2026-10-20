@@ -1,9 +1,12 @@
 package dev.izzy.factorycore.clienttesting;
 
+import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.ItemDescriptions;
@@ -15,39 +18,54 @@ import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
+import dev.izzy.factorycore.platform.storage.CellHandleData;
+import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
+import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.BookViewScreen;
 import net.minecraft.client.resources.language.I18n;
+import net.minecraft.client.tutorial.TutorialSteps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LevelSettings;
@@ -59,6 +77,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Graphical presentation fixture ({@code runPresentationClient}): device orientations, status lamps
@@ -82,8 +101,10 @@ public final class PresentationClientVerification {
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean serverDone = new AtomicBoolean();
   private final StringBuilder evidence = new StringBuilder();
+  private final Captures captures = new Captures("presentation", report, evidence);
   private final List<Step> steps = new ArrayList<>();
   private final List<BlockPos> fed = new ArrayList<>();
+  private final List<String> chat = new java.util.concurrent.CopyOnWriteArrayList<>();
   private int index;
   private int ticks;
   private int entered;
@@ -94,12 +115,14 @@ public final class PresentationClientVerification {
     buildSteps();
     NeoForge.EVENT_BUS.addListener(this::tick);
     NeoForge.EVENT_BUS.addListener(this::feed);
+    NeoForge.EVENT_BUS.addListener(
+        (net.neoforged.neoforge.client.event.ClientChatReceivedEvent.System event) ->
+            chat.add(event.getMessage().getString()));
   }
 
   // ------------------------------------------------------------------ plumbing
 
   /** Keeps gallery wireless devices powered: 1,000 FE per tick each, their real input limit. */
-  @SuppressWarnings("PMD.CloseResource") // Borrowed server level.
   private void feed(ServerTickEvent.Post event) {
     var level = event.getServer().overworld();
     for (var position : List.copyOf(fed)) {
@@ -111,7 +134,6 @@ public final class PresentationClientVerification {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed singleton; Minecraft owns its lifecycle.
   private void tick(ClientTickEvent.Post event) {
     var client = Minecraft.getInstance();
     ticks++;
@@ -186,34 +208,6 @@ public final class PresentationClientVerification {
     step(client -> waited() >= count);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed window; the client owns it.
-  private void capture(Minecraft client, String name) {
-    try {
-      Files.createDirectories(report.getParent().resolve("screenshots"));
-    } catch (IOException error) {
-      throw new IllegalStateException("Cannot prepare screenshot directory", error);
-    }
-    var window = client.getWindow();
-    evidence
-        .append(name)
-        .append(" framebuffer=")
-        .append(window.getWidth())
-        .append('x')
-        .append(window.getHeight())
-        .append(" gui=")
-        .append(window.getGuiScaledWidth())
-        .append('x')
-        .append(window.getGuiScaledHeight())
-        .append(" scale=")
-        .append(window.getGuiScale())
-        .append('\n');
-    Screenshot.grab(
-        report.getParent().toFile(),
-        name,
-        client.getMainRenderTarget(),
-        component -> System.out.println("FACTORYCORE_CLIENT_SCREENSHOT " + component.getString()));
-  }
-
   private static void check(boolean condition, String message) {
     if (!condition) throw new IllegalStateException(message);
   }
@@ -242,7 +236,7 @@ public final class PresentationClientVerification {
     step(
         client -> {
           aim(client, view);
-          capture(client, capture);
+          captures.grab(client, capture);
           return true;
         });
   }
@@ -286,7 +280,7 @@ public final class PresentationClientVerification {
             .toList();
     if (screen instanceof BufferSettingsScreen) {
       for (var widget : widgets)
-        if (widget instanceof net.minecraft.client.gui.components.EditBox field
+        if (widget instanceof EditBox field
             && (field.getMessage().getString().equals(I18n.get("gui.factorycore.buffer.rate"))
                 || field
                     .getMessage()
@@ -360,7 +354,7 @@ public final class PresentationClientVerification {
                 .append(checkFits(client, client.screen))
                 .append('\n');
             if (captureAll || scale == 1 || scale == 4)
-              capture(client, name + "-scale-" + scale + ".png");
+              captures.grab(client, name + "-scale-" + scale + ".png");
             return true;
           });
     }
@@ -399,23 +393,24 @@ public final class PresentationClientVerification {
                   + view.missing()
                   + " "
                   + view.preview());
-          capture(client, "jobs-preview-scale-2.png");
+          captures.grab(client, "jobs-preview-scale-2.png");
           return press(client, "Start");
         });
     step(
         client -> {
           if (waited() < 6) return false;
-          capture(client, "jobs-started-scale-2.png");
+          captures.grab(client, "jobs-started-scale-2.png");
           return true;
         });
     serverUntil(
         player ->
-            dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
-                    .craftingJobs()
-                    .all()
-                    .isEmpty()
+            DeviceSavedData.get(player.server).craftingJobs().all().isEmpty()
                 && planks(player) == 8);
-    step(client -> waited() > 10 && jobView(client).jobs().isEmpty() && press(client, "×64"));
+    step(
+        client -> {
+          if (!chat.contains("Crafting job finished: 8 × Oak Planks")) return false;
+          return waited() > 10 && jobView(client).jobs().isEmpty() && press(client, "×64");
+        });
     step(
         client -> {
           var view = jobView(client);
@@ -431,7 +426,17 @@ public final class PresentationClientVerification {
               .append("fit jobs scale=4: ")
               .append(checkFits(client, client.screen))
               .append('\n');
-          capture(client, "jobs-missing-scale-4.png");
+          captures.grab(client, "jobs-missing-scale-4.png");
+          // Keep 64 planks with only 6 logs: the rule waits and the row must show it is blocked.
+          return press(client, "Keep");
+        });
+    step(
+        client -> {
+          var rows = jobView(client).craftables();
+          if (rows.isEmpty() || !rows.getFirst().note().equals("missing") || waited() < 6)
+            return false;
+          captures.grab(client, "jobs-keep-waiting-scale-4.png");
+          press(client, "Keep");
           setScale(client, 2);
           press(client, "Items");
           client.screen.onClose();
@@ -440,26 +445,18 @@ public final class PresentationClientVerification {
     step(client -> client.screen == null && waited() > 4);
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private static long planks(ServerPlayer player) {
     var level = player.serverLevel();
-    var drive =
-        (dev.izzy.factorycore.platform.storage.StorageDriveEntity)
-            level.getBlockEntity(PresentationScenes.SCREENS.east());
-    var cell = dev.izzy.factorycore.platform.storage.CellHandleData.read(drive.cell(0));
+    var drive = (StorageDriveEntity) level.getBlockEntity(PresentationScenes.SCREENS.east());
+    var cell = CellHandleData.read(drive.cell(0));
     var key =
-        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(level.registryAccess())
-            .itemKey(new ItemStack(net.minecraft.world.item.Items.OAK_PLANKS));
-    var stock =
-        dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
-            .registry()
-            .stock(cell, key);
+        new PlatformResourceCodec(level.registryAccess()).itemKey(new ItemStack(Items.OAK_PLANKS));
+    var stock = DeviceSavedData.get(player.server).registry().stock(cell, key);
     // -1 while the cell is offline, so waits never mistake a rebuilding network for an empty one.
     return stock.loaded() ? stock.total() : -1;
   }
 
-  private static dev.izzy.factorycore.platform.storage.TerminalJobPackets.View jobView(
-      Minecraft client) {
+  private static TerminalJobPackets.View jobView(Minecraft client) {
     check(client.screen instanceof TerminalScreen, "Terminal closed during the jobs tour");
     return ((TerminalScreen) client.screen).getMenu().jobView();
   }
@@ -493,18 +490,15 @@ public final class PresentationClientVerification {
 
   private static void shift(Minecraft client, boolean down) {
     client.player.connection.send(
-        new net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket(
+        new ServerboundPlayerCommandPacket(
             client.player,
             down
-                ? net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
-                    .PRESS_SHIFT_KEY
-                : net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
-                    .RELEASE_SHIFT_KEY));
+                ? ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY
+                : ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
   }
 
   private static NodeRegistry.Position at(ServerPlayer player, BlockPos position) {
-    return new NodeRegistry.Position(
-        player.serverLevel().dimension().location().toString(), position.asLong());
+    return Positions.of(player.serverLevel(), position);
   }
 
   private static boolean valid(ServerPlayer player, BlockPos position) {
@@ -516,10 +510,7 @@ public final class PresentationClientVerification {
   private void upgrade(BlockPos target, ThroughputTier tier, boolean buffer) {
     String item = tier == ThroughputTier.ADVANCED ? "throughput_upgrade" : "overdrive_upgrade";
     String name = (buffer ? "buffer-" : "machine-") + item.replace("_upgrade", "");
-    int maximum =
-        buffer
-            ? tier.bufferRate()
-            : tier.portRate(dev.izzy.factorycore.core.resource.ResourceKind.ITEM);
+    int maximum = buffer ? tier.bufferRate() : tier.portRate(ResourceKind.ITEM);
     server(
         player -> {
           player.setGameMode(GameType.SURVIVAL);
@@ -550,11 +541,7 @@ public final class PresentationClientVerification {
                 || screen.getMenu().view().maxRate() != maximum
                 || screen.getMenu().view().form().rate() != maximum) return false;
             check(
-                screen
-                    .getMenu()
-                    .view()
-                    .tier()
-                    .equals(tier.name().toLowerCase(java.util.Locale.ROOT)),
+                screen.getMenu().view().tier().equals(tier.name().toLowerCase(Locale.ROOT)),
                 "Wrong installed tier in machine payload");
           }
           evidence
@@ -606,7 +593,7 @@ public final class PresentationClientVerification {
         check(lines.contains(I18n.get(key)), "Description missing from tooltip of " + id);
         described++;
       }
-      String legend = ItemDescriptions.lampLegendKey(id.getPath());
+      String legend = ItemDescriptions.lampLegendKey(BuiltInRegistries.ITEM.get(id));
       if (legend != null)
         check(lines.contains(I18n.get(legend)), "Lamp legend missing from tooltip of " + id);
       evidence.append("tooltip ").append(id.getPath()).append(": ").append(lines).append('\n');
@@ -620,8 +607,7 @@ public final class PresentationClientVerification {
   private void buildSteps() {
     step(
         client -> {
-          if (client.screen
-              instanceof net.minecraft.client.gui.screens.AccessibilityOnboardingScreen onboarding)
+          if (client.screen instanceof AccessibilityOnboardingScreen onboarding)
             onboarding.onClose();
           if (!(client.screen instanceof TitleScreen)) return false;
           var window = client.getWindow();
@@ -630,7 +616,7 @@ public final class PresentationClientVerification {
               (int) Math.round(MIN_WIDTH / ratio), (int) Math.round(MIN_HEIGHT / ratio));
           client.options.guiScale().set(2);
           client.options.pauseOnLostFocus = false;
-          client.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
+          client.getTutorial().setStep(TutorialSteps.NONE);
           client
               .createWorldOpenFlows()
               .createFreshLevel(
@@ -783,7 +769,7 @@ public final class PresentationClientVerification {
       String name = (third ? "held-third-person-" : "held-first-person-") + pair[0] + ".png";
       step(
           client -> {
-            capture(client, name);
+            captures.grab(client, name);
             return true;
           });
     }
@@ -814,7 +800,7 @@ public final class PresentationClientVerification {
             client -> {
               if (!(client.screen instanceof TooltipBoard) || waited() < 6) return false;
               String edge = targetCorner == 0 ? "edges" : "corner-" + targetCorner;
-              capture(client, "tooltips-" + edge + "-scale-" + targetScale + ".png");
+              captures.grab(client, "tooltips-" + edge + "-scale-" + targetScale + ".png");
               return true;
             });
       }
@@ -862,18 +848,14 @@ public final class PresentationClientVerification {
             check(
                 WorldNetworks.get(player.getServer())
                         .setGrants(
-                            new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
-                                player.getUUID(), false),
+                            new NetworkPermissions.Actor(player.getUUID(), false),
                             at(player, base),
-                            java.util.UUID.nameUUIDFromBytes(
-                                "presentation-guest"
-                                    .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                            java.util.EnumSet.of(
-                                dev.izzy.factorycore.core.network.NetworkPermissions.Permission
-                                    .VIEW,
-                                dev.izzy.factorycore.core.network.NetworkPermissions.Permission
-                                    .DEPOSIT))
-                    == dev.izzy.factorycore.core.network.NetworkPermissions.Change.OK,
+                            UUID.nameUUIDFromBytes(
+                                "presentation-guest".getBytes(StandardCharsets.UTF_8)),
+                            EnumSet.of(
+                                NetworkPermissions.Permission.VIEW,
+                                NetworkPermissions.Permission.DEPOSIT))
+                    == NetworkPermissions.Change.OK,
                 "Owner grants a second principal before opening Network Access"));
     use(base, Direction.SOUTH, true);
     step(
@@ -905,7 +887,7 @@ public final class PresentationClientVerification {
       step(
           client -> {
             check(client.screen instanceof BookViewScreen, "Guide closed while paging");
-            client.screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
+            client.screen.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
             return true;
           });
     }
@@ -931,7 +913,7 @@ public final class PresentationClientVerification {
       step(
           client -> {
             if (waited() < 6) return false;
-            capture(client, "upgrade-tooltip-" + targetCorner + "-scale-4.png");
+            captures.grab(client, "upgrade-tooltip-" + targetCorner + "-scale-4.png");
             return true;
           });
     }
@@ -942,16 +924,14 @@ public final class PresentationClientVerification {
         });
   }
 
-  @SuppressWarnings("PMD.CloseResource")
-  private static DeviceLamp lamp(net.minecraft.server.level.ServerLevel level, int x, int z) {
+  private static DeviceLamp lamp(ServerLevel level, int x, int z) {
     return level.getBlockState(new BlockPos(x, 65, z)).getValue(DeviceLamp.PROPERTY);
   }
 
   private static ItemStack stack(String path) {
     return new ItemStack(
         BuiltInRegistries.ITEM.get(
-            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                FactoryCoreMod.MOD_ID, path)));
+            ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, path)));
   }
 
   private void writeReport(Minecraft client) {

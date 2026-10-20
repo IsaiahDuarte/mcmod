@@ -2,8 +2,12 @@ package dev.izzy.factorycore.platform.storage;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.crafting.ProcessingRecoveryCommands;
 import java.util.*;
+import java.util.function.Consumer;
 import net.minecraft.commands.*;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -27,9 +31,9 @@ public final class RecoveryCommands {
                     Commands.literal("recovery")
                         .then(DeviceRecoveryCommands.commands(false))
                         .then(DeviceRecoveryCommands.commands(true))
-                        .then(BufferRecoveryCommands.commands())
-                        .then(NetworkNodeRecoveryCommands.commands())
-                        .then(PortRecoveryCommands.commands())
+                        .then(NodeRecovery.BUFFER.commands())
+                        .then(NodeRecovery.NODE.commands())
+                        .then(NodeRecovery.PORT.commands())
                         .then(
                             Commands.literal("screen")
                                 .requires(
@@ -41,12 +45,10 @@ public final class RecoveryCommands {
                                       RecoveryMenu.open((ServerPlayer) c.getSource().getEntity());
                                       return 1;
                                     }))
-                        .then(
-                            dev.izzy.factorycore.platform.crafting.ProcessingRecoveryCommands
-                                .commands())
+                        .then(ProcessingRecoveryCommands.commands())
                         .then(
                             Commands.literal("list")
-                                .requires(s -> s.hasPermission(2))
+                                .requires(s -> s.hasPermission(Actors.OPERATOR_LEVEL))
                                 .executes(c -> list(c.getSource(), null))
                                 .then(
                                     Commands.argument("after", StringArgumentType.word())
@@ -57,7 +59,7 @@ public final class RecoveryCommands {
                                                     StringArgumentType.getString(c, "after")))))
                         .then(
                             Commands.literal("show")
-                                .requires(s -> s.hasPermission(2))
+                                .requires(s -> s.hasPermission(Actors.OPERATOR_LEVEL))
                                 .then(
                                     Commands.argument("id", StringArgumentType.word())
                                         .executes(
@@ -67,7 +69,7 @@ public final class RecoveryCommands {
                                                     StringArgumentType.getString(c, "id")))))
                         .then(
                             Commands.literal("retire")
-                                .requires(source -> source.hasPermission(2))
+                                .requires(source -> source.hasPermission(Actors.OPERATOR_LEVEL))
                                 .then(
                                     Commands.argument("id", StringArgumentType.word())
                                         .executes(
@@ -185,7 +187,7 @@ public final class RecoveryCommands {
                     context.network().toString(),
                     context.segment().toString(),
                     context.origin().dimension(),
-                    net.minecraft.core.BlockPos.of(context.origin().block()).toShortString(),
+                    BlockPos.of(context.origin().block()).toShortString(),
                     context.source().device().toString(),
                     context.destination().device().toString()),
             false);
@@ -236,7 +238,7 @@ public final class RecoveryCommands {
       fail(source, "owner");
       return 0;
     }
-    java.util.function.Consumer<WorldStorageTransfers.Result> report =
+    Consumer<WorldStorageTransfers.Result> report =
         completed ->
             source.sendSuccess(
                 () ->

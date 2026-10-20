@@ -4,10 +4,11 @@ import dev.izzy.factorycore.core.network.GatewayPolicy;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.network.WiredDiscovery;
+import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
-import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.LevelChunk;
 
@@ -44,7 +46,7 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
     if (!position.dimension().equals(level.dimension().location().toString()))
       throw new IllegalArgumentException("Foreign discovery dimension");
     var block = BlockPos.of(position.block());
-    var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+    var chunk = Loaded.chunk(level, block);
     if (chunk == null) {
       var previous = cached.apply(position);
       return previous == null ? null : previous.unloaded();
@@ -79,125 +81,61 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
             List.of(port(block, facing.getOpposite(), upstream), port(block, facing, downstream)),
             new NetworkTopology.Gateway(canonical, upstream, downstream, policy, valid));
       }
-      return ordinary(block, canonical, NetworkTopology.Role.ROOT, valid);
+      return ordinary(block, state, canonical, NetworkTopology.Role.ROOT, valid);
     }
     if (state.is(NetworkContent.CABLE.get()))
-      return ordinary(block, id(position, "wire"), NetworkTopology.Role.CABLE, true);
+      return ordinary(block, state, id(position, "wire"), NetworkTopology.Role.CABLE, true);
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
-    if (entity instanceof dev.izzy.factorycore.platform.storage.TerminalEntity terminal)
-      return ordinary(
-          block, id(position, "terminal"), NetworkTopology.Role.TERMINAL, terminal.current());
-    if (entity instanceof dev.izzy.factorycore.platform.wireless.LinkEndpointEntity link) {
+    if (entity instanceof LinkEndpointEntity link) {
       // A wired back face plus, while the pair is active, one reciprocal port to the partner.
       var id = id(position, "link");
       var ports = new ArrayList<WiredDiscovery.Port>(2);
       ports.add(port(block, link.back(), id));
       if (link.active())
-        ports.add(
-            new WiredDiscovery.Port(
-                new NodeRegistry.Position(
-                    level.dimension().location().toString(), link.partner().asLong()),
-                id));
+        ports.add(new WiredDiscovery.Port(Positions.of(level, link.partner()), id));
       return new WiredDiscovery.Wire(
           List.of(new NetworkTopology.Node(id, NetworkTopology.Role.CABLE, "", link.current())),
           ports,
           null);
     }
-    if (entity instanceof dev.izzy.factorycore.platform.wireless.AccessPointEntity point)
-      return ordinary(
-          block, id(position, "access_point"), NetworkTopology.Role.TERMINAL, point.current());
-    if (entity instanceof dev.izzy.factorycore.platform.program.ProgramControllerEntity program)
+    if (entity instanceof WiredMember member) {
+      var vertex = member.wireVertex();
       return ordinary(
           block,
-          id(position, "program"),
-          NetworkTopology.Role.PROGRAM,
-          program.current() && program.diagnostic().isEmpty());
-    if (entity instanceof dev.izzy.factorycore.platform.crafting.PatternHolderEntity unit)
-      return ordinary(
-          block,
-          id(position, "crafting_unit"),
-          NetworkTopology.Role.CRAFTER,
-          unit.current() && unit.diagnostic().isEmpty());
-    if (entity instanceof dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity buffer) {
-      boolean valid;
-      try {
-        buffer.validatePlaced();
-        valid = true;
-      } catch (IllegalArgumentException | IllegalStateException unavailable) {
-        valid = false;
-      }
-      return ordinary(
-          block,
-          buffer.handle() == null ? id(position, "unowned") : buffer.handle().id(),
-          NetworkTopology.Role.STORAGE,
-          valid);
+          state,
+          vertex.canonical() == null ? id(position, vertex.salt()) : vertex.canonical(),
+          vertex.role(),
+          vertex.loaded(),
+          vertex.label());
     }
-    if (entity instanceof dev.izzy.factorycore.platform.storage.ConnectorEntity connector) {
-      boolean valid;
-      try {
-        connector.validatePlaced();
-        valid = !connector.isRemoved();
-      } catch (IllegalArgumentException | IllegalStateException unavailable) {
-        valid = false;
-      }
-      var wire =
-          ordinary(
-              block,
-              connector.handle() == null ? id(position, "unowned") : connector.handle().id(),
-              connector.handle() != null
-                      && connector.handle().kind() == NodeRegistry.Kind.MACHINE_INTERFACE
-                  ? NetworkTopology.Role.INTERFACE
-                  : NetworkTopology.Role.STORAGE,
-              valid);
-      if (connector.handle() != null
-          && connector.handle().kind() == NodeRegistry.Kind.MACHINE_INTERFACE)
-        wire =
-            new WiredDiscovery.Wire(
-                List.of(
-                    new NetworkTopology.Node(
-                        connector.handle().id(),
-                        NetworkTopology.Role.INTERFACE,
-                        connector.label(),
-                        valid)),
-                wire.ports(),
-                null);
-      var target = block.relative(connector.targetDirection()).asLong();
-      return new WiredDiscovery.Wire(
-          wire.nodes(),
-          wire.ports().stream().filter(port -> port.neighbor().block() != target).toList(),
-          null);
-    }
-    if (entity instanceof EnergyBankEntity bank) {
-      boolean valid;
-      try {
-        bank.validatePlaced();
-        valid = true;
-      } catch (IllegalArgumentException | IllegalStateException unavailable) {
-        valid = false;
-      }
-      return ordinary(block, id(position, "wire"), NetworkTopology.Role.STORAGE, valid);
-    }
-    if (!(state.getBlock() instanceof StorageDriveBlock)) return null;
-    boolean loaded =
-        entity instanceof StorageDriveEntity drive
-            && !drive.isRemoved()
-            && drive.diagnostic().isEmpty();
-    return ordinary(block, id(position, "wire"), NetworkTopology.Role.STORAGE, loaded);
+    // A drive whose block entity is missing still occupies the network, unloaded.
+    if (state.getBlock() instanceof StorageDriveBlock)
+      return ordinary(block, state, id(position, "wire"), NetworkTopology.Role.STORAGE, false);
+    return null;
   }
 
   private WiredDiscovery.Wire ordinary(
-      BlockPos block, UUID id, NetworkTopology.Role role, boolean loaded) {
+      BlockPos block, BlockState state, UUID id, NetworkTopology.Role role, boolean loaded) {
+    return ordinary(block, state, id, role, loaded, "");
+  }
+
+  private WiredDiscovery.Wire ordinary(
+      BlockPos block,
+      BlockState state,
+      UUID id,
+      NetworkTopology.Role role,
+      boolean loaded,
+      String label) {
     var ports = new ArrayList<WiredDiscovery.Port>(6);
-    for (var face : Direction.values()) ports.add(port(block, face, id));
+    var wired = (NetworkedBlock) state.getBlock();
+    for (var face : Direction.values())
+      if (wired.wiredFace(state, face)) ports.add(port(block, face, id));
     return new WiredDiscovery.Wire(
-        List.of(new NetworkTopology.Node(id, role, "", loaded)), ports, null);
+        List.of(new NetworkTopology.Node(id, role, label, loaded)), ports, null);
   }
 
   private WiredDiscovery.Port port(BlockPos block, Direction face, UUID vertex) {
-    return new WiredDiscovery.Port(
-        new NodeRegistry.Position(
-            level.dimension().location().toString(), block.relative(face).asLong()),
-        vertex);
+    return new WiredDiscovery.Port(Positions.of(level, block.relative(face)), vertex);
   }
 
   private UUID id(NodeRegistry.Position position, String role) {

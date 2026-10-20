@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.ToLongFunction;
 
 /**
  * Bounded recursive autocrafting planner over an immutable stock snapshot. It reserves and moves
@@ -100,7 +101,7 @@ public final class CraftingPlanner {
 
   private final Function<ResourceKey, Collection<Pattern>> producers;
   private final Map<ResourceKey, Long> looked = new HashMap<>();
-  private java.util.function.ToLongFunction<ResourceKey> stock;
+  private ToLongFunction<ResourceKey> stock;
   private int nodes;
 
   /** {@code producers} returns patterns whose primary output is the key, in any order. */
@@ -119,8 +120,7 @@ public final class CraftingPlanner {
    * Plans against stock looked up at most once per distinct key from {@code stock}, which must be a
    * consistent snapshot for the duration of this call. Negative results throw.
    */
-  public Plan plan(
-      ResourceKey request, long amount, java.util.function.ToLongFunction<ResourceKey> stock) {
+  public Plan plan(ResourceKey request, long amount, ToLongFunction<ResourceKey> stock) {
     Objects.requireNonNull(request);
     if (amount < 1) throw new IllegalArgumentException("Request amount must be positive");
     this.stock = Objects.requireNonNull(stock);

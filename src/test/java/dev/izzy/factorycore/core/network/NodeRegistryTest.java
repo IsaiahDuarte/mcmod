@@ -2,8 +2,12 @@ package dev.izzy.factorycore.core.network;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -122,9 +126,9 @@ class NodeRegistryTest {
   void auditedConflictTransitionPreservesEveryKindPositionAndRestrictedGatewayPolicy() {
     var policy =
         new GatewayPolicy(
-            java.util.Set.of(NetworkPermissions.Permission.VIEW),
-            java.util.Set.of(NetworkPermissions.Permission.DEPOSIT),
-            java.util.Set.of(dev.izzy.factorycore.core.resource.ResourceKind.FLUID));
+            Set.of(NetworkPermissions.Permission.VIEW),
+            Set.of(NetworkPermissions.Permission.DEPOSIT),
+            Set.of(ResourceKind.FLUID));
     for (var kind : NodeRegistry.Kind.values()) {
       var stored =
           new NodeRegistry.Stored(
@@ -228,8 +232,7 @@ class NodeRegistryTest {
       cursor = page.next();
     } while (cursor != null);
     assertEquals(
-        expected.stream().sorted(java.util.Comparator.comparing(NodeRegistry.Handle::id)).toList(),
-        actual);
+        expected.stream().sorted(Comparator.comparing(NodeRegistry.Handle::id)).toList(), actual);
     assertEquals(before, dirty[0]);
     var first = actual.getFirst();
     var moved = registry.detach(first, registry.definition(first).position()).handle();
@@ -246,9 +249,9 @@ class NodeRegistryTest {
     int before = changes[0];
     var restricted =
         new GatewayPolicy(
-            java.util.EnumSet.of(NetworkPermissions.Permission.VIEW),
-            java.util.EnumSet.noneOf(NetworkPermissions.Permission.class),
-            java.util.EnumSet.noneOf(dev.izzy.factorycore.core.resource.ResourceKind.class));
+            EnumSet.of(NetworkPermissions.Permission.VIEW),
+            EnumSet.noneOf(NetworkPermissions.Permission.class),
+            EnumSet.noneOf(ResourceKind.class));
     assertEquals(NodeRegistry.Failure.OK, registry.setPolicy(gate, restricted));
     assertEquals(before + 1, changes[0]);
     assertEquals(restricted, registry.definition(gate).policy());
@@ -287,8 +290,7 @@ class NodeRegistryTest {
   void adoptRefusesStaleSameOccupiedAndPortableWithoutMutation() {
     var registry = new NodeRegistry(WORLD, List.of(), () -> {});
     var handle = registry.create(ID, NodeRegistry.Kind.CONTROLLER, FIRST).handle();
-    var other =
-        registry.create(new java.util.UUID(9, 9), NodeRegistry.Kind.GATEWAY, SECOND).handle();
+    var other = registry.create(new UUID(9, 9), NodeRegistry.Kind.GATEWAY, SECOND).handle();
     var before = registry.snapshot();
     assertEquals(NodeRegistry.Failure.OCCUPIED, registry.adopt(handle, SECOND).failure());
     assertEquals(NodeRegistry.Failure.OFFLINE, registry.adopt(handle, FIRST).failure());

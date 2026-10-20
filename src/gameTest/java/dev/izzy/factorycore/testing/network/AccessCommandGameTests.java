@@ -1,14 +1,19 @@
 package dev.izzy.factorycore.testing.network;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
-import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
+import java.util.Map;
 import java.util.Set;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
@@ -30,39 +35,30 @@ public final class AccessCommandGameTests {
   private AccessCommandGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos relative) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(relative));
   }
 
   private static int run(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException rejected) {
+    } catch (CommandSyntaxException rejected) {
       return -1;
     }
   }
 
   private static boolean allowed(GameTestHelper h, ServerPlayer player, Permission permission) {
     return WorldNetworks.get(h.getLevel().getServer())
-            .authorize(
-                new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                position(h, CABLE),
-                permission)
+            .authorize(Actors.of(player), position(h, CABLE), permission)
         == NetworkAuthority.Decision.ALLOWED;
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void ownersAndOperatorsAdministerGrantsAndOthersAreRefused(GameTestHelper h) {
-    var owner = h.makeMockServerPlayerInLevel();
-    var stranger = h.makeMockServerPlayerInLevel();
-    var third = h.makeMockServerPlayerInLevel();
-    for (var player : new ServerPlayer[] {owner, stranger, third})
-      net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-          player.connection.getConnection());
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    var owner = TestPlayers.mock(h);
+    var stranger = TestPlayers.mock(h);
+    var third = TestPlayers.mock(h);
+    for (var player : new ServerPlayer[] {owner, stranger, third}) TestPlayers.connect(player);
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(CABLE, NetworkContent.CABLE.get());
     var at = h.absolutePos(CABLE);
     String pos = at.getX() + " " + at.getY() + " " + at.getZ();
@@ -82,7 +78,9 @@ public final class AccessCommandGameTests {
         .thenExecute(
             () -> {
               var source = stranger.createCommandSourceStack();
-              h.assertFalse(stranger.hasPermissions(2), "The stranger is not an operator");
+              h.assertFalse(
+                  stranger.hasPermissions(Actors.OPERATOR_LEVEL),
+                  "The stranger is not an operator");
               h.assertTrue(!allowed(h, stranger, Permission.VIEW), "Private by default");
               h.assertTrue(
                   run(source, "factorycore access grant " + pos + " " + stranger.getUUID() + " all")
@@ -179,7 +177,7 @@ public final class AccessCommandGameTests {
                           .snapshot()
                           .grants()
                           .equals(
-                              java.util.Map.of(
+                              Map.of(
                                   stranger.getUUID(),
                                   Set.of(Permission.MANAGE),
                                   third.getUUID(),

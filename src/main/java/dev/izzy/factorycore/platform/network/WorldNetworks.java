@@ -6,16 +6,32 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.network.WiredDiscovery;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.FactoryCoreConfig;
+import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.ServerScoped;
+import dev.izzy.factorycore.platform.ServerThread;
+import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
+import dev.izzy.factorycore.platform.storage.ConnectorEntity;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
+import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import dev.izzy.factorycore.platform.storage.WorldBufferImports;
+import dev.izzy.factorycore.platform.storage.WorldConnectors;
+import dev.izzy.factorycore.platform.storage.WorldMachinePresets;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
+import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -26,9 +42,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ChunkEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /** Server-owned indexed geometry; world edits invalidate access before bounded rebuilding. */
@@ -38,7 +57,7 @@ public final class WorldNetworks {
   private static final int STEP = 32;
   private static final UUID WORK_NETWORK = new UUID(0xFAC7000, 1);
   private static final UUID WORK_PROGRAM = new UUID(0xFAC7000, 2);
-  private static final Map<MinecraftServer, WorldNetworks> SERVERS = new HashMap<>();
+  private static final ServerScoped<WorldNetworks> SERVERS = ServerScoped.of(WorldNetworks::new);
 
   private record ChunkKey(String dimension, int x, int z) {}
 
@@ -49,9 +68,9 @@ public final class WorldNetworks {
   private final DeviceSavedData saved;
   private final FairScheduler scheduler;
   private WorldStorageTransfers transfers;
-  private dev.izzy.factorycore.platform.storage.WorldBufferImports imports;
-  private dev.izzy.factorycore.platform.storage.WorldMachinePresets machinePresets;
-  private dev.izzy.factorycore.platform.storage.WorldConnectors connectors;
+  private WorldBufferImports imports;
+  private WorldMachinePresets machinePresets;
+  private WorldConnectors connectors;
   private final Map<NodeRegistry.Position, Region> owners = new HashMap<>();
   private final Map<NodeRegistry.Position, WiredDiscovery.Wire> geometry = new HashMap<>();
   private final Map<ChunkKey, Map<Region, Integer>> chunks = new HashMap<>();
@@ -59,8 +78,7 @@ public final class WorldNetworks {
   private final ArrayDeque<Region> active = new ArrayDeque<>();
   private String diagnostic = "";
   private static final String SCHEDULING_LIMIT = "Network scheduling limit: ";
-  private final dev.izzy.factorycore.core.resource.WirelessBudget wirelessBudget =
-      new dev.izzy.factorycore.core.resource.WirelessBudget();
+  private final WirelessBudget wirelessBudget = new WirelessBudget();
 
   private static final class Region {
     final UUID id = UUID.randomUUID();
@@ -68,8 +86,7 @@ public final class WorldNetworks {
     final Set<NodeRegistry.Position> points = new LinkedHashSet<>();
     final DiscoverySeeds sources;
     final Map<UUID, Structural> structures = new HashMap<>();
-    final Map<UUID, dev.izzy.factorycore.core.resource.WirelessBudget.Hop> wireless =
-        new HashMap<>();
+    final Map<UUID, WirelessBudget.Hop> wireless = new HashMap<>();
     NetworkAuthority authority;
     final RegionReference<Region> reference = new RegionReference<>(this);
     WiredDiscovery discovery;
@@ -87,7 +104,7 @@ public final class WorldNetworks {
 
   private WorldNetworks(MinecraftServer server) {
     this.server = server;
-    gatewayDepth = dev.izzy.factorycore.platform.FactoryCoreConfig.gatewayDepth();
+    gatewayDepth = FactoryCoreConfig.gatewayDepth();
     DeviceSavedData opened = null;
     try {
       opened = DeviceSavedData.get(server);
@@ -108,9 +125,8 @@ public final class WorldNetworks {
   }
 
   public static WorldNetworks get(MinecraftServer server) {
-    if (!server.isSameThread())
-      throw new IllegalStateException("World networking requires server thread");
-    return SERVERS.computeIfAbsent(server, WorldNetworks::new);
+    ServerThread.require(server, "World networking");
+    return SERVERS.get(server);
   }
 
   public WorldStorageTransfers transfers() {
@@ -120,60 +136,56 @@ public final class WorldNetworks {
     return transfers;
   }
 
-  public dev.izzy.factorycore.platform.storage.WorldConnectors connectors() {
+  public WorldConnectors connectors() {
     checkThread();
     if (saved == null) throw new IllegalStateException("World storage unavailable: " + diagnostic);
-    if (connectors == null)
-      connectors = new dev.izzy.factorycore.platform.storage.WorldConnectors(server, this);
+    if (connectors == null) connectors = new WorldConnectors(server, this);
     return connectors;
   }
 
-  public dev.izzy.factorycore.platform.storage.WorldBufferImports imports() {
+  public WorldBufferImports imports() {
     checkThread();
     if (saved == null) throw new IllegalStateException("World storage unavailable: " + diagnostic);
-    if (imports == null)
-      imports = new dev.izzy.factorycore.platform.storage.WorldBufferImports(server, this);
+    if (imports == null) imports = new WorldBufferImports(server, this);
     return imports;
   }
 
-  public dev.izzy.factorycore.platform.storage.WorldMachinePresets machinePresets() {
+  public WorldMachinePresets machinePresets() {
     checkThread();
     if (saved == null) throw new IllegalStateException("World storage unavailable");
-    if (machinePresets == null)
-      machinePresets = new dev.izzy.factorycore.platform.storage.WorldMachinePresets(server, this);
+    if (machinePresets == null) machinePresets = new WorldMachinePresets(server, this);
     return machinePresets;
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed loaded level.
-  public static void machineInvalidated(
-      net.minecraft.world.level.Level level,
-      dev.izzy.factorycore.platform.storage.MachineInterfaceEntity owner) {
+  public static void machineInvalidated(Level level, MachineInterfaceEntity owner) {
     if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
       return;
-    var runtime = SERVERS.get(serverLevel.getServer());
+    var runtime = SERVERS.peek(serverLevel.getServer());
     if (runtime != null && runtime.machinePresets != null) runtime.machinePresets.unregister(owner);
   }
 
   /** Teardown does not initialize services; stale copied holders cannot unregister replacements. */
-  @SuppressWarnings("PMD.CloseResource")
-  public static void bufferInvalidated(
-      net.minecraft.world.level.Level level,
-      dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity owner) {
+  public static void bufferInvalidated(Level level, BufferedInterfaceEntity owner) {
     if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
       return;
-    var runtime = SERVERS.get(serverLevel.getServer());
+    var runtime = SERVERS.peek(serverLevel.getServer());
     if (runtime != null && runtime.imports != null) runtime.imports.unregister(owner);
   }
 
   /** Cleanup never constructs storage services during recovery or server shutdown. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed event level.
-  public static void connectorInvalidated(
-      net.minecraft.world.level.Level level,
-      dev.izzy.factorycore.platform.storage.ConnectorEntity owner) {
+  public static void connectorInvalidated(Level level, ConnectorEntity owner) {
     if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
       return;
-    var runtime = SERVERS.get(serverLevel.getServer());
+    var runtime = SERVERS.peek(serverLevel.getServer());
     if (runtime != null && runtime.connectors != null) runtime.connectors.invalidate(owner);
+  }
+
+  /** True when {@code actor} currently holds {@code operation} at {@code origin}. */
+  public boolean allows(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      NetworkPermissions.Permission operation) {
+    return authorize(actor, origin, operation) == NetworkAuthority.Decision.ALLOWED;
   }
 
   public NetworkAuthority.Decision authorize(
@@ -246,7 +258,7 @@ public final class WorldNetworks {
   }
 
   public static void postTick(ServerTickEvent.Post event) {
-    var runtime = SERVERS.get(event.getServer());
+    var runtime = SERVERS.peek(event.getServer());
     if (runtime != null) runtime.tick();
   }
 
@@ -259,37 +271,29 @@ public final class WorldNetworks {
     scheduler.tick();
   }
 
-  public static void stopped(ServerStoppedEvent event) {
-    SERVERS.remove(event.getServer());
-  }
-
-  public static void tagsReloaded(net.neoforged.neoforge.event.OnDatapackSyncEvent event) {
+  public static void tagsReloaded(OnDatapackSyncEvent event) {
     if (event.getPlayer() != null) return;
-    var runtime = SERVERS.get(event.getPlayerList().getServer());
+    var runtime = SERVERS.peek(event.getPlayerList().getServer());
     if (runtime != null && runtime.imports != null) runtime.imports.tagsReloaded();
     if (runtime != null && runtime.machinePresets != null) runtime.machinePresets.tagsReloaded();
   }
 
-  public static void playerLeft(
-      net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) {
-    if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)) return;
-    var runtime = SERVERS.get(player.serverLevel().getServer());
+  public static void playerLeft(PlayerEvent.PlayerLoggedOutEvent event) {
+    if (!(event.getEntity() instanceof ServerPlayer player)) return;
+    var runtime = SERVERS.peek(player.serverLevel().getServer());
     if (runtime != null && runtime.transfers != null) runtime.transfers.playerDisconnected(player);
   }
 
   // Minecraft owns the borrowed level; the coordinator never closes worlds or chunk caches.
-  @SuppressWarnings("PMD.CloseResource")
-  public static void changed(net.minecraft.world.level.Level level, BlockPos position) {
+  public static void changed(Level level, BlockPos position) {
     if (!(level instanceof ServerLevel serverLevel)) return;
-    get(serverLevel.getServer())
-        .changed(
-            new NodeRegistry.Position(level.dimension().location().toString(), position.asLong()));
+    get(serverLevel.getServer()).changed(Positions.of(level, position));
   }
 
   public void changed(NodeRegistry.Position position) {
     checkThread();
     if (saved == null) return;
-    var affected = new java.util.HashSet<Region>();
+    var affected = new HashSet<Region>();
     var owner = owners.get(position);
     if (owner != null) affected.add(resolve(owner));
     var block = BlockPos.of(position.block());
@@ -392,7 +396,7 @@ public final class WorldNetworks {
   /** True when discovery captured this endpoint's wireless port reciprocally at its partner. */
   private static boolean bridged(
       Region region,
-      dev.izzy.factorycore.platform.wireless.LinkEndpointEntity link,
+      LinkEndpointEntity link,
       NodeRegistry.Position position,
       WiredDiscovery.Wire wire) {
     long back = BlockPos.of(position.block()).relative(link.back()).asLong();
@@ -464,7 +468,6 @@ public final class WorldNetworks {
   }
 
   // ServerLevel and chunk cache are borrowed from Minecraft.
-  @SuppressWarnings("PMD.CloseResource")
   private void prepare(Region region, NodeRegistry.Position position) {
     var wire = region.discovery.captured(position);
     if (wire == null) {
@@ -477,7 +480,7 @@ public final class WorldNetworks {
     }
     var level = level(position.dimension());
     var block = BlockPos.of(position.block());
-    var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+    var chunk = Loaded.chunk(level, block);
     assign(position, region);
     if (chunk == null) return;
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
@@ -490,7 +493,7 @@ public final class WorldNetworks {
           && saved.nodes().validate(lease) == NodeRegistry.Failure.OK)
         region.authority.register(saved.network(lease.id()));
     }
-    if (entity instanceof dev.izzy.factorycore.platform.wireless.LinkEndpointEntity link) {
+    if (entity instanceof LinkEndpointEntity link) {
       var member = region.discovery.publishedTopology().membership(wire.nodes().getFirst().id());
       // Discovery joins only reciprocal captured ports, so an unpaired, unpowered or one-sided
       // endpoint is a dead-end node with no wireless route to meter.
@@ -505,8 +508,7 @@ public final class WorldNetworks {
         }
         var previous =
             region.wireless.putIfAbsent(
-                member.scope().segment(),
-                new dev.izzy.factorycore.core.resource.WirelessBudget.Hop(pair, link.pairScale()));
+                member.scope().segment(), new WirelessBudget.Hop(pair, link.pairScale()));
         if (previous != null && !previous.link().equals(pair))
           throw new IllegalStateException("Ambiguous wireless bridge segment");
       }
@@ -624,7 +626,7 @@ public final class WorldNetworks {
    * collecting ancestor segments therefore identifies each crossed pair without scanning geometry.
    * Null means stale/unavailable; empty is a valid wired path. This grants no resource authority.
    */
-  private List<dev.izzy.factorycore.core.resource.WirelessBudget.Hop> wirelessPath(
+  private List<WirelessBudget.Hop> wirelessPath(
       NodeRegistry.Position from, NodeRegistry.Position to) {
     var first = membership(from);
     var second = membership(to);
@@ -634,13 +636,13 @@ public final class WorldNetworks {
     var region = resolve(owners.get(from));
     if (region != resolve(owners.get(to))) return null;
     if (first.scope().segment().equals(second.scope().segment())) return List.of();
-    var a = new java.util.ArrayList<UUID>();
-    var b = new java.util.ArrayList<UUID>();
+    var a = new ArrayList<UUID>();
+    var b = new ArrayList<UUID>();
     a.add(first.scope().segment());
     b.add(second.scope().segment());
     for (var ancestor : ancestors(from)) a.add(ancestor.segment());
     for (var ancestor : ancestors(to)) b.add(ancestor.segment());
-    var other = new java.util.HashSet<>(b);
+    var other = new HashSet<>(b);
     UUID common = null;
     for (var segment : a)
       if (other.contains(segment)) {
@@ -648,7 +650,7 @@ public final class WorldNetworks {
         break;
       }
     if (common == null) return null;
-    var path = new java.util.LinkedHashSet<dev.izzy.factorycore.core.resource.WirelessBudget.Hop>();
+    var path = new LinkedHashSet<WirelessBudget.Hop>();
     for (var chain : List.of(a, b))
       for (var segment : chain) {
         if (segment.equals(common)) break;
@@ -672,12 +674,12 @@ public final class WorldNetworks {
    * Reserve throughput before a synchronous mutation; finish with actual units, never guessed
    * rollback.
    */
-  public dev.izzy.factorycore.core.resource.WirelessBudget.Permit movement(
+  public WirelessBudget.Permit movement(
       NodeRegistry.Position from, NodeRegistry.Position to, ResourceKey key, long amount) {
     checkThread();
     var path = wirelessPath(from, to);
     return path == null
-        ? wirelessBudget.denied(dev.izzy.factorycore.core.resource.OperationResult.Reason.OFFLINE)
+        ? wirelessBudget.denied(OperationResult.Reason.OFFLINE)
         : wirelessBudget.claimHops(path, server.getTickCount(), key.kind(), amount);
   }
 
@@ -700,10 +702,7 @@ public final class WorldNetworks {
   }
 
   private ServerLevel level(String dimension) {
-    var key =
-        net.minecraft.resources.ResourceKey.create(
-            net.minecraft.core.registries.Registries.DIMENSION,
-            net.minecraft.resources.ResourceLocation.parse(dimension));
+    var key = Loaded.dimension(dimension);
     var level = server.getLevel(key);
     if (level == null) throw new IllegalStateException("Unknown networking dimension");
     return level;
@@ -723,7 +722,6 @@ public final class WorldNetworks {
   }
 
   // Minecraft owns the event's borrowed world.
-  @SuppressWarnings("PMD.CloseResource")
   private static void chunkChanged(ChunkEvent event) {
     if (!(event.getLevel() instanceof ServerLevel level) || !level.getServer().isSameThread())
       return;
@@ -752,7 +750,6 @@ public final class WorldNetworks {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("World networking requires server thread");
+    ServerThread.require(server, "World networking");
   }
 }

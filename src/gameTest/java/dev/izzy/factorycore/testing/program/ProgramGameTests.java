@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.program;
 
+import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -7,10 +8,10 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
-import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.program.ProgramContent;
@@ -20,9 +21,9 @@ import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
-import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
+import dev.izzy.factorycore.testing.Net;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -32,6 +33,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -58,11 +60,11 @@ public final class ProgramGameTests {
       MachineInterfaceEntity machine,
       ChestBlockEntity chest,
       PlatformResourceCodec codec) {
-    long stock(net.minecraft.world.item.Item item) {
+    long stock(Item item) {
       return saved.registry().stock(cell, codec.itemKey(new ItemStack(item))).total();
     }
 
-    int chestCount(net.minecraft.world.item.Item item) {
+    int chestCount(Item item) {
       int total = 0;
       for (int slot = 0; slot < chest.getContainerSize(); slot++)
         if (chest.getItem(slot).is(item)) total += chest.getItem(slot).getCount();
@@ -74,12 +76,8 @@ public final class ProgramGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var owner = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.id());
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(h, owner.id()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
     h.setBlock(
         MACHINE,
@@ -101,8 +99,7 @@ public final class ProgramGameTests {
   }
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos pos) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(pos).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(pos));
   }
 
   private static void ready(GameTestHelper h, Fixture f) {
@@ -124,7 +121,7 @@ public final class ProgramGameTests {
                 new ConnectorSettings(
                     ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 27, 64),
                 label)
-            == dev.izzy.factorycore.core.network.NetworkAuthority.Decision.ALLOWED,
+            == NetworkAuthority.Decision.ALLOWED,
         "Machine labeled " + label);
   }
 

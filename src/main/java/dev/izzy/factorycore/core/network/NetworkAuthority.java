@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -54,6 +55,11 @@ public final class NetworkAuthority {
     permissions.put(id, network);
   }
 
+  /** True when {@code actor} currently holds {@code operation} at {@code origin}. */
+  public boolean allows(Actor actor, Scope origin, Permission operation) {
+    return authorize(actor, origin, operation) == Decision.ALLOWED;
+  }
+
   public Decision authorize(Actor actor, Scope origin, Permission operation) {
     checkThread();
     Objects.requireNonNull(actor);
@@ -78,7 +84,7 @@ public final class NetworkAuthority {
   }
 
   public NetworkPermissions.Change setGrants(
-      Actor actor, Scope origin, UUID principal, java.util.Set<Permission> grants) {
+      Actor actor, Scope origin, UUID principal, Set<Permission> grants) {
     checkThread();
     if (authorize(actor, origin, Permission.MANAGE) != Decision.ALLOWED)
       return NetworkPermissions.Change.DENIED;

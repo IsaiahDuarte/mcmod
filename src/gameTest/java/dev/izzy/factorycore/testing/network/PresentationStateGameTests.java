@@ -1,8 +1,8 @@
 package dev.izzy.factorycore.testing.network;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
@@ -39,10 +39,7 @@ public final class PresentationStateGameTests {
 
   private static NetworkTopology.Status status(GameTestHelper helper, BlockPos relative) {
     return WorldNetworks.get(helper.getLevel().getServer())
-        .membership(
-            new NodeRegistry.Position(
-                helper.getLevel().dimension().location().toString(),
-                helper.absolutePos(relative).asLong()))
+        .membership(Positions.of(helper.getLevel(), helper.absolutePos(relative)))
         .status();
   }
 

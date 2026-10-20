@@ -2,10 +2,12 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -47,9 +49,7 @@ final class BufferStateCodec {
     root.put("Buffers", records);
     if (!deployments.isEmpty()) {
       boolean policies =
-          deployments.stream()
-              .anyMatch(
-                  d -> !d.policy().equals(dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT));
+          deployments.stream().anyMatch(d -> !d.policy().equals(BufferPolicy.DEFAULT));
       boolean extended =
           deployments.stream()
               .anyMatch(
@@ -78,7 +78,7 @@ final class BufferStateCodec {
   }
 
   static List<ItemBuffer.State> decode(CompoundTag root) {
-    NetworkStateCodec.fields(
+    Nbt.fields(
         root,
         root.getInt("Schema") >= 2
             ? Set.of("Schema", "Buffers", "Deployments")
@@ -95,7 +95,7 @@ final class BufferStateCodec {
     long bytes = 0;
     for (int index = 0; index < records.size(); index++) {
       var record = records.getCompound(index);
-      NetworkStateCodec.fields(record, Set.of("Backing", "Slots"));
+      Nbt.fields(record, Set.of("Backing", "Slots"));
       if (!record.hasUUID("Backing") || !record.contains("Slots", Tag.TAG_LIST))
         throw new IllegalArgumentException("Malformed buffer owner");
       var encoded = record.getList("Slots", Tag.TAG_COMPOUND);
@@ -106,7 +106,7 @@ final class BufferStateCodec {
       Arrays.fill(slots, ItemBuffer.Slot.empty());
       for (int slotIndex = 0; slotIndex < encoded.size(); slotIndex++) {
         var entry = encoded.getCompound(slotIndex);
-        NetworkStateCodec.fields(entry, Set.of("Slot", "Registry", "Components", "Count", "Limit"));
+        Nbt.fields(entry, Set.of("Slot", "Registry", "Components", "Count", "Limit"));
         if (!entry.contains("Slot", Tag.TAG_INT)
             || !entry.contains("Registry", Tag.TAG_STRING)
             || !entry.contains("Components", Tag.TAG_BYTE_ARRAY)
@@ -147,11 +147,11 @@ final class BufferStateCodec {
         || entries.size() > BufferRegistry.MAX_BUFFERS)
       throw new IllegalArgumentException("Invalid deployment list");
     var result = new ArrayList<BufferRegistry.Deployment>();
-    var owners = new java.util.HashSet<UUID>();
+    var owners = new HashSet<UUID>();
     long policyBytes = 0;
     for (int index = 0; index < entries.size(); index++) {
       var entry = entries.getCompound(index);
-      NetworkStateCodec.fields(
+      Nbt.fields(
           entry,
           root.getInt("Schema") >= 3
               ? Set.of(
@@ -179,7 +179,7 @@ final class BufferStateCodec {
           || !entry.contains("Mode", Tag.TAG_STRING)
           || !owners.add(entry.getUUID("Backing")))
         throw new IllegalArgumentException("Malformed/duplicate deployment");
-      var policy = dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT;
+      var policy = BufferPolicy.DEFAULT;
       if (root.getInt("Schema") >= 3) {
         if (!entry.contains("Policy", Tag.TAG_COMPOUND))
           throw new IllegalArgumentException("Missing buffer policy");

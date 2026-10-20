@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /** Server language names, exact identities and loaded item/fluid registry tags. */
@@ -51,8 +52,7 @@ public final class TerminalSearchSupport {
         || name(codec, key).toLowerCase(Locale.ROOT).contains(query);
   }
 
-  public static Comparator<CatalogCounts.Row> order(
-      int sort, java.util.function.Function<ResourceKey, String> name) {
+  public static Comparator<CatalogCounts.Row> order(int sort, Function<ResourceKey, String> name) {
     if (sort < NAME || sort > QUANTITY) throw new IllegalArgumentException("Invalid terminal sort");
     Comparator<CatalogCounts.Row> names =
         Comparator.comparing(row -> name.apply(row.key()).toLowerCase(Locale.ROOT));

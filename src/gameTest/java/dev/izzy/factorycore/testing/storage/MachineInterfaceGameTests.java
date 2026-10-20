@@ -3,16 +3,31 @@ package dev.izzy.factorycore.testing.storage;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.*;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.*;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.gametest.*;
 
 @GameTestHolder("factorycore_tests")
@@ -36,8 +51,7 @@ public final class MachineInterfaceGameTests {
   private MachineInterfaceGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos p) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(p).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(p));
   }
 
   private static MachineInterfaceEntity machine(GameTestHelper h, BlockPos p, Direction face) {
@@ -54,18 +68,14 @@ public final class MachineInterfaceGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
     h.setBlock(CABLE, NetworkContent.CABLE.get());
     var machine = machine(h, MACHINE, Direction.EAST);
     h.setBlock(PROVIDER, Blocks.CHEST);
     ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
     chest.setItem(0, new ItemStack(Items.GOLD_INGOT, 11));
     chest.setItem(1, new ItemStack(Items.IRON_INGOT, 32));
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     return new Fixture(
         actor,
@@ -284,30 +294,19 @@ public final class MachineInterfaceGameTests {
 
   private static void utilityTransfer(GameTestHelper h, boolean fluid) {
     var f = setup(h);
-    h.setBlock(PROVIDER, dev.izzy.factorycore.testing.ConnectorFixture.BLOCK.get());
-    dev.izzy.factorycore.testing.ConnectorFixture.ProviderEntity provider =
-        h.getBlockEntity(PROVIDER);
+    h.setBlock(PROVIDER, ConnectorFixture.BLOCK.get());
+    ConnectorFixture.ProviderEntity provider = h.getBlockEntity(PROVIDER);
     var kind = fluid ? ResourceKind.FLUID : ResourceKind.ENERGY;
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
-    var key =
-        fluid
-            ? codec.fluidKey(
-                new net.neoforged.neoforge.fluids.FluidStack(
-                    net.minecraft.world.level.material.Fluids.WATER, 1000))
-            : ResourceKey.ENERGY;
+    var key = fluid ? codec.fluidKey(new FluidStack(Fluids.WATER, 1000)) : ResourceKey.ENERGY;
     DeviceRegistry.Handle target;
     if (fluid) {
       StorageDriveEntity drive = h.getBlockEntity(DRIVE);
       drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
       target = CellHandleData.read(drive.cell(1));
-      provider.fluids.fill(
-          new net.neoforged.neoforge.fluids.FluidStack(
-              net.minecraft.world.level.material.Fluids.WATER, 1000),
-          net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+      provider.fluids.fill(new FluidStack(Fluids.WATER, 1000), IFluidHandler.FluidAction.EXECUTE);
     } else {
-      h.setBlock(DRIVE, EnergyBankContent.block(EnergyBankTier.STARTER));
-      EnergyBankEntity bank = h.getBlockEntity(DRIVE);
-      bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+      EnergyBankEntity bank = Net.in(h).bank(DRIVE, EnergyBankTier.STARTER);
       target = bank.handle();
       provider.energy.receiveEnergy(1000, false);
     }
@@ -357,28 +356,23 @@ public final class MachineInterfaceGameTests {
     utilityTransfer(h, false);
   }
 
-  @SuppressWarnings("removal") // Actual PlayerList fixture body for native controls.
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void authenticatedPaperLabelAndRecipeHaveNoImplicitStock(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    player.moveTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(ROOT)));
+    var player = TestPlayers.mock(h);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
     h.setBlock(CABLE, NetworkContent.CABLE.get());
     var machine = machine(h, MACHINE, Direction.EAST);
     h.setBlock(PROVIDER, Blocks.CHEST);
     var paper = new ItemStack(Items.PAPER);
-    paper.set(
-        net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-        net.minecraft.network.chat.Component.literal("Mixer"));
+    paper.set(DataComponents.CUSTOM_NAME, Component.literal("Mixer"));
     h.startSequence()
         .thenWaitUntil(
             () -> h.assertTrue(machine.canUse(player), "Authenticated nearby machine owner ready"))
         .thenExecute(
             () -> {
-              player.setItemInHand(net.minecraft.world.InteractionHand.OFF_HAND, paper);
+              player.setItemInHand(InteractionHand.OFF_HAND, paper);
               h.useBlock(MACHINE, player);
               h.assertTrue(
                   machine.label().equals("Mixer") && player.getOffhandItem().getCount() == 1,
@@ -396,22 +390,17 @@ public final class MachineInterfaceGameTests {
                   h.getLevel()
                       .getRecipeManager()
                       .byKey(
-                          net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                              "factorycore", "machine_interface"))
+                          ResourceLocation.fromNamespaceAndPath("factorycore", "machine_interface"))
                       .orElseThrow()
                       .value();
-              var costs = new java.util.HashMap<String, Integer>();
+              var costs = new HashMap<String, Integer>();
               for (var ingredient : recipe.getIngredients())
                 for (var stack : ingredient.getItems())
                   costs.merge(
-                      net.minecraft.core.registries.BuiltInRegistries.ITEM
-                          .getKey(stack.getItem())
-                          .toString(),
-                      1,
-                      Integer::sum);
+                      BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(), 1, Integer::sum);
               h.assertTrue(
                   costs.equals(
-                      java.util.Map.of(
+                      Map.of(
                           "minecraft:iron_ingot",
                           4,
                           "minecraft:copper_ingot",
@@ -422,11 +411,9 @@ public final class MachineInterfaceGameTests {
               var result = recipe.getResultItem(h.getLevel().registryAccess());
               h.assertTrue(
                   result.is(MachineInterfaceContent.ITEM.get())
-                      && result.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA)
-                          == null,
+                      && result.get(DataComponents.CUSTOM_DATA) == null,
                   "Crafted machine casing has no copied lease or inventory");
-              player.connection.disconnect(
-                  net.minecraft.network.chat.Component.literal("Machine fixture complete"));
+              player.connection.disconnect(Component.literal("Machine fixture complete"));
             })
         .thenSucceed();
   }

@@ -2,32 +2,45 @@ package dev.izzy.factorycore.platform.crafting;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.CraftingPlanner;
-import dev.izzy.factorycore.core.network.NetworkAuthority;
+import dev.izzy.factorycore.core.crafting.KeepStockRule;
+import dev.izzy.factorycore.core.crafting.Pattern;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.ServerScoped;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.items.IItemHandler;
 
 /**
  * Server-thread autocrafting runtime over canonical {@code CraftingJobs}. Submission plans against
@@ -40,7 +53,8 @@ public final class WorldCraftingJobs {
   public static final int TASK_COST = 16;
   public static final int RETRY_TICKS = 20;
   public static final int MAX_NOTICES = 8;
-  private static final Map<MinecraftServer, WorldCraftingJobs> SERVERS = new HashMap<>();
+  private static final ServerScoped<WorldCraftingJobs> SERVERS =
+      ServerScoped.of(WorldCraftingJobs::new);
 
   /** Advisory preview; {@code reason} is empty when the plan could be submitted now. */
   public record Preview(CraftingPlanner.Plan plan, String reason) {}
@@ -54,6 +68,7 @@ public final class WorldCraftingJobs {
   private record Cell(DeviceRegistry.Handle handle, long available) {}
 
   private final MinecraftServer server;
+  private final MachineIo io;
   private final Map<UUID, Long> retryAt = new HashMap<>();
   private final Map<UUID, RecipeHolder<CraftingRecipe>> recipes = new HashMap<>();
   private final Map<UUID, ArrayDeque<Notice>> notices = new HashMap<>();
@@ -66,21 +81,18 @@ public final class WorldCraftingJobs {
 
   private WorldCraftingJobs(MinecraftServer server) {
     this.server = server;
+    io = new MachineIo(server, job -> anchor(job, null));
   }
 
   public static WorldCraftingJobs get(MinecraftServer server) {
-    if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
-    return SERVERS.computeIfAbsent(server, WorldCraftingJobs::new);
+    ServerThread.require(server, "Crafting");
+    return SERVERS.get(server);
   }
 
   public static void postTick(ServerTickEvent.Post event) {
     // Quarantined storage keeps every job record untouched; storage reports the diagnostic.
     if (DeviceSavedData.get(event.getServer()).diagnostic().isEmpty())
       get(event.getServer()).tick();
-  }
-
-  public static void stopped(ServerStoppedEvent event) {
-    SERVERS.remove(event.getServer());
   }
 
   private DeviceSavedData saved() {
@@ -118,10 +130,7 @@ public final class WorldCraftingJobs {
   private String denial(NetworkPermissions.Actor actor, NodeRegistry.Position origin) {
     var member = networks().membership(origin);
     if (member.status() != NetworkTopology.Status.VALID) return "offline";
-    return networks().authorize(actor, origin, NetworkPermissions.Permission.CRAFT)
-            == NetworkAuthority.Decision.ALLOWED
-        ? null
-        : "denied";
+    return networks().allows(actor, origin, NetworkPermissions.Permission.CRAFT) ? null : "denied";
   }
 
   private CraftingPlanner.Plan plan(
@@ -284,7 +293,7 @@ public final class WorldCraftingJobs {
           saved()
               .craftingJobs()
               .setRule(
-                  new dev.izzy.factorycore.core.crafting.KeepStockRule(
+                  new KeepStockRule(
                       UUID.randomUUID(),
                       actor.id(),
                       scope.network(),
@@ -300,7 +309,7 @@ public final class WorldCraftingJobs {
   }
 
   /** The requester's rule for {@code key} in the origin's segment, or null. */
-  public dev.izzy.factorycore.core.crafting.KeepStockRule rule(
+  public KeepStockRule rule(
       NetworkPermissions.Actor actor, NodeRegistry.Position origin, ResourceKey key) {
     checkThread();
     var member = networks().membership(origin);
@@ -369,10 +378,28 @@ public final class WorldCraftingJobs {
     return list == null ? List.of() : List.copyOf(list);
   }
 
+  /** Records a finished job and tells its requester, if online, that it finished or cancelled. */
   private void notice(CraftingJob job, boolean cancelled) {
     var list = notices.computeIfAbsent(job.principal(), p -> new ArrayDeque<>());
     if (list.size() == MAX_NOTICES) list.removeFirst();
     list.addLast(new Notice(job.id(), job.request(), job.amount(), cancelled));
+    var player = server.getPlayerList().getPlayer(job.principal());
+    if (player == null) return;
+    Component name;
+    try {
+      name =
+          new PlatformResourceCodec(server.registryAccess())
+              .itemStack(job.request(), 1)
+              .getHoverName();
+    } catch (IllegalArgumentException notAnItem) {
+      name = Component.literal(job.request().registryId());
+    }
+    player.displayClientMessage(
+        Component.translatable(
+            cancelled ? "message.factorycore.job.cancelled" : "message.factorycore.job.finished",
+            job.amount(),
+            name),
+        false);
   }
 
   /** Queues one shared-scheduler task per runnable job that is not already queued. */
@@ -473,11 +500,11 @@ public final class WorldCraftingJobs {
         && reachable(holder, offer.pattern())) {
       var outputs = expected(offer.pattern());
       var codec = new PlatformResourceCodec(server.registryAccess());
-      var journal = new Journal(job, machine.entity());
+      var journal = new MachineIo.Journal(saved().registry().world(), job, machine.entity());
       try {
-        if (holder.machine() != null) collect(job, outputs, holder.machine(), codec, journal);
+        if (holder.machine() != null) io.collect(job, outputs, holder.machine(), codec, journal);
         if (holder.fluidMachine() != null)
-          collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
+          io.collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
       } catch (RuntimeException uncertain) {
         // The journal keeps its pending mark; nothing is retried or refunded.
         job.waiting("uncertain");
@@ -499,28 +526,23 @@ public final class WorldCraftingJobs {
   }
 
   /** Loaded state of a dispatch target: {@code entity} is null when no block entity is there. */
-  private record BlockEntityRef(
-      boolean loaded, net.minecraft.world.level.block.entity.BlockEntity entity) {}
+  private record BlockEntityRef(boolean loaded, BlockEntity entity) {}
 
   /** Reads a target without loading its chunk. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private BlockEntityRef target(NodeRegistry.Position target) {
-    for (var level : server.getAllLevels()) {
+    for (ServerLevel level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(target.dimension())) continue;
-      var pos = net.minecraft.core.BlockPos.of(target.block());
-      var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+      var pos = BlockPos.of(target.block());
+      var chunk = Loaded.chunk(level, pos);
       if (chunk == null) return new BlockEntityRef(false, null);
-      var entity =
-          chunk.getBlockEntity(
-              pos, net.minecraft.world.level.chunk.LevelChunk.EntityCreationType.CHECK);
+      var entity = chunk.getBlockEntity(pos, LevelChunk.EntityCreationType.CHECK);
       return new BlockEntityRef(true, entity == null || entity.isRemoved() ? null : entity);
     }
     return new BlockEntityRef(false, null);
   }
 
   /** Null when the machine's journal proves the job's dispatch progress, else a wait reason. */
-  private String journalCheck(
-      CraftingJob job, net.minecraft.world.level.block.entity.BlockEntity machine) {
+  private String journalCheck(CraftingJob job, BlockEntity machine) {
     try {
       return ProcessingJournal.check(
           ProcessingJournal.read(machine, saved().registry().world()), job.id(), job.dispatch());
@@ -552,24 +574,6 @@ public final class WorldCraftingJobs {
   }
 
   /** Journals each real machine call: pending before it starts, settled after it returns. */
-  private final class Journal {
-    private final CraftingJob job;
-    private final net.minecraft.world.level.block.entity.BlockEntity machine;
-
-    Journal(CraftingJob job, net.minecraft.world.level.block.entity.BlockEntity machine) {
-      this.job = job;
-      this.machine = machine;
-    }
-
-    void begin() {
-      ProcessingJournal.write(machine, saved().registry().world(), job.id(), job.dispatch(), true);
-    }
-
-    void settle() {
-      ProcessingJournal.write(machine, saved().registry().world(), job.id(), job.dispatch(), false);
-    }
-  }
-
   private WorldCrafting.Offer findDispatched(CraftingJob job) {
     int index = job.current();
     if (index < 0) return null;
@@ -605,8 +609,8 @@ public final class WorldCraftingJobs {
     var scopeAnchor = anchor(job, null);
     if (scopeAnchor == null) return "offline";
     var actor = actor(job.principal());
-    if (networks().authorize(actor, scopeAnchor, NetworkPermissions.Permission.CRAFT)
-        != NetworkAuthority.Decision.ALLOWED) return "denied";
+    if (!networks().allows(actor, scopeAnchor, NetworkPermissions.Permission.CRAFT))
+      return "denied";
     var crafting = WorldCrafting.get(server).index(networks().membership(scopeAnchor).scope());
     var offer = crafting.offer(step.pattern());
     if (offer == null || offer.pattern().version() != step.version()) return "pattern_missing";
@@ -619,7 +623,7 @@ public final class WorldCraftingJobs {
     }
     var outputs = assemble(job.id(), offer);
     if (outputs == null) return "recipe_changed";
-    var permits = new ArrayList<dev.izzy.factorycore.core.resource.WirelessBudget.Permit>();
+    var permits = new ArrayList<WirelessBudget.Permit>();
     for (var changes : List.of(inputs, outputs))
       for (var entry : changes.entrySet()) {
         var permit =
@@ -628,7 +632,7 @@ public final class WorldCraftingJobs {
         permits.add(permit);
         if (permit.amount() != entry.getValue()) {
           for (var held : permits) held.finish(0);
-          return permit.reason().name().toLowerCase(java.util.Locale.ROOT);
+          return permit.reason().name().toLowerCase(Locale.ROOT);
         }
       }
     job.crafted(inputs, outputs);
@@ -637,12 +641,11 @@ public final class WorldCraftingJobs {
   }
 
   /** The loaded current interface at a dispatch position, or null. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private CraftingInterfaceEntity interfaceAt(NodeRegistry.Position position) {
-    for (var level : server.getAllLevels()) {
+    for (ServerLevel level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(position.dimension())) continue;
-      var pos = net.minecraft.core.BlockPos.of(position.block());
-      if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) return null;
+      var pos = BlockPos.of(position.block());
+      if (Loaded.chunk(level, pos) == null) return null;
       return level.getBlockEntity(pos) instanceof CraftingInterfaceEntity holder && holder.current()
           ? holder
           : null;
@@ -661,12 +664,12 @@ public final class WorldCraftingJobs {
    * chunk.
    */
   public boolean machineLeased(NodeRegistry.Position target) {
-    if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
+    ServerThread.require(server, "Crafting");
     return leasedByOther(target, null);
   }
 
   private boolean leasedByOther(NodeRegistry.Position target, UUID job) {
-    var block = net.minecraft.core.BlockPos.of(target.block());
+    var block = BlockPos.of(target.block());
     for (var other : saved().craftingJobs().all()) {
       if (other.id().equals(job) || other.dispatch() == null) continue;
       var dispatch = other.dispatch();
@@ -675,7 +678,7 @@ public final class WorldCraftingJobs {
       } else {
         var leased = dispatch.machine();
         if (!leased.dimension().equals(target.dimension())) continue;
-        var port = net.minecraft.core.BlockPos.of(leased.block());
+        var port = BlockPos.of(leased.block());
         if (port.equals(block) || port.distManhattan(block) == 1) return true;
       }
     }
@@ -683,9 +686,7 @@ public final class WorldCraftingJobs {
   }
 
   private static boolean contains(
-      net.neoforged.neoforge.items.IItemHandler machine,
-      ResourceKey key,
-      PlatformResourceCodec codec) {
+      IItemHandler machine, ResourceKey key, PlatformResourceCodec codec) {
     for (int slot = 0; slot < machine.getSlots(); slot++) {
       var stack = machine.getStackInSlot(slot);
       if (!stack.isEmpty() && key.equals(keyOf(codec, stack))) return true;
@@ -693,7 +694,7 @@ public final class WorldCraftingJobs {
     return false;
   }
 
-  private static ResourceKey keyOf(PlatformResourceCodec codec, ItemStack stack) {
+  static ResourceKey keyOf(PlatformResourceCodec codec, ItemStack stack) {
     try {
       return codec.itemKey(stack);
     } catch (IllegalArgumentException unsupported) {
@@ -701,8 +702,7 @@ public final class WorldCraftingJobs {
     }
   }
 
-  private static Map<ResourceKey, Long> expected(
-      dev.izzy.factorycore.core.crafting.Pattern pattern) {
+  private static Map<ResourceKey, Long> expected(Pattern pattern) {
     var outputs = new LinkedHashMap<ResourceKey, Long>();
     outputs.put(pattern.output(), pattern.outputAmount());
     pattern.byproducts().forEach((key, amount) -> outputs.merge(key, amount, Math::addExact));
@@ -723,13 +723,11 @@ public final class WorldCraftingJobs {
       if (!reachable(holder, pattern)) return "machine_missing";
       if (leasedByOther(machineTarget(holder), job.id())) return "busy";
       var admission = networks().connectors().processingAdmission(machineTarget(holder));
-      if (admission == dev.izzy.factorycore.core.resource.OperationResult.Reason.BUSY)
-        return "busy";
-      if (admission != dev.izzy.factorycore.core.resource.OperationResult.Reason.OK)
-        return "reserved";
+      if (admission == OperationResult.Reason.BUSY) return "busy";
+      if (admission != OperationResult.Reason.OK) return "reserved";
       for (var key : outputs.keySet())
         if (key.kind() == ResourceKind.FLUID
-            ? containsFluid(holder.fluidMachine(), key)
+            ? MachineIo.containsFluid(holder.fluidMachine(), key)
             : contains(holder.machine(), key, codec)) return "output_not_clean";
       var blocked = journalBlocks(job, machineTarget(holder));
       if (blocked != null) return blocked;
@@ -760,15 +758,15 @@ public final class WorldCraftingJobs {
     if (machine == null) return "machine_missing";
     var disagreement = journalCheck(job, machine);
     if (disagreement != null) return disagreement;
-    var journal = new Journal(job, machine);
+    var journal = new MachineIo.Journal(saved().registry().world(), job, machine);
     try {
       if (holder.machine() != null) {
-        insert(job, pattern.inputs(), holder.machine(), codec, journal);
-        collect(job, outputs, holder.machine(), codec, journal);
+        io.insert(job, pattern.inputs(), holder.machine(), codec, journal);
+        io.collect(job, outputs, holder.machine(), codec, journal);
       }
       if (holder.fluidMachine() != null) {
-        insertFluids(job, pattern.inputs(), holder.fluidMachine(), codec, journal);
-        collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
+        io.insertFluids(job, pattern.inputs(), holder.fluidMachine(), codec, journal);
+        io.collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
       }
     } catch (RuntimeException uncertain) {
       // The started call's outcome is unknown: its pending journal mark stays with the machine's
@@ -788,144 +786,13 @@ public final class WorldCraftingJobs {
   }
 
   /** True when the machine exposes every handler kind the pattern's keys need. */
-  private static boolean reachable(
-      CraftingInterfaceEntity holder, dev.izzy.factorycore.core.crafting.Pattern pattern) {
-    var keys = new java.util.HashSet<>(pattern.inputs().keySet());
+  private static boolean reachable(CraftingInterfaceEntity holder, Pattern pattern) {
+    var keys = new HashSet<>(pattern.inputs().keySet());
     keys.addAll(expected(pattern).keySet());
     boolean items = keys.stream().anyMatch(key -> key.kind() == ResourceKind.ITEM);
     boolean fluids = keys.stream().anyMatch(key -> key.kind() == ResourceKind.FLUID);
     if (keys.stream().anyMatch(key -> key.kind() == ResourceKind.ENERGY)) return false;
     return (!items || holder.machine() != null) && (!fluids || holder.fluidMachine() != null);
-  }
-
-  private static boolean containsFluid(
-      net.neoforged.neoforge.fluids.capability.IFluidHandler tanks, ResourceKey key) {
-    for (int tank = 0; tank < tanks.getTanks(); tank++) {
-      var present = tanks.getFluidInTank(tank);
-      if (!present.isEmpty()
-          && key.registryId()
-              .equals(
-                  net.minecraft.core.registries.BuiltInRegistries.FLUID
-                      .getKey(present.getFluid())
-                      .toString())) return true;
-    }
-    return false;
-  }
-
-  /** Fills exactly what the machine accepts of each staged fluid input; the rest stays staged. */
-  private void insertFluids(
-      CraftingJob job,
-      Map<ResourceKey, Long> inputs,
-      net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
-      PlatformResourceCodec codec,
-      Journal journal) {
-    tanks = meteredFluids(job, tanks, codec);
-    if (tanks == null) return;
-    for (var input : inputs.entrySet()) {
-      if (input.getKey().kind() != ResourceKind.FLUID) continue;
-      long remaining =
-          Math.min(
-              input.getValue() - job.dispatch().inserted().getOrDefault(input.getKey(), 0L),
-              job.stagedAmount(input.getKey()));
-      if (remaining <= 0) continue;
-      var offer = codec.fluidStack(input.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
-      journal.begin();
-      int accepted =
-          tanks.fill(
-              offer, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
-      if (accepted > remaining)
-        throw new IllegalStateException("Machine accepted more fluid than offered");
-      if (accepted > 0) job.inserted(input.getKey(), accepted);
-      journal.settle();
-    }
-  }
-
-  /** Drains only the expected fluid outputs from the leased machine into job staging. */
-  private void collectFluids(
-      CraftingJob job,
-      Map<ResourceKey, Long> outputs,
-      net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
-      PlatformResourceCodec codec,
-      Journal journal) {
-    tanks = meteredFluids(job, tanks, codec);
-    if (tanks == null) return;
-    for (var output : outputs.entrySet()) {
-      if (output.getKey().kind() != ResourceKind.FLUID) continue;
-      long remaining =
-          output.getValue() - job.dispatch().collected().getOrDefault(output.getKey(), 0L);
-      if (remaining <= 0) continue;
-      var want = codec.fluidStack(output.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
-      if (!containsFluid(tanks, output.getKey())) continue;
-      journal.begin();
-      var got =
-          tanks.drain(
-              want, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
-      if (!got.isEmpty()) {
-        if (!codec.fluidKey(got).equals(output.getKey()) || got.getAmount() > remaining)
-          throw new IllegalStateException("Machine drained an unexpected fluid");
-        job.collected(output.getKey(), got.getAmount());
-      }
-      journal.settle();
-    }
-  }
-
-  private void insert(
-      CraftingJob job,
-      Map<ResourceKey, Long> inputs,
-      net.neoforged.neoforge.items.IItemHandler machine,
-      PlatformResourceCodec codec,
-      Journal journal) {
-    machine = meteredItems(job, machine, codec);
-    if (machine == null) return;
-    for (var input : inputs.entrySet()) {
-      if (input.getKey().kind() != ResourceKind.ITEM) continue;
-      long remaining =
-          Math.min(
-              input.getValue() - job.dispatch().inserted().getOrDefault(input.getKey(), 0L),
-              job.stagedAmount(input.getKey()));
-      while (remaining > 0) {
-        var stack = codec.itemStack(input.getKey(), 1);
-        int size = (int) Math.min(remaining, stack.getMaxStackSize());
-        stack.setCount(size);
-        journal.begin();
-        var rest = net.neoforged.neoforge.items.ItemHandlerHelper.insertItem(machine, stack, false);
-        int accepted = size - rest.getCount();
-        if (accepted > 0) job.inserted(input.getKey(), accepted);
-        journal.settle();
-        if (accepted <= 0) break;
-        remaining -= accepted;
-      }
-    }
-  }
-
-  /** Extracts expected outputs from the leased machine; anything else extracted is staged too. */
-  private void collect(
-      CraftingJob job,
-      Map<ResourceKey, Long> outputs,
-      net.neoforged.neoforge.items.IItemHandler machine,
-      PlatformResourceCodec codec,
-      Journal journal) {
-    machine = meteredItems(job, machine, codec);
-    if (machine == null) return;
-    for (var output : outputs.entrySet())
-      for (int slot = 0;
-          output.getKey().kind() == ResourceKind.ITEM && slot < machine.getSlots();
-          slot++) {
-        long remaining =
-            output.getValue() - job.dispatch().collected().getOrDefault(output.getKey(), 0L);
-        if (remaining <= 0) break;
-        var present = machine.getStackInSlot(slot);
-        if (present.isEmpty() || !output.getKey().equals(keyOf(codec, present))) continue;
-        journal.begin();
-        var got = machine.extractItem(slot, (int) Math.min(remaining, present.getCount()), false);
-        if (!got.isEmpty()) {
-          var key = keyOf(codec, got);
-          if (key == null || !key.equals(output.getKey()) || got.getCount() > remaining)
-            throw new IllegalStateException("Machine returned an unexpected stack");
-          job.collected(key, got.getCount());
-        }
-        journal.settle();
-      }
   }
 
   /** Moves reserved units into job staging; stops at offline or moved ledgers. */
@@ -959,7 +826,6 @@ public final class WorldCraftingJobs {
    * Revalidates the server recipe at the offering unit and returns exact outputs plus remainders,
    * or null when the unit or recipe no longer reproduces the encoded pattern.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the unit's borrowed level.
   private Map<ResourceKey, Long> assemble(UUID job, WorldCrafting.Offer offer) {
     if (!offer.unit().current()) return null;
     var level = offer.unit().getLevel();
@@ -1031,163 +897,8 @@ public final class WorldCraftingJobs {
     }
   }
 
-  /** Job staging resides in its request segment; external machine dispatch is a separate leg. */
-  private long meterMachine(
-      CraftingJob job,
-      ResourceKey key,
-      long amount,
-      boolean simulate,
-      java.util.function.LongUnaryOperator operation) {
-    var origin = anchor(job, null);
-    if (origin == null || job.dispatch() == null) return 0;
-    var machine = job.dispatch().machine();
-    if (simulate) {
-      long offer = networks().movementAvailable(origin, machine, key, amount);
-      return offer == 0 ? 0 : operation.applyAsLong(offer);
-    }
-    var permit = networks().movement(origin, machine, key, amount);
-    if (permit.amount() == 0) {
-      permit.finish(0);
-      return 0;
-    }
-    long actual = operation.applyAsLong(permit.amount());
-    permit.finish(actual);
-    return actual;
-  }
-
-  private net.neoforged.neoforge.items.IItemHandler meteredItems(
-      CraftingJob job,
-      net.neoforged.neoforge.items.IItemHandler delegate,
-      PlatformResourceCodec codec) {
-    if (anchor(job, null) == null || job.dispatch() == null) return null;
-    return new net.neoforged.neoforge.items.IItemHandler() {
-      @Override
-      public int getSlots() {
-        return delegate.getSlots();
-      }
-
-      @Override
-      public ItemStack getStackInSlot(int slot) {
-        return delegate.getStackInSlot(slot);
-      }
-
-      @Override
-      public int getSlotLimit(int slot) {
-        return delegate.getSlotLimit(slot);
-      }
-
-      @Override
-      public boolean isItemValid(int slot, ItemStack stack) {
-        return delegate.isItemValid(slot, stack);
-      }
-
-      @Override
-      public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-        if (stack.isEmpty()) return ItemStack.EMPTY;
-        long accepted =
-            meterMachine(
-                job,
-                codec.itemKey(stack),
-                stack.getCount(),
-                simulate,
-                offered -> {
-                  var rest =
-                      delegate.insertItem(slot, stack.copyWithCount((int) offered), simulate);
-                  if (!rest.isEmpty() && !ItemStack.isSameItemSameComponents(rest, stack))
-                    throw new IllegalStateException(
-                        "Processing handler changed an offered identity");
-                  return offered - rest.getCount();
-                });
-        return stack.copyWithCount(stack.getCount() - (int) accepted);
-      }
-
-      @Override
-      public ItemStack extractItem(int slot, int amount, boolean simulate) {
-        var present = delegate.getStackInSlot(slot);
-        if (present.isEmpty()) return ItemStack.EMPTY;
-        var extracted = new ItemStack[] {ItemStack.EMPTY};
-        meterMachine(
-            job,
-            codec.itemKey(present),
-            amount,
-            simulate,
-            offered -> {
-              extracted[0] = delegate.extractItem(slot, (int) offered, simulate);
-              return extracted[0].getCount();
-            });
-        return extracted[0];
-      }
-    };
-  }
-
-  private net.neoforged.neoforge.fluids.capability.IFluidHandler meteredFluids(
-      CraftingJob job,
-      net.neoforged.neoforge.fluids.capability.IFluidHandler delegate,
-      PlatformResourceCodec codec) {
-    if (anchor(job, null) == null || job.dispatch() == null) return null;
-    return new net.neoforged.neoforge.fluids.capability.IFluidHandler() {
-      @Override
-      public int getTanks() {
-        return delegate.getTanks();
-      }
-
-      @Override
-      public net.neoforged.neoforge.fluids.FluidStack getFluidInTank(int tank) {
-        return delegate.getFluidInTank(tank);
-      }
-
-      @Override
-      public int getTankCapacity(int tank) {
-        return delegate.getTankCapacity(tank);
-      }
-
-      @Override
-      public boolean isFluidValid(int tank, net.neoforged.neoforge.fluids.FluidStack stack) {
-        return delegate.isFluidValid(tank, stack);
-      }
-
-      @Override
-      public int fill(net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
-        if (stack.isEmpty()) return 0;
-        return (int)
-            meterMachine(
-                job,
-                codec.fluidKey(stack),
-                stack.getAmount(),
-                action.simulate(),
-                offered -> delegate.fill(stack.copyWithAmount((int) offered), action));
-      }
-
-      @Override
-      public net.neoforged.neoforge.fluids.FluidStack drain(
-          net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
-        if (stack.isEmpty()) return net.neoforged.neoforge.fluids.FluidStack.EMPTY;
-        var got =
-            new net.neoforged.neoforge.fluids.FluidStack[] {
-              net.neoforged.neoforge.fluids.FluidStack.EMPTY
-            };
-        meterMachine(
-            job,
-            codec.fluidKey(stack),
-            stack.getAmount(),
-            action.simulate(),
-            offered -> {
-              got[0] = delegate.drain(stack.copyWithAmount((int) offered), action);
-              return got[0].getAmount();
-            });
-        return got[0];
-      }
-
-      @Override
-      public net.neoforged.neoforge.fluids.FluidStack drain(int amount, FluidAction action) {
-        var present = delegate.drain(amount, FluidAction.SIMULATE);
-        return present.isEmpty() ? present : drain(present, action);
-      }
-    };
-  }
-
   private void checkThread() {
     Objects.requireNonNull(server);
-    if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
+    ServerThread.require(server, "Crafting");
   }
 }

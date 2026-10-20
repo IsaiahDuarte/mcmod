@@ -1,13 +1,12 @@
 package dev.izzy.factorycore.testing.network;
 
-import dev.izzy.factorycore.core.network.DiscoveryTask;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.network.WiredDiscovery;
 import dev.izzy.factorycore.core.resource.ResourceKey;
-import dev.izzy.factorycore.core.scheduling.FairScheduler;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldWireReader;
@@ -35,8 +34,7 @@ public final class WireDiscoveryGameTests {
   private WireDiscoveryGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper helper, BlockPos relative) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(relative).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(relative));
   }
 
   private static NetworkNodeEntity node(GameTestHelper helper, BlockPos relative) {
@@ -66,21 +64,12 @@ public final class WireDiscoveryGameTests {
             List.of(position(helper, ROOT)).iterator(),
             reader,
             () -> epoch[0]);
-    var scheduler =
-        new FairScheduler(
-            FairScheduler.Limits.defaults(),
-            () -> 0,
-            f -> {
-              throw new IllegalStateException(f.diagnostic());
-            });
-    var task =
-        new DiscoveryTask(
-            scheduler, UUID.randomUUID(), UUID.randomUUID(), "world-discovery", discovery, 16);
+    // Bounded steps, as WorldNetworks advances each active region.
+    var state = WiredDiscovery.State.DISCOVERING;
+    for (int i = 0; i < 200 && state != WiredDiscovery.State.PUBLISHED; i++)
+      state = discovery.advance(16).state();
     helper.assertTrue(
-        task.submit() == FairScheduler.Admission.ACCEPTED,
-        "Shared scheduling admitted real discovery");
-    for (int i = 0; i < 200 && scheduler.backlog() > 0; i++) scheduler.tick();
-    helper.assertTrue(scheduler.backlog() == 0, "Bounded real discovery completed");
+        state == WiredDiscovery.State.PUBLISHED, "Bounded real discovery completed: " + state);
     var topology = discovery.publishedTopology();
     var root = topology.membership(node(helper, ROOT).handle().id()).scope();
     var descriptor = discovery.captured(position(helper, CHILD));
@@ -133,12 +122,9 @@ public final class WireDiscoveryGameTests {
 
   @GameTest(template = "empty")
   // Minecraft owns this borrowed chunk cache; a test must never close the world cache.
-  @SuppressWarnings("PMD.CloseResource")
   public static void absentChunksNeverLoadAndLoadedAirDoesNotReuseCache(GameTestHelper helper) {
     var remote = new BlockPos(24000000, 64, 24000000);
-    var position =
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(), remote.asLong());
+    var position = Positions.of(helper.getLevel(), remote);
     var chunks = helper.getLevel().getChunkSource();
     helper.assertTrue(
         chunks.getChunkNow(remote.getX() >> 4, remote.getZ() >> 4) == null,

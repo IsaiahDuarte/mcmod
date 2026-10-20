@@ -24,6 +24,22 @@ public enum DeviceLamp implements StringRepresentable {
   /** Needs attention: invalid network, missing power, trapped program or broken link. */
   FAULT("fault");
 
+  /**
+   * A lamp block whose lamp means something other than the standard network legend. Blocks with
+   * {@link #PROPERTY} that do not implement this use {@link #STANDARD_LEGEND}.
+   */
+  public interface Legend {
+    String lampLegend();
+  }
+
+  public static final String STANDARD_LEGEND = "tooltip.factorycore.lamp_legend";
+
+  /** Tooltip legend key for {@code block}'s lamp, or null when it has none. */
+  public static String legend(Block block) {
+    if (!block.getStateDefinition().getProperties().contains(PROPERTY)) return null;
+    return block instanceof Legend custom ? custom.lampLegend() : STANDARD_LEGEND;
+  }
+
   public static final EnumProperty<DeviceLamp> PROPERTY =
       EnumProperty.create("lamp", DeviceLamp.class);
 

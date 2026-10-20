@@ -4,16 +4,29 @@ import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ExternalClaimPort;
 import dev.izzy.factorycore.core.resource.OperationResult;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import dev.izzy.factorycore.core.storage.MachinePresets;
+import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.ServerThread;
+import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.EnergyHandlerPort;
+import dev.izzy.factorycore.platform.resource.ExternalBackingProvider;
+import dev.izzy.factorycore.platform.resource.ExternalStockPage;
 import dev.izzy.factorycore.platform.resource.FluidHandlerPort;
+import dev.izzy.factorycore.platform.resource.IndexedFluidHandler;
 import dev.izzy.factorycore.platform.resource.ItemHandlerPort;
+import dev.izzy.factorycore.platform.resource.PlatformFilterTags;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.storage.ProviderIdentity.Provider;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -24,10 +37,7 @@ import java.util.function.LongSupplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.block.ChestBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.Container;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -56,7 +66,6 @@ public final class WorldConnectors {
   public record Registration(OperationResult.Reason reason, Handle handle) {}
 
   /** Discover only a currently authorized loaded canonical connector; never loads chunks. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns borrowed levels.
   public Registration discover(
       NetworkPermissions.Actor actor,
       NodeRegistry.Position origin,
@@ -66,8 +75,7 @@ public final class WorldConnectors {
     if ((node.kind() != NodeRegistry.Kind.CONNECTOR
             && node.kind() != NodeRegistry.Kind.MACHINE_INTERFACE)
         || saved.nodes().validate(node) != NodeRegistry.Failure.OK
-        || networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-            != NetworkAuthority.Decision.ALLOWED)
+        || !networks.allows(actor, origin, NetworkPermissions.Permission.VIEW))
       return new Registration(OperationResult.Reason.DENIED, null);
     var position = saved.nodes().definition(node).position();
     if (position == null) return new Registration(OperationResult.Reason.OFFLINE, null);
@@ -82,14 +90,10 @@ public final class WorldConnectors {
         || node.kind() == NodeRegistry.Kind.MACHINE_INTERFACE
             && !from.scope().segment().equals(target.scope().segment()))
       return new Registration(OperationResult.Reason.DENIED, null);
-    var level =
-        server.getLevel(
-            net.minecraft.resources.ResourceKey.create(
-                net.minecraft.core.registries.Registries.DIMENSION,
-                net.minecraft.resources.ResourceLocation.parse(position.dimension())));
+    var level = server.getLevel(Loaded.dimension(position.dimension()));
     if (level == null) return new Registration(OperationResult.Reason.OFFLINE, null);
     var block = BlockPos.of(position.block());
-    var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+    var chunk = Loaded.chunk(level, block);
     if (chunk == null
         || !(chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK)
             instanceof ConnectorEntity owner)
@@ -107,9 +111,7 @@ public final class WorldConnectors {
     return binding.owner.settings().priority();
   }
 
-  public record Observation(
-      OperationResult.Reason reason,
-      dev.izzy.factorycore.platform.resource.ExternalStockPage page) {}
+  public record Observation(OperationResult.Reason reason, ExternalStockPage page) {}
 
   /** Shared scheduled callers authenticate VIEW before any provider reads. */
   public Observation observe(
@@ -117,11 +119,7 @@ public final class WorldConnectors {
     checkThread();
     if (cursor < 0) throw new IllegalArgumentException("Negative stock cursor");
     if (calling || probing) return new Observation(OperationResult.Reason.DENIED, null);
-    var identity =
-        new ResourceKey(
-            handle.kind(),
-            handle.kind() == ResourceKind.ENERGY ? "neoforge:energy" : "factorycore:catalog",
-            new byte[0]);
+    var identity = catalogIdentity(handle.kind());
     if (!allowed(actor, origin, handle, identity, NetworkPermissions.Permission.VIEW))
       return new Observation(OperationResult.Reason.DENIED, null);
     var binding = current(handle);
@@ -131,7 +129,7 @@ public final class WorldConnectors {
     try {
       var settings = binding.owner.settings();
       var page =
-          dev.izzy.factorycore.platform.resource.ExternalStockPage.read(
+          ExternalStockPage.read(
               handle.kind(),
               binding.handler,
               new PlatformResourceCodec(binding.owner.serverLevel().registryAccess()),
@@ -153,7 +151,14 @@ public final class WorldConnectors {
 
   private record RateOwner(UUID connector, ResourceKind kind) {}
 
-  private record Provider(NodeRegistry.Position position, ResourceKind kind) {}
+  /**
+   * The provider-level identity a permission check uses for a whole port of {@code kind}: energy is
+   * one resource, items and fluids are a catalog.
+   */
+  private static ResourceKey catalogIdentity(ResourceKind kind) {
+    return new ResourceKey(
+        kind, kind == ResourceKind.ENERGY ? "neoforge:energy" : "factorycore:catalog", new byte[0]);
+  }
 
   private final class Binding {
     final ConnectorEntity owner;
@@ -165,6 +170,16 @@ public final class WorldConnectors {
     final Direction face;
     final UUID group;
     final boolean indexed;
+
+    /**
+     * A whole-capability fluid selection covers at most 64 tanks; a handler with more is reported
+     * unsupported rather than partially counted or moved.
+     */
+    boolean unsupportedWhole(ResourceKind kind) {
+      return kind == ResourceKind.FLUID
+          && owner.settings().wholeFluidHandler()
+          && ((IFluidHandler) handler).getTanks() > 64;
+    }
 
     Binding(
         ConnectorEntity owner,
@@ -216,10 +231,11 @@ public final class WorldConnectors {
   private final MinecraftServer server;
   private final WorldNetworks networks;
   private final DeviceSavedData saved;
+  private final ProviderIdentity identity;
   private final Map<UUID, Binding> bindings = new HashMap<>();
   private final Map<ConnectorEntity, Binding> owners = new IdentityHashMap<>();
-  private final Map<Provider, java.util.List<Binding>> providers = new HashMap<>();
-  private final Map<Object, java.util.List<Binding>> handlers = new IdentityHashMap<>();
+  private final Map<Provider, List<Binding>> providers = new HashMap<>();
+  private final Map<Object, List<Binding>> handlers = new IdentityHashMap<>();
   private final Map<UUID, Binding> backingOwners = new HashMap<>();
   private final Map<UUID, long[]> rateBudgets = new HashMap<>();
   private final Map<RateOwner, long[]> connectorBudgets = new HashMap<>();
@@ -232,6 +248,7 @@ public final class WorldConnectors {
     this.server = Objects.requireNonNull(server);
     this.networks = Objects.requireNonNull(networks);
     saved = DeviceSavedData.get(server);
+    identity = new ProviderIdentity(server, saved);
   }
 
   public Registration bind(ConnectorEntity owner) {
@@ -252,25 +269,24 @@ public final class WorldConnectors {
           || owner.serverLevel().getServer() != server
           || networks.membership(owner.position()).status() != NetworkTopology.Status.VALID)
         return new Registration(OperationResult.Reason.OFFLINE, null);
-      var providerBlock = providerEntity(owner);
+      var providerBlock = identity.providerEntity(owner);
       if (providerBlock != null
-          && !(providerBlock
-              instanceof dev.izzy.factorycore.platform.resource.ExternalBackingProvider)
-          && !(providerBlock instanceof net.minecraft.world.Container
+          && !(providerBlock instanceof ExternalBackingProvider)
+          && !(providerBlock instanceof Container
               && providerBlock
                   .getClass()
                   .getPackageName()
                   .equals("net.minecraft.world.level.block.entity")))
         return new Registration(OperationResult.Reason.UNSUPPORTED, null);
       boolean vanilla =
-          providerBlock instanceof net.minecraft.world.Container
+          providerBlock instanceof Container
               && providerBlock
                   .getClass()
                   .getPackageName()
                   .equals("net.minecraft.world.level.block.entity");
       if (vanilla && owner.settings().kind() != ResourceKind.ITEM)
         return new Registration(OperationResult.Reason.UNSUPPORTED, null);
-      var selected = providerPositions(owner);
+      var selected = identity.providerPositions(owner);
       if (selected == null) {
         invalidate(owner);
         return new Registration(OperationResult.Reason.OFFLINE, null);
@@ -288,23 +304,18 @@ public final class WorldConnectors {
         invalidate(owner);
         return new Registration(OperationResult.Reason.OFFLINE, null);
       }
-      if (vanilla && !vanillaBacking(owner, handler, selected))
+      if (vanilla && !identity.vanillaBacking(owner, handler, selected))
         return new Registration(OperationResult.Reason.UNSUPPORTED, null);
       var settings = owner.settings();
-      java.util.List<dev.izzy.factorycore.platform.resource.ExternalBackingProvider.PortWindow>
-          partitions;
+      List<ExternalBackingProvider.PortWindow> partitions;
       try {
         var describedPorts =
-            providerBlock
-                    instanceof
-                    dev.izzy.factorycore.platform.resource.ExternalBackingProvider described
+            providerBlock instanceof ExternalBackingProvider described
                 ? described.factoryCorePorts(settings.kind())
-                : java.util.List
-                    .<dev.izzy.factorycore.platform.resource.ExternalBackingProvider.PortWindow>
-                        of();
+                : List.<ExternalBackingProvider.PortWindow>of();
         if (describedPorts == null || describedPorts.size() > 64)
           return new Registration(OperationResult.Reason.UNSUPPORTED, null);
-        partitions = java.util.List.copyOf(describedPorts);
+        partitions = List.copyOf(describedPorts);
       } catch (RuntimeException fault) {
         owner.quarantine(fault);
         invalidate(owner);
@@ -315,11 +326,11 @@ public final class WorldConnectors {
       boolean indexed = !partitions.isEmpty();
       if (settings.kind() == ResourceKind.FLUID
           && !settings.wholeFluidHandler()
-          && !(handler instanceof dev.izzy.factorycore.platform.resource.IndexedFluidHandler))
+          && !(handler instanceof IndexedFluidHandler))
         return new Registration(OperationResult.Reason.UNSUPPORTED, null);
       UUID group;
       try {
-        group = persistentBacking(owner, selected);
+        group = identity.persistentBacking(owner, selected);
       } catch (IllegalArgumentException invalidIdentity) {
         owner.quarantine(invalidIdentity);
         invalidate(owner);
@@ -374,9 +385,9 @@ public final class WorldConnectors {
       bindings.put(owner.handle().id(), binding);
       owners.put(owner, binding);
       for (var provider : selected)
-        providers.computeIfAbsent(provider, unused -> new java.util.ArrayList<>()).add(binding);
+        providers.computeIfAbsent(provider, unused -> new ArrayList<>()).add(binding);
       providerClaims += selected.size();
-      handlers.computeIfAbsent(handler, unused -> new java.util.ArrayList<>()).add(binding);
+      handlers.computeIfAbsent(handler, unused -> new ArrayList<>()).add(binding);
       backingOwners.put(backing, binding);
       return new Registration(OperationResult.Reason.OK, binding.handle);
     } catch (IllegalArgumentException | IllegalStateException unavailable) {
@@ -385,9 +396,7 @@ public final class WorldConnectors {
   }
 
   private static boolean validPartitions(
-      java.util.List<dev.izzy.factorycore.platform.resource.ExternalBackingProvider.PortWindow>
-          partitions,
-      ConnectorSettings settings) {
+      List<ExternalBackingProvider.PortWindow> partitions, ConnectorSettings settings) {
     if (partitions == null || partitions.size() > 64) return false;
     if (partitions.isEmpty()) return true;
     if (settings.kind() == ResourceKind.ENERGY || settings.wholeFluidHandler()) return false;
@@ -408,8 +417,7 @@ public final class WorldConnectors {
     return selected;
   }
 
-  private static <K> void removeClaim(
-      Map<K, java.util.List<Binding>> claims, K key, Binding binding) {
+  private static <K> void removeClaim(Map<K, List<Binding>> claims, K key, Binding binding) {
     var list = claims.get(key);
     if (list == null) return;
     list.remove(binding);
@@ -417,7 +425,7 @@ public final class WorldConnectors {
   }
 
   private boolean overlaps(
-      java.util.List<Binding> existing, ConnectorEntity owner, UUID group, boolean indexed) {
+      List<Binding> existing, ConnectorEntity owner, UUID group, boolean indexed) {
     if (existing == null) return false;
     var settings = owner.settings();
     for (var binding : existing) {
@@ -460,19 +468,14 @@ public final class WorldConnectors {
     providerClaims -= binding.providers.size();
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private Binding current(Handle handle) {
     if (saved.nodes().validate(handle.connector()) != NodeRegistry.Failure.OK) return null;
     var location = saved.nodes().definition(handle.connector()).position();
     if (location == null) return null;
-    var level =
-        server.getLevel(
-            net.minecraft.resources.ResourceKey.create(
-                net.minecraft.core.registries.Registries.DIMENSION,
-                net.minecraft.resources.ResourceLocation.parse(location.dimension())));
+    var level = server.getLevel(Loaded.dimension(location.dimension()));
     if (level == null) return null;
     var position = BlockPos.of(location.block());
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var chunk = Loaded.chunk(level, position);
     if (chunk == null
         || !(chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK)
             instanceof ConnectorEntity owner)
@@ -482,20 +485,15 @@ public final class WorldConnectors {
   }
 
   /** Reacquire only the saved canonical lease/configuration and exact persistent backing. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   public Registration recover(NodeRegistry.Handle connector, long configuration, UUID backing) {
     checkThread();
     try {
       var location = saved.nodes().definition(connector).position();
       if (location == null) return new Registration(OperationResult.Reason.OFFLINE, null);
-      var level =
-          server.getLevel(
-              net.minecraft.resources.ResourceKey.create(
-                  net.minecraft.core.registries.Registries.DIMENSION,
-                  net.minecraft.resources.ResourceLocation.parse(location.dimension())));
+      var level = server.getLevel(Loaded.dimension(location.dimension()));
       if (level == null) return new Registration(OperationResult.Reason.OFFLINE, null);
       var position = BlockPos.of(location.block());
-      var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+      var chunk = Loaded.chunk(level, position);
       if (chunk == null
           || !(chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK)
               instanceof ConnectorEntity owner)
@@ -519,7 +517,7 @@ public final class WorldConnectors {
       NetworkPermissions.Permission operation) {
     checkThread();
     if (key.kind() != handle.kind()
-        || networks.authorize(actor, origin, operation) != NetworkAuthority.Decision.ALLOWED
+        || !networks.allows(actor, origin, operation)
         || saved.nodes().validate(handle.connector()) != NodeRegistry.Failure.OK) return false;
     var location = saved.nodes().definition(handle.connector()).position();
     if (location == null) return false;
@@ -615,9 +613,7 @@ public final class WorldConnectors {
     if (binding == null) return new OperationResult(0, OperationResult.Reason.OFFLINE);
     calling = true;
     try {
-      if (key.kind() == ResourceKind.FLUID
-          && binding.owner.settings().wholeFluidHandler()
-          && ((IFluidHandler) binding.handler).getTanks() > 64)
+      if (binding.unsupportedWhole(key.kind()))
         return new OperationResult(0, OperationResult.Reason.UNSUPPORTED);
       return new OperationResult(freshTotal(binding, key), OperationResult.Reason.OK);
     } catch (RuntimeException fault) {
@@ -632,13 +628,9 @@ public final class WorldConnectors {
       NetworkPermissions.Actor actor,
       NodeRegistry.Position origin,
       Handle handle,
-      dev.izzy.factorycore.core.resource.ResourceFilter filter) {
+      ResourceFilter filter) {
     checkThread();
-    var identity =
-        new ResourceKey(
-            handle.kind(),
-            handle.kind() == ResourceKind.ENERGY ? "neoforge:energy" : "factorycore:catalog",
-            new byte[0]);
+    var identity = catalogIdentity(handle.kind());
     if (filter.kind() != handle.kind()
         || calling
         || probing
@@ -653,24 +645,21 @@ public final class WorldConnectors {
         : result;
   }
 
-  private OperationResult matching(
-      Binding binding, dev.izzy.factorycore.core.resource.ResourceFilter filter) {
+  private OperationResult matching(Binding binding, ResourceFilter filter) {
     if (calling || probing)
       throw new IllegalStateException("Machine stock cannot reenter provider reads");
     calling = true;
     try {
-      if (binding.handle.kind() == ResourceKind.FLUID
-          && binding.owner.settings().wholeFluidHandler()
-          && ((IFluidHandler) binding.handler).getTanks() > 64)
+      if (binding.unsupportedWhole(binding.handle.kind()))
         return new OperationResult(0, OperationResult.Reason.UNSUPPORTED);
       var settings = binding.owner.settings();
       var codec = new PlatformResourceCodec(binding.owner.serverLevel().registryAccess());
-      var tags = new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server);
+      var tags = new PlatformFilterTags(server);
       long total = 0;
       int cursor = 0;
       for (int i = 0; i < 4 && cursor >= 0; i++) {
         var page =
-            dev.izzy.factorycore.platform.resource.ExternalStockPage.read(
+            ExternalStockPage.read(
                 binding.handle.kind(),
                 binding.handler,
                 codec,
@@ -695,23 +684,17 @@ public final class WorldConnectors {
     if (!(binding.owner instanceof MachineInterfaceEntity)) return amount;
     var deployment = saved.machinePresets().get(binding.handle.connector().id());
     if (deployment == null
-        || deployment.mode() != dev.izzy.factorycore.core.storage.MachinePresets.Mode.STOCK
+        || deployment.mode() != MachinePresets.Mode.STOCK
         || deployment.leaseGeneration() != binding.handle.connector().generation()
         || deployment.configuration() != binding.handle.generation()
         || !deployment.face().name().equals(binding.owner.targetDirection().name())
-        || !deployment
-            .filter()
-            .matches(key, new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server)))
-      return amount;
+        || !deployment.filter().matches(key, new PlatformFilterTags(server))) return amount;
     if (!((MachineInterfaceEntity) binding.owner).presetAuthorized(deployment)) return 0;
     var resident = matching(binding, deployment.filter());
     if (current(binding.handle) != binding
         || !deployment.equals(saved.machinePresets().get(binding.handle.connector().id()))
         || !((MachineInterfaceEntity) binding.owner).presetAuthorized(deployment)
-        || !deployment
-            .filter()
-            .matches(key, new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server)))
-      return 0;
+        || !deployment.filter().matches(key, new PlatformFilterTags(server))) return 0;
     return resident.reason() == OperationResult.Reason.OK
         ? Math.min(
             amount,
@@ -720,16 +703,14 @@ public final class WorldConnectors {
   }
 
   private long freshTotal(Binding binding, ResourceKey key) {
-    if (key.kind() == ResourceKind.FLUID
-        && binding.owner.settings().wholeFluidHandler()
-        && ((IFluidHandler) binding.handler).getTanks() > 64) return 0;
+    if (binding.unsupportedWhole(key.kind())) return 0;
     var settings = binding.owner.settings();
     var codec = new PlatformResourceCodec(binding.owner.serverLevel().registryAccess());
     long total = 0;
     int cursor = 0;
     for (int step = 0; step < 4 && cursor >= 0; step++) {
       var page =
-          dev.izzy.factorycore.platform.resource.ExternalStockPage.read(
+          ExternalStockPage.read(
               key.kind(),
               binding.handler,
               codec,
@@ -786,35 +767,27 @@ public final class WorldConnectors {
    * Metadata-only reciprocal processing admission: foreign holds or accepted staging retain their
    * provider ownership even after every interface unregisters. Never queries a capability or stock.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   public OperationResult.Reason processingAdmission(NodeRegistry.Position target) {
     checkThread();
-    var dimension =
-        net.minecraft.resources.ResourceKey.create(
-            net.minecraft.core.registries.Registries.DIMENSION,
-            net.minecraft.resources.ResourceLocation.parse(target.dimension()));
+    var dimension = Loaded.dimension(target.dimension());
     var level = server.getLevel(dimension);
     if (level == null) return OperationResult.Reason.RESERVED;
     var position = BlockPos.of(target.block());
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var chunk = Loaded.chunk(level, position);
     if (chunk == null) return OperationResult.Reason.RESERVED;
     var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
     if (entity == null) return OperationResult.Reason.OK;
     try {
       for (var kind : ResourceKind.values()) {
-        var providers = providerPositions(level, position, kind);
+        var providers = identity.providerPositions(level, position, kind);
         if (providers == null) return OperationResult.Reason.RESERVED;
-        var processing = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(server);
+        var processing = WorldCraftingJobs.get(server);
         for (var provider : providers)
           if (processing.machineLeased(provider.position())) return OperationResult.Reason.BUSY;
-        var ids = new java.util.ArrayList<UUID>();
+        var ids = new ArrayList<UUID>();
         for (var provider : providers) {
           var block = BlockPos.of(provider.position().block());
-          var partChunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
-          var part =
-              partChunk == null
-                  ? null
-                  : partChunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
+          var part = Loaded.blockEntity(level, block);
           if (part == null) return OperationResult.Reason.RESERVED;
           var id =
               ExternalProviderIdentity.read(
@@ -826,8 +799,7 @@ public final class WorldConnectors {
         if (ids.size() != providers.size()) return OperationResult.Reason.RESERVED;
         var group = ExternalProviderIdentity.group(saved.registry().world(), kind, ids);
         if (ownedBacking(group)) return OperationResult.Reason.RESERVED;
-        if (entity
-            instanceof dev.izzy.factorycore.platform.resource.ExternalBackingProvider described) {
+        if (entity instanceof ExternalBackingProvider described) {
           var ports = described.factoryCorePorts(kind);
           if (ports == null || ports.size() > 64) return OperationResult.Reason.RESERVED;
           for (var port : ports) {
@@ -843,95 +815,6 @@ public final class WorldConnectors {
     }
   }
 
-  /**
-   * Capture/read processing provider fingerprints using only loaded persistent component metadata.
-   * Initialization is allowed only before new dispatch; resume/cleanup must pass false. Empty means
-   * unavailable/unprovable identity. No capability getter or resource method is invoked.
-   */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
-  public Map<ResourceKind, UUID> processingIdentity(
-      NodeRegistry.Position target, boolean initialize) {
-    checkThread();
-    var dimension =
-        net.minecraft.resources.ResourceKey.create(
-            net.minecraft.core.registries.Registries.DIMENSION,
-            net.minecraft.resources.ResourceLocation.parse(target.dimension()));
-    var level = server.getLevel(dimension);
-    if (level == null) return Map.of();
-    var position = BlockPos.of(target.block());
-    var targetChunk =
-        level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
-    var targetEntity =
-        targetChunk == null
-            ? null
-            : targetChunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
-    if (!(targetEntity instanceof dev.izzy.factorycore.platform.resource.ExternalBackingProvider)
-        && !(targetEntity instanceof net.minecraft.world.Container
-            && targetEntity
-                .getClass()
-                .getPackageName()
-                .equals("net.minecraft.world.level.block.entity"))) return Map.of();
-    var identities = new IdentityHashMap<BlockEntity, UUID>();
-    var missing = new java.util.ArrayList<BlockEntity>();
-    var result = new java.util.EnumMap<ResourceKind, UUID>(ResourceKind.class);
-    try {
-      for (var kind : ResourceKind.values()) {
-        var members = providerPositions(level, position, kind);
-        if (members == null) return Map.of();
-        var components = new java.util.ArrayList<UUID>();
-        var types = new StringBuilder();
-        for (var member : members) {
-          var block = BlockPos.of(member.position().block());
-          var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
-          var entity =
-              chunk == null
-                  ? null
-                  : chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
-          if (entity == null || entity.isRemoved()) return Map.of();
-          var id = identities.get(entity);
-          if (id == null) {
-            id =
-                ExternalProviderIdentity.read(
-                    entity.getPersistentData().get(ExternalProviderIdentity.FIELD),
-                    saved.registry().world());
-            if (id == null) {
-              if (!initialize) return Map.of();
-              id = UUID.randomUUID();
-              missing.add(entity);
-            }
-            identities.put(entity, id);
-          }
-          components.add(id);
-          types
-              .append(':')
-              .append(member.position().block())
-              .append(':')
-              .append(
-                  net.minecraft.core.registries.BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(
-                      entity.getType()));
-        }
-        var group = ExternalProviderIdentity.group(saved.registry().world(), kind, components);
-        result.put(
-            kind,
-            UUID.nameUUIDFromBytes(
-                ("factorycore:processing-provider:v1:" + group + types)
-                    .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-      }
-      // Validate every group before initializing any persistent identity marker.
-      for (var entity : missing) {
-        entity
-            .getPersistentData()
-            .put(
-                ExternalProviderIdentity.FIELD,
-                ExternalProviderIdentity.write(saved.registry().world(), identities.get(entity)));
-        entity.setChanged();
-      }
-      return Map.copyOf(result);
-    } catch (RuntimeException invalidMetadata) {
-      return Map.of();
-    }
-  }
-
   private boolean ownedBacking(UUID backing) {
     return saved.externalClaims().hasBacking(backing)
         || saved.transfers().unresolved(backing) != null;
@@ -940,11 +823,11 @@ public final class WorldConnectors {
   private static UUID indexedBacking(UUID group, int first, int count) {
     return UUID.nameUUIDFromBytes(
         ("factorycore:indexed-port:v1:" + group + ":" + first + ":" + count)
-            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            .getBytes(StandardCharsets.UTF_8));
   }
 
   private boolean processingLeased(Binding binding) {
-    var jobs = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(server);
+    var jobs = WorldCraftingJobs.get(server);
     for (var provider : binding.providers) if (jobs.machineLeased(provider.position())) return true;
     return false;
   }
@@ -1017,7 +900,7 @@ public final class WorldConnectors {
                     : binding.delegate.insert(key, offered)
                 : claimOwner != null
                         || saved.externalClaims().reserved(binding.handle.backing(), key) > 0
-                    ? new dev.izzy.factorycore.core.resource.ExternalClaimPort(
+                    ? new ExternalClaimPort(
                             binding.delegate,
                             saved.externalClaims(),
                             claimOwner,
@@ -1046,178 +929,18 @@ public final class WorldConnectors {
     }
   }
 
-  /** Validate all saved markers before initializing any missing component. */
-  private UUID persistentBacking(ConnectorEntity owner, List<Provider> selected) {
-    var components = new java.util.ArrayList<BlockEntity>(selected.size());
-    var ids = new java.util.ArrayList<UUID>(selected.size());
-    var missing = new java.util.ArrayList<Boolean>(selected.size());
-    UUID world = saved.registry().world();
-    for (var provider : selected) {
-      var position = BlockPos.of(provider.position().block());
-      var chunk =
-          owner
-              .serverLevel()
-              .getChunkSource()
-              .getChunkNow(position.getX() >> 4, position.getZ() >> 4);
-      if (chunk == null) throw new IllegalStateException("Provider component unloaded");
-      var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
-      if (entity == null || entity.isRemoved())
-        throw new IllegalArgumentException(
-            "Provider backing component needs persistent block-entity identity");
-      var id =
-          ExternalProviderIdentity.read(
-              entity.getPersistentData().get(ExternalProviderIdentity.FIELD), world);
-      components.add(entity);
-      missing.add(id == null);
-      ids.add(id == null ? UUID.randomUUID() : id);
-    }
-    UUID backing = ExternalProviderIdentity.group(world, owner.settings().kind(), ids);
-    for (int index = 0; index < components.size(); index++)
-      if (missing.get(index)) {
-        var entity = components.get(index);
-        entity
-            .getPersistentData()
-            .put(
-                ExternalProviderIdentity.FIELD,
-                ExternalProviderIdentity.write(world, ids.get(index)));
-        entity.setChanged();
-      }
-    return backing;
-  }
-
-  private boolean vanillaBacking(ConnectorEntity owner, Object handler, List<Provider> selected) {
-    boolean sided =
-        handler.getClass() == net.neoforged.neoforge.items.wrapper.SidedInvWrapper.class;
-    if (!sided && handler.getClass() != net.neoforged.neoforge.items.wrapper.InvWrapper.class)
-      return false;
-    for (var provider : selected) {
-      var position = BlockPos.of(provider.position().block());
-      var chunk =
-          owner
-              .serverLevel()
-              .getChunkSource()
-              .getChunkNow(position.getX() >> 4, position.getZ() >> 4);
-      if (chunk == null) return false;
-      var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
-      if (!(sided ? sidedView(handler, entity) : invView(handler, entity))) return false;
-    }
-    return true;
-  }
-
-  private static boolean invView(Object handler, Object entity) {
-    var container = ((net.neoforged.neoforge.items.wrapper.InvWrapper) handler).getInv();
-    return container == entity
-        || container instanceof net.minecraft.world.CompoundContainer combined
-            && entity instanceof net.minecraft.world.Container part
-            && combined.contains(part);
-  }
-
-  /** SidedInvWrapper exposes no container getter; its equality compares container and face. */
-  private static boolean sidedView(Object handler, Object entity) {
-    if (!(entity instanceof net.minecraft.world.WorldlyContainer worldly)) return false;
-    for (var side : net.minecraft.core.Direction.values())
-      if (handler.equals(new net.neoforged.neoforge.items.wrapper.SidedInvWrapper(worldly, side)))
-        return true;
-    return false;
-  }
-
-  private BlockEntity providerEntity(ConnectorEntity owner) {
-    var position = owner.getBlockPos().relative(owner.targetDirection());
-    var chunk =
-        owner
-            .serverLevel()
-            .getChunkSource()
-            .getChunkNow(position.getX() >> 4, position.getZ() >> 4);
-    return chunk == null
-        ? null
-        : chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
-  }
-
-  /** Normalize vanilla double chests and check both chunks before any capability lookup. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
-  private List<Provider> providerPositions(ConnectorEntity owner) {
-    try {
-      return providerPositions(
-          owner.serverLevel(),
-          owner.getBlockPos().relative(owner.targetDirection()),
-          owner.settings().kind());
-    } catch (RuntimeException fault) {
-      owner.quarantine(fault);
-      throw fault;
-    }
-  }
-
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
-  private List<Provider> providerPositions(
-      ServerLevel level, BlockPos position, ResourceKind kind) {
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
-    if (chunk == null) return null;
-    BlockEntity entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
-    if (entity instanceof EnergyBankEntity
-        || entity instanceof BufferedInterfaceEntity
-        || entity instanceof StorageDriveEntity
-        || entity instanceof ConnectorEntity)
-      throw new IllegalArgumentException(
-          "Digital storage uses canonical handles, not foreign registration");
-    if (entity
-        instanceof dev.izzy.factorycore.platform.resource.ExternalBackingProvider described) {
-      List<BlockPos> blocks = described.factoryCoreBackingPositions(kind);
-      if (blocks == null)
-        throw new IllegalArgumentException("Invalid provider backing description");
-      int count = blocks.size();
-      if (count < 1 || count > 64)
-        throw new IllegalArgumentException("Invalid provider backing description");
-      var copied = new java.util.ArrayList<BlockPos>(count);
-      for (int index = 0; index < count; index++) {
-        var block = blocks.get(index);
-        if (block == null || !BlockPos.of(block.asLong()).equals(block))
-          throw new IllegalArgumentException("Invalid backing block position");
-        copied.add(block.immutable());
-      }
-      if (!copied.contains(position) || new java.util.HashSet<>(copied).size() != copied.size())
-        throw new IllegalArgumentException("Invalid provider backing description");
-      for (var block : copied) {
-        var backingChunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
-        if (backingChunk == null) return null;
-        var part = backingChunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
-        if (part instanceof EnergyBankEntity
-            || part instanceof BufferedInterfaceEntity
-            || part instanceof StorageDriveEntity
-            || part instanceof ConnectorEntity)
-          throw new IllegalArgumentException("Declared backing overlaps canonical digital storage");
-      }
-      return copied.stream()
-          .map(
-              block ->
-                  new Provider(
-                      new NodeRegistry.Position(
-                          level.dimension().location().toString(), block.asLong()),
-                      kind))
-          .sorted(java.util.Comparator.comparingLong(provider -> provider.position().block()))
-          .toList();
-    }
-    var state = chunk.getBlockState(position);
-    var first =
-        new Provider(
-            new NodeRegistry.Position(level.dimension().location().toString(), position.asLong()),
-            kind);
-    if (!(state.getBlock() instanceof ChestBlock)
-        || state.getValue(ChestBlock.TYPE) == ChestType.SINGLE) return List.of(first);
-    var otherPosition = position.relative(ChestBlock.getConnectedDirection(state));
-    var otherChunk =
-        level.getChunkSource().getChunkNow(otherPosition.getX() >> 4, otherPosition.getZ() >> 4);
-    if (otherChunk == null) return null;
-    var second =
-        new Provider(
-            new NodeRegistry.Position(
-                level.dimension().location().toString(), otherPosition.asLong()),
-            kind);
-    return position.asLong() < otherPosition.asLong()
-        ? List.of(first, second)
-        : List.of(second, first);
+  /**
+   * Capture/read processing provider fingerprints using only loaded persistent component metadata.
+   * Initialization is allowed only before new dispatch; resume/cleanup must pass false. Empty means
+   * unavailable/unprovable identity. No capability getter or resource method is invoked.
+   */
+  public Map<ResourceKind, UUID> processingIdentity(
+      NodeRegistry.Position target, boolean initialize) {
+    checkThread();
+    return identity.processingIdentity(target, initialize);
   }
 
   private void checkThread() {
-    if (!server.isSameThread()) throw new IllegalStateException("Connectors require server thread");
+    ServerThread.require(server, "Connectors");
   }
 }

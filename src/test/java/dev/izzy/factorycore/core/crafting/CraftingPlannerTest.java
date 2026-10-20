@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -132,7 +133,7 @@ class CraftingPlannerTest {
     var single = planner(milk, cake).plan(CAKE, 1, Map.of(BUCKET, 3L, SUGAR, 2L));
     assertEquals(CraftingPlanner.Status.OK, single.status());
     assertEquals(Map.of(BUCKET, 3L, SUGAR, 2L), single.consumed());
-    var ordered = new java.util.LinkedHashMap<ResourceKey, Long>();
+    var ordered = new LinkedHashMap<ResourceKey, Long>();
     ordered.put(CAKE, 1L);
     ordered.put(MILK, 1L);
     var box = pattern(3, 0, item("cake_box"), 1, ordered);

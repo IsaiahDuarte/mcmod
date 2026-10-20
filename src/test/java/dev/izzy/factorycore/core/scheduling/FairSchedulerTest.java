@@ -3,6 +3,7 @@ package dev.izzy.factorycore.core.scheduling;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
@@ -44,7 +45,7 @@ class FairSchedulerTest {
     assertFalse(scheduler.cancelTask(network, program, "move"));
     assertEquals(1, scheduler.backlog());
     scheduler.tick();
-    assertEquals(java.util.List.of("query"), ran);
+    assertEquals(List.of("query"), ran);
     scheduler.submit(network, program, "last", 1, () -> ran.add("last"));
     assertTrue(scheduler.cancelTask(network, program, "last"));
     assertEquals(0, scheduler.tick().visits());

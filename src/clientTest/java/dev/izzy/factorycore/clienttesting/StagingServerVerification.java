@@ -31,7 +31,6 @@ final class StagingServerVerification {
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Server owns the level and fake-player service.
   private void started(ServerStartedEvent event) {
     try {
       Files.createDirectories(report.getParent());

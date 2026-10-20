@@ -21,7 +21,6 @@ REQUIRED_FILES = (
     "docs/TESTING.md",
     "docs/IMPLEMENTATION.md",
     "docs/LOGISTICSNETWORKS.md",
-    "docs/REVIEW.md",
     "docs/decisions/README.md",
     ".github/pull_request_template.md",
     ".github/workflows/quality.yml",
@@ -37,9 +36,6 @@ REQUIRED_FILES = (
     "config/pmd/ruleset.xml",
     "scripts/verify_guest.py",
     "tests/tooling/test_verify_guest.py",
-    "experiments/wasm-guest/Cargo.toml",
-    "experiments/wasm-guest/Cargo.lock",
-    "experiments/wasm-guest/rust-toolchain.toml",
     "sdk/rust/Cargo.toml",
     "sdk/rust/Cargo.lock",
     "sdk/rust/rust-toolchain.toml",
@@ -51,7 +47,6 @@ IGNORED_DIRS = {
 UNWIRED_SOURCE_SUFFIXES = {".kt", ".kts", ".rs"}
 # Rust trees whose fmt/clippy/test/Wasm builds run in scripts/verify_guest.py.
 WIRED_RUST = (
-    "experiments/wasm-guest/src",
     "sdk/rust/factorycore/src",
     "sdk/rust/factorycore/tests",
     "sdk/rust/factorycore-macros/src",
@@ -194,7 +189,8 @@ def run_tooling_tests(root: Path, stream=None) -> bool:
     return result.wasSuccessful() and not result.skipped
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    full = "--full" in (sys.argv[1:] if argv is None else argv)
     root = Path(__file__).resolve().parents[1]
     errors = verify(root)
     if errors:
@@ -203,19 +199,32 @@ def main() -> int:
         return 1
     if not run_tooling_tests(root):
         return 1
-    if not run_implementation_checks(root):
+    if not run_implementation_checks(root, full=full):
         return 1
-    print("PASS: documentation, acceptance tracking, tooling, and JVM build/checks.")
+    scope = "full release checks" if full else "fast checks; run --full before merging"
+    print(f"PASS: documentation, acceptance tracking, tooling, and JVM build/checks ({scope}).")
     print("Client/server startup and product acceptance require separate recorded evidence.")
     return 0
 
 
-def run_implementation_checks(root: Path, stream=None) -> bool:
-    """Build runs compilation, packaging, formatting, PMD and nonempty JVM tests."""
+def gradle_command(wrapper: Path, full: bool, ci: bool) -> list:
+    """Local runs reuse the Gradle daemon; CI starts clean. --full adds the slow server suites."""
+    command = [str(wrapper)]
+    if ci:
+        command.append("--no-daemon")
+    command.append("build")
+    if full:
+        command.append("releaseCheck")
+    return command
+
+
+def run_implementation_checks(root: Path, stream=None, full: bool = False) -> bool:
+    """Build runs compilation, packaging, formatting, PMD, JVM tests and GameTests."""
     stream = sys.stderr if stream is None else stream
     wrapper = root / ("gradlew.bat" if os.name == "nt" else "gradlew")
+    command = gradle_command(wrapper, full, bool(os.environ.get("CI")))
     try:
-        result = subprocess.run([str(wrapper), "--no-daemon", "build"], cwd=root, check=False)
+        result = subprocess.run(command, cwd=root, check=False)
     except OSError as error:
         print(f"FAIL: cannot execute required JVM verification: {error}", file=stream)
         return False

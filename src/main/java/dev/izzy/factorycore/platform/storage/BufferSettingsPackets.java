@@ -1,12 +1,14 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.resource.ThroughputTier;
+import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.session.MenuPayloads;
 import java.util.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 public final class BufferSettingsPackets {
@@ -47,7 +49,7 @@ public final class BufferSettingsPackets {
           || selection < 0
           || selection > 35
           || value < 0
-          || value > 576
+          || value > BufferPolicy.MAX_TARGET
           || text.length() > 256
           || fingerprint.length != 32)
         throw new IllegalArgumentException("Invalid buffer command bounds");
@@ -126,9 +128,9 @@ public final class BufferSettingsPackets {
       if (mode.length() > 16
           || filter.length() > 16
           || rate < 1
-          || rate > dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME.bufferRate()
+          || rate > ThroughputTier.ENDGAME.bufferRate()
           || target < 0
-          || target > 576
+          || target > BufferPolicy.MAX_TARGET
           || rules.size() > 16
           || rules.stream().anyMatch(r -> r.length() > 128)
           || slots.size() > 9
@@ -209,20 +211,9 @@ public final class BufferSettingsPackets {
 
   public static void register(RegisterPayloadHandlersEvent event) {
     var r = event.registrar("3");
-    r.playToServer(
-        Command.TYPE,
-        Command.CODEC,
-        (packet, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof BufferSettingsMenu menu)
-            menu.command(player, packet);
-        });
-    r.playToClient(
-        View.TYPE,
-        View.CODEC,
-        (packet, context) -> {
-          if (context.player().containerMenu instanceof BufferSettingsMenu menu)
-            menu.accept(packet);
-        });
+    MenuPayloads.toServer(
+        r, Command.TYPE, Command.CODEC, BufferSettingsMenu.class, BufferSettingsMenu::command);
+    MenuPayloads.toClient(
+        r, View.TYPE, View.CODEC, BufferSettingsMenu.class, BufferSettingsMenu::accept);
   }
 }

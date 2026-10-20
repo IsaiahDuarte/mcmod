@@ -3,18 +3,20 @@ package dev.izzy.factorycore.testing.wireless;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
@@ -22,6 +24,8 @@ import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -81,8 +85,7 @@ public final class WirelessThroughputGameTests {
   private WirelessThroughputGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos relative) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(relative));
   }
 
   private static DeviceRegistry.Handle[] drive(GameTestHelper h, BlockPos position) {
@@ -99,9 +102,7 @@ public final class WirelessThroughputGameTests {
   }
 
   private static DeviceRegistry.Handle bank(GameTestHelper h, BlockPos position) {
-    h.setBlock(position, EnergyBankContent.block(EnergyBankTier.ADVANCED));
-    EnergyBankEntity bank = h.getBlockEntity(position);
-    bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.ADVANCED)));
+    EnergyBankEntity bank = Net.in(h).bank(position, EnergyBankTier.ADVANCED);
     return bank.handle();
   }
 
@@ -139,12 +140,9 @@ public final class WirelessThroughputGameTests {
     ends.add(h.getBlockEntity(position));
   }
 
-  @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper h) {
-    var owner = h.makeMockServerPlayerInLevel();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.getUUID());
+    var owner = TestPlayers.mock(h);
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     var ends = new ArrayList<LinkEndpointEntity>();
     for (int x : new int[] {1, 7}) {
       gate(h, new BlockPos(x, 1, 1), Direction.EAST);
@@ -236,18 +234,14 @@ public final class WirelessThroughputGameTests {
         .thenIdle(3)
         .thenExecute(() -> pair(h, f))
         .thenWaitUntil(() -> ready(h, f))
-        .thenExecute(
-            () ->
-                f.ends
-                    .getFirst()
-                    .install(dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME))
+        .thenExecute(() -> f.ends.getFirst().install(ThroughputTier.ENDGAME))
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(
             () -> {
               h.assertTrue(
                   f.ends.getFirst().pairScale() == 1,
                   "One paid endpoint cannot raise the pair's limit");
-              f.ends.get(1).install(dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME);
+              f.ends.get(1).install(ThroughputTier.ENDGAME);
             })
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(
@@ -261,8 +255,7 @@ public final class WirelessThroughputGameTests {
               f.saved.registry().insert(extraRoot, ResourceKey.ENERGY, 16000);
               var denied = submitOne(h, f, ROOT, f.root[0], f.child[0], IRON, 128);
               h.assertTrue(
-                  denied.reason()
-                          == dev.izzy.factorycore.core.resource.OperationResult.Reason.DENIED
+                  denied.reason() == OperationResult.Reason.DENIED
                       && f.stock(f.root[0], IRON) == 2000,
                   "Upgraded routing still denies a root request into child-private storage");
               long available =

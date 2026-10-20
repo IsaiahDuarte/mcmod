@@ -1,10 +1,9 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
@@ -16,21 +15,23 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 
-public final class StorageDriveBlock extends Block implements EntityBlock {
+public final class StorageDriveBlock extends NetworkedBlock implements EntityBlock {
   /**
    * Presentation-only bay occupancy, mirrored from the entity's four lease slots. Gameplay always
    * reads the entity; these properties never decide installation or routing.
    */
-  public static final List<net.minecraft.world.level.block.state.properties.BooleanProperty> BAYS =
+  public static final List<BooleanProperty> BAYS =
       List.of(
-          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_1"),
-          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_2"),
-          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_3"),
-          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_4"));
+          BooleanProperty.create("bay_1"),
+          BooleanProperty.create("bay_2"),
+          BooleanProperty.create("bay_3"),
+          BooleanProperty.create("bay_4"));
 
   public StorageDriveBlock(Properties properties) {
     super(properties);
@@ -40,8 +41,7 @@ public final class StorageDriveBlock extends Block implements EntityBlock {
   }
 
   @Override
-  protected void createBlockStateDefinition(
-      net.minecraft.world.level.block.state.StateDefinition.Builder<Block, BlockState> builder) {
+  protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
     BAYS.forEach(builder::add);
   }
 
@@ -133,35 +133,12 @@ public final class StorageDriveBlock extends Block implements EntityBlock {
   }
 
   @Override
-  protected void onPlace(
-      BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
-    super.onPlace(state, level, position, previous, moved);
-    if (!onlyBaysChanged(previous, state)) WorldNetworks.changed(level, position);
+  protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
+    return blockEntity instanceof StorageDriveEntity drive ? drive.ejectForBreak() : List.of();
   }
 
   @Override
-  protected void neighborChanged(
-      BlockState state,
-      Level level,
-      BlockPos position,
-      Block neighbor,
-      BlockPos from,
-      boolean moved) {
-    super.neighborChanged(state, level, position, neighbor, from, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void onRemove(
-      BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    if (!onlyBaysChanged(state, next)) WorldNetworks.changed(level, position);
-    if (!state.is(next.getBlock())
-        && level.getBlockEntity(position) instanceof StorageDriveEntity drive
-        && !level.isClientSide()) {
-      for (var cell : drive.ejectForBreak())
-        Containers.dropItemStack(
-            level, position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5, cell);
-    }
-    super.onRemove(state, level, position, next, moved);
+  protected boolean cosmeticOnly(BlockState before, BlockState after) {
+    return onlyBaysChanged(before, after);
   }
 }

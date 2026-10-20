@@ -21,7 +21,9 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.energy.EnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -161,7 +163,7 @@ class PlatformResourceTest {
     int[] reported = {Integer.MAX_VALUE};
     int selected = Integer.MAX_VALUE - 1;
     var sparse =
-        new net.neoforged.neoforge.items.IItemHandler() {
+        new IItemHandler() {
           private void requireSlot(int slot) {
             if (slot != selected) throw new IllegalArgumentException("Unexpected sparse slot");
           }
@@ -245,9 +247,7 @@ class PlatformResourceTest {
   @Test
   void foreignFluidAndEnergyObservationsReportKnownCapacityWithoutMutation() {
     var tank = new FluidTank(5000);
-    tank.fill(
-        new FluidStack(Fluids.WATER, 2500),
-        net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+    tank.fill(new FluidStack(Fluids.WATER, 2500), IFluidHandler.FluidAction.EXECUTE);
     var fluid = ExternalStockPage.read(ResourceKind.FLUID, tank, codec, 0, 1, 0);
     assertEquals(codec.fluidKey(tank.getFluid()), fluid.entries().getFirst().key());
     assertEquals(2500, fluid.entries().getFirst().stored());

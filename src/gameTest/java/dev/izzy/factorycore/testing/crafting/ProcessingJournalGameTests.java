@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.crafting;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
@@ -12,7 +13,6 @@ import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.crafting.ProcessingJournal;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
-import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.program.ProgramContent;
@@ -20,10 +20,12 @@ import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,9 +33,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -64,7 +68,7 @@ public final class ProcessingJournalGameTests {
       return saved.registry().stock(cell, key).total();
     }
 
-    int held(net.minecraft.world.item.Item item) {
+    int held(Item item) {
       int total = 0;
       for (int slot = 0; slot < machine.items.getSlots(); slot++)
         if (machine.items.getStackInSlot(slot).is(item))
@@ -109,12 +113,8 @@ public final class ProcessingJournalGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var owner = UUID.randomUUID();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner);
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(h, owner).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     h.setBlock(MACHINE, ConnectorFixture.BLOCK.get());
     h.setBlock(
         INTERFACE,
@@ -153,7 +153,6 @@ public final class ProcessingJournalGameTests {
     return new NetworkPermissions.Actor(id, false);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   private static int resolve(GameTestHelper h) {
     var server = h.getLevel().getServer();
     var at = h.absolutePos(MACHINE);
@@ -165,7 +164,7 @@ public final class ProcessingJournalGameTests {
               "factorycore recovery processing resolve %d %d %d"
                   .formatted(at.getX(), at.getY(), at.getZ()),
               server.createCommandSourceStack().withLevel(h.getLevel()));
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException invalid) {
+    } catch (CommandSyntaxException invalid) {
       throw new AssertionError(invalid);
     }
   }
@@ -181,12 +180,12 @@ public final class ProcessingJournalGameTests {
     var dir =
         h.getLevel()
             .getServer()
-            .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+            .getWorldPath(LevelResource.ROOT)
             .resolve("factorycore-device-recovery");
-    if (!java.nio.file.Files.isDirectory(dir)) return 0;
-    try (var files = java.nio.file.Files.list(dir)) {
+    if (!Files.isDirectory(dir)) return 0;
+    try (var files = Files.list(dir)) {
       return (int) files.count();
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
   }

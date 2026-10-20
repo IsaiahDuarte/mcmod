@@ -5,15 +5,26 @@ import dev.izzy.factorycore.core.program.ProgramTemplates;
 import dev.izzy.factorycore.core.program.ResourceExpressions;
 import dev.izzy.factorycore.platform.program.ProgramMenu;
 import dev.izzy.factorycore.platform.program.ProgramPackets;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
+import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.lwjgl.glfw.GLFW;
 
 /** Program editor: draft text, inline diagnostics, deployment controls, templates and logs. */
 public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
@@ -21,7 +32,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   private DraftHistory history;
   private EditBox search;
   private Button category;
-  private final java.util.List<Button> choices = new java.util.ArrayList<>();
+  private final List<Button> choices = new ArrayList<>();
   private boolean refocusEditor;
   private Button previousPage, nextPage;
   private boolean selecting, completing, previewing;
@@ -200,19 +211,13 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   private void rebuildChoices() {
     if (category == null || search == null) return;
     category.setMessage(Component.translatable("gui.factorycore.program.select.kind." + kind));
-    var needle = search.getValue().toLowerCase(java.util.Locale.ROOT);
-    java.util.stream.Stream<String> values =
+    var needle = search.getValue().toLowerCase(Locale.ROOT);
+    Stream<String> values =
         switch (kind) {
-          case 0 ->
-              net.minecraft.core.registries.BuiltInRegistries.ITEM.keySet().stream()
-                  .map(Object::toString);
-          case 1 ->
-              net.minecraft.core.registries.BuiltInRegistries.FLUID.keySet().stream()
-                  .map(Object::toString);
+          case 0 -> BuiltInRegistries.ITEM.keySet().stream().map(Object::toString);
+          case 1 -> BuiltInRegistries.FLUID.keySet().stream().map(Object::toString);
           case 2 ->
-              menu.authorView() == null
-                  ? java.util.stream.Stream.empty()
-                  : menu.authorView().labels().stream();
+              menu.authorView() == null ? Stream.empty() : menu.authorView().labels().stream();
           default ->
               List.of(
                   "every",
@@ -242,10 +247,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
                   .stream();
         };
     options =
-        values
-            .filter(value -> value.toLowerCase(java.util.Locale.ROOT).contains(needle))
-            .sorted()
-            .toList();
+        values.filter(value -> value.toLowerCase(Locale.ROOT).contains(needle)).sorted().toList();
     editor.visible = !selecting && !previewing;
     if (scope != null) scope.visible = !selecting && !previewing;
     category.visible = selecting;
@@ -310,11 +312,8 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
 
   private Button button(String key, int x, int y, Runnable action) {
     return addRenderableWidget(
-        Button.builder(Component.translatable("gui.factorycore.program." + key), b -> action.run())
-            .bounds(leftPos + x, topPos + y, 102, 16)
-            .tooltip(
-                Tooltip.create(Component.translatable("gui.factorycore.program." + key + ".help")))
-            .build());
+        ScreenButtons.labeled(
+            "gui.factorycore.program.", key, leftPos + x, topPos + y, 102, 16, action));
   }
 
   /** Sends the editor text as bounded draft chunks, then the optional follow-up action. */
@@ -326,34 +325,33 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
 
   /** Uploads and deploys the newest .wasm in {@code <game dir>/factorycore/programs}. */
   private void uploadWasm() {
-    var folder = net.neoforged.fml.loading.FMLPaths.GAMEDIR.get().resolve("factorycore/programs");
-    try (var files = java.nio.file.Files.list(folder)) {
+    var folder = FMLPaths.GAMEDIR.get().resolve("factorycore/programs");
+    try (var files = Files.list(folder)) {
       var newest =
           files
               .filter(path -> path.toString().endsWith(".wasm"))
-              .max(java.util.Comparator.comparingLong(path -> path.toFile().lastModified()));
+              .max(Comparator.comparingLong(path -> path.toFile().lastModified()));
       if (newest.isEmpty()) {
         minecraft.player.displayClientMessage(
             Component.translatable("gui.factorycore.program.wasm.none", folder.toString()), false);
         return;
       }
-      var bytes = java.nio.file.Files.readAllBytes(newest.get());
+      var bytes = Files.readAllBytes(newest.get());
       for (var chunk : ProgramPackets.Artifact.chunks(menu.containerId, menu.session(), bytes))
         PacketDistributor.sendToServer(chunk);
       minecraft.player.displayClientMessage(
           Component.translatable(
               "gui.factorycore.program.wasm.sent", newest.get().getFileName().toString()),
           false);
-    } catch (java.io.IOException | IllegalArgumentException failure) {
+    } catch (IOException | IllegalArgumentException failure) {
       minecraft.player.displayClientMessage(
           Component.translatable("gui.factorycore.program.wasm.none", folder.toString()), false);
     }
   }
 
   /** Screen area of the draft editor, for recipe-viewer drop targets. */
-  public net.minecraft.client.renderer.Rect2i editorArea() {
-    return new net.minecraft.client.renderer.Rect2i(
-        editor.getX(), editor.getY(), editor.getWidth(), editor.getHeight());
+  public Rect2i editorArea() {
+    return new Rect2i(editor.getX(), editor.getY(), editor.getWidth(), editor.getHeight());
   }
 
   /**
@@ -444,7 +442,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
         graphics.drawString(font, snapshot.get(index), 12, 32 + (index % 13) * 9, 0xd8dee9, false);
     }
     int y = 185;
-    var lines = new java.util.ArrayList<String>();
+    var lines = new ArrayList<String>();
     if (!view.message().isEmpty()) lines.add(view.message());
     lines.addAll(view.diagnostics());
     if (lines.isEmpty()) lines.addAll(view.logs());
@@ -460,8 +458,8 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     }
   }
 
-  private java.util.List<net.minecraft.util.FormattedCharSequence> previewLines() {
-    var lines = new java.util.ArrayList<net.minecraft.util.FormattedCharSequence>();
+  private List<FormattedCharSequence> previewLines() {
+    var lines = new ArrayList<FormattedCharSequence>();
     if (menu.authorView() != null)
       for (var line : menu.authorView().preview())
         lines.addAll(font.split(Component.literal(line), editorWidth() - 12));
@@ -470,15 +468,12 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
 
   @Override
   public boolean keyPressed(int key, int scan, int modifiers) {
-    if ((hasControlDown()
-            || (modifiers
-                    & (org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL | org.lwjgl.glfw.GLFW.GLFW_MOD_SUPER))
-                != 0)
-        && key == org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE) {
+    if ((hasControlDown() || (modifiers & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0)
+        && key == GLFW.GLFW_KEY_SPACE) {
       openSelector(true);
       return true;
     }
-    if ((selecting || previewing) && key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+    if ((selecting || previewing) && key == GLFW.GLFW_KEY_ESCAPE) {
       selecting = false;
       previewing = false;
       rebuildChoices();
@@ -486,7 +481,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
       return true;
     }
     // Typing in the editor must not close the screen on the inventory key.
-    if (editor.isFocused() && key != org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE)
+    if (editor.isFocused() && key != GLFW.GLFW_KEY_ESCAPE)
       return editor.keyPressed(key, scan, modifiers) || true;
     return super.keyPressed(key, scan, modifiers);
   }

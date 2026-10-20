@@ -13,8 +13,11 @@ public final class CellHandleData {
 
   private CellHandleData() {}
 
+  // getUnsafe() is deprecated only as a "do not mutate" warning; this method only reads.
+  @SuppressWarnings("deprecation")
   public static DeviceRegistry.Handle read(ItemStack stack) {
-    CompoundTag data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+    // Read-only view: copying the whole custom-data tag on every lookup was a top allocator.
+    CompoundTag data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).getUnsafe();
     if (!data.contains(FIELD)) return null;
     if (!data.contains(FIELD, Tag.TAG_COMPOUND))
       throw new IllegalArgumentException("Invalid cell lease data");

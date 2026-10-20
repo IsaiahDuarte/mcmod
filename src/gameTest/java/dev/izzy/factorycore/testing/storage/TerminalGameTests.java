@@ -6,14 +6,26 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundContainerClosePacket;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.entity.HopperBlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.*;
 
@@ -39,19 +51,13 @@ public final class TerminalGameTests {
     return stack;
   }
 
-  @SuppressWarnings("removal") // Pinned helper performs actual PlayerList authentication.
   private static Fixture setup(GameTestHelper helper) {
-    var player = helper.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(helper);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(helper, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM);
     helper.setBlock(TERMINAL, TerminalContent.BLOCK.get());
     return new Fixture(
         player,
@@ -413,18 +419,11 @@ public final class TerminalGameTests {
   public static void realHopperImportAppearsInSearchAndWithdrawsIntoPlayer(GameTestHelper helper) {
     var f = setup(helper);
     var bufferPos = new BlockPos(3, 1, 1);
-    helper.setBlock(bufferPos, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(bufferPos);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), f.player.getUUID());
+    BufferedInterfaceEntity buffer = Net.in(helper, f.player.getUUID()).buffer(bufferPos);
     helper.setBlock(
         bufferPos.above(),
-        Blocks.HOPPER
-            .defaultBlockState()
-            .setValue(
-                net.minecraft.world.level.block.HopperBlock.FACING,
-                net.minecraft.core.Direction.DOWN));
-    net.minecraft.world.level.block.entity.HopperBlockEntity hopper =
-        helper.getBlockEntity(bufferPos.above());
+        Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN));
+    HopperBlockEntity hopper = helper.getBlockEntity(bufferPos.above());
     helper
         .startSequence()
         .thenWaitUntil(
@@ -509,9 +508,8 @@ public final class TerminalGameTests {
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void revokedViewerCannotReadOrFinishQueuedWithdrawal(GameTestHelper helper) {
     var owner = setup(helper);
-    var guest = helper.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        guest.connection.getConnection());
+    var guest = TestPlayers.mock(helper);
+    TestPlayers.connect(guest);
     guest.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     guest.getInventory().clearContent();
     NetworkNodeEntity root = helper.getBlockEntity(ROOT);
@@ -520,8 +518,7 @@ public final class TerminalGameTests {
     grants.setGrants(
         actor,
         guest.getUUID(),
-        java.util.Set.of(
-            NetworkPermissions.Permission.VIEW, NetworkPermissions.Permission.WITHDRAW));
+        Set.of(NetworkPermissions.Permission.VIEW, NetworkPermissions.Permission.WITHDRAW));
     var f = new Fixture(guest, owner.terminal, owner.saved, owner.cell, owner.key);
     helper
         .startSequence()
@@ -535,7 +532,7 @@ public final class TerminalGameTests {
         .thenExecute(
             () -> {
               command(f, TerminalPackets.WITHDRAW, 0, 12, new byte[32]);
-              grants.setGrants(actor, guest.getUUID(), java.util.Set.of());
+              grants.setGrants(actor, guest.getUUID(), Set.of());
               menu(f).broadcastChanges();
             })
         .thenIdle(20)
@@ -561,13 +558,11 @@ public final class TerminalGameTests {
    * Two open sessions on one terminal: stock changed by the other session (or by the owner's grant
    * administration) reaches an idle viewer without any action of its own.
    */
-  @SuppressWarnings("removal") // Real authenticated second principal.
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void idleViewerSeesOtherSessionsChangesAndGrantEdits(GameTestHelper helper) {
     var owner = setup(helper);
-    var guest = helper.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        guest.connection.getConnection());
+    var guest = TestPlayers.mock(helper);
+    TestPlayers.connect(guest);
     guest.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     guest.getInventory().clearContent();
     NetworkNodeEntity root = helper.getBlockEntity(ROOT);
@@ -582,7 +577,7 @@ public final class TerminalGameTests {
               grants.setGrants(
                   actor,
                   guest.getUUID(),
-                  java.util.Set.of(
+                  Set.of(
                       NetworkPermissions.Permission.VIEW, NetworkPermissions.Permission.WITHDRAW));
               f.saved.registry().insert(f.cell, f.key, 32);
               open(helper, owner);
@@ -610,7 +605,7 @@ public final class TerminalGameTests {
         .thenExecute(
             () ->
                 grants.setGrants(
-                    actor, UUID.randomUUID(), java.util.Set.of(NetworkPermissions.Permission.VIEW)))
+                    actor, UUID.randomUUID(), Set.of(NetworkPermissions.Permission.VIEW)))
         .thenWaitUntil(
             () -> {
               menu(f).broadcastChanges();
@@ -644,21 +639,19 @@ public final class TerminalGameTests {
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void terminalRecipeUsesAffordableMaterialsAndNoOwnershipReference(
       GameTestHelper helper) {
-    var id =
-        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-            "factorycore", "storage_terminal");
+    var id = ResourceLocation.fromNamespaceAndPath("factorycore", "storage_terminal");
     var recipe = helper.getLevel().getRecipeManager().byKey(id).orElseThrow().value();
-    var costs = new java.util.HashMap<String, Integer>();
+    var costs = new HashMap<String, Integer>();
     for (var ingredient : recipe.getIngredients())
       for (var stack : ingredient.getItems()) {
-        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+        var item = BuiltInRegistries.ITEM.getKey(stack.getItem());
         helper.assertTrue(
             item.getNamespace().equals("minecraft"),
             "Starter terminal uses only vanilla materials");
         costs.merge(item.getPath(), 1, Integer::sum);
       }
     helper.assertTrue(
-        costs.equals(java.util.Map.of("iron_ingot", 4, "glass", 3, "redstone", 2)),
+        costs.equals(Map.of("iron_ingot", 4, "glass", 3, "redstone", 2)),
         "Exact affordable terminal recipe");
     var result = recipe.getResultItem(helper.getLevel().registryAccess());
     helper.assertTrue(
@@ -672,7 +665,7 @@ public final class TerminalGameTests {
                 .getServer()
                 .getAdvancements()
                 .get(
-                    net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                    ResourceLocation.fromNamespaceAndPath(
                         "factorycore", "recipes/misc/storage_terminal"))
             != null,
         "Recipe-book unlock exists");
@@ -683,7 +676,7 @@ public final class TerminalGameTests {
   public static void nativeInitializationDoesNotSendCloseForPriorInventoryMenu(
       GameTestHelper helper) {
     var f = setup(helper);
-    var closed = new java.util.concurrent.atomic.AtomicInteger();
+    var closed = new AtomicInteger();
     var pipeline = f.player.connection.getConnection().channel().pipeline();
     pipeline.addBefore(
         pipeline.context(f.player.connection.getConnection()).name(),
@@ -695,9 +688,7 @@ public final class TerminalGameTests {
               Object message,
               io.netty.channel.ChannelPromise promise)
               throws Exception {
-            if (message
-                instanceof net.minecraft.network.protocol.game.ClientboundContainerClosePacket)
-              closed.incrementAndGet();
+            if (message instanceof ClientboundContainerClosePacket) closed.incrementAndGet();
             super.write(context, message, promise);
           }
         });

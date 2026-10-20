@@ -7,10 +7,13 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -45,7 +48,7 @@ final class TerminalContainers {
     saved = DeviceSavedData.get(player.server);
     transfers = WorldNetworks.get(player.server).transfers();
     codec = new PlatformResourceCodec(player.registryAccess());
-    actor = new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2));
+    actor = Actors.of(player);
   }
 
   /**
@@ -54,7 +57,7 @@ final class TerminalContainers {
   private List<Cell> cells(ResourceKey key, NetworkPermissions.Permission operation) {
     var registry = saved.registry();
     var result = new ArrayList<Cell>();
-    java.util.UUID after = null;
+    UUID after = null;
     do {
       var page = registry.handles(after, 16);
       for (var handle : page.handles()) {
@@ -157,8 +160,7 @@ final class TerminalContainers {
       var location = saved.registry().definition(cell.handle()).location();
       var position = new NodeRegistry.Position(location.dimension(), location.position());
       var permit = runtime.movement(take ? position : origin, take ? origin : position, key, offer);
-      if (permit.amount() < offer)
-        plan.failure = permit.reason().name().toLowerCase(java.util.Locale.ROOT);
+      if (permit.amount() < offer) plan.failure = permit.reason().name().toLowerCase(Locale.ROOT);
       if (permit.amount() == 0) {
         permit.finish(0);
         continue;

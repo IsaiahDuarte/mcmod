@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.program;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -45,16 +46,7 @@ class ProgramPacketsTest {
         IllegalArgumentException.class,
         () ->
             new ProgramPackets.View(
-                1,
-                id,
-                1,
-                "running",
-                "",
-                0,
-                "",
-                true,
-                java.util.Collections.nCopies(9, "x"),
-                List.of()));
+                1, id, 1, "running", "", 0, "", true, Collections.nCopies(9, "x"), List.of()));
   }
 
   @Test
@@ -70,19 +62,12 @@ class ProgramPacketsTest {
         IllegalArgumentException.class,
         () ->
             new ProgramPackets.AuthorView(
-                1,
-                id,
-                "scope",
-                java.util.Collections.nCopies(17, "label"),
-                false,
-                0,
-                0,
-                List.of()));
+                1, id, "scope", Collections.nCopies(17, "label"), false, 0, 0, List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new ProgramPackets.AuthorView(
-                1, id, "scope", List.of(), false, 0, 1, java.util.Collections.nCopies(9, "line")));
+                1, id, "scope", List.of(), false, 0, 1, Collections.nCopies(9, "line")));
     assertThrows(
         IllegalArgumentException.class,
         () ->

@@ -1,106 +1,54 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
-import dev.izzy.factorycore.platform.FactoryCoreMod;
-import dev.izzy.factorycore.platform.storage.EnergyBankBlock;
-import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
-import net.minecraft.core.Direction;
-import net.minecraft.core.registries.Registries;
+import dev.izzy.factorycore.platform.DeviceProperties;
+import dev.izzy.factorycore.platform.FactoryRegistries;
+import dev.izzy.factorycore.platform.LeasedBlockItem;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class NetworkContent {
-  private static final DeferredRegister.Blocks BLOCKS =
-      DeferredRegister.createBlocks(FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister.Items ITEMS =
-      DeferredRegister.createItems(FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister<BlockEntityType<?>> ENTITIES =
-      DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FactoryCoreMod.MOD_ID);
   public static final DeferredBlock<NetworkNodeBlock> CONTROLLER =
-      BLOCKS.registerBlock(
+      FactoryRegistries.BLOCKS.registerBlock(
           "network_controller",
           p -> new NetworkNodeBlock(p, NodeRegistry.Kind.CONTROLLER),
           properties());
   public static final DeferredBlock<NetworkNodeBlock> GATEWAY =
-      BLOCKS.registerBlock(
+      FactoryRegistries.BLOCKS.registerBlock(
           "gateway", p -> new NetworkNodeBlock(p, NodeRegistry.Kind.GATEWAY), properties());
   public static final DeferredBlock<NetworkCableBlock> CABLE =
-      BLOCKS.registerBlock("network_cable", NetworkCableBlock::new, properties().noOcclusion());
-  public static final DeferredItem<NetworkNodeItem> CONTROLLER_ITEM =
-      ITEMS.register("network_controller", () -> new NetworkNodeItem(CONTROLLER.get()));
-  public static final DeferredItem<NetworkNodeItem> GATEWAY_ITEM =
-      ITEMS.register("gateway", () -> new NetworkNodeItem(GATEWAY.get()));
-  public static final DeferredItem<?> CABLE_ITEM = ITEMS.registerSimpleBlockItem(CABLE);
+      FactoryRegistries.BLOCKS.registerBlock(
+          "network_cable", NetworkCableBlock::new, properties().noOcclusion());
+  public static final DeferredItem<LeasedBlockItem> CONTROLLER_ITEM =
+      FactoryRegistries.ITEMS.register(
+          "network_controller",
+          () -> new LeasedBlockItem(CONTROLLER.get(), LeasedBlockItem.Tooltip.lines()));
+  public static final DeferredItem<LeasedBlockItem> GATEWAY_ITEM =
+      FactoryRegistries.ITEMS.register(
+          "gateway", () -> new LeasedBlockItem(GATEWAY.get(), LeasedBlockItem.Tooltip.lines()));
+  public static final DeferredItem<?> CABLE_ITEM =
+      FactoryRegistries.ITEMS.registerSimpleBlockItem(CABLE);
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<NetworkNodeEntity>>
       NODE_ENTITY =
-          ENTITIES.register(
-              "network_node",
-              () ->
-                  BlockEntityType.Builder.of(
-                          NetworkNodeEntity::new, CONTROLLER.get(), GATEWAY.get())
-                      .build(null));
+          FactoryRegistries.entity("network_node", NetworkNodeEntity::new, CONTROLLER, GATEWAY);
 
-  /** Local port eligibility only; callers must separately validate load, identity and topology. */
-  public static boolean connects(BlockState state, Direction face) {
-    java.util.Objects.requireNonNull(face);
-    if (state.getBlock() instanceof NetworkNodeBlock node) return node.connects(state, face);
-    if (state.getBlock() instanceof dev.izzy.factorycore.platform.storage.ConnectorBlock)
-      return face
-          != state.getValue(
-              net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING);
-    if (state.getBlock() instanceof dev.izzy.factorycore.platform.wireless.LinkEndpointBlock)
-      return face
-          == state
-              .getValue(
-                  net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING)
-              .getOpposite();
-    return state.is(CABLE.get())
-        || state.getBlock() instanceof StorageDriveBlock
-        || state.getBlock() instanceof EnergyBankBlock
-        || state.getBlock() instanceof dev.izzy.factorycore.platform.storage.TerminalBlock;
-  }
-
-  private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
-      DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
-  public static final DeferredHolder<
-          net.minecraft.world.inventory.MenuType<?>,
-          net.minecraft.world.inventory.MenuType<GatewayPolicyMenu>>
-      POLICY_MENU =
-          MENUS.register(
-              "gateway_policy",
-              () ->
-                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
-                      GatewayPolicyMenu::new));
-  public static final DeferredHolder<
-          net.minecraft.world.inventory.MenuType<?>,
-          net.minecraft.world.inventory.MenuType<NetworkAccessMenu>>
-      ACCESS_MENU =
-          MENUS.register(
-              "network_access",
-              () ->
-                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
-                      NetworkAccessMenu::new));
+  public static final DeferredHolder<MenuType<?>, MenuType<GatewayPolicyMenu>> POLICY_MENU =
+      FactoryRegistries.menu("gateway_policy", GatewayPolicyMenu::new);
+  public static final DeferredHolder<MenuType<?>, MenuType<NetworkAccessMenu>> ACCESS_MENU =
+      FactoryRegistries.menu("network_access", NetworkAccessMenu::new);
 
   private NetworkContent() {}
 
   private static BlockBehaviour.Properties properties() {
-    return BlockBehaviour.Properties.of()
-        .strength(3.5f)
-        .requiresCorrectToolForDrops()
-        .sound(net.minecraft.world.level.block.SoundType.METAL);
+    return DeviceProperties.machine();
   }
 
   public static void register(IEventBus bus) {
-    BLOCKS.register(bus);
-    ITEMS.register(bus);
-    ENTITIES.register(bus);
-    MENUS.register(bus);
     bus.addListener(AccessPackets::register);
   }
 }

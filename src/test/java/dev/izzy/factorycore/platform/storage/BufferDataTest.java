@@ -2,7 +2,9 @@ package dev.izzy.factorycore.platform.storage;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.nbt.*;
 import org.junit.jupiter.api.Test;
@@ -12,15 +14,12 @@ class BufferDataTest {
   void upgradedReferenceRetainsLeaseAndRejectsUnknownTierWithoutTouchingEvidence()
       throws Exception {
     var old = BufferData.read(fixture());
-    for (var tier :
-        java.util.List.of(
-            dev.izzy.factorycore.core.resource.ThroughputTier.ADVANCED,
-            dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME)) {
+    for (var tier : List.of(ThroughputTier.ADVANCED, ThroughputTier.ENDGAME)) {
       var state = new BufferData.State(old.lease(), old.principal(), old.configuration(), tier);
       var tag = BufferData.write(state);
       assertEquals(2, tag.getInt("Schema"));
       assertEquals(state, BufferData.read(tag));
-      for (String invalid : java.util.List.of("BASE", "FUTURE")) {
+      for (String invalid : List.of("BASE", "FUTURE")) {
         var malformed = tag.copy();
         malformed.putString("Throughput", invalid);
         var before = malformed.copy();

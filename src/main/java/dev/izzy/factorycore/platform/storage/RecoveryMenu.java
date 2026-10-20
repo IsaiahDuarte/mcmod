@@ -1,14 +1,15 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.TransferRegistry;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.AccessAdministration;
+import dev.izzy.factorycore.platform.session.MenuSession;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -27,42 +28,34 @@ public final class RecoveryMenu extends AbstractContainerMenu {
   public static final int OWN_SCAN_PAGES = 4;
 
   private static final int POLL_TICKS = 20;
-  private final Player viewer;
-  private final UUID session;
-  private final boolean server;
+  private final MenuSession session;
   private final List<UUID> history = new ArrayList<>();
   private UUID cursor, next;
-  private int lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE;
   private long revision = 1;
-  private boolean active = true;
   private String status = "ready", evidence = "", detail = "";
   private RecoveryPackets.View view;
 
   /** Client constructor. */
   public RecoveryMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-    this(id, inventory, buffer.readUUID(), false);
+    this(id, inventory, MenuSession.read(buffer), false);
   }
 
   private RecoveryMenu(int id, Inventory inventory, UUID session, boolean server) {
     super(RecoveryContent.MENU.get(), id);
-    viewer = inventory.player;
-    this.session = session;
-    this.server = server;
+    this.session = new MenuSession(this, inventory.player, session, server, POLL_TICKS);
     view = new RecoveryPackets.View(id, session, 0, false, List.of(), 0, false, "loading", "", "");
   }
 
   /** Opens the screen for a connected player; what it lists depends on operator status. */
   public static void open(ServerPlayer player) {
-    var nonce = UUID.randomUUID();
-    player.openMenu(
-        new SimpleMenuProvider(
-            (id, inventory, who) -> new RecoveryMenu(id, inventory, nonce, true),
-            Component.translatable("gui.factorycore.recovery")),
-        buffer -> buffer.writeUUID(nonce));
+    MenuSession.open(
+        player,
+        Component.translatable("gui.factorycore.recovery"),
+        (id, inventory, nonce) -> new RecoveryMenu(id, inventory, nonce, true));
   }
 
   public UUID session() {
-    return session;
+    return session.id();
   }
 
   public RecoveryPackets.View view() {
@@ -70,27 +63,23 @@ public final class RecoveryMenu extends AbstractContainerMenu {
   }
 
   public void accept(RecoveryPackets.View packet) {
-    if (!server
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+    if (!session.server()
+        && session.owns(packet.menu(), packet.session())
         && packet.revision() >= view.revision()) view = packet;
   }
 
   public void send(int action, UUID record) {
     PacketDistributor.sendToServer(
-        new RecoveryPackets.Command(containerId, session, action, record));
+        new RecoveryPackets.Command(containerId, session.id(), action, record));
   }
 
   private ServerPlayer player() {
-    return (ServerPlayer) viewer;
+    return session.player();
   }
 
   @Override
   public boolean stillValid(Player player) {
-    return player == viewer
-        && player.isAlive()
-        && (!server
-            || active && player().server.getPlayerList().getPlayer(player.getUUID()) == player);
+    return session.stillValid(player);
   }
 
   @Override
@@ -101,29 +90,18 @@ public final class RecoveryMenu extends AbstractContainerMenu {
   @Override
   public void removed(Player player) {
     super.removed(player);
-    active = false;
+    session.close();
   }
 
   @Override
   public void broadcastChanges() {
     super.broadcastChanges();
-    if (!server || !active || player().containerMenu != this) return;
-    int tick = player().server.getTickCount();
-    if (lastPoll != Integer.MIN_VALUE && tick - lastPoll < POLL_TICKS) return;
-    lastPoll = tick;
-    publish();
+    if (session.admitPoll()) publish();
   }
 
   public void command(ServerPlayer sender, RecoveryPackets.Command packet) {
-    if (!server
-        || sender != viewer
-        || packet.menu() != containerId
-        || !packet.session().equals(session)
-        || sender.containerMenu != this
-        || !stillValid(sender)) return;
-    int tick = sender.server.getTickCount();
-    if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
-    lastCommand = tick;
+    if (!stillValid(sender) || !session.admitCommand(sender, packet.menu(), packet.session()))
+      return;
     evidence = "";
     detail = "";
     switch (packet.action()) {
@@ -153,7 +131,7 @@ public final class RecoveryMenu extends AbstractContainerMenu {
                 id,
                 settle,
                 completed -> {
-                  if (!active || player().containerMenu != this) return;
+                  if (!session.active() || player().containerMenu != this) return;
                   status = settle ? "settled" : "result";
                   detail = completed.reason().name();
                   publish();
@@ -163,7 +141,7 @@ public final class RecoveryMenu extends AbstractContainerMenu {
         if (status.equals("queued")) detail = outcome.admission().name();
       }
       case RecoveryPackets.RETIRE -> {
-        if (!sender.hasPermissions(2)) {
+        if (!sender.hasPermissions(Actors.OPERATOR_LEVEL)) {
           status = "operator";
           break;
         }
@@ -198,7 +176,7 @@ public final class RecoveryMenu extends AbstractContainerMenu {
 
   private RecoveryPackets.View build(long revision) {
     var player = player();
-    boolean operator = player.hasPermissions(2);
+    boolean operator = player.hasPermissions(Actors.OPERATOR_LEVEL);
     var rows = new ArrayList<RecoveryPackets.Row>();
     next = null;
     try {
@@ -230,7 +208,7 @@ public final class RecoveryMenu extends AbstractContainerMenu {
     } catch (IllegalStateException unavailable) {
       return new RecoveryPackets.View(
           containerId,
-          session,
+          session.id(),
           revision,
           operator,
           List.of(),
@@ -242,7 +220,7 @@ public final class RecoveryMenu extends AbstractContainerMenu {
     }
     return new RecoveryPackets.View(
         containerId,
-        session,
+        session.id(),
         revision,
         operator,
         rows,

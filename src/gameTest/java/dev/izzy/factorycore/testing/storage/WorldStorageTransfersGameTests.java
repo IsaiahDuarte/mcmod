@@ -8,21 +8,27 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.StorageContent;
+import dev.izzy.factorycore.platform.storage.EnergyBankContent;
+import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
+import dev.izzy.factorycore.testing.Net;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -38,32 +44,25 @@ public final class WorldStorageTransfersGameTests {
   private WorldStorageTransfersGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper helper, BlockPos position) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(position).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(position));
   }
 
   private static void scenario(GameTestHelper helper, int change) {
     var owner = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var guest = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(owner.id());
+    NetworkNodeEntity root = Net.in(helper, owner.id()).controller(ROOT);
     if (change == 4) {
       helper.setBlock(
           CABLE,
           NetworkContent.GATEWAY
               .get()
               .defaultBlockState()
-              .setValue(
-                  net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING,
-                  net.minecraft.core.Direction.EAST));
+              .setValue(BlockStateProperties.FACING, Direction.EAST));
       NetworkNodeEntity gate = helper.getBlockEntity(CABLE);
       gate.commission(null);
     } else helper.setBlock(CABLE, NetworkContent.CABLE.get());
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive =
+        Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM, CellTier.STARTER_ITEM);
     var source = CellHandleData.read(drive.cell(0));
     var destination = CellHandleData.read(drive.cell(1));
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
@@ -160,9 +159,7 @@ public final class WorldStorageTransfersGameTests {
               if (change == 3) drive.removeCell(0);
               if (change == 6) {
                 helper.setBlock(ROOT, Blocks.AIR);
-                helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-                NetworkNodeEntity replacement = helper.getBlockEntity(ROOT);
-                replacement.commission(owner.id());
+                NetworkNodeEntity replacement = Net.in(helper, owner.id()).controller(ROOT);
               }
             })
         .thenWaitUntil(() -> helper.assertTrue(result[0] != null, "Completion reported"))
@@ -212,20 +209,16 @@ public final class WorldStorageTransfersGameTests {
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void bankTransferUsesPhysicalCapacityAndCanonicalEnergy(GameTestHelper helper) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     helper.setBlock(CABLE, NetworkContent.CABLE.get());
     var other = new BlockPos(2, 1, 2);
-    var tier = dev.izzy.factorycore.core.storage.EnergyBankTier.STARTER;
-    helper.setBlock(DRIVE, dev.izzy.factorycore.platform.storage.EnergyBankContent.block(tier));
-    helper.setBlock(other, dev.izzy.factorycore.platform.storage.EnergyBankContent.block(tier));
-    dev.izzy.factorycore.platform.storage.EnergyBankEntity source = helper.getBlockEntity(DRIVE);
-    dev.izzy.factorycore.platform.storage.EnergyBankEntity destination =
-        helper.getBlockEntity(other);
-    source.place(new ItemStack(dev.izzy.factorycore.platform.storage.EnergyBankContent.item(tier)));
-    destination.place(
-        new ItemStack(dev.izzy.factorycore.platform.storage.EnergyBankContent.item(tier)));
+    var tier = EnergyBankTier.STARTER;
+    helper.setBlock(DRIVE, EnergyBankContent.block(tier));
+    helper.setBlock(other, EnergyBankContent.block(tier));
+    EnergyBankEntity source = helper.getBlockEntity(DRIVE);
+    EnergyBankEntity destination = helper.getBlockEntity(other);
+    source.place(new ItemStack(EnergyBankContent.item(tier)));
+    destination.place(new ItemStack(EnergyBankContent.item(tier)));
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     WorldStorageTransfers.Result[] result = {null};

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.resource;
 
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
+import java.io.UncheckedIOException;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import net.minecraft.world.item.ItemStack;
@@ -45,7 +46,7 @@ public final class BufferedItemHandler implements IItemHandler {
     ResourceKey key;
     try {
       key = codec.itemKey(stack);
-    } catch (IllegalArgumentException | java.io.UncheckedIOException unsupported) {
+    } catch (IllegalArgumentException | UncheckedIOException unsupported) {
       return stack.copy();
     }
     long accepted = buffer.insertSlot(slot, key, stack.getCount(), simulate);

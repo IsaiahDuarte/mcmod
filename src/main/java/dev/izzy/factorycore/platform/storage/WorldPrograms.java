@@ -8,28 +8,41 @@ import dev.izzy.factorycore.core.program.HostBudget;
 import dev.izzy.factorycore.core.program.ProgramCommand;
 import dev.izzy.factorycore.core.program.ProgramEvaluator;
 import dev.izzy.factorycore.core.program.ProgramIr;
+import dev.izzy.factorycore.core.program.ProgramPreview;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.scheduling.FairScheduler;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.core.wasm.WasmProgram;
+import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.ServerScoped;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
+import dev.izzy.factorycore.platform.program.ProgramMenu;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
@@ -52,7 +65,7 @@ public final class WorldPrograms {
   /** Same page bound as preset discovery; pages also visit devices outside this scope. */
   public static final int MAX_CATALOG_PAGES = WorldStorageSearch.MAX_PAGES;
 
-  private static final Map<MinecraftServer, WorldPrograms> SERVERS = new HashMap<>();
+  private static final ServerScoped<WorldPrograms> SERVERS = ServerScoped.of(WorldPrograms::new);
 
   private record Pending(String rule, ProgramCommand command) {}
 
@@ -98,16 +111,12 @@ public final class WorldPrograms {
   }
 
   public static WorldPrograms get(MinecraftServer server) {
-    if (!server.isSameThread()) throw new IllegalStateException("Programs require server thread");
-    return SERVERS.computeIfAbsent(server, WorldPrograms::new);
+    ServerThread.require(server, "Programs");
+    return SERVERS.get(server);
   }
 
   public static boolean exists(MinecraftServer server) {
-    return SERVERS.containsKey(server);
-  }
-
-  public static void stopped(ServerStoppedEvent event) {
-    SERVERS.remove(event.getServer());
+    return SERVERS.peek(server) != null;
   }
 
   public static void postTick(ServerTickEvent.Post event) {
@@ -125,7 +134,7 @@ public final class WorldPrograms {
 
   /** Opens the editor for an authorized viewer; false when no screen applies. */
   public boolean open(ServerPlayer player, ProgramControllerEntity controller) {
-    return dev.izzy.factorycore.platform.program.ProgramMenu.open(player, controller);
+    return ProgramMenu.open(player, controller);
   }
 
   private WorldNetworks networks() {
@@ -143,8 +152,7 @@ public final class WorldPrograms {
   private boolean allowed(NetworkPermissions.Actor actor, ProgramControllerEntity controller) {
     return controller.current()
         && networks().membership(controller.origin()).status() == NetworkTopology.Status.VALID
-        && networks().authorize(actor, controller.origin(), NetworkPermissions.Permission.DEPLOY)
-            == NetworkAuthority.Decision.ALLOWED;
+        && networks().allows(actor, controller.origin(), NetworkPermissions.Permission.DEPLOY);
   }
 
   /** Compiles the draft and deploys it under {@code actor}; returns diagnostics on failure. */
@@ -171,9 +179,9 @@ public final class WorldPrograms {
       NetworkPermissions.Actor actor, ProgramControllerEntity controller, byte[] artifact) {
     if (!allowed(actor, controller))
       return List.of(new FriendlyCompiler.Diagnostic(1, 1, "You need Deploy permission here"));
-    dev.izzy.factorycore.core.wasm.WasmProgram instance;
+    WasmProgram instance;
     try {
-      instance = new dev.izzy.factorycore.core.wasm.WasmProgram(artifact, System::nanoTime);
+      instance = new WasmProgram(artifact, System::nanoTime);
     } catch (RuntimeException failure) {
       var message =
           failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
@@ -216,7 +224,7 @@ public final class WorldPrograms {
   }
 
   public void tick() {
-    if (!server.isSameThread()) throw new IllegalStateException("Programs require server thread");
+    ServerThread.require(server, "Programs");
     long now = server.getTickCount();
     var scheduler = networks().scheduler();
     for (var entry : new ArrayList<>(controllers.entrySet())) {
@@ -253,8 +261,8 @@ public final class WorldPrograms {
                 key,
                 TASK_COST,
                 () -> invoke(controller, deployment, rule));
-        if (admission == dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.ACCEPTED
-            || admission == dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.REPLACED)
+        if (admission == FairScheduler.Admission.ACCEPTED
+            || admission == FairScheduler.Admission.REPLACED)
           runtime.scheduled.putIfAbsent(rule.key(), now);
         else throttled(controller, runtime, rule.key(), admission);
       }
@@ -271,13 +279,13 @@ public final class WorldPrograms {
       ProgramControllerEntity controller,
       Runtime runtime,
       String rule,
-      dev.izzy.factorycore.core.scheduling.FairScheduler.Admission admission) {
+      FairScheduler.Admission admission) {
     if (!runtime.status.equals("throttled"))
       controller.log(
           "rule "
               + rule
               + " throttled: server work "
-              + admission.name().toLowerCase(java.util.Locale.ROOT)
+              + admission.name().toLowerCase(Locale.ROOT)
               + "; retrying at its next interval");
     runtime.status = "throttled";
   }
@@ -305,10 +313,7 @@ public final class WorldPrograms {
     boolean guest = rule.friendly() == null;
     long worst =
         BASE_COST
-            + (guest
-                    ? dev.izzy.factorycore.core.wasm.WasmProgram.RULE_INSTRUCTIONS
-                    : ProgramEvaluator.MAX_STEPS)
-                / STEPS_PER_FE;
+            + (guest ? WasmProgram.RULE_INSTRUCTIONS : ProgramEvaluator.MAX_STEPS) / STEPS_PER_FE;
     if (controller.energy() < worst) {
       runtime.status = "no_power";
       return;
@@ -361,17 +366,15 @@ public final class WorldPrograms {
   }
 
   /** Evaluates one saved native draft rule against the viewer's current read-only scope. */
-  public dev.izzy.factorycore.core.program.ProgramPreview.Result preview(
+  public ProgramPreview.Result preview(
       NetworkPermissions.Actor actor, ProgramControllerEntity controller, int rule) {
-    if (networks().authorize(actor, controller.origin(), NetworkPermissions.Permission.VIEW)
-        != NetworkAuthority.Decision.ALLOWED)
-      return new dev.izzy.factorycore.core.program.ProgramPreview.Result(
-          0, 0, List.of("View permission required"));
-    var compiled = dev.izzy.factorycore.core.program.FriendlyCompiler.compile(controller.draft());
+    if (!networks().allows(actor, controller.origin(), NetworkPermissions.Permission.VIEW))
+      return new ProgramPreview.Result(0, 0, List.of("View permission required"));
+    var compiled = FriendlyCompiler.compile(controller.draft());
     if (!compiled.ok())
-      return new dev.izzy.factorycore.core.program.ProgramPreview.Result(
+      return new ProgramPreview.Result(
           0, 0, List.of("Fix compiler diagnostics before previewing the saved draft"));
-    return dev.izzy.factorycore.core.program.ProgramPreview.evaluate(
+    return ProgramPreview.evaluate(
         compiled.program(), rule, host(controller, actor, new HostBudget()));
   }
 
@@ -397,8 +400,7 @@ public final class WorldPrograms {
 
       @Override
       public long stock(ResourceFilter filter) {
-        if (networks().authorize(actor, controller.origin(), NetworkPermissions.Permission.VIEW)
-            != NetworkAuthority.Decision.ALLOWED)
+        if (!networks().allows(actor, controller.origin(), NetworkPermissions.Permission.VIEW))
           throw new IllegalStateException("reading storage needs View permission");
         return storageStock(controller, actor, filter, budget);
       }
@@ -421,7 +423,7 @@ public final class WorldPrograms {
       var page = registry.handles(after, 16);
       for (var handle : page.handles()) {
         // Conflicted, stale or portable ledgers are not countable storage.
-        if (registry.validate(handle) != dev.izzy.factorycore.core.storage.DeviceRegistry.Failure.OK
+        if (registry.validate(handle) != DeviceRegistry.Failure.OK
             || registry.definition(handle).location() == null
             || registry.definition(handle).kind() != filter.kind()
             || !transfers.digitalAllowed(
@@ -444,28 +446,24 @@ public final class WorldPrograms {
     return total;
   }
 
-  private boolean tagged(
-      dev.izzy.factorycore.core.resource.ResourceKind kind, String tag, ResourceKey key) {
-    if (kind != dev.izzy.factorycore.core.resource.ResourceKind.ITEM) return false;
+  private boolean tagged(ResourceKind kind, String tag, ResourceKey key) {
+    if (kind != ResourceKind.ITEM) return false;
     try {
       var stack = new PlatformResourceCodec(server.registryAccess()).itemStack(key, 1);
-      return stack.is(
-          net.minecraft.tags.TagKey.create(
-              net.minecraft.core.registries.Registries.ITEM, ResourceLocation.parse(tag)));
+      return stack.is(TagKey.create(Registries.ITEM, ResourceLocation.parse(tag)));
     } catch (IllegalArgumentException unsupported) {
       return false;
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed levels.
   private MachineInterfaceEntity machine(UUID node, ProgramControllerEntity controller) {
     var evidence = saved().nodes().evidence(node);
     if (evidence == null || evidence.position() == null) return null;
     var position = evidence.position();
-    for (var level : server.getAllLevels()) {
+    for (ServerLevel level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(position.dimension())) continue;
       var pos = BlockPos.of(position.block());
-      if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) return null;
+      if (Loaded.chunk(level, pos) == null) return null;
       if (!(level.getBlockEntity(pos) instanceof MachineInterfaceEntity owner)) return null;
       var target = networks().membership(owner.position());
       var origin = networks().membership(controller.origin());
@@ -522,7 +520,7 @@ public final class WorldPrograms {
     return switch (reason) {
       case BUSY -> "busy: a crafting job is using this machine; retrying next interval";
       case RATE_LIMIT -> "rate limit reached this tick; retrying next interval";
-      default -> reason.name().toLowerCase(java.util.Locale.ROOT);
+      default -> reason.name().toLowerCase(Locale.ROOT);
     };
   }
 
@@ -721,6 +719,6 @@ public final class WorldPrograms {
   public static UUID craftLink(UUID deployment, String rule, String item) {
     return UUID.nameUUIDFromBytes(
         ("factorycore:program-craft:v1:" + deployment + "|" + rule + "|" + item)
-            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            .getBytes(StandardCharsets.UTF_8));
   }
 }

@@ -35,7 +35,7 @@ final class RouteCursorCodec {
   }
 
   static List<RouteCursors.Cursor> decode(CompoundTag root) {
-    NetworkStateCodec.fields(root, Set.of("Schema", "Cursors"));
+    Nbt.fields(root, Set.of("Schema", "Cursors"));
     if (!root.contains("Schema", Tag.TAG_INT)
         || root.getInt("Schema") != 1
         || !root.contains("Cursors", Tag.TAG_LIST))
@@ -47,7 +47,7 @@ final class RouteCursorCodec {
     var cursors = new ArrayList<RouteCursors.Cursor>();
     for (int index = 0; index < list.size(); index++) {
       var entry = list.getCompound(index);
-      NetworkStateCodec.fields(
+      Nbt.fields(
           entry,
           Set.of(
               "Network",

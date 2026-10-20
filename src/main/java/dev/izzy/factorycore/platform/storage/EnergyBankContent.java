@@ -1,50 +1,55 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
-import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.DeviceProperties;
+import dev.izzy.factorycore.platform.FactoryRegistries;
+import dev.izzy.factorycore.platform.LeasedBlockItem;
 import java.util.EnumMap;
-import net.minecraft.core.registries.Registries;
+import java.util.Locale;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class EnergyBankContent {
-  private static final DeferredRegister.Blocks BLOCKS =
-      DeferredRegister.createBlocks(FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister.Items ITEMS =
-      DeferredRegister.createItems(FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister<BlockEntityType<?>> ENTITIES =
-      DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FactoryCoreMod.MOD_ID);
   private static final EnumMap<EnergyBankTier, DeferredBlock<EnergyBankBlock>> BANKS =
       new EnumMap<>(EnergyBankTier.class);
-  private static final EnumMap<EnergyBankTier, DeferredItem<EnergyBankItem>> BANK_ITEMS =
+  private static final EnumMap<EnergyBankTier, DeferredItem<LeasedBlockItem>> BANK_ITEMS =
       new EnumMap<>(EnergyBankTier.class);
 
   static {
     for (var tier : EnergyBankTier.values()) {
-      var name = tier.name().toLowerCase(java.util.Locale.ROOT) + "_energy_bank";
+      var name = tier.name().toLowerCase(Locale.ROOT) + "_energy_bank";
       var block =
-          BLOCKS.registerBlock(
-              name,
-              p -> new EnergyBankBlock(p, tier),
-              BlockBehaviour.Properties.of()
-                  .strength(3.5f)
-                  .requiresCorrectToolForDrops()
-                  .sound(net.minecraft.world.level.block.SoundType.METAL));
+          FactoryRegistries.BLOCKS.registerBlock(
+              name, p -> new EnergyBankBlock(p, tier), DeviceProperties.machine());
       BANKS.put(tier, block);
-      BANK_ITEMS.put(tier, ITEMS.register(name, () -> new EnergyBankItem(block.get())));
+      BANK_ITEMS.put(
+          tier,
+          FactoryRegistries.ITEMS.register(
+              name,
+              () ->
+                  new LeasedBlockItem(
+                      block.get(),
+                      ((LeasedBlockItem.Tooltip)
+                              (stack, lines) ->
+                                  lines.add(
+                                      Component.translatable(
+                                          "tooltip.factorycore.bank",
+                                          tier.capacity(),
+                                          tier.rate())))
+                          .then(
+                              LeasedBlockItem.Tooltip.lines("tooltip.factorycore.bank_upgrade")))));
     }
   }
 
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<EnergyBankEntity>> ENTITY =
-      ENTITIES.register(
+      FactoryRegistries.ENTITIES.register(
           "energy_bank",
           () ->
               BlockEntityType.Builder.of(
@@ -69,9 +74,6 @@ public final class EnergyBankContent {
   }
 
   public static void register(IEventBus bus) {
-    BLOCKS.register(bus);
-    ITEMS.register(bus);
-    ENTITIES.register(bus);
     bus.addListener(EnergyBankContent::capabilities);
   }
 }

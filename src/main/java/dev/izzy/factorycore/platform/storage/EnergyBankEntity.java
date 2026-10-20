@@ -1,14 +1,20 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankOwnership;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import java.io.IOException;
+import java.nio.file.Path;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -16,12 +22,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 
 /**
  * A physical reference only; canonical stock, claims and rate spending belong to world services.
  */
-public final class EnergyBankEntity extends BlockEntity implements IEnergyStorage {
+public final class EnergyBankEntity extends BlockEntity
+    implements IEnergyStorage, WiredMember, CanonicalStorage {
   private Tag data;
   private DeviceRegistry.Handle handle;
   private String diagnostic = "";
@@ -42,7 +50,6 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
     return diagnostic;
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   public DeviceRegistry.Location location() {
     if (!(level instanceof ServerLevel server))
       throw new IllegalStateException("Bank requires server level");
@@ -50,7 +57,6 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
         server.dimension().location().toString(), worldPosition.asLong(), 0);
   }
 
-  @SuppressWarnings("PMD.CloseResource")
   private DeviceSavedData authority() {
     if (!(level instanceof ServerLevel server))
       throw new IllegalStateException("Bank requires server level");
@@ -78,14 +84,9 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
   }
 
   /** Trusted operator recovery at the exact existing canonical holder; never relocates FE. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
-  public java.nio.file.Path repairConflict(DeviceRegistry.Handle expected)
-      throws java.io.IOException {
+  public Path repairConflict(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
-        || isRemoved()
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
-        || server.getBlockEntity(worldPosition) != this
+        || !LeaseRecovery.loadedHere(this)
         || !expected.equals(handle)
         || !expected.equals(EnergyBankHandleData.read(data)))
       throw new IllegalStateException("Exact loaded bank reference required");
@@ -97,7 +98,7 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
         || !owner.conflict()
         || expected.generation() == Long.MAX_VALUE
         || !location().equals(owner.definition().location())
-        || owner.definition().kind() != dev.izzy.factorycore.core.resource.ResourceKind.ENERGY
+        || owner.definition().kind() != ResourceKind.ENERGY
         || owner.definition().infinite()
         || owner.definition().capacity() != tier().capacity()
         || saved.transfers().unresolved(expected.backing()) != null)
@@ -107,10 +108,10 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
     var replacementData = EnergyBankHandleData.write(replacement);
     var path =
         DeviceRecoveryAudit.preserveBank(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             registry.evidence(expected.backing()),
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(server.registryAccess()));
     var result = registry.repairConflict(expected, location());
     if (result.failure() != DeviceRegistry.Failure.OK)
@@ -129,14 +130,8 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
    * is not a bank referencing the backing, this bank's reference has the same world/backing, a
    * different generation and a matching finite tier, and no transfer is unresolved.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
-  public java.nio.file.Path adoptBank(DeviceRegistry.Handle expected) throws java.io.IOException {
-    if (!(level instanceof ServerLevel server)
-        || isRemoved()
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
-        || server.getBlockEntity(worldPosition) != this
-        || handle == null)
+  public Path adoptBank(DeviceRegistry.Handle expected) throws IOException {
+    if (!(level instanceof ServerLevel server) || !LeaseRecovery.loadedHere(this) || handle == null)
       throw new IllegalStateException("Adopting bank must be loaded and readable");
     var saved = authority();
     var registry = saved.registry();
@@ -149,33 +144,26 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
         || !handle.world().equals(expected.world())
         || !handle.backing().equals(expected.backing())
         || handle.generation() == expected.generation()
-        || owner.definition().kind() != dev.izzy.factorycore.core.resource.ResourceKind.ENERGY
+        || owner.definition().kind() != ResourceKind.ENERGY
         || owner.definition().infinite()
         || owner.definition().capacity() != tier().capacity()
         || saved.transfers().unresolved(expected.backing()) != null)
       throw new IllegalStateException("Bank lease cannot be adopted");
-    var oldLevel =
-        server
-            .getServer()
-            .getLevel(
-                net.minecraft.resources.ResourceKey.create(
-                    net.minecraft.core.registries.Registries.DIMENSION,
-                    net.minecraft.resources.ResourceLocation.parse(canonical.dimension())));
-    var oldPos = BlockPos.of(canonical.position());
-    if (oldLevel == null
-        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
-      throw new IllegalStateException("Old canonical holder must be loaded");
-    if (oldLevel.getBlockEntity(oldPos) instanceof EnergyBankEntity old
-        && old.handle != null
-        && old.handle.backing().equals(expected.backing()))
-      throw new IllegalStateException("Old canonical holder still references the backing");
+    var old =
+        LeaseRecovery.releasedOldHolder(
+            server.getServer(),
+            canonical,
+            entity ->
+                entity instanceof EnergyBankEntity previous
+                    && previous.handle != null
+                    && previous.handle.backing().equals(expected.backing()));
     var path =
         DeviceRecoveryAudit.preserveBankAdoption(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             registry.evidence(expected.backing()),
             location(),
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(server.registryAccess()));
     var adopted = registry.adopt(expected, location());
     if (adopted.failure() != DeviceRegistry.Failure.OK)
@@ -184,7 +172,7 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
     data = EnergyBankHandleData.write(handle);
     diagnostic = "";
     setChanged();
-    WorldNetworks.changed(oldLevel, oldPos);
+    old.changed();
     onLoad();
     return path;
   }
@@ -323,5 +311,11 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
   @Override
   public boolean canReceive() {
     return true;
+  }
+
+  @Override
+  public Vertex wireVertex() {
+    return new Vertex(
+        null, "wire", NetworkTopology.Role.STORAGE, WiredMember.placedValid(this::validatePlaced));
   }
 }

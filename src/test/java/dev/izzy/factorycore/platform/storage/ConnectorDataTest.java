@@ -4,20 +4,20 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
+import net.minecraft.nbt.TagParser;
 import org.junit.jupiter.api.Test;
 
 class ConnectorDataTest {
   @Test
   void upgradedPortAndMachineSchemasRetainTierAndRejectImpossibleOrFutureData() {
-    for (var kind :
-        java.util.List.of(NodeRegistry.Kind.CONNECTOR, NodeRegistry.Kind.MACHINE_INTERFACE)) {
+    for (var kind : List.of(NodeRegistry.Kind.CONNECTOR, NodeRegistry.Kind.MACHINE_INTERFACE)) {
       var lease = new NodeRegistry.Handle(UUID.randomUUID(), UUID.randomUUID(), 3, kind);
-      for (var tier :
-          java.util.List.of(
-              dev.izzy.factorycore.core.resource.ThroughputTier.ADVANCED,
-              dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME)) {
+      for (var tier : List.of(ThroughputTier.ADVANCED, ThroughputTier.ENDGAME)) {
         var state =
             new ConnectorData.State(
                 lease,
@@ -35,7 +35,7 @@ class ConnectorDataTest {
         var tag = ConnectorData.write(state);
         assertEquals(kind == NodeRegistry.Kind.CONNECTOR ? 3 : 4, tag.getInt("Schema"));
         assertEquals(state, ConnectorData.read(tag));
-        for (String invalid : java.util.List.of("BASE", "FUTURE")) {
+        for (String invalid : List.of("BASE", "FUTURE")) {
           var malformed = tag.copy();
           malformed.putString("Throughput", invalid);
           var before = malformed.copy();
@@ -54,9 +54,7 @@ class ConnectorDataTest {
   void committedLocalFixtureFreezesFieldTypesAndPolicies() throws Exception {
     try (var input = getClass().getResourceAsStream("/persistence/connector-v1.snbt")) {
       assertNotNull(input);
-      var tag =
-          net.minecraft.nbt.TagParser.parseTag(
-              new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+      var tag = TagParser.parseTag(new String(input.readAllBytes(), StandardCharsets.UTF_8));
       var state = ConnectorData.read(tag);
       assertEquals(ResourceKind.FLUID, state.settings().kind());
       assertEquals(ConnectorSettings.Access.READ_ONLY, state.settings().access());

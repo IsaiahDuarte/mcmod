@@ -1,21 +1,30 @@
 package dev.izzy.factorycore.testing.storage;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -42,22 +51,16 @@ public final class LegacySettlementGameTests {
       NodeRegistry.Position drive) {}
 
   private static Fixture setup(GameTestHelper h, UUID owner) {
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner);
+    NetworkNodeEntity root = Net.in(h, owner).controller(ROOT);
     h.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM, CellTier.STARTER_ITEM);
     return new Fixture(
         root,
         CellHandleData.read(drive.cell(0)),
         CellHandleData.read(drive.cell(1)),
         DeviceSavedData.get(h.getLevel().getServer()),
         WorldNetworks.get(h.getLevel().getServer()),
-        new NodeRegistry.Position(
-            h.getLevel().dimension().location().toString(), h.absolutePos(DRIVE).asLong()));
+        Positions.of(h.getLevel(), h.absolutePos(DRIVE)));
   }
 
   private static boolean ready(Fixture f) {
@@ -112,20 +115,18 @@ public final class LegacySettlementGameTests {
     };
   }
 
-  private static int command(net.minecraft.commands.CommandSourceStack source, String command) {
+  private static int command(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException denied) {
+    } catch (CommandSyntaxException denied) {
       return -1;
     }
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void originalOwnerSettlesLegacyStagingBackToItsCell(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     var f = setup(h, player.getUUID());
     var id = UUID.randomUUID();
     h.startSequence()
@@ -161,15 +162,12 @@ public final class LegacySettlementGameTests {
                   "Scoped return still refuses a legacy record");
               h.assertTrue(command(ordinary, settle) == 1, "The original owner queues settlement");
               var folder =
-                  player
-                      .server
-                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
-                      .resolve("factorycore-recovery");
-              try (var files = java.nio.file.Files.list(folder)) {
+                  player.server.getWorldPath(LevelResource.ROOT).resolve("factorycore-recovery");
+              try (var files = Files.list(folder)) {
                 h.assertTrue(
                     files.anyMatch(path -> path.getFileName().toString().startsWith(id.toString())),
                     "Before-state evidence is preserved before settlement");
-              } catch (java.io.IOException failure) {
+              } catch (IOException failure) {
                 throw new AssertionError(failure);
               }
             })
@@ -190,7 +188,7 @@ public final class LegacySettlementGameTests {
               h.assertTrue(
                   f.saved.transfers().unresolved(f.source.backing()) == null,
                   "The settled record no longer holds unresolved evidence");
-              player.connection.disconnect(net.minecraft.network.chat.Component.literal("done"));
+              player.connection.disconnect(Component.literal("done"));
             })
         .thenSucceed();
   }
@@ -333,9 +331,7 @@ public final class LegacySettlementGameTests {
     var f = setup(h, actor.id());
     var otherRoot = new BlockPos(1, 1, 4);
     var otherDrive = new BlockPos(3, 1, 4);
-    h.setBlock(otherRoot, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(otherRoot);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(h, actor.id()).controller(otherRoot);
     h.setBlock(new BlockPos(2, 1, 4), NetworkContent.CABLE.get());
     h.setBlock(otherDrive, StorageContent.DRIVE.get());
     StorageDriveEntity destination = h.getBlockEntity(otherDrive);
@@ -374,7 +370,7 @@ public final class LegacySettlementGameTests {
                     f.runtime
                             .scheduler()
                             .submit(network, actor.id(), "legacy-move-delay-" + n, 512, () -> {})
-                        == dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.ACCEPTED,
+                        == FairScheduler.Admission.ACCEPTED,
                     "Delay admitted within the normal shared scheduler");
               h.assertTrue(
                   f.runtime

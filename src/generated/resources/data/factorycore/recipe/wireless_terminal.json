@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "E": {
+      "item": "minecraft:ender_pearl"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "factorycore:storage_terminal"
+    }
+  },
+  "pattern": [
+    "CTC",
+    "RER",
+    "CCC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "factorycore:wireless_terminal"
+  }
+}

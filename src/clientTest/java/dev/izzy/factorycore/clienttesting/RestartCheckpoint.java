@@ -13,6 +13,7 @@ import java.util.Properties;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -28,7 +29,6 @@ final class RestartCheckpoint {
   private final StagedRecoveryVerification.Seed staging = new StagedRecoveryVerification.Seed();
   private final Properties stagedExpected = new Properties();
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the player's live level.
   boolean prepare(ServerPlayer player, Path path) throws IOException {
     var level = player.serverLevel();
     var saved = DeviceSavedData.get(player.server);
@@ -91,7 +91,7 @@ final class RestartCheckpoint {
     var preferences =
         player
             .getPersistentData()
-            .getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG)
+            .getCompound(Player.PERSISTED_NBT_TAG)
             .getCompound("FactoryCoreTerminal");
     require(
         preferences.getInt("Schema") == 1

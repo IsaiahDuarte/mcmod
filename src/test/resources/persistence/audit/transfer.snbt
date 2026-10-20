@@ -1,0 +1,1 @@
+{Schema:1,Transfers:[{Components:[B;1B,2B,3B],Delivered:3L,Destination:[I;0,0,0,13],Diagnostic:"Known partial",Id:[I;0,0,0,10],Kind:"ITEM",Owner:[I;0,0,0,11],Pending:"NONE",PendingAmount:0L,Reason:"FULL",Registry:"minecraft:iron_ingot",Returned:0L,Schema:2,Source:[I;0,0,0,12],Staged:5L,State:"STAGED"}],World:[I;0,0,0,100],WorldSchema:12}

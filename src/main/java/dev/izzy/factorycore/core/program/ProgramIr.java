@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.core.program;
 
 import dev.izzy.factorycore.core.resource.ResourceFilter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,7 +22,7 @@ public final class ProgramIr {
     public Program {
       rules = List.copyOf(rules);
       if (rules.size() > MAX_RULES) throw new IllegalArgumentException("Too many rules");
-      var keys = new java.util.HashSet<String>();
+      var keys = new HashSet<String>();
       for (var rule : rules)
         if (!keys.add(rule.key())) throw new IllegalArgumentException("Duplicate rule key");
     }

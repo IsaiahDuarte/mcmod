@@ -2,10 +2,13 @@ package dev.izzy.factorycore.platform.crafting;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
-import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
 import java.util.WeakHashMap;
@@ -13,6 +16,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -32,7 +36,7 @@ public final class ProcessingRecoveryCommands {
 
   public static LiteralArgumentBuilder<CommandSourceStack> commands() {
     return Commands.literal("processing")
-        .requires(source -> source.hasPermission(2))
+        .requires(source -> source.hasPermission(Actors.OPERATOR_LEVEL))
         .then(
             Commands.literal("show")
                 .then(
@@ -59,7 +63,6 @@ public final class ProcessingRecoveryCommands {
     source.sendFailure(Component.translatable("command.factorycore.recovery.processing." + reason));
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private static int run(CommandSourceStack source, BlockPos at, boolean resolve) {
     var server = source.getServer();
     var level = source.getLevel();
@@ -68,13 +71,13 @@ public final class ProcessingRecoveryCommands {
       source.sendFailure(Component.translatable("command.factorycore.recovery.unavailable"));
       return 0;
     }
-    var chunk = level.getChunkSource().getChunkNow(at.getX() >> 4, at.getZ() >> 4);
+    var chunk = Loaded.chunk(level, at);
     if (chunk == null) {
       fail(source, "unloaded");
       return 0;
     }
     var machine = chunk.getBlockEntity(at, LevelChunk.EntityCreationType.CHECK);
-    var target = new NodeRegistry.Position(level.dimension().location().toString(), at.asLong());
+    var target = Positions.of(level, at);
     CraftingJob owner = null;
     for (var job : saved.craftingJobs().all())
       if (job.dispatch() != null && target.equals(job.dispatch().target())) owner = job;
@@ -86,7 +89,7 @@ public final class ProcessingRecoveryCommands {
     if (raw == null) {
       // A chunk saved after the dispatch finished (or before it began) carries no journal while
       // the saved job still claims progress there; record that absence as the evidence.
-      var absent = new net.minecraft.nbt.CompoundTag();
+      var absent = new CompoundTag();
       absent.putBoolean("Absent", true);
       raw = absent;
     }
@@ -139,7 +142,7 @@ public final class ProcessingRecoveryCommands {
       return 0;
     }
     var named = owner != null ? owner.id() : entry != null ? entry.job() : new UUID(0L, 0L);
-    java.nio.file.Path evidence;
+    Path evidence;
     try {
       evidence =
           DeviceRecoveryAudit.preserveProcessingJournal(

@@ -6,17 +6,18 @@ import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
-import dev.izzy.factorycore.platform.network.NetworkContent;
+import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -76,20 +77,14 @@ public final class TerminalJobGameTests {
     return -1;
   }
 
-  @SuppressWarnings("removal") // Pinned helper performs actual PlayerList authentication.
-  @GameTest(template = "empty", timeoutTicks = 600)
+  @GameTest(template = "empty", timeoutTicks = 900)
   public static void terminalPreviewsStartsTracksAndCancelsJobs(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     h.setBlock(UNIT, CraftingContent.UNIT.get());
     CraftingUnitEntity unit = h.getBlockEntity(UNIT);
     unit.patterns()
@@ -140,10 +135,7 @@ public final class TerminalJobGameTests {
                   new TerminalJobPackets.Command(
                       m.containerId, m.session(), stale, TerminalJobPackets.START, 0, 1));
               h.assertTrue(
-                  dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(
-                          h.getLevel().getServer())
-                      .jobs(player.getUUID())
-                      .isEmpty(),
+                  WorldCraftingJobs.get(h.getLevel().getServer()).jobs(player.getUUID()).isEmpty(),
                   "Stale start is ignored");
             })
         .thenIdle(3)
@@ -214,10 +206,7 @@ public final class TerminalJobGameTests {
             () -> {
               menu(h, player).broadcastChanges();
               h.assertTrue(
-                  dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(
-                              h.getLevel().getServer())
-                          .jobs(player.getUUID())
-                          .isEmpty()
+                  WorldCraftingJobs.get(h.getLevel().getServer()).jobs(player.getUUID()).isEmpty()
                       && saved.registry().stock(cell, log).reserved() == 0,
                   "Cancelled job retires and releases its reservation");
             })
@@ -235,6 +224,20 @@ public final class TerminalJobGameTests {
                           .amount()
                           .equals("8"),
                   "Keep sets a rule shown on the row: " + m.jobView());
+              // Starve the rule: with no sticks, planks or logs left it cannot craft, and the row
+              // must say why.
+              var planks = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
+              for (var key : List.of(stick, planks, log)) {
+                long available = saved.registry().stock(cell, key).available();
+                if (available > 0) saved.registry().extract(cell, key, available, null);
+              }
+            })
+        .thenWaitUntil(
+            () -> {
+              var m = menu(h, player);
+              m.broadcastChanges();
+              var note = m.jobView().craftables().get(row(m, "minecraft:stick")).note();
+              h.assertTrue(note.equals("missing"), "A blocked keep rule is shown: '" + note + "'");
             })
         .thenIdle(3)
         .thenExecute(

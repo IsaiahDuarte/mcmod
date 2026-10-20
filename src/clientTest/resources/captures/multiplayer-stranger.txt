@@ -1,0 +1,14 @@
+# Screenshots this suite must capture. Gradle requires each file; the verification refuses
+# to capture a name not listed here.
+stranger-terminal-denied.png
+stranger-self-grant-refused.png
+stranger-policy-readonly.png
+stranger-view-only.png
+stranger-take-denied.png
+stranger-terminal-concurrent.png
+stranger-took-one.png
+stranger-sees-owner-take.png
+stranger-deposited.png
+stranger-concurrent-take.png
+stranger-revoked-closed.png
+stranger-operator-granted.png

@@ -2,7 +2,9 @@ package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.core.program.DraftHistory;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
+import dev.izzy.factorycore.core.program.ProgramCompletion;
 import dev.izzy.factorycore.core.program.ProgramSyntax;
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -30,7 +32,7 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
     }
 
     List<Line> lines() {
-      var result = new java.util.ArrayList<Line>();
+      var result = new ArrayList<Line>();
       for (var line : iterateLines()) result.add(new Line(line.beginIndex(), line.endIndex()));
       return result;
     }
@@ -102,8 +104,7 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
 
   /** Replaces just the identifier prefix before the cursor for explicit completion choices. */
   public void complete(String text) {
-    var context =
-        dev.izzy.factorycore.core.program.ProgramCompletion.at(field.value(), field.cursor());
+    var context = ProgramCompletion.at(field.value(), field.cursor());
     field.seekCursor(Whence.ABSOLUTE, context.start());
     field.setSelecting(true);
     field.seekCursor(Whence.ABSOLUTE, context.end());
@@ -111,8 +112,8 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
     field.insertText(text);
   }
 
-  public dev.izzy.factorycore.core.program.ProgramCompletion.Context completion() {
-    return dev.izzy.factorycore.core.program.ProgramCompletion.at(field.value(), field.cursor());
+  public ProgramCompletion.Context completion() {
+    return ProgramCompletion.at(field.value(), field.cursor());
   }
 
   @Override

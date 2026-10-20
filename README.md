@@ -1,100 +1,62 @@
-# Minecraft Storage and Automation
+# Factory Core
 
-A mod under development: unified item/fluid/energy storage, a crafting terminal, segmented factories, recipe-based autocrafting, and Rust/WebAssembly automation alongside a friendly language. Progression starts with wired storage and adds bounded wireless access/links and infinite item capacity.
+A Minecraft 1.21.1 / NeoForge 21.1.252 storage and automation mod. It offers:
+- unified item, fluid and energy storage behind private, segmented networks;
+- a storage terminal with search, manual crafting, autocrafting jobs and container actions;
+- no-code import/export/stock presets;
+- processing patterns for machines;
+- programs written in a friendly rule language or in Rust compiled to WebAssembly.
 
-Status: incomplete development build for Minecraft 1.21.1 / NeoForge 21.1.252 /
-Java 21. Wired item/fluid/energy storage, shared transfers and presets, terminal
-crafting/jobs/container actions, friendly/Rust-Wasm programs, wireless access/links,
-onboarding and original assets are implemented in part. Local canonical checks,
-two-client terminal permissions, graphical screens/art and a separate-process
-restart have passing evidence within their recorded scope. Shared wireless resource
-caps, remaining adapter/UI/upgrade behavior and full survival/performance/release
-acceptance are still open. See the [current implementation evidence and next work](docs/IMPLEMENTATION.md),
-[player guide](docs/PLAYER_GUIDE.md) and [asset inventory](docs/ASSETS.md).
+Progression runs from wired storage to paid throughput upgrades, wireless access and links, and
+Infinite cells.
 
-## Start here
+**Status:** V1 is feature-complete and in cleanup and iteration. Every system has automated
+world-level and real-client evidence; release acceptance (A01–A17) and the human survival
+playtest are tracked in [IMPLEMENTATION.md](docs/IMPLEMENTATION.md). Players start with the
+[player guide](docs/PLAYER_GUIDE.md).
 
-- [Product specification](SPEC.md): authoritative release scope, behavior, and acceptance criteria.
-- [Implementation handoff](docs/IMPLEMENTATION.md): ordered stages, decision gates, evidence tracking, and an instruction to give an implementing AI.
-- [Release asset inventory](docs/ASSETS.md): models, textures, device states, screens, onboarding and client verification status.
-- [Agent continuation task](docs/AGENT_HANDOFF.md): copyable goal-oriented handoff for the full first playable release.
-- [AI contributor instructions](AGENTS.md): required workflow and completion criteria.
-- [Engineering rules](docs/ENGINEERING.md): architecture, documentation, and change discipline.
-- [Verification requirements](docs/TESTING.md): current checks and required implementation gates.
-- [Development changelog](CHANGELOG.md): versioned artifact status and limitations.
-- [Ledger persistence](docs/modules/PERSISTENCE.md): initial P2 schema/recovery
-  contract; full staging/job recovery remains pending.
-- [Canonical transfer staging](docs/modules/TRANSFER_PERSISTENCE.md): bounded
-  ownership, schema-four migration and conservative external-intent recovery.
-- [Device ownership](docs/modules/DEVICE_OWNERSHIP.md): registry/lease and actual
-  SavedData adapter, with [physical storage contracts](docs/modules/STORAGE_CELLS.md) and the [player guide](docs/PLAYER_GUIDE.md).
-- [Architecture decisions](docs/decisions/README.md): how to record significant choices.
-- [Network authority](docs/modules/NETWORK_AUTHORITY.md): bounded portable
-  topology, local scopes and current grants, integrated with live wired availability.
-- [Network persistence](docs/modules/NETWORK_PERSISTENCE.md): canonical grant
-  metadata, schema-one migration and bounded principal admission.
-- [Physical network nodes](docs/modules/STRUCTURAL_NODES.md): portable structural
-  ownership, gateway ports and migration.
-- [Wire discovery](docs/modules/WIRE_DISCOVERY.md): budgeted reciprocal probes,
-  shared scheduling and nonloading world reads.
-- [Live wired networks](docs/modules/WORLD_NETWORKS.md): indexed event invalidation,
-  bounded server post-ticks and automatic validated cell availability.
-- [Energy-bank accounting](docs/modules/ENERGY_BANKS.md): finite tiers and shared
-  identity-based FE/tick budgets and physical bank capabilities; real chunks/client
-  and complete powered progression evidence pending.
-- [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
-- [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
+## Develop
 
-## Verify this repository
-
-Requires Python 3.11 or later, JDK 21 and pinned Rust guest tools:
+You need Java 21, Python 3.11+ and the pinned Rust guest toolchain:
 
 ```text
-rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown --target wasm32v1-none
+rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy --target wasm32v1-none
 ```
 
-The checked-in Gradle wrapper downloads
-Gradle and dependencies on the first run.
+| Command | Purpose |
+| --- | --- |
+| `python3 scripts/verify.py` | The inner loop: docs, formatting, PMD, architecture, JVM tests, GameTests (about 45 s) |
+| `python3 scripts/verify.py --full` | Also every dedicated-server restart/kill/save-skew suite; run before merging |
+| `./gradlew spotlessApply` | Format |
+| `./gradlew runClient` / `runServer` | Play in `run/client` / `run/server` |
 
-```text
-python3 scripts/verify.py
-```
+[TESTING.md](docs/TESTING.md) maps every suite (graphical tours, JEI, multiplayer, benchmarks)
+to what it proves. CI runs only when started manually; the local gate is authoritative.
 
-On Windows use `python scripts/verify.py`. This canonical check validates docs,
-acceptance tracking and nonempty tooling tests, then runs Gradle `build` for
-compilation, packaging, formatting, PMD, Rust fmt/clippy/tests/build and nonempty
-JVM/architecture/real-Wasm tests and required headless Minecraft GameTests. Rust is checked in the wired experiment and `sdk/rust` workspace; other unwired
-Kotlin/Rust source still fails. Passing this command
-proves only its covered behaviors, not full gameplay acceptance or actual client interactions.
+## Read
 
-Development commands:
+| Document | Owns |
+| --- | --- |
+| [SPEC.md](SPEC.md) | Product behavior, release scope and acceptance criteria |
+| [IMPLEMENTATION.md](docs/IMPLEMENTATION.md) | Status, stages, decision gates and the acceptance evidence table |
+| [ENGINEERING.md](docs/ENGINEERING.md) | Architecture boundaries and change discipline |
+| [TESTING.md](docs/TESTING.md) | Gates, suites, test-writing rules and profiling |
+| [AGENTS.md](AGENTS.md) | Contributor (human or AI) workflow |
+| [ASSETS.md](docs/ASSETS.md) | Models, textures, screens and their client verification |
+| [Decisions](docs/decisions/README.md) | ADRs: why each significant choice was made |
+| [CHANGELOG.md](CHANGELOG.md) | Versioned artifact status |
+| [Archive](docs/archive/) | The original design review and the dated build and verification logs |
 
-```text
-./gradlew runClient
-./gradlew runServer
-```
+Module contracts (invariants, units, thread ownership, persistence, failure behavior):
 
-On Windows use `gradlew.bat`. The client and development server use separate
-`run/client` and `run/server` folders. Do not commit runtime worlds or local settings. See [verification requirements](docs/TESTING.md) for exact gates.
+| Area | Modules |
+| --- | --- |
+| Resources | [accounting](docs/modules/RESOURCE_ACCOUNTING.md) · [filters/stock goals](docs/modules/RESOURCE_FILTERS.md) · [scheduling](docs/modules/SCHEDULING.md) |
+| Storage | [cells and drives](docs/modules/STORAGE_CELLS.md) · [energy banks](docs/modules/ENERGY_BANKS.md) · [device ownership](docs/modules/DEVICE_OWNERSHIP.md) · [ledger persistence](docs/modules/PERSISTENCE.md) |
+| Networks | [topology and authority](docs/modules/NETWORK_AUTHORITY.md) · [network persistence](docs/modules/NETWORK_PERSISTENCE.md) · [controllers/gateways/cables](docs/modules/STRUCTURAL_NODES.md) · [wire discovery](docs/modules/WIRE_DISCOVERY.md) · [live networks](docs/modules/WORLD_NETWORKS.md) · [wireless](docs/modules/WIRELESS.md) |
+| Transfers | [world transfers](docs/modules/WORLD_STORAGE_TRANSFERS.md) · [staging persistence](docs/modules/TRANSFER_PERSISTENCE.md) · [player inventories](docs/modules/PLAYER_INVENTORY_TRANSFERS.md) · [search](docs/modules/STORAGE_SEARCH.md) |
+| Devices | [connectors](docs/modules/CONNECTORS.md) · [machine interfaces](docs/modules/MACHINE_INTERFACES.md) · [buffered interfaces](docs/modules/BUFFERED_INTERFACES.md) · [terminal](docs/modules/STORAGE_TERMINAL.md) · [fuel generator](docs/modules/FUEL_GENERATOR.md) |
+| Automation | [crafting](docs/modules/CRAFTING.md) · [programs](docs/modules/PROGRAMS.md) |
 
-The [GitHub Actions workflow](.github/workflows/quality.yml) installs Java 21 and pinned Rust tools, and
-runs the canonical command on Windows and Linux. Remote CI and branch protection
-remain unverified.
-
-Scheduled digital world transfer API and remaining integration limits: [contract](docs/modules/WORLD_STORAGE_TRANSFERS.md).
-
-Physical connector identities, controls, supported providers and unfinished recovery: [connector contract](docs/modules/CONNECTORS.md).
-
-
-The server-side [storage discovery/search contract](docs/modules/STORAGE_SEARCH.md)
-now documents bounded all-key pages and transient exact-count queries. The player
-[physical item terminal](docs/modules/STORAGE_TERMINAL.md) now uses these services;
-crafting/fluid/energy tabs and the remaining frontend/release scope stay unfinished.
-
-The [authenticated player inventory transfer boundary](docs/modules/PLAYER_INVENTORY_TRANSFERS.md)
-now provides server-side selected-slot operations and known cleanup. Native item
-terminal menus/client controls have partial [graphical evidence](docs/evidence/terminal-client-v1-2026-10-13.md); full client/release verification remains pending.
-
-Bounded typed selectors and physical stock-deficit planning: [filter/stock contract](docs/modules/RESOURCE_FILTERS.md). These are P3 prerequisites; authenticated persistent preset integration remains unfinished.
-
-Local machine labels, selected windows, sided utilities and current limits: [machine interface contract](docs/modules/MACHINE_INTERFACES.md).
+Research notes: [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md). It informs the design
+but does not add requirements.

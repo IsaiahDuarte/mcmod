@@ -2,19 +2,24 @@ package dev.izzy.factorycore.testing.storage;
 
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -34,35 +39,26 @@ public final class BufferTransferGameTests {
   }
 
   private static NodeRegistry.Position position(GameTestHelper helper, BlockPos pos) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(pos).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(pos));
   }
 
   private static void scenario(GameTestHelper helper, int mode) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var guest = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var drivePosition = mode == 6 ? new BlockPos(1, 1, 2) : DRIVE;
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     if (mode == 6) {
       helper.setBlock(
           new BlockPos(2, 1, 1),
           NetworkContent.GATEWAY
               .get()
               .defaultBlockState()
-              .setValue(
-                  net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING,
-                  net.minecraft.core.Direction.EAST));
+              .setValue(BlockStateProperties.FACING, Direction.EAST));
       NetworkNodeEntity gate = helper.getBlockEntity(new BlockPos(2, 1, 1));
       gate.commission(null);
     } else helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), actor.id());
-    helper.setBlock(drivePosition, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(drivePosition);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    BufferedInterfaceEntity buffer = Net.in(helper, actor.id()).buffer(BUFFER);
+    StorageDriveEntity drive = Net.in(helper).drive(drivePosition, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
@@ -364,16 +360,12 @@ public final class BufferTransferGameTests {
       GameTestHelper helper) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     var guest = new NetworkPermissions.Actor(UUID.randomUUID(), true);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), guest.id());
+    BufferedInterfaceEntity buffer = Net.in(helper, guest.id()).buffer(BUFFER);
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
-    var mode = dev.izzy.factorycore.core.storage.BufferRegistry.Mode.IMPORT;
+    var mode = BufferRegistry.Mode.IMPORT;
     helper
         .startSequence()
         .thenWaitUntil(
@@ -408,9 +400,7 @@ public final class BufferTransferGameTests {
               helper.assertTrue(
                   denied && saved.buffers().deployment(buffer.handle().id()) == null,
                   "Import also requires current view/deposit/withdraw grants");
-              var paused =
-                  buffer.configure(
-                      guest, dev.izzy.factorycore.core.storage.BufferRegistry.Mode.PAUSED);
+              var paused = buffer.configure(guest, BufferRegistry.Mode.PAUSED);
               helper.assertTrue(
                   paused.revision() == 2 && paused.principal().equals(guest.id()),
                   "Paused deployment records authenticated owner with edit/deploy rights");
@@ -443,9 +433,7 @@ public final class BufferTransferGameTests {
                       && enabled.equals(saved.buffers().deployment(buffer.handle().id()))
                       && buffer.reference().configuration() == 3,
                   "Revoked configuration cannot replace ownership or increment revision");
-              var replacement =
-                  buffer.configure(
-                      actor, dev.izzy.factorycore.core.storage.BufferRegistry.Mode.PAUSED);
+              var replacement = buffer.configure(actor, BufferRegistry.Mode.PAUSED);
               helper.assertTrue(
                   replacement.revision() == 4
                       && replacement.principal().equals(actor.id())

@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.WirelessBudget;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.ConnectorEntity;
@@ -62,9 +63,7 @@ public final class ThroughputStatus {
 
   public static Component link(MinecraftServer server, LinkEndpointEntity link) {
     int scale = link.pairScale();
-    var position =
-        new NodeRegistry.Position(
-            link.getLevel().dimension().location().toString(), link.getBlockPos().asLong());
+    var position = Positions.of(link.getLevel(), link.getBlockPos());
     return Component.translatable(
         "message.factorycore.link_throughput",
         ThroughputContent.name(link.tier()),

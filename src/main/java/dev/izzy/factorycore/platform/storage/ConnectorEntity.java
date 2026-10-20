@@ -2,29 +2,44 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
+import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 
 /** Physical policy and reference holder; foreign contents are never copied into this block. */
-public class ConnectorEntity extends BlockEntity {
+public class ConnectorEntity extends BlockEntity
+    implements WiredMember, CanonicalStorage, ThroughputUpgradeable {
   private Tag data;
   private ConnectorData.State state;
   private String diagnostic = "";
@@ -36,10 +51,7 @@ public class ConnectorEntity extends BlockEntity {
     this(ConnectorContent.ENTITY.get(), position, blockState);
   }
 
-  protected ConnectorEntity(
-      net.minecraft.world.level.block.entity.BlockEntityType<?> type,
-      BlockPos position,
-      BlockState blockState) {
+  protected ConnectorEntity(BlockEntityType<?> type, BlockPos position, BlockState blockState) {
     super(type, position, blockState);
   }
 
@@ -47,7 +59,7 @@ public class ConnectorEntity extends BlockEntity {
     return NodeRegistry.Kind.CONNECTOR;
   }
 
-  protected net.minecraft.world.item.Item portableItem() {
+  protected Item portableItem() {
     return ConnectorContent.ITEM.get();
   }
 
@@ -85,8 +97,7 @@ public class ConnectorEntity extends BlockEntity {
   }
 
   public NodeRegistry.Position position() {
-    return new NodeRegistry.Position(
-        serverLevel().dimension().location().toString(), worldPosition.asLong());
+    return Positions.of(serverLevel(), worldPosition);
   }
 
   public ServerLevel serverLevel() {
@@ -127,15 +138,9 @@ public class ConnectorEntity extends BlockEntity {
   /**
    * Audited ownership repair only; persisted provider faults and accepted presets are not reset.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
-  public java.nio.file.Path repairConflict(NodeRegistry.Handle expected)
-      throws java.io.IOException {
+  public Path repairConflict(NodeRegistry.Handle expected) throws IOException {
     var server = serverLevel();
-    var chunk =
-        server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
-    if (isRemoved()
-        || chunk == null
-        || server.getBlockEntity(worldPosition) != this
+    if (!LeaseRecovery.loadedHere(this)
         || state == null
         || !expected.equals(state.lease())
         || expected.kind() != leaseKind()
@@ -173,13 +178,13 @@ public class ConnectorEntity extends BlockEntity {
     var nextData = ConnectorData.write(next);
     var path =
         DeviceRecoveryAudit.preservePort(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             owner,
             machine ? saved.machinePresets().get(expected.id()) : null,
             fence,
             registration,
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(server.registryAccess()));
     var repaired = saved.nodes().repairConflict(expected, position());
     if (repaired.failure() != NodeRegistry.Failure.OK)
@@ -199,15 +204,11 @@ public class ConnectorEntity extends BlockEntity {
   }
 
   /** Reconcile a stale crash-surviving holder without reading or moving foreign contents. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed levels.
-  public java.nio.file.Path adoptPort(NodeRegistry.Handle expected) throws java.io.IOException {
+  public Path adoptPort(NodeRegistry.Handle expected) throws IOException {
     var server = serverLevel();
     var saved = authority();
     var owner = saved.nodes().evidence(expected.id());
-    if (isRemoved()
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
-        || server.getBlockEntity(worldPosition) != this
+    if (!LeaseRecovery.loadedHere(this)
         || state == null
         || !state.equals(ConnectorData.read(data))
         || !state.fault().isEmpty()
@@ -225,22 +226,14 @@ public class ConnectorEntity extends BlockEntity {
         || saved.transfers().unresolvedDevice(expected.id()) != null
         || saved.transfers().hasUnscopedUncertain(saved::canonicalIdentity))
       throw new IllegalStateException("Port lease cannot be adopted");
-    var old = owner.position();
-    var oldLevel =
-        server
-            .getServer()
-            .getLevel(
-                net.minecraft.resources.ResourceKey.create(
-                    net.minecraft.core.registries.Registries.DIMENSION,
-                    net.minecraft.resources.ResourceLocation.parse(old.dimension())));
-    var oldPos = BlockPos.of(old.block());
-    if (oldLevel == null
-        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
-      throw new IllegalStateException("Old canonical port must be loaded");
-    if (oldLevel.getBlockEntity(oldPos) instanceof ConnectorEntity previous
-        && previous.handle() != null
-        && previous.handle().id().equals(expected.id()))
-      throw new IllegalStateException("Old canonical holder still references the port");
+    var old =
+        LeaseRecovery.releasedOldHolder(
+            server.getServer(),
+            owner.position(),
+            entity ->
+                entity instanceof ConnectorEntity previous
+                    && previous.handle() != null
+                    && previous.handle().id().equals(expected.id()));
     boolean machine = leaseKind() == NodeRegistry.Kind.MACHINE_INTERFACE;
     long fence = machine ? saved.machinePresets().configuration(expected.id()) : 0;
     long configuration =
@@ -258,13 +251,13 @@ public class ConnectorEntity extends BlockEntity {
     var nextData = ConnectorData.write(next);
     var path =
         DeviceRecoveryAudit.preservePortAdoption(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             owner,
             machine ? saved.machinePresets().get(expected.id()) : null,
             fence,
             position(),
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(server.registryAccess()));
     var adopted = saved.nodes().adopt(expected, position());
     if (adopted.failure() != NodeRegistry.Failure.OK)
@@ -283,7 +276,7 @@ public class ConnectorEntity extends BlockEntity {
     data = nextData;
     diagnostic = "";
     setChanged();
-    WorldNetworks.changed(oldLevel, oldPos);
+    old.changed();
     onLoad();
     return path;
   }
@@ -309,7 +302,7 @@ public class ConnectorEntity extends BlockEntity {
 
   protected NetworkAuthority.Decision configure(
       NetworkPermissions.Actor actor, ConnectorSettings settings, String label, long generation) {
-    java.util.Objects.requireNonNull(settings);
+    Objects.requireNonNull(settings);
     validatePlaced();
     if (generation <= state.generation())
       throw new IllegalArgumentException("Configuration must advance");
@@ -386,7 +379,6 @@ public class ConnectorEntity extends BlockEntity {
   }
 
   /** Caller must establish every provider chunk is loaded before invoking a capability getter. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   public Object capability() {
     validatePlaced();
     if (cache != null && cachedDirection != targetDirection()) {
@@ -570,5 +562,28 @@ public class ConnectorEntity extends BlockEntity {
     cache = null;
     providerToken = UUID.randomUUID();
     if (level instanceof ServerLevel) changed();
+  }
+
+  /** Machine interfaces are labelled INTERFACE vertices; storage connectors are STORAGE. */
+  @Override
+  public Vertex wireVertex() {
+    var lease = handle();
+    boolean machine = lease != null && lease.kind() == NodeRegistry.Kind.MACHINE_INTERFACE;
+    return new Vertex(
+        lease == null ? null : lease.id(),
+        "unowned",
+        machine ? NetworkTopology.Role.INTERFACE : NetworkTopology.Role.STORAGE,
+        WiredMember.placedValid(this::validatePlaced) && !isRemoved(),
+        machine ? label() : "");
+  }
+
+  @Override
+  public boolean upgrade(NetworkPermissions.Actor actor, ThroughputTier item) {
+    return installThroughput(actor, item) == NetworkAuthority.Decision.ALLOWED;
+  }
+
+  @Override
+  public Component throughputStatus(MinecraftServer server) {
+    return ThroughputStatus.port(server, this);
   }
 }

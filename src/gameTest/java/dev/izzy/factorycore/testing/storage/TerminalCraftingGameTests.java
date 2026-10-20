@@ -2,7 +2,7 @@ package dev.izzy.factorycore.testing.storage;
 
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
-import dev.izzy.factorycore.platform.network.NetworkContent;
+import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
@@ -14,6 +14,9 @@ import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -22,7 +25,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -42,19 +47,13 @@ public final class TerminalCraftingGameTests {
 
   private TerminalCraftingGameTests() {}
 
-  @SuppressWarnings("removal") // Pinned helper performs actual PlayerList authentication.
   private static Fixture setup(GameTestHelper helper) {
-    var player = helper.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(helper);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(helper, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM);
     helper.setBlock(TERMINAL, TerminalContent.BLOCK.get());
     return new Fixture(
         player,
@@ -363,7 +362,7 @@ public final class TerminalCraftingGameTests {
                   new TerminalCraftingPackets.Fill(
                       m.containerId,
                       m.session(),
-                      java.util.List.of(
+                      List.of(
                           planks,
                           planks,
                           "",
@@ -387,7 +386,7 @@ public final class TerminalCraftingGameTests {
               boolean rejected;
               try {
                 new TerminalCraftingPackets.Fill(
-                    m.containerId, m.session(), java.util.List.of(planks, planks));
+                    m.containerId, m.session(), List.of(planks, planks));
                 rejected = false;
               } catch (IllegalArgumentException expected) {
                 rejected = true;
@@ -402,19 +401,12 @@ public final class TerminalCraftingGameTests {
   public static void fluidRowsEncodeAsProcessingInputsInQuarterBucketUnits(GameTestHelper h) {
     var f = setup(h);
     StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(
-        new ItemStack(
-            StorageContent.cell(dev.izzy.factorycore.core.storage.CellTier.STARTER_FLUID)));
+    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
     var tank = CellHandleData.read(drive.cell(1));
-    var water =
-        f.codec.fluidKey(
-            new net.neoforged.neoforge.fluids.FluidStack(
-                net.minecraft.world.level.material.Fluids.WATER, 1));
+    var water = f.codec.fluidKey(new FluidStack(Fluids.WATER, 1));
     var inventory = f.player.getInventory();
     inventory.setItem(0, new ItemStack(Items.STONE));
-    inventory.setItem(
-        1,
-        new ItemStack(dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN.get()));
+    inventory.setItem(1, new ItemStack(CraftingContent.BLANK_PATTERN.get()));
     h.startSequence()
         .thenWaitUntil(
             () ->
@@ -470,14 +462,9 @@ public final class TerminalCraftingGameTests {
               grid(f, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]);
               ItemStack encoded = ItemStack.EMPTY;
               for (int slot = 0; slot < 36; slot++)
-                if (inventory
-                    .getItem(slot)
-                    .is(
-                        dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING_PATTERN
-                            .get())) encoded = inventory.getItem(slot);
-              var contents =
-                  encoded.get(
-                      dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING.get());
+                if (inventory.getItem(slot).is(CraftingContent.PROCESSING_PATTERN.get()))
+                  encoded = inventory.getItem(slot);
+              var contents = encoded.get(CraftingContent.PROCESSING.get());
               h.assertTrue(
                   contents != null
                       && contents.inputs().isEmpty()

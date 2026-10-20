@@ -3,8 +3,10 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.session.MenuSession;
 import java.security.MessageDigest;
 import java.util.*;
 import net.minecraft.core.BlockPos;
@@ -20,9 +22,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * authority.
  */
 public final class BufferSettingsMenu extends AbstractContainerMenu {
+  private final MenuSession protocol;
   private final Player viewer;
   private final BufferedInterfaceEntity holder;
-  private final UUID session;
   private final BlockPos position;
   private final NodeRegistry.Handle lease;
   private final NetworkTopology.Scope scope;
@@ -30,8 +32,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
   private BufferRegistry.Mode mode = BufferRegistry.Mode.PAUSED;
   private long configuration, revision = 1;
   private List<ItemBuffer.Slot> selections = List.of();
-  private boolean active = true, busy, dirty, inventoryTab;
-  private int lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE;
+  private boolean busy, dirty, inventoryTab;
   private UUID ticket;
   private long moved;
   private int requested;
@@ -40,7 +41,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
   private BufferSettingsPackets.View view;
 
   public BufferSettingsMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-    this(id, inventory, null, buffer.readBlockPos(), buffer.readUUID());
+    this(id, inventory, null, buffer.readBlockPos(), MenuSession.read(buffer));
   }
 
   BufferSettingsMenu(int id, Inventory inventory, BufferedInterfaceEntity holder, UUID nonce) {
@@ -51,9 +52,9 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
       int id, Inventory inventory, BufferedInterfaceEntity holder, BlockPos position, UUID nonce) {
     super(BufferedInterfaceContent.MENU.get(), id);
     viewer = inventory.player;
+    protocol = new MenuSession(this, viewer, nonce, holder != null, 5);
     this.holder = holder;
     this.position = position;
-    session = nonce;
     lease = holder == null ? null : holder.handle();
     scope =
         holder == null
@@ -84,7 +85,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
   }
 
   public UUID session() {
-    return session;
+    return protocol.id();
   }
 
   public BufferSettingsPackets.View view() {
@@ -101,8 +102,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
 
   public void accept(BufferSettingsPackets.View packet) {
     if (holder == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.revision() >= view.revision()) view = packet;
   }
 
@@ -119,11 +119,11 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
   }
 
   private NetworkPermissions.Actor actor() {
-    return new NetworkPermissions.Actor(viewer.getUUID(), player().hasPermissions(2));
+    return Actors.of(viewer);
   }
 
   private boolean current() {
-    return active
+    return protocol.active()
         && holder != null
         && lease.equals(holder.handle())
         && holder.canUse(player())
@@ -139,8 +139,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
         new NetworkPermissions.Permission[] {
           NetworkPermissions.Permission.EDIT, NetworkPermissions.Permission.DEPLOY
         })
-      if (WorldNetworks.get(player().server).authorize(actor(), holder.position(), permission)
-          != NetworkAuthority.Decision.ALLOWED) return false;
+      if (!WorldNetworks.get(player().server).allows(actor(), holder.position(), permission))
+        return false;
     return true;
   }
 
@@ -168,14 +168,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
   @Override
   public void broadcastChanges() {
     super.broadcastChanges();
-    if (holder == null || !active || player().containerMenu != this) return;
-    if (!current()) {
-      player().closeContainer();
-      return;
-    }
-    int tick = player().server.getTickCount();
-    if (lastPoll != Integer.MIN_VALUE && tick - lastPoll < 5) return;
-    lastPoll = tick;
+    if (!protocol.due(this::current)) return;
     if (holder.reference().configuration() != configuration) {
       reset();
       status = "stale";
@@ -191,14 +184,10 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
   }
 
   public void command(ServerPlayer sender, BufferSettingsPackets.Command packet) {
-    if (sender != viewer
-        || packet.menu() != containerId
-        || !packet.session().equals(session)
+    if (!protocol.fromViewer(sender, packet.menu(), packet.session())
         || !authorized()
-        || busy) return;
-    int tick = sender.server.getTickCount();
-    if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
-    lastCommand = tick;
+        || busy
+        || !protocol.admitRate()) return;
     if (holder.reference().configuration() != configuration) {
       reset();
       status = "stale";
@@ -470,7 +459,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
     var packet =
         new BufferSettingsPackets.View(
             containerId,
-            session,
+            protocol.id(),
             revision,
             mode.name(),
             draft.filter().mode().name(),
@@ -503,8 +492,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
 
   @Override
   public void removed(Player player) {
-    if (holder != null && active) {
-      active = false;
+    if (holder != null && protocol.active()) {
+      protocol.close();
       if (ticket != null && !transfers().inExecution()) transfers().cancelQueued(ticket, actor());
       selections = List.of();
     }

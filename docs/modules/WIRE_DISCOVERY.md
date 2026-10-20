@@ -116,12 +116,9 @@ virtual anchors are world/dimension/role scoped and collision-checked by discove
 They are descriptors under the fresh region identity, not persistent resource
 backing IDs. This reader reads no cell stock and changes no lease/resource state.
 
-`DiscoveryTask` submits one coalesced job to the common `FairScheduler` with
-explicit network/program UUIDs and key. Its cost equals the configured visit
-budget (1–256). It resubmits unfinished work; no timer, worker or idle scan exists.
-Queue/cost admission rejection cancels the discovery and records its reason.
-Read diagnostics on the owner thread; scheduler limits still govern dispatch.
-Runtime ownership and event invalidation are documented in the live region contract.
+`WorldNetworks` owns scheduling: one shared, bounded scheduler step advances active regions in
+turn, with no timer, worker or idle scan. Runtime ownership and event invalidation are documented
+in the [live region contract](WORLD_NETWORKS.md).
 
 Example in trusted server integration:
 
@@ -129,9 +126,7 @@ Example in trusted server integration:
 var reader = new WorldWireReader(level, knownGeometry::get);
 var job = new WiredDiscovery(UUID.randomUUID(), 8, seeds.iterator(), reader,
     () -> regionEpoch);
-var task = new DiscoveryTask(sharedScheduler, workNetwork, workProgram,
-    "discover", job, 64);
-task.submit();
+// Advance in bounded steps from the owner's scheduled work, e.g. job.advance(16).
 // On world edits, call job.cancel() immediately before scheduling a replacement.
 // After completion, inspect job.publishedTopology(); valid scope is still required.
 ```

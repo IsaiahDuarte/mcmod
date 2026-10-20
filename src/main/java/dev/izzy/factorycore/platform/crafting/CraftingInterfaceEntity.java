@@ -8,18 +8,16 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /**
  * Processing pattern holder facing one machine. A job's persisted dispatch is the only lease on the
  * machine port; the interface itself stores no job state and owns no resources.
  */
-@SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed ServerLevel.
 public final class CraftingInterfaceEntity extends PatternHolderEntity {
   private BlockCapabilityCache<IItemHandler, Direction> machine, sided;
-  private BlockCapabilityCache<net.neoforged.neoforge.fluids.capability.IFluidHandler, Direction>
-      tanks,
-      sidedTanks;
+  private BlockCapabilityCache<IFluidHandler, Direction> tanks, sidedTanks;
   private Direction tankFacing;
   private Direction cachedFacing;
 
@@ -56,7 +54,7 @@ public final class CraftingInterfaceEntity extends PatternHolderEntity {
   }
 
   /** The faced machine's fluid handler, chosen like {@link #machine()}; null if it has none. */
-  public net.neoforged.neoforge.fluids.capability.IFluidHandler fluidMachine() {
+  public IFluidHandler fluidMachine() {
     if (!(level instanceof ServerLevel server) || !current()) return null;
     if (tanks == null || tankFacing != facing()) {
       tankFacing = facing();

@@ -2,27 +2,36 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.session.MenuSession;
 import java.security.MessageDigest;
 import java.util.*;
+import java.util.Collections;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * One physical access session. Exact selections and accepted operation ownership stay server-side.
  */
 public final class TerminalMenu extends AbstractContainerMenu {
+  private final MenuSession protocol;
   private final Player viewer;
   private final TerminalAccess terminal;
-  private final UUID session;
   private final BlockPos position;
   private UUID query, route;
   private ResourceKey after, next;
@@ -31,7 +40,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private ResourceKind kind = ResourceKind.ITEM;
   private int sort = TerminalSearchSupport.NAME;
   private long revision = 1;
-  private int lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE, scanned;
+  private int scanned;
 
   /**
    * A completed observation is re-read after this many ticks so changes made by other sessions,
@@ -39,7 +48,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
    */
   static final int RESCAN_TICKS = 20;
 
-  private boolean active = true, loaded, busy, reachRegistered;
+  private boolean loaded, busy, reachRegistered;
   private TerminalPackets.View view;
   private final TerminalCrafting crafting = new TerminalCrafting();
   private TerminalCraftingPackets.View gridView;
@@ -47,18 +56,10 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private int pendingCrafts, gatherAttempts, crafted, editWindow = Integer.MIN_VALUE, edits;
   static final int MAX_GATHERS = 18, MAX_EDITS_PER_SECOND = 32;
   private TerminalJobPackets.View jobView;
-  private long jobRevision = 1;
-  private int craftableOffset;
-  private List<ResourceKey> craftables = List.of();
-  private boolean craftablesNext;
-  private ResourceKey previewKey;
-  private int previewAmount;
-  private dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.Preview preview;
-  private String jobStatus = "ready";
-  private List<UUID> jobIds = List.of();
+  private TerminalJobs jobs;
 
   public TerminalMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-    this(id, inventory, null, buffer.readBlockPos(), buffer.readUUID());
+    this(id, inventory, null, buffer.readBlockPos(), MenuSession.read(buffer));
   }
 
   TerminalMenu(int id, Inventory inventory, TerminalAccess terminal, UUID session) {
@@ -71,7 +72,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     this.viewer = inventory.player;
     this.terminal = terminal;
     this.position = position;
-    this.session = session;
+    protocol = new MenuSession(this, inventory.player, session, terminal != null, 5);
     if (terminal != null) {
       var preferences =
           viewer
@@ -93,11 +94,11 @@ public final class TerminalMenu extends AbstractContainerMenu {
       addSlot(new Slot(inventory, column, 59 + 18 * column, 210));
     view =
         new TerminalPackets.View(
-            id, session, revision, status, List.of(), false, false, "0", text, sort);
+            id, protocol.id(), revision, status, List.of(), false, false, "0", text, sort);
     jobView =
         new TerminalJobPackets.View(
             id,
-            session,
+            protocol.id(),
             0,
             List.of(),
             false,
@@ -107,14 +108,16 @@ public final class TerminalMenu extends AbstractContainerMenu {
             0,
             List.of(),
             List.of(),
-            jobStatus);
+            "ready");
+    if (terminal != null)
+      jobs = new TerminalJobs((ServerPlayer) viewer, terminal, id, protocol.id(), jobView);
     gridView =
         new TerminalCraftingPackets.View(
             id,
-            session,
+            protocol.id(),
             0,
-            java.util.Collections.nCopies(TerminalCraftingPackets.CELLS, ""),
-            java.util.Collections.nCopies(TerminalCraftingPackets.CELLS, 1),
+            Collections.nCopies(TerminalCraftingPackets.CELLS, ""),
+            Collections.nCopies(TerminalCraftingPackets.CELLS, 1),
             false,
             "",
             "",
@@ -123,14 +126,14 @@ public final class TerminalMenu extends AbstractContainerMenu {
             0);
   }
 
+  /** The client's received Jobs view, or on the server the view most recently sent to it. */
   public TerminalJobPackets.View jobView() {
-    return jobView;
+    return jobs != null ? jobs.view() : jobView;
   }
 
   public void accept(TerminalJobPackets.View packet) {
     if (terminal == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.revision() >= jobView.revision()) jobView = packet;
   }
 
@@ -140,18 +143,16 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   public void accept(TerminalCraftingPackets.View packet) {
     if (terminal == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.gridRevision() >= gridView.gridRevision()) gridView = packet;
   }
 
   /** Opens a terminal session through {@code access} if it currently allows the player. */
-  public static boolean open(
-      ServerPlayer player, TerminalAccess access, net.minecraft.network.chat.Component title) {
+  public static boolean open(ServerPlayer player, TerminalAccess access, Component title) {
     if (!access.canUse(player)) return false;
     var session = UUID.randomUUID();
     player.openMenu(
-        new net.minecraft.world.SimpleMenuProvider(
+        new SimpleMenuProvider(
             (id, inventory, who) -> new TerminalMenu(id, inventory, access, session), title),
         buffer -> {
           buffer.writeBlockPos(access.getBlockPos());
@@ -161,7 +162,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   public UUID session() {
-    return session;
+    return protocol.id();
   }
 
   public BlockPos position() {
@@ -174,8 +175,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   public void accept(TerminalPackets.View packet) {
     if (terminal == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.revision() >= view.revision()) view = packet;
   }
 
@@ -184,7 +184,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   private NetworkPermissions.Actor actor() {
-    return new NetworkPermissions.Actor(viewer.getUUID(), player().hasPermissions(2));
+    return Actors.of(viewer);
   }
 
   private WorldStorageTransfers transfers() {
@@ -196,7 +196,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   private boolean authorized() {
-    return active
+    return protocol.active()
         && terminal != null
         && player().containerMenu == this
         && terminal.canUse(player());
@@ -216,7 +216,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   public void broadcastChanges() {
     super.broadcastChanges();
     // Native initMenu broadcasts before assigning containerMenu; never close another menu.
-    if (terminal == null || !active || player().containerMenu != this) return;
+    if (!protocol.server() || !protocol.active() || player().containerMenu != this) return;
     if (!authorized()) {
       player().closeContainer();
       return;
@@ -224,9 +224,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     if (!terminal.upkeep(player())) {
       player()
           .displayClientMessage(
-              net.minecraft.network.chat.Component.translatable(
-                  "message.factorycore.wireless_no_power"),
-              true);
+              Component.translatable("message.factorycore.wireless_no_power"), true);
       player().closeContainer();
       return;
     }
@@ -234,13 +232,12 @@ public final class TerminalMenu extends AbstractContainerMenu {
       reachRegistered = true;
       transfers().playerReach(player(), terminal.origin(), terminal.reachSquared());
     }
+    if (!protocol.admitPoll()) return;
     int tick = player().server.getTickCount();
-    if (lastPoll != Integer.MIN_VALUE && tick - lastPoll < 5) return;
-    lastPoll = tick;
     if (!loaded) {
       loaded = true;
       refresh();
-      refreshCraftables();
+      jobs.refreshCraftables();
     }
     if (query != null && !busy) {
       var result = transfers().search().result(query, actor(), after, 8);
@@ -291,7 +288,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private void savePreferences() {
     var persistent = viewer.getPersistentData();
     var kept = persistent.getCompound(Player.PERSISTED_NBT_TAG);
-    var preferences = new net.minecraft.nbt.CompoundTag();
+    var preferences = new CompoundTag();
     preferences.putInt("Schema", 1);
     preferences.putString("Search", text);
     preferences.putInt("Sort", sort);
@@ -324,14 +321,10 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   public void command(ServerPlayer sender, TerminalPackets.Command command) {
-    if (sender != viewer
-        || command.menu() != containerId
-        || !command.session().equals(session)
+    if (!protocol.fromViewer(sender, command.menu(), command.session())
         || !authorized()
-        || busy) return;
-    int tick = sender.server.getTickCount();
-    if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
-    lastCommand = tick;
+        || busy
+        || !protocol.admitRate()) return;
     int action = command.action();
     boolean mutating =
         action == TerminalPackets.WITHDRAW
@@ -364,7 +357,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
       selections = List.of();
       status = "loading";
       revision++;
-      lastPoll = Integer.MIN_VALUE;
+      protocol.pollNow();
       broadcastChanges();
       return;
     }
@@ -375,7 +368,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
         next = null;
         status = "loading";
         revision++;
-        lastPoll = Integer.MIN_VALUE;
+        protocol.pollNow();
         broadcastChanges();
       }
       return;
@@ -493,11 +486,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   /** Ghost edits and bounded crafting; ingredients come only from the player's own inventory. */
   /** Applies a recipe-viewer transfer as crafting-mode ghost cells; unknown IDs clear a cell. */
   public void gridFill(ServerPlayer sender, TerminalCraftingPackets.Fill fill) {
-    if (sender != viewer
-        || fill.menu() != containerId
-        || !fill.session().equals(session)
-        || !authorized()
-        || busy) return;
+    if (!protocol.fromViewer(sender, fill.menu(), fill.session()) || !authorized() || busy) return;
     int tick = sender.server.getTickCount();
     if (editWindow == Integer.MIN_VALUE || tick - editWindow >= 20) {
       editWindow = tick;
@@ -508,29 +497,22 @@ public final class TerminalMenu extends AbstractContainerMenu {
     crafting.clear();
     if (crafting.processing()) crafting.processing(false);
     for (int cell = 0; cell < fill.items().size(); cell++) {
-      var id = net.minecraft.resources.ResourceLocation.tryParse(fill.items().get(cell));
-      var item =
-          id == null
-              ? net.minecraft.world.item.Items.AIR
-              : net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id);
-      if (item == net.minecraft.world.item.Items.AIR) continue;
-      crafting.set(cell, codec.itemKey(new net.minecraft.world.item.ItemStack(item)));
+      var id = ResourceLocation.tryParse(fill.items().get(cell));
+      var item = id == null ? Items.AIR : BuiltInRegistries.ITEM.get(id);
+      if (item == Items.AIR) continue;
+      crafting.set(cell, codec.itemKey(new ItemStack(item)));
     }
     gridStatus = "ready";
     publish();
   }
 
   public void gridCommand(ServerPlayer sender, TerminalCraftingPackets.Command command) {
-    if (sender != viewer
-        || command.menu() != containerId
-        || !command.session().equals(session)
-        || !authorized()
-        || busy) return;
+    if (!protocol.fromViewer(sender, command.menu(), command.session()) || !authorized() || busy)
+      return;
     int tick = sender.server.getTickCount();
     if (command.action() == TerminalCraftingPackets.CRAFT
         || command.action() == TerminalCraftingPackets.ENCODE) {
-      if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
-      lastCommand = tick;
+      if (!protocol.admitRate()) return;
     } else {
       // Ghost edits move nothing; a separate bounded budget keeps recipe lookups bounded.
       if (editWindow == Integer.MIN_VALUE || tick - editWindow >= 20) {
@@ -621,179 +603,12 @@ public final class TerminalMenu extends AbstractContainerMenu {
     publish();
   }
 
-  /** Lists craftable outputs of this segment's Crafting Units, eight per page, in key order. */
-  private void refreshCraftables() {
-    var member = WorldNetworks.get(player().server).membership(terminal.origin());
-    if (member.status() != dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID) {
-      craftables = List.of();
-      craftablesNext = false;
-      return;
-    }
-    var keys =
-        new ArrayList<>(
-            dev.izzy.factorycore.platform.crafting.WorldCrafting.get(player().server)
-                .index(member.scope())
-                .byOutput()
-                .keySet());
-    keys.sort(null);
-    craftableOffset = Math.min(craftableOffset, Math.max(0, keys.size() - 1) / 8 * 8);
-    craftables =
-        List.copyOf(keys.subList(craftableOffset, Math.min(keys.size(), craftableOffset + 8)));
-    craftablesNext = keys.size() > craftableOffset + 8;
-  }
-
   /** Autocrafting: page craftables, preview a row, start the previewed plan, cancel own jobs. */
   public void jobCommand(ServerPlayer sender, TerminalJobPackets.Command command) {
-    if (sender != viewer
-        || command.menu() != containerId
-        || !command.session().equals(session)
-        || !authorized()) return;
-    int tick = sender.server.getTickCount();
-    if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
-    lastCommand = tick;
-    var jobs = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(sender.server);
-    switch (command.action()) {
-      case TerminalJobPackets.HOME -> {
-        craftableOffset = 0;
-        refreshCraftables();
-      }
-      case TerminalJobPackets.NEXT -> {
-        if (craftablesNext) craftableOffset += 8;
-        refreshCraftables();
-      }
-      case TerminalJobPackets.PREVIEW -> {
-        if (command.revision() != jobRevision || command.selection() >= craftables.size()) {
-          publish();
-          return;
-        }
-        previewKey = craftables.get(command.selection());
-        previewAmount = command.amount();
-        preview = jobs.preview(actor(), terminal.origin(), previewKey, previewAmount);
-        jobStatus = preview.reason().isEmpty() ? "previewed" : preview.reason();
-      }
-      case TerminalJobPackets.START -> {
-        if (!terminal.spendAction(sender)) {
-          jobStatus = "no_power";
-          break;
-        }
-        if (command.revision() != jobRevision || previewKey == null) {
-          publish();
-          return;
-        }
-        var submission = jobs.submit(actor(), terminal.origin(), previewKey, previewAmount);
-        if (submission.job() != null) {
-          jobStatus = "started";
-          previewKey = null;
-          preview = null;
-        } else {
-          jobStatus = submission.reason();
-          if (submission.plan() != null)
-            preview =
-                new dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.Preview(
-                    submission.plan(), submission.reason());
-        }
-      }
-      case TerminalJobPackets.KEEP -> {
-        if (command.revision() != jobRevision || command.selection() >= craftables.size()) {
-          publish();
-          return;
-        }
-        var key = craftables.get(command.selection());
-        var existing = jobs.rule(actor(), terminal.origin(), key);
-        if (existing != null)
-          jobStatus = jobs.unkeep(actor(), existing.id()) ? "unkept" : "refused";
-        else {
-          var reason =
-              jobs.keep(actor(), terminal.origin(), key, command.amount(), command.amount());
-          jobStatus = reason.isEmpty() ? "kept" : reason;
-        }
-      }
-      case TerminalJobPackets.CANCEL -> {
-        if (command.selection() >= jobIds.size()) return;
-        jobStatus =
-            jobs.cancel(actor(), jobIds.get(command.selection())) ? "cancelling" : "refused";
-      }
-      default -> {
-        return;
-      }
-    }
-    jobRevision++;
-    publish();
-  }
-
-  private TerminalJobPackets.Entry entry(ResourceKey key, String amount) {
-    String name;
-    try {
-      name =
-          new PlatformResourceCodec(player().registryAccess())
-              .itemStack(key, 1)
-              .getHoverName()
-              .getString()
-              .replaceAll("[\\p{Cntrl}§]", "");
-    } catch (IllegalArgumentException unsupported) {
-      name = key.registryId();
-    }
-    if (name.length() > 96) name = name.substring(0, 96);
-    return new TerminalJobPackets.Entry(key.registryId(), name, amount);
-  }
-
-  private void publishJobs() {
-    var rows = new ArrayList<TerminalJobPackets.Entry>();
-    var runtime = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(player().server);
-    for (var key : craftables) {
-      // A craftable row's amount carries the viewer's keep-stock threshold, if any.
-      var rule = runtime.rule(actor(), terminal.origin(), key);
-      rows.add(entry(key, rule == null ? "" : Long.toString(rule.low())));
-    }
-    var missing = new ArrayList<TerminalJobPackets.Entry>();
-    int steps = 0;
-    long crafts = 0;
-    String reason = "";
-    if (preview != null && preview.plan() != null) {
-      reason = preview.reason();
-      steps = preview.plan().steps().size();
-      for (var step : preview.plan().steps()) crafts = Math.addExact(crafts, step.crafts());
-      for (var entry : preview.plan().missing().entrySet()) {
-        if (missing.size() == TerminalJobPackets.MISSING) break;
-        missing.add(entry(entry.getKey(), entry.getValue().toString()));
-      }
-    } else if (preview != null) reason = preview.reason();
-    var ids = new ArrayList<UUID>();
-    var jobRows = new ArrayList<TerminalJobPackets.Job>();
-    for (var job :
-        dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(player().server)
-            .jobs(viewer.getUUID())) {
-      if (jobRows.size() == TerminalJobPackets.JOBS) break;
-      ids.add(job.id());
-      jobRows.add(
-          new TerminalJobPackets.Job(
-              entry(job.request(), Long.toString(job.amount())),
-              job.craftsDone(),
-              job.craftsTotal(),
-              job.state().name().toLowerCase(Locale.ROOT),
-              job.reason()));
-    }
-    jobIds = List.copyOf(ids);
-    var packet =
-        new TerminalJobPackets.View(
-            containerId,
-            session,
-            jobRevision,
-            rows,
-            craftablesNext,
-            previewKey == null
-                ? TerminalJobPackets.NONE
-                : entry(previewKey, Integer.toString(previewAmount)),
-            reason,
-            steps,
-            crafts,
-            missing,
-            jobRows,
-            jobStatus);
-    if (!packet.equals(jobView)) {
-      jobView = packet;
-      PacketDistributor.sendToPlayer(player(), packet);
-    }
+    if (!protocol.fromViewer(sender, command.menu(), command.session())
+        || !authorized()
+        || !protocol.admitRate()) return;
+    if (jobs.command(command)) publish();
   }
 
   /** Crafts now, or gathers one missing ingredient from authorized storage and retries. */
@@ -894,9 +709,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
             switch (row.key().kind()) {
               case ITEM -> codec.itemStack(row.key(), 1).getHoverName();
               case FLUID -> codec.fluidStack(row.key(), 1).getHoverName();
-              case ENERGY ->
-                  net.minecraft.network.chat.Component.translatable(
-                      "gui.factorycore.terminal.energy");
+              case ENERGY -> Component.translatable("gui.factorycore.terminal.energy");
             };
         name = shown.getString().replaceAll("[\\p{Cntrl}§]", "");
       } catch (IllegalArgumentException unsupported) {
@@ -922,7 +735,16 @@ public final class TerminalMenu extends AbstractContainerMenu {
     }
     var packet =
         new TerminalPackets.View(
-            containerId, session, revision, status, rows, next != null, busy, staged, text, sort);
+            containerId,
+            protocol.id(),
+            revision,
+            status,
+            rows,
+            next != null,
+            busy,
+            staged,
+            text,
+            sort);
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);
@@ -941,16 +763,12 @@ public final class TerminalMenu extends AbstractContainerMenu {
     var grid =
         new TerminalCraftingPackets.View(
             containerId,
-            session,
+            protocol.id(),
             crafting.revision(),
             cells,
             counts,
             crafting.processing(),
-            result.isEmpty()
-                ? ""
-                : net.minecraft.core.registries.BuiltInRegistries.ITEM
-                    .getKey(result.getItem())
-                    .toString(),
+            result.isEmpty() ? "" : BuiltInRegistries.ITEM.getKey(result.getItem()).toString(),
             resultName,
             Math.min(64, result.getCount()),
             gridStatus,
@@ -959,13 +777,13 @@ public final class TerminalMenu extends AbstractContainerMenu {
       gridView = grid;
       PacketDistributor.sendToPlayer(player(), grid);
     }
-    publishJobs();
+    jobs.publish();
   }
 
   @Override
   public void removed(Player player) {
-    if (terminal != null && active) {
-      active = false;
+    if (terminal != null && protocol.active()) {
+      protocol.close();
       if (reachRegistered) transfers().playerReach(player(), terminal.origin(), 64);
       pendingCrafts = 0;
       closeSearch();

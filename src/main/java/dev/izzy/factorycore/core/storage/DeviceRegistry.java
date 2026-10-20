@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.core.storage;
 
+import dev.izzy.factorycore.core.NamespacedId;
 import dev.izzy.factorycore.core.resource.LedgerState;
 import dev.izzy.factorycore.core.resource.LedgerStateCodec;
 import dev.izzy.factorycore.core.resource.OperationResult;
@@ -7,15 +8,17 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourceLedger;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 /**
  * Single-authority device stock. World adapters supply validated locations and permission checks.
@@ -24,7 +27,6 @@ public final class DeviceRegistry {
   public static final int MAX_DEVICES = 1024;
   public static final long MAX_LEDGER_BYTES = 64L * 1024 * 1024;
   public static final long MAX_WORLD_ENTRIES = 65536;
-  private static final Pattern DIMENSION = Pattern.compile("[a-z0-9_.-]+:[a-z0-9/._-]+");
 
   public enum Failure {
     OK,
@@ -48,11 +50,8 @@ public final class DeviceRegistry {
 
   public record Location(String dimension, long position, int slot) {
     public Location {
-      if (dimension == null
-          || dimension.length() > 256
-          || !DIMENSION.matcher(dimension).matches()
-          || slot < 0
-          || slot >= 64) throw new IllegalArgumentException("Invalid device location");
+      if (!NamespacedId.isValid(dimension) || slot < 0 || slot >= 64)
+        throw new IllegalArgumentException("Invalid device location");
     }
   }
 
@@ -213,7 +212,7 @@ public final class DeviceRegistry {
   private final UUID world;
   private final Runnable changed;
   private final Supplier<UUID> identifiers;
-  private final java.util.NavigableMap<UUID, Device> devices = new java.util.TreeMap<>();
+  private final NavigableMap<UUID, Device> devices = new TreeMap<>();
   private final Map<Location, UUID> placements = new HashMap<>();
   private Predicate<Location> routing = location -> true;
   private long bytes;
@@ -463,7 +462,7 @@ public final class DeviceRegistry {
               device.location,
               device.conflict));
     }
-    snapshots.sort(java.util.Comparator.comparing(stored -> stored.ledger().id()));
+    snapshots.sort(Comparator.comparing(stored -> stored.ledger().id()));
     return new State(world, snapshots);
   }
 

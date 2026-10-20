@@ -5,7 +5,6 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
-import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.program.ProgramContent;
@@ -17,9 +16,13 @@ import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
-import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import net.minecraft.core.BlockPos;
@@ -50,25 +53,19 @@ public final class WasmProgramGameTests {
   private static byte[] smelter() {
     try {
       return Files.readAllBytes(Path.of(System.getProperty("factorycore.test.smelter")));
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void uploadedRustGuestStocksALabeledMachineAndSurvivesReload(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     var owner = new NetworkPermissions.Actor(player.getUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.id());
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(h, owner.id()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     var cell = CellHandleData.read(drive.cell(0));
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
     ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
@@ -176,25 +173,20 @@ public final class WasmProgramGameTests {
   }
 
   private static long count(byte[] state) {
-    return state == null
-        ? 0
-        : java.nio.ByteBuffer.wrap(state).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong();
+    return state == null ? 0 : ByteBuffer.wrap(state).order(ByteOrder.LITTLE_ENDIAN).getLong();
   }
 
-  @SuppressWarnings("removal")
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void guestStatePersistsAcrossReloadAndResetsOnRedeploy(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
+    var player = TestPlayers.mock(h);
     var owner = new NetworkPermissions.Actor(player.getUUID(), false);
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner.id());
+    NetworkNodeEntity root = Net.in(h, owner.id()).controller(ROOT);
     h.setBlock(DRIVE, ProgramContent.BLOCK.get());
     ProgramControllerEntity controller = h.getBlockEntity(DRIVE);
     byte[] counter;
     try {
       counter = Files.readAllBytes(Path.of(System.getProperty("factorycore.test.counter")));
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
     var programs = WorldPrograms.get(h.getLevel().getServer());

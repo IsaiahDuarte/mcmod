@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import org.junit.jupiter.api.Test;
 
 class DiscoverySeedsTest {
@@ -39,7 +40,7 @@ class DiscoverySeedsTest {
     assertEquals(ANCHOR, replacement.next());
     assertEquals(ANCHOR, replacement.next());
     assertFalse(replacement.hasNext());
-    assertThrows(java.util.NoSuchElementException.class, replacement::next);
+    assertThrows(NoSuchElementException.class, replacement::next);
   }
 
   @Test

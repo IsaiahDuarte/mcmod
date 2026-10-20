@@ -6,6 +6,13 @@
     <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
     <rule ref="category/java/errorprone.xml/ReturnFromFinallyBlock"/>
     <rule ref="category/java/errorprone.xml/BrokenNullCheck"/>
-    <rule ref="category/java/errorprone.xml/CloseResource"/>
+    <!-- Minecraft lends levels, servers and the client window; mod code never owns or closes
+         them. PMD's own defaults are kept and these borrowed handles are added, instead of a
+         suppression at every call site. -->
+    <rule ref="category/java/errorprone.xml/CloseResource">
+        <properties>
+            <property name="allowedResourceTypes" value="java.io.ByteArrayOutputStream,java.io.ByteArrayInputStream,java.io.StringWriter,java.io.CharArrayWriter,java.util.stream.Stream,java.util.stream.IntStream,java.util.stream.LongStream,java.util.stream.DoubleStream,net.minecraft.server.MinecraftServer,net.minecraft.server.level.ServerLevel,net.minecraft.world.level.Level,net.minecraft.client.Minecraft,com.mojang.blaze3d.platform.Window,net.minecraft.client.multiplayer.ClientLevel,net.minecraft.client.server.IntegratedServer,net.minecraft.server.level.ServerChunkCache,org.lwjgl.glfw.GLFWCursorPosCallback"/>
+        </properties>
+    </rule>
     <rule ref="category/java/multithreading.xml/AvoidThreadGroup"/>
 </ruleset>

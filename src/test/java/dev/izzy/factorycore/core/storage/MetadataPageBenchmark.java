@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import java.lang.management.ManagementFactory;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -54,7 +55,7 @@ public final class MetadataPageBenchmark {
     long bytes = bean.getThreadAllocatedBytes(thread) - before - 8L * repetitions - 16;
     Arrays.sort(times);
     System.out.printf(
-        java.util.Locale.ROOT,
+        Locale.ROOT,
         "%s samples=%d median_us=%.3f p95_us=%.3f bytes_per_call=%.1f%n",
         name,
         repetitions,

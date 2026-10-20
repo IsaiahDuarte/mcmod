@@ -31,7 +31,6 @@ final class StagedRecoveryVerification {
     return new PlatformResourceCodec(player.registryAccess()).itemKey(item);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
   static boolean ready(ServerPlayer player) {
     var entity = player.serverLevel().getBlockEntity(MACHINES.getFirst());
     return entity instanceof MachineInterfaceEntity machine
@@ -46,7 +45,6 @@ final class StagedRecoveryVerification {
     private int phase, next;
     private boolean submitted;
 
-    @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
     boolean tick(ServerPlayer player, Properties expected) {
       var level = player.serverLevel();
       var saved = DeviceSavedData.get(player.server);
@@ -159,7 +157,6 @@ final class StagedRecoveryVerification {
   private int phase;
   private final WorldStorageTransfers.Result[] results = new WorldStorageTransfers.Result[2];
 
-  @SuppressWarnings("PMD.CloseResource") // Borrowed Minecraft world.
   boolean tick(ServerPlayer player, Properties expected) {
     var saved = DeviceSavedData.get(player.server);
     var runtime = WorldNetworks.get(player.server);

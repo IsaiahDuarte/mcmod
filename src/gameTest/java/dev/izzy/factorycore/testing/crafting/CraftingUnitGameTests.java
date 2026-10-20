@@ -1,7 +1,7 @@
 package dev.izzy.factorycore.testing.crafting;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
@@ -15,6 +15,8 @@ import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,6 +32,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -54,8 +57,7 @@ public final class CraftingUnitGameTests {
 
   private CraftingUnitGameTests() {}
 
-  private static ItemStack pattern(
-      net.minecraft.world.item.Item input, net.minecraft.world.item.Item output, int count) {
+  private static ItemStack pattern(Item input, Item output, int count) {
     var cells = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
     cells.set(0, new ItemStack(input));
     var stack = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
@@ -68,9 +70,7 @@ public final class CraftingUnitGameTests {
 
   private static NetworkTopology.Membership membership(GameTestHelper h, BlockPos pos) {
     return WorldNetworks.get(h.getLevel().getServer())
-        .membership(
-            new NodeRegistry.Position(
-                h.getLevel().dimension().location().toString(), h.absolutePos(pos).asLong()));
+        .membership(Positions.of(h.getLevel(), h.absolutePos(pos)));
   }
 
   private static void valid(GameTestHelper h, BlockPos... positions) {
@@ -80,9 +80,7 @@ public final class CraftingUnitGameTests {
 
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void patternsAreOfferedOnlyToTheirOwnSegmentAndDeduplicated(GameTestHelper h) {
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(UUID.randomUUID());
+    NetworkNodeEntity root = Net.in(h, UUID.randomUUID()).controller(ROOT);
     h.setBlock(
         GATEWAY,
         NetworkContent.GATEWAY
@@ -209,17 +207,13 @@ public final class CraftingUnitGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal") // Pinned helper performs actual PlayerList authentication.
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void terminalEncodesExactRecipeOntoOneBlankPattern(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
     h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
     TerminalEntity terminal = h.getBlockEntity(TERMINAL);
     var inventory = player.getInventory();

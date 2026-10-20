@@ -1,5 +1,10 @@
 # ADR 0004 — Rust/Wasm feasibility experiment
 
+> **2026-10-20:** The P1 probe crate (`experiments/wasm-guest`) and its test-only runtime are retired.
+> Every bound it proved is now asserted against production `WasmProgram`/`WasmPreflight` in
+> `WasmProgramTest`, and `./gradlew wasmBenchmark` measures the production runtime running the SDK
+> smelter example (`build/benchmarks/wasm-v2.csv`). The text below records the original experiment.
+
 Status: accepted candidate for P5; P1 feasibility locally validated on macOS
 arm64. Cross-OS and production integration validation remain pending.
 

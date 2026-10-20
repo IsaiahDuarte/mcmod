@@ -4,7 +4,10 @@ import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.*;
@@ -23,19 +26,13 @@ public final class BufferSettingsGameTests {
 
   private BufferSettingsGameTests() {}
 
-  @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper helper) {
-    var player = helper.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(helper);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), player.getUUID());
+    NetworkNodeEntity root = Net.in(helper, player.getUUID()).controller(ROOT);
+    BufferedInterfaceEntity buffer = Net.in(helper, player.getUUID()).buffer(BUFFER);
     return new Fixture(player, buffer);
   }
 
@@ -131,8 +128,7 @@ public final class BufferSettingsGameTests {
               open(helper, f);
               f.player.getInventory().setItem(0, new ItemStack(Items.IRON_INGOT, 3));
               var key =
-                  new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                          f.player.registryAccess())
+                  new PlatformResourceCodec(f.player.registryAccess())
                       .itemKey(f.player.getInventory().getItem(0));
               var m = menu(f);
               m.command(
@@ -158,9 +154,7 @@ public final class BufferSettingsGameTests {
             () -> {
               var m = menu(f);
               long old = m.view().revision();
-              var codec =
-                  new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                      f.player.registryAccess());
+              var codec = new PlatformResourceCodec(f.player.registryAccess());
               f.buffer
                   .inventory()
                   .insertSlot(0, codec.itemKey(new ItemStack(Items.GOLD_INGOT)), 2, false);
@@ -191,9 +185,7 @@ public final class BufferSettingsGameTests {
         .thenWaitUntil(() -> helper.assertTrue(f.buffer.canUse(f.player), "Wired owner ready"))
         .thenExecute(
             () -> {
-              var codec =
-                  new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                      f.player.registryAccess());
+              var codec = new PlatformResourceCodec(f.player.registryAccess());
               f.buffer
                   .inventory()
                   .insertSlot(0, codec.itemKey(new ItemStack(Items.IRON_INGOT)), 7, false);
@@ -209,8 +201,7 @@ public final class BufferSettingsGameTests {
         .thenExecute(
             () -> {
               var key =
-                  new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                          f.player.registryAccess())
+                  new PlatformResourceCodec(f.player.registryAccess())
                       .itemKey(f.player.getInventory().getItem(0));
               command(f, BufferSettingsPackets.DEPOSIT, 0, 3, "", TerminalPackets.fingerprint(key));
             })
@@ -257,8 +248,7 @@ public final class BufferSettingsGameTests {
   public static void partialCountAndFullStockDepositRetainExactOwnership(GameTestHelper helper) {
     var f = setup(helper);
     var actor = new NetworkPermissions.Actor(f.player.getUUID(), false);
-    var codec =
-        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(f.player.registryAccess());
+    var codec = new PlatformResourceCodec(f.player.registryAccess());
     var key = codec.itemKey(new ItemStack(Items.IRON_INGOT));
     helper
         .startSequence()

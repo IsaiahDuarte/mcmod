@@ -1,16 +1,20 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.OperationResult;
+import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.resource.StockTarget;
 import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.resource.TransferRegistry;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformFilterTags;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
@@ -115,12 +119,8 @@ public final class WorldBufferImports {
     }
   }
 
-  private boolean matches(
-      BufferRegistry.Deployment deployment, dev.izzy.factorycore.core.resource.ResourceKey key) {
-    return deployment
-        .policy()
-        .filter()
-        .matches(key, new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server));
+  private boolean matches(BufferRegistry.Deployment deployment, ResourceKey key) {
+    return deployment.policy().filter().matches(key, new PlatformFilterTags(server));
   }
 
   private void wake(UUID backing) {
@@ -224,8 +224,8 @@ public final class WorldBufferImports {
           NetworkPermissions.Permission.DEPLOY, NetworkPermissions.Permission.VIEW,
           NetworkPermissions.Permission.DEPOSIT, NetworkPermissions.Permission.WITHDRAW
         })
-      if (networks.authorize(actor, entry.owner.position(), permission)
-          != NetworkAuthority.Decision.ALLOWED) return OperationResult.Reason.DENIED;
+      if (!networks.allows(actor, entry.owner.position(), permission))
+        return OperationResult.Reason.DENIED;
     return OperationResult.Reason.OK;
   }
 
@@ -334,10 +334,8 @@ public final class WorldBufferImports {
     long resident = 0;
     for (var slot : entry.owner.inventory().snapshot().slots())
       if (slot.key() != null && matches(deployment, slot.key())) resident += slot.count();
-    return new dev.izzy.factorycore.core.resource.StockTarget(
-            dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
-            deployment.policy().target(),
-            deployment.policy().rate())
+    return new StockTarget(
+            ResourceKind.ITEM, deployment.policy().target(), deployment.policy().rate())
         .missing(resident, 0);
   }
 
@@ -385,7 +383,7 @@ public final class WorldBufferImports {
                 id,
                 actor,
                 entry.owner.position(),
-                dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+                ResourceKind.ITEM,
                 entry.cursor,
                 page -> {
                   if (entries.get(entry.backing) != entry || !id.equals(entry.request)) return;
@@ -482,7 +480,6 @@ public final class WorldBufferImports {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("Buffer imports require server thread");
+    ServerThread.require(server, "Buffer imports");
   }
 }

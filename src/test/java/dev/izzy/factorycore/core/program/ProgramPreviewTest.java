@@ -3,6 +3,7 @@ package dev.izzy.factorycore.core.program;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.resource.ResourceFilter;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -60,8 +61,7 @@ class ProgramPreviewTest {
                 "every 10 ticks { log \"before\" for m in machines(\"x\") { log \"machine\" } }")
             .program();
     var failed =
-        ProgramPreview.evaluate(
-            loop, 0, host(0, java.util.Collections.nCopies(65, UUID.randomUUID())));
+        ProgramPreview.evaluate(loop, 0, host(0, Collections.nCopies(65, UUID.randomUUID())));
     assertEquals(2, failed.lines().size());
     assertTrue(failed.lines().getLast().contains("Preview refused"));
     assertFalse(failed.lines().stream().anyMatch(line -> line.equals("Log: before")));

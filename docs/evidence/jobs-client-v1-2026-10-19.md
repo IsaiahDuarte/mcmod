@@ -25,3 +25,13 @@ Bugs found and fixed:
 Not covered here: clicking Cancel in the client, processing-machine `busy` and cleanup states in
 the client, and published-branch jobs. Native tests cover these (TerminalJobGameTests,
 ProcessingJobGameTests, BranchCraftingGameTests).
+
+## Keep-stock waiting state (2026-10-20)
+
+The tour presses **Keep** on the 64-plank shortage. Once the rule evaluates, the row shows an
+amber `!≥64` badge on a dark backing; a satisfied rule's badge stays green. The craftable tooltip
+explains the reason ("Keep-stock waiting: Not enough ingredients").
+[Capture](jobs-client-v1-2026-10-19/jobs-keep-waiting-scale-4.png).
+
+`TerminalJobGameTests` starves a kept rule and requires the row's note to be `missing`.
+`TerminalJobPacketsTest` covers the note's round trip and its 64-character bound.

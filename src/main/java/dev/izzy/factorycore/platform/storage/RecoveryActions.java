@@ -58,7 +58,6 @@ public final class RecoveryActions {
    * already have established that {@code player} is the actual connected player making this request
    * (not a console, {@code execute as} or a fake player).
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   public static Outcome request(
       ServerPlayer player, UUID id, boolean settle, Consumer<WorldStorageTransfers.Result> report) {
     var server = player.server;
@@ -102,7 +101,6 @@ public final class RecoveryActions {
   }
 
   /** Operator retirement of a complete, empty record after preserving its evidence. */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   public static Outcome retire(MinecraftServer server, UUID id) {
     try {
       var saved = DeviceSavedData.get(server);

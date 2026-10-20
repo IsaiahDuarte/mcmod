@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -8,6 +7,8 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourceLedger;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.ArrayList;
 import java.util.List;
@@ -169,8 +170,7 @@ public final class WorldStorageCatalog {
     if (endpoint == null) {
       var owners = saved.registry().handles(cursor.after(), 8);
       for (var handle : owners.handles()) {
-        if (saved.registry().validate(handle)
-                == dev.izzy.factorycore.core.storage.DeviceRegistry.Failure.OK
+        if (saved.registry().validate(handle) == DeviceRegistry.Failure.OK
             && saved.registry().definition(handle).kind() == cursor.kind()
             && transfers.routeAllowed(
                 actor,
@@ -272,8 +272,7 @@ public final class WorldStorageCatalog {
         && cursor.principal().equals(actor.id())
         && cursor.scope().equals(member.scope())
         && cursor.grantsGeneration() == saved.network(cursor.scope().network()).generation()
-        && networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-            == NetworkAuthority.Decision.ALLOWED;
+        && networks.allows(actor, origin, NetworkPermissions.Permission.VIEW);
   }
 
   private static Cursor next(
@@ -304,7 +303,6 @@ public final class WorldStorageCatalog {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("Storage catalogs require server thread");
+    ServerThread.require(server, "Storage catalogs");
   }
 }

@@ -6,18 +6,18 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
-import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import dev.izzy.factorycore.testing.Net;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -66,12 +66,8 @@ public final class KeepStockGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var owner = UUID.randomUUID();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner);
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(h, owner).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     h.setBlock(UNIT, CraftingContent.UNIT.get());
     CraftingUnitEntity unit = h.getBlockEntity(UNIT);
     unit.patterns()
@@ -81,8 +77,7 @@ public final class KeepStockGameTests {
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     return new Fixture(
         owner,
-        new NodeRegistry.Position(
-            h.getLevel().dimension().location().toString(), h.absolutePos(UNIT).asLong()),
+        Positions.of(h.getLevel(), h.absolutePos(UNIT)),
         DeviceSavedData.get(h.getLevel().getServer()),
         CellHandleData.read(drive.cell(0)),
         codec.itemKey(new ItemStack(Items.OAK_LOG)),

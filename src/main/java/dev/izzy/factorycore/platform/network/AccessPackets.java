@@ -1,14 +1,15 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.session.MenuPayloads;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 /**
@@ -42,8 +43,8 @@ public final class AccessPackets {
     public Command {
       if (action < GRANT || action > RECOVERY || value < 0 || value >= MAX_PAGES)
         throw new IllegalArgumentException("Invalid access command bounds");
-      java.util.Objects.requireNonNull(session);
-      java.util.Objects.requireNonNull(principal);
+      Objects.requireNonNull(session);
+      Objects.requireNonNull(principal);
     }
 
     @Override
@@ -68,7 +69,7 @@ public final class AccessPackets {
   /** One principal: explicit grants as a permission bit mask; candidates have no grants yet. */
   public record Row(UUID id, String name, int granted, boolean online, boolean candidate) {
     public Row {
-      java.util.Objects.requireNonNull(id);
+      Objects.requireNonNull(id);
       if (name.length() > 48 || granted < 0 || granted >= 1 << 7)
         throw new IllegalArgumentException("Invalid access row");
     }
@@ -125,7 +126,7 @@ public final class AccessPackets {
           || pendingName.length() > 48
           || status.length() > 32
           || generation < 0) throw new IllegalArgumentException("Invalid access view");
-      java.util.Objects.requireNonNull(pending);
+      Objects.requireNonNull(pending);
     }
 
     @Override
@@ -209,19 +210,13 @@ public final class AccessPackets {
 
   public static void register(RegisterPayloadHandlersEvent event) {
     var registrar = event.registrar("1");
-    registrar.playToServer(
+    MenuPayloads.toServer(
+        registrar,
         Command.TYPE,
         Command.CODEC,
-        (packet, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof NetworkAccessMenu menu)
-            menu.command(player, packet);
-        });
-    registrar.playToClient(
-        View.TYPE,
-        View.CODEC,
-        (packet, context) -> {
-          if (context.player().containerMenu instanceof NetworkAccessMenu menu) menu.accept(packet);
-        });
+        NetworkAccessMenu.class,
+        NetworkAccessMenu::command);
+    MenuPayloads.toClient(
+        registrar, View.TYPE, View.CODEC, NetworkAccessMenu.class, NetworkAccessMenu::accept);
   }
 }

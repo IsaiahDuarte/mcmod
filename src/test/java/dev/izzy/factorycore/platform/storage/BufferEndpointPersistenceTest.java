@@ -11,8 +11,11 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.storage.DimensionDataStorage;
+import net.neoforged.neoforge.common.IOUtilities;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -30,7 +33,7 @@ class BufferEndpointPersistenceTest {
 
   @org.junit.jupiter.api.AfterEach
   void finishIo() {
-    net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
+    IOUtilities.waitUntilIOWorkerComplete();
   }
 
   private CompoundTag fixture(String name) throws Exception {
@@ -86,10 +89,7 @@ class BufferEndpointPersistenceTest {
     var migrated = restored.save(new CompoundTag(), registries);
     assertEquals(DeviceSavedData.SCHEMA, migrated.getInt("Schema"));
     assertTrue(
-        migrated
-            .getCompound("MachinePresets")
-            .getList("Deployments", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
+        migrated.getCompound("MachinePresets").getList("Deployments", Tag.TAG_COMPOUND).isEmpty());
     migrated.remove("MachinePresets");
     migrated.remove("CraftingJobs");
     migrated.putInt("Schema", 8);
@@ -160,7 +160,7 @@ class BufferEndpointPersistenceTest {
     assertEquals(0, buffer.total(key));
     assertEquals(64, saved.transfers().get(id).staged());
     storage.save();
-    net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
+    IOUtilities.waitUntilIOWorkerComplete();
     var restored = DeviceSavedData.open(storage(), file);
     assertEquals(context, restored.transfers().context(id));
     assertEquals(64, restored.transfers().get(id).staged());
@@ -173,7 +173,6 @@ class BufferEndpointPersistenceTest {
   }
 
   private DimensionDataStorage storage() {
-    return new DimensionDataStorage(
-        directory.toFile(), net.minecraft.util.datafix.DataFixers.getDataFixer(), registries);
+    return new DimensionDataStorage(directory.toFile(), DataFixers.getDataFixer(), registries);
   }
 }

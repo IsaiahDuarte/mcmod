@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.testing.storage;
 
+import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
+import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
@@ -12,6 +14,10 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
+import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -54,11 +60,9 @@ public final class ThroughputUpgradeGameTests {
 
   private ThroughputUpgradeGameTests() {}
 
-  @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.setGameMode(GameType.SURVIVAL);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
@@ -76,9 +80,7 @@ public final class ThroughputUpgradeGameTests {
     BarrelBlockEntity barrel = h.getBlockEntity(PROVIDER);
     for (int slot = 0; slot < barrel.getContainerSize(); slot++)
       barrel.setItem(slot, new ItemStack(Items.IRON_INGOT, 64));
-    h.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = h.getBlockEntity(BUFFER);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), player.getUUID());
+    BufferedInterfaceEntity buffer = Net.in(h, player.getUUID()).buffer(BUFFER);
     return new Fixture(player, port, buffer, WorldNetworks.get(player.server));
   }
 
@@ -110,8 +112,7 @@ public final class ThroughputUpgradeGameTests {
     f.player.connection.disconnect(Component.literal("Throughput fixture complete"));
   }
 
-  private static long extract(
-      ResourcePort port, dev.izzy.factorycore.core.resource.ResourceKey key, long requested) {
+  private static long extract(ResourcePort port, ResourceKey key, long requested) {
     long moved = 0;
     // A platform handler may return only one stack per call; the contract caps their aggregate.
     for (int call = 0; call < 64 && moved < requested; call++) {
@@ -220,6 +221,41 @@ public final class ThroughputUpgradeGameTests {
         .thenSucceed();
   }
 
+  /**
+   * A foreign player is denied the same way on every upgradeable device: no item spent, no tier
+   * change, and a clean refusal rather than a device fault (the buffer used to surface its
+   * permission exception as a fault message).
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void foreignUpgradeIsDeniedAlikeOnEveryDevice(GameTestHelper h) {
+    var f = setup(h);
+    var stranger = TestPlayers.mock(h);
+    TestPlayers.connect(stranger);
+    stranger.setGameMode(GameType.SURVIVAL);
+    stranger.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    var actor = new NetworkPermissions.Actor(stranger.getUUID(), false);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              for (var device : List.<ThroughputUpgradeable>of(f.port, f.buffer))
+                h.assertTrue(
+                    !device.upgrade(actor, ThroughputTier.ADVANCED)
+                        && device.tier() == ThroughputTier.BASE,
+                    "Foreign actor is refused without a fault: " + device);
+              for (var target : List.of(PORT, BUFFER)) {
+                var item = new ItemStack(ThroughputContent.THROUGHPUT.get(), 1);
+                h.assertTrue(
+                    use(h, stranger, target, item) == InteractionResult.FAIL
+                        && item.getCount() == 1,
+                    "Denied use at " + target + " keeps the item");
+              }
+              stranger.connection.disconnect(Component.literal("Stranger done"));
+              end(f);
+            })
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void deniedInstallationKeepsItemsAndBufferUpgradePreservesContents(
       GameTestHelper h) {
@@ -235,7 +271,7 @@ public final class ThroughputUpgradeGameTests {
               var stranger = new NetworkPermissions.Actor(UUID.randomUUID(), false);
               h.assertTrue(
                   f.port.installThroughput(stranger, ThroughputTier.ADVANCED)
-                          == dev.izzy.factorycore.core.network.NetworkAuthority.Decision.DENIED
+                          == NetworkAuthority.Decision.DENIED
                       && f.port.tier() == ThroughputTier.BASE,
                   "Foreign actor cannot upgrade private hardware");
               f.buffer.inventory().insert(key, 23);

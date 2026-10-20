@@ -8,10 +8,14 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourceLedger;
+import dev.izzy.factorycore.core.scheduling.FairScheduler;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
@@ -69,10 +73,8 @@ class DeviceRegistryTest {
     boolean[] connected = {true};
     registry.routing(location -> FIRST.equals(location) && connected[0]);
     var scheduler =
-        new dev.izzy.factorycore.core.scheduling.FairScheduler(
-            dev.izzy.factorycore.core.scheduling.FairScheduler.Limits.defaults(),
-            () -> 0,
-            failure -> fail(failure.diagnostic()));
+        new FairScheduler(
+            FairScheduler.Limits.defaults(), () -> 0, failure -> fail(failure.diagnostic()));
     OperationResult[] queued = {null};
     scheduler.submit(
         WORLD, JOB, "extract", 1, () -> queued[0] = registry.extract(handle, KEY, 10, JOB));
@@ -346,15 +348,15 @@ class DeviceRegistryTest {
     var extra = anotherRegistry.create(ResourceKind.ITEM, 100, false, 8, 8).handle();
     assertEquals(DeviceRegistry.Failure.OCCUPIED, anotherRegistry.attach(extra, FIRST).failure());
     assertEquals(DeviceRegistry.Failure.OK, anotherRegistry.validate(extra));
-    var stock = new java.util.HashMap<ResourceKey, Long>();
-    var claims = new java.util.ArrayList<LedgerState.Reservation>();
+    var stock = new HashMap<ResourceKey, Long>();
+    var claims = new ArrayList<LedgerState.Reservation>();
     for (int i = 0; i < 4096; i++) {
       var key = new ResourceKey(ResourceKind.ITEM, "test:entry_" + i, new byte[0]);
       stock.put(key, 2L);
       claims.add(new LedgerState.Reservation(JOB, key, 1));
       claims.add(new LedgerState.Reservation(new UUID(0, 13), key, 1));
     }
-    var owners = new java.util.ArrayList<DeviceRegistry.Stored>();
+    var owners = new ArrayList<DeviceRegistry.Stored>();
     for (int i = 0; i < 6; i++) {
       var ledger =
           new LedgerState(
@@ -372,11 +374,11 @@ class DeviceRegistryTest {
   void metadataPagesAreBoundedStableAndDoNotCopyOrMutateStock() {
     var dirty = new AtomicLong();
     var registry = registry(dirty::incrementAndGet);
-    var ids = new java.util.ArrayList<UUID>();
+    var ids = new ArrayList<UUID>();
     for (int index = 0; index < 35; index++)
       ids.add(registry.create(ResourceKind.ITEM, 1000, false, 4096, 8192).handle().backing());
     long before = dirty.get();
-    var actual = new java.util.ArrayList<UUID>();
+    var actual = new ArrayList<UUID>();
     UUID cursor = null;
     do {
       var page = registry.handles(cursor, 8);
@@ -393,7 +395,7 @@ class DeviceRegistryTest {
 
   @Test
   void adoptMovesTheSingleCanonicalLeaseAndStalesEveryOtherReference() {
-    var dirty = new java.util.concurrent.atomic.AtomicInteger();
+    var dirty = new AtomicInteger();
     var registry = registry(dirty::incrementAndGet);
     var current = placed(registry);
     var location = registry.definition(current).location();

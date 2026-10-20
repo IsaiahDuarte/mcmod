@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.jeitesting;
 
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
 import dev.izzy.factorycore.platform.client.ProgramTextEditor;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
@@ -13,13 +14,17 @@ import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
+import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
@@ -28,6 +33,7 @@ import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -70,17 +76,20 @@ final class JeiClientVerification {
   private final Path report = Path.of(System.getProperty("factorycore.client.report"));
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean ready = new AtomicBoolean();
+
+  /** The suite's screenshot names; Gradle requires the same list (captures/jei.txt). */
+  private static final Set<String> CAPTURES = manifest();
+
   private final StringBuilder evidence = new StringBuilder();
   private IRecipeCategory<RecipeHolder<CraftingRecipe>> category;
   private RecipeHolder<CraftingRecipe> recipe;
-  private volatile dev.izzy.factorycore.core.storage.DeviceRegistry.Handle cell;
+  private volatile DeviceRegistry.Handle cell;
   private int stage, ticks, entered;
 
   void register() {
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft and its integrated server are borrowed.
   private void tick(ClientTickEvent.Post event) {
     var client = Minecraft.getInstance();
     ticks++;
@@ -96,8 +105,7 @@ final class JeiClientVerification {
               + (client.screen == null ? "none" : client.screen.getClass().getName()));
     switch (stage) {
       case 0 -> {
-        if (client.screen
-            instanceof net.minecraft.client.gui.screens.AccessibilityOnboardingScreen onboarding) {
+        if (client.screen instanceof AccessibilityOnboardingScreen onboarding) {
           onboarding.onClose();
           return;
         }
@@ -332,8 +340,6 @@ final class JeiClientVerification {
     handler.onComplete();
   }
 
-  @SuppressWarnings(
-      "PMD.CloseResource") // The player's live ServerLevel remains owned by Minecraft.
   private void setup(ServerPlayer player) {
     var level = player.serverLevel();
     level.setDayTime(6000);
@@ -355,14 +361,11 @@ final class JeiClientVerification {
   }
 
   /** Seeds once the terminal is usable, i.e. the network has validated. */
-  @SuppressWarnings(
-      "PMD.CloseResource") // The player's live ServerLevel remains owned by Minecraft.
   private void seed(ServerPlayer player) {
     try {
       if (ready.get()
-          || !((dev.izzy.factorycore.platform.storage.TerminalEntity)
-                  player.serverLevel().getBlockEntity(TERMINAL))
-              .canUse(player)) return;
+          || !((TerminalEntity) player.serverLevel().getBlockEntity(TERMINAL)).canUse(player))
+        return;
       var planks =
           new PlatformResourceCodec(player.registryAccess())
               .itemKey(new ItemStack(Items.OAK_PLANKS));
@@ -385,13 +388,27 @@ final class JeiClientVerification {
     System.out.println("FACTORYCORE_JEI_STAGE " + stage);
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Screenshot borrows the game's active Window.
+  private static Set<String> manifest() {
+    try (var stream = JeiClientVerification.class.getResourceAsStream("/captures/jei.txt")) {
+      if (stream == null) throw new IllegalStateException("No capture manifest for jei");
+      return new String(stream.readAllBytes(), StandardCharsets.UTF_8)
+          .lines()
+          .map(String::strip)
+          .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+          .collect(Collectors.toUnmodifiableSet());
+    } catch (IOException error) {
+      throw new IllegalStateException("Cannot read capture manifest jei", error);
+    }
+  }
+
   private void capture(Minecraft client, String name) {
     try {
       Files.createDirectories(report.getParent().resolve("screenshots"));
     } catch (IOException error) {
       throw new IllegalStateException("Cannot prepare screenshot directory", error);
     }
+    if (!CAPTURES.contains(name))
+      throw new IllegalStateException(name + " is not listed in captures/jei.txt");
     evidence.append(name).append('\n');
     Screenshot.grab(
         report.getParent().toFile(),

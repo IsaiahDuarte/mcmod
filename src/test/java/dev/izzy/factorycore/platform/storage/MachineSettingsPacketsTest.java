@@ -11,6 +11,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.Bootstrap;
+import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.junit.jupiter.api.*;
 
 class MachineSettingsPacketsTest {
@@ -24,7 +25,7 @@ class MachineSettingsPacketsTest {
     return new RegistryFriendlyByteBuf(
         Unpooled.buffer(),
         RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY),
-        net.neoforged.neoforge.network.connection.ConnectionType.NEOFORGE);
+        ConnectionType.NEOFORGE);
   }
 
   @Test

@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import java.util.Objects;
 import java.util.UUID;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 
@@ -104,8 +105,7 @@ public final class FluidHandlerPort implements ResourcePort {
     return actual;
   }
 
-  private int checkedDrain(
-      net.neoforged.neoforge.fluids.FluidStack extracted, ResourceKey key, int amount) {
+  private int checkedDrain(FluidStack extracted, ResourceKey key, int amount) {
     if (extracted.getAmount() < 0
         || !extracted.isEmpty()
             && (!codec.fluidKey(extracted).equals(key) || extracted.getAmount() > amount))

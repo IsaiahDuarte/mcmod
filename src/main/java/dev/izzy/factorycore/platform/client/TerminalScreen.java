@@ -17,6 +17,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
@@ -249,14 +250,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private Button jobButton(String key, int x, int width, Runnable action) {
     return addRenderableWidget(
-        Button.builder(
-                Component.translatable("gui.factorycore.terminal.job." + key),
-                button -> action.run())
-            .bounds(leftPos + x, topPos + 118, width, 18)
-            .tooltip(
-                Tooltip.create(
-                    Component.translatable("gui.factorycore.terminal.job." + key + ".help")))
-            .build());
+        ScreenButtons.labeled(
+            "gui.factorycore.terminal.job.", key, leftPos + x, topPos + 118, width, 18, action));
   }
 
   private void job(int action, int selection, int amount) {
@@ -314,12 +309,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private Button button(String key, int x, int width, Runnable action) {
     return addRenderableWidget(
-        Button.builder(
-                Component.translatable("gui.factorycore.terminal." + key), button -> action.run())
-            .bounds(leftPos + x, topPos + 118, width, 18)
-            .tooltip(
-                Tooltip.create(Component.translatable("gui.factorycore.terminal." + key + ".help")))
-            .build());
+        ScreenButtons.labeled(
+            "gui.factorycore.terminal.", key, leftPos + x, topPos + 118, width, 18, action));
   }
 
   private void send(int action, int selection, int amount, byte[] fingerprint) {
@@ -476,8 +467,16 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         var item = icon(craftables.get(index).icon());
         if (item != null) graphics.renderItem(item.getDefaultInstance(), x + 6, topPos + 47);
         var keep = craftables.get(index).amount();
+        // Green when the keep-stock rule is satisfied; amber with "!" when it is waiting.
+        boolean waiting = !craftables.get(index).note().isEmpty();
+        if (!keep.isEmpty()) graphics.fill(x + 1, topPos + 63, x + 27, topPos + 74, 0xd01a1d21);
         if (!keep.isEmpty())
-          graphics.drawCenteredString(font, "≥" + compact(keep), x + 14, topPos + 65, 0xb8e986);
+          graphics.drawCenteredString(
+              font,
+              (waiting ? "!≥" : "≥") + compact(keep),
+              x + 14,
+              topPos + 65,
+              waiting ? 0xffb347 : 0xb8e986);
       }
       return;
     }
@@ -505,7 +504,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /** Items show themselves; fluids show their bucket; energy shows redstone. */
-  private net.minecraft.world.item.Item rowIcon(String id) {
+  private Item rowIcon(String id) {
     if (kind == 2) return Items.REDSTONE;
     var location = ResourceLocation.tryParse(id);
     if (location == null) return Items.BARRIER;
@@ -519,7 +518,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         : Items.BARRIER;
   }
 
-  private static net.minecraft.world.item.Item icon(String id) {
+  private static Item icon(String id) {
     if (id.isEmpty()) return null;
     var location = ResourceLocation.tryParse(id);
     return location == null || !BuiltInRegistries.ITEM.containsKey(location)
@@ -673,11 +672,17 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
           mouseX,
           mouseY);
     } else if (jobsMode && over && row < menu.jobView().craftables().size()) {
+      var craftable = menu.jobView().craftables().get(row);
       graphics.renderTooltip(
           font,
           List.of(
-              Component.literal(menu.jobView().craftables().get(row).name()),
-              Component.translatable("gui.factorycore.terminal.job.select.help")),
+              Component.literal(craftable.name()),
+              craftable.note().isEmpty()
+                  ? Component.translatable("gui.factorycore.terminal.job.select.help")
+                  : Component.translatable(
+                      "gui.factorycore.terminal.job.keep.waiting",
+                      Component.translatable(
+                          "gui.factorycore.terminal.job.status." + craftable.note()))),
           Optional.empty(),
           mouseX,
           mouseY);

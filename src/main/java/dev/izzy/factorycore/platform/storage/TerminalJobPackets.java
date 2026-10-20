@@ -62,21 +62,30 @@ public final class TerminalJobPackets {
                     buffer.readVarInt()));
   }
 
-  /** One displayed item with an exact decimal amount (empty when not applicable). */
-  public record Entry(String icon, String name, String amount) {
+  /**
+   * One displayed item with an exact decimal amount (empty when not applicable). {@code note} is a
+   * status key: on a kept craftable row, why its keep-stock rule is waiting ("" when satisfied).
+   */
+  public record Entry(String icon, String name, String amount, String note) {
     public Entry {
-      if (icon.length() > 256 || name.length() > 96 || amount.length() > 32)
+      if (icon.length() > 256 || name.length() > 96 || amount.length() > 32 || note.length() > 64)
         throw new IllegalArgumentException("Invalid job entry bounds");
+    }
+
+    public Entry(String icon, String name, String amount) {
+      this(icon, name, amount, "");
     }
 
     static void write(RegistryFriendlyByteBuf buffer, Entry value) {
       buffer.writeUtf(value.icon, 256);
       buffer.writeUtf(value.name, 96);
       buffer.writeUtf(value.amount, 32);
+      buffer.writeUtf(value.note, 64);
     }
 
     static Entry read(RegistryFriendlyByteBuf buffer) {
-      return new Entry(buffer.readUtf(256), buffer.readUtf(96), buffer.readUtf(32));
+      return new Entry(
+          buffer.readUtf(256), buffer.readUtf(96), buffer.readUtf(32), buffer.readUtf(64));
     }
   }
 

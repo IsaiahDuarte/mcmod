@@ -4,9 +4,12 @@ import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
@@ -17,6 +20,8 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
@@ -24,6 +29,12 @@ import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.platform.storage.WorldConnectors;
+import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
+import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.MixerFixture;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -31,12 +42,15 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlastFurnaceBlockEntity;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -80,12 +94,8 @@ public final class ProcessingJobGameTests {
 
   private static Fixture setup(GameTestHelper h) {
     var owner = UUID.randomUUID();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner);
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(h, owner).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     h.setBlock(FURNACE, Blocks.BLAST_FURNACE);
     BlastFurnaceBlockEntity furnace = h.getBlockEntity(FURNACE);
     furnace.setItem(1, new ItemStack(Items.COAL, 8));
@@ -100,8 +110,7 @@ public final class ProcessingJobGameTests {
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     return new Fixture(
         owner,
-        new NodeRegistry.Position(
-            h.getLevel().dimension().location().toString(), h.absolutePos(INTERFACE).asLong()),
+        Positions.of(h.getLevel(), h.absolutePos(INTERFACE)),
         DeviceSavedData.get(h.getLevel().getServer()),
         CellHandleData.read(drive.cell(0)),
         face,
@@ -254,17 +263,13 @@ public final class ProcessingJobGameTests {
         .thenSucceed();
   }
 
-  @SuppressWarnings("removal") // Pinned helper performs actual PlayerList authentication.
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void terminalEncodesDeclaredProcessingPattern(GameTestHelper h) {
-    var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(player.getUUID());
+    NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
     h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
     TerminalEntity terminal = h.getBlockEntity(TERMINAL);
     var inventory = player.getInventory();
@@ -338,7 +343,7 @@ public final class ProcessingJobGameTests {
 
   private static void grid(
       TerminalMenu m,
-      net.minecraft.server.level.ServerPlayer player,
+      ServerPlayer player,
       int action,
       int cell,
       int source,
@@ -362,17 +367,13 @@ public final class ProcessingJobGameTests {
   @GameTest(template = "empty", timeoutTicks = 1200)
   public static void mixedItemAndFluidProcessingInsertsAndCollectsExactAmounts(GameTestHelper h) {
     var owner = UUID.randomUUID();
-    h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(ROOT);
-    root.commission(owner);
-    h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
+    NetworkNodeEntity root = Net.in(h, owner).controller(ROOT);
+    StorageDriveEntity drive =
+        Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM, CellTier.STARTER_FLUID);
     var items = CellHandleData.read(drive.cell(0));
     var fluids = CellHandleData.read(drive.cell(1));
-    h.setBlock(FURNACE, dev.izzy.factorycore.testing.MixerFixture.BLOCK.get());
-    dev.izzy.factorycore.testing.MixerFixture.MixerEntity mixer = h.getBlockEntity(FURNACE);
+    h.setBlock(FURNACE, MixerFixture.BLOCK.get());
+    MixerFixture.MixerEntity mixer = h.getBlockEntity(FURNACE);
     h.setBlock(
         INTERFACE,
         CraftingContent.INTERFACE
@@ -380,12 +381,8 @@ public final class ProcessingJobGameTests {
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.SOUTH));
     CraftingInterfaceEntity face = h.getBlockEntity(INTERFACE);
-    var water =
-        new net.neoforged.neoforge.fluids.FluidStack(
-            net.minecraft.world.level.material.Fluids.WATER, 1_000);
-    var lava =
-        new net.neoforged.neoforge.fluids.FluidStack(
-            net.minecraft.world.level.material.Fluids.LAVA, 250);
+    var water = new FluidStack(Fluids.WATER, 1_000);
+    var lava = new FluidStack(Fluids.LAVA, 250);
     var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
     pattern.set(
         CraftingContent.PROCESSING.get(),
@@ -404,9 +401,7 @@ public final class ProcessingJobGameTests {
     var waterKey = codec.fluidKey(water);
     var lavaKey = codec.fluidKey(lava);
     var saved = DeviceSavedData.get(h.getLevel().getServer());
-    var origin =
-        new NodeRegistry.Position(
-            h.getLevel().dimension().location().toString(), h.absolutePos(INTERFACE).asLong());
+    var origin = Positions.of(h.getLevel(), h.absolutePos(INTERFACE));
     UUID[] id = {null};
     h.startSequence()
         .thenWaitUntil(
@@ -448,9 +443,7 @@ public final class ProcessingJobGameTests {
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void machineWithoutAFluidPortIsNeverDispatchedForAFluidPattern(GameTestHelper h) {
     var f = setup(h);
-    var water =
-        new net.neoforged.neoforge.fluids.FluidStack(
-            net.minecraft.world.level.material.Fluids.WATER, 1_000);
+    var water = new FluidStack(Fluids.WATER, 1_000);
     var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
     pattern.set(
         CraftingContent.PROCESSING.get(),
@@ -536,13 +529,12 @@ public final class ProcessingJobGameTests {
     var portPos = new BlockPos(2, 1, 3);
     h.setBlock(
         portPos,
-        dev.izzy.factorycore.platform.storage.MachineInterfaceContent.BLOCK
+        MachineInterfaceContent.BLOCK
             .get()
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.WEST));
-    dev.izzy.factorycore.platform.storage.MachineInterfaceEntity port = h.getBlockEntity(portPos);
-    port.place(
-        new ItemStack(dev.izzy.factorycore.platform.storage.MachineInterfaceContent.ITEM.get()));
+    MachineInterfaceEntity port = h.getBlockEntity(portPos);
+    port.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     var gold = codec.itemKey(new ItemStack(Items.GOLD_INGOT));
     var rawGold = codec.itemKey(new ItemStack(Items.RAW_GOLD));
@@ -550,9 +542,9 @@ public final class ProcessingJobGameTests {
     var runtime = WorldNetworks.get(h.getLevel().getServer());
     UUID[] ids = {null, null};
     boolean[] busy = {false};
-    dev.izzy.factorycore.platform.storage.WorldConnectors.Handle[] handle = {null};
-    dev.izzy.factorycore.core.resource.ResourcePort[] cached = {null};
-    dev.izzy.factorycore.platform.storage.WorldStorageTransfers.Result[] moved = {null};
+    WorldConnectors.Handle[] handle = {null};
+    ResourcePort[] cached = {null};
+    WorldStorageTransfers.Result[] moved = {null};
     h.startSequence()
         .thenWaitUntil(
             () -> {
@@ -606,8 +598,7 @@ public final class ProcessingJobGameTests {
               var scriptLimit = runtime.connectors().limit(handle[0], true, 1);
               h.assertTrue(
                   jobs(h).machineLeased(target)
-                      && scriptLimit.reason()
-                          == dev.izzy.factorycore.core.resource.OperationResult.Reason.BUSY,
+                      && scriptLimit.reason() == OperationResult.Reason.BUSY,
                   "Processing lease exposes actionable busy to scripts and automatic presets: "
                       + jobs(h).machineLeased(target)
                       + " "
@@ -621,10 +612,8 @@ public final class ProcessingJobGameTests {
                       UUID.randomUUID(),
                       actor(f.owner),
                       port.position(),
-                      new dev.izzy.factorycore.platform.storage.WorldStorageTransfers.Digital(
-                          f.cell),
-                      new dev.izzy.factorycore.platform.storage.WorldStorageTransfers.External(
-                          handle[0]),
+                      new WorldStorageTransfers.Digital(f.cell),
+                      new WorldStorageTransfers.External(handle[0]),
                       coal,
                       1,
                       value -> moved[0] = value);
@@ -634,8 +623,7 @@ public final class ProcessingJobGameTests {
         .thenExecute(
             () ->
                 h.assertTrue(
-                    moved[0].reason()
-                            == dev.izzy.factorycore.core.resource.OperationResult.Reason.BUSY
+                    moved[0].reason() == OperationResult.Reason.BUSY
                         && moved[0].transfer() == null
                         && f.stock(coal) == 1,
                     "Busy scheduled move extracted no fuel into staging"))
@@ -843,7 +831,7 @@ public final class ProcessingJobGameTests {
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void opaqueCapabilityWithoutBackingEvidenceCannotStartProcessing(GameTestHelper h) {
     var f = setup(h);
-    h.setBlock(FURNACE, dev.izzy.factorycore.testing.ConnectorFixture.OPAQUE.get());
+    h.setBlock(FURNACE, ConnectorFixture.OPAQUE.get());
     UUID[] id = {null};
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f))

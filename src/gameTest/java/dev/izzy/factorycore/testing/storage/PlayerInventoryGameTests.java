@@ -4,9 +4,13 @@ import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -45,9 +49,8 @@ public final class PlayerInventoryGameTests {
     return stack;
   }
 
-  @SuppressWarnings("removal") // Pinned helper performs real PlayerList/connection registration.
   private static ServerPlayer login(GameTestHelper helper) {
-    var player = helper.makeMockServerPlayerInLevel();
+    var player = TestPlayers.mock(helper);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
     return player;
@@ -56,12 +59,8 @@ public final class PlayerInventoryGameTests {
   private static Fixture setup(GameTestHelper helper) {
     var player = login(helper);
     var actor = new NetworkPermissions.Actor(player.getUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM);
     return new Fixture(
         player,
         actor,
@@ -69,8 +68,7 @@ public final class PlayerInventoryGameTests {
         CellHandleData.read(drive.cell(0)),
         DeviceSavedData.get(helper.getLevel().getServer()),
         WorldNetworks.get(helper.getLevel().getServer()),
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(), helper.absolutePos(ROOT).asLong()),
+        Positions.of(helper.getLevel(), helper.absolutePos(ROOT)),
         new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(named(1)));
   }
 
@@ -381,10 +379,10 @@ public final class PlayerInventoryGameTests {
                       64,
                       value -> result[3] = value);
               for (int step = 0;
-                  step < 16 && java.util.Arrays.stream(result).anyMatch(value -> value == null);
+                  step < 16 && Arrays.stream(result).anyMatch(value -> value == null);
                   step++) fixture.runtime().scheduler().tick();
               helper.assertTrue(
-                  java.util.Arrays.stream(result).allMatch(value -> value != null),
+                  Arrays.stream(result).allMatch(value -> value != null),
                   "Bounded same-server-tick fixture dispatch");
               helper.assertTrue(
                   result[0].transfer().delivered() == 64

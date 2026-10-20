@@ -1,17 +1,17 @@
 package dev.izzy.factorycore.testing.power;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.core.storage.FuelGenerator;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.power.FuelGeneratorBlock;
 import dev.izzy.factorycore.platform.power.FuelGeneratorContent;
 import dev.izzy.factorycore.platform.power.FuelGeneratorEntity;
-import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
+import dev.izzy.factorycore.testing.Net;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -205,12 +205,8 @@ public final class FuelGeneratorGameTests {
     var generator = place(h);
     var bankPos = GENERATOR.east();
     h.setBlock(bankPos.east(), NetworkContent.CABLE.get());
-    h.setBlock(bankPos.east(2), NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = h.getBlockEntity(bankPos.east(2));
-    root.commission(UUID.randomUUID());
-    h.setBlock(bankPos, EnergyBankContent.block(EnergyBankTier.STARTER));
-    EnergyBankEntity bank = h.getBlockEntity(bankPos);
-    bank.place(new ItemStack(EnergyBankContent.item(EnergyBankTier.STARTER)));
+    NetworkNodeEntity root = Net.in(h, UUID.randomUUID()).controller(bankPos.east(2));
+    EnergyBankEntity bank = Net.in(h).bank(bankPos, EnergyBankTier.STARTER);
     load(h, generator, 1_000, 0, 0);
     long[] start = {0};
     h.startSequence()
@@ -224,10 +220,7 @@ public final class FuelGeneratorGameTests {
             () ->
                 h.assertTrue(
                     WorldNetworks.get(h.getLevel().getServer())
-                            .membership(
-                                new NodeRegistry.Position(
-                                    h.getLevel().dimension().location().toString(),
-                                    h.absolutePos(bankPos).asLong()))
+                            .membership(Positions.of(h.getLevel(), h.absolutePos(bankPos)))
                             .status()
                         == NetworkTopology.Status.VALID,
                     "Bank network ready"))

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.crafting.GridRequirement;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -150,9 +151,9 @@ public final class TerminalCraftingPackets {
               int menu = buffer.readVarInt();
               UUID session = buffer.readUUID();
               long revision = buffer.readLong();
-              var cells = new java.util.ArrayList<String>();
+              var cells = new ArrayList<String>();
               for (int index = 0; index < CELLS; index++) cells.add(buffer.readUtf(256));
-              var counts = new java.util.ArrayList<Integer>();
+              var counts = new ArrayList<Integer>();
               for (int index = 0; index < CELLS; index++) counts.add(buffer.readVarInt());
               boolean processing = buffer.readBoolean();
               return new View(
@@ -176,15 +177,14 @@ public final class TerminalCraftingPackets {
    * Recipe-viewer transfer: nine registry item IDs ("" = empty) set as crafting ghost cells by
    * registry identity. Ghost cells move nothing; a later craft revalidates real stock.
    */
-  public record Fill(int menu, UUID session, java.util.List<String> items)
-      implements CustomPacketPayload {
+  public record Fill(int menu, UUID session, List<String> items) implements CustomPacketPayload {
     public static final int MAX_ID = 256;
     public static final Type<Fill> TYPE =
         new Type<>(
             ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_grid_fill"));
 
     public Fill {
-      items = java.util.List.copyOf(items);
+      items = List.copyOf(items);
       if (items.size() != GridRequirement.CELLS
           || items.stream()
               .anyMatch(
@@ -209,7 +209,7 @@ public final class TerminalCraftingPackets {
             buffer -> {
               int menu = buffer.readVarInt();
               var session = buffer.readUUID();
-              var items = new java.util.ArrayList<String>(GridRequirement.CELLS);
+              var items = new ArrayList<String>(GridRequirement.CELLS);
               for (int cell = 0; cell < GridRequirement.CELLS; cell++)
                 items.add(buffer.readUtf(MAX_ID));
               return new Fill(menu, session, items);

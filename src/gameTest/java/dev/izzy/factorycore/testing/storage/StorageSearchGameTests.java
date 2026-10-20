@@ -5,10 +5,13 @@ import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.ConnectorFixture;
+import dev.izzy.factorycore.testing.Net;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Set;
@@ -21,7 +24,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -46,9 +53,7 @@ public final class StorageSearchGameTests {
 
   private static Fixture setup(GameTestHelper helper, boolean privateChild) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    helper.setBlock(ROOT, NetworkContent.CONTROLLER.get());
-    NetworkNodeEntity root = helper.getBlockEntity(ROOT);
-    root.commission(actor.id());
+    NetworkNodeEntity root = Net.in(helper, actor.id()).controller(ROOT);
     var connectorPosition = privateChild ? new BlockPos(3, 1, 1) : CONNECTOR;
     var providerPosition = privateChild ? new BlockPos(4, 1, 1) : PROVIDER;
     if (privateChild) {
@@ -71,9 +76,7 @@ public final class StorageSearchGameTests {
     connector.place(new ItemStack(ConnectorContent.ITEM.get()));
     helper.setBlock(providerPosition, ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity provider = helper.getBlockEntity(providerPosition);
-    helper.setBlock(DRIVE, StorageContent.DRIVE.get());
-    StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
-    drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+    StorageDriveEntity drive = Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM);
     return new Fixture(
         actor,
         root,
@@ -85,8 +88,7 @@ public final class StorageSearchGameTests {
   }
 
   private static NodeRegistry.Position origin(GameTestHelper helper) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(ROOT).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(ROOT));
   }
 
   private static void ready(GameTestHelper helper, Fixture fixture) {
@@ -161,9 +163,16 @@ public final class StorageSearchGameTests {
             () -> {
               var result =
                   fixture.runtime().transfers().search().result(query[0], fixture.actor(), null, 5);
+              // The reason and page count make an intermittent failure diagnosable: DENIED means
+              // the search was pruned, any other non-OK reason is the limit it hit.
               helper.assertTrue(
                   result.reason() == OperationResult.Reason.OK && result.complete(),
-                  "Complete bounded all-key scan");
+                  "Complete bounded all-key scan: reason="
+                      + result.reason()
+                      + " complete="
+                      + result.complete()
+                      + " pages="
+                      + result.observedPages());
             })
         .thenExecute(
             () -> {
@@ -213,9 +222,7 @@ public final class StorageSearchGameTests {
     var fixture = setup(helper, false);
     var bufferPosition = new BlockPos(3, 1, 2);
     helper.setBlock(new BlockPos(2, 1, 2), NetworkContent.CABLE.get());
-    helper.setBlock(bufferPosition, BufferedInterfaceContent.BLOCK.get());
-    BufferedInterfaceEntity buffer = helper.getBlockEntity(bufferPosition);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), fixture.actor().id());
+    BufferedInterfaceEntity buffer = Net.in(helper, fixture.actor().id()).buffer(bufferPosition);
     fixture.provider().items.setStackInSlot(0, new ItemStack(Items.DIAMOND, 5));
     UUID[] query = {null};
     helper
@@ -507,10 +514,8 @@ public final class StorageSearchGameTests {
     var kind = energy ? ResourceKind.ENERGY : ResourceKind.FLUID;
     if (energy) {
       var bankPosition = new BlockPos(2, 1, 2);
-      var tier = dev.izzy.factorycore.core.storage.EnergyBankTier.STARTER;
-      helper.setBlock(bankPosition, EnergyBankContent.block(tier));
-      EnergyBankEntity bank = helper.getBlockEntity(bankPosition);
-      bank.place(new ItemStack(EnergyBankContent.item(tier)));
+      var tier = EnergyBankTier.STARTER;
+      EnergyBankEntity bank = Net.in(helper).bank(bankPosition, tier);
       cell[0] = bank.handle();
       resource[0] = ResourceKey.ENERGY;
       fixture.provider().energy.receiveEnergy(800, false);
@@ -518,13 +523,8 @@ public final class StorageSearchGameTests {
       StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
       drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
       cell[0] = CellHandleData.read(drive.cell(1));
-      var water =
-          new net.neoforged.neoforge.fluids.FluidStack(
-              net.minecraft.world.level.material.Fluids.WATER, 1000);
-      fixture
-          .provider()
-          .fluids
-          .fill(water, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+      var water = new FluidStack(Fluids.WATER, 1000);
+      fixture.provider().fluids.fill(water, IFluidHandler.FluidAction.EXECUTE);
       resource[0] = new PlatformResourceCodec(helper.getLevel().registryAccess()).fluidKey(water);
     }
     helper
@@ -634,7 +634,7 @@ public final class StorageSearchGameTests {
             () -> {
               for (int index = 0; index < 100; index++) {
                 var stack = named(index, 1);
-                net.minecraft.world.item.component.CustomData.update(
+                CustomData.update(
                     DataComponents.CUSTOM_DATA,
                     stack,
                     tag -> tag.putByteArray("Metadata", new byte[60000]));

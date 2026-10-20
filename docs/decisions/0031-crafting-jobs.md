@@ -50,7 +50,7 @@ remainders, then records one craft. Failures set WAITING with a reason
 operator) cancels, the job releases any remaining reservations and inserts staging
 into cells in the requester's CRAFT view; leftovers wait with reason `full`. Consumed
 ingredients are not restored and nothing is replayed or refunded. A job retires only
-when staging and reservations are empty; a bounded in-memory notice records it.
+when staging and reservations are empty; a bounded in-memory notice records it, and the requester, if online, gets a "Crafting job finished/cancelled" chat message (verified in the real-client Jobs tour).
 
 ## Alternatives
 

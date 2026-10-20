@@ -3,16 +3,22 @@ package dev.izzy.factorycore.platform.storage;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
+import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.storage.DimensionDataStorage;
+import net.neoforged.neoforge.common.IOUtilities;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -30,7 +36,7 @@ class BufferPersistenceTest {
 
   @org.junit.jupiter.api.AfterEach
   void finishIo() {
-    net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
+    IOUtilities.waitUntilIOWorkerComplete();
   }
 
   private CompoundTag fixture(String name) throws Exception {
@@ -45,8 +51,7 @@ class BufferPersistenceTest {
   }
 
   private DimensionDataStorage storage() {
-    return new DimensionDataStorage(
-        directory.toFile(), net.minecraft.util.datafix.DataFixers.getDataFixer(), registries);
+    return new DimensionDataStorage(directory.toFile(), DataFixers.getDataFixer(), registries);
   }
 
   @Test
@@ -94,7 +99,7 @@ class BufferPersistenceTest {
     saved.buffers().inventory(handle, owner).insertSlot(8, slotState.key(), 23, false);
     assertTrue(saved.isDirty());
     storage.save();
-    net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
+    IOUtilities.waitUntilIOWorkerComplete();
     var restored = fresh(storage());
     assertFalse(restored.isDirty());
     assertFalse(restored.buffers().usable(handle, owner));
@@ -273,12 +278,11 @@ class BufferPersistenceTest {
     var owner = new Object();
     saved.buffers().bind(handle, saved.nodes().definition(handle).position(), owner);
     var policy =
-        new dev.izzy.factorycore.core.storage.BufferPolicy(
-            new dev.izzy.factorycore.core.resource.ResourceFilter(
-                dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
-                dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE,
-                java.util.List.of(
-                    new dev.izzy.factorycore.core.resource.ResourceFilter.Tag("minecraft:logs"))),
+        new BufferPolicy(
+            new ResourceFilter(
+                ResourceKind.ITEM,
+                ResourceFilter.Mode.INCLUDE,
+                List.of(new ResourceFilter.Tag("minecraft:logs"))),
             8);
     var deployment =
         saved
@@ -327,12 +331,7 @@ class BufferPersistenceTest {
             saved.registry().world(), new UUID(0, 601), 3, NodeRegistry.Kind.BUFFERED_INTERFACE);
     var owner = new Object();
     saved.buffers().bind(handle, saved.nodes().definition(handle).position(), owner);
-    var policy =
-        new dev.izzy.factorycore.core.storage.BufferPolicy(
-            dev.izzy.factorycore.core.resource.ResourceFilter.all(
-                dev.izzy.factorycore.core.resource.ResourceKind.ITEM),
-            16,
-            128);
+    var policy = new BufferPolicy(ResourceFilter.all(ResourceKind.ITEM), 16, 128);
     var deployed =
         saved
             .buffers()

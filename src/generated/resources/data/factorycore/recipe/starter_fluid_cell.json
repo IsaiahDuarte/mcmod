@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:bucket"
+    },
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    "GGG",
+    "GBG",
+    "GRG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "factorycore:starter_fluid_cell"
+  }
+}

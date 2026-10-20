@@ -11,8 +11,11 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.storage.DimensionDataStorage;
+import net.neoforged.neoforge.common.IOUtilities;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -30,7 +33,7 @@ class RouteCursorPersistenceTest {
 
   @org.junit.jupiter.api.AfterEach
   void finishIo() {
-    net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
+    IOUtilities.waitUntilIOWorkerComplete();
   }
 
   private CompoundTag fixture(String name) throws Exception {
@@ -60,11 +63,7 @@ class RouteCursorPersistenceTest {
     assertTrue(restored.routeCursors().snapshot().isEmpty());
     var migrated = restored.save(new CompoundTag(), registries);
     assertEquals(DeviceSavedData.SCHEMA, migrated.getInt("Schema"));
-    assertTrue(
-        migrated
-            .getCompound("Buffers")
-            .getList("Buffers", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
+    assertTrue(migrated.getCompound("Buffers").getList("Buffers", Tag.TAG_COMPOUND).isEmpty());
     assertTrue(migrated.getCompound("RouteCursors").getList("Cursors", Tag.TAG_COMPOUND).isEmpty());
     migrated.remove("RouteCursors");
     migrated.remove("Buffers");
@@ -77,8 +76,7 @@ class RouteCursorPersistenceTest {
   @Test
   void compressedSaveReloadRetainsRotationAndDirtyOnlyOnChange() throws Exception {
     var storage =
-        new DimensionDataStorage(
-            directory.toFile(), net.minecraft.util.datafix.DataFixers.getDataFixer(), registries);
+        new DimensionDataStorage(directory.toFile(), DataFixers.getDataFixer(), registries);
     var file = directory.resolve(DeviceSavedData.NAME + ".dat");
     var saved = DeviceSavedData.open(storage, file);
     var actor = new UUID(0, 201);
@@ -91,13 +89,10 @@ class RouteCursorPersistenceTest {
     assertTrue(saved.routeCursors().advance(scope, last));
     assertTrue(saved.isDirty());
     storage.save();
-    net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
+    IOUtilities.waitUntilIOWorkerComplete();
     var restored =
         DeviceSavedData.open(
-            new DimensionDataStorage(
-                directory.toFile(),
-                net.minecraft.util.datafix.DataFixers.getDataFixer(),
-                registries),
+            new DimensionDataStorage(directory.toFile(), DataFixers.getDataFixer(), registries),
             file);
     assertEquals(last, restored.routeCursors().last(scope));
     assertFalse(restored.isDirty());
