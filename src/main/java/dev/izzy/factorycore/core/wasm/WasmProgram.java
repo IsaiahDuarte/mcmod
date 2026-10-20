@@ -8,7 +8,6 @@ import com.dylibso.chicory.runtime.MStack;
 import com.dylibso.chicory.runtime.StackFrame;
 import com.dylibso.chicory.wasm.Parser;
 import com.dylibso.chicory.wasm.types.FunctionType;
-import com.dylibso.chicory.wasm.types.ValType;
 import dev.izzy.factorycore.core.program.ProgramCommand;
 import dev.izzy.factorycore.core.program.ProgramEvaluator;
 import dev.izzy.factorycore.core.program.ProgramIr;
@@ -52,24 +51,6 @@ public final class WasmProgram {
    * stateChanged} reports a committed {@code state_write} (read it with {@link #state()}).
    */
   public record Outcome(List<ProgramCommand> commands, int instructions, boolean stateChanged) {}
-
-  private static final FunctionType REGISTER =
-      FunctionType.of(List.of(ValType.I32, ValType.I32, ValType.I32), List.of(ValType.I32));
-  private static final FunctionType LABEL =
-      FunctionType.of(List.of(ValType.I32, ValType.I32), List.of(ValType.I64));
-  private static final FunctionType MACHINE_OP =
-      FunctionType.of(
-          List.of(ValType.I32, ValType.I32, ValType.I32, ValType.I32, ValType.I32, ValType.I64),
-          List.of(ValType.I32));
-  private static final FunctionType CRAFT =
-      FunctionType.of(List.of(ValType.I32, ValType.I32, ValType.I64), List.of(ValType.I32));
-  private static final FunctionType STOCK =
-      FunctionType.of(
-          List.of(ValType.I32, ValType.I32, ValType.I32, ValType.I32), List.of(ValType.I64));
-  private static final FunctionType LOG =
-      FunctionType.of(List.of(ValType.I32, ValType.I32), List.of(ValType.I32));
-  private static final FunctionType STATE =
-      FunctionType.of(List.of(ValType.I32, ValType.I32), List.of(ValType.I32));
 
   private final LongSupplier clock;
   private final Instance instance;
@@ -124,23 +105,27 @@ public final class WasmProgram {
       throw new IllegalArgumentException("Guest state over " + MAX_STATE + " bytes");
     committed = state == null ? null : state.clone();
     var module = Parser.parse(WasmPreflight.validate(artifact));
-    var imports =
-        ImportValues.builder()
-            .addFunction(function("register_rule", REGISTER, this::register))
-            .addFunction(function("machines", LABEL, this::machines))
-            .addFunction(function("keep", MACHINE_OP, a -> machineOp(a, 0)))
-            .addFunction(function("move_from", MACHINE_OP, a -> machineOp(a, 1)))
-            .addFunction(function("move_to", MACHINE_OP, a -> machineOp(a, 2)))
-            .addFunction(function("craft", CRAFT, this::craft))
-            .addFunction(function("stock", STOCK, this::stock))
-            .addFunction(function("log", LOG, this::log))
-            .addFunction(function("state_read", STATE, this::stateRead))
-            .addFunction(function("state_write", STATE, this::stateWrite))
-            .build();
+    var imports = ImportValues.builder();
+    for (var hostImport : HostImport.values())
+      imports.addFunction(
+          function(
+              hostImport,
+              switch (hostImport) {
+                case REGISTER_RULE -> this::register;
+                case MACHINES -> this::machines;
+                case KEEP -> a -> machineOp(a, 0);
+                case MOVE_FROM -> a -> machineOp(a, 1);
+                case MOVE_TO -> a -> machineOp(a, 2);
+                case CRAFT -> this::craft;
+                case STOCK -> this::stock;
+                case LOG -> this::log;
+                case STATE_READ -> this::stateRead;
+                case STATE_WRITE -> this::stateWrite;
+              }));
     instance =
         Instance.builder(module)
             .withStart(false)
-            .withImportValues(imports)
+            .withImportValues(imports.build())
             .withMachineFactory(BoundedMachine::new)
             .withUnsafeExecutionListener(
                 (instruction, stack) -> {
@@ -164,9 +149,12 @@ public final class WasmProgram {
     long[] apply(long[] arguments);
   }
 
-  private static HostFunction function(String name, FunctionType type, Body body) {
+  private static HostFunction function(HostImport hostImport, Body body) {
     return new HostFunction(
-        WasmPreflight.MODULE, name, type, (owner, arguments) -> body.apply(arguments));
+        WasmPreflight.MODULE,
+        hostImport.importName(),
+        hostImport.type(),
+        (owner, arguments) -> body.apply(arguments));
   }
 
   public List<RuleSpec> rules() {

@@ -395,7 +395,8 @@ tasks.named('test') {
     systemProperty 'factorycore.test.jar', tasks.named('jar').get().archiveFile.get().asFile.absolutePath
     systemProperty 'factorycore.test.smelter', file('build/test-guests/smelter.wasm').absolutePath
     systemProperty 'factorycore.test.counter', file('build/test-guests/counter.wasm').absolutePath
-    inputs.files('build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm')
+    systemProperty 'factorycore.test.sdk', file('sdk/rust/factorycore/src/lib.rs').absolutePath
+    inputs.files('build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm', 'sdk/rust/factorycore/src/lib.rs')
 }
 
 spotless {

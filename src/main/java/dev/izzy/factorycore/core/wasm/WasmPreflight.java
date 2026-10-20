@@ -13,18 +13,7 @@ import java.util.Set;
 public final class WasmPreflight {
   public static final int MAX_ARTIFACT = 131_072;
   public static final String MODULE = "factory_v1";
-  public static final Set<String> IMPORTS =
-      Set.of(
-          "register_rule",
-          "machines",
-          "keep",
-          "move_from",
-          "move_to",
-          "craft",
-          "stock",
-          "log",
-          "state_read",
-          "state_write");
+  public static final Set<String> IMPORTS = HostImport.NAMES;
   private static final byte[] HEADER = {0, 97, 115, 109, 1, 0, 0, 0};
 
   private WasmPreflight() {}
