@@ -84,7 +84,16 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   Done when: no screen, tooltip or guide page uses the banned words; the gateway text agrees
   with the textures; screenshots of the terminal and the buffer/machine screens are re-taken.
 
-- [ ] **U2 — Drive screen (F7, F9).**
+- [x] **U2 — Drive screen (F7, F9).** Done 2026-10-20, commit `2a87cd9`
+  (`U2: Add drive bay screen and in-place cell upgrades`). Four bays show tier,
+  exact type count, totals and fill bars; chosen-bay clicks and in-place modules reuse
+  canonical ownership, preserving contents/reservations/components. Four native cases
+  cover bay choice, upgrades/refusals/full drives and distant/closed menus. The fast
+  verifier passed (384 JVM, 332 native, 34 tooling tests); the graphical presentation
+  tour passed all 283 stages, including real pickup/reinstall and fit at scales 1–4.
+  Final scale 1/4 screenshots inspected; [evidence and captures](evidence/ux-u2-drive-2026-10-20.md).
+  The release `--full` gate was not run for this slice and remains required before merging.
+
   Empty-hand use opens a screen with the four bays, each showing tier, used/capacity bar and
   type count. Click a bay to take that cell out (no more first-slot-only). Drop a module on a
   bay to upgrade the cell in place, with the same preserve-identity/contents/reservations rule
