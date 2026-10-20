@@ -1,8 +1,8 @@
 name: Repository quality
 
+# Manual only: pushes and pull requests are not gated on CI. Run `python scripts/verify.py`
+# locally; trigger this from the Actions tab when a cross-OS check is wanted.
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 
 permissions:

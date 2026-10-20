@@ -77,9 +77,8 @@ Development commands:
 On Windows use `gradlew.bat`. The client and development server use separate
 `run/client` and `run/server` folders. Do not commit runtime worlds or local settings. See [verification requirements](docs/TESTING.md) for exact gates.
 
-The [GitHub Actions workflow](.github/workflows/quality.yml) installs Java 21 and pinned Rust tools, and
-runs the canonical command on Windows and Linux. Remote CI and branch protection
-remain unverified.
+The [GitHub Actions workflow](.github/workflows/quality.yml) runs the canonical command on Windows and
+Linux only when started manually. Pull requests and pushes are not gated on CI.
 
 Scheduled digital world transfer API and remaining integration limits: [contract](docs/modules/WORLD_STORAGE_TRANSFERS.md).
 
