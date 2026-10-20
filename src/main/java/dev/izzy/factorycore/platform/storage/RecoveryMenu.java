@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.TransferRegistry;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.AccessAdministration;
 import java.util.ArrayList;
 import java.util.List;
@@ -163,7 +164,7 @@ public final class RecoveryMenu extends AbstractContainerMenu {
         if (status.equals("queued")) detail = outcome.admission().name();
       }
       case RecoveryPackets.RETIRE -> {
-        if (!sender.hasPermissions(2)) {
+        if (!sender.hasPermissions(Actors.OPERATOR_LEVEL)) {
           status = "operator";
           break;
         }
@@ -198,7 +199,7 @@ public final class RecoveryMenu extends AbstractContainerMenu {
 
   private RecoveryPackets.View build(long revision) {
     var player = player();
-    boolean operator = player.hasPermissions(2);
+    boolean operator = player.hasPermissions(Actors.OPERATOR_LEVEL);
     var rows = new ArrayList<RecoveryPackets.Row>();
     next = null;
     try {

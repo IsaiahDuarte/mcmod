@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.MachinePresets;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
@@ -107,7 +108,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
   }
 
   private NetworkPermissions.Actor actor() {
-    return new NetworkPermissions.Actor(viewer.getUUID(), player().hasPermissions(2));
+    return Actors.of(viewer);
   }
 
   private boolean current() {
@@ -120,8 +121,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
   }
 
   private boolean editable() {
-    return runtime().authorize(actor(), machine.position(), NetworkPermissions.Permission.EDIT)
-        == NetworkAuthority.Decision.ALLOWED;
+    return runtime().allows(actor(), machine.position(), NetworkPermissions.Permission.EDIT);
   }
 
   public void accept(MachineSettingsPackets.View packet) {
@@ -272,8 +272,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
 
   private boolean presetEditable() {
     return editable()
-        && runtime().authorize(actor(), machine.position(), NetworkPermissions.Permission.DEPLOY)
-            == NetworkAuthority.Decision.ALLOWED;
+        && runtime().allows(actor(), machine.position(), NetworkPermissions.Permission.DEPLOY);
   }
 
   private TransferRegistry.Stored ownedStaging() {
@@ -485,8 +484,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
             for (var permission :
                 List.of(
                     NetworkPermissions.Permission.WITHDRAW, NetworkPermissions.Permission.DEPOSIT))
-              if (runtime().authorize(actor(), machine.position(), permission)
-                  != NetworkAuthority.Decision.ALLOWED) {
+              if (!runtime().allows(actor(), machine.position(), permission)) {
                 presetStatus = "denied";
                 publishPreset();
                 return;

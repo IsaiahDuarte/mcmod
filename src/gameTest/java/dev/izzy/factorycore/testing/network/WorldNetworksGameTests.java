@@ -11,6 +11,7 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -53,8 +54,7 @@ public final class WorldNetworksGameTests {
   }
 
   private static NodeRegistry.Position position(GameTestHelper helper, BlockPos relative) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(relative).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(relative));
   }
 
   private static NetworkNodeEntity root(GameTestHelper helper, BlockPos relative, UUID owner) {

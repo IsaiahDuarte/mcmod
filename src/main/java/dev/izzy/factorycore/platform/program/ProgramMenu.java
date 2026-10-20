@@ -1,9 +1,9 @@
 package dev.izzy.factorycore.platform.program;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
 import dev.izzy.factorycore.core.program.ProgramPreview;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.io.ByteArrayOutputStream;
@@ -148,7 +148,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
   }
 
   private NetworkPermissions.Actor actor() {
-    return new NetworkPermissions.Actor(viewer.getUUID(), player().hasPermissions(2));
+    return Actors.of(viewer);
   }
 
   /** Opens an editor session for an authorized viewer; false (and nothing opens) otherwise. */
@@ -172,11 +172,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
         && player.level() == controller.getLevel()
         && player.distanceToSqr(Vec3.atCenterOf(controller.getBlockPos())) <= 64
         && WorldNetworks.get(player.server)
-                .authorize(
-                    new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                    controller.origin(),
-                    NetworkPermissions.Permission.VIEW)
-            == NetworkAuthority.Decision.ALLOWED;
+            .allows(Actors.of(player), controller.origin(), NetworkPermissions.Permission.VIEW);
   }
 
   private boolean authorized() {
@@ -245,9 +241,8 @@ public final class ProgramMenu extends AbstractContainerMenu {
       }
       if (command.index() == command.count() - 1) {
         expected = -1;
-        if (WorldNetworks.get(sender.server)
-                .authorize(actor(), controller.origin(), NetworkPermissions.Permission.EDIT)
-            != NetworkAuthority.Decision.ALLOWED) {
+        if (!WorldNetworks.get(sender.server)
+            .allows(actor(), controller.origin(), NetworkPermissions.Permission.EDIT)) {
           diagnose(
               List.of(
                   new FriendlyCompiler.Diagnostic(

@@ -3,6 +3,7 @@ package dev.izzy.factorycore.testing.storage;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -53,10 +54,7 @@ public final class WorldExternalClaimsGameTests {
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
     var service = runtime.transfers();
-    var origin =
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(),
-            helper.absolutePos(rootPos).asLong());
+    var origin = Positions.of(helper.getLevel(), helper.absolutePos(rootPos));
     var target =
         new NodeRegistry.Position(origin.dimension(), helper.absolutePos(drivePos).asLong());
     var key =

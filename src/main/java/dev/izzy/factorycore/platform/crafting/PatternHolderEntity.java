@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.crafting;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -73,8 +74,7 @@ public abstract class PatternHolderEntity extends BlockEntity {
   }
 
   public NodeRegistry.Position origin() {
-    return new NodeRegistry.Position(
-        level.dimension().location().toString(), worldPosition.asLong());
+    return Positions.of(level, worldPosition);
   }
 
   /** True while this exact holder is the loaded block entity at its position. */

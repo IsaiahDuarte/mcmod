@@ -55,6 +55,11 @@ public final class NetworkAuthority {
     permissions.put(id, network);
   }
 
+  /** True when {@code actor} currently holds {@code operation} at {@code origin}. */
+  public boolean allows(Actor actor, Scope origin, Permission operation) {
+    return authorize(actor, origin, operation) == Decision.ALLOWED;
+  }
+
   public Decision authorize(Actor actor, Scope origin, Permission operation) {
     checkThread();
     Objects.requireNonNull(actor);

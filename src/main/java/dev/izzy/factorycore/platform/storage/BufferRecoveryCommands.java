@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Loaded;
 import java.io.IOException;
 import java.util.UUID;
@@ -17,7 +18,7 @@ final class BufferRecoveryCommands {
 
   static LiteralArgumentBuilder<CommandSourceStack> commands() {
     return Commands.literal("buffer")
-        .requires(source -> source.hasPermission(2))
+        .requires(source -> source.hasPermission(Actors.OPERATOR_LEVEL))
         .then(
             Commands.literal("list")
                 .executes(c -> list(c.getSource(), null))

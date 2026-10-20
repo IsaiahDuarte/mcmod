@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -70,8 +71,7 @@ public final class PlayerInventoryGameTests {
         CellHandleData.read(drive.cell(0)),
         DeviceSavedData.get(helper.getLevel().getServer()),
         WorldNetworks.get(helper.getLevel().getServer()),
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(), helper.absolutePos(ROOT).asLong()),
+        Positions.of(helper.getLevel(), helper.absolutePos(ROOT)),
         new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(named(1)));
   }
 

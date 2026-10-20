@@ -9,6 +9,7 @@ import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
@@ -198,8 +199,7 @@ public final class ProgramLimitsGameTests {
   }
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos pos) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(pos).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(pos));
   }
 
   private static void ready(GameTestHelper h, Fixture f) {

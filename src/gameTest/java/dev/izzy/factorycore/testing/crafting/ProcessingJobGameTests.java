@@ -9,6 +9,7 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
@@ -112,8 +113,7 @@ public final class ProcessingJobGameTests {
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     return new Fixture(
         owner,
-        new NodeRegistry.Position(
-            h.getLevel().dimension().location().toString(), h.absolutePos(INTERFACE).asLong()),
+        Positions.of(h.getLevel(), h.absolutePos(INTERFACE)),
         DeviceSavedData.get(h.getLevel().getServer()),
         CellHandleData.read(drive.cell(0)),
         face,
@@ -410,9 +410,7 @@ public final class ProcessingJobGameTests {
     var waterKey = codec.fluidKey(water);
     var lavaKey = codec.fluidKey(lava);
     var saved = DeviceSavedData.get(h.getLevel().getServer());
-    var origin =
-        new NodeRegistry.Position(
-            h.getLevel().dimension().location().toString(), h.absolutePos(INTERFACE).asLong());
+    var origin = Positions.of(h.getLevel(), h.absolutePos(INTERFACE));
     UUID[] id = {null};
     h.startSequence()
         .thenWaitUntil(

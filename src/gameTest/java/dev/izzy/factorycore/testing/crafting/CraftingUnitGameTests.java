@@ -1,7 +1,7 @@
 package dev.izzy.factorycore.testing.crafting;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
@@ -69,9 +69,7 @@ public final class CraftingUnitGameTests {
 
   private static NetworkTopology.Membership membership(GameTestHelper h, BlockPos pos) {
     return WorldNetworks.get(h.getLevel().getServer())
-        .membership(
-            new NodeRegistry.Position(
-                h.getLevel().dimension().location().toString(), h.absolutePos(pos).asLong()));
+        .membership(Positions.of(h.getLevel(), h.absolutePos(pos)));
   }
 
   private static void valid(GameTestHelper h, BlockPos... positions) {

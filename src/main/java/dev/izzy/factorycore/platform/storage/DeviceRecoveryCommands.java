@@ -6,6 +6,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Loaded;
 import java.io.IOException;
 import java.util.*;
@@ -123,7 +124,7 @@ final class DeviceRecoveryCommands {
 
   private static LiteralArgumentBuilder<CommandSourceStack> commands(
       boolean bank, LiteralArgumentBuilder<CommandSourceStack> root) {
-    return root.requires(source -> source.hasPermission(2))
+    return root.requires(source -> source.hasPermission(Actors.OPERATOR_LEVEL))
         .then(
             Commands.literal("list")
                 .executes(c -> list(c.getSource(), null, bank))

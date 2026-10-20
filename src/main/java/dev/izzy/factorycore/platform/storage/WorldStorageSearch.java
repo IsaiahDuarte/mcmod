@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -9,6 +8,7 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourceLedger;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
@@ -293,8 +293,7 @@ public final class WorldStorageSearch {
         && member.status() == NetworkTopology.Status.VALID
         && search.scope.equals(member.scope())
         && search.grantsGeneration == saved.network(search.scope.network()).generation()
-        && networks.authorize(actor, search.origin, NetworkPermissions.Permission.VIEW)
-            == NetworkAuthority.Decision.ALLOWED;
+        && networks.allows(actor, search.origin, NetworkPermissions.Permission.VIEW);
   }
 
   private void fail(Search search, OperationResult.Reason reason) {
@@ -358,7 +357,6 @@ public final class WorldStorageSearch {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("Storage search requires server thread");
+    ServerThread.require(server, "Storage search");
   }
 }

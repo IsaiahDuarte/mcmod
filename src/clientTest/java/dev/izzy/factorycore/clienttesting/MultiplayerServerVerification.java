@@ -5,10 +5,11 @@ import static dev.izzy.factorycore.clienttesting.MultiplayerSync.*;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -123,7 +124,7 @@ final class MultiplayerServerVerification {
         .append(" uuid=")
         .append(player.getUUID())
         .append(" operator=")
-        .append(player.hasPermissions(2))
+        .append(player.hasPermissions(Actors.OPERATOR_LEVEL))
         .append(" address=")
         .append(player.connection.getRemoteAddress())
         .append('\n');
@@ -158,7 +159,9 @@ final class MultiplayerServerVerification {
         if (joinedAt < 0) {
           joinedAt = now;
           require(
-              !owner.hasPermissions(2) && !stranger.hasPermissions(2), "No player is an operator");
+              !owner.hasPermissions(Actors.OPERATOR_LEVEL)
+                  && !stranger.hasPermissions(Actors.OPERATOR_LEVEL),
+              "No player is an operator");
           require(
               DeviceSavedData.get(server).registry().insert(cell, iron, SEEDED_IRON).amount()
                   == SEEDED_IRON,
@@ -319,11 +322,7 @@ final class MultiplayerServerVerification {
 
   private static boolean valid(MinecraftServer server, BlockPos position) {
     ServerLevel level = server.overworld();
-    return WorldNetworks.get(server)
-            .membership(
-                new NodeRegistry.Position(
-                    level.dimension().location().toString(), position.asLong()))
-            .status()
+    return WorldNetworks.get(server).membership(Positions.of(level, position)).status()
         == NetworkTopology.Status.VALID;
   }
 

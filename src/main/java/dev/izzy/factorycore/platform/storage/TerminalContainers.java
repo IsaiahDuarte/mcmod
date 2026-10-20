@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
@@ -47,7 +48,7 @@ final class TerminalContainers {
     saved = DeviceSavedData.get(player.server);
     transfers = WorldNetworks.get(player.server).transfers();
     codec = new PlatformResourceCodec(player.registryAccess());
-    actor = new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2));
+    actor = Actors.of(player);
   }
 
   /**

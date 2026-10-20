@@ -11,6 +11,7 @@ import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -84,8 +85,7 @@ public final class WirelessThroughputGameTests {
   private WirelessThroughputGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos relative) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(relative));
   }
 
   private static DeviceRegistry.Handle[] drive(GameTestHelper h, BlockPos position) {

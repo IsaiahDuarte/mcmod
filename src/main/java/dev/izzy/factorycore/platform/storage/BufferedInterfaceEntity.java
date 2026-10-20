@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -11,7 +10,9 @@ import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.BufferedItemHandler;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -56,11 +57,7 @@ public final class BufferedInterfaceEntity extends BlockEntity implements MenuPr
         && player.server.getPlayerList().getPlayer(player.getUUID()) == player
         && player.distanceToSqr(Vec3.atCenterOf(worldPosition)) <= 64
         && WorldNetworks.get(player.server)
-                .authorize(
-                    new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                    position(),
-                    NetworkPermissions.Permission.VIEW)
-            == NetworkAuthority.Decision.ALLOWED;
+            .allows(Actors.of(player), position(), NetworkPermissions.Permission.VIEW);
   }
 
   UUID sessionForOpen() {
@@ -101,8 +98,7 @@ public final class BufferedInterfaceEntity extends BlockEntity implements MenuPr
   }
 
   public NodeRegistry.Position position() {
-    return new NodeRegistry.Position(
-        serverLevel().dimension().location().toString(), worldPosition.asLong());
+    return Positions.of(serverLevel(), worldPosition);
   }
 
   public ServerLevel serverLevel() {
@@ -319,7 +315,7 @@ public final class BufferedInterfaceEntity extends BlockEntity implements MenuPr
         new NetworkPermissions.Permission[] {
           NetworkPermissions.Permission.EDIT, NetworkPermissions.Permission.DEPLOY
         })
-      if (networks.authorize(actor, position(), permission) != NetworkAuthority.Decision.ALLOWED)
+      if (!networks.allows(actor, position(), permission))
         throw new IllegalStateException("Buffer deployment permission denied");
     if (mode != BufferRegistry.Mode.PAUSED)
       for (var permission :
@@ -328,7 +324,7 @@ public final class BufferedInterfaceEntity extends BlockEntity implements MenuPr
             NetworkPermissions.Permission.WITHDRAW,
             NetworkPermissions.Permission.DEPOSIT
           })
-        if (networks.authorize(actor, position(), permission) != NetworkAuthority.Decision.ALLOWED)
+        if (!networks.allows(actor, position(), permission))
           throw new IllegalStateException("Buffer transfer permission denied");
     var deployment =
         authority()

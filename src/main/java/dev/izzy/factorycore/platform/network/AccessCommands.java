@@ -9,6 +9,8 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Locale;
@@ -97,15 +99,14 @@ public final class AccessCommands {
 
   /** Server-authenticated actor; never a client-supplied operator flag. */
   private static NetworkPermissions.Actor actor(CommandSourceStack source) {
-    boolean operator = source.hasPermission(2);
+    boolean operator = source.hasPermission(Actors.OPERATOR_LEVEL);
     return source.getEntity() instanceof ServerPlayer player
         ? new NetworkPermissions.Actor(player.getUUID(), operator)
         : new NetworkPermissions.Actor(Util.NIL_UUID, operator);
   }
 
   private static NodeRegistry.Position origin(CommandSourceStack source, BlockPos pos) {
-    return new NodeRegistry.Position(
-        source.getLevel().dimension().location().toString(), pos.asLong());
+    return Positions.of(source.getLevel(), pos);
   }
 
   private static boolean member(CommandSourceStack source, BlockPos pos) {

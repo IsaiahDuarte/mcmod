@@ -1,8 +1,8 @@
 package dev.izzy.factorycore.platform.upgrade;
 
 import dev.izzy.factorycore.core.network.NetworkAuthority;
-import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.ConnectorEntity;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
@@ -44,7 +44,7 @@ public final class ThroughputUpgradeItem extends Item {
         || entity instanceof LinkEndpointEntity)) return InteractionResult.PASS;
     if (level.isClientSide()) return InteractionResult.SUCCESS;
     if (!(context.getPlayer() instanceof ServerPlayer player)) return InteractionResult.FAIL;
-    var actor = new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2));
+    var actor = Actors.of(player);
     try {
       Component status;
       switch (entity) {

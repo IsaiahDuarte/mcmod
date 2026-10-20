@@ -18,6 +18,7 @@ import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.core.storage.RouteCursors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -78,8 +79,7 @@ public final class ConnectorGameTests {
       DeviceSavedData saved) {}
 
   private static NodeRegistry.Position position(GameTestHelper helper, BlockPos pos) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(pos).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(pos));
   }
 
   private static void ready(GameTestHelper helper, WorldNetworks runtime, BlockPos pos) {

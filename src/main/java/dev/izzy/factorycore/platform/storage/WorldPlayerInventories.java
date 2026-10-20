@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.resource.TransferContext;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.io.UncheckedIOException;
 import java.util.HashMap;
@@ -300,7 +301,6 @@ final class WorldPlayerInventories {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("Player inventory requires server thread");
+    ServerThread.require(server, "Player inventory");
   }
 }

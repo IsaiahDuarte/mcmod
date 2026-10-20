@@ -13,6 +13,9 @@ import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.FactoryCoreConfig;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.ServerScoped;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.ConnectorEntity;
@@ -45,7 +48,6 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ChunkEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /** Server-owned indexed geometry; world edits invalidate access before bounded rebuilding. */
@@ -55,7 +57,7 @@ public final class WorldNetworks {
   private static final int STEP = 32;
   private static final UUID WORK_NETWORK = new UUID(0xFAC7000, 1);
   private static final UUID WORK_PROGRAM = new UUID(0xFAC7000, 2);
-  private static final Map<MinecraftServer, WorldNetworks> SERVERS = new HashMap<>();
+  private static final ServerScoped<WorldNetworks> SERVERS = ServerScoped.of(WorldNetworks::new);
 
   private record ChunkKey(String dimension, int x, int z) {}
 
@@ -123,9 +125,8 @@ public final class WorldNetworks {
   }
 
   public static WorldNetworks get(MinecraftServer server) {
-    if (!server.isSameThread())
-      throw new IllegalStateException("World networking requires server thread");
-    return SERVERS.computeIfAbsent(server, WorldNetworks::new);
+    ServerThread.require(server, "World networking");
+    return SERVERS.get(server);
   }
 
   public WorldStorageTransfers transfers() {
@@ -159,7 +160,7 @@ public final class WorldNetworks {
   public static void machineInvalidated(Level level, MachineInterfaceEntity owner) {
     if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
       return;
-    var runtime = SERVERS.get(serverLevel.getServer());
+    var runtime = SERVERS.peek(serverLevel.getServer());
     if (runtime != null && runtime.machinePresets != null) runtime.machinePresets.unregister(owner);
   }
 
@@ -167,7 +168,7 @@ public final class WorldNetworks {
   public static void bufferInvalidated(Level level, BufferedInterfaceEntity owner) {
     if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
       return;
-    var runtime = SERVERS.get(serverLevel.getServer());
+    var runtime = SERVERS.peek(serverLevel.getServer());
     if (runtime != null && runtime.imports != null) runtime.imports.unregister(owner);
   }
 
@@ -175,8 +176,16 @@ public final class WorldNetworks {
   public static void connectorInvalidated(Level level, ConnectorEntity owner) {
     if (!(level instanceof ServerLevel serverLevel) || !serverLevel.getServer().isSameThread())
       return;
-    var runtime = SERVERS.get(serverLevel.getServer());
+    var runtime = SERVERS.peek(serverLevel.getServer());
     if (runtime != null && runtime.connectors != null) runtime.connectors.invalidate(owner);
+  }
+
+  /** True when {@code actor} currently holds {@code operation} at {@code origin}. */
+  public boolean allows(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      NetworkPermissions.Permission operation) {
+    return authorize(actor, origin, operation) == NetworkAuthority.Decision.ALLOWED;
   }
 
   public NetworkAuthority.Decision authorize(
@@ -249,7 +258,7 @@ public final class WorldNetworks {
   }
 
   public static void postTick(ServerTickEvent.Post event) {
-    var runtime = SERVERS.get(event.getServer());
+    var runtime = SERVERS.peek(event.getServer());
     if (runtime != null) runtime.tick();
   }
 
@@ -262,29 +271,23 @@ public final class WorldNetworks {
     scheduler.tick();
   }
 
-  public static void stopped(ServerStoppedEvent event) {
-    SERVERS.remove(event.getServer());
-  }
-
   public static void tagsReloaded(OnDatapackSyncEvent event) {
     if (event.getPlayer() != null) return;
-    var runtime = SERVERS.get(event.getPlayerList().getServer());
+    var runtime = SERVERS.peek(event.getPlayerList().getServer());
     if (runtime != null && runtime.imports != null) runtime.imports.tagsReloaded();
     if (runtime != null && runtime.machinePresets != null) runtime.machinePresets.tagsReloaded();
   }
 
   public static void playerLeft(PlayerEvent.PlayerLoggedOutEvent event) {
     if (!(event.getEntity() instanceof ServerPlayer player)) return;
-    var runtime = SERVERS.get(player.serverLevel().getServer());
+    var runtime = SERVERS.peek(player.serverLevel().getServer());
     if (runtime != null && runtime.transfers != null) runtime.transfers.playerDisconnected(player);
   }
 
   // Minecraft owns the borrowed level; the coordinator never closes worlds or chunk caches.
   public static void changed(Level level, BlockPos position) {
     if (!(level instanceof ServerLevel serverLevel)) return;
-    get(serverLevel.getServer())
-        .changed(
-            new NodeRegistry.Position(level.dimension().location().toString(), position.asLong()));
+    get(serverLevel.getServer()).changed(Positions.of(level, position));
   }
 
   public void changed(NodeRegistry.Position position) {
@@ -747,7 +750,6 @@ public final class WorldNetworks {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("World networking requires server thread");
+    ServerThread.require(server, "World networking");
   }
 }

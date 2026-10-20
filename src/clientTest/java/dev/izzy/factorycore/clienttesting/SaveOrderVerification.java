@@ -5,11 +5,11 @@ import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.require;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -84,9 +84,7 @@ final class SaveOrderVerification {
 
   private boolean valid(MinecraftServer server, BlockPos position) {
     return WorldNetworks.get(server)
-            .membership(
-                new NodeRegistry.Position(
-                    principal.serverLevel().dimension().location().toString(), position.asLong()))
+            .membership(Positions.of(principal.serverLevel(), position))
             .status()
         == NetworkTopology.Status.VALID;
   }

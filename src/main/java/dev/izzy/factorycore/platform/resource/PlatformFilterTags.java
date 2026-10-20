@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.resource;
 
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.platform.ServerThread;
 import java.util.Objects;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -18,8 +19,7 @@ public final class PlatformFilterTags implements ResourceFilter.Tags {
 
   @Override
   public boolean contains(ResourceKind kind, String tag, ResourceKey candidate) {
-    if (!server.isSameThread())
-      throw new IllegalStateException("Tag evaluation requires server thread");
+    ServerThread.require(server, "Tag evaluation");
     if (candidate.kind() != kind) throw new IllegalArgumentException("Tag candidate kind mismatch");
     var id = ResourceLocation.parse(candidate.registryId());
     var group = ResourceLocation.parse(tag);

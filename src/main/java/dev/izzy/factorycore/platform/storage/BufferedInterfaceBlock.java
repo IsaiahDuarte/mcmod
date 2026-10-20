@@ -1,12 +1,12 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
@@ -68,7 +68,9 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
       buffer.validatePlaced();
       var actor =
           new NetworkPermissions.Actor(
-              player.getUUID(), player instanceof ServerPlayer server && server.hasPermissions(2));
+              player.getUUID(),
+              player instanceof ServerPlayer server
+                  && server.hasPermissions(Actors.OPERATOR_LEVEL));
       if (player.isShiftKeyDown() && player.getOffhandItem().is(Items.REDSTONE)) {
         var admission =
             buffer.returnStaging(
@@ -200,9 +202,8 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
             false);
         return InteractionResult.CONSUME;
       }
-      if (WorldNetworks.get(buffer.serverLevel().getServer())
-              .authorize(actor, buffer.position(), NetworkPermissions.Permission.VIEW)
-          != NetworkAuthority.Decision.ALLOWED) {
+      if (!WorldNetworks.get(buffer.serverLevel().getServer())
+          .allows(actor, buffer.position(), NetworkPermissions.Permission.VIEW)) {
         player.displayClientMessage(
             Component.translatable("message.factorycore.buffer_denied"), true);
         return InteractionResult.FAIL;

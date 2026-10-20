@@ -11,6 +11,7 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
@@ -123,8 +124,7 @@ final class InterruptionVerification {
   }
 
   private NodeRegistry.Position at(BlockPos position) {
-    return new NodeRegistry.Position(
-        principal.serverLevel().dimension().location().toString(), position.asLong());
+    return Positions.of(principal.serverLevel(), position);
   }
 
   private boolean ready(MinecraftServer server) {

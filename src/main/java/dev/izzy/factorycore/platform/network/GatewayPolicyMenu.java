@@ -1,9 +1,9 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.GatewayPolicy;
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -77,11 +77,7 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
   private boolean mayManage(ServerPlayer player) {
     return gateway.handle() != null
         && WorldNetworks.get(player.server)
-                .authorize(
-                    new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                    gateway.position(),
-                    NetworkPermissions.Permission.MANAGE)
-            == NetworkAuthority.Decision.ALLOWED;
+            .allows(Actors.of(player), gateway.position(), NetworkPermissions.Permission.MANAGE);
   }
 
   /** Button id that reopens this gateway as a Network Access session (ADR 0055). */

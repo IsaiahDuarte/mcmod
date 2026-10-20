@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.security.MessageDigest;
@@ -185,7 +186,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   private NetworkPermissions.Actor actor() {
-    return new NetworkPermissions.Actor(viewer.getUUID(), player().hasPermissions(2));
+    return Actors.of(viewer);
   }
 
   private WorldStorageTransfers transfers() {

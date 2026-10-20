@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -379,15 +378,13 @@ public final class WorldStorageRoutes {
         && member.status() == NetworkTopology.Status.VALID
         && member.scope().network().equals(request.network)
         && member.scope().segment().equals(request.segment)
-        && networks.authorize(request.actor, request.origin, NetworkPermissions.Permission.VIEW)
-            == NetworkAuthority.Decision.ALLOWED
-        && networks.authorize(
-                request.actor,
-                request.origin,
-                request.direction == Direction.TO_STORAGE
-                    ? NetworkPermissions.Permission.DEPOSIT
-                    : NetworkPermissions.Permission.WITHDRAW)
-            == NetworkAuthority.Decision.ALLOWED;
+        && networks.allows(request.actor, request.origin, NetworkPermissions.Permission.VIEW)
+        && networks.allows(
+            request.actor,
+            request.origin,
+            request.direction == Direction.TO_STORAGE
+                ? NetworkPermissions.Permission.DEPOSIT
+                : NetworkPermissions.Permission.WITHDRAW);
   }
 
   private boolean fixedAllowed(Request request) {

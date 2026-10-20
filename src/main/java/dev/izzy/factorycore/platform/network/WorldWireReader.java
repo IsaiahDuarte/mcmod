@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.network.WiredDiscovery;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.PatternHolderEntity;
 import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
@@ -101,11 +102,7 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
       var ports = new ArrayList<WiredDiscovery.Port>(2);
       ports.add(port(block, link.back(), id));
       if (link.active())
-        ports.add(
-            new WiredDiscovery.Port(
-                new NodeRegistry.Position(
-                    level.dimension().location().toString(), link.partner().asLong()),
-                id));
+        ports.add(new WiredDiscovery.Port(Positions.of(level, link.partner()), id));
       return new WiredDiscovery.Wire(
           List.of(new NetworkTopology.Node(id, NetworkTopology.Role.CABLE, "", link.current())),
           ports,
@@ -202,10 +199,7 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
   }
 
   private WiredDiscovery.Port port(BlockPos block, Direction face, UUID vertex) {
-    return new WiredDiscovery.Port(
-        new NodeRegistry.Position(
-            level.dimension().location().toString(), block.relative(face).asLong()),
-        vertex);
+    return new WiredDiscovery.Port(Positions.of(level, block.relative(face)), vertex);
   }
 
   private UUID id(NodeRegistry.Position position, String role) {

@@ -2,8 +2,9 @@ package dev.izzy.factorycore.platform.crafting;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
-import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import java.io.IOException;
@@ -35,7 +36,7 @@ public final class ProcessingRecoveryCommands {
 
   public static LiteralArgumentBuilder<CommandSourceStack> commands() {
     return Commands.literal("processing")
-        .requires(source -> source.hasPermission(2))
+        .requires(source -> source.hasPermission(Actors.OPERATOR_LEVEL))
         .then(
             Commands.literal("show")
                 .then(
@@ -76,7 +77,7 @@ public final class ProcessingRecoveryCommands {
       return 0;
     }
     var machine = chunk.getBlockEntity(at, LevelChunk.EntityCreationType.CHECK);
-    var target = new NodeRegistry.Position(level.dimension().location().toString(), at.asLong());
+    var target = Positions.of(level, at);
     CraftingJob owner = null;
     for (var job : saved.craftingJobs().all())
       if (job.dispatch() != null && target.equals(job.dispatch().target())) owner = job;

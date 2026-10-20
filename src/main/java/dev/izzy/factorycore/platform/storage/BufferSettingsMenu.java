@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.security.MessageDigest;
@@ -119,7 +120,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
   }
 
   private NetworkPermissions.Actor actor() {
-    return new NetworkPermissions.Actor(viewer.getUUID(), player().hasPermissions(2));
+    return Actors.of(viewer);
   }
 
   private boolean current() {
@@ -139,8 +140,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
         new NetworkPermissions.Permission[] {
           NetworkPermissions.Permission.EDIT, NetworkPermissions.Permission.DEPLOY
         })
-      if (WorldNetworks.get(player().server).authorize(actor(), holder.position(), permission)
-          != NetworkAuthority.Decision.ALLOWED) return false;
+      if (!WorldNetworks.get(player().server).allows(actor(), holder.position(), permission))
+        return false;
     return true;
   }
 

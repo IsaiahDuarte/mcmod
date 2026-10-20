@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -90,8 +91,7 @@ public final class StorageSearchGameTests {
   }
 
   private static NodeRegistry.Position origin(GameTestHelper helper) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(ROOT).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(ROOT));
   }
 
   private static void ready(GameTestHelper helper, Fixture fixture) {

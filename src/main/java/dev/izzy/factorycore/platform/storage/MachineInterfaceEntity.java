@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.MachinePresets;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
 import java.util.UUID;
@@ -62,12 +63,12 @@ public final class MachineInterfaceEntity extends ConnectorEntity implements Men
             NetworkPermissions.Permission.VIEW,
             NetworkPermissions.Permission.EDIT,
             NetworkPermissions.Permission.DEPLOY))
-      if (runtime.authorize(actor, position(), permission) != NetworkAuthority.Decision.ALLOWED)
+      if (!runtime.allows(actor, position(), permission))
         throw new IllegalStateException("Machine preset permission denied");
     if (mode != MachinePresets.Mode.PAUSED)
       for (var permission :
           List.of(NetworkPermissions.Permission.WITHDRAW, NetworkPermissions.Permission.DEPOSIT))
-        if (runtime.authorize(actor, position(), permission) != NetworkAuthority.Decision.ALLOWED)
+        if (!runtime.allows(actor, position(), permission))
           throw new IllegalStateException("Machine preset resource permission denied");
     var scope = runtime.membership(position()).scope();
     var saved = DeviceSavedData.get(serverLevel().getServer());
@@ -131,8 +132,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity implements Men
               NetworkPermissions.Permission.DEPLOY,
               NetworkPermissions.Permission.WITHDRAW,
               NetworkPermissions.Permission.DEPOSIT))
-        if (runtime.authorize(actor, position(), permission) != NetworkAuthority.Decision.ALLOWED)
-          return false;
+        if (!runtime.allows(actor, position(), permission)) return false;
       return true;
     } catch (IllegalArgumentException | IllegalStateException invalid) {
       return false;
@@ -208,11 +208,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity implements Men
         && player.server.getPlayerList().getPlayer(player.getUUID()) == player
         && player.distanceToSqr(Vec3.atCenterOf(getBlockPos())) <= 64
         && WorldNetworks.get(player.server)
-                .authorize(
-                    new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                    position(),
-                    NetworkPermissions.Permission.VIEW)
-            == NetworkAuthority.Decision.ALLOWED;
+            .allows(Actors.of(player), position(), NetworkPermissions.Permission.VIEW);
   }
 
   @Override

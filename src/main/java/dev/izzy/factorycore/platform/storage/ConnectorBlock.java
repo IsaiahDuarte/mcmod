@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
 import java.util.List;
@@ -119,7 +120,7 @@ public final class ConnectorBlock extends Block implements EntityBlock {
                 ? held.getHoverName().getString()
                 : player.isShiftKeyDown() && held.is(Items.PAPER) ? "" : null;
         if (label != null) {
-          var actor = new NetworkPermissions.Actor(server.getUUID(), server.hasPermissions(2));
+          var actor = Actors.of(server);
           if (local.relabel(actor, label) != NetworkAuthority.Decision.ALLOWED)
             return InteractionResult.FAIL;
           server.displayClientMessage(
@@ -180,7 +181,8 @@ public final class ConnectorBlock extends Block implements EntityBlock {
         var actor =
             new NetworkPermissions.Actor(
                 player.getUUID(),
-                player instanceof ServerPlayer server && server.hasPermissions(2));
+                player instanceof ServerPlayer server
+                    && server.hasPermissions(Actors.OPERATOR_LEVEL));
         if (entity.configure(actor, settings) != NetworkAuthority.Decision.ALLOWED) {
           player.displayClientMessage(
               Component.translatable("message.factorycore.connector_denied"), true);

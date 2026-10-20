@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -90,8 +91,7 @@ public class ConnectorEntity extends BlockEntity {
   }
 
   public NodeRegistry.Position position() {
-    return new NodeRegistry.Position(
-        serverLevel().dimension().location().toString(), worldPosition.asLong());
+    return Positions.of(serverLevel(), worldPosition);
   }
 
   public ServerLevel serverLevel() {

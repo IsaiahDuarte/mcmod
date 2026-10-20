@@ -1,11 +1,11 @@
 package dev.izzy.factorycore.platform.network;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.RecoveryMenu;
 import java.util.ArrayList;
@@ -291,7 +291,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
 
   /** Only the current owner or an operator, with current Manage here, may transfer ownership. */
   private static boolean mayTransfer(ServerPlayer player, NetworkPermissions.State state) {
-    return player.getUUID().equals(state.owner()) || player.hasPermissions(2);
+    return player.getUUID().equals(state.owner()) || player.hasPermissions(Actors.OPERATOR_LEVEL);
   }
 
   /** A principal the screen may name: an explicit grant here or a currently online player. */
@@ -324,8 +324,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
     var actor = AccessAdministration.actor(player());
     int self = 0;
     for (var permission : Permission.values())
-      if (networks.authorize(actor, origin, permission) == NetworkAuthority.Decision.ALLOWED)
-        self |= 1 << permission.ordinal();
+      if (networks.allows(actor, origin, permission)) self |= 1 << permission.ordinal();
     boolean manage = (self & 1 << Permission.MANAGE.ordinal()) != 0;
     int branch = (1 << Permission.values().length) - 1, inherited = branch;
     int kinds = (1 << ResourceKind.values().length) - 1;
@@ -414,7 +413,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
         name(canonical.owner()),
         ownerSelf,
         true,
-        ownerSelf || player().hasPermissions(2),
+        ownerSelf || player().hasPermissions(Actors.OPERATOR_LEVEL),
         self,
         branch,
         inherited,

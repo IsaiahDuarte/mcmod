@@ -1,9 +1,9 @@
 package dev.izzy.factorycore.testing.power;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.core.storage.FuelGenerator;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -224,10 +224,7 @@ public final class FuelGeneratorGameTests {
             () ->
                 h.assertTrue(
                     WorldNetworks.get(h.getLevel().getServer())
-                            .membership(
-                                new NodeRegistry.Position(
-                                    h.getLevel().dimension().location().toString(),
-                                    h.absolutePos(bankPos).asLong()))
+                            .membership(Positions.of(h.getLevel(), h.absolutePos(bankPos)))
                             .status()
                         == NetworkTopology.Status.VALID,
                     "Bank network ready"))

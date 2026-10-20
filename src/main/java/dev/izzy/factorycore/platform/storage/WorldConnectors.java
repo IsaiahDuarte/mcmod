@@ -13,6 +13,7 @@ import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.EnergyHandlerPort;
@@ -74,8 +75,7 @@ public final class WorldConnectors {
     if ((node.kind() != NodeRegistry.Kind.CONNECTOR
             && node.kind() != NodeRegistry.Kind.MACHINE_INTERFACE)
         || saved.nodes().validate(node) != NodeRegistry.Failure.OK
-        || networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-            != NetworkAuthority.Decision.ALLOWED)
+        || !networks.allows(actor, origin, NetworkPermissions.Permission.VIEW))
       return new Registration(OperationResult.Reason.DENIED, null);
     var position = saved.nodes().definition(node).position();
     if (position == null) return new Registration(OperationResult.Reason.OFFLINE, null);
@@ -502,7 +502,7 @@ public final class WorldConnectors {
       NetworkPermissions.Permission operation) {
     checkThread();
     if (key.kind() != handle.kind()
-        || networks.authorize(actor, origin, operation) != NetworkAuthority.Decision.ALLOWED
+        || !networks.allows(actor, origin, operation)
         || saved.nodes().validate(handle.connector()) != NodeRegistry.Failure.OK) return false;
     var location = saved.nodes().definition(handle.connector()).position();
     if (location == null) return false;
@@ -936,6 +936,6 @@ public final class WorldConnectors {
   }
 
   private void checkThread() {
-    if (!server.isSameThread()) throw new IllegalStateException("Connectors require server thread");
+    ServerThread.require(server, "Connectors");
   }
 }

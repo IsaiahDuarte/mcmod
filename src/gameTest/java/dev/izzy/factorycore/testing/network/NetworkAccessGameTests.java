@@ -5,6 +5,8 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.AccessPackets;
 import dev.izzy.factorycore.platform.network.GatewayPolicyMenu;
 import dev.izzy.factorycore.platform.network.NetworkAccessMenu;
@@ -42,17 +44,13 @@ public final class NetworkAccessGameTests {
   private NetworkAccessGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos relative) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(relative));
   }
 
   private static boolean allowed(
       GameTestHelper h, ServerPlayer player, BlockPos at, Permission permission) {
     return WorldNetworks.get(h.getLevel().getServer())
-            .authorize(
-                new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                position(h, at),
-                permission)
+            .authorize(Actors.of(player), position(h, at), permission)
         == NetworkAuthority.Decision.ALLOWED;
   }
 

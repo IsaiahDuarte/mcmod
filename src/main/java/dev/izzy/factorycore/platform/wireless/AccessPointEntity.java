@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.wireless;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -93,8 +94,7 @@ public final class AccessPointEntity extends BlockEntity {
   }
 
   public NodeRegistry.Position origin() {
-    return new NodeRegistry.Position(
-        level.dimension().location().toString(), worldPosition.asLong());
+    return Positions.of(level, worldPosition);
   }
 
   public boolean current() {

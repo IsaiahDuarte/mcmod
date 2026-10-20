@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -37,8 +38,7 @@ public final class BufferTransferGameTests {
   }
 
   private static NodeRegistry.Position position(GameTestHelper helper, BlockPos pos) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(pos).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(pos));
   }
 
   private static void scenario(GameTestHelper helper, int mode) {

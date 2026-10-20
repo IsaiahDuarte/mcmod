@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.program.ProgramLog;
 import dev.izzy.factorycore.core.wasm.WasmPreflight;
 import dev.izzy.factorycore.core.wasm.WasmProgram;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.util.List;
@@ -271,8 +272,7 @@ public final class ProgramControllerEntity extends BlockEntity {
   }
 
   public NodeRegistry.Position origin() {
-    return new NodeRegistry.Position(
-        level.dimension().location().toString(), worldPosition.asLong());
+    return Positions.of(level, worldPosition);
   }
 
   public boolean current() {

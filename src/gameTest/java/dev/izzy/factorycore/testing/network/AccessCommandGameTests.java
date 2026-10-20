@@ -2,10 +2,11 @@ package dev.izzy.factorycore.testing.network;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
-import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -33,8 +34,7 @@ public final class AccessCommandGameTests {
   private AccessCommandGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos relative) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(relative));
   }
 
   private static int run(CommandSourceStack source, String command) {
@@ -47,10 +47,7 @@ public final class AccessCommandGameTests {
 
   private static boolean allowed(GameTestHelper h, ServerPlayer player, Permission permission) {
     return WorldNetworks.get(h.getLevel().getServer())
-            .authorize(
-                new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                position(h, CABLE),
-                permission)
+            .authorize(Actors.of(player), position(h, CABLE), permission)
         == NetworkAuthority.Decision.ALLOWED;
   }
 
@@ -82,7 +79,9 @@ public final class AccessCommandGameTests {
         .thenExecute(
             () -> {
               var source = stranger.createCommandSourceStack();
-              h.assertFalse(stranger.hasPermissions(2), "The stranger is not an operator");
+              h.assertFalse(
+                  stranger.hasPermissions(Actors.OPERATOR_LEVEL),
+                  "The stranger is not an operator");
               h.assertTrue(!allowed(h, stranger, Permission.VIEW), "Private by default");
               h.assertTrue(
                   run(source, "factorycore access grant " + pos + " " + stranger.getUUID() + " all")

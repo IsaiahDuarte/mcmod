@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.OperationResult;
@@ -13,6 +12,7 @@ import dev.izzy.factorycore.core.resource.TransferRegistry;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformFilterTags;
 import java.util.ArrayDeque;
@@ -224,8 +224,8 @@ public final class WorldBufferImports {
           NetworkPermissions.Permission.DEPLOY, NetworkPermissions.Permission.VIEW,
           NetworkPermissions.Permission.DEPOSIT, NetworkPermissions.Permission.WITHDRAW
         })
-      if (networks.authorize(actor, entry.owner.position(), permission)
-          != NetworkAuthority.Decision.ALLOWED) return OperationResult.Reason.DENIED;
+      if (!networks.allows(actor, entry.owner.position(), permission))
+        return OperationResult.Reason.DENIED;
     return OperationResult.Reason.OK;
   }
 
@@ -480,7 +480,6 @@ public final class WorldBufferImports {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("Buffer imports require server thread");
+    ServerThread.require(server, "Buffer imports");
   }
 }

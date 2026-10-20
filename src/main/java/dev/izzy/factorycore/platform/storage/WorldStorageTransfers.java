@@ -13,6 +13,7 @@ import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
@@ -81,8 +82,7 @@ public final class WorldStorageTransfers {
     var member = networks.membership(origin);
     if (member.status() != NetworkTopology.Status.VALID)
       return new Submission(null, OperationResult.Reason.OFFLINE);
-    if (networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-        != NetworkAuthority.Decision.ALLOWED)
+    if (!networks.allows(actor, origin, NetworkPermissions.Permission.VIEW))
       return new Submission(null, OperationResult.Reason.DENIED);
     var start =
         cursor == null
@@ -104,8 +104,7 @@ public final class WorldStorageTransfers {
           if (current.status() != NetworkTopology.Status.VALID
               || !current.scope().network().equals(ticket.network())
               || !current.scope().segment().equals(ticket.segment())
-              || networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-                  != NetworkAuthority.Decision.ALLOWED) {
+              || !networks.allows(actor, origin, NetworkPermissions.Permission.VIEW)) {
             completion.accept(new CatalogPage(OperationResult.Reason.DENIED, List.of(), null));
             return;
           }
@@ -248,8 +247,7 @@ public final class WorldStorageTransfers {
     var member = networks.membership(origin);
     if (member.status() != NetworkTopology.Status.VALID)
       return new Submission(null, OperationResult.Reason.OFFLINE);
-    if (networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-        != NetworkAuthority.Decision.ALLOWED)
+    if (!networks.allows(actor, origin, NetworkPermissions.Permission.VIEW))
       return new Submission(null, OperationResult.Reason.DENIED);
     return enqueue(
         id,
@@ -278,8 +276,7 @@ public final class WorldStorageTransfers {
     var member = networks.membership(origin);
     if (member.status() != NetworkTopology.Status.VALID)
       return new Submission(null, OperationResult.Reason.OFFLINE);
-    if (networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
-        != NetworkAuthority.Decision.ALLOWED)
+    if (!networks.allows(actor, origin, NetworkPermissions.Permission.VIEW))
       return new Submission(null, OperationResult.Reason.DENIED);
     return enqueue(
         id,
@@ -782,10 +779,8 @@ public final class WorldStorageTransfers {
       return;
     }
     if (!returning
-        && (networks.authorize(actor, context.origin(), NetworkPermissions.Permission.WITHDRAW)
-                != NetworkAuthority.Decision.ALLOWED
-            || networks.authorize(actor, context.origin(), NetworkPermissions.Permission.DEPOSIT)
-                != NetworkAuthority.Decision.ALLOWED)) {
+        && (!networks.allows(actor, context.origin(), NetworkPermissions.Permission.WITHDRAW)
+            || !networks.allows(actor, context.origin(), NetworkPermissions.Permission.DEPOSIT))) {
       completion.accept(new Result(id, OperationResult.Reason.DENIED, snapshot));
       return;
     }
@@ -1211,7 +1206,6 @@ public final class WorldStorageTransfers {
   }
 
   private void checkThread() {
-    if (!server.isSameThread())
-      throw new IllegalStateException("World transfers require server thread");
+    ServerThread.require(server, "World transfers");
   }
 }

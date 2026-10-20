@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
@@ -97,8 +98,7 @@ public final class CraftingJobGameTests {
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     return new Fixture(
         owner,
-        new NodeRegistry.Position(
-            h.getLevel().dimension().location().toString(), h.absolutePos(UNIT).asLong()),
+        Positions.of(h.getLevel(), h.absolutePos(UNIT)),
         DeviceSavedData.get(h.getLevel().getServer()),
         CellHandleData.read(drive.cell(0)),
         unit,

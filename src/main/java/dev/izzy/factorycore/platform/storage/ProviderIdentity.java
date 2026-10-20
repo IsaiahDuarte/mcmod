@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.resource.ExternalBackingProvider;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -239,30 +240,18 @@ final class ProviderIdentity {
           throw new IllegalArgumentException("Declared backing overlaps canonical digital storage");
       }
       return copied.stream()
-          .map(
-              block ->
-                  new Provider(
-                      new NodeRegistry.Position(
-                          level.dimension().location().toString(), block.asLong()),
-                      kind))
+          .map(block -> new Provider(Positions.of(level, block), kind))
           .sorted(Comparator.comparingLong(provider -> provider.position().block()))
           .toList();
     }
     var state = chunk.getBlockState(position);
-    var first =
-        new Provider(
-            new NodeRegistry.Position(level.dimension().location().toString(), position.asLong()),
-            kind);
+    var first = new Provider(Positions.of(level, position), kind);
     if (!(state.getBlock() instanceof ChestBlock)
         || state.getValue(ChestBlock.TYPE) == ChestType.SINGLE) return List.of(first);
     var otherPosition = position.relative(ChestBlock.getConnectedDirection(state));
     var otherChunk = Loaded.chunk(level, otherPosition);
     if (otherChunk == null) return null;
-    var second =
-        new Provider(
-            new NodeRegistry.Position(
-                level.dimension().location().toString(), otherPosition.asLong()),
-            kind);
+    var second = new Provider(Positions.of(level, otherPosition), kind);
     return position.asLong() < otherPosition.asLong()
         ? List.of(first, second)
         : List.of(second, first);

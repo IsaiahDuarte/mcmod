@@ -2,11 +2,11 @@ package dev.izzy.factorycore.testing.storage;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -73,10 +73,7 @@ public final class EnergyBankGameTests {
   }
 
   private static void ready(GameTestHelper helper, BlockPos bankPosition) {
-    var position =
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(),
-            helper.absolutePos(bankPosition).asLong());
+    var position = Positions.of(helper.getLevel(), helper.absolutePos(bankPosition));
     helper.assertTrue(
         WorldNetworks.get(helper.getLevel().getServer()).membership(position).status()
             == NetworkTopology.Status.VALID,

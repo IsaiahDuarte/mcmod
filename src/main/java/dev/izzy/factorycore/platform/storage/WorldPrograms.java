@@ -18,6 +18,8 @@ import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.wasm.WasmProgram;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.ServerScoped;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
@@ -40,7 +42,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
@@ -63,7 +64,7 @@ public final class WorldPrograms {
   /** Same page bound as preset discovery; pages also visit devices outside this scope. */
   public static final int MAX_CATALOG_PAGES = WorldStorageSearch.MAX_PAGES;
 
-  private static final Map<MinecraftServer, WorldPrograms> SERVERS = new HashMap<>();
+  private static final ServerScoped<WorldPrograms> SERVERS = ServerScoped.of(WorldPrograms::new);
 
   private record Pending(String rule, ProgramCommand command) {}
 
@@ -109,16 +110,12 @@ public final class WorldPrograms {
   }
 
   public static WorldPrograms get(MinecraftServer server) {
-    if (!server.isSameThread()) throw new IllegalStateException("Programs require server thread");
-    return SERVERS.computeIfAbsent(server, WorldPrograms::new);
+    ServerThread.require(server, "Programs");
+    return SERVERS.get(server);
   }
 
   public static boolean exists(MinecraftServer server) {
-    return SERVERS.containsKey(server);
-  }
-
-  public static void stopped(ServerStoppedEvent event) {
-    SERVERS.remove(event.getServer());
+    return SERVERS.peek(server) != null;
   }
 
   public static void postTick(ServerTickEvent.Post event) {
@@ -154,8 +151,7 @@ public final class WorldPrograms {
   private boolean allowed(NetworkPermissions.Actor actor, ProgramControllerEntity controller) {
     return controller.current()
         && networks().membership(controller.origin()).status() == NetworkTopology.Status.VALID
-        && networks().authorize(actor, controller.origin(), NetworkPermissions.Permission.DEPLOY)
-            == NetworkAuthority.Decision.ALLOWED;
+        && networks().allows(actor, controller.origin(), NetworkPermissions.Permission.DEPLOY);
   }
 
   /** Compiles the draft and deploys it under {@code actor}; returns diagnostics on failure. */
@@ -227,7 +223,7 @@ public final class WorldPrograms {
   }
 
   public void tick() {
-    if (!server.isSameThread()) throw new IllegalStateException("Programs require server thread");
+    ServerThread.require(server, "Programs");
     long now = server.getTickCount();
     var scheduler = networks().scheduler();
     for (var entry : new ArrayList<>(controllers.entrySet())) {
@@ -371,8 +367,7 @@ public final class WorldPrograms {
   /** Evaluates one saved native draft rule against the viewer's current read-only scope. */
   public ProgramPreview.Result preview(
       NetworkPermissions.Actor actor, ProgramControllerEntity controller, int rule) {
-    if (networks().authorize(actor, controller.origin(), NetworkPermissions.Permission.VIEW)
-        != NetworkAuthority.Decision.ALLOWED)
+    if (!networks().allows(actor, controller.origin(), NetworkPermissions.Permission.VIEW))
       return new ProgramPreview.Result(0, 0, List.of("View permission required"));
     var compiled = FriendlyCompiler.compile(controller.draft());
     if (!compiled.ok())
@@ -404,8 +399,7 @@ public final class WorldPrograms {
 
       @Override
       public long stock(ResourceFilter filter) {
-        if (networks().authorize(actor, controller.origin(), NetworkPermissions.Permission.VIEW)
-            != NetworkAuthority.Decision.ALLOWED)
+        if (!networks().allows(actor, controller.origin(), NetworkPermissions.Permission.VIEW))
           throw new IllegalStateException("reading storage needs View permission");
         return storageStock(controller, actor, filter, budget);
       }

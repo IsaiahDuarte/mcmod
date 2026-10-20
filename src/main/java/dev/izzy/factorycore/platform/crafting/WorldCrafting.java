@@ -4,6 +4,8 @@ import dev.izzy.factorycore.core.crafting.Pattern;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.platform.ServerScoped;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
@@ -18,7 +20,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 /**
  * Server-thread index of loaded Crafting Units and the patterns they offer to their own segment.
@@ -28,7 +29,7 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 public final class WorldCrafting {
   public static final int MAX_UNITS = 1_024;
   public static final int MAX_PATTERNS = 4_096;
-  private static final Map<MinecraftServer, WorldCrafting> SERVERS = new HashMap<>();
+  private static final ServerScoped<WorldCrafting> SERVERS = ServerScoped.of(WorldCrafting::new);
 
   /**
    * A pattern and the loaded holder offering it; the first holder in stable order wins duplicates.
@@ -65,16 +66,12 @@ public final class WorldCrafting {
   }
 
   public static WorldCrafting get(MinecraftServer server) {
-    if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
-    return SERVERS.computeIfAbsent(server, WorldCrafting::new);
+    ServerThread.require(server, "Crafting");
+    return SERVERS.get(server);
   }
 
   static boolean exists(MinecraftServer server) {
-    return SERVERS.containsKey(server);
-  }
-
-  public static void stopped(ServerStoppedEvent event) {
-    SERVERS.remove(event.getServer());
+    return SERVERS.peek(server) != null;
   }
 
   void loaded(PatternHolderEntity unit) {
@@ -105,7 +102,7 @@ public final class WorldCrafting {
   }
 
   public Index index(NetworkTopology.Scope scope) {
-    if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
+    ServerThread.require(server, "Crafting");
     var networks = WorldNetworks.get(server);
     var codec = new PlatformResourceCodec(server.registryAccess());
     var members = new ArrayList<PatternHolderEntity>();

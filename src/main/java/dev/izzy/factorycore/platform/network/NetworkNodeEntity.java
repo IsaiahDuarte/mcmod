@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import java.io.IOException;
@@ -52,8 +53,7 @@ public final class NetworkNodeEntity extends BlockEntity {
   public NodeRegistry.Position position() {
     if (!(level instanceof ServerLevel server))
       throw new IllegalStateException("Structural node requires server level");
-    return new NodeRegistry.Position(
-        server.dimension().location().toString(), worldPosition.asLong());
+    return Positions.of(server, worldPosition);
   }
 
   private DeviceSavedData authority() {

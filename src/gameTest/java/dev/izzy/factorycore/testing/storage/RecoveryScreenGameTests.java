@@ -1,10 +1,11 @@
 package dev.izzy.factorycore.testing.storage;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -129,9 +130,7 @@ public final class RecoveryScreenGameTests {
     var source = CellHandleData.read(drive.cell(0));
     var target = CellHandleData.read(drive.cell(1));
     var saved = DeviceSavedData.get(h.getLevel().getServer());
-    var drivePosition =
-        new NodeRegistry.Position(
-            h.getLevel().dimension().location().toString(), h.absolutePos(DRIVE).asLong());
+    var drivePosition = Positions.of(h.getLevel(), h.absolutePos(DRIVE));
     // Ids that sort before any random UUID, so the operator's first page shows them even while
     // other tests in the shared GameTest world have their own records.
     long low = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE - 1);
@@ -255,7 +254,8 @@ public final class RecoveryScreenGameTests {
                   .getPlayerList()
                   .getOps()
                   .add(new ServerOpListEntry(operator.getGameProfile(), 2, false));
-              h.assertTrue(operator.hasPermissions(2), "Test operator has level 2");
+              h.assertTrue(
+                  operator.hasPermissions(Actors.OPERATOR_LEVEL), "Test operator has level 2");
               var ops = menus[2] = open(operator);
               h.assertTrue(
                   ops.view().operator()

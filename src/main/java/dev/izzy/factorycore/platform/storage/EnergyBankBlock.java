@@ -1,7 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
 import java.util.Locale;
@@ -68,9 +68,7 @@ public final class EnergyBankBlock extends Block implements EntityBlock {
       bank.validatePlaced();
       var status =
           WorldNetworks.get(((ServerLevel) level).getServer())
-              .membership(
-                  new NodeRegistry.Position(
-                      level.dimension().location().toString(), position.asLong()))
+              .membership(Positions.of(level, position))
               .status();
       player.displayClientMessage(
           Component.translatable(

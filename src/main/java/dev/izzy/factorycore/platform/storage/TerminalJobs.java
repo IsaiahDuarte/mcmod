@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.crafting.WorldCrafting;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -54,7 +55,7 @@ final class TerminalJobs {
   }
 
   private NetworkPermissions.Actor actor() {
-    return new NetworkPermissions.Actor(viewer.getUUID(), viewer.hasPermissions(2));
+    return Actors.of(viewer);
   }
 
   /** Lists craftable outputs of this segment's Crafting Units, eight per page, in key order. */

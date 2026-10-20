@@ -9,6 +9,7 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -43,8 +44,7 @@ public final class WorldStorageTransfersGameTests {
   private WorldStorageTransfersGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper helper, BlockPos position) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(position).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(position));
   }
 
   private static void scenario(GameTestHelper helper, int change) {

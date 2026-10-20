@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.network.WiredDiscovery;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldWireReader;
@@ -33,8 +34,7 @@ public final class WireDiscoveryGameTests {
   private WireDiscoveryGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper helper, BlockPos relative) {
-    return new NodeRegistry.Position(
-        helper.getLevel().dimension().location().toString(), helper.absolutePos(relative).asLong());
+    return Positions.of(helper.getLevel(), helper.absolutePos(relative));
   }
 
   private static NetworkNodeEntity node(GameTestHelper helper, BlockPos relative) {
@@ -124,9 +124,7 @@ public final class WireDiscoveryGameTests {
   // Minecraft owns this borrowed chunk cache; a test must never close the world cache.
   public static void absentChunksNeverLoadAndLoadedAirDoesNotReuseCache(GameTestHelper helper) {
     var remote = new BlockPos(24000000, 64, 24000000);
-    var position =
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(), remote.asLong());
+    var position = Positions.of(helper.getLevel(), remote);
     var chunks = helper.getLevel().getChunkSource();
     helper.assertTrue(
         chunks.getChunkNow(remote.getX() >> 4, remote.getZ() >> 4) == null,

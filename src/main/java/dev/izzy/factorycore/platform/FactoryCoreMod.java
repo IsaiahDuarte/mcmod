@@ -1,7 +1,6 @@
 package dev.izzy.factorycore.platform;
 
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.WorldCrafting;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.AccessCommands;
@@ -51,14 +50,13 @@ public final class FactoryCoreMod {
     NeoForge.EVENT_BUS.addListener(DeviceSavedData::serverStarted);
     NeoForge.EVENT_BUS.addListener(RecoveryCommands::register);
     NeoForge.EVENT_BUS.addListener(RecoveryCommands::stopped);
+    NeoForge.EVENT_BUS.addListener(
+        (net.neoforged.neoforge.event.server.ServerStoppedEvent event) ->
+            ServerScoped.stopped(event));
     NeoForge.EVENT_BUS.addListener(AccessCommands::register);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::postTick);
-    NeoForge.EVENT_BUS.addListener(WorldNetworks::stopped);
-    NeoForge.EVENT_BUS.addListener(WorldCrafting::stopped);
     NeoForge.EVENT_BUS.addListener(WorldCraftingJobs::postTick);
-    NeoForge.EVENT_BUS.addListener(WorldCraftingJobs::stopped);
     NeoForge.EVENT_BUS.addListener(WorldPrograms::postTick);
-    NeoForge.EVENT_BUS.addListener(WorldPrograms::stopped);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::playerLeft);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::tagsReloaded);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::loaded);

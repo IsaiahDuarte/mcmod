@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -43,9 +44,7 @@ public final class TransferProgressGameTests {
     var target = CellHandleData.read(drive.cell(1));
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
-    var origin =
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(), helper.absolutePos(ROOT).asLong());
+    var origin = Positions.of(helper.getLevel(), helper.absolutePos(ROOT));
     var location =
         new NodeRegistry.Position(origin.dimension(), helper.absolutePos(DRIVE).asLong());
     var id = UUID.randomUUID();

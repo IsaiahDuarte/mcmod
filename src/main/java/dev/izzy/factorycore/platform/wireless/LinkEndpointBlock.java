@@ -1,10 +1,10 @@
 package dev.izzy.factorycore.platform.wireless;
 
 import com.mojang.serialization.MapCodec;
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
@@ -164,17 +164,11 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
    * May {@code player} configure this endpoint: Manage on its valid network, or owner of an orphan.
    */
   public static boolean mayConfigure(ServerPlayer player, LinkEndpointEntity link) {
-    var origin =
-        new NodeRegistry.Position(
-            link.getLevel().dimension().location().toString(), link.getBlockPos().asLong());
+    var origin = Positions.of(link.getLevel(), link.getBlockPos());
     var networks = WorldNetworks.get(player.server);
     if (networks.membership(origin).status() == NetworkTopology.Status.VALID)
-      return networks.authorize(
-              new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-              origin,
-              NetworkPermissions.Permission.MANAGE)
-          == NetworkAuthority.Decision.ALLOWED;
-    return player.getUUID().equals(link.owner()) || player.hasPermissions(2);
+      return networks.allows(Actors.of(player), origin, NetworkPermissions.Permission.MANAGE);
+    return player.getUUID().equals(link.owner()) || player.hasPermissions(Actors.OPERATOR_LEVEL);
   }
 
   /**

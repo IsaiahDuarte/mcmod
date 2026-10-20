@@ -1,8 +1,8 @@
 package dev.izzy.factorycore.platform.wireless;
 
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.TerminalAccess;
 import net.minecraft.core.BlockPos;
@@ -41,11 +41,7 @@ final class WirelessAccess implements TerminalAccess {
         && binding.dimension().equals(point.origin().dimension())
         && player.distanceToSqr(Vec3.atCenterOf(point.getBlockPos())) <= range
         && WorldNetworks.get(player.server)
-                .authorize(
-                    new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
-                    point.origin(),
-                    NetworkPermissions.Permission.VIEW)
-            == NetworkAuthority.Decision.ALLOWED;
+            .allows(Actors.of(player), point.origin(), NetworkPermissions.Permission.VIEW);
   }
 
   @Override

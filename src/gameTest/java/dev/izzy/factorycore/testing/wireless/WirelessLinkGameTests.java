@@ -1,7 +1,7 @@
 package dev.izzy.factorycore.testing.wireless;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
-import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -35,9 +35,7 @@ public final class WirelessLinkGameTests {
 
   private static NetworkTopology.Membership membership(GameTestHelper h, BlockPos relative) {
     return WorldNetworks.get(h.getLevel().getServer())
-        .membership(
-            new NodeRegistry.Position(
-                h.getLevel().dimension().location().toString(), h.absolutePos(relative).asLong()));
+        .membership(Positions.of(h.getLevel(), h.absolutePos(relative)));
   }
 
   @GameTest(template = "empty", timeoutTicks = 400)

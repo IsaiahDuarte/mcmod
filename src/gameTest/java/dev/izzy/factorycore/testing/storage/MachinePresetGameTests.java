@@ -4,6 +4,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -1113,7 +1114,8 @@ public final class MachinePresetGameTests {
     player.getInventory().clearContent();
     player.moveTo(Vec3.atCenterOf(h.absolutePos(MACHINE)));
     h.assertTrue(
-        !player.hasPermissions(2), "Recovered machine deployer is an ordinary registered player");
+        !player.hasPermissions(Actors.OPERATOR_LEVEL),
+        "Recovered machine deployer is an ordinary registered player");
     var deployer = new NetworkPermissions.Actor(player.getUUID(), false);
     var old = f.machine.handle();
     var settings =

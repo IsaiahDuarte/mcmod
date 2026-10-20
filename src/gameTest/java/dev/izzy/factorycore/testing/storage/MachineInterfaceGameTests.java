@@ -3,6 +3,7 @@ package dev.izzy.factorycore.testing.storage;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -49,8 +50,7 @@ public final class MachineInterfaceGameTests {
   private MachineInterfaceGameTests() {}
 
   private static NodeRegistry.Position position(GameTestHelper h, BlockPos p) {
-    return new NodeRegistry.Position(
-        h.getLevel().dimension().location().toString(), h.absolutePos(p).asLong());
+    return Positions.of(h.getLevel(), h.absolutePos(p));
   }
 
   private static MachineInterfaceEntity machine(GameTestHelper h, BlockPos p, Direction face) {

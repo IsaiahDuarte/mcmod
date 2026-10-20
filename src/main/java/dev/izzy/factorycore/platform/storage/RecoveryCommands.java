@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.crafting.ProcessingRecoveryCommands;
 import java.util.*;
 import java.util.function.Consumer;
@@ -47,7 +48,7 @@ public final class RecoveryCommands {
                         .then(ProcessingRecoveryCommands.commands())
                         .then(
                             Commands.literal("list")
-                                .requires(s -> s.hasPermission(2))
+                                .requires(s -> s.hasPermission(Actors.OPERATOR_LEVEL))
                                 .executes(c -> list(c.getSource(), null))
                                 .then(
                                     Commands.argument("after", StringArgumentType.word())
@@ -58,7 +59,7 @@ public final class RecoveryCommands {
                                                     StringArgumentType.getString(c, "after")))))
                         .then(
                             Commands.literal("show")
-                                .requires(s -> s.hasPermission(2))
+                                .requires(s -> s.hasPermission(Actors.OPERATOR_LEVEL))
                                 .then(
                                     Commands.argument("id", StringArgumentType.word())
                                         .executes(
@@ -68,7 +69,7 @@ public final class RecoveryCommands {
                                                     StringArgumentType.getString(c, "id")))))
                         .then(
                             Commands.literal("retire")
-                                .requires(source -> source.hasPermission(2))
+                                .requires(source -> source.hasPermission(Actors.OPERATOR_LEVEL))
                                 .then(
                                     Commands.argument("id", StringArgumentType.word())
                                         .executes(

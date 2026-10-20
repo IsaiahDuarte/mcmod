@@ -4,7 +4,6 @@ import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.CraftingPlanner;
 import dev.izzy.factorycore.core.crafting.KeepStockRule;
 import dev.izzy.factorycore.core.crafting.Pattern;
-import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -14,6 +13,8 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Loaded;
+import dev.izzy.factorycore.platform.ServerScoped;
+import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
@@ -37,7 +38,6 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.items.IItemHandler;
 
@@ -52,7 +52,8 @@ public final class WorldCraftingJobs {
   public static final int TASK_COST = 16;
   public static final int RETRY_TICKS = 20;
   public static final int MAX_NOTICES = 8;
-  private static final Map<MinecraftServer, WorldCraftingJobs> SERVERS = new HashMap<>();
+  private static final ServerScoped<WorldCraftingJobs> SERVERS =
+      ServerScoped.of(WorldCraftingJobs::new);
 
   /** Advisory preview; {@code reason} is empty when the plan could be submitted now. */
   public record Preview(CraftingPlanner.Plan plan, String reason) {}
@@ -83,18 +84,14 @@ public final class WorldCraftingJobs {
   }
 
   public static WorldCraftingJobs get(MinecraftServer server) {
-    if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
-    return SERVERS.computeIfAbsent(server, WorldCraftingJobs::new);
+    ServerThread.require(server, "Crafting");
+    return SERVERS.get(server);
   }
 
   public static void postTick(ServerTickEvent.Post event) {
     // Quarantined storage keeps every job record untouched; storage reports the diagnostic.
     if (DeviceSavedData.get(event.getServer()).diagnostic().isEmpty())
       get(event.getServer()).tick();
-  }
-
-  public static void stopped(ServerStoppedEvent event) {
-    SERVERS.remove(event.getServer());
   }
 
   private DeviceSavedData saved() {
@@ -132,10 +129,7 @@ public final class WorldCraftingJobs {
   private String denial(NetworkPermissions.Actor actor, NodeRegistry.Position origin) {
     var member = networks().membership(origin);
     if (member.status() != NetworkTopology.Status.VALID) return "offline";
-    return networks().authorize(actor, origin, NetworkPermissions.Permission.CRAFT)
-            == NetworkAuthority.Decision.ALLOWED
-        ? null
-        : "denied";
+    return networks().allows(actor, origin, NetworkPermissions.Permission.CRAFT) ? null : "denied";
   }
 
   private CraftingPlanner.Plan plan(
@@ -614,8 +608,8 @@ public final class WorldCraftingJobs {
     var scopeAnchor = anchor(job, null);
     if (scopeAnchor == null) return "offline";
     var actor = actor(job.principal());
-    if (networks().authorize(actor, scopeAnchor, NetworkPermissions.Permission.CRAFT)
-        != NetworkAuthority.Decision.ALLOWED) return "denied";
+    if (!networks().allows(actor, scopeAnchor, NetworkPermissions.Permission.CRAFT))
+      return "denied";
     var crafting = WorldCrafting.get(server).index(networks().membership(scopeAnchor).scope());
     var offer = crafting.offer(step.pattern());
     if (offer == null || offer.pattern().version() != step.version()) return "pattern_missing";
@@ -669,7 +663,7 @@ public final class WorldCraftingJobs {
    * chunk.
    */
   public boolean machineLeased(NodeRegistry.Position target) {
-    if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
+    ServerThread.require(server, "Crafting");
     return leasedByOther(target, null);
   }
 
@@ -904,6 +898,6 @@ public final class WorldCraftingJobs {
 
   private void checkThread() {
     Objects.requireNonNull(server);
-    if (!server.isSameThread()) throw new IllegalStateException("Crafting requires server thread");
+    ServerThread.require(server, "Crafting");
   }
 }

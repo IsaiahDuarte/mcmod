@@ -8,6 +8,8 @@ import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
+import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -91,10 +93,7 @@ public final class BufferImportGameTests {
         fixture.runtime().membership(fixture.buffer().position()).status()
             == NetworkTopology.Status.VALID,
         "Import scope ready");
-    var drive =
-        new NodeRegistry.Position(
-            helper.getLevel().dimension().location().toString(),
-            helper.absolutePos(DRIVE).asLong());
+    var drive = Positions.of(helper.getLevel(), helper.absolutePos(DRIVE));
     helper.assertTrue(
         fixture.runtime().membership(drive).status() == NetworkTopology.Status.VALID,
         "Storage scope ready");
@@ -129,7 +128,9 @@ public final class BufferImportGameTests {
     var player = TestPlayers.mock(h);
     TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(BUFFER)));
-    h.assertTrue(!player.hasPermissions(2), "Recovery deployer has ordinary player grants");
+    h.assertTrue(
+        !player.hasPermissions(Actors.OPERATOR_LEVEL),
+        "Recovery deployer has ordinary player grants");
     var deployer = new NetworkPermissions.Actor(player.getUUID(), false);
     var policy = new BufferPolicy(ResourceFilter.all(ResourceKind.ITEM), 3, 17);
     BufferRegistry.Deployment[] accepted = {null};

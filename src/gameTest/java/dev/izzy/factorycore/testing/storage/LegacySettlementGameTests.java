@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -64,8 +65,7 @@ public final class LegacySettlementGameTests {
         CellHandleData.read(drive.cell(1)),
         DeviceSavedData.get(h.getLevel().getServer()),
         WorldNetworks.get(h.getLevel().getServer()),
-        new NodeRegistry.Position(
-            h.getLevel().dimension().location().toString(), h.absolutePos(DRIVE).asLong()));
+        Positions.of(h.getLevel(), h.absolutePos(DRIVE)));
   }
 
   private static boolean ready(Fixture f) {

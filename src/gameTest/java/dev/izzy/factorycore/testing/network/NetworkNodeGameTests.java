@@ -4,6 +4,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.NodeHandleData;
@@ -206,19 +207,11 @@ public final class NetworkNodeGameTests {
                 .size(),
         "No future reference manufactures grants");
     var handle =
-        authority(helper)
-            .createGateway(
-                new NodeRegistry.Position(
-                    helper.getLevel().dimension().location().toString(),
-                    helper.absolutePos(FIRST).asLong()));
+        authority(helper).createGateway(Positions.of(helper.getLevel(), helper.absolutePos(FIRST)));
     var portable =
         authority(helper)
             .nodes()
-            .detach(
-                handle,
-                new NodeRegistry.Position(
-                    helper.getLevel().dimension().location().toString(),
-                    helper.absolutePos(FIRST).asLong()))
+            .detach(handle, Positions.of(helper.getLevel(), helper.absolutePos(FIRST)))
             .handle();
     helper.setBlock(FIRST, NetworkContent.GATEWAY.get());
     var tag = node(helper, FIRST).saveWithFullMetadata(helper.getLevel().registryAccess());
@@ -313,10 +306,7 @@ public final class NetworkNodeGameTests {
         (Supplier<NetworkTopology.Status>)
             () ->
                 WorldNetworks.get(helper.getLevel().getServer())
-                    .membership(
-                        new NodeRegistry.Position(
-                            helper.getLevel().dimension().location().toString(),
-                            helper.absolutePos(drivePos).asLong()))
+                    .membership(Positions.of(helper.getLevel(), helper.absolutePos(drivePos)))
                     .status();
     long[] canonical = {0};
     helper

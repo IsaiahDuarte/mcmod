@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.FactoryCoreConfig;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -100,7 +101,7 @@ final class WirelessLifecycleVerification {
   }
 
   private NodeRegistry.Position position(BlockPos block) {
-    return new NodeRegistry.Position(level.dimension().location().toString(), block.asLong());
+    return Positions.of(level, block);
   }
 
   private void tick(ServerTickEvent.Post event) {

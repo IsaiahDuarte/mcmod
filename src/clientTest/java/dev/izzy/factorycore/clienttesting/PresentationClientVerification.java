@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.ItemDescriptions;
@@ -524,8 +525,7 @@ public final class PresentationClientVerification {
   }
 
   private static NodeRegistry.Position at(ServerPlayer player, BlockPos position) {
-    return new NodeRegistry.Position(
-        player.serverLevel().dimension().location().toString(), position.asLong());
+    return Positions.of(player.serverLevel(), position);
   }
 
   private static boolean valid(ServerPlayer player, BlockPos position) {
