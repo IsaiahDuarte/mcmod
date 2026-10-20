@@ -1,10 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
-import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.*;
-import dev.izzy.factorycore.platform.crafting.WorldCrafting;
-import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.security.MessageDigest;
@@ -57,15 +54,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private int pendingCrafts, gatherAttempts, crafted, editWindow = Integer.MIN_VALUE, edits;
   static final int MAX_GATHERS = 18, MAX_EDITS_PER_SECOND = 32;
   private TerminalJobPackets.View jobView;
-  private long jobRevision = 1;
-  private int craftableOffset;
-  private List<ResourceKey> craftables = List.of();
-  private boolean craftablesNext;
-  private ResourceKey previewKey;
-  private int previewAmount;
-  private WorldCraftingJobs.Preview preview;
-  private String jobStatus = "ready";
-  private List<UUID> jobIds = List.of();
+  private TerminalJobs jobs;
 
   public TerminalMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
     this(id, inventory, null, buffer.readBlockPos(), buffer.readUUID());
@@ -117,7 +106,9 @@ public final class TerminalMenu extends AbstractContainerMenu {
             0,
             List.of(),
             List.of(),
-            jobStatus);
+            "ready");
+    if (terminal != null)
+      jobs = new TerminalJobs((ServerPlayer) viewer, terminal, id, session, jobView);
     gridView =
         new TerminalCraftingPackets.View(
             id,
@@ -133,8 +124,9 @@ public final class TerminalMenu extends AbstractContainerMenu {
             0);
   }
 
+  /** The client's received Jobs view, or on the server the view most recently sent to it. */
   public TerminalJobPackets.View jobView() {
-    return jobView;
+    return jobs != null ? jobs.view() : jobView;
   }
 
   public void accept(TerminalJobPackets.View packet) {
@@ -247,7 +239,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     if (!loaded) {
       loaded = true;
       refresh();
-      refreshCraftables();
+      jobs.refreshCraftables();
     }
     if (query != null && !busy) {
       var result = transfers().search().result(query, actor(), after, 8);
@@ -625,24 +617,6 @@ public final class TerminalMenu extends AbstractContainerMenu {
     publish();
   }
 
-  /** Lists craftable outputs of this segment's Crafting Units, eight per page, in key order. */
-  private void refreshCraftables() {
-    var member = WorldNetworks.get(player().server).membership(terminal.origin());
-    if (member.status() != NetworkTopology.Status.VALID) {
-      craftables = List.of();
-      craftablesNext = false;
-      return;
-    }
-    var keys =
-        new ArrayList<>(
-            WorldCrafting.get(player().server).index(member.scope()).byOutput().keySet());
-    keys.sort(null);
-    craftableOffset = Math.min(craftableOffset, Math.max(0, keys.size() - 1) / 8 * 8);
-    craftables =
-        List.copyOf(keys.subList(craftableOffset, Math.min(keys.size(), craftableOffset + 8)));
-    craftablesNext = keys.size() > craftableOffset + 8;
-  }
-
   /** Autocrafting: page craftables, preview a row, start the previewed plan, cancel own jobs. */
   public void jobCommand(ServerPlayer sender, TerminalJobPackets.Command command) {
     if (sender != viewer
@@ -652,145 +626,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     int tick = sender.server.getTickCount();
     if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
     lastCommand = tick;
-    var jobs = WorldCraftingJobs.get(sender.server);
-    switch (command.action()) {
-      case TerminalJobPackets.HOME -> {
-        craftableOffset = 0;
-        refreshCraftables();
-      }
-      case TerminalJobPackets.NEXT -> {
-        if (craftablesNext) craftableOffset += 8;
-        refreshCraftables();
-      }
-      case TerminalJobPackets.PREVIEW -> {
-        if (command.revision() != jobRevision || command.selection() >= craftables.size()) {
-          publish();
-          return;
-        }
-        previewKey = craftables.get(command.selection());
-        previewAmount = command.amount();
-        preview = jobs.preview(actor(), terminal.origin(), previewKey, previewAmount);
-        jobStatus = preview.reason().isEmpty() ? "previewed" : preview.reason();
-      }
-      case TerminalJobPackets.START -> {
-        if (!terminal.spendAction(sender)) {
-          jobStatus = "no_power";
-          break;
-        }
-        if (command.revision() != jobRevision || previewKey == null) {
-          publish();
-          return;
-        }
-        var submission = jobs.submit(actor(), terminal.origin(), previewKey, previewAmount);
-        if (submission.job() != null) {
-          jobStatus = "started";
-          previewKey = null;
-          preview = null;
-        } else {
-          jobStatus = submission.reason();
-          if (submission.plan() != null)
-            preview = new WorldCraftingJobs.Preview(submission.plan(), submission.reason());
-        }
-      }
-      case TerminalJobPackets.KEEP -> {
-        if (command.revision() != jobRevision || command.selection() >= craftables.size()) {
-          publish();
-          return;
-        }
-        var key = craftables.get(command.selection());
-        var existing = jobs.rule(actor(), terminal.origin(), key);
-        if (existing != null)
-          jobStatus = jobs.unkeep(actor(), existing.id()) ? "unkept" : "refused";
-        else {
-          var reason =
-              jobs.keep(actor(), terminal.origin(), key, command.amount(), command.amount());
-          jobStatus = reason.isEmpty() ? "kept" : reason;
-        }
-      }
-      case TerminalJobPackets.CANCEL -> {
-        if (command.selection() >= jobIds.size()) return;
-        jobStatus =
-            jobs.cancel(actor(), jobIds.get(command.selection())) ? "cancelling" : "refused";
-      }
-      default -> {
-        return;
-      }
-    }
-    jobRevision++;
-    publish();
-  }
-
-  private TerminalJobPackets.Entry entry(ResourceKey key, String amount) {
-    String name;
-    try {
-      name =
-          new PlatformResourceCodec(player().registryAccess())
-              .itemStack(key, 1)
-              .getHoverName()
-              .getString()
-              .replaceAll("[\\p{Cntrl}§]", "");
-    } catch (IllegalArgumentException unsupported) {
-      name = key.registryId();
-    }
-    if (name.length() > 96) name = name.substring(0, 96);
-    return new TerminalJobPackets.Entry(key.registryId(), name, amount);
-  }
-
-  private void publishJobs() {
-    var rows = new ArrayList<TerminalJobPackets.Entry>();
-    var runtime = WorldCraftingJobs.get(player().server);
-    for (var key : craftables) {
-      // A craftable row's amount carries the viewer's keep-stock threshold, if any.
-      var rule = runtime.rule(actor(), terminal.origin(), key);
-      rows.add(entry(key, rule == null ? "" : Long.toString(rule.low())));
-    }
-    var missing = new ArrayList<TerminalJobPackets.Entry>();
-    int steps = 0;
-    long crafts = 0;
-    String reason = "";
-    if (preview != null && preview.plan() != null) {
-      reason = preview.reason();
-      steps = preview.plan().steps().size();
-      for (var step : preview.plan().steps()) crafts = Math.addExact(crafts, step.crafts());
-      for (var entry : preview.plan().missing().entrySet()) {
-        if (missing.size() == TerminalJobPackets.MISSING) break;
-        missing.add(entry(entry.getKey(), entry.getValue().toString()));
-      }
-    } else if (preview != null) reason = preview.reason();
-    var ids = new ArrayList<UUID>();
-    var jobRows = new ArrayList<TerminalJobPackets.Job>();
-    for (var job : WorldCraftingJobs.get(player().server).jobs(viewer.getUUID())) {
-      if (jobRows.size() == TerminalJobPackets.JOBS) break;
-      ids.add(job.id());
-      jobRows.add(
-          new TerminalJobPackets.Job(
-              entry(job.request(), Long.toString(job.amount())),
-              job.craftsDone(),
-              job.craftsTotal(),
-              job.state().name().toLowerCase(Locale.ROOT),
-              job.reason()));
-    }
-    jobIds = List.copyOf(ids);
-    var packet =
-        new TerminalJobPackets.View(
-            containerId,
-            session,
-            jobRevision,
-            rows,
-            craftablesNext,
-            previewKey == null
-                ? TerminalJobPackets.NONE
-                : entry(previewKey, Integer.toString(previewAmount)),
-            reason,
-            steps,
-            crafts,
-            missing,
-            jobRows,
-            jobStatus);
-    if (!packet.equals(jobView)) {
-      jobView = packet;
-      PacketDistributor.sendToPlayer(player(), packet);
-    }
+    if (jobs.command(command)) publish();
   }
 
   /** Crafts now, or gathers one missing ingredient from authorized storage and retries. */
@@ -950,7 +786,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
       gridView = grid;
       PacketDistributor.sendToPlayer(player(), grid);
     }
-    publishJobs();
+    jobs.publish();
   }
 
   @Override
