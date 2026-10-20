@@ -78,7 +78,7 @@ final class BufferStateCodec {
   }
 
   static List<ItemBuffer.State> decode(CompoundTag root) {
-    NetworkStateCodec.fields(
+    Nbt.fields(
         root,
         root.getInt("Schema") >= 2
             ? Set.of("Schema", "Buffers", "Deployments")
@@ -95,7 +95,7 @@ final class BufferStateCodec {
     long bytes = 0;
     for (int index = 0; index < records.size(); index++) {
       var record = records.getCompound(index);
-      NetworkStateCodec.fields(record, Set.of("Backing", "Slots"));
+      Nbt.fields(record, Set.of("Backing", "Slots"));
       if (!record.hasUUID("Backing") || !record.contains("Slots", Tag.TAG_LIST))
         throw new IllegalArgumentException("Malformed buffer owner");
       var encoded = record.getList("Slots", Tag.TAG_COMPOUND);
@@ -106,7 +106,7 @@ final class BufferStateCodec {
       Arrays.fill(slots, ItemBuffer.Slot.empty());
       for (int slotIndex = 0; slotIndex < encoded.size(); slotIndex++) {
         var entry = encoded.getCompound(slotIndex);
-        NetworkStateCodec.fields(entry, Set.of("Slot", "Registry", "Components", "Count", "Limit"));
+        Nbt.fields(entry, Set.of("Slot", "Registry", "Components", "Count", "Limit"));
         if (!entry.contains("Slot", Tag.TAG_INT)
             || !entry.contains("Registry", Tag.TAG_STRING)
             || !entry.contains("Components", Tag.TAG_BYTE_ARRAY)
@@ -151,7 +151,7 @@ final class BufferStateCodec {
     long policyBytes = 0;
     for (int index = 0; index < entries.size(); index++) {
       var entry = entries.getCompound(index);
-      NetworkStateCodec.fields(
+      Nbt.fields(
           entry,
           root.getInt("Schema") >= 3
               ? Set.of(

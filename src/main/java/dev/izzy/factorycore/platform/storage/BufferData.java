@@ -54,7 +54,7 @@ public final class BufferData {
     if (!(raw instanceof CompoundTag tag))
       throw new IllegalArgumentException("Buffer reference is not a compound");
     int schema = tag.contains("Schema", Tag.TAG_INT) ? tag.getInt("Schema") : 0;
-    NetworkStateCodec.fields(tag, schema == 2 ? SCHEMA_TWO : SCHEMA_ONE);
+    Nbt.fields(tag, schema == 2 ? SCHEMA_TWO : SCHEMA_ONE);
     if (schema != 1 && schema != 2
         || !tag.hasUUID("World")
         || !tag.hasUUID("Id")

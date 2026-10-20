@@ -40,7 +40,7 @@ final class ExternalClaimsCodec {
   }
 
   static List<ExternalClaims.Claim> decode(CompoundTag root) {
-    NetworkStateCodec.fields(root, Set.of("Schema", "Claims"));
+    Nbt.fields(root, Set.of("Schema", "Claims"));
     if (!root.contains("Schema", Tag.TAG_INT)
         || root.getInt("Schema") != 1
         || !root.contains("Claims", Tag.TAG_LIST))
@@ -53,8 +53,7 @@ final class ExternalClaimsCodec {
     long bytes = 0;
     for (int index = 0; index < list.size(); index++) {
       var entry = list.getCompound(index);
-      NetworkStateCodec.fields(
-          entry, Set.of("Backing", "Owner", "Kind", "Registry", "Components", "Amount"));
+      Nbt.fields(entry, Set.of("Backing", "Owner", "Kind", "Registry", "Components", "Amount"));
       if (!entry.hasUUID("Backing")
           || !entry.hasUUID("Owner")
           || !entry.contains("Kind", Tag.TAG_STRING)

@@ -420,15 +420,18 @@ public final class DeviceSavedData extends SavedData {
 
   public static DeviceSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
     try {
-      require(tag, "Schema", Tag.TAG_INT);
+      Nbt.require(tag, "Schema", Tag.TAG_INT, "registry");
       int schema = tag.getInt("Schema");
       if ((schema < 1 || schema > SCHEMA) || !tag.hasUUID("World"))
         throw new IllegalArgumentException("Unknown registry schema/world identity");
-      NetworkStateCodec.fields(tag, worldFields(schema));
+      Nbt.fields(tag, worldFields(schema));
       var networkStates =
-          schema == 1 ? List.<NetworkPermissions.State>of() : NetworkStateCodec.decode(tag);
-      var nodeStates = schema < 3 ? List.<NodeRegistry.Stored>of() : NodeStateCodec.decode(tag);
-      require(tag, "Devices", Tag.TAG_LIST);
+          Section.NETWORKS.in(schema)
+              ? NetworkStateCodec.decode(tag)
+              : List.<NetworkPermissions.State>of();
+      var nodeStates =
+          Section.NODES.in(schema) ? NodeStateCodec.decode(tag) : List.<NodeRegistry.Stored>of();
+      Nbt.require(tag, "Devices", Tag.TAG_LIST, "registry");
       ListTag devices = tag.getList("Devices", Tag.TAG_COMPOUND);
       if (devices.size() != ((ListTag) tag.get("Devices")).size()
           || devices.size() > DeviceRegistry.MAX_DEVICES) {
@@ -439,10 +442,10 @@ public final class DeviceSavedData extends SavedData {
       long entries = 0;
       for (int i = 0; i < devices.size(); i++) {
         CompoundTag entry = devices.getCompound(i);
-        NetworkStateCodec.fields(entry, Set.of("Ledger", "Generation", "Conflict", "Location"));
-        require(entry, "Ledger", Tag.TAG_BYTE_ARRAY);
-        require(entry, "Generation", Tag.TAG_LONG);
-        require(entry, "Conflict", Tag.TAG_BYTE);
+        Nbt.fields(entry, Set.of("Ledger", "Generation", "Conflict", "Location"));
+        Nbt.require(entry, "Ledger", Tag.TAG_BYTE_ARRAY, "registry");
+        Nbt.require(entry, "Generation", Tag.TAG_LONG, "registry");
+        Nbt.require(entry, "Conflict", Tag.TAG_BYTE, "registry");
         if (entry.getByte("Conflict") < 0 || entry.getByte("Conflict") > 1)
           throw new IllegalArgumentException("Invalid conflict flag");
         byte[] encoded = entry.getByteArray("Ledger");
@@ -451,15 +454,8 @@ public final class DeviceSavedData extends SavedData {
           throw new IllegalArgumentException("World ledger byte limit");
         DeviceRegistry.Location location = null;
         if (entry.contains("Location")) {
-          require(entry, "Location", Tag.TAG_COMPOUND);
-          var placed = entry.getCompound("Location");
-          NetworkStateCodec.fields(placed, Set.of("Dimension", "Position", "Slot"));
-          require(placed, "Dimension", Tag.TAG_STRING);
-          require(placed, "Position", Tag.TAG_LONG);
-          require(placed, "Slot", Tag.TAG_INT);
-          location =
-              new DeviceRegistry.Location(
-                  placed.getString("Dimension"), placed.getLong("Position"), placed.getInt("Slot"));
+          Nbt.require(entry, "Location", Tag.TAG_COMPOUND, "registry");
+          location = Nbt.location(entry.getCompound("Location"), "registry");
         }
         var ledger = LedgerStateCodec.decode(encoded);
         entries += (long) ledger.contents().size() + ledger.reservations().size();
@@ -470,11 +466,12 @@ public final class DeviceSavedData extends SavedData {
             new DeviceRegistry.Stored(
                 ledger, entry.getLong("Generation"), location, entry.getBoolean("Conflict")));
       }
-      if (schema >= 6) require(tag, "ExternalClaims", Tag.TAG_COMPOUND);
-      if (schema >= 7) require(tag, "RouteCursors", Tag.TAG_COMPOUND);
-      if (schema >= 8) require(tag, "Buffers", Tag.TAG_COMPOUND);
+      for (var section : List.of(Section.EXTERNAL_CLAIMS, Section.ROUTE_CURSORS, Section.BUFFERS))
+        if (section.in(schema)) Nbt.require(tag, section.key, Tag.TAG_COMPOUND, "registry");
       var transferStates =
-          schema < 4 ? List.<TransferRegistry.Stored>of() : TransferStateCodec.decode(tag);
+          Section.TRANSFERS.in(schema)
+              ? TransferStateCodec.decode(tag)
+              : List.<TransferRegistry.Stored>of();
       if (schema < 9
           && transferStates.stream()
               .anyMatch(
@@ -499,21 +496,27 @@ public final class DeviceSavedData extends SavedData {
               networkStates,
               nodeStates,
               transferStates,
-              schema < 6
-                  ? List.of()
-                  : ExternalClaimsCodec.decode(tag.getCompound("ExternalClaims")),
-              schema < 7 ? List.of() : RouteCursorCodec.decode(tag.getCompound("RouteCursors")),
-              schema < 8 ? List.of() : BufferStateCodec.decode(tag.getCompound("Buffers")),
-              schema < 8 ? List.of() : BufferStateCodec.deployments(tag.getCompound("Buffers")),
-              schema < 12
-                  ? List.of()
-                  : MachinePresetCodec.decode(tag.getCompound("MachinePresets")),
-              schema < 12
-                  ? null
-                  : MachinePresetCodec.configurations(tag.getCompound("MachinePresets")),
-              schema < 13
-                  ? new CraftingJobCodec.Decoded(List.of(), List.of())
-                  : CraftingJobCodec.decodeAll(tag.getCompound("CraftingJobs")),
+              Section.EXTERNAL_CLAIMS.in(schema)
+                  ? ExternalClaimsCodec.decode(tag.getCompound("ExternalClaims"))
+                  : List.of(),
+              Section.ROUTE_CURSORS.in(schema)
+                  ? RouteCursorCodec.decode(tag.getCompound("RouteCursors"))
+                  : List.of(),
+              Section.BUFFERS.in(schema)
+                  ? BufferStateCodec.decode(tag.getCompound("Buffers"))
+                  : List.of(),
+              Section.BUFFERS.in(schema)
+                  ? BufferStateCodec.deployments(tag.getCompound("Buffers"))
+                  : List.of(),
+              Section.MACHINE_PRESETS.in(schema)
+                  ? MachinePresetCodec.decode(tag.getCompound("MachinePresets"))
+                  : List.of(),
+              Section.MACHINE_PRESETS.in(schema)
+                  ? MachinePresetCodec.configurations(tag.getCompound("MachinePresets"))
+                  : null,
+              Section.CRAFTING_JOBS.in(schema)
+                  ? CraftingJobCodec.decodeAll(tag.getCompound("CraftingJobs"))
+                  : new CraftingJobCodec.Decoded(List.of(), List.of()),
               null,
               "");
       if (schema < SCHEMA
@@ -553,11 +556,7 @@ public final class DeviceSavedData extends SavedData {
       entry.putLong("Generation", record.generation());
       entry.putBoolean("Conflict", record.conflict());
       if (record.location() != null) {
-        var location = new CompoundTag();
-        location.putString("Dimension", record.location().dimension());
-        location.putLong("Position", record.location().position());
-        location.putInt("Slot", record.location().slot());
-        entry.put("Location", location);
+        entry.put("Location", Nbt.location(record.location()));
       }
       devices.add(entry);
     }
@@ -578,21 +577,38 @@ public final class DeviceSavedData extends SavedData {
     return tag;
   }
 
-  private static Set<String> worldFields(int schema) {
-    var fields = new HashSet<>(Set.of("Schema", "World", "Devices"));
-    if (schema >= 2) fields.add("Networks");
-    if (schema >= 3) fields.add("Nodes");
-    if (schema >= 4) fields.add("Transfers");
-    if (schema >= 6) fields.add("ExternalClaims");
-    if (schema >= 7) fields.add("RouteCursors");
-    if (schema >= 8) fields.add("Buffers");
-    if (schema >= 12) fields.add("MachinePresets");
-    if (schema >= 13) fields.add("CraftingJobs");
-    return fields;
+  /**
+   * Every optional world section and the world schema that introduced it: the single table that
+   * load's allowed keys, presence checks and decode-or-empty choices read. A schema bump that adds
+   * a section adds one row here (and a fixture; see {@code DeviceSavedDataSectionsTest}).
+   */
+  enum Section {
+    NETWORKS("Networks", 2),
+    NODES("Nodes", 3),
+    TRANSFERS("Transfers", 4),
+    EXTERNAL_CLAIMS("ExternalClaims", 6),
+    ROUTE_CURSORS("RouteCursors", 7),
+    BUFFERS("Buffers", 8),
+    MACHINE_PRESETS("MachinePresets", 12),
+    CRAFTING_JOBS("CraftingJobs", 13);
+
+    final String key;
+    final int since;
+
+    Section(String key, int since) {
+      this.key = key;
+      this.since = since;
+    }
+
+    boolean in(int schema) {
+      return schema >= since;
+    }
   }
 
-  private static void require(CompoundTag tag, String field, int type) {
-    if (!tag.contains(field, type))
-      throw new IllegalArgumentException("Missing/wrong-type registry field: " + field);
+  /** The exact top-level keys a world of {@code schema} has. */
+  static Set<String> worldFields(int schema) {
+    var fields = new HashSet<>(Set.of("Schema", "World", "Devices"));
+    for (var section : Section.values()) if (section.in(schema)) fields.add(section.key);
+    return fields;
   }
 }

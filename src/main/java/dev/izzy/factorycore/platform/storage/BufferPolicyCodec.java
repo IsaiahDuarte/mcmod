@@ -41,7 +41,7 @@ final class BufferPolicyCodec {
   }
 
   static BufferPolicy decode(CompoundTag tag) {
-    NetworkStateCodec.fields(
+    Nbt.fields(
         tag,
         tag.getInt("Schema") == 2
             ? Set.of("Schema", "Rate", "Mode", "Terms", "Target")
@@ -62,7 +62,7 @@ final class BufferPolicyCodec {
     for (int i = 0; i < terms.size(); i++) {
       var entry = terms.getCompound(i);
       String type = entry.getString("Type");
-      NetworkStateCodec.fields(
+      Nbt.fields(
           entry, type.equals("EXACT") ? Set.of("Type", "Id", "Components") : Set.of("Type", "Id"));
       if (!entry.contains("Type", Tag.TAG_STRING) || !entry.contains("Id", Tag.TAG_STRING))
         throw new IllegalArgumentException("Malformed filter term");

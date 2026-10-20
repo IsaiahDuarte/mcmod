@@ -74,7 +74,7 @@ final class MachinePresetCodec {
    */
   static Map<UUID, Long> configurations(CompoundTag root) {
     if (root.getInt("Schema") == 1) return null;
-    require(root, "Configurations", Tag.TAG_LIST);
+    Nbt.require(root, "Configurations", Tag.TAG_LIST, "machine");
     var list = root.getList("Configurations", Tag.TAG_COMPOUND);
     if (list.size() != ((ListTag) root.get("Configurations")).size()
         || list.size() > NodeRegistry.MAX_NODES)
@@ -82,8 +82,8 @@ final class MachinePresetCodec {
     var result = new HashMap<UUID, Long>();
     for (int i = 0; i < list.size(); i++) {
       var value = list.getCompound(i);
-      NetworkStateCodec.fields(value, Set.of("Node", "Configuration"));
-      require(value, "Configuration", Tag.TAG_LONG);
+      Nbt.fields(value, Set.of("Node", "Configuration"));
+      Nbt.require(value, "Configuration", Tag.TAG_LONG, "machine");
       if (!value.hasUUID("Node")
           || value.getLong("Configuration") <= 0
           || result.putIfAbsent(value.getUUID("Node"), value.getLong("Configuration")) != null)
@@ -93,13 +93,13 @@ final class MachinePresetCodec {
   }
 
   static List<MachinePresets.Deployment> decode(CompoundTag root) {
-    NetworkStateCodec.fields(
+    Nbt.fields(
         root,
         root.getInt("Schema") == 2
             ? Set.of("Schema", "Deployments", "Configurations")
             : Set.of("Schema", "Deployments"));
-    require(root, "Schema", Tag.TAG_INT);
-    require(root, "Deployments", Tag.TAG_LIST);
+    Nbt.require(root, "Schema", Tag.TAG_INT, "machine");
+    Nbt.require(root, "Deployments", Tag.TAG_LIST, "machine");
     if (root.getInt("Schema") != 1 && root.getInt("Schema") != 2)
       throw new IllegalArgumentException("Unknown machine deployment schema");
     var list = root.getList("Deployments", Tag.TAG_COMPOUND);
@@ -110,7 +110,7 @@ final class MachinePresetCodec {
     long bytes = 0;
     for (int i = 0; i < list.size(); i++) {
       var tag = list.getCompound(i);
-      NetworkStateCodec.fields(
+      Nbt.fields(
           tag,
           Set.of(
               "Node",
@@ -128,15 +128,15 @@ final class MachinePresetCodec {
       for (String name : List.of("Node", "Principal", "Network", "Segment"))
         if (!tag.hasUUID(name)) throw new IllegalArgumentException("Machine deployment UUID");
       for (String name : List.of("Lease", "Revision", "Configuration", "Permissions", "Target"))
-        require(tag, name, Tag.TAG_LONG);
-      require(tag, "Mode", Tag.TAG_STRING);
-      require(tag, "Face", Tag.TAG_STRING);
-      require(tag, "Filter", Tag.TAG_COMPOUND);
+        Nbt.require(tag, name, Tag.TAG_LONG, "machine");
+      Nbt.require(tag, "Mode", Tag.TAG_STRING, "machine");
+      Nbt.require(tag, "Face", Tag.TAG_STRING, "machine");
+      Nbt.require(tag, "Filter", Tag.TAG_COMPOUND, "machine");
       var filter = tag.getCompound("Filter");
-      NetworkStateCodec.fields(filter, Set.of("Kind", "Mode", "Terms"));
-      require(filter, "Kind", Tag.TAG_STRING);
-      require(filter, "Mode", Tag.TAG_STRING);
-      require(filter, "Terms", Tag.TAG_LIST);
+      Nbt.fields(filter, Set.of("Kind", "Mode", "Terms"));
+      Nbt.require(filter, "Kind", Tag.TAG_STRING, "machine");
+      Nbt.require(filter, "Mode", Tag.TAG_STRING, "machine");
+      Nbt.require(filter, "Terms", Tag.TAG_LIST, "machine");
       var kind = ResourceKind.valueOf(filter.getString("Kind"));
       var terms = filter.getList("Terms", Tag.TAG_COMPOUND);
       if (terms.size() != ((ListTag) filter.get("Terms")).size()
@@ -145,14 +145,14 @@ final class MachinePresetCodec {
       var selections = new ArrayList<ResourceFilter.Term>();
       for (int j = 0; j < terms.size(); j++) {
         var term = terms.getCompound(j);
-        require(term, "Type", Tag.TAG_STRING);
-        require(term, "Id", Tag.TAG_STRING);
+        Nbt.require(term, "Type", Tag.TAG_STRING, "machine");
+        Nbt.require(term, "Id", Tag.TAG_STRING, "machine");
         String type = term.getString("Type");
-        NetworkStateCodec.fields(
+        Nbt.fields(
             term, type.equals("EXACT") ? Set.of("Type", "Id", "Components") : Set.of("Type", "Id"));
         switch (type) {
           case "EXACT" -> {
-            require(term, "Components", Tag.TAG_BYTE_ARRAY);
+            Nbt.require(term, "Components", Tag.TAG_BYTE_ARRAY, "machine");
             selections.add(
                 new ResourceFilter.Exact(
                     new ResourceKey(kind, term.getString("Id"), term.getByteArray("Components"))));
@@ -184,10 +184,5 @@ final class MachinePresetCodec {
       records.add(value);
     }
     return List.copyOf(records);
-  }
-
-  private static void require(CompoundTag tag, String name, int type) {
-    if (!tag.contains(name, type))
-      throw new IllegalArgumentException("Missing/wrong-type machine field: " + name);
   }
 }

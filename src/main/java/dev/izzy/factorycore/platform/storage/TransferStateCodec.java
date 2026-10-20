@@ -59,7 +59,7 @@ final class TransferStateCodec {
     long bytes = 0;
     for (int i = 0; i < list.size(); i++) {
       var data = list.getCompound(i);
-      NetworkStateCodec.fields(
+      Nbt.fields(
           data,
           Set.of(
               "Schema",
@@ -81,16 +81,16 @@ final class TransferStateCodec {
               "Context"));
       for (String field : new String[] {"Id", "Owner", "Source", "Destination"})
         if (!data.hasUUID(field)) throw new IllegalArgumentException("Malformed transfer identity");
-      require(data, "Schema", Tag.TAG_INT);
+      Nbt.require(data, "Schema", Tag.TAG_INT, "transfer");
       if (data.getInt("Schema") != (root.getInt("Schema") >= 5 ? 2 : 1)
           || data.getInt("Schema") == 1 && data.contains("Context"))
         throw new IllegalArgumentException("Unsupported transfer schema");
       for (String field :
           new String[] {"Kind", "Registry", "State", "Reason", "Diagnostic", "Pending"})
-        require(data, field, Tag.TAG_STRING);
+        Nbt.require(data, field, Tag.TAG_STRING, "transfer");
       for (String field : new String[] {"Staged", "Delivered", "Returned", "PendingAmount"})
-        require(data, field, Tag.TAG_LONG);
-      require(data, "Components", Tag.TAG_BYTE_ARRAY);
+        Nbt.require(data, field, Tag.TAG_LONG, "transfer");
+      Nbt.require(data, "Components", Tag.TAG_BYTE_ARRAY, "transfer");
       bytes +=
           2048L
               + (data.contains("Context") ? 1024L : 0L)
@@ -126,12 +126,7 @@ final class TransferStateCodec {
 
   private static TransferContext context(CompoundTag data) {
     if (!data.contains("Context")) return null;
-    require(data, "Context", Tag.TAG_COMPOUND);
+    Nbt.require(data, "Context", Tag.TAG_COMPOUND, "transfer");
     return TransferContextCodec.decode(data.getCompound("Context"));
-  }
-
-  private static void require(CompoundTag data, String field, int type) {
-    if (!data.contains(field, type))
-      throw new IllegalArgumentException("Missing/wrong-type transfer field: " + field);
   }
 }

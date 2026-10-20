@@ -348,11 +348,7 @@ public final class DeviceRecoveryAudit {
       var envelope = new Envelope(schema, TABLE_SCHEMA, namespace, holderKind);
       envelope.tag.putLong("Generation", owner.generation());
       envelope.tag.putBoolean("Conflict", owner.conflict());
-      var location = new CompoundTag();
-      location.putString("Dimension", owner.location().dimension());
-      location.putLong("Position", owner.location().position());
-      location.putInt("Slot", owner.location().slot());
-      envelope.tag.put("Location", location);
+      envelope.tag.put("Location", Nbt.location(owner.location()));
       envelope.tag.putByteArray("Ledger", LedgerStateCodec.encode(owner.ledger()));
       return envelope;
     }
@@ -377,11 +373,7 @@ public final class DeviceRecoveryAudit {
 
     /** The adopted cell or bank slot location. */
     Envelope target(DeviceRegistry.Location target) {
-      var place = new CompoundTag();
-      place.putString("Dimension", target.dimension());
-      place.putLong("Position", target.position());
-      place.putInt("Slot", target.slot());
-      return put("Target", place);
+      return put("Target", Nbt.location(target));
     }
 
     /** The holder's complete native block state and block entity, copied. */

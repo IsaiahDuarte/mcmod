@@ -39,7 +39,7 @@ public final class CraftingJobCodec {
   }
 
   private static ResourceKey key(CompoundTag tag) {
-    NetworkStateCodec.fields(tag, Set.of("Kind", "Registry", "Components"));
+    Nbt.fields(tag, Set.of("Kind", "Registry", "Components"));
     if (!tag.contains("Kind", Tag.TAG_STRING)
         || !tag.contains("Registry", Tag.TAG_STRING)
         || !tag.contains("Components", Tag.TAG_BYTE_ARRAY))
@@ -173,8 +173,7 @@ public final class CraftingJobCodec {
         || root.getInt("Schema") > 5)
       throw new IllegalArgumentException("Unsupported crafting job schema");
     int schema = root.getInt("Schema");
-    NetworkStateCodec.fields(
-        root, schema >= 3 ? Set.of("Schema", "Jobs", "Rules") : Set.of("Schema", "Jobs"));
+    Nbt.fields(root, schema >= 3 ? Set.of("Schema", "Jobs", "Rules") : Set.of("Schema", "Jobs"));
     var rules = new ArrayList<KeepStockRule>();
     if (schema >= 3) {
       var ruleList = list(root, "Rules");
@@ -182,7 +181,7 @@ public final class CraftingJobCodec {
         throw new IllegalArgumentException("Rule limit");
       for (int index = 0; index < ruleList.size(); index++) {
         var entry = ruleList.getCompound(index);
-        NetworkStateCodec.fields(
+        Nbt.fields(
             entry,
             Set.of(
                 "Id",
@@ -243,13 +242,13 @@ public final class CraftingJobCodec {
       if (schema >= 3) fields.add("Rule");
       if (entry.contains("Rule") && !entry.hasUUID("Rule"))
         throw new IllegalArgumentException("Malformed job rule");
-      NetworkStateCodec.fields(entry, fields);
+      Nbt.fields(entry, fields);
       CraftingJob.Dispatch dispatch = null;
       if (entry.contains("Dispatch")) {
         if (!entry.contains("Dispatch", Tag.TAG_COMPOUND))
           throw new IllegalArgumentException("Malformed dispatch");
         var saved = entry.getCompound("Dispatch");
-        NetworkStateCodec.fields(
+        Nbt.fields(
             saved,
             schema >= 5
                 ? Set.of("Dimension", "Position", "Target", "Providers", "Inserted", "Collected")
@@ -299,7 +298,7 @@ public final class CraftingJobCodec {
         throw new IllegalArgumentException("Job step limit");
       for (int s = 0; s < stepList.size(); s++) {
         var step = stepList.getCompound(s);
-        NetworkStateCodec.fields(step, Set.of("Pattern", "Version", "Output", "Crafts", "Done"));
+        Nbt.fields(step, Set.of("Pattern", "Version", "Output", "Crafts", "Done"));
         if (!step.hasUUID("Pattern")
             || !step.contains("Version", Tag.TAG_LONG)
             || !step.contains("Output", Tag.TAG_COMPOUND)
@@ -318,7 +317,7 @@ public final class CraftingJobCodec {
       var cells = list(entry, "Reserved");
       for (int c = 0; c < cells.size(); c++) {
         var cell = cells.getCompound(c);
-        NetworkStateCodec.fields(cell, Set.of("Backing", "Keys"));
+        Nbt.fields(cell, Set.of("Backing", "Keys"));
         if (!cell.hasUUID("Backing")) throw new IllegalArgumentException("Malformed reservation");
         if (reserved.put(cell.getUUID("Backing"), amounts(list(cell, "Keys"))) != null)
           throw new IllegalArgumentException("Duplicate reservation backing");

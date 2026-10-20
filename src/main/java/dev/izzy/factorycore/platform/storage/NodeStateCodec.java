@@ -16,42 +16,41 @@ final class NodeStateCodec {
   private NodeStateCodec() {}
 
   static List<NodeRegistry.Stored> decode(CompoundTag root) {
-    require(root, "Nodes", Tag.TAG_LIST);
+    Nbt.require(root, "Nodes", Tag.TAG_LIST, "structural");
     var list = root.getList("Nodes", Tag.TAG_COMPOUND);
     if (list.size() != ((ListTag) root.get("Nodes")).size() || list.size() > NodeRegistry.MAX_NODES)
       throw new IllegalArgumentException("Invalid structural list");
     var records = new ArrayList<NodeRegistry.Stored>(list.size());
     for (int i = 0; i < list.size(); i++) {
       var entry = list.getCompound(i);
-      NetworkStateCodec.fields(
-          entry, Set.of("Id", "Kind", "Generation", "Conflict", "Position", "Policy"));
+      Nbt.fields(entry, Set.of("Id", "Kind", "Generation", "Conflict", "Position", "Policy"));
       if (!entry.hasUUID("Id")) throw new IllegalArgumentException("Missing structural UUID");
-      require(entry, "Kind", Tag.TAG_STRING);
+      Nbt.require(entry, "Kind", Tag.TAG_STRING, "structural");
       var kind = NodeRegistry.Kind.valueOf(entry.getString("Kind"));
       if (kind == NodeRegistry.Kind.MACHINE_INTERFACE && root.getInt("Schema") < 11)
         throw new IllegalArgumentException("Machine leases require world schema eleven");
-      require(entry, "Generation", Tag.TAG_LONG);
-      require(entry, "Conflict", Tag.TAG_BYTE);
+      Nbt.require(entry, "Generation", Tag.TAG_LONG, "structural");
+      Nbt.require(entry, "Conflict", Tag.TAG_BYTE, "structural");
       if (entry.getByte("Conflict") < 0 || entry.getByte("Conflict") > 1)
         throw new IllegalArgumentException("Invalid structural conflict flag");
       NodeRegistry.Position position = null;
       if (entry.contains("Position")) {
-        require(entry, "Position", Tag.TAG_COMPOUND);
+        Nbt.require(entry, "Position", Tag.TAG_COMPOUND, "structural");
         var placed = entry.getCompound("Position");
-        NetworkStateCodec.fields(placed, Set.of("Dimension", "Block"));
-        require(placed, "Dimension", Tag.TAG_STRING);
-        require(placed, "Block", Tag.TAG_LONG);
+        Nbt.fields(placed, Set.of("Dimension", "Block"));
+        Nbt.require(placed, "Dimension", Tag.TAG_STRING, "structural");
+        Nbt.require(placed, "Block", Tag.TAG_LONG, "structural");
         position =
             new NodeRegistry.Position(placed.getString("Dimension"), placed.getLong("Block"));
       }
       GatewayPolicy policy = null;
       if (kind == NodeRegistry.Kind.GATEWAY) {
-        require(entry, "Policy", Tag.TAG_COMPOUND);
+        Nbt.require(entry, "Policy", Tag.TAG_COMPOUND, "structural");
         var encoded = entry.getCompound("Policy");
-        NetworkStateCodec.fields(encoded, Set.of("Branch", "Inherited", "Kinds"));
-        require(encoded, "Branch", Tag.TAG_INT);
-        require(encoded, "Inherited", Tag.TAG_INT);
-        require(encoded, "Kinds", Tag.TAG_INT);
+        Nbt.fields(encoded, Set.of("Branch", "Inherited", "Kinds"));
+        Nbt.require(encoded, "Branch", Tag.TAG_INT, "structural");
+        Nbt.require(encoded, "Inherited", Tag.TAG_INT, "structural");
+        Nbt.require(encoded, "Kinds", Tag.TAG_INT, "structural");
         int mask = encoded.getInt("Kinds");
         if (mask < 0 || (mask & ~7) != 0)
           throw new IllegalArgumentException("Unknown resource-kind mask");
@@ -114,10 +113,5 @@ final class NodeStateCodec {
       case FLUID -> 2;
       case ENERGY -> 4;
     };
-  }
-
-  private static void require(CompoundTag tag, String field, int type) {
-    if (!tag.contains(field, type))
-      throw new IllegalArgumentException("Missing/wrong-type structural field: " + field);
   }
 }
