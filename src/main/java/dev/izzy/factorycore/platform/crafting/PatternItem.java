@@ -1,7 +1,10 @@
 package dev.izzy.factorycore.platform.crafting;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -28,12 +31,11 @@ public final class PatternItem extends Item {
         Component.translatable(
                 "tooltip.factorycore.pattern_output", output.getCount(), output.getHoverName())
             .withStyle(ChatFormatting.GRAY));
-    var counts = new java.util.LinkedHashMap<String, Integer>();
-    var names = new java.util.HashMap<String, Component>();
+    var counts = new LinkedHashMap<String, Integer>();
+    var names = new HashMap<String, Component>();
     for (var cell : contents.cells()) {
       if (cell.isEmpty()) continue;
-      var id =
-          net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(cell.getItem()).toString();
+      var id = BuiltInRegistries.ITEM.getKey(cell.getItem()).toString();
       counts.merge(id, 1, Integer::sum);
       names.putIfAbsent(id, cell.getHoverName());
     }

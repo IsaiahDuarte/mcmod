@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import java.util.*;
@@ -76,7 +77,7 @@ final class MachinePresetCodec {
     require(root, "Configurations", Tag.TAG_LIST);
     var list = root.getList("Configurations", Tag.TAG_COMPOUND);
     if (list.size() != ((ListTag) root.get("Configurations")).size()
-        || list.size() > dev.izzy.factorycore.core.network.NodeRegistry.MAX_NODES)
+        || list.size() > NodeRegistry.MAX_NODES)
       throw new IllegalArgumentException("Invalid machine fence count");
     var result = new HashMap<UUID, Long>();
     for (int i = 0; i < list.size(); i++) {

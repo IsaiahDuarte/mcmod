@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
 import java.util.WeakHashMap;
@@ -13,6 +14,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -86,7 +88,7 @@ public final class ProcessingRecoveryCommands {
     if (raw == null) {
       // A chunk saved after the dispatch finished (or before it began) carries no journal while
       // the saved job still claims progress there; record that absence as the evidence.
-      var absent = new net.minecraft.nbt.CompoundTag();
+      var absent = new CompoundTag();
       absent.putBoolean("Absent", true);
       raw = absent;
     }
@@ -139,7 +141,7 @@ public final class ProcessingRecoveryCommands {
       return 0;
     }
     var named = owner != null ? owner.id() : entry != null ? entry.job() : new UUID(0L, 0L);
-    java.nio.file.Path evidence;
+    Path evidence;
     try {
       evidence =
           DeviceRecoveryAudit.preserveProcessingJournal(

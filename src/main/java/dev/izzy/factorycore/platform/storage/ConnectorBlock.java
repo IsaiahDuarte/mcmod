@@ -5,9 +5,13 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Containers;
@@ -17,6 +21,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -26,6 +31,9 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class ConnectorBlock extends Block implements EntityBlock {
   private final boolean machine;
@@ -52,33 +60,20 @@ public final class ConnectorBlock extends Block implements EntityBlock {
         .setValue(BlockStateProperties.FACING, context.getClickedFace().getOpposite());
   }
 
-  private static final java.util.Map<Direction, net.minecraft.world.phys.shapes.VoxelShape> SHAPES =
-      java.util.Map.of(
-          Direction.NORTH,
-              net.minecraft.world.phys.shapes.Shapes.or(
-                  Block.box(0, 0, 3, 16, 16, 16), Block.box(3, 3, 0, 13, 13, 3)),
+  private static final Map<Direction, VoxelShape> SHAPES =
+      Map.of(
+          Direction.NORTH, Shapes.or(Block.box(0, 0, 3, 16, 16, 16), Block.box(3, 3, 0, 13, 13, 3)),
           Direction.SOUTH,
-              net.minecraft.world.phys.shapes.Shapes.or(
-                  Block.box(0, 0, 0, 16, 16, 13), Block.box(3, 3, 13, 13, 13, 16)),
+              Shapes.or(Block.box(0, 0, 0, 16, 16, 13), Block.box(3, 3, 13, 13, 13, 16)),
           Direction.EAST,
-              net.minecraft.world.phys.shapes.Shapes.or(
-                  Block.box(0, 0, 0, 13, 16, 16), Block.box(13, 3, 3, 16, 13, 13)),
-          Direction.WEST,
-              net.minecraft.world.phys.shapes.Shapes.or(
-                  Block.box(3, 0, 0, 16, 16, 16), Block.box(0, 3, 3, 3, 13, 13)),
-          Direction.UP,
-              net.minecraft.world.phys.shapes.Shapes.or(
-                  Block.box(0, 0, 0, 16, 13, 16), Block.box(3, 13, 3, 13, 16, 13)),
-          Direction.DOWN,
-              net.minecraft.world.phys.shapes.Shapes.or(
-                  Block.box(0, 3, 0, 16, 16, 16), Block.box(3, 0, 3, 13, 3, 13)));
+              Shapes.or(Block.box(0, 0, 0, 13, 16, 16), Block.box(13, 3, 3, 16, 13, 13)),
+          Direction.WEST, Shapes.or(Block.box(3, 0, 0, 16, 16, 16), Block.box(0, 3, 3, 3, 13, 13)),
+          Direction.UP, Shapes.or(Block.box(0, 0, 0, 16, 13, 16), Block.box(3, 13, 3, 13, 16, 13)),
+          Direction.DOWN, Shapes.or(Block.box(0, 3, 0, 16, 16, 16), Block.box(3, 0, 3, 13, 3, 13)));
 
   @Override
-  protected net.minecraft.world.phys.shapes.VoxelShape getShape(
-      BlockState state,
-      net.minecraft.world.level.BlockGetter level,
-      BlockPos position,
-      net.minecraft.world.phys.shapes.CollisionContext context) {
+  protected VoxelShape getShape(
+      BlockState state, BlockGetter level, BlockPos position, CollisionContext context) {
     return SHAPES.get(state.getValue(BlockStateProperties.FACING));
   }
 
@@ -119,7 +114,7 @@ public final class ConnectorBlock extends Block implements EntityBlock {
         var held = player.getOffhandItem();
         String label =
             !player.isShiftKeyDown()
-                    && held.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)
+                    && held.has(DataComponents.CUSTOM_NAME)
                     && (held.is(Items.NAME_TAG) || held.is(Items.PAPER))
                 ? held.getHoverName().getString()
                 : player.isShiftKeyDown() && held.is(Items.PAPER) ? "" : null;
@@ -199,23 +194,18 @@ public final class ConnectorBlock extends Block implements EntityBlock {
               "message.factorycore.connector_status",
               entity.position().dimension() + " @ " + position.toShortString(),
               Component.translatable(
-                  "resource.factorycore."
-                      + settings.kind().name().toLowerCase(java.util.Locale.ROOT)),
+                  "resource.factorycore." + settings.kind().name().toLowerCase(Locale.ROOT)),
               Component.translatable(
-                  "access.factorycore."
-                      + settings.access().name().toLowerCase(java.util.Locale.ROOT)),
+                  "access.factorycore." + settings.access().name().toLowerCase(Locale.ROOT)),
               Component.translatable(
                   "direction.factorycore." + entity.targetDirection().getOpposite().getName()),
               settings.priority(),
               settings.rate(),
               Component.translatable(
-                  "reason.factorycore."
-                      + binding.reason().name().toLowerCase(java.util.Locale.ROOT))),
+                  "reason.factorycore." + binding.reason().name().toLowerCase(Locale.ROOT))),
           false);
       player.displayClientMessage(
-          dev.izzy.factorycore.platform.upgrade.ThroughputStatus.port(
-              entity.serverLevel().getServer(), entity),
-          false);
+          ThroughputStatus.port(entity.serverLevel().getServer(), entity), false);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
       player.displayClientMessage(

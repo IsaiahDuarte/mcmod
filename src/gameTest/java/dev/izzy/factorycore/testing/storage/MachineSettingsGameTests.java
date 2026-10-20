@@ -1,9 +1,12 @@
 package dev.izzy.factorycore.testing.storage;
 
 import dev.izzy.factorycore.core.network.*;
+import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.network.*;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
@@ -11,8 +14,10 @@ import net.minecraft.gametest.framework.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.*;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -27,8 +32,7 @@ public final class MachineSettingsGameTests {
   @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper h) {
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
@@ -153,8 +157,7 @@ public final class MachineSettingsGameTests {
   public static void editRevocationDeniesSaveAndViewRevocationCloses(GameTestHelper h) {
     var owner = setup(h);
     var guest = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        guest.connection.getConnection());
+    NetworkRegistry.configureMockConnection(guest.connection.getConnection());
     guest.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     guest.getInventory().clearContent();
     var f = new Fixture(guest, owner.machine, owner.root);
@@ -194,9 +197,7 @@ public final class MachineSettingsGameTests {
     if (!stack.isEmpty())
       digest =
           TerminalPackets.fingerprint(
-              new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                      f.player.registryAccess())
-                  .itemKey(stack));
+              new PlatformResourceCodec(f.player.registryAccess()).itemKey(stack));
     m.presetCommand(
         f.player,
         new MachinePresetPackets.Command(
@@ -212,9 +213,7 @@ public final class MachineSettingsGameTests {
         .thenExecute(
             () -> {
               menu[0] = open(h, f);
-              f.player
-                  .getInventory()
-                  .setItem(9, new ItemStack(net.minecraft.world.item.Items.IRON_INGOT, 7));
+              f.player.getInventory().setItem(9, new ItemStack(Items.IRON_INGOT, 7));
               preset(f, menu[0], MachinePresetPackets.SAMPLE, "");
               h.assertTrue(
                   menu[0].presetView().dirty()
@@ -231,8 +230,7 @@ public final class MachineSettingsGameTests {
             () -> {
               preset(f, menu[0], MachinePresetPackets.MODE, "");
               h.assertTrue(
-                  menu[0].presetView().mode()
-                      == dev.izzy.factorycore.core.storage.MachinePresets.Mode.IMPORT,
+                  menu[0].presetView().mode() == MachinePresets.Mode.IMPORT,
                   "Mode remains an unsaved draft");
             })
         .thenIdle(3)
@@ -337,17 +335,12 @@ public final class MachineSettingsGameTests {
                   new NetworkPermissions.Actor(f.player.getUUID(), false),
                   new ConnectorSettings(
                       ResourceKind.FLUID, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 1000));
-              f.player
-                  .getInventory()
-                  .setItem(9, new ItemStack(net.minecraft.world.item.Items.WATER_BUCKET));
+              f.player.getInventory().setItem(9, new ItemStack(Items.WATER_BUCKET));
               menu[0] = open(h, f);
               preset(f, menu[0], MachinePresetPackets.SAMPLE, "");
               h.assertTrue(
                   menu[0].presetView().rules().getFirst().contains("minecraft:water")
-                      && f.player
-                          .getInventory()
-                          .getItem(9)
-                          .is(net.minecraft.world.item.Items.WATER_BUCKET),
+                      && f.player.getInventory().getItem(9).is(Items.WATER_BUCKET),
                   "Fluid sample copies contained water without draining original bucket");
             })
         .thenIdle(3)
@@ -373,8 +366,7 @@ public final class MachineSettingsGameTests {
                           .presetView()
                           .rules()
                           .getFirst()
-                          .contains(
-                              dev.izzy.factorycore.core.resource.ResourceKey.ENERGY.registryId()),
+                          .contains(ResourceKey.ENERGY.registryId()),
                   "FE sample uses canonical energy identity without an inventory item");
             })
         .thenIdle(3)
@@ -395,8 +387,7 @@ public final class MachineSettingsGameTests {
   public static void presetDeploymentRechecksCurrentDeployGrant(GameTestHelper h) {
     var owner = setup(h);
     var guest = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        guest.connection.getConnection());
+    NetworkRegistry.configureMockConnection(guest.connection.getConnection());
     guest.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     guest.getInventory().clearContent();
     var f = new Fixture(guest, owner.machine, owner.root);

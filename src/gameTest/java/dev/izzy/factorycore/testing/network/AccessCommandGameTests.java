@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.network;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
@@ -9,6 +10,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import java.util.Map;
 import java.util.Set;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
@@ -18,6 +20,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /**
  * {@code /factorycore access}: Manage-checked grant administration through the shared authority.
@@ -37,7 +40,7 @@ public final class AccessCommandGameTests {
   private static int run(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException rejected) {
+    } catch (CommandSyntaxException rejected) {
       return -1;
     }
   }
@@ -58,8 +61,7 @@ public final class AccessCommandGameTests {
     var stranger = h.makeMockServerPlayerInLevel();
     var third = h.makeMockServerPlayerInLevel();
     for (var player : new ServerPlayer[] {owner, stranger, third})
-      net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-          player.connection.getConnection());
+      NetworkRegistry.configureMockConnection(player.connection.getConnection());
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     root.commission(owner.getUUID());
@@ -179,7 +181,7 @@ public final class AccessCommandGameTests {
                           .snapshot()
                           .grants()
                           .equals(
-                              java.util.Map.of(
+                              Map.of(
                                   stranger.getUUID(),
                                   Set.of(Permission.MANAGE),
                                   third.getUUID(),

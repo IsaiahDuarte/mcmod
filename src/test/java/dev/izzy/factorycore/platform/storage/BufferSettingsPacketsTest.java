@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import io.netty.buffer.Unpooled;
+import java.security.MessageDigest;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
@@ -15,6 +17,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -29,10 +32,7 @@ class BufferSettingsPacketsTest {
   }
 
   private static RegistryFriendlyByteBuf buffer() {
-    return new RegistryFriendlyByteBuf(
-        Unpooled.buffer(),
-        registries,
-        net.neoforged.neoforge.network.connection.ConnectionType.NEOFORGE);
+    return new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
   }
 
   @Test
@@ -62,7 +62,7 @@ class BufferSettingsPacketsTest {
     }
     stack.set(DataComponents.CUSTOM_NAME, Component.literal("Changed"));
     assertFalse(
-        java.security.MessageDigest.isEqual(
+        MessageDigest.isEqual(
             command.fingerprint(), TerminalPackets.fingerprint(codec.itemKey(stack))));
   }
 
@@ -125,7 +125,7 @@ class BufferSettingsPacketsTest {
                 "ALL",
                 64,
                 64,
-                java.util.Collections.nCopies(17, "rule"),
+                Collections.nCopies(17, "rule"),
                 List.of(),
                 "ready",
                 true,

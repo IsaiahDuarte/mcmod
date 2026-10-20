@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -381,10 +382,10 @@ public final class PlayerInventoryGameTests {
                       64,
                       value -> result[3] = value);
               for (int step = 0;
-                  step < 16 && java.util.Arrays.stream(result).anyMatch(value -> value == null);
+                  step < 16 && Arrays.stream(result).anyMatch(value -> value == null);
                   step++) fixture.runtime().scheduler().tick();
               helper.assertTrue(
-                  java.util.Arrays.stream(result).allMatch(value -> value != null),
+                  Arrays.stream(result).allMatch(value -> value != null),
                   "Bounded same-server-tick fixture dispatch");
               helper.assertTrue(
                   result[0].transfer().delivered() == 64

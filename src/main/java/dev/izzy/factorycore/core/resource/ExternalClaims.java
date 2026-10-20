@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.ToLongFunction;
 
 /** Shared foreign claim metadata; never owns or caches foreign resource quantities. */
 public final class ExternalClaims {
@@ -163,7 +164,7 @@ public final class ExternalClaims {
       UUID owner,
       ResourceKey key,
       long requested,
-      java.util.function.ToLongFunction<ResourceKey> observed) {
+      ToLongFunction<ResourceKey> observed) {
     checkMutable();
     OperationResult.requireQuantity(requested);
     if (requested == 0) return 0;

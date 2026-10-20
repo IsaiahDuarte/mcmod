@@ -11,10 +11,16 @@ import com.google.gson.JsonParser;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
+import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.core.storage.FuelGenerator;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
+import dev.izzy.factorycore.platform.crafting.PatternHolderEntity;
+import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
+import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
+import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
+import dev.izzy.factorycore.platform.wireless.WirelessTerminalItem;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -359,13 +365,11 @@ class RecipeProgressionTest {
     // Advanced; an Overdrive pair is Endgame.
     for (var kind : ResourceKind.values()) {
       assertTrue(
-          ThroughputTier.ADVANCED.portRate(kind)
-              >= dev.izzy.factorycore.core.resource.WirelessBudget.limit(kind),
+          ThroughputTier.ADVANCED.portRate(kind) >= WirelessBudget.limit(kind),
           "Advanced wired port >= base link pair: " + kind);
       assertTrue(
           ThroughputTier.ENDGAME.portRate(kind)
-              >= dev.izzy.factorycore.core.resource.WirelessBudget.limit(kind)
-                  * ThroughputTier.ENDGAME.linkScale(),
+              >= WirelessBudget.limit(kind) * ThroughputTier.ENDGAME.linkScale(),
           "Overdrive wired port >= Overdrive link pair: " + kind);
     }
   }
@@ -413,31 +417,26 @@ class RecipeProgressionTest {
     assertEquals(
         List.of(64L, 20_000L, 1_000L, 16L, 20_000L, 1_000L),
         List.of(
-            (long) dev.izzy.factorycore.platform.wireless.AccessPointEntity.RANGE,
-            dev.izzy.factorycore.platform.wireless.AccessPointEntity.CAPACITY,
-            dev.izzy.factorycore.platform.wireless.AccessPointEntity.INPUT_RATE,
-            dev.izzy.factorycore.platform.wireless.AccessPointEntity.TICK_COST,
-            (long) dev.izzy.factorycore.platform.wireless.WirelessTerminalItem.CAPACITY,
-            (long) dev.izzy.factorycore.platform.wireless.WirelessTerminalItem.CHARGE_RATE),
+            (long) AccessPointEntity.RANGE,
+            AccessPointEntity.CAPACITY,
+            AccessPointEntity.INPUT_RATE,
+            AccessPointEntity.TICK_COST,
+            (long) WirelessTerminalItem.CAPACITY,
+            (long) WirelessTerminalItem.CHARGE_RATE),
         "Wireless access point range/buffer/input/upkeep, handheld buffer/charge");
     assertEquals(
         List.of(256L, 20_000L, 1_000L, 32L),
         List.of(
-            (long) dev.izzy.factorycore.platform.wireless.LinkEndpointEntity.RANGE,
-            dev.izzy.factorycore.platform.wireless.LinkEndpointEntity.CAPACITY,
-            dev.izzy.factorycore.platform.wireless.LinkEndpointEntity.INPUT_RATE,
-            dev.izzy.factorycore.platform.wireless.LinkEndpointEntity.TICK_COST),
+            (long) LinkEndpointEntity.RANGE,
+            LinkEndpointEntity.CAPACITY,
+            LinkEndpointEntity.INPUT_RATE,
+            LinkEndpointEntity.TICK_COST),
         "Link endpoint range/buffer/input/upkeep");
     assertEquals(
         List.of(10_000L, 1_000L),
-        List.of(
-            dev.izzy.factorycore.platform.program.ProgramControllerEntity.CAPACITY,
-            dev.izzy.factorycore.platform.program.ProgramControllerEntity.INPUT_RATE),
+        List.of(ProgramControllerEntity.CAPACITY, ProgramControllerEntity.INPUT_RATE),
         "Program controller buffer and input");
-    assertEquals(
-        9,
-        dev.izzy.factorycore.platform.crafting.PatternHolderEntity.SLOTS,
-        "Patterns per Crafting Unit / Crafting Interface");
+    assertEquals(9, PatternHolderEntity.SLOTS, "Patterns per Crafting Unit / Crafting Interface");
   }
 
   /**
@@ -447,8 +446,8 @@ class RecipeProgressionTest {
   @Test
   void powerCurveSupportsTheDocumentedSetups() {
     long sustained = FuelGenerator.PER_BURN_TICK;
-    long accessPoint = dev.izzy.factorycore.platform.wireless.AccessPointEntity.TICK_COST;
-    long endpoint = dev.izzy.factorycore.platform.wireless.LinkEndpointEntity.TICK_COST;
+    long accessPoint = AccessPointEntity.TICK_COST;
+    long endpoint = LinkEndpointEntity.TICK_COST;
     assertTrue(sustained >= accessPoint, "One generator sustains an open access point");
     assertTrue(
         sustained < endpoint && 2 * sustained >= endpoint,

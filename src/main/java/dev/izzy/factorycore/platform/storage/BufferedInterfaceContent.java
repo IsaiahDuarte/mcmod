@@ -2,11 +2,14 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -26,7 +29,7 @@ public final class BufferedInterfaceContent {
           BlockBehaviour.Properties.of()
               .strength(3.5f)
               .requiresCorrectToolForDrops()
-              .sound(net.minecraft.world.level.block.SoundType.METAL));
+              .sound(SoundType.METAL));
   public static final DeferredItem<BufferedInterfaceItem> ITEM =
       ITEMS.register("buffered_interface", () -> new BufferedInterfaceItem(BLOCK.get()));
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BufferedInterfaceEntity>>
@@ -37,17 +40,10 @@ public final class BufferedInterfaceContent {
                   BlockEntityType.Builder.of(BufferedInterfaceEntity::new, BLOCK.get())
                       .build(null));
 
-  private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
+  private static final DeferredRegister<MenuType<?>> MENUS =
       DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
-  public static final DeferredHolder<
-          net.minecraft.world.inventory.MenuType<?>,
-          net.minecraft.world.inventory.MenuType<BufferSettingsMenu>>
-      MENU =
-          MENUS.register(
-              "buffer_settings",
-              () ->
-                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
-                      BufferSettingsMenu::new));
+  public static final DeferredHolder<MenuType<?>, MenuType<BufferSettingsMenu>> MENU =
+      MENUS.register("buffer_settings", () -> IMenuTypeExtension.create(BufferSettingsMenu::new));
 
   private BufferedInterfaceContent() {}
 

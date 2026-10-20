@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -67,7 +68,7 @@ public final class BufferExportGameTests {
         new ResourceFilter(
             ResourceKind.ITEM,
             ResourceFilter.Mode.INCLUDE,
-            java.util.List.of(new ResourceFilter.Registry(f.iron.registryId()))),
+            List.of(new ResourceFilter.Registry(f.iron.registryId()))),
         16,
         target);
   }

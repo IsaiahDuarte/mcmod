@@ -1,11 +1,13 @@
 package dev.izzy.factorycore.platform.network;
 
+import com.mojang.authlib.GameProfile;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import java.util.EnumSet;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -148,10 +150,8 @@ public final class AccessAdministration {
     var online = server.getPlayerList().getPlayer(id);
     if (online != null) return online.getName();
     var cache = server.getProfileCache();
-    var cached =
-        cache == null ? java.util.Optional.<com.mojang.authlib.GameProfile>empty() : cache.get(id);
-    return Component.literal(
-        cached.map(com.mojang.authlib.GameProfile::getName).orElse(id.toString()));
+    var cached = cache == null ? Optional.<GameProfile>empty() : cache.get(id);
+    return Component.literal(cached.map(GameProfile::getName).orElse(id.toString()));
   }
 
   public static String text(BlockPos pos) {

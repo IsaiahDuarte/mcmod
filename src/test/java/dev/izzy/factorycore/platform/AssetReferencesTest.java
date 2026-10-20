@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -114,7 +115,7 @@ class AssetReferencesTest {
     for (var texture : textures) {
       var name = root.resolve("textures").relativize(texture).toString().replace('\\', '/');
       assertTrue(used.contains(name.substring(0, name.length() - 4)), "Orphan texture " + name);
-      java.awt.image.BufferedImage image;
+      BufferedImage image;
       try (var input = Files.newInputStream(texture)) {
         image = ImageIO.read(input);
       }

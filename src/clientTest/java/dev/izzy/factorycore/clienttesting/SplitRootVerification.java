@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import java.util.List;
 import net.minecraft.core.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.*;
@@ -137,7 +138,7 @@ final class SplitRootVerification {
           new ResourceFilter(
               ResourceKind.ITEM,
               ResourceFilter.Mode.INCLUDE,
-              java.util.List.of(new ResourceFilter.Exact(key))),
+              List.of(new ResourceFilter.Exact(key))),
           8);
       phase = 2;
       return false;

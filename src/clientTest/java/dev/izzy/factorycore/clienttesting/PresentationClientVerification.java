@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.clienttesting;
 
+import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
@@ -15,15 +17,24 @@ import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
+import dev.izzy.factorycore.platform.storage.CellHandleData;
+import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
+import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -34,20 +45,27 @@ import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.BookViewScreen;
 import net.minecraft.client.resources.language.I18n;
+import net.minecraft.client.tutorial.TutorialSteps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LevelSettings;
@@ -59,6 +77,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Graphical presentation fixture ({@code runPresentationClient}): device orientations, status lamps
@@ -286,7 +305,7 @@ public final class PresentationClientVerification {
             .toList();
     if (screen instanceof BufferSettingsScreen) {
       for (var widget : widgets)
-        if (widget instanceof net.minecraft.client.gui.components.EditBox field
+        if (widget instanceof EditBox field
             && (field.getMessage().getString().equals(I18n.get("gui.factorycore.buffer.rate"))
                 || field
                     .getMessage()
@@ -410,10 +429,7 @@ public final class PresentationClientVerification {
         });
     serverUntil(
         player ->
-            dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
-                    .craftingJobs()
-                    .all()
-                    .isEmpty()
+            DeviceSavedData.get(player.server).craftingJobs().all().isEmpty()
                 && planks(player) == 8);
     step(client -> waited() > 10 && jobView(client).jobs().isEmpty() && press(client, "×64"));
     step(
@@ -443,23 +459,16 @@ public final class PresentationClientVerification {
   @SuppressWarnings("PMD.CloseResource")
   private static long planks(ServerPlayer player) {
     var level = player.serverLevel();
-    var drive =
-        (dev.izzy.factorycore.platform.storage.StorageDriveEntity)
-            level.getBlockEntity(PresentationScenes.SCREENS.east());
-    var cell = dev.izzy.factorycore.platform.storage.CellHandleData.read(drive.cell(0));
+    var drive = (StorageDriveEntity) level.getBlockEntity(PresentationScenes.SCREENS.east());
+    var cell = CellHandleData.read(drive.cell(0));
     var key =
-        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(level.registryAccess())
-            .itemKey(new ItemStack(net.minecraft.world.item.Items.OAK_PLANKS));
-    var stock =
-        dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
-            .registry()
-            .stock(cell, key);
+        new PlatformResourceCodec(level.registryAccess()).itemKey(new ItemStack(Items.OAK_PLANKS));
+    var stock = DeviceSavedData.get(player.server).registry().stock(cell, key);
     // -1 while the cell is offline, so waits never mistake a rebuilding network for an empty one.
     return stock.loaded() ? stock.total() : -1;
   }
 
-  private static dev.izzy.factorycore.platform.storage.TerminalJobPackets.View jobView(
-      Minecraft client) {
+  private static TerminalJobPackets.View jobView(Minecraft client) {
     check(client.screen instanceof TerminalScreen, "Terminal closed during the jobs tour");
     return ((TerminalScreen) client.screen).getMenu().jobView();
   }
@@ -493,13 +502,11 @@ public final class PresentationClientVerification {
 
   private static void shift(Minecraft client, boolean down) {
     client.player.connection.send(
-        new net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket(
+        new ServerboundPlayerCommandPacket(
             client.player,
             down
-                ? net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
-                    .PRESS_SHIFT_KEY
-                : net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
-                    .RELEASE_SHIFT_KEY));
+                ? ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY
+                : ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
   }
 
   private static NodeRegistry.Position at(ServerPlayer player, BlockPos position) {
@@ -516,10 +523,7 @@ public final class PresentationClientVerification {
   private void upgrade(BlockPos target, ThroughputTier tier, boolean buffer) {
     String item = tier == ThroughputTier.ADVANCED ? "throughput_upgrade" : "overdrive_upgrade";
     String name = (buffer ? "buffer-" : "machine-") + item.replace("_upgrade", "");
-    int maximum =
-        buffer
-            ? tier.bufferRate()
-            : tier.portRate(dev.izzy.factorycore.core.resource.ResourceKind.ITEM);
+    int maximum = buffer ? tier.bufferRate() : tier.portRate(ResourceKind.ITEM);
     server(
         player -> {
           player.setGameMode(GameType.SURVIVAL);
@@ -550,11 +554,7 @@ public final class PresentationClientVerification {
                 || screen.getMenu().view().maxRate() != maximum
                 || screen.getMenu().view().form().rate() != maximum) return false;
             check(
-                screen
-                    .getMenu()
-                    .view()
-                    .tier()
-                    .equals(tier.name().toLowerCase(java.util.Locale.ROOT)),
+                screen.getMenu().view().tier().equals(tier.name().toLowerCase(Locale.ROOT)),
                 "Wrong installed tier in machine payload");
           }
           evidence
@@ -620,8 +620,7 @@ public final class PresentationClientVerification {
   private void buildSteps() {
     step(
         client -> {
-          if (client.screen
-              instanceof net.minecraft.client.gui.screens.AccessibilityOnboardingScreen onboarding)
+          if (client.screen instanceof AccessibilityOnboardingScreen onboarding)
             onboarding.onClose();
           if (!(client.screen instanceof TitleScreen)) return false;
           var window = client.getWindow();
@@ -630,7 +629,7 @@ public final class PresentationClientVerification {
               (int) Math.round(MIN_WIDTH / ratio), (int) Math.round(MIN_HEIGHT / ratio));
           client.options.guiScale().set(2);
           client.options.pauseOnLostFocus = false;
-          client.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
+          client.getTutorial().setStep(TutorialSteps.NONE);
           client
               .createWorldOpenFlows()
               .createFreshLevel(
@@ -862,18 +861,14 @@ public final class PresentationClientVerification {
             check(
                 WorldNetworks.get(player.getServer())
                         .setGrants(
-                            new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
-                                player.getUUID(), false),
+                            new NetworkPermissions.Actor(player.getUUID(), false),
                             at(player, base),
-                            java.util.UUID.nameUUIDFromBytes(
-                                "presentation-guest"
-                                    .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                            java.util.EnumSet.of(
-                                dev.izzy.factorycore.core.network.NetworkPermissions.Permission
-                                    .VIEW,
-                                dev.izzy.factorycore.core.network.NetworkPermissions.Permission
-                                    .DEPOSIT))
-                    == dev.izzy.factorycore.core.network.NetworkPermissions.Change.OK,
+                            UUID.nameUUIDFromBytes(
+                                "presentation-guest".getBytes(StandardCharsets.UTF_8)),
+                            EnumSet.of(
+                                NetworkPermissions.Permission.VIEW,
+                                NetworkPermissions.Permission.DEPOSIT))
+                    == NetworkPermissions.Change.OK,
                 "Owner grants a second principal before opening Network Access"));
     use(base, Direction.SOUTH, true);
     step(
@@ -905,7 +900,7 @@ public final class PresentationClientVerification {
       step(
           client -> {
             check(client.screen instanceof BookViewScreen, "Guide closed while paging");
-            client.screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
+            client.screen.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
             return true;
           });
     }
@@ -943,15 +938,14 @@ public final class PresentationClientVerification {
   }
 
   @SuppressWarnings("PMD.CloseResource")
-  private static DeviceLamp lamp(net.minecraft.server.level.ServerLevel level, int x, int z) {
+  private static DeviceLamp lamp(ServerLevel level, int x, int z) {
     return level.getBlockState(new BlockPos(x, 65, z)).getValue(DeviceLamp.PROPERTY);
   }
 
   private static ItemStack stack(String path) {
     return new ItemStack(
         BuiltInRegistries.ITEM.get(
-            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                FactoryCoreMod.MOD_ID, path)));
+            ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, path)));
   }
 
   private void writeReport(Minecraft client) {

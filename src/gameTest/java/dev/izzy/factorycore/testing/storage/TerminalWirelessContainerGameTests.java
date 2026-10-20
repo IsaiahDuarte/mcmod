@@ -29,6 +29,7 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /** Real paired topology, terminal sessions and native item capabilities. */
 @GameTestHolder("factorycore_tests")
@@ -76,8 +77,7 @@ public final class TerminalWirelessContainerGameTests {
   public static void indivisibleContainersAndEnergyCopiesRespectSharedBidirectionalCap(
       GameTestHelper h) {
     ServerPlayer player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     player.moveTo(Vec3.atCenterOf(h.absolutePos(TERMINAL)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());

@@ -1,5 +1,9 @@
 package dev.izzy.factorycore.platform.network;
 
+import dev.izzy.factorycore.platform.crafting.CraftingUnitBlock;
+import dev.izzy.factorycore.platform.program.ProgramControllerBlock;
+import dev.izzy.factorycore.platform.storage.BufferedInterfaceBlock;
+import dev.izzy.factorycore.platform.wireless.AccessPointBlock;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -65,10 +69,10 @@ public final class NetworkCableBlock extends Block {
   public static boolean linksTo(BlockState neighbor, Direction towardNeighbor) {
     var block = neighbor.getBlock();
     return NetworkContent.connects(neighbor, towardNeighbor.getOpposite())
-        || block instanceof dev.izzy.factorycore.platform.storage.BufferedInterfaceBlock
-        || block instanceof dev.izzy.factorycore.platform.crafting.CraftingUnitBlock
-        || block instanceof dev.izzy.factorycore.platform.program.ProgramControllerBlock
-        || block instanceof dev.izzy.factorycore.platform.wireless.AccessPointBlock;
+        || block instanceof BufferedInterfaceBlock
+        || block instanceof CraftingUnitBlock
+        || block instanceof ProgramControllerBlock
+        || block instanceof AccessPointBlock;
   }
 
   /** The cable state with every arm recomputed from loaded neighbors. */

@@ -8,14 +8,21 @@ import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.testing.PolicyFixture;
 import java.util.*;
+import java.util.HashMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.*;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.gametest.*;
 
 @GameTestHolder("factorycore_tests")
@@ -327,19 +334,16 @@ public final class BufferPolicyGameTests {
     var f = setup(helper, UUID.randomUUID());
     var stack = new ItemStack(PolicyFixture.PROBE.get());
     var key = new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(stack);
-    var registry = net.minecraft.core.registries.BuiltInRegistries.ITEM;
-    var before =
-        new java.util.HashMap<
-            net.minecraft.tags.TagKey<Item>, List<net.minecraft.core.Holder<Item>>>();
+    var registry = BuiltInRegistries.ITEM;
+    var before = new HashMap<TagKey<Item>, List<Holder<Item>>>();
     registry
         .getTags()
         .forEach(pair -> before.put(pair.getFirst(), pair.getSecond().stream().toList()));
-    var rebound = new java.util.HashMap<>(before);
+    var rebound = new HashMap<>(before);
     rebound.put(
-        net.minecraft.tags.TagKey.create(
-            net.minecraft.core.registries.Registries.ITEM,
-            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                "factorycore_tests", "policy_probe")),
+        TagKey.create(
+            Registries.ITEM,
+            ResourceLocation.fromNamespaceAndPath("factorycore_tests", "policy_probe")),
         List.of());
     registry.bindTags(rebound);
     helper
@@ -365,8 +369,7 @@ public final class BufferPolicyGameTests {
                   "Missing current membership keeps stock and sleeps");
               registry.bindTags(before);
               WorldNetworks.tagsReloaded(
-                  new net.neoforged.neoforge.event.OnDatapackSyncEvent(
-                      helper.getLevel().getServer().getPlayerList(), null));
+                  new OnDatapackSyncEvent(helper.getLevel().getServer().getPlayerList(), null));
             })
         .thenWaitUntil(
             () ->

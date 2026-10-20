@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import java.util.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -126,7 +127,7 @@ public final class BufferSettingsPackets {
       if (mode.length() > 16
           || filter.length() > 16
           || rate < 1
-          || rate > dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME.bufferRate()
+          || rate > ThroughputTier.ENDGAME.bufferRate()
           || target < 0
           || target > 576
           || rules.size() > 16

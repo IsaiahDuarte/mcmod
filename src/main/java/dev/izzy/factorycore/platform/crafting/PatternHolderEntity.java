@@ -2,12 +2,16 @@ package dev.izzy.factorycore.platform.crafting;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.items.ItemStackHandler;
@@ -46,10 +50,7 @@ public abstract class PatternHolderEntity extends BlockEntity {
         }
       };
 
-  protected PatternHolderEntity(
-      net.minecraft.world.level.block.entity.BlockEntityType<?> type,
-      BlockPos position,
-      BlockState state) {
+  protected PatternHolderEntity(BlockEntityType<?> type, BlockPos position, BlockState state) {
     super(type, position, state);
   }
 
@@ -126,7 +127,7 @@ public abstract class PatternHolderEntity extends BlockEntity {
     var saved = tag.getCompound("Patterns");
     if (tag.getInt("Schema") != SCHEMA || saved.getInt("Size") != SLOTS) {
       unsupported = tag.copy();
-      for (var key : java.util.List.of("id", "x", "y", "z", "components")) unsupported.remove(key);
+      for (var key : List.of("id", "x", "y", "z", "components")) unsupported.remove(key);
       return;
     }
     patterns.deserializeNBT(registries, saved);
@@ -140,12 +141,9 @@ public abstract class PatternHolderEntity extends BlockEntity {
   }
 
   @Override
-  protected void collectImplicitComponents(
-      net.minecraft.core.component.DataComponentMap.Builder components) {
+  protected void collectImplicitComponents(DataComponentMap.Builder components) {
     super.collectImplicitComponents(components);
     if (unsupported != null)
-      components.set(
-          CraftingContent.RETAINED.get(),
-          net.minecraft.world.item.component.CustomData.of(unsupported));
+      components.set(CraftingContent.RETAINED.get(), CustomData.of(unsupported));
   }
 }

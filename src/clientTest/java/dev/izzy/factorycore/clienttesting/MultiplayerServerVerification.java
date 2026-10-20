@@ -2,6 +2,7 @@ package dev.izzy.factorycore.clienttesting;
 
 import static dev.izzy.factorycore.clienttesting.MultiplayerSync.*;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -201,7 +202,7 @@ final class MultiplayerServerVerification {
                 .execute(
                     "factorycore access grant " + TERMINAL_ARGS + " " + STRANGER + " view",
                     server.createCommandSourceStack());
-      } catch (com.mojang.brigadier.exceptions.CommandSyntaxException error) {
+      } catch (CommandSyntaxException error) {
         throw new IllegalStateException(error);
       }
       require(result == 1, "Operator console grant succeeds");

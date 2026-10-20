@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.PriorityOrder;
 import dev.izzy.factorycore.core.storage.RouteCursors;
 import dev.izzy.factorycore.core.storage.StableRotation;
@@ -196,7 +197,7 @@ public final class WorldStorageRoutes {
     Objects.requireNonNull(completion);
     Objects.requireNonNull(authorized);
     OperationResult.requireQuantity(amount);
-    if (amount > dev.izzy.factorycore.core.resource.ThroughputTier.maxQuantum(key.kind()))
+    if (amount > ThroughputTier.maxQuantum(key.kind()))
       throw new IllegalArgumentException("Route exceeds bounded quantum");
     prune();
     try {

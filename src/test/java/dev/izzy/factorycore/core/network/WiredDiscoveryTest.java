@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -75,7 +77,7 @@ class WiredDiscoveryTest {
               assertNull(captured.put(position, descriptor), "A joined descriptor is emitted once");
             });
     assertEquals(WiredDiscovery.State.PUBLISHED, finish(discovery).state());
-    assertEquals(java.util.Set.of(pos(1), pos(2), pos(3)), captured.keySet());
+    assertEquals(Set.of(pos(1), pos(2), pos(3)), captured.keySet());
     assertFalse(captured.containsKey(pos(4)), "A nonreciprocal probe is not captured");
     discovery =
         new WiredDiscovery(
@@ -248,7 +250,7 @@ class WiredDiscoveryTest {
         pos(NetworkTopology.MAX_NODES + 1),
         wire(NetworkTopology.MAX_NODES + 1, NetworkTopology.Role.CABLE, NetworkTopology.MAX_NODES));
     assertEquals(WiredDiscovery.State.FAILED, finish(job(world, 1)).state());
-    var seeds = java.util.Collections.nCopies(WiredDiscovery.MAX_SEEDS + 1, pos(0));
+    var seeds = Collections.nCopies(WiredDiscovery.MAX_SEEDS + 1, pos(0));
     discovery = new WiredDiscovery(UUID.randomUUID(), 8, seeds.iterator(), p -> null, () -> 1);
     assertEquals(WiredDiscovery.State.FAILED, finish(discovery).state());
   }

@@ -3,6 +3,9 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.crafting.GridRequirement;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.platform.crafting.CraftingContent;
+import dev.izzy.factorycore.platform.crafting.PatternContents;
+import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,12 +13,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.neoforged.neoforge.fluids.FluidStack;
 
 /**
  * Server-owned manual crafting grid for one terminal session. Cells are exact ghost keys; no items
@@ -135,9 +141,7 @@ final class TerminalCrafting {
             if (outputs[index].kind() == ResourceKind.FLUID) {
               // Fluids preview as their bucket (or nothing when the fluid has none).
               var bucket = codec.fluidStack(outputs[index], 1).getFluid().getBucket();
-              return bucket == net.minecraft.world.item.Items.AIR
-                  ? ItemStack.EMPTY
-                  : new ItemStack(bucket);
+              return bucket == Items.AIR ? ItemStack.EMPTY : new ItemStack(bucket);
             }
             return codec.itemStack(outputs[index], counts[cells.length + index]);
           } catch (IllegalArgumentException unsupported) {
@@ -254,14 +258,10 @@ final class TerminalCrafting {
       if (!remainder.isEmpty()) remainders.add(remainder);
     ItemStack encoded;
     try {
-      var contents =
-          new dev.izzy.factorycore.platform.crafting.PatternContents(
-              java.util.UUID.randomUUID(), 1, 0, ghosts, output, remainders);
+      var contents = new PatternContents(UUID.randomUUID(), 1, 0, ghosts, output, remainders);
       contents.pattern(codec);
-      encoded =
-          new ItemStack(
-              dev.izzy.factorycore.platform.crafting.CraftingContent.CRAFTING_PATTERN.get());
-      encoded.set(dev.izzy.factorycore.platform.crafting.CraftingContent.PATTERN.get(), contents);
+      encoded = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
+      encoded.set(CraftingContent.PATTERN.get(), contents);
     } catch (IllegalArgumentException unsupported) {
       return new Outcome(0, "unsupported", null);
     }
@@ -279,8 +279,8 @@ final class TerminalCrafting {
     var codec = new PlatformResourceCodec(player.registryAccess());
     var in = new ArrayList<ItemStack>();
     var out = new ArrayList<ItemStack>();
-    var fluidIn = new ArrayList<net.neoforged.neoforge.fluids.FluidStack>();
-    var fluidOut = new ArrayList<net.neoforged.neoforge.fluids.FluidStack>();
+    var fluidIn = new ArrayList<FluidStack>();
+    var fluidOut = new ArrayList<FluidStack>();
     ItemStack encoded;
     try {
       for (int index = 0; index < cells.length; index++)
@@ -297,15 +297,10 @@ final class TerminalCrafting {
         }
       if (in.isEmpty() && fluidIn.isEmpty() || out.isEmpty() && fluidOut.isEmpty())
         return new Outcome(0, "no_recipe", null);
-      var contents =
-          new dev.izzy.factorycore.platform.crafting.ProcessingContents(
-              java.util.UUID.randomUUID(), 1, 0, in, out, fluidIn, fluidOut);
+      var contents = new ProcessingContents(UUID.randomUUID(), 1, 0, in, out, fluidIn, fluidOut);
       contents.pattern(codec);
-      encoded =
-          new ItemStack(
-              dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING_PATTERN.get());
-      encoded.set(
-          dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING.get(), contents);
+      encoded = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+      encoded.set(CraftingContent.PROCESSING.get(), contents);
     } catch (IllegalArgumentException unsupported) {
       return new Outcome(0, "unsupported", null);
     }
@@ -319,7 +314,7 @@ final class TerminalCrafting {
     for (int slot = 0; slot < SLOTS; slot++) trial.add(inventory.getItem(slot).copy());
     boolean blank = false;
     for (var stack : trial)
-      if (stack.is(dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN.get())) {
+      if (stack.is(CraftingContent.BLANK_PATTERN.get())) {
         stack.shrink(1);
         blank = true;
         break;

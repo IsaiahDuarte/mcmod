@@ -10,6 +10,7 @@ import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -75,12 +76,9 @@ public final class FuelGeneratorContent {
                               FuelGenerator.Snapshot::new)));
 
   /** Exact unsupported-schema block-entity data, carried unchanged by a broken generator. */
-  public static final DeferredHolder<
-          DataComponentType<?>, DataComponentType<net.minecraft.world.item.component.CustomData>>
-      RETAINED =
-          COMPONENTS.registerComponentType(
-              "generator_retained",
-              builder -> builder.persistent(net.minecraft.world.item.component.CustomData.CODEC));
+  public static final DeferredHolder<DataComponentType<?>, DataComponentType<CustomData>> RETAINED =
+      COMPONENTS.registerComponentType(
+          "generator_retained", builder -> builder.persistent(CustomData.CODEC));
 
   public static final DeferredBlock<FuelGeneratorBlock> BLOCK =
       BLOCKS.registerBlock(

@@ -9,15 +9,21 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.*;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.ServerOpListEntry;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /**
  * Transfer Recovery screen (ADR 0055): the same original-owner, evidence-first and operator-only
@@ -77,8 +83,7 @@ public final class RecoveryScreenGameTests {
   private static ServerPlayer player(GameTestHelper h) {
     @SuppressWarnings("removal")
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     return player;
   }
 
@@ -99,15 +104,11 @@ public final class RecoveryScreenGameTests {
   }
 
   private static boolean evidence(ServerPlayer player, UUID id) {
-    var folder =
-        player
-            .server
-            .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
-            .resolve("factorycore-recovery");
-    if (!java.nio.file.Files.isDirectory(folder)) return false;
-    try (var files = java.nio.file.Files.list(folder)) {
+    var folder = player.server.getWorldPath(LevelResource.ROOT).resolve("factorycore-recovery");
+    if (!Files.isDirectory(folder)) return false;
+    try (var files = Files.list(folder)) {
       return files.anyMatch(path -> path.getFileName().toString().startsWith(id.toString()));
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
   }
@@ -134,7 +135,7 @@ public final class RecoveryScreenGameTests {
             h.getLevel().dimension().location().toString(), h.absolutePos(DRIVE).asLong());
     // Ids that sort before any random UUID, so the operator's first page shows them even while
     // other tests in the shared GameTest world have their own records.
-    long low = java.util.concurrent.ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE - 1);
+    long low = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE - 1);
     var legacy = new UUID(Long.MIN_VALUE, low);
     var uncertain = new UUID(Long.MIN_VALUE, low + 1);
     RecoveryMenu[] menus = new RecoveryMenu[3];
@@ -254,9 +255,7 @@ public final class RecoveryScreenGameTests {
                   .server
                   .getPlayerList()
                   .getOps()
-                  .add(
-                      new net.minecraft.server.players.ServerOpListEntry(
-                          operator.getGameProfile(), 2, false));
+                  .add(new ServerOpListEntry(operator.getGameProfile(), 2, false));
               h.assertTrue(operator.hasPermissions(2), "Test operator has level 2");
               var ops = menus[2] = open(operator);
               h.assertTrue(

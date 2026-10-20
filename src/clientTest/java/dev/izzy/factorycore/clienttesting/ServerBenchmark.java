@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.clienttesting;
 
 import com.mojang.authlib.GameProfile;
+import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.ResourceKey;
@@ -13,6 +14,7 @@ import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
@@ -25,8 +27,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -130,8 +134,7 @@ final class ServerBenchmark {
                 UUID.fromString("0c6b1d3e-9a51-4f0b-8e7e-5b2f8a1c3d40"), "bench_principal"));
     owner = new NetworkPermissions.Actor(principal.getUUID(), false);
     cobble =
-        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(level.registryAccess())
-            .itemKey(new ItemStack(Items.COBBLESTONE));
+        new PlatformResourceCodec(level.registryAccess()).itemKey(new ItemStack(Items.COBBLESTONE));
   }
 
   private static BlockPos base(int index) {
@@ -189,7 +192,7 @@ final class ServerBenchmark {
     return true;
   }
 
-  private final java.util.Set<MachineInterfaceEntity> configured = new java.util.HashSet<>();
+  private final Set<MachineInterfaceEntity> configured = new HashSet<>();
 
   private void seed(MinecraftServer server, int from) {
     var registry = DeviceSavedData.get(server).registry();
@@ -214,10 +217,8 @@ final class ServerBenchmark {
                 new ConnectorSettings(
                     ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 27, 64),
                 "bench");
-        if (decision == dev.izzy.factorycore.core.network.NetworkAuthority.Decision.ALLOWED)
-          configured.add(machine);
-        else if (decision
-            != dev.izzy.factorycore.core.network.NetworkAuthority.Decision.INVALID_SCOPE)
+        if (decision == NetworkAuthority.Decision.ALLOWED) configured.add(machine);
+        else if (decision != NetworkAuthority.Decision.INVALID_SCOPE)
           throw new IllegalStateException("Machine settings refused: " + decision);
         break;
       }

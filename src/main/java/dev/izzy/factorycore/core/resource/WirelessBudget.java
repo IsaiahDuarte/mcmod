@@ -2,8 +2,10 @@ package dev.izzy.factorycore.core.resource;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /** Shared server-thread, bidirectional per-pair throughput, distinct from endpoint operating FE. */
@@ -106,7 +108,7 @@ public final class WirelessBudget {
   }
 
   /** Deduplicated by physical pair; a pair published twice keeps its smaller scale. */
-  private static java.util.Map<Link, Integer> hops(List<Hop> path) {
+  private static Map<Link, Integer> hops(List<Hop> path) {
     if (path.size() > MAX_PATH) throw new IllegalArgumentException("Wireless path exceeds depth");
     var hops = new LinkedHashMap<Link, Integer>();
     for (var hop : path) hops.merge(hop.link(), hop.scale(), Math::min);
@@ -157,7 +159,7 @@ public final class WirelessBudget {
         usage.put(link, use);
       }
       if (use.tick != tick) {
-        java.util.Arrays.fill(use.used, 0);
+        Arrays.fill(use.used, 0);
         use.tick = tick;
       }
       uses.add(use);

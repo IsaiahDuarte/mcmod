@@ -1,9 +1,13 @@
 package dev.izzy.factorycore.core.network;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -70,7 +74,7 @@ public final class NodeRegistry {
   private final Thread thread = Thread.currentThread();
   private final UUID world;
   private final Runnable changed;
-  private final java.util.NavigableMap<UUID, Stored> nodes = new java.util.TreeMap<>();
+  private final NavigableMap<UUID, Stored> nodes = new TreeMap<>();
   private final Map<Position, UUID> positions = new HashMap<>();
 
   public NodeRegistry(UUID world, List<Stored> records, Runnable changed) {
@@ -257,7 +261,7 @@ public final class NodeRegistry {
     checkThread();
     if (limit < 1 || limit > 16) throw new IllegalArgumentException("Invalid node page size");
     var iterator = (after == null ? nodes : nodes.tailMap(after, false)).entrySet().iterator();
-    var result = new java.util.ArrayList<Handle>();
+    var result = new ArrayList<Handle>();
     UUID last = null;
     while (result.size() < limit && iterator.hasNext()) {
       var entry = iterator.next();
@@ -269,7 +273,7 @@ public final class NodeRegistry {
 
   public List<Stored> snapshot() {
     checkThread();
-    return nodes.values().stream().sorted(java.util.Comparator.comparing(Stored::id)).toList();
+    return nodes.values().stream().sorted(Comparator.comparing(Stored::id)).toList();
   }
 
   private Handle handle(Stored node) {

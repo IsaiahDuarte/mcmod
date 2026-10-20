@@ -3,7 +3,11 @@ package dev.izzy.factorycore.platform.program;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
 import dev.izzy.factorycore.core.program.ProgramIr;
+import dev.izzy.factorycore.core.program.ProgramLog;
+import dev.izzy.factorycore.core.wasm.WasmPreflight;
+import dev.izzy.factorycore.core.wasm.WasmProgram;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -27,7 +31,7 @@ public final class ProgramControllerEntity extends BlockEntity {
   public static final int MAX_DRAFT = FriendlyCompiler.MAX_SOURCE;
   public static final long CAPACITY = 10_000;
   public static final long INPUT_RATE = 1_000;
-  public static final int MAX_LOGS = dev.izzy.factorycore.core.program.ProgramLog.MAX_LINES;
+  public static final int MAX_LOGS = ProgramLog.MAX_LINES;
 
   /**
    * Schema 2 adds the optional deployed Wasm {@code Artifact}; schema 3 adds its committed {@code
@@ -51,11 +55,10 @@ public final class ProgramControllerEntity extends BlockEntity {
   private long inputTick = Long.MIN_VALUE, inputThisTick;
   private ProgramIr.Program program;
   private byte[] artifact;
-  private dev.izzy.factorycore.core.wasm.WasmProgram wasm;
+  private WasmProgram wasm;
   private byte[] guestState;
   private CompoundTag unsupported;
-  private final dev.izzy.factorycore.core.program.ProgramLog logs =
-      new dev.izzy.factorycore.core.program.ProgramLog();
+  private final ProgramLog logs = new ProgramLog();
 
   private final IEnergyStorage storage =
       new IEnergyStorage() {
@@ -158,7 +161,7 @@ public final class ProgramControllerEntity extends BlockEntity {
   }
 
   /** The live Wasm instance of a Wasm deployment, or null (friendly or none). */
-  public dev.izzy.factorycore.core.wasm.WasmProgram wasm() {
+  public WasmProgram wasm() {
     return wasm;
   }
 
@@ -177,7 +180,7 @@ public final class ProgramControllerEntity extends BlockEntity {
   public String freshWasm() {
     if (artifact == null) return "No Wasm deployment";
     try {
-      wasm = new dev.izzy.factorycore.core.wasm.WasmProgram(artifact, System::nanoTime, guestState);
+      wasm = new WasmProgram(artifact, System::nanoTime, guestState);
       return "";
     } catch (RuntimeException failure) {
       wasm = null;
@@ -199,8 +202,7 @@ public final class ProgramControllerEntity extends BlockEntity {
   }
 
   /** Replaces the deployment with an initialized Wasm guest; trusted runtime call only. */
-  public void deployWasm(
-      byte[] bytes, dev.izzy.factorycore.core.wasm.WasmProgram instance, UUID by) {
+  public void deployWasm(byte[] bytes, WasmProgram instance, UUID by) {
     deployed = null;
     program = null;
     artifact = bytes.clone();
@@ -284,25 +286,22 @@ public final class ProgramControllerEntity extends BlockEntity {
   @Override
   public void onLoad() {
     super.onLoad();
-    if (level instanceof ServerLevel server)
-      dev.izzy.factorycore.platform.storage.WorldPrograms.get(server.getServer()).loaded(this);
+    if (level instanceof ServerLevel server) WorldPrograms.get(server.getServer()).loaded(this);
     WorldNetworks.changed(level, worldPosition);
   }
 
   @Override
   public void setRemoved() {
-    if (level instanceof ServerLevel server
-        && dev.izzy.factorycore.platform.storage.WorldPrograms.exists(server.getServer()))
-      dev.izzy.factorycore.platform.storage.WorldPrograms.get(server.getServer()).removed(this);
+    if (level instanceof ServerLevel server && WorldPrograms.exists(server.getServer()))
+      WorldPrograms.get(server.getServer()).removed(this);
     WorldNetworks.changed(level, worldPosition);
     super.setRemoved();
   }
 
   @Override
   public void onChunkUnloaded() {
-    if (level instanceof ServerLevel server
-        && dev.izzy.factorycore.platform.storage.WorldPrograms.exists(server.getServer()))
-      dev.izzy.factorycore.platform.storage.WorldPrograms.get(server.getServer()).removed(this);
+    if (level instanceof ServerLevel server && WorldPrograms.exists(server.getServer()))
+      WorldPrograms.get(server.getServer()).removed(this);
     super.onChunkUnloaded();
   }
 
@@ -351,7 +350,7 @@ public final class ProgramControllerEntity extends BlockEntity {
       guestState = null;
       if (tag.contains("Artifact")) {
         var bytes = tag.getByteArray("Artifact");
-        if (bytes.length > dev.izzy.factorycore.core.wasm.WasmPreflight.MAX_ARTIFACT)
+        if (bytes.length > WasmPreflight.MAX_ARTIFACT)
           throw new IllegalArgumentException("Artifact size");
         deployed = null;
         program = null;
@@ -360,7 +359,7 @@ public final class ProgramControllerEntity extends BlockEntity {
         deployment = tag.getUUID("Deployment");
         if (tag.contains("GuestState")) {
           var state = tag.getByteArray("GuestState");
-          if (state.length > dev.izzy.factorycore.core.wasm.WasmProgram.MAX_STATE)
+          if (state.length > WasmProgram.MAX_STATE)
             throw new IllegalArgumentException("GuestState size");
           guestState = state;
         }

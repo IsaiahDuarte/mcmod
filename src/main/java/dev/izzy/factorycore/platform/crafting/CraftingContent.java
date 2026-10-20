@@ -3,7 +3,9 @@ package dev.izzy.factorycore.platform.crafting;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -35,12 +37,9 @@ public final class CraftingContent {
                       .networkSynchronized(PatternContents.STREAM_CODEC));
 
   /** Exact unsupported Crafting Unit data, carried unchanged by its broken block item. */
-  public static final DeferredHolder<
-          DataComponentType<?>, DataComponentType<net.minecraft.world.item.component.CustomData>>
-      RETAINED =
-          COMPONENTS.registerComponentType(
-              "unit_retained",
-              builder -> builder.persistent(net.minecraft.world.item.component.CustomData.CODEC));
+  public static final DeferredHolder<DataComponentType<?>, DataComponentType<CustomData>> RETAINED =
+      COMPONENTS.registerComponentType(
+          "unit_retained", builder -> builder.persistent(CustomData.CODEC));
 
   public static final DeferredHolder<DataComponentType<?>, DataComponentType<ProcessingContents>>
       PROCESSING =
@@ -69,7 +68,7 @@ public final class CraftingContent {
               .requiresCorrectToolForDrops()
               .sound(SoundType.METAL));
 
-  public static final DeferredItem<net.minecraft.world.item.BlockItem> INTERFACE_ITEM =
+  public static final DeferredItem<BlockItem> INTERFACE_ITEM =
       ITEMS.registerSimpleBlockItem("crafting_interface", INTERFACE);
 
   public static final DeferredBlock<CraftingUnitBlock> UNIT =
@@ -81,7 +80,7 @@ public final class CraftingContent {
               .requiresCorrectToolForDrops()
               .sound(SoundType.METAL));
 
-  public static final DeferredItem<net.minecraft.world.item.BlockItem> UNIT_ITEM =
+  public static final DeferredItem<BlockItem> UNIT_ITEM =
       ITEMS.registerSimpleBlockItem("crafting_unit", UNIT);
 
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CraftingUnitEntity>>

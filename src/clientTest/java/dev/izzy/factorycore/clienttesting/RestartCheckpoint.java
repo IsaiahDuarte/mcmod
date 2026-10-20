@@ -13,6 +13,7 @@ import java.util.Properties;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -91,7 +92,7 @@ final class RestartCheckpoint {
     var preferences =
         player
             .getPersistentData()
-            .getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG)
+            .getCompound(Player.PERSISTED_NBT_TAG)
             .getCompound("FactoryCoreTerminal");
     require(
         preferences.getInt("Schema") == 1

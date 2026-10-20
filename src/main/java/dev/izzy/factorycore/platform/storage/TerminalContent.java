@@ -5,6 +5,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
@@ -27,7 +28,7 @@ public final class TerminalContent {
           BlockBehaviour.Properties.of()
               .strength(3.5f)
               .requiresCorrectToolForDrops()
-              .sound(net.minecraft.world.level.block.SoundType.METAL));
+              .sound(SoundType.METAL));
   public static final DeferredItem<BlockItem> ITEM =
       ITEMS.register(
           "storage_terminal", () -> new TerminalItem(BLOCK.get(), new Item.Properties()));

@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.crafting;
 
 import dev.izzy.factorycore.core.crafting.Pattern;
+import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -95,10 +97,7 @@ public final class WorldCrafting {
   private static boolean publishes(
       WorldNetworks networks, PatternHolderEntity unit, NetworkTopology.Scope scope) {
     for (var ancestor : networks.ancestors(unit.origin())) {
-      if (!ancestor
-          .policy()
-          .branchPermissions()
-          .contains(dev.izzy.factorycore.core.network.NetworkPermissions.Permission.CRAFT))
+      if (!ancestor.policy().branchPermissions().contains(NetworkPermissions.Permission.CRAFT))
         return false;
       if (ancestor.segment().equals(scope.segment())) return true;
     }
@@ -110,7 +109,7 @@ public final class WorldCrafting {
     var networks = WorldNetworks.get(server);
     var codec = new PlatformResourceCodec(server.registryAccess());
     var members = new ArrayList<PatternHolderEntity>();
-    var published = new java.util.HashSet<PatternHolderEntity>();
+    var published = new HashSet<PatternHolderEntity>();
     var iterator = units.iterator();
     while (iterator.hasNext()) {
       var unit = iterator.next();

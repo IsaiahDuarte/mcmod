@@ -4,10 +4,17 @@ import dev.izzy.factorycore.core.network.GatewayPolicy;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.network.WiredDiscovery;
+import dev.izzy.factorycore.platform.crafting.PatternHolderEntity;
+import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
+import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
+import dev.izzy.factorycore.platform.storage.ConnectorEntity;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import dev.izzy.factorycore.platform.storage.TerminalEntity;
+import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
+import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,10 +91,10 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
     if (state.is(NetworkContent.CABLE.get()))
       return ordinary(block, id(position, "wire"), NetworkTopology.Role.CABLE, true);
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
-    if (entity instanceof dev.izzy.factorycore.platform.storage.TerminalEntity terminal)
+    if (entity instanceof TerminalEntity terminal)
       return ordinary(
           block, id(position, "terminal"), NetworkTopology.Role.TERMINAL, terminal.current());
-    if (entity instanceof dev.izzy.factorycore.platform.wireless.LinkEndpointEntity link) {
+    if (entity instanceof LinkEndpointEntity link) {
       // A wired back face plus, while the pair is active, one reciprocal port to the partner.
       var id = id(position, "link");
       var ports = new ArrayList<WiredDiscovery.Port>(2);
@@ -103,22 +110,22 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
           ports,
           null);
     }
-    if (entity instanceof dev.izzy.factorycore.platform.wireless.AccessPointEntity point)
+    if (entity instanceof AccessPointEntity point)
       return ordinary(
           block, id(position, "access_point"), NetworkTopology.Role.TERMINAL, point.current());
-    if (entity instanceof dev.izzy.factorycore.platform.program.ProgramControllerEntity program)
+    if (entity instanceof ProgramControllerEntity program)
       return ordinary(
           block,
           id(position, "program"),
           NetworkTopology.Role.PROGRAM,
           program.current() && program.diagnostic().isEmpty());
-    if (entity instanceof dev.izzy.factorycore.platform.crafting.PatternHolderEntity unit)
+    if (entity instanceof PatternHolderEntity unit)
       return ordinary(
           block,
           id(position, "crafting_unit"),
           NetworkTopology.Role.CRAFTER,
           unit.current() && unit.diagnostic().isEmpty());
-    if (entity instanceof dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity buffer) {
+    if (entity instanceof BufferedInterfaceEntity buffer) {
       boolean valid;
       try {
         buffer.validatePlaced();
@@ -132,7 +139,7 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
           NetworkTopology.Role.STORAGE,
           valid);
     }
-    if (entity instanceof dev.izzy.factorycore.platform.storage.ConnectorEntity connector) {
+    if (entity instanceof ConnectorEntity connector) {
       boolean valid;
       try {
         connector.validatePlaced();

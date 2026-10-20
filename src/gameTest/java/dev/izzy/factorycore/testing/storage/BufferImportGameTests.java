@@ -1,28 +1,43 @@
 package dev.izzy.factorycore.testing.storage;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.entity.HopperBlockEntity;
+import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -113,18 +128,15 @@ public final class BufferImportGameTests {
     var f = setup(h);
     var old = f.buffer.handle();
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
-    player.moveTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(BUFFER)));
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(BUFFER)));
     h.assertTrue(!player.hasPermissions(2), "Recovery deployer has ordinary player grants");
     var deployer = new NetworkPermissions.Actor(player.getUUID(), false);
-    var policy =
-        new dev.izzy.factorycore.core.storage.BufferPolicy(
-            ResourceFilter.all(ResourceKind.ITEM), 3, 17);
+    var policy = new BufferPolicy(ResourceFilter.all(ResourceKind.ITEM), 3, 17);
     BufferRegistry.Deployment[] accepted = {null};
     BufferData.State[] originalReference = {null};
-    dev.izzy.factorycore.core.storage.ItemBuffer.State[] inventory = {null};
-    net.minecraft.nbt.CompoundTag[] originalChunk = {null};
+    ItemBuffer.State[] inventory = {null};
+    CompoundTag[] originalChunk = {null};
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f))
         .thenIdle(50)
@@ -133,9 +145,7 @@ public final class BufferImportGameTests {
               f.saved
                   .network(f.root.handle().id())
                   .setGrants(
-                      f.actor,
-                      deployer.id(),
-                      java.util.EnumSet.allOf(NetworkPermissions.Permission.class));
+                      f.actor, deployer.id(), EnumSet.allOf(NetworkPermissions.Permission.class));
               accepted[0] = f.buffer.configure(deployer, BufferRegistry.Mode.IMPORT, policy);
               originalReference[0] = f.buffer.reference();
               var stale = f.buffer.capability();
@@ -230,7 +240,7 @@ public final class BufferImportGameTests {
               h.assertTrue(
                   accepted[0].equals(f.saved.buffers().deployment(old.id())),
                   "Queued old work and retained old deployment never extract");
-              var grants = java.util.EnumSet.allOf(NetworkPermissions.Permission.class);
+              var grants = EnumSet.allOf(NetworkPermissions.Permission.class);
               grants.remove(NetworkPermissions.Permission.DEPLOY);
               f.saved.network(f.root.handle().id()).setGrants(f.actor, deployer.id(), grants);
               h.useBlock(BUFFER, player);
@@ -257,9 +267,7 @@ public final class BufferImportGameTests {
               f.saved
                   .network(f.root.handle().id())
                   .setGrants(
-                      f.actor,
-                      deployer.id(),
-                      java.util.EnumSet.allOf(NetworkPermissions.Permission.class));
+                      f.actor, deployer.id(), EnumSet.allOf(NetworkPermissions.Permission.class));
             })
         .thenIdle(3)
         .thenExecute(
@@ -325,23 +333,22 @@ public final class BufferImportGameTests {
               var folder =
                   h.getLevel()
                       .getServer()
-                      .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                      .getWorldPath(LevelResource.ROOT)
                       .resolve("factorycore-device-recovery");
               try {
-                java.nio.file.Files.createDirectories(folder);
+                Files.createDirectories(folder);
                 var blocker =
-                    java.nio.file.Files.createDirectory(
-                        folder.resolve("unexpected-buffer-" + UUID.randomUUID()));
+                    Files.createDirectory(folder.resolve("unexpected-buffer-" + UUID.randomUUID()));
                 boolean refused = false;
                 try {
                   f.buffer.repairConflict(old);
-                } catch (java.io.IOException expected) {
+                } catch (IOException expected) {
                   refused = true;
                 } finally {
-                  java.nio.file.Files.delete(blocker);
+                  Files.delete(blocker);
                 }
                 h.assertTrue(refused, "Evidence failure blocks buffer repair");
-              } catch (java.io.IOException failure) {
+              } catch (IOException failure) {
                 throw new AssertionError(failure);
               }
               h.assertTrue(
@@ -408,8 +415,7 @@ public final class BufferImportGameTests {
         .thenSucceed();
   }
 
-  private static BufferedInterfaceEntity recoveryCopy(
-      GameTestHelper h, net.minecraft.nbt.CompoundTag raw) {
+  private static BufferedInterfaceEntity recoveryCopy(GameTestHelper h, CompoundTag raw) {
     var position = new BlockPos(3, 1, 3);
     h.setBlock(position, BufferedInterfaceContent.BLOCK.get());
     BufferedInterfaceEntity clone = h.getBlockEntity(position);
@@ -425,17 +431,16 @@ public final class BufferImportGameTests {
       buffer.repairConflict(expected);
     } catch (IllegalArgumentException | IllegalStateException rejected) {
       refused = true;
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
     h.assertTrue(refused, "Unsupported buffer repair must refuse");
   }
 
-  private static int recoveryCommand(
-      net.minecraft.commands.CommandSourceStack source, String command) {
+  private static int recoveryCommand(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException rejected) {
+    } catch (CommandSyntaxException rejected) {
       return -1;
     }
   }
@@ -851,7 +856,7 @@ public final class BufferImportGameTests {
   public static void playerControlsToggleOnlyWithCurrentEditDeploymentAndResourceGrants(
       GameTestHelper helper) {
     var fixture = setup(helper);
-    var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+    var player = helper.makeMockPlayer(GameType.SURVIVAL);
     player.setShiftKeyDown(true);
     helper
         .startSequence()
@@ -927,9 +932,8 @@ public final class BufferImportGameTests {
                             helper
                                 .getLevel()
                                 .getEntitiesOfClass(
-                                    net.minecraft.world.entity.item.ItemEntity.class,
-                                    new net.minecraft.world.phys.AABB(helper.absolutePos(BUFFER))
-                                        .inflate(.8),
+                                    ItemEntity.class,
+                                    new AABB(helper.absolutePos(BUFFER)).inflate(.8),
                                     entity ->
                                         entity.getItem().is(BufferedInterfaceContent.ITEM.get()));
                         helper.assertTrue(
@@ -974,7 +978,7 @@ public final class BufferImportGameTests {
   public static void originalOwnerReturnsKnownStagingAfterPauseWithoutCurrentResourceGrants(
       GameTestHelper helper) {
     var original = setup(helper);
-    var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+    var player = helper.makeMockPlayer(GameType.SURVIVAL);
     var actor = new NetworkPermissions.Actor(player.getUUID(), false);
     var fixture =
         new Fixture(
@@ -1024,8 +1028,7 @@ public final class BufferImportGameTests {
                       && fixture.saved().transfers().get(record[0]).staged() == 64,
                   "Operator flag does not spend another principal's staging");
               player.setShiftKeyDown(true);
-              player.setItemInHand(
-                  net.minecraft.world.InteractionHand.OFF_HAND, new ItemStack(Items.REDSTONE));
+              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.REDSTONE));
               helper.useBlock(BUFFER, player);
             })
         .thenWaitUntil(
@@ -1057,7 +1060,7 @@ public final class BufferImportGameTests {
     var far = new BlockPos(1, 1, 4);
     var access = h.getLevel().registryAccess();
     long[] canonical = {0};
-    dev.izzy.factorycore.core.storage.ItemBuffer.State[] slots = {null};
+    ItemBuffer.State[] slots = {null};
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f))
         .thenIdle(21)
@@ -1076,7 +1079,7 @@ public final class BufferImportGameTests {
               canonical[0] = placed.handle().generation();
               h.assertTrue(canonical[0] == original.generation() + 2, "Break and place rotate");
               // ...but the chunk was saved before: BUFFER still holds the old reference.
-              placed.loadWithComponents(new net.minecraft.nbt.CompoundTag(), access);
+              placed.loadWithComponents(new CompoundTag(), access);
               f.buffer.loadWithComponents(before, access);
               f.buffer.onLoad();
               h.assertTrue(

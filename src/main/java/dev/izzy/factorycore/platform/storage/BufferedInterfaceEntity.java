@@ -6,32 +6,48 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.resource.TransferContext;
+import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.BufferedItemHandler;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /** Loaded physical holder of one canonical inventory; no stock is saved into chunk/item NBT. */
-public final class BufferedInterfaceEntity extends BlockEntity
-    implements net.minecraft.world.MenuProvider {
+public final class BufferedInterfaceEntity extends BlockEntity implements MenuProvider {
   private UUID opening;
 
-  public boolean canUse(net.minecraft.server.level.ServerPlayer player) {
+  public boolean canUse(ServerPlayer player) {
     try {
       validatePlaced();
     } catch (IllegalStateException | IllegalArgumentException invalid) {
@@ -40,7 +56,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
     return player.isAlive()
         && player.serverLevel() == level
         && player.server.getPlayerList().getPlayer(player.getUUID()) == player
-        && player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(worldPosition)) <= 64
+        && player.distanceToSqr(Vec3.atCenterOf(worldPosition)) <= 64
         && WorldNetworks.get(player.server)
                 .authorize(
                     new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
@@ -54,18 +70,13 @@ public final class BufferedInterfaceEntity extends BlockEntity
   }
 
   @Override
-  public net.minecraft.network.chat.Component getDisplayName() {
-    return net.minecraft.network.chat.Component.translatable(
-        "block.factorycore.buffered_interface");
+  public Component getDisplayName() {
+    return Component.translatable("block.factorycore.buffered_interface");
   }
 
   @Override
-  public net.minecraft.world.inventory.AbstractContainerMenu createMenu(
-      int id,
-      net.minecraft.world.entity.player.Inventory inventory,
-      net.minecraft.world.entity.player.Player player) {
-    if (!(player instanceof net.minecraft.server.level.ServerPlayer server) || !canUse(server))
-      return null;
+  public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
+    if (!(player instanceof ServerPlayer server) || !canUse(server)) return null;
     opening = UUID.randomUUID();
     return new BufferSettingsMenu(id, inventory, this, opening);
   }
@@ -113,9 +124,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
             .getChunkSource()
             .getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
     return chunk != null
-        && chunk.getBlockEntity(
-                worldPosition, net.minecraft.world.level.chunk.LevelChunk.EntityCreationType.CHECK)
-            == this;
+        && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }
 
   public void place(ItemStack stack, UUID placer) {
@@ -139,8 +148,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
   /**
    * Trusted operator recovery; stock/deployment survive and old automation needs explicit reapply.
    */
-  public java.nio.file.Path repairConflict(NodeRegistry.Handle expected)
-      throws java.io.IOException {
+  public Path repairConflict(NodeRegistry.Handle expected) throws IOException {
     serverLevel();
     if (isRemoved()
         || !physicallyCurrent()
@@ -168,14 +176,12 @@ public final class BufferedInterfaceEntity extends BlockEntity
     var nextData = BufferData.write(next);
     var path =
         DeviceRecoveryAudit.preserveBuffer(
-            serverLevel()
-                .getServer()
-                .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            serverLevel().getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             owner,
             saved.buffers().evidence(expected.id()),
             saved.buffers().deployment(expected.id()),
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(serverLevel().registryAccess()));
     var repaired = saved.buffers().repairConflict(expected, position());
     if (repaired.failure() != NodeRegistry.Failure.OK)
@@ -198,7 +204,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
    * unresolved. Slots and the accepted deployment are unchanged; automation needs reapply.
    */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
-  public java.nio.file.Path adoptBuffer(NodeRegistry.Handle expected) throws java.io.IOException {
+  public Path adoptBuffer(NodeRegistry.Handle expected) throws IOException {
     var server = serverLevel();
     if (isRemoved() || !physicallyCurrent() || state == null)
       throw new IllegalStateException("Adopting buffer must be loaded and readable");
@@ -220,9 +226,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
         server
             .getServer()
             .getLevel(
-                net.minecraft.resources.ResourceKey.create(
-                    net.minecraft.core.registries.Registries.DIMENSION,
-                    net.minecraft.resources.ResourceLocation.parse(old.dimension())));
+                ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(old.dimension())));
     var oldPos = BlockPos.of(old.block());
     if (oldLevel == null
         || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
@@ -233,13 +237,13 @@ public final class BufferedInterfaceEntity extends BlockEntity
       throw new IllegalStateException("Old canonical holder still references the buffer");
     var path =
         DeviceRecoveryAudit.preserveBufferAdoption(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             owner,
             saved.buffers().evidence(expected.id()),
             saved.buffers().deployment(expected.id()),
             position(),
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(server.registryAccess()));
     var adopted = saved.buffers().adopt(expected, position());
     if (adopted.failure() != NodeRegistry.Failure.OK)
@@ -277,17 +281,12 @@ public final class BufferedInterfaceEntity extends BlockEntity
       NetworkPermissions.Actor actor, BufferRegistry.Mode mode) {
     validatePlaced();
     var previous = authority().buffers().deployment(state.lease().id());
-    return configure(
-        actor,
-        mode,
-        previous == null
-            ? dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT
-            : previous.policy());
+    return configure(actor, mode, previous == null ? BufferPolicy.DEFAULT : previous.policy());
   }
 
   /** Installed paid throughput tier (ADR 0054); BASE before placement. */
-  public dev.izzy.factorycore.core.resource.ThroughputTier tier() {
-    return state == null ? dev.izzy.factorycore.core.resource.ThroughputTier.BASE : state.tier();
+  public ThroughputTier tier() {
+    return state == null ? ThroughputTier.BASE : state.tier();
   }
 
   /**
@@ -297,27 +296,21 @@ public final class BufferedInterfaceEntity extends BlockEntity
    * caller consumes the item only after this returns.
    */
   public BufferRegistry.Deployment installThroughput(
-      NetworkPermissions.Actor actor, dev.izzy.factorycore.core.resource.ThroughputTier upgrade) {
+      NetworkPermissions.Actor actor, ThroughputTier upgrade) {
     validatePlaced();
     var next = state.tier().upgradeWith(upgrade, false);
     if (next == null) throw new IllegalStateException("upgrade_not_applicable");
     var previous = authority().buffers().deployment(state.lease().id());
-    var policy =
-        previous == null
-            ? dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT
-            : previous.policy();
+    var policy = previous == null ? BufferPolicy.DEFAULT : previous.policy();
     return configure(
         actor,
         previous == null ? BufferRegistry.Mode.PAUSED : previous.mode(),
-        new dev.izzy.factorycore.core.storage.BufferPolicy(
-            policy.filter(), next.bufferRate(), policy.target()),
+        new BufferPolicy(policy.filter(), next.bufferRate(), policy.target()),
         next);
   }
 
   public BufferRegistry.Deployment configure(
-      NetworkPermissions.Actor actor,
-      BufferRegistry.Mode mode,
-      dev.izzy.factorycore.core.storage.BufferPolicy policy) {
+      NetworkPermissions.Actor actor, BufferRegistry.Mode mode, BufferPolicy policy) {
     validatePlaced();
     return configure(actor, mode, policy, state.tier());
   }
@@ -325,8 +318,8 @@ public final class BufferedInterfaceEntity extends BlockEntity
   private BufferRegistry.Deployment configure(
       NetworkPermissions.Actor actor,
       BufferRegistry.Mode mode,
-      dev.izzy.factorycore.core.storage.BufferPolicy policy,
-      dev.izzy.factorycore.core.resource.ThroughputTier tier) {
+      BufferPolicy policy,
+      ThroughputTier tier) {
     if (!policy.fits(tier))
       throw new IllegalStateException(
           "Rate exceeds the installed throughput upgrade (max " + tier.bufferRate() + ")");

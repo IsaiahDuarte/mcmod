@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /**
  * Network Access screen (ADR 0055): server-owned sessions administer grants and explicit, confirmed
@@ -83,8 +84,7 @@ public final class NetworkAccessGameTests {
   private static ServerPlayer player(GameTestHelper h) {
     @SuppressWarnings("removal")
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     return player;
   }
 

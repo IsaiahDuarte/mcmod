@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.jeitesting;
 
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
 import dev.izzy.factorycore.platform.client.ProgramTextEditor;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
@@ -13,6 +14,7 @@ import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
+import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,6 +30,7 @@ import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -73,7 +76,7 @@ final class JeiClientVerification {
   private final StringBuilder evidence = new StringBuilder();
   private IRecipeCategory<RecipeHolder<CraftingRecipe>> category;
   private RecipeHolder<CraftingRecipe> recipe;
-  private volatile dev.izzy.factorycore.core.storage.DeviceRegistry.Handle cell;
+  private volatile DeviceRegistry.Handle cell;
   private int stage, ticks, entered;
 
   void register() {
@@ -96,8 +99,7 @@ final class JeiClientVerification {
               + (client.screen == null ? "none" : client.screen.getClass().getName()));
     switch (stage) {
       case 0 -> {
-        if (client.screen
-            instanceof net.minecraft.client.gui.screens.AccessibilityOnboardingScreen onboarding) {
+        if (client.screen instanceof AccessibilityOnboardingScreen onboarding) {
           onboarding.onClose();
           return;
         }
@@ -360,9 +362,8 @@ final class JeiClientVerification {
   private void seed(ServerPlayer player) {
     try {
       if (ready.get()
-          || !((dev.izzy.factorycore.platform.storage.TerminalEntity)
-                  player.serverLevel().getBlockEntity(TERMINAL))
-              .canUse(player)) return;
+          || !((TerminalEntity) player.serverLevel().getBlockEntity(TERMINAL)).canUse(player))
+        return;
       var planks =
           new PlatformResourceCodec(player.registryAccess())
               .itemKey(new ItemStack(Items.OAK_PLANKS));

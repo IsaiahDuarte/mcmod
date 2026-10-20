@@ -13,17 +13,28 @@ import dev.izzy.factorycore.core.resource.StagedTransfer;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
+import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformFilterTags;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 /**
@@ -56,9 +67,9 @@ public final class WorldStorageTransfers {
       boolean depositable) {}
 
   public record CatalogPage(
-      OperationResult.Reason reason, java.util.List<CatalogRow> rows, CatalogCursor next) {
+      OperationResult.Reason reason, List<CatalogRow> rows, CatalogCursor next) {
     public CatalogPage {
-      rows = java.util.List.copyOf(rows);
+      rows = List.copyOf(rows);
     }
   }
 
@@ -104,12 +115,11 @@ public final class WorldStorageTransfers {
               || !current.scope().segment().equals(ticket.segment())
               || networks.authorize(actor, origin, NetworkPermissions.Permission.VIEW)
                   != NetworkAuthority.Decision.ALLOWED) {
-            completion.accept(
-                new CatalogPage(OperationResult.Reason.DENIED, java.util.List.of(), null));
+            completion.accept(new CatalogPage(OperationResult.Reason.DENIED, List.of(), null));
             return;
           }
-          var rows = new java.util.ArrayList<CatalogRow>();
-          var seen = new java.util.HashSet<UUID>();
+          var rows = new ArrayList<CatalogRow>();
+          var seen = new HashSet<UUID>();
           CatalogCursor next;
           if (!start.connectors()) {
             var page = saved.registry().handles(start.after(), 8);
@@ -202,8 +212,7 @@ public final class WorldStorageTransfers {
               || !finalMember.scope().network().equals(ticket.network())
               || !finalMember.scope().segment().equals(ticket.segment())
               || finalView.decision() != NetworkAuthority.Decision.ALLOWED) {
-            completion.accept(
-                new CatalogPage(OperationResult.Reason.DENIED, java.util.List.of(), null));
+            completion.accept(new CatalogPage(OperationResult.Reason.DENIED, List.of(), null));
             return;
           }
           rows.removeIf(
@@ -212,7 +221,7 @@ public final class WorldStorageTransfers {
                 return segment == null || !finalView.segments().contains(segment);
               });
           rows.sort(
-              java.util.Comparator.comparingInt(CatalogRow::priority)
+              Comparator.comparingInt(CatalogRow::priority)
                   .reversed()
                   .thenComparing(CatalogRow::backing));
           completion.accept(new CatalogPage(OperationResult.Reason.OK, rows, next));
@@ -357,10 +366,7 @@ public final class WorldStorageTransfers {
   private WorldPlayerInventories players;
 
   /** Registers (or clears, for 8 blocks or less) a wireless session's reach to {@code origin}. */
-  void playerReach(
-      net.minecraft.server.level.ServerPlayer player,
-      NodeRegistry.Position origin,
-      double squared) {
+  void playerReach(ServerPlayer player, NodeRegistry.Position origin, double squared) {
     players().reach(player, origin, squared);
   }
 
@@ -369,12 +375,12 @@ public final class WorldStorageTransfers {
     return players;
   }
 
-  public PlayerInventory inventory(net.minecraft.server.level.ServerPlayer player, int slot) {
+  public PlayerInventory inventory(ServerPlayer player, int slot) {
     checkThread();
     return players().endpoint(player, slot);
   }
 
-  public void playerDisconnected(net.minecraft.server.level.ServerPlayer player) {
+  public void playerDisconnected(ServerPlayer player) {
     checkThread();
     if (players != null) players.disconnected(player);
   }
@@ -537,9 +543,7 @@ public final class WorldStorageTransfers {
         || source instanceof PlayerInventory
         || destination instanceof PlayerInventory) {
       try {
-        var codec =
-            new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                server.registryAccess());
+        var codec = new PlatformResourceCodec(server.registryAccess());
         if (key.kind() == ResourceKind.ITEM) codec.itemStack(key, 1);
         else if (key.kind() == ResourceKind.FLUID) codec.fluidStack(key, 1);
       } catch (RuntimeException invalidIdentity) {
@@ -581,7 +585,7 @@ public final class WorldStorageTransfers {
       ResourceKey key,
       long amount,
       boolean releasing,
-      Consumer<dev.izzy.factorycore.core.resource.OperationResult> completion) {
+      Consumer<OperationResult> completion) {
     checkThread();
     Objects.requireNonNull(id);
     Objects.requireNonNull(actor);
@@ -597,9 +601,7 @@ public final class WorldStorageTransfers {
       return new Submission(null, OperationResult.Reason.WRONG_RESOURCE);
     if (!releasing) {
       try {
-        var codec =
-            new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                server.registryAccess());
+        var codec = new PlatformResourceCodec(server.registryAccess());
         if (key.kind() == ResourceKind.ITEM) codec.itemStack(key, 1);
         else if (key.kind() == ResourceKind.FLUID) codec.fluidStack(key, 1);
       } catch (RuntimeException invalid) {
@@ -758,7 +760,7 @@ public final class WorldStorageTransfers {
   private void executeProgress(
       UUID id,
       NetworkPermissions.Actor actor,
-      dev.izzy.factorycore.core.resource.TransferContext expected,
+      TransferContext expected,
       boolean returning,
       Consumer<Result> completion,
       BooleanSupplier authorized) {
@@ -1035,8 +1037,7 @@ public final class WorldStorageTransfers {
     if (endpoint instanceof Buffered || endpoint instanceof PlayerInventory) {
       if (key.kind() != ResourceKind.ITEM) return false;
       try {
-        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(server.registryAccess())
-            .itemStack(key, 1);
+        new PlatformResourceCodec(server.registryAccess()).itemStack(key, 1);
         return true;
       } catch (RuntimeException unsupported) {
         return false;
@@ -1047,14 +1048,13 @@ public final class WorldStorageTransfers {
         : ((External) endpoint).handle().kind() == key.kind();
   }
 
-  private Endpoint recover(
-      UUID world, dev.izzy.factorycore.core.resource.TransferContext.Endpoint reference) {
+  private Endpoint recover(UUID world, TransferContext.Endpoint reference) {
     try {
-      if (reference.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.DIGITAL) {
+      if (reference.type() == TransferContext.Type.DIGITAL) {
         var handle = new DeviceRegistry.Handle(world, reference.backing(), reference.generation());
         return physical(handle) == null ? null : new Digital(handle);
       }
-      if (reference.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.BUFFER) {
+      if (reference.type() == TransferContext.Type.BUFFER) {
         var endpoint =
             new Buffered(
                 new NodeRegistry.Handle(
@@ -1320,10 +1320,10 @@ public final class WorldStorageTransfers {
     completion.accept(new Result(id, snapshot.reason(), snapshot));
   }
 
-  private dev.izzy.factorycore.core.resource.TransferContext context(
+  private TransferContext context(
       NodeRegistry.Position origin, Endpoint source, Endpoint destination) {
     var scope = networks.membership(origin).scope();
-    return new dev.izzy.factorycore.core.resource.TransferContext(
+    return new TransferContext(
         saved.registry().world(),
         scope.network(),
         scope.segment(),
@@ -1332,7 +1332,7 @@ public final class WorldStorageTransfers {
         reference(destination));
   }
 
-  private dev.izzy.factorycore.core.resource.TransferContext.Endpoint reference(Endpoint endpoint) {
+  private TransferContext.Endpoint reference(Endpoint endpoint) {
     if (endpoint instanceof PlayerInventory player)
       return new TransferContext.Endpoint(
           TransferContext.Type.PLAYER,
@@ -1341,22 +1341,22 @@ public final class WorldStorageTransfers {
           player.connection(),
           player.slot() < 0 ? 37 : player.slot() + 1);
     if (endpoint instanceof Buffered buffer)
-      return new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
-          dev.izzy.factorycore.core.resource.TransferContext.Type.BUFFER,
+      return new TransferContext.Endpoint(
+          TransferContext.Type.BUFFER,
           buffer.handle().id(),
           buffer.handle().id(),
           buffer.handle().generation(),
           buffer.configuration());
     if (endpoint instanceof Digital digital)
-      return new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
-          dev.izzy.factorycore.core.resource.TransferContext.Type.DIGITAL,
+      return new TransferContext.Endpoint(
+          TransferContext.Type.DIGITAL,
           digital.handle().backing(),
           digital.handle().backing(),
           digital.handle().generation(),
           0);
     var handle = ((External) endpoint).handle();
-    return new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
-        dev.izzy.factorycore.core.resource.TransferContext.Type.EXTERNAL,
+    return new TransferContext.Endpoint(
+        TransferContext.Type.EXTERNAL,
         handle.connector().id(),
         handle.backing(),
         handle.connector().generation(),
@@ -1452,13 +1452,13 @@ public final class WorldStorageTransfers {
     }
   }
 
-  private final java.util.Map<UUID, BufferBudget> bufferBudgets = new java.util.HashMap<>();
+  private final Map<UUID, BufferBudget> bufferBudgets = new HashMap<>();
 
   private BufferBudget bufferBudget(UUID backing) {
     int tick = server.getTickCount();
     var budget = bufferBudgets.get(backing);
     if (budget == null) {
-      if (bufferBudgets.size() == dev.izzy.factorycore.core.storage.BufferRegistry.MAX_BUFFERS)
+      if (bufferBudgets.size() == BufferRegistry.MAX_BUFFERS)
         throw new IllegalStateException("Buffer rate metadata limit");
       budget = new BufferBudget(tick);
       bufferBudgets.put(backing, budget);
@@ -1494,11 +1494,9 @@ public final class WorldStorageTransfers {
 
     private long stockRoom(ResourceKey key, long amount) {
       var deployment = saved.buffers().deployment(backingId());
-      if (ownedReturn
-          || deployment == null
-          || deployment.mode() != dev.izzy.factorycore.core.storage.BufferRegistry.Mode.STOCK)
+      if (ownedReturn || deployment == null || deployment.mode() != BufferRegistry.Mode.STOCK)
         return amount;
-      var tags = new dev.izzy.factorycore.platform.resource.PlatformFilterTags(server);
+      var tags = new PlatformFilterTags(server);
       var filter = deployment.policy().filter();
       if (!filter.matches(key, tags)) return amount;
       long resident = 0;
@@ -1623,8 +1621,7 @@ public final class WorldStorageTransfers {
     var level =
         server.getLevel(
             net.minecraft.resources.ResourceKey.create(
-                net.minecraft.core.registries.Registries.DIMENSION,
-                net.minecraft.resources.ResourceLocation.parse(location.dimension())));
+                Registries.DIMENSION, ResourceLocation.parse(location.dimension())));
     if (level == null) return null;
     var position = BlockPos.of(location.block());
     var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
@@ -1676,14 +1673,12 @@ public final class WorldStorageTransfers {
   }
 
   @SuppressWarnings("PMD.CloseResource")
-  private net.minecraft.world.level.block.entity.BlockEntity physical(
-      DeviceRegistry.Handle handle) {
+  private BlockEntity physical(DeviceRegistry.Handle handle) {
     var location = saved.registry().definition(handle).location();
     if (location == null) return null;
     var dimension =
         net.minecraft.resources.ResourceKey.create(
-            net.minecraft.core.registries.Registries.DIMENSION,
-            net.minecraft.resources.ResourceLocation.parse(location.dimension()));
+            Registries.DIMENSION, ResourceLocation.parse(location.dimension()));
     ServerLevel level = server.getLevel(dimension);
     if (level == null) return null;
     var position = BlockPos.of(location.position());

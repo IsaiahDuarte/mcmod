@@ -3,8 +3,10 @@ package dev.izzy.factorycore.core.storage;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -91,9 +93,7 @@ class BufferRegistryTest {
     var owner = new Object();
     buffers.bind(old, position(1), owner);
     buffers.inventory(old, owner).insertSlot(8, KEY, 23, false);
-    var policy =
-        new BufferPolicy(
-            dev.izzy.factorycore.core.resource.ResourceFilter.all(ResourceKind.ITEM), 3, 17);
+    var policy = new BufferPolicy(ResourceFilter.all(ResourceKind.ITEM), 3, 17);
     var actor = UUID.randomUUID();
     var root = UUID.randomUUID();
     var deployment =
@@ -342,15 +342,12 @@ class BufferRegistryTest {
     var actor = new UUID(0, 9);
     var root = new UUID(0, 10);
     var filter =
-        new dev.izzy.factorycore.core.resource.ResourceFilter(
-            dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
-            dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE,
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.INCLUDE,
             List.of(
-                new dev.izzy.factorycore.core.resource.ResourceFilter.Exact(
-                    new dev.izzy.factorycore.core.resource.ResourceKey(
-                        dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
-                        "test:sample",
-                        new byte[60000]))));
+                new ResourceFilter.Exact(
+                    new ResourceKey(ResourceKind.ITEM, "test:sample", new byte[60000]))));
     var policy = new BufferPolicy(filter, 16);
     long before = buffers.bytes();
     var deployed =
@@ -387,16 +384,13 @@ class BufferRegistryTest {
     var nodes = new NodeRegistry(WORLD, List.of(), () -> {});
     int[] dirty = {0};
     var buffers = new BufferRegistry(nodes, List.of(), () -> dirty[0]++);
-    var key =
-        new dev.izzy.factorycore.core.resource.ResourceKey(
-            dev.izzy.factorycore.core.resource.ResourceKind.ITEM, "test:large", new byte[65536]);
+    var key = new ResourceKey(ResourceKind.ITEM, "test:large", new byte[65536]);
     var policy =
         new BufferPolicy(
-            new dev.izzy.factorycore.core.resource.ResourceFilter(
-                dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
-                dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE,
-                java.util.Collections.nCopies(
-                    3, new dev.izzy.factorycore.core.resource.ResourceFilter.Exact(key))),
+            new ResourceFilter(
+                ResourceKind.ITEM,
+                ResourceFilter.Mode.INCLUDE,
+                Collections.nCopies(3, new ResourceFilter.Exact(key))),
             8);
     var actor = new UUID(0, 9);
     var root = new UUID(0, 10);

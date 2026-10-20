@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.program;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -195,7 +196,7 @@ public final class ProgramPackets {
                 session,
                 index,
                 count,
-                java.util.Arrays.copyOfRange(
+                Arrays.copyOfRange(
                     artifact,
                     index * CHUNK_BYTES,
                     Math.min(artifact.length, (index + 1) * CHUNK_BYTES))));

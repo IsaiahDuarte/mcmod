@@ -7,11 +7,14 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourceLedger;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -213,7 +216,7 @@ public final class DeviceRegistry {
   private final UUID world;
   private final Runnable changed;
   private final Supplier<UUID> identifiers;
-  private final java.util.NavigableMap<UUID, Device> devices = new java.util.TreeMap<>();
+  private final NavigableMap<UUID, Device> devices = new TreeMap<>();
   private final Map<Location, UUID> placements = new HashMap<>();
   private Predicate<Location> routing = location -> true;
   private long bytes;
@@ -463,7 +466,7 @@ public final class DeviceRegistry {
               device.location,
               device.conflict));
     }
-    snapshots.sort(java.util.Comparator.comparing(stored -> stored.ledger().id()));
+    snapshots.sort(Comparator.comparing(stored -> stored.ledger().id()));
     return new State(world, snapshots);
   }
 

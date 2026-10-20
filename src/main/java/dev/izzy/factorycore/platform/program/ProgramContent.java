@@ -1,10 +1,12 @@
 package dev.izzy.factorycore.platform.program;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.SoundType;
@@ -13,6 +15,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -25,7 +28,7 @@ public final class ProgramContent {
       DeferredRegister.createItems(FactoryCoreMod.MOD_ID);
   private static final DeferredRegister<BlockEntityType<?>> ENTITIES =
       DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
+  private static final DeferredRegister<MenuType<?>> MENUS =
       DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
   private static final DeferredRegister.DataComponents COMPONENTS =
       DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, FactoryCoreMod.MOD_ID);
@@ -50,9 +53,8 @@ public final class ProgramContent {
                       Codec.LONG.validate(
                           value ->
                               value >= 0 && value <= ProgramControllerEntity.CAPACITY
-                                  ? com.mojang.serialization.DataResult.success(value)
-                                  : com.mojang.serialization.DataResult.error(
-                                      () -> "Program energy out of range")))
+                                  ? DataResult.success(value)
+                                  : DataResult.error(() -> "Program energy out of range")))
                   .networkSynchronized(ByteBufCodecs.VAR_LONG));
 
   public static final DeferredBlock<ProgramControllerBlock> BLOCK =
@@ -75,15 +77,8 @@ public final class ProgramContent {
                   BlockEntityType.Builder.of(ProgramControllerEntity::new, BLOCK.get())
                       .build(null));
 
-  public static final DeferredHolder<
-          net.minecraft.world.inventory.MenuType<?>,
-          net.minecraft.world.inventory.MenuType<ProgramMenu>>
-      MENU =
-          MENUS.register(
-              "program_controller",
-              () ->
-                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
-                      ProgramMenu::new));
+  public static final DeferredHolder<MenuType<?>, MenuType<ProgramMenu>> MENU =
+      MENUS.register("program_controller", () -> IMenuTypeExtension.create(ProgramMenu::new));
 
   private ProgramContent() {}
 

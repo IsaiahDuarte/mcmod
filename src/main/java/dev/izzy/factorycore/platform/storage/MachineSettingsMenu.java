@@ -3,11 +3,15 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
+import java.security.MessageDigest;
 import java.util.*;
+import java.util.Locale;
 import net.minecraft.core.Direction;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -15,6 +19,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.*;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.fluids.FluidUtil;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /** Current authenticated physical editor. Apply validates the whole form before one publication. */
@@ -81,7 +86,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
             "ready",
             false,
             "base",
-            dev.izzy.factorycore.core.resource.ThroughputTier.BASE.portRate(ResourceKind.ITEM),
+            ThroughputTier.BASE.portRate(ResourceKind.ITEM),
             false);
   }
 
@@ -144,10 +149,9 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
             machine.targetDirection().getOpposite().getName(),
             status,
             editable(),
-            machine.tier().name().toLowerCase(java.util.Locale.ROOT),
+            machine.tier().name().toLowerCase(Locale.ROOT),
             machine.tier().portRate(settings.kind()),
-            dev.izzy.factorycore.platform.upgrade.ThroughputStatus.throttled(
-                machine.serverLevel().getServer(), machine.position()));
+            ThroughputStatus.throttled(machine.serverLevel().getServer(), machine.position()));
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);
@@ -440,7 +444,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
               return;
             }
             var codec = new PlatformResourceCodec(sender.registryAccess());
-            if (!java.security.MessageDigest.isEqual(
+            if (!MessageDigest.isEqual(
                 TerminalPackets.fingerprint(codec.itemKey(stack)), packet.fingerprint())) {
               presetStatus = "stale";
               publishPreset();
@@ -448,8 +452,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
             }
             if (presetFilter.kind() == ResourceKind.ITEM) key = codec.itemKey(stack);
             else {
-              var contents =
-                  net.neoforged.neoforge.fluids.FluidUtil.getFluidContained(stack.copyWithCount(1));
+              var contents = FluidUtil.getFluidContained(stack.copyWithCount(1));
               if (contents.isEmpty()) {
                 presetStatus = "sample_empty";
                 publishPreset();

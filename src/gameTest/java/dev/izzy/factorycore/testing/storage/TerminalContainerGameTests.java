@@ -21,6 +21,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluids;
@@ -29,6 +30,7 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -61,8 +63,7 @@ public final class TerminalContainerGameTests {
   public static void fluidContainersAndEnergyItemsMoveExactAmountsThroughTheTerminal(
       GameTestHelper h) {
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
@@ -180,7 +181,7 @@ public final class TerminalContainerGameTests {
         .thenSucceed();
   }
 
-  private static int countOf(ServerPlayer player, net.minecraft.world.item.Item item) {
+  private static int countOf(ServerPlayer player, Item item) {
     int total = 0;
     for (int slot = 0; slot < 36; slot++)
       if (player.getInventory().getItem(slot).is(item))
@@ -188,7 +189,7 @@ public final class TerminalContainerGameTests {
     return total;
   }
 
-  private static int slotOf(ServerPlayer player, net.minecraft.world.item.Item item) {
+  private static int slotOf(ServerPlayer player, Item item) {
     for (int slot = 0; slot < 36; slot++)
       if (player.getInventory().getItem(slot).is(item)) return slot;
     return -1;

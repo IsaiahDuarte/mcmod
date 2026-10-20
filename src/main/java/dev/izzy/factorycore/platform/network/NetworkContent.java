@@ -2,14 +2,22 @@ package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.storage.ConnectorBlock;
 import dev.izzy.factorycore.platform.storage.EnergyBankBlock;
 import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
+import dev.izzy.factorycore.platform.storage.TerminalBlock;
+import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
+import java.util.Objects;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -48,44 +56,24 @@ public final class NetworkContent {
 
   /** Local port eligibility only; callers must separately validate load, identity and topology. */
   public static boolean connects(BlockState state, Direction face) {
-    java.util.Objects.requireNonNull(face);
+    Objects.requireNonNull(face);
     if (state.getBlock() instanceof NetworkNodeBlock node) return node.connects(state, face);
-    if (state.getBlock() instanceof dev.izzy.factorycore.platform.storage.ConnectorBlock)
-      return face
-          != state.getValue(
-              net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING);
-    if (state.getBlock() instanceof dev.izzy.factorycore.platform.wireless.LinkEndpointBlock)
-      return face
-          == state
-              .getValue(
-                  net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING)
-              .getOpposite();
+    if (state.getBlock() instanceof ConnectorBlock)
+      return face != state.getValue(BlockStateProperties.FACING);
+    if (state.getBlock() instanceof LinkEndpointBlock)
+      return face == state.getValue(BlockStateProperties.FACING).getOpposite();
     return state.is(CABLE.get())
         || state.getBlock() instanceof StorageDriveBlock
         || state.getBlock() instanceof EnergyBankBlock
-        || state.getBlock() instanceof dev.izzy.factorycore.platform.storage.TerminalBlock;
+        || state.getBlock() instanceof TerminalBlock;
   }
 
-  private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
+  private static final DeferredRegister<MenuType<?>> MENUS =
       DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
-  public static final DeferredHolder<
-          net.minecraft.world.inventory.MenuType<?>,
-          net.minecraft.world.inventory.MenuType<GatewayPolicyMenu>>
-      POLICY_MENU =
-          MENUS.register(
-              "gateway_policy",
-              () ->
-                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
-                      GatewayPolicyMenu::new));
-  public static final DeferredHolder<
-          net.minecraft.world.inventory.MenuType<?>,
-          net.minecraft.world.inventory.MenuType<NetworkAccessMenu>>
-      ACCESS_MENU =
-          MENUS.register(
-              "network_access",
-              () ->
-                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
-                      NetworkAccessMenu::new));
+  public static final DeferredHolder<MenuType<?>, MenuType<GatewayPolicyMenu>> POLICY_MENU =
+      MENUS.register("gateway_policy", () -> IMenuTypeExtension.create(GatewayPolicyMenu::new));
+  public static final DeferredHolder<MenuType<?>, MenuType<NetworkAccessMenu>> ACCESS_MENU =
+      MENUS.register("network_access", () -> IMenuTypeExtension.create(NetworkAccessMenu::new));
 
   private NetworkContent() {}
 
@@ -93,7 +81,7 @@ public final class NetworkContent {
     return BlockBehaviour.Properties.of()
         .strength(3.5f)
         .requiresCorrectToolForDrops()
-        .sound(net.minecraft.world.level.block.SoundType.METAL);
+        .sound(SoundType.METAL);
   }
 
   public static void register(IEventBus bus) {

@@ -3,19 +3,24 @@ package dev.izzy.factorycore.platform.program;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
+import dev.izzy.factorycore.core.program.ProgramPreview;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
@@ -28,7 +33,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
   private final UUID session;
   private final BlockPos position;
   private final StringBuilder upload = new StringBuilder();
-  private final java.io.ByteArrayOutputStream binary = new java.io.ByteArrayOutputStream();
+  private final ByteArrayOutputStream binary = new ByteArrayOutputStream();
   private int binaryExpected = -1;
   private int expected = -1;
   private List<String> diagnostics = List.of();
@@ -124,7 +129,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
     var preview =
         request.preview()
             ? WorldPrograms.get(sender.server).preview(actor(), controller, request.rule())
-            : new dev.izzy.factorycore.core.program.ProgramPreview.Result(0, 0, List.of());
+            : new ProgramPreview.Result(0, 0, List.of());
     authorView =
         new ProgramPackets.AuthorView(
             containerId,
@@ -151,10 +156,9 @@ public final class ProgramMenu extends AbstractContainerMenu {
     if (!canView(player, controller)) return false;
     var session = UUID.randomUUID();
     player.openMenu(
-        new net.minecraft.world.SimpleMenuProvider(
+        new SimpleMenuProvider(
             (id, inventory, who) -> new ProgramMenu(id, inventory, controller, session),
-            net.minecraft.network.chat.Component.translatable(
-                "block.factorycore.program_controller")),
+            Component.translatable("block.factorycore.program_controller")),
         buffer -> {
           buffer.writeBlockPos(controller.getBlockPos());
           buffer.writeUUID(session);
@@ -166,8 +170,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
     return player.isAlive()
         && controller.current()
         && player.level() == controller.getLevel()
-        && player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(controller.getBlockPos()))
-            <= 64
+        && player.distanceToSqr(Vec3.atCenterOf(controller.getBlockPos())) <= 64
         && WorldNetworks.get(player.server)
                 .authorize(
                     new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),

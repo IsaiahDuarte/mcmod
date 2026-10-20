@@ -1,18 +1,28 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Objects;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.LevelResource;
 
 /**
  * Chunk/item references; ownership and gateway policies live exclusively in canonical SavedData.
@@ -56,7 +66,7 @@ public final class NetworkNodeEntity extends BlockEntity {
     return DeviceSavedData.get(server.getServer());
   }
 
-  public void place(ItemStack stack, java.util.UUID player) {
+  public void place(ItemStack stack, UUID player) {
     var custom = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
     if (custom.contains(NodeHandleData.FIELD)) {
       data = custom.get(NodeHandleData.FIELD).copy();
@@ -72,12 +82,12 @@ public final class NetworkNodeEntity extends BlockEntity {
     networkingChanged();
   }
 
-  public void commission(java.util.UUID player) {
+  public void commission(UUID player) {
     if (!diagnostic.isEmpty() || handle != null)
       throw new IllegalStateException("Node already bound or needs recovery");
     handle =
         kind() == NodeRegistry.Kind.CONTROLLER
-            ? authority().createController(java.util.Objects.requireNonNull(player), position())
+            ? authority().createController(Objects.requireNonNull(player), position())
             : authority().createGateway(position());
     data = NodeHandleData.write(handle);
     setChanged();
@@ -86,8 +96,7 @@ public final class NetworkNodeEntity extends BlockEntity {
 
   /** Trusted operator recovery at the loaded original holder; permissions/policy never change. */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
-  public java.nio.file.Path repairConflict(NodeRegistry.Handle expected)
-      throws java.io.IOException {
+  public Path repairConflict(NodeRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || !server.getServer().isSameThread()
         || isRemoved()
@@ -114,12 +123,12 @@ public final class NetworkNodeEntity extends BlockEntity {
             expected.world(), expected.id(), expected.generation() + 1, expected.kind());
     var nextData = NodeHandleData.write(next);
     var path =
-        dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit.preserveNetworkNode(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+        DeviceRecoveryAudit.preserveNetworkNode(
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             owner,
             kind() == NodeRegistry.Kind.CONTROLLER ? saved.network(expected.id()).snapshot() : null,
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(server.registryAccess()));
     var repaired = saved.nodes().repairConflict(expected, position());
     if (repaired.failure() != NodeRegistry.Failure.OK)
@@ -140,7 +149,7 @@ public final class NetworkNodeEntity extends BlockEntity {
    * unchanged.
    */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
-  public java.nio.file.Path adoptNode(NodeRegistry.Handle expected) throws java.io.IOException {
+  public Path adoptNode(NodeRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || !server.getServer().isSameThread()
         || isRemoved()
@@ -169,9 +178,7 @@ public final class NetworkNodeEntity extends BlockEntity {
         server
             .getServer()
             .getLevel(
-                net.minecraft.resources.ResourceKey.create(
-                    net.minecraft.core.registries.Registries.DIMENSION,
-                    net.minecraft.resources.ResourceLocation.parse(old.dimension())));
+                ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(old.dimension())));
     var oldPos = BlockPos.of(old.block());
     if (oldLevel == null
         || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
@@ -181,13 +188,13 @@ public final class NetworkNodeEntity extends BlockEntity {
         && previous.handle.id().equals(expected.id()))
       throw new IllegalStateException("Old canonical holder still references the node");
     var path =
-        dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit.preserveNetworkNodeAdoption(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+        DeviceRecoveryAudit.preserveNetworkNodeAdoption(
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             owner,
             kind() == NodeRegistry.Kind.CONTROLLER ? saved.network(expected.id()).snapshot() : null,
             position(),
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(server.registryAccess()));
     var adopted = saved.nodes().adopt(expected, position());
     if (adopted.failure() != NodeRegistry.Failure.OK)

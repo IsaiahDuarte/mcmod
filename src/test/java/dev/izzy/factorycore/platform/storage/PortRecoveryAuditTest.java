@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.network.NodeHandleData;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
@@ -117,9 +118,7 @@ class PortRecoveryAuditTest {
             assertEquals(binding.provider(), value.getUUID("Provider"));
             assertEquals(binding.generation(), value.getLong("Configuration"));
             assertEquals(binding.kind().name(), value.getString("Kind"));
-            assertEquals(
-                binding.connector(),
-                dev.izzy.factorycore.platform.network.NodeHandleData.read(value.get("Node")));
+            assertEquals(binding.connector(), NodeHandleData.read(value.get("Node")));
           }
           assertFalse(root.contains("Ledger"));
           assertFalse(root.contains("ProviderContents"));

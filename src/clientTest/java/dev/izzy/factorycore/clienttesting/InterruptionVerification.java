@@ -3,6 +3,7 @@ package dev.izzy.factorycore.clienttesting;
 import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.require;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
@@ -18,6 +19,7 @@ import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageContent;
@@ -27,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -34,6 +37,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -93,8 +97,7 @@ final class InterruptionVerification {
               level,
               new GameProfile(
                   UUID.fromString("0b9e4a52-6c1d-4f7e-8a3b-2d5c7e9f1a04"), "interruption_probe"));
-      var codec =
-          new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(level.registryAccess());
+      var codec = new PlatformResourceCodec(level.registryAccess());
       ore = codec.itemKey(new ItemStack(Items.RAW_IRON));
       ingot = codec.itemKey(new ItemStack(Items.IRON_INGOT));
       started = event.getServer().getTickCount();
@@ -142,7 +145,7 @@ final class InterruptionVerification {
     return DeviceSavedData.get(server).registry().stock(cell, key).total();
   }
 
-  private int held(net.minecraft.world.item.Item item) {
+  private int held(Item item) {
     int total = 0;
     for (int slot = 0; slot < furnace().getContainerSize(); slot++)
       if (furnace().getItem(slot).is(item)) total += furnace().getItem(slot).getCount();
@@ -158,7 +161,7 @@ final class InterruptionVerification {
   }
 
   /** Units the job has moved into or out of the machine so far, from the saved job record. */
-  private static long moved(java.util.Map<ResourceKey, Long> map, ResourceKey key) {
+  private static long moved(Map<ResourceKey, Long> map, ResourceKey key) {
     return map == null ? 0 : map.getOrDefault(key, 0L);
   }
 
@@ -357,15 +360,13 @@ final class InterruptionVerification {
     return state.toString();
   }
 
-  private void skewed(MinecraftServer server)
-      throws IOException, com.mojang.brigadier.exceptions.CommandSyntaxException {
+  private void skewed(MinecraftServer server) throws IOException, CommandSyntaxException {
     if (!ready(server)) return;
     if ("data-old".equals(variant)) olderData(server);
     else olderChunks(server);
   }
 
-  private int resolve(MinecraftServer server)
-      throws IOException, com.mojang.brigadier.exceptions.CommandSyntaxException {
+  private int resolve(MinecraftServer server) throws IOException, CommandSyntaxException {
     long before = Files.exists(evidenceDir(server)) ? countEvidence(server) : 0;
     int resolved =
         server
@@ -390,8 +391,7 @@ final class InterruptionVerification {
    * S1 SavedData (job 1 inserted, nothing collected) with S2 chunks (job 1 finished: no journal, no
    * iron in the furnace). The job's progress has no proof at the machine.
    */
-  private void olderData(MinecraftServer server)
-      throws IOException, com.mojang.brigadier.exceptions.CommandSyntaxException {
+  private void olderData(MinecraftServer server) throws IOException, CommandSyntaxException {
     var first =
         DeviceSavedData.get(server)
             .craftingJobs()
@@ -455,8 +455,7 @@ final class InterruptionVerification {
    * S2 SavedData (job 1 finished) with S1 chunks (the furnace still holds job 1's inserted raw iron
    * and its non-empty journal). The orphan journal must block new dispatch at the machine.
    */
-  private void olderChunks(MinecraftServer server)
-      throws IOException, com.mojang.brigadier.exceptions.CommandSyntaxException {
+  private void olderChunks(MinecraftServer server) throws IOException, CommandSyntaxException {
     var first = UUID.fromString(expected.getProperty("job1"));
     switch (phase) {
       case 0 -> {

@@ -1,21 +1,28 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankOwnership;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import java.io.IOException;
+import java.nio.file.Path;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 
 /**
@@ -79,8 +86,7 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
 
   /** Trusted operator recovery at the exact existing canonical holder; never relocates FE. */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
-  public java.nio.file.Path repairConflict(DeviceRegistry.Handle expected)
-      throws java.io.IOException {
+  public Path repairConflict(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || isRemoved()
         || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
@@ -97,7 +103,7 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
         || !owner.conflict()
         || expected.generation() == Long.MAX_VALUE
         || !location().equals(owner.definition().location())
-        || owner.definition().kind() != dev.izzy.factorycore.core.resource.ResourceKind.ENERGY
+        || owner.definition().kind() != ResourceKind.ENERGY
         || owner.definition().infinite()
         || owner.definition().capacity() != tier().capacity()
         || saved.transfers().unresolved(expected.backing()) != null)
@@ -107,10 +113,10 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
     var replacementData = EnergyBankHandleData.write(replacement);
     var path =
         DeviceRecoveryAudit.preserveBank(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             registry.evidence(expected.backing()),
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(server.registryAccess()));
     var result = registry.repairConflict(expected, location());
     if (result.failure() != DeviceRegistry.Failure.OK)
@@ -130,7 +136,7 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
    * different generation and a matching finite tier, and no transfer is unresolved.
    */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
-  public java.nio.file.Path adoptBank(DeviceRegistry.Handle expected) throws java.io.IOException {
+  public Path adoptBank(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || isRemoved()
         || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
@@ -149,7 +155,7 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
         || !handle.world().equals(expected.world())
         || !handle.backing().equals(expected.backing())
         || handle.generation() == expected.generation()
-        || owner.definition().kind() != dev.izzy.factorycore.core.resource.ResourceKind.ENERGY
+        || owner.definition().kind() != ResourceKind.ENERGY
         || owner.definition().infinite()
         || owner.definition().capacity() != tier().capacity()
         || saved.transfers().unresolved(expected.backing()) != null)
@@ -159,8 +165,7 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
             .getServer()
             .getLevel(
                 net.minecraft.resources.ResourceKey.create(
-                    net.minecraft.core.registries.Registries.DIMENSION,
-                    net.minecraft.resources.ResourceLocation.parse(canonical.dimension())));
+                    Registries.DIMENSION, ResourceLocation.parse(canonical.dimension())));
     var oldPos = BlockPos.of(canonical.position());
     if (oldLevel == null
         || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
@@ -171,11 +176,11 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
       throw new IllegalStateException("Old canonical holder still references the backing");
     var path =
         DeviceRecoveryAudit.preserveBankAdoption(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             registry.evidence(expected.backing()),
             location(),
-            net.minecraft.nbt.NbtUtils.writeBlockState(getBlockState()),
+            NbtUtils.writeBlockState(getBlockState()),
             saveWithFullMetadata(server.registryAccess()));
     var adopted = registry.adopt(expected, location());
     if (adopted.failure() != DeviceRegistry.Failure.OK)

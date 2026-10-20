@@ -16,6 +16,10 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -50,10 +54,7 @@ class ProcessingContentsTest {
             .parse(ops, ProcessingContents.CODEC.encodeStart(ops, value).getOrThrow())
             .getOrThrow());
     var buffer =
-        new RegistryFriendlyByteBuf(
-            Unpooled.buffer(),
-            registries,
-            net.neoforged.neoforge.network.connection.ConnectionType.NEOFORGE);
+        new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
     try {
       ProcessingContents.STREAM_CODEC.encode(buffer, value);
       assertEquals(value, ProcessingContents.STREAM_CODEC.decode(buffer));
@@ -110,16 +111,15 @@ class ProcessingContentsTest {
         "Output cannot be its own input");
   }
 
-  private static net.neoforged.neoforge.fluids.FluidStack fluid(
-      net.minecraft.world.level.material.Fluid fluid, int amount) {
-    return new net.neoforged.neoforge.fluids.FluidStack(fluid, amount);
+  private static FluidStack fluid(Fluid fluid, int amount) {
+    return new FluidStack(fluid, amount);
   }
 
   @Test
   void fluidEntriesRoundTripAndBecomeFluidKeysInThePattern() {
     var id = UUID.randomUUID();
-    var water = net.minecraft.world.level.material.Fluids.WATER;
-    var lava = net.minecraft.world.level.material.Fluids.LAVA;
+    var water = Fluids.WATER;
+    var lava = Fluids.LAVA;
     var value =
         new ProcessingContents(
             id,
@@ -136,10 +136,7 @@ class ProcessingContentsTest {
             .parse(ops, ProcessingContents.CODEC.encodeStart(ops, value).getOrThrow())
             .getOrThrow());
     var buffer =
-        new RegistryFriendlyByteBuf(
-            Unpooled.buffer(),
-            registries,
-            net.neoforged.neoforge.network.connection.ConnectionType.NEOFORGE);
+        new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
     try {
       ProcessingContents.STREAM_CODEC.encode(buffer, value);
       assertEquals(value, ProcessingContents.STREAM_CODEC.decode(buffer));
@@ -169,7 +166,7 @@ class ProcessingContentsTest {
   @Test
   void fluidBoundsAndLegacyItemOnlyEncodingStillHold() {
     var id = UUID.randomUUID();
-    var water = net.minecraft.world.level.material.Fluids.WATER;
+    var water = Fluids.WATER;
     assertThrows(
         IllegalArgumentException.class,
         () ->

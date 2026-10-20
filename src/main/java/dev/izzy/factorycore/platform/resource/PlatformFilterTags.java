@@ -1,17 +1,19 @@
 package dev.izzy.factorycore.platform.resource;
 
 import dev.izzy.factorycore.core.resource.*;
+import java.util.Objects;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.tags.TagKey;
 
 /** Current vanilla/loader tag membership, with no inventories, world scans or cached quantities. */
 public final class PlatformFilterTags implements ResourceFilter.Tags {
-  private final net.minecraft.server.MinecraftServer server;
+  private final MinecraftServer server;
 
-  public PlatformFilterTags(net.minecraft.server.MinecraftServer server) {
-    this.server = java.util.Objects.requireNonNull(server);
+  public PlatformFilterTags(MinecraftServer server) {
+    this.server = Objects.requireNonNull(server);
   }
 
   @Override

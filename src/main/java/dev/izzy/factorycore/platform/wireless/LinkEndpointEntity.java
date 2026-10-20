@@ -1,13 +1,24 @@
 package dev.izzy.factorycore.platform.wireless;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
+import dev.izzy.factorycore.core.resource.WirelessBudget;
+import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.NetworkNodeBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -30,8 +41,7 @@ public final class LinkEndpointEntity extends BlockEntity {
   private Long partner;
   private UUID owner;
   private boolean powered;
-  private dev.izzy.factorycore.core.resource.ThroughputTier tier =
-      dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+  private ThroughputTier tier = ThroughputTier.BASE;
   private CompoundTag rejected;
   private static final String RECOVERY = "FactoryCoreLinkRecovery";
   private long inputTick = Long.MIN_VALUE, inputThisTick;
@@ -124,7 +134,7 @@ public final class LinkEndpointEntity extends BlockEntity {
   }
 
   /** The face that carries the wired connection (the block it was placed against). */
-  public net.minecraft.core.Direction back() {
+  public Direction back() {
     return getBlockState().getValue(BlockStateProperties.FACING).getOpposite();
   }
 
@@ -163,12 +173,10 @@ public final class LinkEndpointEntity extends BlockEntity {
   }
 
   /** Presentation lamp: off while unpaired, lit while offering its port, fault otherwise. */
-  dev.izzy.factorycore.platform.network.DeviceLamp lamp() {
+  DeviceLamp lamp() {
     var reason = diagnostic();
-    if ("unpaired".equals(reason)) return dev.izzy.factorycore.platform.network.DeviceLamp.OFF;
-    return reason.isEmpty()
-        ? dev.izzy.factorycore.platform.network.DeviceLamp.ACTIVE
-        : dev.izzy.factorycore.platform.network.DeviceLamp.FAULT;
+    if ("unpaired".equals(reason)) return DeviceLamp.OFF;
+    return reason.isEmpty() ? DeviceLamp.ACTIVE : DeviceLamp.FAULT;
   }
 
   public boolean active() {
@@ -176,18 +184,18 @@ public final class LinkEndpointEntity extends BlockEntity {
   }
 
   /** Current reciprocal pair identity, without loading either endpoint's chunk. */
-  public dev.izzy.factorycore.core.resource.WirelessBudget.Link pair() {
+  public WirelessBudget.Link pair() {
     if (!(level instanceof ServerLevel server) || !active()) return null;
     var other = loaded(server, partner());
     if (other == null || !other.active() || !worldPosition.equals(other.partner())) return null;
     String dimension = server.dimension().location().toString();
-    return new dev.izzy.factorycore.core.resource.WirelessBudget.Link(
+    return new WirelessBudget.Link(
         new NodeRegistry.Position(dimension, worldPosition.asLong()),
         new NodeRegistry.Position(dimension, other.getBlockPos().asLong()));
   }
 
   /** Installed throughput upgrade; BASE or ENDGAME (Overdrive) for link endpoints. */
-  public dev.izzy.factorycore.core.resource.ThroughputTier tier() {
+  public ThroughputTier tier() {
     return tier;
   }
 
@@ -196,7 +204,7 @@ public final class LinkEndpointEntity extends BlockEntity {
    * item only after this returns. Both ends of a pair are re-discovered so the new scale is
    * published through normal topology preparation.
    */
-  public void install(dev.izzy.factorycore.core.resource.ThroughputTier upgrade) {
+  public void install(ThroughputTier upgrade) {
     if (rejected != null) throw new IllegalStateException("upgrade_unknown_data");
     var next = tier.upgradeWith(upgrade, true);
     if (next == null) throw new IllegalStateException("upgrade_not_applicable");
@@ -227,9 +235,8 @@ public final class LinkEndpointEntity extends BlockEntity {
 
   /** Pays operating power; a change in powered state re-discovers both ends. */
   void serverTick() {
-    if (level != null && dev.izzy.factorycore.platform.network.DeviceLamp.due(level, worldPosition))
-      dev.izzy.factorycore.platform.network.DeviceLamp.show(
-          level, worldPosition, getBlockState(), lamp());
+    if (level != null && DeviceLamp.due(level, worldPosition))
+      DeviceLamp.show(level, worldPosition, getBlockState(), lamp());
     if (rejected != null) return;
     if (partner == null) return;
     boolean next = energy >= TICK_COST;
@@ -270,8 +277,7 @@ public final class LinkEndpointEntity extends BlockEntity {
     tag.putLong("Energy", energy);
     if (partner != null) tag.putLong("Partner", partner);
     if (owner != null) tag.putUUID("Owner", owner);
-    if (tier != dev.izzy.factorycore.core.resource.ThroughputTier.BASE)
-      tag.putString("Throughput", tier.name());
+    if (tier != ThroughputTier.BASE) tag.putString("Throughput", tier.name());
   }
 
   @Override
@@ -280,7 +286,7 @@ public final class LinkEndpointEntity extends BlockEntity {
     if (tag.contains(RECOVERY)) {
       rejected = tag.copy();
       powered = false;
-      tier = dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+      tier = ThroughputTier.BASE;
       return;
     }
     energy = Math.max(0, Math.min(CAPACITY, tag.getLong("Energy")));
@@ -289,17 +295,17 @@ public final class LinkEndpointEntity extends BlockEntity {
     powered = partner != null && energy >= TICK_COST;
     // Absence is the legacy base format. Unsupported values preserve the whole before-state and
     // remain inert, including across break/place, rather than becoming an unupgraded live endpoint.
-    tier = dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+    tier = ThroughputTier.BASE;
     rejected = null;
     if (tag.contains("Throughput")) {
       try {
-        if (!tag.contains("Throughput", net.minecraft.nbt.Tag.TAG_STRING))
+        if (!tag.contains("Throughput", Tag.TAG_STRING))
           throw new IllegalArgumentException("Invalid throughput type");
-        tier = dev.izzy.factorycore.core.resource.ThroughputTier.parse(tag.getString("Throughput"));
-        if (tier != dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME)
+        tier = ThroughputTier.parse(tag.getString("Throughput"));
+        if (tier != ThroughputTier.ENDGAME)
           throw new IllegalArgumentException("Unsupported link throughput tier");
       } catch (IllegalArgumentException unknown) {
-        tier = dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+        tier = ThroughputTier.BASE;
         rejected = tag.copy();
         powered = false;
       }
@@ -313,16 +319,10 @@ public final class LinkEndpointEntity extends BlockEntity {
   /**
    * Recovery envelopes are re-read through the strict loader, never treated as live item grants.
    */
-  public void restoreRecovery(
-      net.minecraft.world.item.ItemStack stack, HolderLookup.Provider registries) {
-    var data =
-        stack
-            .getOrDefault(
-                net.minecraft.core.component.DataComponents.CUSTOM_DATA,
-                net.minecraft.world.item.component.CustomData.EMPTY)
-            .copyTag();
+  public void restoreRecovery(ItemStack stack, HolderLookup.Provider registries) {
+    var data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
     if (!data.contains(RECOVERY)) return;
-    if (data.contains(RECOVERY, net.minecraft.nbt.Tag.TAG_COMPOUND))
+    if (data.contains(RECOVERY, Tag.TAG_COMPOUND))
       loadAdditional(data.getCompound(RECOVERY), registries);
     else rejected = data.copy();
     setChanged();
@@ -330,18 +330,15 @@ public final class LinkEndpointEntity extends BlockEntity {
   }
 
   /** Known upgrades return separately; unknown data stays in exactly one inert endpoint item. */
-  public java.util.List<net.minecraft.world.item.ItemStack> upgradeDrops() {
+  public List<ItemStack> upgradeDrops() {
     if (rejected != null) {
-      var stack = new net.minecraft.world.item.ItemStack(WirelessContent.LINK_ITEM.get());
+      var stack = new ItemStack(WirelessContent.LINK_ITEM.get());
       stack.set(
-          net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-          net.minecraft.network.chat.Component.translatable("item.factorycore.link_recovery"));
-      net.minecraft.world.item.component.CustomData.update(
-          net.minecraft.core.component.DataComponents.CUSTOM_DATA,
-          stack,
-          data -> data.put(RECOVERY, rejected.copy()));
-      return java.util.List.of(stack);
+          DataComponents.CUSTOM_NAME, Component.translatable("item.factorycore.link_recovery"));
+      CustomData.update(
+          DataComponents.CUSTOM_DATA, stack, data -> data.put(RECOVERY, rejected.copy()));
+      return List.of(stack);
     }
-    return dev.izzy.factorycore.platform.upgrade.ThroughputContent.installed(tier, true);
+    return ThroughputContent.installed(tier, true);
   }
 }

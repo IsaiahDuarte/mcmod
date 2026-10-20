@@ -5,6 +5,7 @@ import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.*;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
+import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -17,11 +18,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.*;
@@ -302,7 +306,7 @@ final class WorldRestartVerification {
       return;
     }
     if (stage == 5 && client.screen == null && ticks - entered > 5) {
-      var terminal = new net.minecraft.core.BlockPos(1, 65, 2);
+      var terminal = new BlockPos(1, 65, 2);
       client.gameMode.useItemOn(
           client.player,
           InteractionHand.MAIN_HAND,
@@ -310,9 +314,7 @@ final class WorldRestartVerification {
       next();
       return;
     }
-    if (stage == 6
-        && ticks - entered > 10
-        && client.screen instanceof dev.izzy.factorycore.platform.client.TerminalScreen screen) {
+    if (stage == 6 && ticks - entered > 10 && client.screen instanceof TerminalScreen screen) {
       var view = screen.getMenu().view();
       if (!view.status().equals("ready") || view.rows().isEmpty()) return;
       require(
@@ -321,9 +323,7 @@ final class WorldRestartVerification {
       require(
           screen.children().stream()
               .anyMatch(
-                  child ->
-                      child instanceof net.minecraft.client.gui.components.EditBox edit
-                          && edit.getValue().equals("@minecraft")),
+                  child -> child instanceof EditBox edit && edit.getValue().equals("@minecraft")),
           "Actual reopened search widget restores text");
       Screenshot.grab(
           report.getParent().toFile(),
@@ -370,7 +370,7 @@ final class WorldRestartVerification {
     require(
         player
             .getPersistentData()
-            .getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG)
+            .getCompound(Player.PERSISTED_NBT_TAG)
             .getCompound("FactoryCoreTerminal")
             .equals(TagParser.parseTag(expected.getProperty("terminalPreferences"))),
         "Exact player terminal preference compound matches pre-save observation");

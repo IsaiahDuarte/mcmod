@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Supplier;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -134,7 +135,7 @@ public final class PatternContents {
     return Objects.hash(id, version, priority, ItemStack.hashItemAndComponents(output));
   }
 
-  private static <T> DataResult<T> guarded(java.util.function.Supplier<T> build) {
+  private static <T> DataResult<T> guarded(Supplier<T> build) {
     try {
       return DataResult.success(build.get());
     } catch (IllegalArgumentException invalid) {

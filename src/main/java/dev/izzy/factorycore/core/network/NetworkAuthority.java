@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -78,7 +79,7 @@ public final class NetworkAuthority {
   }
 
   public NetworkPermissions.Change setGrants(
-      Actor actor, Scope origin, UUID principal, java.util.Set<Permission> grants) {
+      Actor actor, Scope origin, UUID principal, Set<Permission> grants) {
     checkThread();
     if (authorize(actor, origin, Permission.MANAGE) != Decision.ALLOWED)
       return NetworkPermissions.Change.DENIED;

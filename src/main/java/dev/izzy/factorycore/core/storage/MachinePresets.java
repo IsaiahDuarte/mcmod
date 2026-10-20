@@ -3,6 +3,7 @@ package dev.izzy.factorycore.core.storage;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import java.util.*;
+import java.util.function.Consumer;
 
 /** Canonical deployment metadata, never an inventory, grant or transfer owner. */
 public final class MachinePresets {
@@ -66,9 +67,9 @@ public final class MachinePresets {
   private final NavigableMap<UUID, Deployment> deployments = new TreeMap<>();
   private long bytes;
   private final NavigableMap<UUID, Long> configurations = new TreeMap<>();
-  private java.util.function.Consumer<UUID> activity = node -> {};
+  private Consumer<UUID> activity = node -> {};
 
-  public void activity(java.util.function.Consumer<UUID> listener) {
+  public void activity(Consumer<UUID> listener) {
     checkThread();
     activity = Objects.requireNonNull(listener);
   }

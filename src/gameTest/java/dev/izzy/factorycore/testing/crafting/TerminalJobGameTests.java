@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
+import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -32,6 +33,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -80,8 +82,7 @@ public final class TerminalJobGameTests {
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void terminalPreviewsStartsTracksAndCancelsJobs(GameTestHelper h) {
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
@@ -140,10 +141,7 @@ public final class TerminalJobGameTests {
                   new TerminalJobPackets.Command(
                       m.containerId, m.session(), stale, TerminalJobPackets.START, 0, 1));
               h.assertTrue(
-                  dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(
-                          h.getLevel().getServer())
-                      .jobs(player.getUUID())
-                      .isEmpty(),
+                  WorldCraftingJobs.get(h.getLevel().getServer()).jobs(player.getUUID()).isEmpty(),
                   "Stale start is ignored");
             })
         .thenIdle(3)
@@ -214,10 +212,7 @@ public final class TerminalJobGameTests {
             () -> {
               menu(h, player).broadcastChanges();
               h.assertTrue(
-                  dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(
-                              h.getLevel().getServer())
-                          .jobs(player.getUUID())
-                          .isEmpty()
+                  WorldCraftingJobs.get(h.getLevel().getServer()).jobs(player.getUUID()).isEmpty()
                       && saved.registry().stock(cell, log).reserved() == 0,
                   "Cancelled job retires and releases its reservation");
             })

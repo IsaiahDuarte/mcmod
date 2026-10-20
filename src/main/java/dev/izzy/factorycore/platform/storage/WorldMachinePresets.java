@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformFilterTags;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.*;
 import net.minecraft.server.MinecraftServer;
 
@@ -422,8 +423,7 @@ public final class WorldMachinePresets {
         key.kind() == ResourceKind.ITEM
             ? Math.min(
                 amount,
-                new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                        server.registryAccess())
+                new PlatformResourceCodec(server.registryAccess())
                     .itemStack(key, 1)
                     .getMaxStackSize())
             : amount;

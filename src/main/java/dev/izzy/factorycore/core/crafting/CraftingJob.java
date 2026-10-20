@@ -5,10 +5,12 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -80,8 +82,7 @@ public final class CraftingJob {
         throw new IllegalArgumentException("Invalid processing target");
       providers = Map.copyOf(providers);
       if (!providers.isEmpty()
-          && (target == null
-              || !providers.keySet().equals(java.util.Set.of(ResourceKind.values()))))
+          && (target == null || !providers.keySet().equals(Set.of(ResourceKind.values()))))
         throw new IllegalArgumentException("Incomplete processing provider identity");
       inserted = Snapshot.positive(inserted, "inserted");
       collected = Snapshot.positive(collected, "collected");
@@ -365,7 +366,7 @@ public final class CraftingJob {
     for (var input : inputs.entrySet())
       if (stagedAmount(input.getKey()) < input.getValue())
         throw new IllegalArgumentException("Inputs are not staged");
-    var keys = new java.util.HashSet<>(staged.keySet());
+    var keys = new HashSet<>(staged.keySet());
     keys.addAll(outputs.keySet());
     for (var input : inputs.entrySet())
       if (stagedAmount(input.getKey()) == input.getValue()) keys.remove(input.getKey());

@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.storage;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.netty.buffer.Unpooled;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
@@ -10,6 +11,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.Bootstrap;
+import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -24,10 +26,7 @@ class TerminalJobPacketsTest {
   }
 
   private static RegistryFriendlyByteBuf buffer() {
-    return new RegistryFriendlyByteBuf(
-        Unpooled.buffer(),
-        registries,
-        net.neoforged.neoforge.network.connection.ConnectionType.NEOFORGE);
+    return new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
   }
 
   @Test
@@ -84,7 +83,7 @@ class TerminalJobPacketsTest {
                 1,
                 id,
                 1,
-                java.util.Collections.nCopies(9, entry),
+                Collections.nCopies(9, entry),
                 false,
                 entry,
                 "",

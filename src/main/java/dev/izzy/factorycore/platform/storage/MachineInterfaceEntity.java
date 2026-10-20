@@ -2,36 +2,44 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import java.util.List;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Local machine port; canonical leases and foreign adapter ownership are shared with connectors.
  */
-public final class MachineInterfaceEntity extends ConnectorEntity
-    implements net.minecraft.world.MenuProvider {
-  private java.util.UUID opening;
+public final class MachineInterfaceEntity extends ConnectorEntity implements MenuProvider {
+  private UUID opening;
 
-  java.util.UUID sessionForOpen() {
+  UUID sessionForOpen() {
     return opening;
   }
 
   @Override
-  public net.minecraft.network.chat.Component getDisplayName() {
-    return net.minecraft.network.chat.Component.translatable("block.factorycore.machine_interface");
+  public Component getDisplayName() {
+    return Component.translatable("block.factorycore.machine_interface");
   }
 
   @Override
-  public net.minecraft.world.inventory.AbstractContainerMenu createMenu(
-      int id,
-      net.minecraft.world.entity.player.Inventory inventory,
-      net.minecraft.world.entity.player.Player player) {
+  public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
     if (!(player instanceof ServerPlayer server) || !canUse(server)) return null;
-    opening = java.util.UUID.randomUUID();
+    opening = UUID.randomUUID();
     return new MachineSettingsMenu(id, inventory, this, opening);
   }
 
@@ -50,7 +58,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
       throw new IllegalArgumentException("Preset/port resource mismatch");
     var runtime = WorldNetworks.get(serverLevel().getServer());
     for (var permission :
-        java.util.List.of(
+        List.of(
             NetworkPermissions.Permission.VIEW,
             NetworkPermissions.Permission.EDIT,
             NetworkPermissions.Permission.DEPLOY))
@@ -58,8 +66,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
         throw new IllegalStateException("Machine preset permission denied");
     if (mode != MachinePresets.Mode.PAUSED)
       for (var permission :
-          java.util.List.of(
-              NetworkPermissions.Permission.WITHDRAW, NetworkPermissions.Permission.DEPOSIT))
+          List.of(NetworkPermissions.Permission.WITHDRAW, NetworkPermissions.Permission.DEPOSIT))
         if (runtime.authorize(actor, position(), permission) != NetworkAuthority.Decision.ALLOWED)
           throw new IllegalStateException("Machine preset resource permission denied");
     var scope = runtime.membership(position()).scope();
@@ -118,7 +125,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
               expected.revision())) return false;
       var actor = new NetworkPermissions.Actor(authority.principal(), false);
       for (var permission :
-          java.util.List.of(
+          List.of(
               NetworkPermissions.Permission.VIEW,
               NetworkPermissions.Permission.EDIT,
               NetworkPermissions.Permission.DEPLOY,
@@ -150,9 +157,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
   /** An upgrade is a configuration change: it advances the fence and pauses the preset. */
   @Override
   protected NetworkAuthority.Decision configureTier(
-      NetworkPermissions.Actor actor,
-      ConnectorSettings settings,
-      dev.izzy.factorycore.core.resource.ThroughputTier next) {
+      NetworkPermissions.Actor actor, ConnectorSettings settings, ThroughputTier next) {
     validatePlaced();
     var presets = DeviceSavedData.get(serverLevel().getServer()).machinePresets();
     presets.prepareInvalidation(handle().id());
@@ -184,7 +189,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
   }
 
   @Override
-  protected net.minecraft.world.item.Item portableItem() {
+  protected Item portableItem() {
     return MachineInterfaceContent.ITEM.get();
   }
 
@@ -201,7 +206,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     return player.isAlive()
         && player.serverLevel() == getLevel()
         && player.server.getPlayerList().getPlayer(player.getUUID()) == player
-        && player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(getBlockPos())) <= 64
+        && player.distanceToSqr(Vec3.atCenterOf(getBlockPos())) <= 64
         && WorldNetworks.get(player.server)
                 .authorize(
                     new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),
@@ -211,7 +216,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
   }
 
   @Override
-  public void place(net.minecraft.world.item.ItemStack stack) {
+  public void place(ItemStack stack) {
     super.place(stack);
     registerPreset();
   }
@@ -228,7 +233,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
   @Override
   public void onLoad() {
     super.onLoad();
-    if (getLevel() instanceof net.minecraft.server.level.ServerLevel) registerPreset();
+    if (getLevel() instanceof ServerLevel) registerPreset();
   }
 
   @Override

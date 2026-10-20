@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Set;
@@ -89,21 +90,10 @@ class NodePersistenceTest {
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
     assertEquals(DeviceSavedData.SCHEMA, migrated.getInt("Schema"));
+    assertTrue(migrated.getCompound("Buffers").getList("Buffers", Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getCompound("RouteCursors").getList("Cursors", Tag.TAG_COMPOUND).isEmpty());
     assertTrue(
-        migrated
-            .getCompound("Buffers")
-            .getList("Buffers", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("RouteCursors")
-            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("ExternalClaims")
-            .getList("Claims", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
+        migrated.getCompound("ExternalClaims").getList("Claims", Tag.TAG_COMPOUND).isEmpty());
     assertTrue(migrated.getList("Transfers", Tag.TAG_COMPOUND).isEmpty());
     migrated.remove("Transfers");
     migrated.remove("ExternalClaims");
@@ -123,8 +113,7 @@ class NodePersistenceTest {
         Set.of(NetworkPermissions.Permission.VIEW, NetworkPermissions.Permission.WITHDRAW),
         policy.branchPermissions());
     assertEquals(Set.of(), policy.inheritedPermissions());
-    assertEquals(
-        Set.of(dev.izzy.factorycore.core.resource.ResourceKind.FLUID), policy.inheritedKinds());
+    assertEquals(Set.of(ResourceKind.FLUID), policy.inheritedKinds());
     assertEquals(new UUID(0, 201), loaded.network(root.id()).snapshot().owner());
   }
 
@@ -191,21 +180,10 @@ class NodePersistenceTest {
     assertFalse(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
     assertEquals(DeviceSavedData.SCHEMA, migrated.getInt("Schema"));
+    assertTrue(migrated.getCompound("Buffers").getList("Buffers", Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getCompound("RouteCursors").getList("Cursors", Tag.TAG_COMPOUND).isEmpty());
     assertTrue(
-        migrated
-            .getCompound("Buffers")
-            .getList("Buffers", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("RouteCursors")
-            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("ExternalClaims")
-            .getList("Claims", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
+        migrated.getCompound("ExternalClaims").getList("Claims", Tag.TAG_COMPOUND).isEmpty());
     assertTrue(migrated.getList("Transfers", Tag.TAG_COMPOUND).isEmpty());
     migrated.remove("Transfers");
     migrated.remove("ExternalClaims");

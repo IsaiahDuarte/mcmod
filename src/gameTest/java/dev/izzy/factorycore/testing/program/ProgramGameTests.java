@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.program;
 
+import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -32,6 +33,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -58,11 +60,11 @@ public final class ProgramGameTests {
       MachineInterfaceEntity machine,
       ChestBlockEntity chest,
       PlatformResourceCodec codec) {
-    long stock(net.minecraft.world.item.Item item) {
+    long stock(Item item) {
       return saved.registry().stock(cell, codec.itemKey(new ItemStack(item))).total();
     }
 
-    int chestCount(net.minecraft.world.item.Item item) {
+    int chestCount(Item item) {
       int total = 0;
       for (int slot = 0; slot < chest.getContainerSize(); slot++)
         if (chest.getItem(slot).is(item)) total += chest.getItem(slot).getCount();
@@ -124,7 +126,7 @@ public final class ProgramGameTests {
                 new ConnectorSettings(
                     ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 27, 64),
                 label)
-            == dev.izzy.factorycore.core.network.NetworkAuthority.Decision.ALLOWED,
+            == NetworkAuthority.Decision.ALLOWED,
         "Machine labeled " + label);
   }
 

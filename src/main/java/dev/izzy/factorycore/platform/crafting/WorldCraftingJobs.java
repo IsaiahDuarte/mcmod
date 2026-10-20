@@ -2,12 +2,16 @@ package dev.izzy.factorycore.platform.crafting;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.CraftingPlanner;
+import dev.izzy.factorycore.core.crafting.KeepStockRule;
+import dev.izzy.factorycore.core.crafting.Pattern;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -15,19 +19,30 @@ import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.LongUnaryOperator;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 /**
  * Server-thread autocrafting runtime over canonical {@code CraftingJobs}. Submission plans against
@@ -284,7 +299,7 @@ public final class WorldCraftingJobs {
           saved()
               .craftingJobs()
               .setRule(
-                  new dev.izzy.factorycore.core.crafting.KeepStockRule(
+                  new KeepStockRule(
                       UUID.randomUUID(),
                       actor.id(),
                       scope.network(),
@@ -300,7 +315,7 @@ public final class WorldCraftingJobs {
   }
 
   /** The requester's rule for {@code key} in the origin's segment, or null. */
-  public dev.izzy.factorycore.core.crafting.KeepStockRule rule(
+  public KeepStockRule rule(
       NetworkPermissions.Actor actor, NodeRegistry.Position origin, ResourceKey key) {
     checkThread();
     var member = networks().membership(origin);
@@ -499,28 +514,24 @@ public final class WorldCraftingJobs {
   }
 
   /** Loaded state of a dispatch target: {@code entity} is null when no block entity is there. */
-  private record BlockEntityRef(
-      boolean loaded, net.minecraft.world.level.block.entity.BlockEntity entity) {}
+  private record BlockEntityRef(boolean loaded, BlockEntity entity) {}
 
   /** Reads a target without loading its chunk. */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private BlockEntityRef target(NodeRegistry.Position target) {
     for (var level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(target.dimension())) continue;
-      var pos = net.minecraft.core.BlockPos.of(target.block());
+      var pos = BlockPos.of(target.block());
       var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
       if (chunk == null) return new BlockEntityRef(false, null);
-      var entity =
-          chunk.getBlockEntity(
-              pos, net.minecraft.world.level.chunk.LevelChunk.EntityCreationType.CHECK);
+      var entity = chunk.getBlockEntity(pos, LevelChunk.EntityCreationType.CHECK);
       return new BlockEntityRef(true, entity == null || entity.isRemoved() ? null : entity);
     }
     return new BlockEntityRef(false, null);
   }
 
   /** Null when the machine's journal proves the job's dispatch progress, else a wait reason. */
-  private String journalCheck(
-      CraftingJob job, net.minecraft.world.level.block.entity.BlockEntity machine) {
+  private String journalCheck(CraftingJob job, BlockEntity machine) {
     try {
       return ProcessingJournal.check(
           ProcessingJournal.read(machine, saved().registry().world()), job.id(), job.dispatch());
@@ -554,9 +565,9 @@ public final class WorldCraftingJobs {
   /** Journals each real machine call: pending before it starts, settled after it returns. */
   private final class Journal {
     private final CraftingJob job;
-    private final net.minecraft.world.level.block.entity.BlockEntity machine;
+    private final BlockEntity machine;
 
-    Journal(CraftingJob job, net.minecraft.world.level.block.entity.BlockEntity machine) {
+    Journal(CraftingJob job, BlockEntity machine) {
       this.job = job;
       this.machine = machine;
     }
@@ -619,7 +630,7 @@ public final class WorldCraftingJobs {
     }
     var outputs = assemble(job.id(), offer);
     if (outputs == null) return "recipe_changed";
-    var permits = new ArrayList<dev.izzy.factorycore.core.resource.WirelessBudget.Permit>();
+    var permits = new ArrayList<WirelessBudget.Permit>();
     for (var changes : List.of(inputs, outputs))
       for (var entry : changes.entrySet()) {
         var permit =
@@ -628,7 +639,7 @@ public final class WorldCraftingJobs {
         permits.add(permit);
         if (permit.amount() != entry.getValue()) {
           for (var held : permits) held.finish(0);
-          return permit.reason().name().toLowerCase(java.util.Locale.ROOT);
+          return permit.reason().name().toLowerCase(Locale.ROOT);
         }
       }
     job.crafted(inputs, outputs);
@@ -641,7 +652,7 @@ public final class WorldCraftingJobs {
   private CraftingInterfaceEntity interfaceAt(NodeRegistry.Position position) {
     for (var level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(position.dimension())) continue;
-      var pos = net.minecraft.core.BlockPos.of(position.block());
+      var pos = BlockPos.of(position.block());
       if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) return null;
       return level.getBlockEntity(pos) instanceof CraftingInterfaceEntity holder && holder.current()
           ? holder
@@ -666,7 +677,7 @@ public final class WorldCraftingJobs {
   }
 
   private boolean leasedByOther(NodeRegistry.Position target, UUID job) {
-    var block = net.minecraft.core.BlockPos.of(target.block());
+    var block = BlockPos.of(target.block());
     for (var other : saved().craftingJobs().all()) {
       if (other.id().equals(job) || other.dispatch() == null) continue;
       var dispatch = other.dispatch();
@@ -675,7 +686,7 @@ public final class WorldCraftingJobs {
       } else {
         var leased = dispatch.machine();
         if (!leased.dimension().equals(target.dimension())) continue;
-        var port = net.minecraft.core.BlockPos.of(leased.block());
+        var port = BlockPos.of(leased.block());
         if (port.equals(block) || port.distManhattan(block) == 1) return true;
       }
     }
@@ -683,9 +694,7 @@ public final class WorldCraftingJobs {
   }
 
   private static boolean contains(
-      net.neoforged.neoforge.items.IItemHandler machine,
-      ResourceKey key,
-      PlatformResourceCodec codec) {
+      IItemHandler machine, ResourceKey key, PlatformResourceCodec codec) {
     for (int slot = 0; slot < machine.getSlots(); slot++) {
       var stack = machine.getStackInSlot(slot);
       if (!stack.isEmpty() && key.equals(keyOf(codec, stack))) return true;
@@ -701,8 +710,7 @@ public final class WorldCraftingJobs {
     }
   }
 
-  private static Map<ResourceKey, Long> expected(
-      dev.izzy.factorycore.core.crafting.Pattern pattern) {
+  private static Map<ResourceKey, Long> expected(Pattern pattern) {
     var outputs = new LinkedHashMap<ResourceKey, Long>();
     outputs.put(pattern.output(), pattern.outputAmount());
     pattern.byproducts().forEach((key, amount) -> outputs.merge(key, amount, Math::addExact));
@@ -723,10 +731,8 @@ public final class WorldCraftingJobs {
       if (!reachable(holder, pattern)) return "machine_missing";
       if (leasedByOther(machineTarget(holder), job.id())) return "busy";
       var admission = networks().connectors().processingAdmission(machineTarget(holder));
-      if (admission == dev.izzy.factorycore.core.resource.OperationResult.Reason.BUSY)
-        return "busy";
-      if (admission != dev.izzy.factorycore.core.resource.OperationResult.Reason.OK)
-        return "reserved";
+      if (admission == OperationResult.Reason.BUSY) return "busy";
+      if (admission != OperationResult.Reason.OK) return "reserved";
       for (var key : outputs.keySet())
         if (key.kind() == ResourceKind.FLUID
             ? containsFluid(holder.fluidMachine(), key)
@@ -788,9 +794,8 @@ public final class WorldCraftingJobs {
   }
 
   /** True when the machine exposes every handler kind the pattern's keys need. */
-  private static boolean reachable(
-      CraftingInterfaceEntity holder, dev.izzy.factorycore.core.crafting.Pattern pattern) {
-    var keys = new java.util.HashSet<>(pattern.inputs().keySet());
+  private static boolean reachable(CraftingInterfaceEntity holder, Pattern pattern) {
+    var keys = new HashSet<>(pattern.inputs().keySet());
     keys.addAll(expected(pattern).keySet());
     boolean items = keys.stream().anyMatch(key -> key.kind() == ResourceKind.ITEM);
     boolean fluids = keys.stream().anyMatch(key -> key.kind() == ResourceKind.FLUID);
@@ -798,16 +803,12 @@ public final class WorldCraftingJobs {
     return (!items || holder.machine() != null) && (!fluids || holder.fluidMachine() != null);
   }
 
-  private static boolean containsFluid(
-      net.neoforged.neoforge.fluids.capability.IFluidHandler tanks, ResourceKey key) {
+  private static boolean containsFluid(IFluidHandler tanks, ResourceKey key) {
     for (int tank = 0; tank < tanks.getTanks(); tank++) {
       var present = tanks.getFluidInTank(tank);
       if (!present.isEmpty()
-          && key.registryId()
-              .equals(
-                  net.minecraft.core.registries.BuiltInRegistries.FLUID
-                      .getKey(present.getFluid())
-                      .toString())) return true;
+          && key.registryId().equals(BuiltInRegistries.FLUID.getKey(present.getFluid()).toString()))
+        return true;
     }
     return false;
   }
@@ -816,7 +817,7 @@ public final class WorldCraftingJobs {
   private void insertFluids(
       CraftingJob job,
       Map<ResourceKey, Long> inputs,
-      net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
+      IFluidHandler tanks,
       PlatformResourceCodec codec,
       Journal journal) {
     tanks = meteredFluids(job, tanks, codec);
@@ -830,9 +831,7 @@ public final class WorldCraftingJobs {
       if (remaining <= 0) continue;
       var offer = codec.fluidStack(input.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
       journal.begin();
-      int accepted =
-          tanks.fill(
-              offer, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+      int accepted = tanks.fill(offer, IFluidHandler.FluidAction.EXECUTE);
       if (accepted > remaining)
         throw new IllegalStateException("Machine accepted more fluid than offered");
       if (accepted > 0) job.inserted(input.getKey(), accepted);
@@ -844,7 +843,7 @@ public final class WorldCraftingJobs {
   private void collectFluids(
       CraftingJob job,
       Map<ResourceKey, Long> outputs,
-      net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
+      IFluidHandler tanks,
       PlatformResourceCodec codec,
       Journal journal) {
     tanks = meteredFluids(job, tanks, codec);
@@ -857,9 +856,7 @@ public final class WorldCraftingJobs {
       var want = codec.fluidStack(output.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
       if (!containsFluid(tanks, output.getKey())) continue;
       journal.begin();
-      var got =
-          tanks.drain(
-              want, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+      var got = tanks.drain(want, IFluidHandler.FluidAction.EXECUTE);
       if (!got.isEmpty()) {
         if (!codec.fluidKey(got).equals(output.getKey()) || got.getAmount() > remaining)
           throw new IllegalStateException("Machine drained an unexpected fluid");
@@ -872,7 +869,7 @@ public final class WorldCraftingJobs {
   private void insert(
       CraftingJob job,
       Map<ResourceKey, Long> inputs,
-      net.neoforged.neoforge.items.IItemHandler machine,
+      IItemHandler machine,
       PlatformResourceCodec codec,
       Journal journal) {
     machine = meteredItems(job, machine, codec);
@@ -888,7 +885,7 @@ public final class WorldCraftingJobs {
         int size = (int) Math.min(remaining, stack.getMaxStackSize());
         stack.setCount(size);
         journal.begin();
-        var rest = net.neoforged.neoforge.items.ItemHandlerHelper.insertItem(machine, stack, false);
+        var rest = ItemHandlerHelper.insertItem(machine, stack, false);
         int accepted = size - rest.getCount();
         if (accepted > 0) job.inserted(input.getKey(), accepted);
         journal.settle();
@@ -902,7 +899,7 @@ public final class WorldCraftingJobs {
   private void collect(
       CraftingJob job,
       Map<ResourceKey, Long> outputs,
-      net.neoforged.neoforge.items.IItemHandler machine,
+      IItemHandler machine,
       PlatformResourceCodec codec,
       Journal journal) {
     machine = meteredItems(job, machine, codec);
@@ -1037,7 +1034,7 @@ public final class WorldCraftingJobs {
       ResourceKey key,
       long amount,
       boolean simulate,
-      java.util.function.LongUnaryOperator operation) {
+      LongUnaryOperator operation) {
     var origin = anchor(job, null);
     if (origin == null || job.dispatch() == null) return 0;
     var machine = job.dispatch().machine();
@@ -1055,12 +1052,10 @@ public final class WorldCraftingJobs {
     return actual;
   }
 
-  private net.neoforged.neoforge.items.IItemHandler meteredItems(
-      CraftingJob job,
-      net.neoforged.neoforge.items.IItemHandler delegate,
-      PlatformResourceCodec codec) {
+  private IItemHandler meteredItems(
+      CraftingJob job, IItemHandler delegate, PlatformResourceCodec codec) {
     if (anchor(job, null) == null || job.dispatch() == null) return null;
-    return new net.neoforged.neoforge.items.IItemHandler() {
+    return new IItemHandler() {
       @Override
       public int getSlots() {
         return delegate.getSlots();
@@ -1120,19 +1115,17 @@ public final class WorldCraftingJobs {
     };
   }
 
-  private net.neoforged.neoforge.fluids.capability.IFluidHandler meteredFluids(
-      CraftingJob job,
-      net.neoforged.neoforge.fluids.capability.IFluidHandler delegate,
-      PlatformResourceCodec codec) {
+  private IFluidHandler meteredFluids(
+      CraftingJob job, IFluidHandler delegate, PlatformResourceCodec codec) {
     if (anchor(job, null) == null || job.dispatch() == null) return null;
-    return new net.neoforged.neoforge.fluids.capability.IFluidHandler() {
+    return new IFluidHandler() {
       @Override
       public int getTanks() {
         return delegate.getTanks();
       }
 
       @Override
-      public net.neoforged.neoforge.fluids.FluidStack getFluidInTank(int tank) {
+      public FluidStack getFluidInTank(int tank) {
         return delegate.getFluidInTank(tank);
       }
 
@@ -1142,12 +1135,12 @@ public final class WorldCraftingJobs {
       }
 
       @Override
-      public boolean isFluidValid(int tank, net.neoforged.neoforge.fluids.FluidStack stack) {
+      public boolean isFluidValid(int tank, FluidStack stack) {
         return delegate.isFluidValid(tank, stack);
       }
 
       @Override
-      public int fill(net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
+      public int fill(FluidStack stack, FluidAction action) {
         if (stack.isEmpty()) return 0;
         return (int)
             meterMachine(
@@ -1159,13 +1152,9 @@ public final class WorldCraftingJobs {
       }
 
       @Override
-      public net.neoforged.neoforge.fluids.FluidStack drain(
-          net.neoforged.neoforge.fluids.FluidStack stack, FluidAction action) {
-        if (stack.isEmpty()) return net.neoforged.neoforge.fluids.FluidStack.EMPTY;
-        var got =
-            new net.neoforged.neoforge.fluids.FluidStack[] {
-              net.neoforged.neoforge.fluids.FluidStack.EMPTY
-            };
+      public FluidStack drain(FluidStack stack, FluidAction action) {
+        if (stack.isEmpty()) return FluidStack.EMPTY;
+        var got = new FluidStack[] {FluidStack.EMPTY};
         meterMachine(
             job,
             codec.fluidKey(stack),
@@ -1179,7 +1168,7 @@ public final class WorldCraftingJobs {
       }
 
       @Override
-      public net.neoforged.neoforge.fluids.FluidStack drain(int amount, FluidAction action) {
+      public FluidStack drain(int amount, FluidAction action) {
         var present = delegate.drain(amount, FluidAction.SIMULATE);
         return present.isEmpty() ? present : drain(present, action);
       }

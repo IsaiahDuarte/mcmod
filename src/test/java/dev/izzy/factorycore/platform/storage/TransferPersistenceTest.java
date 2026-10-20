@@ -159,21 +159,10 @@ class TransferPersistenceTest {
     assertTrue(loaded.isDirty());
     var migrated = loaded.save(new CompoundTag(), registries);
     assertEquals(DeviceSavedData.SCHEMA, migrated.getInt("Schema"));
+    assertTrue(migrated.getCompound("Buffers").getList("Buffers", Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getCompound("RouteCursors").getList("Cursors", Tag.TAG_COMPOUND).isEmpty());
     assertTrue(
-        migrated
-            .getCompound("Buffers")
-            .getList("Buffers", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("RouteCursors")
-            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("ExternalClaims")
-            .getList("Claims", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
+        migrated.getCompound("ExternalClaims").getList("Claims", Tag.TAG_COMPOUND).isEmpty());
     for (var entry : migrated.getList("Transfers", Tag.TAG_COMPOUND)) {
       var transfer = (CompoundTag) entry;
       assertEquals(2, transfer.getInt("Schema"));

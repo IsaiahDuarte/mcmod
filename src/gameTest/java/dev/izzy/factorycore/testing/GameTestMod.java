@@ -8,12 +8,13 @@ import net.minecraft.gametest.framework.GlobalTestReporter;
 import net.minecraft.gametest.framework.JUnitLikeTestReporter;
 import net.minecraft.gametest.framework.LogTestReporter;
 import net.minecraft.gametest.framework.TestReporter;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 
 /** Test-only loader entry; it is excluded from the distributed mod. */
 @Mod("factorycore_tests")
 public final class GameTestMod {
-  public GameTestMod(net.neoforged.bus.api.IEventBus bus) throws ParserConfigurationException {
+  public GameTestMod(IEventBus bus) throws ParserConfigurationException {
     ConnectorFixture.register(bus);
     PolicyFixture.register(bus);
     EnergyFixture.register(bus);

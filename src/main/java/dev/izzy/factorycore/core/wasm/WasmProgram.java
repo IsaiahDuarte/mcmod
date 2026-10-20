@@ -15,8 +15,11 @@ import dev.izzy.factorycore.core.program.ProgramIr;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.UUID;
@@ -238,8 +241,8 @@ public final class WasmProgram {
     var bytes = instance.memory().readBytes((int) pointer, (int) length);
     var decoder = StandardCharsets.UTF_8.newDecoder();
     try {
-      return decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
-    } catch (java.nio.charset.CharacterCodingException invalid) {
+      return decoder.decode(ByteBuffer.wrap(bytes)).toString();
+    } catch (CharacterCodingException invalid) {
       throw new Limit("text is not UTF-8");
     }
   }
@@ -362,7 +365,7 @@ public final class WasmProgram {
     if (a[1] < 0) throw new Limit("negative state buffer");
     if (current == null) return new long[] {-1};
     int copied = (int) Math.min(a[1], current.length);
-    instance.memory().write((int) a[0], java.util.Arrays.copyOf(current, copied));
+    instance.memory().write((int) a[0], Arrays.copyOf(current, copied));
     return new long[] {current.length};
   }
 

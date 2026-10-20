@@ -19,6 +19,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -38,7 +39,7 @@ public final class AssetCoverageGameTests {
 
   private static Path resource(String path) {
     // Resolve through the mod file: the test mod's module cannot see main-mod resources directly.
-    var file = net.neoforged.fml.ModList.get().getModFileById(NAMESPACE).getFile();
+    var file = ModList.get().getModFileById(NAMESPACE).getFile();
     return file.findResource(("assets/" + NAMESPACE + "/" + path).split("/"));
   }
 

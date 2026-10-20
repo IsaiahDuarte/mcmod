@@ -9,10 +9,13 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -40,9 +43,9 @@ public final class AccessCommands {
     SuggestionProvider<CommandSourceStack> permissions =
         (context, builder) ->
             SharedSuggestionProvider.suggest(
-                java.util.stream.Stream.concat(
-                    java.util.stream.Stream.of("all"),
-                    java.util.Arrays.stream(Permission.values()).map(AccessCommands::token)),
+                Stream.concat(
+                    Stream.of("all"),
+                    Arrays.stream(Permission.values()).map(AccessCommands::token)),
                 builder);
     event
         .getDispatcher()
@@ -129,7 +132,7 @@ public final class AccessCommands {
     if (state.grants().isEmpty())
       source.sendSuccess(() -> Component.translatable("command.factorycore.access.none"), false);
     state.grants().entrySet().stream()
-        .sorted(java.util.Map.Entry.comparingByKey())
+        .sorted(Map.Entry.comparingByKey())
         .forEach(
             entry ->
                 source.sendSuccess(

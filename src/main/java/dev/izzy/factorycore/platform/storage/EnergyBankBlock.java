@@ -1,10 +1,13 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
+import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
@@ -64,9 +67,9 @@ public final class EnergyBankBlock extends Block implements EntityBlock {
         bank.place(new ItemStack(EnergyBankContent.item(tier)));
       bank.validatePlaced();
       var status =
-          WorldNetworks.get(((net.minecraft.server.level.ServerLevel) level).getServer())
+          WorldNetworks.get(((ServerLevel) level).getServer())
               .membership(
-                  new dev.izzy.factorycore.core.network.NodeRegistry.Position(
+                  new NodeRegistry.Position(
                       level.dimension().location().toString(), position.asLong()))
               .status();
       player.displayClientMessage(
@@ -76,7 +79,7 @@ public final class EnergyBankBlock extends Block implements EntityBlock {
               bank.getMaxEnergyStored(),
               bank.tier().rate(),
               Component.translatable(
-                  "status.factorycore." + status.name().toLowerCase(java.util.Locale.ROOT))),
+                  "status.factorycore." + status.name().toLowerCase(Locale.ROOT))),
           true);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {

@@ -22,6 +22,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.tutorial.TutorialSteps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -138,7 +139,7 @@ public final class MultiplayerClientVerification {
     client.getWindow().setWindowed(1024, 768);
     client.options.guiScale().set(2);
     client.options.pauseOnLostFocus = false;
-    client.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
+    client.getTutorial().setStep(TutorialSteps.NONE);
     client.resizeDisplay();
     require(
         client.getUser().getName().equals(owner ? OWNER : STRANGER),

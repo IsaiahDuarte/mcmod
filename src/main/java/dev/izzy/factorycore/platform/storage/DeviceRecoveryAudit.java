@@ -1,9 +1,18 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.LedgerStateCodec;
+import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.core.storage.ItemBuffer;
+import dev.izzy.factorycore.core.storage.MachinePresets;
+import dev.izzy.factorycore.platform.network.NodeHandleData;
 import java.io.*;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.nbt.*;
 
@@ -87,15 +96,15 @@ public final class DeviceRecoveryAudit {
   static Path preserveBufferAdoption(
       Path world,
       UUID namespace,
-      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
-      dev.izzy.factorycore.core.storage.ItemBuffer.State inventory,
-      dev.izzy.factorycore.core.storage.BufferRegistry.Deployment deployment,
-      dev.izzy.factorycore.core.network.NodeRegistry.Position target,
+      NodeRegistry.Stored owner,
+      ItemBuffer.State inventory,
+      BufferRegistry.Deployment deployment,
+      NodeRegistry.Position target,
       CompoundTag blockState,
       CompoundTag blockEntity)
       throws IOException {
     if (owner.position() == null
-        || owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.BUFFERED_INTERFACE
+        || owner.kind() != NodeRegistry.Kind.BUFFERED_INTERFACE
         || !owner.id().equals(inventory.backing())
         || deployment != null && !deployment.backing().equals(owner.id()))
       throw new IllegalArgumentException("Expected canonical buffer adoption evidence");
@@ -104,12 +113,11 @@ public final class DeviceRecoveryAudit {
     envelope.putInt("WorldSchema", 12);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "BUFFERED_INTERFACE_ADOPTION");
-    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
     envelope.put(
         "Buffers",
         BufferStateCodec.encode(
-            java.util.List.of(inventory),
-            deployment == null ? java.util.List.of() : java.util.List.of(deployment)));
+            List.of(inventory), deployment == null ? List.of() : List.of(deployment)));
     var adopted = new CompoundTag();
     adopted.putString("Dimension", target.dimension());
     adopted.putLong("Position", target.block());
@@ -122,15 +130,15 @@ public final class DeviceRecoveryAudit {
   static Path preserveBuffer(
       Path world,
       UUID namespace,
-      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
-      dev.izzy.factorycore.core.storage.ItemBuffer.State inventory,
-      dev.izzy.factorycore.core.storage.BufferRegistry.Deployment deployment,
+      NodeRegistry.Stored owner,
+      ItemBuffer.State inventory,
+      BufferRegistry.Deployment deployment,
       CompoundTag blockState,
       CompoundTag blockEntity)
       throws IOException {
     if (!owner.conflict()
         || owner.position() == null
-        || owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.BUFFERED_INTERFACE
+        || owner.kind() != NodeRegistry.Kind.BUFFERED_INTERFACE
         || !owner.id().equals(inventory.backing())
         || deployment != null && !deployment.backing().equals(owner.id()))
       throw new IllegalArgumentException("Expected canonical buffer conflict evidence");
@@ -139,12 +147,11 @@ public final class DeviceRecoveryAudit {
     envelope.putInt("WorldSchema", 12);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "BUFFERED_INTERFACE");
-    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
     envelope.put(
         "Buffers",
         BufferStateCodec.encode(
-            java.util.List.of(inventory),
-            deployment == null ? java.util.List.of() : java.util.List.of(deployment)));
+            List.of(inventory), deployment == null ? List.of() : List.of(deployment)));
     envelope.put("BlockState", blockState.copy());
     envelope.put("BlockEntity", blockEntity.copy());
     return write(world, owner.id(), envelope);
@@ -160,17 +167,15 @@ public final class DeviceRecoveryAudit {
   public static Path preserveNetworkNodeAdoption(
       Path world,
       UUID namespace,
-      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
-      dev.izzy.factorycore.core.network.NetworkPermissions.State permissions,
-      dev.izzy.factorycore.core.network.NodeRegistry.Position target,
+      NodeRegistry.Stored owner,
+      NetworkPermissions.State permissions,
+      NodeRegistry.Position target,
       CompoundTag blockState,
       CompoundTag blockEntity)
       throws IOException {
-    boolean controller =
-        owner.kind() == dev.izzy.factorycore.core.network.NodeRegistry.Kind.CONTROLLER;
+    boolean controller = owner.kind() == NodeRegistry.Kind.CONTROLLER;
     if (owner.position() == null
-        || !controller
-            && owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.GATEWAY
+        || !controller && owner.kind() != NodeRegistry.Kind.GATEWAY
         || controller != (permissions != null)
         || permissions != null && !permissions.network().equals(owner.id()))
       throw new IllegalArgumentException("Expected canonical network-node adoption evidence");
@@ -179,11 +184,10 @@ public final class DeviceRecoveryAudit {
     envelope.putInt("WorldSchema", 12);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "NETWORK_NODE_ADOPTION");
-    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
     envelope.put(
         "Networks",
-        NetworkStateCodec.encode(
-            permissions == null ? java.util.List.of() : java.util.List.of(permissions)));
+        NetworkStateCodec.encode(permissions == null ? List.of() : List.of(permissions)));
     var adopted = new CompoundTag();
     adopted.putString("Dimension", target.dimension());
     adopted.putLong("Position", target.block());
@@ -196,17 +200,15 @@ public final class DeviceRecoveryAudit {
   public static Path preserveNetworkNode(
       Path world,
       UUID namespace,
-      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
-      dev.izzy.factorycore.core.network.NetworkPermissions.State permissions,
+      NodeRegistry.Stored owner,
+      NetworkPermissions.State permissions,
       CompoundTag blockState,
       CompoundTag blockEntity)
       throws IOException {
-    boolean controller =
-        owner.kind() == dev.izzy.factorycore.core.network.NodeRegistry.Kind.CONTROLLER;
+    boolean controller = owner.kind() == NodeRegistry.Kind.CONTROLLER;
     if (!owner.conflict()
         || owner.position() == null
-        || !controller
-            && owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.GATEWAY
+        || !controller && owner.kind() != NodeRegistry.Kind.GATEWAY
         || controller != (permissions != null)
         || permissions != null && !permissions.network().equals(owner.id()))
       throw new IllegalArgumentException("Expected canonical network-node conflict evidence");
@@ -215,11 +217,10 @@ public final class DeviceRecoveryAudit {
     envelope.putInt("WorldSchema", 12);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "NETWORK_NODE");
-    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
     envelope.put(
         "Networks",
-        NetworkStateCodec.encode(
-            permissions == null ? java.util.List.of() : java.util.List.of(permissions)));
+        NetworkStateCodec.encode(permissions == null ? List.of() : List.of(permissions)));
     envelope.put("BlockState", blockState.copy());
     envelope.put("BlockEntity", blockEntity.copy());
     return write(world, owner.id(), envelope);
@@ -228,19 +229,18 @@ public final class DeviceRecoveryAudit {
   static Path preservePortAdoption(
       Path world,
       UUID namespace,
-      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
-      dev.izzy.factorycore.core.storage.MachinePresets.Deployment deployment,
+      NodeRegistry.Stored owner,
+      MachinePresets.Deployment deployment,
       long fence,
-      dev.izzy.factorycore.core.network.NodeRegistry.Position target,
+      NodeRegistry.Position target,
       CompoundTag blockState,
       CompoundTag blockEntity)
       throws IOException {
     var state = ConnectorData.read(blockEntity.get(ConnectorData.FIELD));
-    boolean machine =
-        owner.kind() == dev.izzy.factorycore.core.network.NodeRegistry.Kind.MACHINE_INTERFACE;
+    boolean machine = owner.kind() == NodeRegistry.Kind.MACHINE_INTERFACE;
     if (owner.position() == null
         || target.equals(owner.position())
-        || !machine && owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.CONNECTOR
+        || !machine && owner.kind() != NodeRegistry.Kind.CONNECTOR
         || !state.lease().world().equals(namespace)
         || !state.lease().id().equals(owner.id())
         || state.lease().kind() != owner.kind()
@@ -257,12 +257,12 @@ public final class DeviceRecoveryAudit {
     envelope.putInt("WorldSchema", DeviceSavedData.SCHEMA);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "FOREIGN_PORT_ADOPTION");
-    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
     envelope.put(
         "MachinePresets",
         MachinePresetCodec.encode(
-            deployment == null ? java.util.List.of() : java.util.List.of(deployment),
-            machine && fence > 0 ? java.util.Map.of(owner.id(), fence) : java.util.Map.of()));
+            deployment == null ? List.of() : List.of(deployment),
+            machine && fence > 0 ? Map.of(owner.id(), fence) : Map.of()));
     var adopted = new CompoundTag();
     adopted.putString("Dimension", target.dimension());
     adopted.putLong("Position", target.block());
@@ -275,19 +275,18 @@ public final class DeviceRecoveryAudit {
   static Path preservePort(
       Path world,
       UUID namespace,
-      dev.izzy.factorycore.core.network.NodeRegistry.Stored owner,
-      dev.izzy.factorycore.core.storage.MachinePresets.Deployment deployment,
+      NodeRegistry.Stored owner,
+      MachinePresets.Deployment deployment,
       long fence,
       WorldConnectors.Handle registration,
       CompoundTag blockState,
       CompoundTag blockEntity)
       throws IOException {
     var state = ConnectorData.read(blockEntity.get(ConnectorData.FIELD));
-    boolean machine =
-        owner.kind() == dev.izzy.factorycore.core.network.NodeRegistry.Kind.MACHINE_INTERFACE;
+    boolean machine = owner.kind() == NodeRegistry.Kind.MACHINE_INTERFACE;
     if (!owner.conflict()
         || owner.position() == null
-        || !machine && owner.kind() != dev.izzy.factorycore.core.network.NodeRegistry.Kind.CONNECTOR
+        || !machine && owner.kind() != NodeRegistry.Kind.CONNECTOR
         || !state.lease().world().equals(namespace)
         || !state.lease().id().equals(owner.id())
         || state.lease().generation() != owner.generation()
@@ -308,17 +307,15 @@ public final class DeviceRecoveryAudit {
     envelope.putInt("WorldSchema", 12);
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "FOREIGN_PORT");
-    envelope.put("Nodes", NodeStateCodec.encode(java.util.List.of(owner)));
+    envelope.put("Nodes", NodeStateCodec.encode(List.of(owner)));
     envelope.put(
         "MachinePresets",
         MachinePresetCodec.encode(
-            deployment == null ? java.util.List.of() : java.util.List.of(deployment),
-            machine ? java.util.Map.of(owner.id(), fence) : java.util.Map.of()));
+            deployment == null ? List.of() : List.of(deployment),
+            machine ? Map.of(owner.id(), fence) : Map.of()));
     if (registration != null) {
       var binding = new CompoundTag();
-      binding.put(
-          "Node",
-          dev.izzy.factorycore.platform.network.NodeHandleData.write(registration.connector()));
+      binding.put("Node", NodeHandleData.write(registration.connector()));
       binding.putLong("Configuration", registration.generation());
       binding.putUUID("Provider", registration.provider());
       binding.putUUID("Backing", registration.backing());
@@ -341,8 +338,8 @@ public final class DeviceRecoveryAudit {
       UUID namespace,
       UUID journalJob,
       Tag journal,
-      dev.izzy.factorycore.core.crafting.CraftingJob.Snapshot job,
-      dev.izzy.factorycore.core.network.NodeRegistry.Position target,
+      CraftingJob.Snapshot job,
+      NodeRegistry.Position target,
       CompoundTag blockState,
       CompoundTag blockEntity)
       throws IOException {
@@ -354,9 +351,7 @@ public final class DeviceRecoveryAudit {
     envelope.putUUID("World", namespace);
     envelope.putString("HolderKind", "PROCESSING_JOURNAL");
     envelope.put("Journal", journal.copy());
-    envelope.put(
-        "CraftingJobs",
-        CraftingJobCodec.encode(job == null ? java.util.List.of() : java.util.List.of(job)));
+    envelope.put("CraftingJobs", CraftingJobCodec.encode(job == null ? List.of() : List.of(job)));
     var machine = new CompoundTag();
     machine.putString("Dimension", target.dimension());
     machine.putLong("Position", target.block());

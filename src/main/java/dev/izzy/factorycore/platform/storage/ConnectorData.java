@@ -5,6 +5,8 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.network.NodeHandleData;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -39,8 +41,8 @@ final class ConnectorData {
     }
 
     State {
-      java.util.Objects.requireNonNull(label);
-      java.util.Objects.requireNonNull(tier);
+      Objects.requireNonNull(label);
+      Objects.requireNonNull(tier);
       if (!settings.fits(tier))
         throw new IllegalArgumentException("Port rate exceeds its installed throughput tier");
       if (label.length() > 64
@@ -103,7 +105,7 @@ final class ConnectorData {
 
   private static Set<String> fields(int schema) {
     var fields =
-        new java.util.HashSet<>(
+        new HashSet<>(
             Set.of(
                 "Schema",
                 "Node",

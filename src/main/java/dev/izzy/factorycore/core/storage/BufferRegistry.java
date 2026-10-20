@@ -274,7 +274,7 @@ public final class BufferRegistry {
     if (!usable(handle, owner)) throw new IllegalStateException("Buffer is not currently bound");
     if (referenceRevision <= 0) throw new IllegalArgumentException("Invalid reference revision");
     var previous = deployments.get(handle.id());
-    java.util.Objects.requireNonNull(policy);
+    Objects.requireNonNull(policy);
     long oldCharge = previous == null ? 0 : previous.policy().bytes();
     long delta = policy.bytes() - oldCharge;
     if (delta > MAX_BYTES - bytes) throw new IllegalStateException("Buffer policy metadata limit");

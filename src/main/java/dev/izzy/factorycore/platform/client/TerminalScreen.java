@@ -17,6 +17,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
@@ -505,7 +506,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /** Items show themselves; fluids show their bucket; energy shows redstone. */
-  private net.minecraft.world.item.Item rowIcon(String id) {
+  private Item rowIcon(String id) {
     if (kind == 2) return Items.REDSTONE;
     var location = ResourceLocation.tryParse(id);
     if (location == null) return Items.BARRIER;
@@ -519,7 +520,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         : Items.BARRIER;
   }
 
-  private static net.minecraft.world.item.Item icon(String id) {
+  private static Item icon(String id) {
     if (id.isEmpty()) return null;
     var location = ResourceLocation.tryParse(id);
     return location == null || !BuiltInRegistries.ITEM.containsKey(location)

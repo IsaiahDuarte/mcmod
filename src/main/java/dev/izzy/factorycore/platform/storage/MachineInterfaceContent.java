@@ -2,9 +2,12 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -24,7 +27,7 @@ public final class MachineInterfaceContent {
           BlockBehaviour.Properties.of()
               .strength(3.5f)
               .requiresCorrectToolForDrops()
-              .sound(net.minecraft.world.level.block.SoundType.METAL));
+              .sound(SoundType.METAL));
   public static final DeferredItem<MachineInterfaceItem> ITEM =
       ITEMS.register("machine_interface", () -> new MachineInterfaceItem(BLOCK.get()));
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MachineInterfaceEntity>>
@@ -34,17 +37,10 @@ public final class MachineInterfaceContent {
               () ->
                   BlockEntityType.Builder.of(MachineInterfaceEntity::new, BLOCK.get()).build(null));
 
-  private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
+  private static final DeferredRegister<MenuType<?>> MENUS =
       DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
-  public static final DeferredHolder<
-          net.minecraft.world.inventory.MenuType<?>,
-          net.minecraft.world.inventory.MenuType<MachineSettingsMenu>>
-      MENU =
-          MENUS.register(
-              "machine_settings",
-              () ->
-                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
-                      MachineSettingsMenu::new));
+  public static final DeferredHolder<MenuType<?>, MenuType<MachineSettingsMenu>> MENU =
+      MENUS.register("machine_settings", () -> IMenuTypeExtension.create(MachineSettingsMenu::new));
 
   private MachineInterfaceContent() {}
 

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.testing.storage;
 
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -9,12 +10,14 @@ import dev.izzy.factorycore.platform.storage.*;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -51,9 +54,7 @@ public final class BufferTransferGameTests {
           NetworkContent.GATEWAY
               .get()
               .defaultBlockState()
-              .setValue(
-                  net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING,
-                  net.minecraft.core.Direction.EAST));
+              .setValue(BlockStateProperties.FACING, Direction.EAST));
       NetworkNodeEntity gate = helper.getBlockEntity(new BlockPos(2, 1, 1));
       gate.commission(null);
     } else helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
@@ -373,7 +374,7 @@ public final class BufferTransferGameTests {
     buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), guest.id());
     var saved = DeviceSavedData.get(helper.getLevel().getServer());
     var runtime = WorldNetworks.get(helper.getLevel().getServer());
-    var mode = dev.izzy.factorycore.core.storage.BufferRegistry.Mode.IMPORT;
+    var mode = BufferRegistry.Mode.IMPORT;
     helper
         .startSequence()
         .thenWaitUntil(
@@ -408,9 +409,7 @@ public final class BufferTransferGameTests {
               helper.assertTrue(
                   denied && saved.buffers().deployment(buffer.handle().id()) == null,
                   "Import also requires current view/deposit/withdraw grants");
-              var paused =
-                  buffer.configure(
-                      guest, dev.izzy.factorycore.core.storage.BufferRegistry.Mode.PAUSED);
+              var paused = buffer.configure(guest, BufferRegistry.Mode.PAUSED);
               helper.assertTrue(
                   paused.revision() == 2 && paused.principal().equals(guest.id()),
                   "Paused deployment records authenticated owner with edit/deploy rights");
@@ -443,9 +442,7 @@ public final class BufferTransferGameTests {
                       && enabled.equals(saved.buffers().deployment(buffer.handle().id()))
                       && buffer.reference().configuration() == 3,
                   "Revoked configuration cannot replace ownership or increment revision");
-              var replacement =
-                  buffer.configure(
-                      actor, dev.izzy.factorycore.core.storage.BufferRegistry.Mode.PAUSED);
+              var replacement = buffer.configure(actor, BufferRegistry.Mode.PAUSED);
               helper.assertTrue(
                   replacement.revision() == 4
                       && replacement.principal().equals(actor.id())

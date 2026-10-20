@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.wireless;
 
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
 import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
@@ -8,6 +9,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -21,6 +23,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /** Paid link drops and unsupported tier data retain exactly one physical owner. */
 @GameTestHolder("factorycore_tests")
@@ -33,8 +36,7 @@ public final class WirelessUpgradeRecoveryGameTests {
   @SuppressWarnings("removal")
   private static ServerPlayer player(GameTestHelper h) {
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     player.setGameMode(GameType.SURVIVAL);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(LINK)));
     return player;
@@ -76,8 +78,7 @@ public final class WirelessUpgradeRecoveryGameTests {
     var tag = link.saveWithoutMetadata(h.getLevel().registryAccess());
     link.loadWithComponents(tag, h.getLevel().registryAccess());
     h.assertTrue(
-        link.tier() == dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME,
-        "Known link tier survives native NBT reload");
+        link.tier() == ThroughputTier.ENDGAME, "Known link tier survives native NBT reload");
     h.getLevel().destroyBlock(h.absolutePos(LINK), true);
     var drops =
         h.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(h.absolutePos(LINK)).inflate(1));
@@ -88,8 +89,7 @@ public final class WirelessUpgradeRecoveryGameTests {
         upgrades += drop.getItem().getCount();
     }
     h.assertTrue(blocks == 1 && upgrades == 1, "Break returns one endpoint and one paid upgrade");
-    player.connection.disconnect(
-        net.minecraft.network.chat.Component.literal("Link upgrade complete"));
+    player.connection.disconnect(Component.literal("Link upgrade complete"));
     h.succeed();
   }
 
@@ -140,8 +140,7 @@ public final class WirelessUpgradeRecoveryGameTests {
           .getEntitiesOfClass(ItemEntity.class, new AABB(h.absolutePos(LINK)).inflate(1))
           .forEach(ItemEntity::discard);
     }
-    player.connection.disconnect(
-        net.minecraft.network.chat.Component.literal("Link recovery complete"));
+    player.connection.disconnect(Component.literal("Link recovery complete"));
     h.succeed();
   }
 }

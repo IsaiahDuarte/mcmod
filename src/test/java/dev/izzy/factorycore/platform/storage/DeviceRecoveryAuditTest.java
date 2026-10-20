@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import java.util.HashMap;
 import net.minecraft.nbt.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -110,7 +111,7 @@ class DeviceRecoveryAuditTest {
 
   @Test
   void binaryAuditSupportsLedgerBeyondTransferSnbtLimit() throws Exception {
-    var contents = new java.util.HashMap<ResourceKey, Long>();
+    var contents = new HashMap<ResourceKey, Long>();
     for (int index = 0; index < 10; index++)
       contents.put(new ResourceKey(ResourceKind.ITEM, "test:large_" + index, new byte[65536]), 10L);
     var original = owner();

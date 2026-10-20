@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.TagParser;
 import org.junit.jupiter.api.Test;
 
@@ -35,7 +36,6 @@ class EnergyBankHandleDataTest {
     }
     assertNull(EnergyBankHandleData.read(null));
     assertThrows(
-        IllegalArgumentException.class,
-        () -> EnergyBankHandleData.read(net.minecraft.nbt.StringTag.valueOf("bad")));
+        IllegalArgumentException.class, () -> EnergyBankHandleData.read(StringTag.valueOf("bad")));
   }
 }

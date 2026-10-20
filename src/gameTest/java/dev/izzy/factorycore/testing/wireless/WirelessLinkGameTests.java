@@ -14,6 +14,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -78,7 +79,7 @@ public final class WirelessLinkGameTests {
               h.absolutePos(end),
               h.getBlockState(end),
               owner,
-              new net.minecraft.world.item.ItemStack(WirelessContent.LINK_ITEM.get()));
+              new ItemStack(WirelessContent.LINK_ITEM.get()));
     LinkEndpointEntity a = h.getBlockEntity(A);
     LinkEndpointEntity b = h.getBlockEntity(B);
     var far = h.absolutePos(A).offset(300, 0, 0);

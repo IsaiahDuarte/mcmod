@@ -30,6 +30,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -41,6 +42,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -54,8 +56,7 @@ public final class CraftingUnitGameTests {
 
   private CraftingUnitGameTests() {}
 
-  private static ItemStack pattern(
-      net.minecraft.world.item.Item input, net.minecraft.world.item.Item output, int count) {
+  private static ItemStack pattern(Item input, Item output, int count) {
     var cells = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
     cells.set(0, new ItemStack(input));
     var stack = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
@@ -213,8 +214,7 @@ public final class CraftingUnitGameTests {
   @GameTest(template = "empty", timeoutTicks = 300)
   public static void terminalEncodesExactRecipeOntoOneBlankPattern(GameTestHelper h) {
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());

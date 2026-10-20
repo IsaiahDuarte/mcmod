@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 class TransferRecoveryTest {
@@ -16,7 +17,7 @@ class TransferRecoveryTest {
     long stock;
     long acceptance = Long.MAX_VALUE;
     StagedTransfer.Snapshot interrupted;
-    java.util.function.Supplier<StagedTransfer.Snapshot> saved;
+    Supplier<StagedTransfer.Snapshot> saved;
     boolean interrupt;
 
     Port(long stock) {

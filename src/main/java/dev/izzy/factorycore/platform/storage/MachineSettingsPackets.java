@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import java.util.UUID;
@@ -96,7 +97,7 @@ public final class MachineSettingsPackets {
           || status.length() > 32
           || tier.length() > 16
           || maxRate < 1
-          || maxRate > dev.izzy.factorycore.core.resource.ThroughputTier.maxQuantum(form.kind()))
+          || maxRate > ThroughputTier.maxQuantum(form.kind()))
         throw new IllegalArgumentException("Machine view bounds");
     }
 

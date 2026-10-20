@@ -20,6 +20,9 @@ import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import net.minecraft.core.BlockPos;
@@ -35,6 +38,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -50,7 +54,7 @@ public final class WasmProgramGameTests {
   private static byte[] smelter() {
     try {
       return Files.readAllBytes(Path.of(System.getProperty("factorycore.test.smelter")));
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
   }
@@ -59,8 +63,7 @@ public final class WasmProgramGameTests {
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void uploadedRustGuestStocksALabeledMachineAndSurvivesReload(GameTestHelper h) {
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     var owner = new NetworkPermissions.Actor(player.getUUID(), false);
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
@@ -176,9 +179,7 @@ public final class WasmProgramGameTests {
   }
 
   private static long count(byte[] state) {
-    return state == null
-        ? 0
-        : java.nio.ByteBuffer.wrap(state).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong();
+    return state == null ? 0 : ByteBuffer.wrap(state).order(ByteOrder.LITTLE_ENDIAN).getLong();
   }
 
   @SuppressWarnings("removal")
@@ -194,7 +195,7 @@ public final class WasmProgramGameTests {
     byte[] counter;
     try {
       counter = Files.readAllBytes(Path.of(System.getProperty("factorycore.test.counter")));
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
     var programs = WorldPrograms.get(h.getLevel().getServer());

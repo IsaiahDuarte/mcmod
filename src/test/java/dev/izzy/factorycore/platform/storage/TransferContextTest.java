@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -12,6 +13,8 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.storage.DimensionDataStorage;
@@ -74,9 +77,7 @@ class TransferContextTest {
   void committedContextFixtureKeepsExactScopeAndReferenceTypes() throws Exception {
     try (var input = getClass().getResourceAsStream("/persistence/transfer-context-v1.snbt")) {
       assertNotNull(input);
-      var tag =
-          net.minecraft.nbt.TagParser.parseTag(
-              new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+      var tag = TagParser.parseTag(new String(input.readAllBytes(), StandardCharsets.UTF_8));
       var context = TransferContextCodec.decode(tag);
       assertEquals(new UUID(0, 102), context.segment());
       assertEquals(42, context.origin().block());
@@ -177,7 +178,7 @@ class TransferContextTest {
     var malformed = loaded.save(new CompoundTag(), registries);
     var original = malformed.copy();
     malformed
-        .getList("Transfers", net.minecraft.nbt.Tag.TAG_COMPOUND)
+        .getList("Transfers", Tag.TAG_COMPOUND)
         .getCompound(0)
         .getCompound("Context")
         .getCompound("Source")
@@ -188,7 +189,7 @@ class TransferContextTest {
     assertNotEquals(original, malformed);
     var unknownWorld = original.copy();
     unknownWorld
-        .getList("Transfers", net.minecraft.nbt.Tag.TAG_COMPOUND)
+        .getList("Transfers", Tag.TAG_COMPOUND)
         .getCompound(0)
         .getCompound("Context")
         .putUUID("World", UUID.randomUUID());

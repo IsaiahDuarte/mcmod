@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.program;
 
+import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -8,6 +9,10 @@ import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.crafting.CraftingContent;
+import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
+import dev.izzy.factorycore.platform.crafting.ProcessingContents;
+import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -21,11 +26,15 @@ import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.locks.LockSupport;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -56,7 +65,7 @@ public final class ProgramLimitsGameTests {
       NetworkPermissions.Actor owner,
       DeviceSavedData saved,
       DeviceRegistry.Handle cell,
-      java.util.List<DeviceRegistry.Handle> cells,
+      List<DeviceRegistry.Handle> cells,
       ProgramControllerEntity controller,
       MachineInterfaceEntity machine,
       ChestBlockEntity chest,
@@ -96,7 +105,7 @@ public final class ProgramLimitsGameTests {
    * shared scheduler saturated for later batches.
    */
   private static final class Overload {
-    private final net.minecraft.server.MinecraftServer server;
+    private final MinecraftServer server;
     private final int until;
     boolean on;
 
@@ -160,7 +169,7 @@ public final class ProgramLimitsGameTests {
     root.commission(owner.id());
     h.setBlock(DRIVE, StorageContent.DRIVE.get());
     StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-    var handles = new java.util.ArrayList<DeviceRegistry.Handle>();
+    var handles = new ArrayList<DeviceRegistry.Handle>();
     for (int i = 0; i < cells; i++) {
       drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
       handles.add(CellHandleData.read(drive.cell(i)));
@@ -181,7 +190,7 @@ public final class ProgramLimitsGameTests {
         owner,
         DeviceSavedData.get(h.getLevel().getServer()),
         CellHandleData.read(drive.cell(0)),
-        java.util.List.copyOf(handles),
+        List.copyOf(handles),
         h.getBlockEntity(CONTROLLER),
         machine,
         chest,
@@ -212,7 +221,7 @@ public final class ProgramLimitsGameTests {
                 new ConnectorSettings(
                     ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 27, 64),
                 "out")
-            == dev.izzy.factorycore.core.network.NetworkAuthority.Decision.ALLOWED,
+            == NetworkAuthority.Decision.ALLOWED,
         "Machine labeled");
   }
 
@@ -346,7 +355,7 @@ public final class ProgramLimitsGameTests {
                   Runnable[] task = {null};
                   task[0] =
                       () -> {
-                        java.util.concurrent.locks.LockSupport.parkNanos(500_000);
+                        LockSupport.parkNanos(500_000);
                         if (overload.active())
                           scheduler.submit(network, program, "heavy", cost, task[0]);
                       };
@@ -406,25 +415,22 @@ public final class ProgramLimitsGameTests {
     var facePos = new BlockPos(3, 1, 2);
     h.setBlock(
         facePos,
-        dev.izzy.factorycore.platform.crafting.CraftingContent.INTERFACE
+        CraftingContent.INTERFACE
             .get()
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.NORTH));
-    dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity face = h.getBlockEntity(facePos);
-    var pattern =
-        new ItemStack(
-            dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING_PATTERN.get());
+    CraftingInterfaceEntity face = h.getBlockEntity(facePos);
+    var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
     pattern.set(
-        dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING.get(),
-        new dev.izzy.factorycore.platform.crafting.ProcessingContents(
+        CraftingContent.PROCESSING.get(),
+        new ProcessingContents(
             UUID.randomUUID(),
             1,
             0,
-            java.util.List.of(new ItemStack(Items.COBBLESTONE)),
-            java.util.List.of(new ItemStack(Items.STONE))));
+            List.of(new ItemStack(Items.COBBLESTONE)),
+            List.of(new ItemStack(Items.STONE))));
     face.patterns().insertItem(0, pattern, false);
-    var jobs =
-        dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(h.getLevel().getServer());
+    var jobs = WorldCraftingJobs.get(h.getLevel().getServer());
     UUID[] job = {null};
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f))

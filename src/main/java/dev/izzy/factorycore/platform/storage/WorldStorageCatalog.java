@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourceLedger;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.ArrayList;
 import java.util.List;
@@ -169,8 +170,7 @@ public final class WorldStorageCatalog {
     if (endpoint == null) {
       var owners = saved.registry().handles(cursor.after(), 8);
       for (var handle : owners.handles()) {
-        if (saved.registry().validate(handle)
-                == dev.izzy.factorycore.core.storage.DeviceRegistry.Failure.OK
+        if (saved.registry().validate(handle) == DeviceRegistry.Failure.OK
             && saved.registry().definition(handle).kind() == cursor.kind()
             && transfers.routeAllowed(
                 actor,

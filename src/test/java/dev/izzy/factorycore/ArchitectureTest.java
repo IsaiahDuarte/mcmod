@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import dev.izzy.factorycore.integration.FakeOptionalApi;
 import org.junit.jupiter.api.Test;
 
 class ArchitectureTest {
@@ -52,6 +53,6 @@ class ArchitectureTest {
   }
 
   private static final class IllegalIntegration {
-    dev.izzy.factorycore.integration.FakeOptionalApi api;
+    FakeOptionalApi api;
   }
 }

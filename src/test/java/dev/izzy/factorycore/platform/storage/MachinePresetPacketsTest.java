@@ -2,14 +2,18 @@ package dev.izzy.factorycore.platform.storage;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.storage.MachinePresets;
 import io.netty.buffer.Unpooled;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.Bootstrap;
+import net.neoforged.neoforge.network.connection.ConnectionType;
 import org.junit.jupiter.api.*;
 
 class MachinePresetPacketsTest {
@@ -23,7 +27,7 @@ class MachinePresetPacketsTest {
     return new RegistryFriendlyByteBuf(
         Unpooled.buffer(),
         RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY),
-        net.neoforged.neoforge.network.connection.ConnectionType.NEOFORGE);
+        ConnectionType.NEOFORGE);
   }
 
   @Test
@@ -49,12 +53,12 @@ class MachinePresetPacketsTest {
               command.session(),
               42,
               ResourceKind.ITEM,
-              dev.izzy.factorycore.core.storage.MachinePresets.Mode.STOCK,
-              dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE,
+              MachinePresets.Mode.STOCK,
+              ResourceFilter.Mode.INCLUDE,
               Long.MAX_VALUE,
-              java.util.List.of("= minecraft:iron_ingot · Named iron"),
+              List.of("= minecraft:iron_ingot · Named iron"),
               "draft",
-              dev.izzy.factorycore.core.storage.MachinePresets.Mode.PAUSED,
+              MachinePresets.Mode.PAUSED,
               "ok",
               true,
               false,
@@ -90,8 +94,8 @@ class MachinePresetPacketsTest {
       b.writeUUID(id);
       b.writeLong(1);
       b.writeEnum(ResourceKind.ITEM);
-      b.writeEnum(dev.izzy.factorycore.core.storage.MachinePresets.Mode.PAUSED);
-      b.writeEnum(dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL);
+      b.writeEnum(MachinePresets.Mode.PAUSED);
+      b.writeEnum(ResourceFilter.Mode.ALL);
       b.writeLong(0);
       b.writeVarInt(17);
       assertThrows(IllegalArgumentException.class, () -> MachinePresetPackets.View.CODEC.decode(b));

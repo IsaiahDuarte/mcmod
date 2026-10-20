@@ -1,10 +1,12 @@
 package dev.izzy.factorycore.platform.storage;
 
 import com.mojang.logging.LogUtils;
+import dev.izzy.factorycore.core.crafting.CraftingJobs;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ExternalClaims;
 import dev.izzy.factorycore.core.resource.LedgerStateCodec;
+import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.resource.TransferRegistry;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
@@ -12,9 +14,11 @@ import dev.izzy.factorycore.core.storage.EnergyBankAccess;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.core.storage.RouteCursors;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -52,7 +56,7 @@ public final class DeviceSavedData extends SavedData {
   private final RouteCursors routeCursors;
   private final BufferRegistry buffers;
   private final MachinePresets machinePresets;
-  private final dev.izzy.factorycore.core.crafting.CraftingJobs craftingJobs;
+  private final CraftingJobs craftingJobs;
   private final CompoundTag rejected;
   private final String diagnostic;
 
@@ -97,7 +101,7 @@ public final class DeviceSavedData extends SavedData {
         if (transfer.context() != null)
           for (var endpoint :
               List.of(transfer.context().source(), transfer.context().destination()))
-            if (endpoint.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.EXTERNAL
+            if (endpoint.type() == TransferContext.Type.EXTERNAL
                 && nodes.contains(endpoint.device())
                 && nodes.kind(endpoint.device()) == NodeRegistry.Kind.MACHINE_INTERFACE)
               legacy.merge(endpoint.device(), endpoint.configuration(), Math::max);
@@ -128,10 +132,8 @@ public final class DeviceSavedData extends SavedData {
         if (!state.world().equals(context.world()) || !networks.containsKey(context.network()))
           throw new IllegalArgumentException("Transfer context has unknown world/network");
         for (var endpoint :
-            new dev.izzy.factorycore.core.resource.TransferContext.Endpoint[] {
-              context.source(), context.destination()
-            })
-          if (endpoint.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.PLAYER
+            new TransferContext.Endpoint[] {context.source(), context.destination()})
+          if (endpoint.type() == TransferContext.Type.PLAYER
               && (registry.containsBacking(endpoint.backing())
                   || nodes.contains(endpoint.backing())
                   || networks.containsKey(endpoint.backing())))
@@ -140,7 +142,7 @@ public final class DeviceSavedData extends SavedData {
     for (var record : transferStates)
       if (record.context() != null)
         for (var endpoint : List.of(record.context().source(), record.context().destination()))
-          if (endpoint.type() == dev.izzy.factorycore.core.resource.TransferContext.Type.EXTERNAL
+          if (endpoint.type() == TransferContext.Type.EXTERNAL
               && nodes.contains(endpoint.device())
               && nodes.kind(endpoint.device()) == NodeRegistry.Kind.MACHINE_INTERFACE
               && machinePresets.configuration(endpoint.device()) < endpoint.configuration())
@@ -167,8 +169,7 @@ public final class DeviceSavedData extends SavedData {
     craftingJobs =
         state == null
             ? null
-            : new dev.izzy.factorycore.core.crafting.CraftingJobs(
-                jobStates.jobs(), jobStates.rules(), this::setDirty);
+            : new CraftingJobs(jobStates.jobs(), jobStates.rules(), this::setDirty);
     for (var rule : jobStates.rules())
       if (!networks.containsKey(rule.network()))
         throw new IllegalArgumentException("Keep-stock rule has unknown network");
@@ -193,8 +194,7 @@ public final class DeviceSavedData extends SavedData {
       saved.energyBanks =
           new EnergyBankAccess(saved.registry, () -> Integer.toUnsignedLong(server.getTickCount()));
     if (saved.buffers != null) {
-      var codec =
-          new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(server.registryAccess());
+      var codec = new PlatformResourceCodec(server.registryAccess());
       saved.buffers.stackLimit(key -> codec.itemStack(key, 1).getMaxStackSize());
     }
     return saved;
@@ -270,7 +270,7 @@ public final class DeviceSavedData extends SavedData {
     return machinePresets;
   }
 
-  public dev.izzy.factorycore.core.crafting.CraftingJobs craftingJobs() {
+  public CraftingJobs craftingJobs() {
     registry().world();
     return craftingJobs;
   }
@@ -321,7 +321,7 @@ public final class DeviceSavedData extends SavedData {
    * True when {@code backing} is a Factory Core-owned identity (a cell/bank ledger or a structural
    * node, including Buffered Interfaces), which can never be a foreign provider's backing.
    */
-  public boolean canonicalIdentity(java.util.UUID backing) {
+  public boolean canonicalIdentity(UUID backing) {
     return registry().containsBacking(backing) || nodes().evidence(backing) != null;
   }
 
@@ -462,22 +462,18 @@ public final class DeviceSavedData extends SavedData {
               .anyMatch(
                   record ->
                       record.context() != null
-                          && (record.context().source().type()
-                                  == dev.izzy.factorycore.core.resource.TransferContext.Type.BUFFER
+                          && (record.context().source().type() == TransferContext.Type.BUFFER
                               || record.context().destination().type()
-                                  == dev.izzy.factorycore.core.resource.TransferContext.Type
-                                      .BUFFER)))
+                                  == TransferContext.Type.BUFFER)))
         throw new IllegalArgumentException("Buffer transfer requires world schema nine");
       if (schema < 10
           && transferStates.stream()
               .anyMatch(
                   record ->
                       record.context() != null
-                          && (record.context().source().type()
-                                  == dev.izzy.factorycore.core.resource.TransferContext.Type.PLAYER
+                          && (record.context().source().type() == TransferContext.Type.PLAYER
                               || record.context().destination().type()
-                                  == dev.izzy.factorycore.core.resource.TransferContext.Type
-                                      .PLAYER)))
+                                  == TransferContext.Type.PLAYER)))
         throw new IllegalArgumentException("Player transfer requires world schema ten");
       var loaded =
           new DeviceSavedData(
@@ -565,7 +561,7 @@ public final class DeviceSavedData extends SavedData {
   }
 
   private static Set<String> worldFields(int schema) {
-    var fields = new java.util.HashSet<>(Set.of("Schema", "World", "Devices"));
+    var fields = new HashSet<>(Set.of("Schema", "World", "Devices"));
     if (schema >= 2) fields.add("Networks");
     if (schema >= 3) fields.add("Nodes");
     if (schema >= 4) fields.add("Transfers");

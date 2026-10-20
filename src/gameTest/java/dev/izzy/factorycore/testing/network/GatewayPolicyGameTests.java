@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -53,8 +54,7 @@ public final class GatewayPolicyGameTests {
     var owner = h.makeMockServerPlayerInLevel();
     var stranger = h.makeMockServerPlayerInLevel();
     for (var player : new ServerPlayer[] {owner, stranger})
-      net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-          player.connection.getConnection());
+      NetworkRegistry.configureMockConnection(player.connection.getConnection());
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     NetworkNodeEntity root = h.getBlockEntity(ROOT);
     root.commission(owner.getUUID());

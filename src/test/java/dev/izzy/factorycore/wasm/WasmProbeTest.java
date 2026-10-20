@@ -3,6 +3,7 @@ package dev.izzy.factorycore.wasm;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -10,7 +11,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class WasmProbeTest {
-  static byte[] guest() throws java.io.IOException {
+  static byte[] guest() throws IOException {
     return Files.readAllBytes(Path.of(System.getProperty("factorycore.test.guest")));
   }
 

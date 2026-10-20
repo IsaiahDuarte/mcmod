@@ -2,6 +2,7 @@ package dev.izzy.factorycore.core.wasm;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
+import java.util.Set;
 
 /**
  * MVP-only declaration fence run before the allocating third-party parser (ADR 0004/0037). Only
@@ -12,8 +13,8 @@ import java.util.Arrays;
 public final class WasmPreflight {
   public static final int MAX_ARTIFACT = 131_072;
   public static final String MODULE = "factory_v1";
-  public static final java.util.Set<String> IMPORTS =
-      java.util.Set.of(
+  public static final Set<String> IMPORTS =
+      Set.of(
           "register_rule",
           "machines",
           "keep",

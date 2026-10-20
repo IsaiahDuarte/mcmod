@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /** Version-one bounded binary component codec, independent of world save/ownership policy. */
@@ -48,7 +49,7 @@ public final class LedgerStateCodec {
       output.writeInt(state.catalogLimit());
       output.writeInt(state.reservationLimit());
       var stock = new ArrayList<>(state.contents().entrySet());
-      stock.sort(java.util.Map.Entry.comparingByKey());
+      stock.sort(Map.Entry.comparingByKey());
       output.writeInt(stock.size());
       for (var entry : stock) {
         writeKey(output, entry.getKey());

@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.core.crafting;
 
+import dev.izzy.factorycore.core.resource.ResourceKey;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -106,11 +107,7 @@ public final class CraftingJobs {
     return null;
   }
 
-  public KeepStockRule ruleFor(
-      UUID principal,
-      UUID network,
-      UUID segment,
-      dev.izzy.factorycore.core.resource.ResourceKey key) {
+  public KeepStockRule ruleFor(UUID principal, UUID network, UUID segment, ResourceKey key) {
     checkThread();
     for (var rule : rules.values())
       if (rule.principal().equals(principal)

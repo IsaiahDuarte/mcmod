@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.testing.storage;
 
+import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
+import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
@@ -32,6 +34,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.neoforged.neoforge.network.registration.NetworkRegistry;
 
 /** Actual item installation, permission failure, rate enforcement and portable ownership. */
 @GameTestHolder("factorycore_tests")
@@ -57,8 +60,7 @@ public final class ThroughputUpgradeGameTests {
   @SuppressWarnings("removal")
   private static Fixture setup(GameTestHelper h) {
     var player = h.makeMockServerPlayerInLevel();
-    net.neoforged.neoforge.network.registration.NetworkRegistry.configureMockConnection(
-        player.connection.getConnection());
+    NetworkRegistry.configureMockConnection(player.connection.getConnection());
     player.setGameMode(GameType.SURVIVAL);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
@@ -110,8 +112,7 @@ public final class ThroughputUpgradeGameTests {
     f.player.connection.disconnect(Component.literal("Throughput fixture complete"));
   }
 
-  private static long extract(
-      ResourcePort port, dev.izzy.factorycore.core.resource.ResourceKey key, long requested) {
+  private static long extract(ResourcePort port, ResourceKey key, long requested) {
     long moved = 0;
     // A platform handler may return only one stack per call; the contract caps their aggregate.
     for (int call = 0; call < 64 && moved < requested; call++) {
@@ -235,7 +236,7 @@ public final class ThroughputUpgradeGameTests {
               var stranger = new NetworkPermissions.Actor(UUID.randomUUID(), false);
               h.assertTrue(
                   f.port.installThroughput(stranger, ThroughputTier.ADVANCED)
-                          == dev.izzy.factorycore.core.network.NetworkAuthority.Decision.DENIED
+                          == NetworkAuthority.Decision.DENIED
                       && f.port.tier() == ThroughputTier.BASE,
                   "Foreign actor cannot upgrade private hardware");
               f.buffer.inventory().insert(key, 23);

@@ -2,10 +2,14 @@ package dev.izzy.factorycore.core.resource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.izzy.factorycore.core.network.NodeRegistry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 
 class TransferRegistryTest {
@@ -263,7 +267,7 @@ class TransferRegistryTest {
     assertEquals(20, dest.stock);
     holder[0].retire(id);
     assertTrue(holder[0].snapshot().isEmpty());
-    var failure = new java.util.concurrent.atomic.AtomicReference<Throwable>();
+    var failure = new AtomicReference<Throwable>();
     var thread =
         new Thread(
             () -> {
@@ -349,7 +353,7 @@ class TransferRegistryTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             UUID.randomUUID(),
-            new dev.izzy.factorycore.core.network.NodeRegistry.Position("minecraft:overworld", 0),
+            new NodeRegistry.Position("minecraft:overworld", 0),
             new TransferContext.Endpoint(TransferContext.Type.DIGITAL, source.id, source.id, 1, 0),
             new TransferContext.Endpoint(
                 TransferContext.Type.EXTERNAL, device, destination.id, 1, 1));
@@ -431,7 +435,7 @@ class TransferRegistryTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             UUID.randomUUID(),
-            new dev.izzy.factorycore.core.network.NodeRegistry.Position("minecraft:overworld", 0),
+            new NodeRegistry.Position("minecraft:overworld", 0),
             new TransferContext.Endpoint(TransferContext.Type.DIGITAL, source.id, source.id, 1, 0),
             new TransferContext.Endpoint(
                 TransferContext.Type.EXTERNAL, UUID.randomUUID(), target.id, 1, 1));
@@ -479,8 +483,8 @@ class TransferRegistryTest {
     var cellA = UUID.randomUUID();
     var cellB = UUID.randomUUID();
     var provider = UUID.randomUUID();
-    java.util.function.Predicate<UUID> canonical = id -> id.equals(cellA) || id.equals(cellB);
-    java.util.function.BiFunction<UUID, Boolean, StagedTransfer.Snapshot> legacy =
+    Predicate<UUID> canonical = id -> id.equals(cellA) || id.equals(cellB);
+    BiFunction<UUID, Boolean, StagedTransfer.Snapshot> legacy =
         (destination, uncertain) ->
             new StagedTransfer.Snapshot(
                 UUID.randomUUID(),
@@ -534,7 +538,7 @@ class TransferRegistryTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             UUID.randomUUID(),
-            new dev.izzy.factorycore.core.network.NodeRegistry.Position("minecraft:overworld", 0),
+            new NodeRegistry.Position("minecraft:overworld", 0),
             new TransferContext.Endpoint(TransferContext.Type.DIGITAL, cellA, cellA, 1, 0),
             new TransferContext.Endpoint(
                 TransferContext.Type.EXTERNAL, UUID.randomUUID(), provider, 1, 1)));

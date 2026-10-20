@@ -7,10 +7,12 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.RecoveryMenu;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -268,7 +270,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
         pending = AccessPackets.NONE;
       }
       case AccessPackets.RECOVERY -> {
-        dev.izzy.factorycore.platform.storage.RecoveryMenu.open(sender);
+        RecoveryMenu.open(sender);
         return;
       }
       default -> {
@@ -377,7 +379,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
           0);
     var principals = new ArrayList<AccessPackets.Row>();
     canonical.grants().entrySet().stream()
-        .sorted(java.util.Map.Entry.comparingByKey())
+        .sorted(Map.Entry.comparingByKey())
         .forEach(
             entry ->
                 principals.add(

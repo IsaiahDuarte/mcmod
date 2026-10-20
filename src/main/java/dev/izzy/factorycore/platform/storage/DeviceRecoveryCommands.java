@@ -1,8 +1,10 @@
 package dev.izzy.factorycore.platform.storage;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import java.io.IOException;
 import java.util.*;
@@ -58,10 +60,7 @@ final class DeviceRecoveryCommands {
                                         net.minecraft.commands.arguments.coordinates
                                             .BlockPosArgument.blockPos())
                                     .then(
-                                        Commands.argument(
-                                                "slot",
-                                                com.mojang.brigadier.arguments.IntegerArgumentType
-                                                    .integer(0, 3))
+                                        Commands.argument("slot", IntegerArgumentType.integer(0, 3))
                                             .executes(
                                                 c ->
                                                     adopt(
@@ -176,8 +175,7 @@ final class DeviceRecoveryCommands {
   }
 
   private static boolean matches(DeviceRegistry.Ownership owner, boolean bank) {
-    return (owner.definition().kind() == dev.izzy.factorycore.core.resource.ResourceKind.ENERGY)
-        == bank;
+    return (owner.definition().kind() == ResourceKind.ENERGY) == bank;
   }
 
   private static UUID parse(String value) {

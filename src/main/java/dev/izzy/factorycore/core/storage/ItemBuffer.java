@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -68,7 +69,7 @@ public final class ItemBuffer implements ResourcePort {
   }
 
   public static State empty(UUID backing) {
-    return new State(backing, java.util.Collections.nCopies(SLOTS, Slot.empty()));
+    return new State(backing, Collections.nCopies(SLOTS, Slot.empty()));
   }
 
   @Override

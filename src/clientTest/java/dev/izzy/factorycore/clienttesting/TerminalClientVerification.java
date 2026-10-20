@@ -7,29 +7,44 @@ import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
+import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
+import dev.izzy.factorycore.platform.client.ProgramScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
+import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.*;
+import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
+import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.inventory.BookViewScreen;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
@@ -37,11 +52,14 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.level.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.entity.HopperBlockEntity;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -116,9 +134,7 @@ public final class TerminalClientVerification {
       bufferTick(client);
       return;
     }
-    if (stage == 0
-        && client.screen
-            instanceof net.minecraft.client.gui.screens.AccessibilityOnboardingScreen onboarding) {
+    if (stage == 0 && client.screen instanceof AccessibilityOnboardingScreen onboarding) {
       onboarding.onClose();
       return;
     }
@@ -778,10 +794,7 @@ public final class TerminalClientVerification {
                     MachineInterfaceContent.BLOCK
                         .get()
                         .defaultBlockState()
-                        .setValue(
-                            net.minecraft.world.level.block.state.properties.BlockStateProperties
-                                .FACING,
-                            Direction.SOUTH),
+                        .setValue(BlockStateProperties.FACING, Direction.SOUTH),
                     3);
                 ((MachineInterfaceEntity) level.getBlockEntity(new BlockPos(2, 65, 2)))
                     .place(new ItemStack(MachineInterfaceContent.ITEM.get()));
@@ -883,8 +896,7 @@ public final class TerminalClientVerification {
                       && machine.settings().firstSlot() == 2
                       && machine.settings().slotCount() == 1
                       && machine.settings().priority() == -7
-                      && machine.settings().access()
-                          == dev.izzy.factorycore.core.storage.ConnectorSettings.Access.READ_ONLY,
+                      && machine.settings().access() == ConnectorSettings.Access.READ_ONLY,
                   "Native Apply publishes exact complete machine settings");
               checked.set(true);
             } catch (RuntimeException error) {
@@ -917,9 +929,7 @@ public final class TerminalClientVerification {
           () -> {
             try {
               var player = server.getPlayerList().getPlayer(principal);
-              var chest =
-                  (net.minecraft.world.level.block.entity.ChestBlockEntity)
-                      player.serverLevel().getBlockEntity(location.south());
+              var chest = (ChestBlockEntity) player.serverLevel().getBlockEntity(location.south());
               if (chest.getItem(2).getCount() != 8) return;
               check(
                   chest.getItem(0).isEmpty() && chest.getItem(1).isEmpty(),
@@ -1014,19 +1024,11 @@ public final class TerminalClientVerification {
                     NetworkContent.GATEWAY
                         .get()
                         .defaultBlockState()
-                        .setValue(
-                            net.minecraft.world.level.block.state.properties.BlockStateProperties
-                                .FACING,
-                            Direction.WEST),
+                        .setValue(BlockStateProperties.FACING, Direction.WEST),
                     3);
                 ((NetworkNodeEntity) level.getBlockEntity(GATEWAY)).commission(null);
                 level.setBlock(BRANCH, NetworkContent.CABLE.get().defaultBlockState(), 3);
-                level.setBlock(
-                    PROGRAM,
-                    dev.izzy.factorycore.platform.program.ProgramContent.BLOCK
-                        .get()
-                        .defaultBlockState(),
-                    3);
+                level.setBlock(PROGRAM, ProgramContent.BLOCK.get().defaultBlockState(), 3);
                 player.teleportTo(0.5, 65, 3.5);
                 player.setYRot(180);
                 player.setXRot(20);
@@ -1057,9 +1059,8 @@ public final class TerminalClientVerification {
         next();
       }
       case 63 -> {
-        if (!(client.screen
-                instanceof dev.izzy.factorycore.platform.client.GatewayPolicyScreen screen)
-            || !screen.getMenu().editable()) return;
+        if (!(client.screen instanceof GatewayPolicyScreen screen) || !screen.getMenu().editable())
+          return;
         shift(client, false);
         policyMask = screen.getMenu().policy().mask();
         var first =
@@ -1073,8 +1074,7 @@ public final class TerminalClientVerification {
         next();
       }
       case 64 -> {
-        if (!(client.screen
-                instanceof dev.izzy.factorycore.platform.client.GatewayPolicyScreen screen)
+        if (!(client.screen instanceof GatewayPolicyScreen screen)
             || screen.getMenu().policy().mask() == policyMask) return;
         check(
             (screen.getMenu().policy().mask() ^ policyMask) == 1,
@@ -1109,8 +1109,7 @@ public final class TerminalClientVerification {
         next();
       }
       case 67 -> {
-        if (!(client.screen instanceof dev.izzy.factorycore.platform.client.ProgramScreen screen)
-            || ticks - entered < 10) return;
+        if (!(client.screen instanceof ProgramScreen screen) || ticks - entered < 10) return;
         checkNoOverlap(screen);
         if (!programAuthoring.tick(client, screen, ticks, name -> capture(client, name))) return;
         checkNoOverlap(screen);
@@ -1124,26 +1123,18 @@ public final class TerminalClientVerification {
                     .getPlayerList()
                     .getPlayer(principal)
                     .getInventory()
-                    .setItem(
-                        0,
-                        new ItemStack(
-                            dev.izzy.factorycore.platform.guide.GuideContent.GUIDE.get())));
+                    .setItem(0, new ItemStack(GuideContent.GUIDE.get())));
         next();
       }
       case 68 -> {
         if (client.screen != null
-            || !client
-                .player
-                .getInventory()
-                .getItem(0)
-                .is(dev.izzy.factorycore.platform.guide.GuideContent.GUIDE.get())) return;
+            || !client.player.getInventory().getItem(0).is(GuideContent.GUIDE.get())) return;
         client.player.getInventory().selected = 0;
         client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND);
         next();
       }
       case 69 -> {
-        if (!(client.screen
-            instanceof net.minecraft.client.gui.screens.inventory.BookViewScreen screen)) return;
+        if (!(client.screen instanceof BookViewScreen screen)) return;
         capture(client, "guide-page-1.png");
         screen.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
         next();
@@ -1173,23 +1164,14 @@ public final class TerminalClientVerification {
                 var player = server.getPlayerList().getPlayer(principal);
                 var level = player.serverLevel();
                 level.setBlock(
-                    ACCESS_POINT,
-                    dev.izzy.factorycore.platform.wireless.WirelessContent.ACCESS_POINT
-                        .get()
-                        .defaultBlockState(),
-                    3);
+                    ACCESS_POINT, WirelessContent.ACCESS_POINT.get().defaultBlockState(), 3);
                 level.setBlock(new BlockPos(20, 64, 4), Blocks.STONE.defaultBlockState(), 3);
-                var handheld =
-                    new ItemStack(
-                        dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get());
+                var handheld = new ItemStack(WirelessContent.HANDHELD.get());
                 handheld.set(
-                    dev.izzy.factorycore.platform.wireless.WirelessContent.BINDING.get(),
-                    new dev.izzy.factorycore.platform.wireless.WirelessContent.Binding(
+                    WirelessContent.BINDING.get(),
+                    new WirelessContent.Binding(
                         level.dimension().location().toString(), ACCESS_POINT.asLong()));
-                handheld
-                    .getCapability(
-                        net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.ITEM)
-                    .receiveEnergy(1_000, false);
+                handheld.getCapability(Capabilities.EnergyStorage.ITEM).receiveEnergy(1_000, false);
                 player.getInventory().setItem(0, handheld);
                 player.getInventory().selected = 0;
                 player.teleportTo(20.5, 65, 4.5);
@@ -1205,11 +1187,7 @@ public final class TerminalClientVerification {
         powerAccessPoint(server);
         if (client.screen != null
             || client.player.distanceToSqr(20.5, 65, 4.5) > 1
-            || !client
-                .player
-                .getInventory()
-                .getItem(0)
-                .is(dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get())) return;
+            || !client.player.getInventory().getItem(0).is(WirelessContent.HANDHELD.get())) return;
         client.player.getInventory().selected = 0;
         client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND);
         next();
@@ -1268,7 +1246,7 @@ public final class TerminalClientVerification {
             || ticks - entered < 10) return;
         String name = stage == 74 ? "Fluids" : "Energy";
         checkNoOverlap(screen);
-        capture(client, "terminal-" + name.toLowerCase(java.util.Locale.ROOT) + "-scale-2.png");
+        capture(client, "terminal-" + name.toLowerCase(Locale.ROOT) + "-scale-2.png");
         evidence.append(
             "terminal-"
                 + name
@@ -1340,8 +1318,7 @@ public final class TerminalClientVerification {
         next();
       }
       case 95 -> {
-        if (!(client.screen
-                instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen screen)
+        if (!(client.screen instanceof ContainerScreen screen)
             || screen.getMenu().getItems().stream().filter(stack -> !stack.isEmpty()).count() < 32
             || ticks - entered < 10) return;
         capture(client, "art-items-scale-2.png");
@@ -1426,11 +1403,10 @@ public final class TerminalClientVerification {
 
   /** Keeps the fixture access point above its 16 FE/tick upkeep while the handheld is in use. */
   @SuppressWarnings("PMD.CloseResource") // Borrowed integrated server.
-  private static void powerAccessPoint(net.minecraft.server.MinecraftServer server) {
+  private static void powerAccessPoint(MinecraftServer server) {
     server.execute(
         () -> {
-          if (server.overworld().getBlockEntity(ACCESS_POINT)
-              instanceof dev.izzy.factorycore.platform.wireless.AccessPointEntity point)
+          if (server.overworld().getBlockEntity(ACCESS_POINT) instanceof AccessPointEntity point)
             point.energyStorage().receiveEnergy(1_000, false);
         });
   }
@@ -1438,13 +1414,11 @@ public final class TerminalClientVerification {
   /** Sends the actual sneak state the server reads for gateway sneak-use. */
   private static void shift(Minecraft client, boolean down) {
     client.player.connection.send(
-        new net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket(
+        new ServerboundPlayerCommandPacket(
             client.player,
             down
-                ? net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
-                    .PRESS_SHIFT_KEY
-                : net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket.Action
-                    .RELEASE_SHIFT_KEY));
+                ? ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY
+                : ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
   }
 
   @SuppressWarnings("PMD.CloseResource") // Borrowed active client.
@@ -1529,8 +1503,7 @@ public final class TerminalClientVerification {
       }
       case 55 -> {
         check(
-            screen.getMenu().presetView().mode()
-                == dev.izzy.factorycore.core.storage.MachinePresets.Mode.STOCK,
+            screen.getMenu().presetView().mode() == MachinePresets.Mode.STOCK,
             "Actual mode commands author Stock draft");
         click(screen, "Copy sample");
         next();
@@ -1695,11 +1668,8 @@ public final class TerminalClientVerification {
   private static void checkNoOverlap(Screen screen) {
     var widgets =
         screen.children().stream()
-            .filter(
-                child ->
-                    child instanceof net.minecraft.client.gui.components.AbstractWidget widget
-                        && widget.visible)
-            .map(child -> (net.minecraft.client.gui.components.AbstractWidget) child)
+            .filter(child -> child instanceof AbstractWidget widget && widget.visible)
+            .map(child -> (AbstractWidget) child)
             .toList();
     for (int first = 0; first < widgets.size(); first++)
       for (int second = first + 1; second < widgets.size(); second++) {

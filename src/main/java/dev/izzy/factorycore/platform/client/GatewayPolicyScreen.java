@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -49,7 +50,7 @@ public final class GatewayPolicyScreen extends AbstractContainerScreen<GatewayPo
                         menu.containerId, GatewayPolicyMenu.ACCESS_BUTTON))
             .bounds(leftPos + 8 + 2 * 98, topPos + 34 + 6 * 20, 92, 18)
             .tooltip(
-                net.minecraft.client.gui.components.Tooltip.create(
+                Tooltip.create(
                     Component.translatable("gui.factorycore.gateway_policy.access.tooltip")))
             .build());
   }

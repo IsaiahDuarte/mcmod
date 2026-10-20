@@ -1,19 +1,29 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.platform.crafting.WorldCrafting;
+import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.security.MessageDigest;
 import java.util.*;
+import java.util.Collections;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
@@ -53,7 +63,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private boolean craftablesNext;
   private ResourceKey previewKey;
   private int previewAmount;
-  private dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.Preview preview;
+  private WorldCraftingJobs.Preview preview;
   private String jobStatus = "ready";
   private List<UUID> jobIds = List.of();
 
@@ -113,8 +123,8 @@ public final class TerminalMenu extends AbstractContainerMenu {
             id,
             session,
             0,
-            java.util.Collections.nCopies(TerminalCraftingPackets.CELLS, ""),
-            java.util.Collections.nCopies(TerminalCraftingPackets.CELLS, 1),
+            Collections.nCopies(TerminalCraftingPackets.CELLS, ""),
+            Collections.nCopies(TerminalCraftingPackets.CELLS, 1),
             false,
             "",
             "",
@@ -146,12 +156,11 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   /** Opens a terminal session through {@code access} if it currently allows the player. */
-  public static boolean open(
-      ServerPlayer player, TerminalAccess access, net.minecraft.network.chat.Component title) {
+  public static boolean open(ServerPlayer player, TerminalAccess access, Component title) {
     if (!access.canUse(player)) return false;
     var session = UUID.randomUUID();
     player.openMenu(
-        new net.minecraft.world.SimpleMenuProvider(
+        new SimpleMenuProvider(
             (id, inventory, who) -> new TerminalMenu(id, inventory, access, session), title),
         buffer -> {
           buffer.writeBlockPos(access.getBlockPos());
@@ -224,9 +233,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     if (!terminal.upkeep(player())) {
       player()
           .displayClientMessage(
-              net.minecraft.network.chat.Component.translatable(
-                  "message.factorycore.wireless_no_power"),
-              true);
+              Component.translatable("message.factorycore.wireless_no_power"), true);
       player().closeContainer();
       return;
     }
@@ -291,7 +298,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private void savePreferences() {
     var persistent = viewer.getPersistentData();
     var kept = persistent.getCompound(Player.PERSISTED_NBT_TAG);
-    var preferences = new net.minecraft.nbt.CompoundTag();
+    var preferences = new CompoundTag();
     preferences.putInt("Schema", 1);
     preferences.putString("Search", text);
     preferences.putInt("Sort", sort);
@@ -508,13 +515,10 @@ public final class TerminalMenu extends AbstractContainerMenu {
     crafting.clear();
     if (crafting.processing()) crafting.processing(false);
     for (int cell = 0; cell < fill.items().size(); cell++) {
-      var id = net.minecraft.resources.ResourceLocation.tryParse(fill.items().get(cell));
-      var item =
-          id == null
-              ? net.minecraft.world.item.Items.AIR
-              : net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id);
-      if (item == net.minecraft.world.item.Items.AIR) continue;
-      crafting.set(cell, codec.itemKey(new net.minecraft.world.item.ItemStack(item)));
+      var id = ResourceLocation.tryParse(fill.items().get(cell));
+      var item = id == null ? Items.AIR : BuiltInRegistries.ITEM.get(id);
+      if (item == Items.AIR) continue;
+      crafting.set(cell, codec.itemKey(new ItemStack(item)));
     }
     gridStatus = "ready";
     publish();
@@ -624,17 +628,14 @@ public final class TerminalMenu extends AbstractContainerMenu {
   /** Lists craftable outputs of this segment's Crafting Units, eight per page, in key order. */
   private void refreshCraftables() {
     var member = WorldNetworks.get(player().server).membership(terminal.origin());
-    if (member.status() != dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID) {
+    if (member.status() != NetworkTopology.Status.VALID) {
       craftables = List.of();
       craftablesNext = false;
       return;
     }
     var keys =
         new ArrayList<>(
-            dev.izzy.factorycore.platform.crafting.WorldCrafting.get(player().server)
-                .index(member.scope())
-                .byOutput()
-                .keySet());
+            WorldCrafting.get(player().server).index(member.scope()).byOutput().keySet());
     keys.sort(null);
     craftableOffset = Math.min(craftableOffset, Math.max(0, keys.size() - 1) / 8 * 8);
     craftables =
@@ -651,7 +652,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     int tick = sender.server.getTickCount();
     if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
     lastCommand = tick;
-    var jobs = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(sender.server);
+    var jobs = WorldCraftingJobs.get(sender.server);
     switch (command.action()) {
       case TerminalJobPackets.HOME -> {
         craftableOffset = 0;
@@ -688,9 +689,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
         } else {
           jobStatus = submission.reason();
           if (submission.plan() != null)
-            preview =
-                new dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.Preview(
-                    submission.plan(), submission.reason());
+            preview = new WorldCraftingJobs.Preview(submission.plan(), submission.reason());
         }
       }
       case TerminalJobPackets.KEEP -> {
@@ -739,7 +738,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   private void publishJobs() {
     var rows = new ArrayList<TerminalJobPackets.Entry>();
-    var runtime = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(player().server);
+    var runtime = WorldCraftingJobs.get(player().server);
     for (var key : craftables) {
       // A craftable row's amount carries the viewer's keep-stock threshold, if any.
       var rule = runtime.rule(actor(), terminal.origin(), key);
@@ -760,9 +759,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     } else if (preview != null) reason = preview.reason();
     var ids = new ArrayList<UUID>();
     var jobRows = new ArrayList<TerminalJobPackets.Job>();
-    for (var job :
-        dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(player().server)
-            .jobs(viewer.getUUID())) {
+    for (var job : WorldCraftingJobs.get(player().server).jobs(viewer.getUUID())) {
       if (jobRows.size() == TerminalJobPackets.JOBS) break;
       ids.add(job.id());
       jobRows.add(
@@ -894,9 +891,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
             switch (row.key().kind()) {
               case ITEM -> codec.itemStack(row.key(), 1).getHoverName();
               case FLUID -> codec.fluidStack(row.key(), 1).getHoverName();
-              case ENERGY ->
-                  net.minecraft.network.chat.Component.translatable(
-                      "gui.factorycore.terminal.energy");
+              case ENERGY -> Component.translatable("gui.factorycore.terminal.energy");
             };
         name = shown.getString().replaceAll("[\\p{Cntrl}§]", "");
       } catch (IllegalArgumentException unsupported) {
@@ -946,11 +941,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
             cells,
             counts,
             crafting.processing(),
-            result.isEmpty()
-                ? ""
-                : net.minecraft.core.registries.BuiltInRegistries.ITEM
-                    .getKey(result.getItem())
-                    .toString(),
+            result.isEmpty() ? "" : BuiltInRegistries.ITEM.getKey(result.getItem()).toString(),
             resultName,
             Math.min(64, result.getCount()),
             gridStatus,

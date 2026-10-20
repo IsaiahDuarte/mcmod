@@ -3,8 +3,10 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import java.util.EnumMap;
+import java.util.Locale;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
@@ -29,7 +31,7 @@ public final class EnergyBankContent {
 
   static {
     for (var tier : EnergyBankTier.values()) {
-      var name = tier.name().toLowerCase(java.util.Locale.ROOT) + "_energy_bank";
+      var name = tier.name().toLowerCase(Locale.ROOT) + "_energy_bank";
       var block =
           BLOCKS.registerBlock(
               name,
@@ -37,7 +39,7 @@ public final class EnergyBankContent {
               BlockBehaviour.Properties.of()
                   .strength(3.5f)
                   .requiresCorrectToolForDrops()
-                  .sound(net.minecraft.world.level.block.SoundType.METAL));
+                  .sound(SoundType.METAL));
       BANKS.put(tier, block);
       BANK_ITEMS.put(tier, ITEMS.register(name, () -> new EnergyBankItem(block.get())));
     }

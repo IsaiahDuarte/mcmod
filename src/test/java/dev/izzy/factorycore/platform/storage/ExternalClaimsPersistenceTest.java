@@ -11,8 +11,11 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.storage.DimensionDataStorage;
+import net.neoforged.neoforge.common.IOUtilities;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -30,7 +33,7 @@ class ExternalClaimsPersistenceTest {
 
   @org.junit.jupiter.api.AfterEach
   void finishIo() {
-    net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
+    IOUtilities.waitUntilIOWorkerComplete();
   }
 
   private CompoundTag fixture() throws Exception {
@@ -52,8 +55,7 @@ class ExternalClaimsPersistenceTest {
   @Test
   void canonicalDiskReloadPreservesClaimsWithoutObservedStockOrAutomaticRelease() throws Exception {
     var storage =
-        new DimensionDataStorage(
-            directory.toFile(), net.minecraft.util.datafix.DataFixers.getDataFixer(), registries);
+        new DimensionDataStorage(directory.toFile(), DataFixers.getDataFixer(), registries);
     var file = directory.resolve(DeviceSavedData.NAME + ".dat");
     var saved = DeviceSavedData.open(storage, file);
     var backing = new UUID(0, 501);
@@ -63,13 +65,10 @@ class ExternalClaimsPersistenceTest {
     assertEquals(23, saved.externalClaims().reserve(backing, job, key, 23, 100).amount());
     assertTrue(saved.isDirty());
     storage.save();
-    net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
+    IOUtilities.waitUntilIOWorkerComplete();
     var restored =
         DeviceSavedData.open(
-            new DimensionDataStorage(
-                directory.toFile(),
-                net.minecraft.util.datafix.DataFixers.getDataFixer(),
-                registries),
+            new DimensionDataStorage(directory.toFile(), DataFixers.getDataFixer(), registries),
             file);
     assertEquals(23, restored.externalClaims().held(backing, job, key));
     assertEquals(0, restored.externalClaims().available(backing, job, key, 0));
@@ -95,16 +94,8 @@ class ExternalClaimsPersistenceTest {
     assertTrue(restored.isDirty());
     var migrated = restored.save(new CompoundTag(), registries);
     assertEquals(DeviceSavedData.SCHEMA, migrated.getInt("Schema"));
-    assertTrue(
-        migrated
-            .getCompound("Buffers")
-            .getList("Buffers", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("RouteCursors")
-            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
+    assertTrue(migrated.getCompound("Buffers").getList("Buffers", Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getCompound("RouteCursors").getList("Cursors", Tag.TAG_COMPOUND).isEmpty());
     assertTrue(restored.externalClaims().snapshot().isEmpty());
     migrated.remove("ExternalClaims");
     migrated.remove("RouteCursors");
@@ -119,10 +110,7 @@ class ExternalClaimsPersistenceTest {
   void malformedFutureDuplicateAndOverflowHoldsPreserveWholeRejectedAuthority() throws Exception {
     var saved =
         DeviceSavedData.open(
-            new DimensionDataStorage(
-                directory.toFile(),
-                net.minecraft.util.datafix.DataFixers.getDataFixer(),
-                registries),
+            new DimensionDataStorage(directory.toFile(), DataFixers.getDataFixer(), registries),
             directory.resolve(DeviceSavedData.NAME + ".dat"));
     for (int mode = 0; mode < 6; mode++) {
       var tag = saved.save(new CompoundTag(), registries);
@@ -154,10 +142,7 @@ class ExternalClaimsPersistenceTest {
   void ownedBackingCollisionRejectsWithoutDroppingForeignEvidence() throws Exception {
     var saved =
         DeviceSavedData.open(
-            new DimensionDataStorage(
-                directory.toFile(),
-                net.minecraft.util.datafix.DataFixers.getDataFixer(),
-                registries),
+            new DimensionDataStorage(directory.toFile(), DataFixers.getDataFixer(), registries),
             directory.resolve(DeviceSavedData.NAME + ".dat"));
     var root = saved.createNetwork(UUID.randomUUID());
     var data = fixture();
@@ -173,10 +158,7 @@ class ExternalClaimsPersistenceTest {
   void excessiveMetadataRejectsWholeAuthorityAndPreservesRawTable() throws Exception {
     var saved =
         DeviceSavedData.open(
-            new DimensionDataStorage(
-                directory.toFile(),
-                net.minecraft.util.datafix.DataFixers.getDataFixer(),
-                registries),
+            new DimensionDataStorage(directory.toFile(), DataFixers.getDataFixer(), registries),
             directory.resolve(DeviceSavedData.NAME + ".dat"));
     var data = fixture();
     var template = data.getList("Claims", Tag.TAG_COMPOUND).getCompound(0).copy();

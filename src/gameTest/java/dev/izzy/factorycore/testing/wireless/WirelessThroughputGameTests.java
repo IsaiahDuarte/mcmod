@@ -3,8 +3,10 @@ package dev.izzy.factorycore.testing.wireless;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
@@ -236,18 +238,14 @@ public final class WirelessThroughputGameTests {
         .thenIdle(3)
         .thenExecute(() -> pair(h, f))
         .thenWaitUntil(() -> ready(h, f))
-        .thenExecute(
-            () ->
-                f.ends
-                    .getFirst()
-                    .install(dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME))
+        .thenExecute(() -> f.ends.getFirst().install(ThroughputTier.ENDGAME))
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(
             () -> {
               h.assertTrue(
                   f.ends.getFirst().pairScale() == 1,
                   "One paid endpoint cannot raise the pair's limit");
-              f.ends.get(1).install(dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME);
+              f.ends.get(1).install(ThroughputTier.ENDGAME);
             })
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(
@@ -261,8 +259,7 @@ public final class WirelessThroughputGameTests {
               f.saved.registry().insert(extraRoot, ResourceKey.ENERGY, 16000);
               var denied = submitOne(h, f, ROOT, f.root[0], f.child[0], IRON, 128);
               h.assertTrue(
-                  denied.reason()
-                          == dev.izzy.factorycore.core.resource.OperationResult.Reason.DENIED
+                  denied.reason() == OperationResult.Reason.DENIED
                       && f.stock(f.root[0], IRON) == 2000,
                   "Upgraded routing still denies a root request into child-private storage");
               long available =

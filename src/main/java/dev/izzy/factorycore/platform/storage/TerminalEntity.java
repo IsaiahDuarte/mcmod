@@ -14,6 +14,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.Vec3;
 
 /** Access-only holder; stock, grants and menu credentials are never copied into chunk/item NBT. */
 public final class TerminalEntity extends BlockEntity implements MenuProvider, TerminalAccess {
@@ -52,8 +53,7 @@ public final class TerminalEntity extends BlockEntity implements MenuProvider, T
         || !current()
         || player.serverLevel() != level
         || player.server.getPlayerList().getPlayer(player.getUUID()) != player
-        || player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(worldPosition)) > 64)
-      return false;
+        || player.distanceToSqr(Vec3.atCenterOf(worldPosition)) > 64) return false;
     return WorldNetworks.get(player.server)
             .authorize(
                 new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2)),

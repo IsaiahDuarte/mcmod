@@ -1,13 +1,22 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.crafting.CraftingContent;
+import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.NetworkContent;
+import dev.izzy.factorycore.platform.power.FuelGeneratorContent;
+import dev.izzy.factorycore.platform.program.ProgramContent;
+import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
+import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import java.util.EnumMap;
+import java.util.Locale;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
@@ -32,7 +41,7 @@ public final class StorageContent {
           BlockBehaviour.Properties.of()
               .strength(3.5f)
               .requiresCorrectToolForDrops()
-              .sound(net.minecraft.world.level.block.SoundType.METAL));
+              .sound(SoundType.METAL));
   public static final DeferredItem<?> DRIVE_ITEM = ITEMS.registerSimpleBlockItem(DRIVE);
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<StorageDriveEntity>>
       DRIVE_ENTITY =
@@ -64,38 +73,23 @@ public final class StorageContent {
                         output.accept(NetworkContent.CONTROLLER_ITEM.get());
                         output.accept(NetworkContent.GATEWAY_ITEM.get());
                         output.accept(NetworkContent.CABLE_ITEM.get());
-                        for (var tier : dev.izzy.factorycore.core.storage.EnergyBankTier.values())
+                        for (var tier : EnergyBankTier.values())
                           output.accept(EnergyBankContent.item(tier));
-                        output.accept(
-                            dev.izzy.factorycore.platform.power.FuelGeneratorContent.ITEM.get());
-                        output.accept(
-                            dev.izzy.factorycore.platform.crafting.CraftingContent.UNIT_ITEM.get());
-                        output.accept(
-                            dev.izzy.factorycore.platform.crafting.CraftingContent.INTERFACE_ITEM
-                                .get());
-                        output.accept(
-                            dev.izzy.factorycore.platform.program.ProgramContent.ITEM.get());
-                        output.accept(
-                            dev.izzy.factorycore.platform.wireless.WirelessContent.ACCESS_POINT_ITEM
-                                .get());
-                        output.accept(
-                            dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get());
-                        output.accept(
-                            dev.izzy.factorycore.platform.wireless.WirelessContent.LINK_ITEM.get());
-                        output.accept(dev.izzy.factorycore.platform.guide.GuideContent.GUIDE.get());
-                        output.accept(
-                            dev.izzy.factorycore.platform.crafting.CraftingContent.BLANK_PATTERN
-                                .get());
+                        output.accept(FuelGeneratorContent.ITEM.get());
+                        output.accept(CraftingContent.UNIT_ITEM.get());
+                        output.accept(CraftingContent.INTERFACE_ITEM.get());
+                        output.accept(ProgramContent.ITEM.get());
+                        output.accept(WirelessContent.ACCESS_POINT_ITEM.get());
+                        output.accept(WirelessContent.HANDHELD.get());
+                        output.accept(WirelessContent.LINK_ITEM.get());
+                        output.accept(GuideContent.GUIDE.get());
+                        output.accept(CraftingContent.BLANK_PATTERN.get());
                         for (var tier : CellTier.values()) output.accept(cell(tier));
                         output.accept(EXPANSION.get());
                         output.accept(ADVANCED.get());
                         output.accept(INFINITE.get());
-                        output.accept(
-                            dev.izzy.factorycore.platform.upgrade.ThroughputContent.THROUGHPUT
-                                .get());
-                        output.accept(
-                            dev.izzy.factorycore.platform.upgrade.ThroughputContent.OVERDRIVE
-                                .get());
+                        output.accept(ThroughputContent.THROUGHPUT.get());
+                        output.accept(ThroughputContent.OVERDRIVE.get());
                       })
                   .build());
 
@@ -103,8 +97,7 @@ public final class StorageContent {
     for (var tier : CellTier.values()) {
       CELLS.put(
           tier,
-          ITEMS.register(
-              tier.name().toLowerCase(java.util.Locale.ROOT) + "_cell", () -> new CellItem(tier)));
+          ITEMS.register(tier.name().toLowerCase(Locale.ROOT) + "_cell", () -> new CellItem(tier)));
     }
   }
 

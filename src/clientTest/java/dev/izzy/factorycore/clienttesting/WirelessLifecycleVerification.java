@@ -5,6 +5,7 @@ import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.require;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.FactoryCoreConfig;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -125,7 +126,7 @@ final class WirelessLifecycleVerification {
           if (runtime.membership(position(DRIVE)).status() != NetworkTopology.Status.DEPTH_LIMIT)
             return;
           require(
-              dev.izzy.factorycore.platform.FactoryCoreConfig.gatewayDepth() == 1,
+              FactoryCoreConfig.gatewayDepth() == 1,
               "The real world server config loaded its nondefault gateway depth");
           require(
               !saved.registry().stock(cell, key).loaded(),

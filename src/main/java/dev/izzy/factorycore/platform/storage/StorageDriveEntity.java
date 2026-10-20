@@ -2,20 +2,29 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.LevelResource;
 
 /** Four physical lease items; stock and reservations are never copied into chunk NBT. */
 public final class StorageDriveEntity extends BlockEntity {
@@ -49,11 +58,7 @@ public final class StorageDriveEntity extends BlockEntity {
     for (int slot = 0; slot < cells.length; slot++)
       next = next.setValue(StorageDriveBlock.BAYS.get(slot), !cells[slot].isEmpty());
     if (next != state)
-      level.setBlock(
-          worldPosition,
-          next,
-          net.minecraft.world.level.block.Block.UPDATE_CLIENTS
-              | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE);
+      level.setBlock(worldPosition, next, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
   }
 
   public String diagnostic() {
@@ -111,8 +116,7 @@ public final class StorageDriveEntity extends BlockEntity {
 
   /** Operator recovery adapter. Never relocates a backing or resolves pending transfer evidence. */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
-  public java.nio.file.Path repairCellConflict(DeviceRegistry.Handle expected)
-      throws java.io.IOException {
+  public Path repairCellConflict(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || isRemoved()
         || rejected != null
@@ -147,7 +151,7 @@ public final class StorageDriveEntity extends BlockEntity {
         new DeviceRegistry.Handle(expected.world(), expected.backing(), expected.generation() + 1));
     var path =
         DeviceRecoveryAudit.preserve(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             registry.evidence(expected.backing()),
             stack.save(server.registryAccess()));
@@ -169,8 +173,7 @@ public final class StorageDriveEntity extends BlockEntity {
    * unresolved. The single ledger moves; quantities, claims and other copies are never touched.
    */
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level and server.
-  public java.nio.file.Path adoptCell(DeviceRegistry.Handle expected, int slot)
-      throws java.io.IOException {
+  public Path adoptCell(DeviceRegistry.Handle expected, int slot) throws IOException {
     checkSlot(slot);
     if (!(level instanceof ServerLevel server)
         || isRemoved()
@@ -205,9 +208,8 @@ public final class StorageDriveEntity extends BlockEntity {
         server
             .getServer()
             .getLevel(
-                net.minecraft.resources.ResourceKey.create(
-                    net.minecraft.core.registries.Registries.DIMENSION,
-                    net.minecraft.resources.ResourceLocation.parse(canonical.dimension())));
+                ResourceKey.create(
+                    Registries.DIMENSION, ResourceLocation.parse(canonical.dimension())));
     var oldPos = BlockPos.of(canonical.position());
     if (oldLevel == null
         || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
@@ -221,7 +223,7 @@ public final class StorageDriveEntity extends BlockEntity {
     }
     var path =
         DeviceRecoveryAudit.preserveAdoption(
-            server.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT),
+            server.getServer().getWorldPath(LevelResource.ROOT),
             expected.world(),
             registry.evidence(expected.backing()),
             location(slot),
@@ -297,10 +299,7 @@ public final class StorageDriveEntity extends BlockEntity {
     networkingChanged();
     // Worlds saved before bay lamps existed: publish occupancy after, not during, chunk loading.
     if (level instanceof ServerLevel server)
-      server
-          .getServer()
-          .tell(
-              new net.minecraft.server.TickTask(server.getServer().getTickCount(), this::syncBays));
+      server.getServer().tell(new TickTask(server.getServer().getTickCount(), this::syncBays));
     if (!(level instanceof ServerLevel) || rejected != null) return;
     for (int slot = 0; slot < cells.length; slot++) {
       if (!cells[slot].isEmpty()) {
@@ -364,7 +363,7 @@ public final class StorageDriveEntity extends BlockEntity {
     super.loadAdditional(tag, registries);
     rejected = null;
     diagnostic = "";
-    java.util.Arrays.fill(cells, ItemStack.EMPTY);
+    Arrays.fill(cells, ItemStack.EMPTY);
     if (tag.contains(REJECTED)) {
       rejected =
           tag.contains(REJECTED, Tag.TAG_COMPOUND) ? tag.getCompound(REJECTED).copy() : tag.copy();
@@ -398,7 +397,7 @@ public final class StorageDriveEntity extends BlockEntity {
         cells[slot] = cell;
       }
     } catch (IllegalArgumentException | IllegalStateException failure) {
-      java.util.Arrays.fill(cells, ItemStack.EMPTY);
+      Arrays.fill(cells, ItemStack.EMPTY);
       rejected = tag.copy();
       diagnostic = failure.getMessage();
     }

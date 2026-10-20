@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.network;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -42,8 +43,8 @@ public final class AccessPackets {
     public Command {
       if (action < GRANT || action > RECOVERY || value < 0 || value >= MAX_PAGES)
         throw new IllegalArgumentException("Invalid access command bounds");
-      java.util.Objects.requireNonNull(session);
-      java.util.Objects.requireNonNull(principal);
+      Objects.requireNonNull(session);
+      Objects.requireNonNull(principal);
     }
 
     @Override
@@ -68,7 +69,7 @@ public final class AccessPackets {
   /** One principal: explicit grants as a permission bit mask; candidates have no grants yet. */
   public record Row(UUID id, String name, int granted, boolean online, boolean candidate) {
     public Row {
-      java.util.Objects.requireNonNull(id);
+      Objects.requireNonNull(id);
       if (name.length() > 48 || granted < 0 || granted >= 1 << 7)
         throw new IllegalArgumentException("Invalid access row");
     }
@@ -125,7 +126,7 @@ public final class AccessPackets {
           || pendingName.length() > 48
           || status.length() > 32
           || generation < 0) throw new IllegalArgumentException("Invalid access view");
-      java.util.Objects.requireNonNull(pending);
+      Objects.requireNonNull(pending);
     }
 
     @Override

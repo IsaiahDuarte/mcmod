@@ -3,6 +3,7 @@ package dev.izzy.factorycore.testing.storage;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.platform.resource.*;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.network.chat.Component;
@@ -80,7 +81,7 @@ public final class ResourceFilterGameTests {
         new PlatformResourceCodec(helper.getLevel().registryAccess())
             .itemKey(new ItemStack(Items.OAK_LOG));
     var result =
-        java.util.concurrent.CompletableFuture.supplyAsync(
+        CompletableFuture.supplyAsync(
             () -> {
               try {
                 tags.contains(ResourceKind.ITEM, "minecraft:logs", key);

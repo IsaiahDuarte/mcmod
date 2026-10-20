@@ -2,8 +2,11 @@ package dev.izzy.factorycore.platform.storage;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.platform.crafting.ProcessingRecoveryCommands;
 import java.util.*;
+import java.util.function.Consumer;
 import net.minecraft.commands.*;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -41,9 +44,7 @@ public final class RecoveryCommands {
                                       RecoveryMenu.open((ServerPlayer) c.getSource().getEntity());
                                       return 1;
                                     }))
-                        .then(
-                            dev.izzy.factorycore.platform.crafting.ProcessingRecoveryCommands
-                                .commands())
+                        .then(ProcessingRecoveryCommands.commands())
                         .then(
                             Commands.literal("list")
                                 .requires(s -> s.hasPermission(2))
@@ -185,7 +186,7 @@ public final class RecoveryCommands {
                     context.network().toString(),
                     context.segment().toString(),
                     context.origin().dimension(),
-                    net.minecraft.core.BlockPos.of(context.origin().block()).toShortString(),
+                    BlockPos.of(context.origin().block()).toShortString(),
                     context.source().device().toString(),
                     context.destination().device().toString()),
             false);
@@ -236,7 +237,7 @@ public final class RecoveryCommands {
       fail(source, "owner");
       return 0;
     }
-    java.util.function.Consumer<WorldStorageTransfers.Result> report =
+    Consumer<WorldStorageTransfers.Result> report =
         completed ->
             source.sendSuccess(
                 () ->

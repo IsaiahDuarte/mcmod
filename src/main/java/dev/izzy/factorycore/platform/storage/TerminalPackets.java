@@ -5,6 +5,7 @@ import dev.izzy.factorycore.platform.FactoryCoreMod;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -181,7 +182,7 @@ public final class TerminalPackets {
               String status = buffer.readUtf(64);
               int size = buffer.readVarInt();
               if (size < 0 || size > 8) throw new IllegalArgumentException("Terminal row count");
-              var rows = new java.util.ArrayList<Row>();
+              var rows = new ArrayList<Row>();
               for (int index = 0; index < size; index++)
                 rows.add(
                     new Row(

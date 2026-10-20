@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
+import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.resource.TransferRegistry;
 import java.util.ArrayList;
 import java.util.List;
@@ -123,7 +124,7 @@ final class TransferStateCodec {
     return records;
   }
 
-  private static dev.izzy.factorycore.core.resource.TransferContext context(CompoundTag data) {
+  private static TransferContext context(CompoundTag data) {
     if (!data.contains("Context")) return null;
     require(data, "Context", Tag.TAG_COMPOUND);
     return TransferContextCodec.decode(data.getCompound("Context"));

@@ -7,6 +7,8 @@ import dev.izzy.factorycore.core.program.ProgramCommand;
 import dev.izzy.factorycore.core.program.ProgramEvaluator;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -201,7 +203,7 @@ class WasmProgramTest {
     assertEquals("3", logged(restored.invoke(0, host(0))), "Reload continues the count");
     assertEquals(
         2,
-        java.nio.ByteBuffer.wrap(saved).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong(),
+        ByteBuffer.wrap(saved).order(ByteOrder.LITTLE_ENDIAN).getLong(),
         "state() returned a copy that later commits do not change");
   }
 

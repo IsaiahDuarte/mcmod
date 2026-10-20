@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.testing;
 
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.platform.storage.CellItem;
 import dev.izzy.factorycore.platform.storage.CellUpgradeItem;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -29,6 +31,7 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -101,15 +104,14 @@ public final class RecipeGameTests {
       h.assertTrue(
           key.getNamespace().equals("factorycore")
               && BuiltInRegistries.ITEM.containsKey(key)
-              && result.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA) == null,
+              && result.get(DataComponents.CUSTOM_DATA) == null,
           "Recipe yields a registered, unbound Factory Core item: " + holder.id());
       h.assertTrue(results.add(key.getPath()), "One recipe per item: " + key);
       h.assertTrue(unlocked.contains(holder.id()), "Recipe-book unlock exists: " + holder.id());
       for (var ingredient : holder.value().getIngredients())
         for (var option : ingredient.getItems())
           h.assertTrue(
-              !(option.getItem() instanceof dev.izzy.factorycore.platform.storage.CellItem),
-              "No recipe consumes a cell: " + holder.id());
+              !(option.getItem() instanceof CellItem), "No recipe consumes a cell: " + holder.id());
     }
     for (var key : BuiltInRegistries.ITEM.keySet()) {
       if (!key.getNamespace().equals("factorycore")) continue;
@@ -176,7 +178,7 @@ public final class RecipeGameTests {
   @SuppressWarnings("removal")
   private static ServerPlayer playerWith(GameTestHelper h, Map<Item, Integer> kit) {
     var player = h.makeMockServerPlayerInLevel();
-    player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+    player.setGameMode(GameType.SURVIVAL);
     player.getInventory().clearContent();
     for (var entry : kit.entrySet()) {
       int remaining = entry.getValue();

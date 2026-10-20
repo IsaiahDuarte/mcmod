@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.network;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
@@ -7,6 +8,8 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ResourcePort;
+import dev.izzy.factorycore.core.resource.StagedTransfer;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
@@ -15,16 +18,22 @@ import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.storage.LevelResource;
+import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -171,8 +180,7 @@ public final class WorldNetworksGameTests {
             () -> {
               registry.insert(handle, IRON, 100);
               // Invoke the typed lifecycle adapter; the fixture keeps the chunk loaded.
-              WorldNetworks.loaded(
-                  new net.neoforged.neoforge.event.level.ChunkEvent.Load(neighbor, false));
+              WorldNetworks.loaded(new ChunkEvent.Load(neighbor, false));
               status(helper, DRIVE, NetworkTopology.Status.REBUILDING);
               helper.assertTrue(
                   !registry.stock(handle, IRON).loaded()
@@ -313,9 +321,9 @@ public final class WorldNetworksGameTests {
     var claim = UUID.randomUUID();
     var operation = UUID.randomUUID();
     int[] calls = {0};
-    dev.izzy.factorycore.core.resource.StagedTransfer.Snapshot[] staging = {null};
+    StagedTransfer.Snapshot[] staging = {null};
     NetworkTopology.Scope[] scope = {null};
-    net.minecraft.nbt.CompoundTag[] physical = {null};
+    CompoundTag[] physical = {null};
     NetworkNodeEntity[] clone = {null};
     h.startSequence()
         .thenWaitUntil(() -> status(h, DRIVE, NetworkTopology.Status.VALID))
@@ -325,7 +333,7 @@ public final class WorldNetworksGameTests {
               registry.reserve(cell, claim, IRON, 60);
               scope[0] = runtime(h).membership(position(h, DRIVE)).scope();
               var source =
-                  new dev.izzy.factorycore.core.resource.ResourcePort() {
+                  new ResourcePort() {
                     public UUID backingId() {
                       return cell.backing();
                     }
@@ -343,7 +351,7 @@ public final class WorldNetworksGameTests {
                     }
                   };
               var destination =
-                  new dev.izzy.factorycore.core.resource.ResourcePort() {
+                  new ResourcePort() {
                     private final UUID id = UUID.randomUUID();
 
                     public UUID backingId() {
@@ -490,7 +498,7 @@ public final class WorldNetworksGameTests {
         .setGrants(owner, guest.id(), Set.of(NetworkPermissions.Permission.VIEW));
     var grants = saved.network(controller.handle().id()).snapshot();
     NetworkTopology.Scope[] prior = {null};
-    net.minecraft.nbt.CompoundTag[] physical = {null};
+    CompoundTag[] physical = {null};
     NetworkNodeEntity[] clone = {null};
     h.startSequence()
         .thenWaitUntil(() -> status(h, DRIVE, NetworkTopology.Status.VALID))
@@ -597,23 +605,21 @@ public final class WorldNetworksGameTests {
       var folder =
           h.getLevel()
               .getServer()
-              .getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+              .getWorldPath(LevelResource.ROOT)
               .resolve("factorycore-device-recovery");
       try {
-        java.nio.file.Files.createDirectories(folder);
-        var blocker =
-            java.nio.file.Files.createDirectory(
-                folder.resolve("unexpected-node-" + UUID.randomUUID()));
+        Files.createDirectories(folder);
+        var blocker = Files.createDirectory(folder.resolve("unexpected-node-" + UUID.randomUUID()));
         boolean refused = false;
         try {
           original.repairConflict(old);
-        } catch (java.io.IOException expected) {
+        } catch (IOException expected) {
           refused = true;
         } finally {
-          java.nio.file.Files.delete(blocker);
+          Files.delete(blocker);
         }
         h.assertTrue(refused, "Audit failure prevents structural repair");
-      } catch (java.io.IOException failure) {
+      } catch (IOException failure) {
         throw new AssertionError(failure);
       }
       h.assertTrue(
@@ -627,10 +633,7 @@ public final class WorldNetworksGameTests {
   }
 
   private static NetworkNodeEntity copyNode(
-      GameTestHelper h,
-      BlockPos pos,
-      NetworkNodeEntity original,
-      net.minecraft.nbt.CompoundTag raw) {
+      GameTestHelper h, BlockPos pos, NetworkNodeEntity original, CompoundTag raw) {
     h.setBlock(pos, original.getBlockState());
     NetworkNodeEntity copy = h.getBlockEntity(pos);
     copy.loadWithComponents(raw, h.getLevel().registryAccess());
@@ -645,16 +648,16 @@ public final class WorldNetworksGameTests {
       node.repairConflict(expected);
     } catch (IllegalArgumentException | IllegalStateException rejected) {
       refused = true;
-    } catch (java.io.IOException failure) {
+    } catch (IOException failure) {
       throw new AssertionError(failure);
     }
     h.assertTrue(refused, "Unsupported node repair refuses");
   }
 
-  private static int nodeCommand(net.minecraft.commands.CommandSourceStack source, String command) {
+  private static int nodeCommand(CommandSourceStack source, String command) {
     try {
       return source.getServer().getCommands().getDispatcher().execute(command, source);
-    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException rejected) {
+    } catch (CommandSyntaxException rejected) {
       return -1;
     }
   }

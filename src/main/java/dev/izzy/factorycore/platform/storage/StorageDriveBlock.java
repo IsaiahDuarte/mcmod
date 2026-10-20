@@ -16,6 +16,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
@@ -25,12 +27,12 @@ public final class StorageDriveBlock extends Block implements EntityBlock {
    * Presentation-only bay occupancy, mirrored from the entity's four lease slots. Gameplay always
    * reads the entity; these properties never decide installation or routing.
    */
-  public static final List<net.minecraft.world.level.block.state.properties.BooleanProperty> BAYS =
+  public static final List<BooleanProperty> BAYS =
       List.of(
-          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_1"),
-          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_2"),
-          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_3"),
-          net.minecraft.world.level.block.state.properties.BooleanProperty.create("bay_4"));
+          BooleanProperty.create("bay_1"),
+          BooleanProperty.create("bay_2"),
+          BooleanProperty.create("bay_3"),
+          BooleanProperty.create("bay_4"));
 
   public StorageDriveBlock(Properties properties) {
     super(properties);
@@ -40,8 +42,7 @@ public final class StorageDriveBlock extends Block implements EntityBlock {
   }
 
   @Override
-  protected void createBlockStateDefinition(
-      net.minecraft.world.level.block.state.StateDefinition.Builder<Block, BlockState> builder) {
+  protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
     BAYS.forEach(builder::add);
   }
 

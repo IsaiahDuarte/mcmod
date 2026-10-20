@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -137,7 +138,7 @@ public final class ProcessingJournal {
       var bytes = new ByteArrayOutputStream();
       try (var out = new DataOutputStream(bytes)) {
         out.writeUTF("factorycore:processing-journal:v1");
-        for (var map : java.util.List.of(inserted, collected)) {
+        for (var map : List.of(inserted, collected)) {
           var sorted = new TreeMap<>(map);
           out.writeInt(sorted.size());
           for (var entry : sorted.entrySet()) {

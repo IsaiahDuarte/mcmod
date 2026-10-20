@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
@@ -21,7 +22,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -507,7 +512,7 @@ public final class StorageSearchGameTests {
     var kind = energy ? ResourceKind.ENERGY : ResourceKind.FLUID;
     if (energy) {
       var bankPosition = new BlockPos(2, 1, 2);
-      var tier = dev.izzy.factorycore.core.storage.EnergyBankTier.STARTER;
+      var tier = EnergyBankTier.STARTER;
       helper.setBlock(bankPosition, EnergyBankContent.block(tier));
       EnergyBankEntity bank = helper.getBlockEntity(bankPosition);
       bank.place(new ItemStack(EnergyBankContent.item(tier)));
@@ -518,13 +523,8 @@ public final class StorageSearchGameTests {
       StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
       drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
       cell[0] = CellHandleData.read(drive.cell(1));
-      var water =
-          new net.neoforged.neoforge.fluids.FluidStack(
-              net.minecraft.world.level.material.Fluids.WATER, 1000);
-      fixture
-          .provider()
-          .fluids
-          .fill(water, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+      var water = new FluidStack(Fluids.WATER, 1000);
+      fixture.provider().fluids.fill(water, IFluidHandler.FluidAction.EXECUTE);
       resource[0] = new PlatformResourceCodec(helper.getLevel().registryAccess()).fluidKey(water);
     }
     helper
@@ -634,7 +634,7 @@ public final class StorageSearchGameTests {
             () -> {
               for (int index = 0; index < 100; index++) {
                 var stack = named(index, 1);
-                net.minecraft.world.item.component.CustomData.update(
+                CustomData.update(
                     DataComponents.CUSTOM_DATA,
                     stack,
                     tag -> tag.putByteArray("Metadata", new byte[60000]));

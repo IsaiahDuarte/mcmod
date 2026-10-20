@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
@@ -24,7 +25,7 @@ public final class ConnectorContent {
           BlockBehaviour.Properties.of()
               .strength(3.5f)
               .requiresCorrectToolForDrops()
-              .sound(net.minecraft.world.level.block.SoundType.METAL));
+              .sound(SoundType.METAL));
   public static final DeferredItem<ConnectorItem> ITEM =
       ITEMS.register("storage_connector", () -> new ConnectorItem(BLOCK.get()));
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ConnectorEntity>> ENTITY =

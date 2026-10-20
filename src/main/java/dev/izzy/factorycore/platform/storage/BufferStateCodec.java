@@ -2,10 +2,12 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -47,9 +49,7 @@ final class BufferStateCodec {
     root.put("Buffers", records);
     if (!deployments.isEmpty()) {
       boolean policies =
-          deployments.stream()
-              .anyMatch(
-                  d -> !d.policy().equals(dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT));
+          deployments.stream().anyMatch(d -> !d.policy().equals(BufferPolicy.DEFAULT));
       boolean extended =
           deployments.stream()
               .anyMatch(
@@ -147,7 +147,7 @@ final class BufferStateCodec {
         || entries.size() > BufferRegistry.MAX_BUFFERS)
       throw new IllegalArgumentException("Invalid deployment list");
     var result = new ArrayList<BufferRegistry.Deployment>();
-    var owners = new java.util.HashSet<UUID>();
+    var owners = new HashSet<UUID>();
     long policyBytes = 0;
     for (int index = 0; index < entries.size(); index++) {
       var entry = entries.getCompound(index);
@@ -179,7 +179,7 @@ final class BufferStateCodec {
           || !entry.contains("Mode", Tag.TAG_STRING)
           || !owners.add(entry.getUUID("Backing")))
         throw new IllegalArgumentException("Malformed/duplicate deployment");
-      var policy = dev.izzy.factorycore.core.storage.BufferPolicy.DEFAULT;
+      var policy = BufferPolicy.DEFAULT;
       if (root.getInt("Schema") >= 3) {
         if (!entry.contains("Policy", Tag.TAG_COMPOUND))
           throw new IllegalArgumentException("Missing buffer policy");

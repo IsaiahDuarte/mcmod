@@ -5,15 +5,23 @@ import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
+import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeItem;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Containers;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -28,6 +36,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 
 /**
@@ -49,10 +59,8 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
     registerDefaultState(
         stateDefinition
             .any()
-            .setValue(BlockStateProperties.FACING, net.minecraft.core.Direction.UP)
-            .setValue(
-                dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY,
-                dev.izzy.factorycore.platform.network.DeviceLamp.OFF));
+            .setValue(BlockStateProperties.FACING, Direction.UP)
+            .setValue(DeviceLamp.PROPERTY, DeviceLamp.OFF));
   }
 
   @Override
@@ -62,8 +70,7 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
 
   @Override
   protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-    builder.add(
-        BlockStateProperties.FACING, dev.izzy.factorycore.platform.network.DeviceLamp.PROPERTY);
+    builder.add(BlockStateProperties.FACING, DeviceLamp.PROPERTY);
   }
 
   /** The back face goes against the clicked block, normally a gateway. */
@@ -104,16 +111,16 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
 
   /** An upgrade in hand installs through the item instead of starting a pairing selection. */
   @Override
-  protected net.minecraft.world.ItemInteractionResult useItemOn(
+  protected ItemInteractionResult useItemOn(
       ItemStack stack,
       BlockState state,
       Level level,
       BlockPos position,
       Player player,
-      net.minecraft.world.InteractionHand hand,
+      InteractionHand hand,
       BlockHitResult hit) {
-    if (stack.getItem() instanceof dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeItem)
-      return net.minecraft.world.ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+    if (stack.getItem() instanceof ThroughputUpgradeItem)
+      return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
     return super.useItemOn(stack, state, level, position, player, hand, hit);
   }
 
@@ -133,8 +140,7 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
               link.energy(),
               LinkEndpointEntity.CAPACITY),
           true);
-      player.displayClientMessage(
-          dev.izzy.factorycore.platform.upgrade.ThroughputStatus.link(server.server, link), false);
+      player.displayClientMessage(ThroughputStatus.link(server.server, link), false);
       return InteractionResult.CONSUME;
     }
     var dimension = level.dimension().location().toString();
@@ -201,13 +207,11 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   }
 
   @Override
-  protected java.util.List<ItemStack> getDrops(
-      BlockState state, net.minecraft.world.level.storage.loot.LootParams.Builder parameters) {
-    if (parameters.getOptionalParameter(
-                net.minecraft.world.level.storage.loot.parameters.LootContextParams.BLOCK_ENTITY)
+  protected List<ItemStack> getDrops(BlockState state, LootParams.Builder parameters) {
+    if (parameters.getOptionalParameter(LootContextParams.BLOCK_ENTITY)
             instanceof LinkEndpointEntity link
         && link.needsRecovery())
-      return java.util.List.of(); // onRemove emits the single evidence-bearing recovery item.
+      return List.of(); // onRemove emits the single evidence-bearing recovery item.
     return super.getDrops(state, parameters);
   }
 
@@ -215,8 +219,7 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   protected void onPlace(
       BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
     super.onPlace(state, level, position, previous, moved);
-    if (!dev.izzy.factorycore.platform.network.DeviceLamp.onlyLampChanged(previous, state))
-      WorldNetworks.changed(level, position);
+    if (!DeviceLamp.onlyLampChanged(previous, state)) WorldNetworks.changed(level, position);
   }
 
   @Override
@@ -234,15 +237,14 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   @Override
   protected void onRemove(
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    if (!dev.izzy.factorycore.platform.network.DeviceLamp.onlyLampChanged(state, next))
-      WorldNetworks.changed(level, position);
+    if (!DeviceLamp.onlyLampChanged(state, next)) WorldNetworks.changed(level, position);
     // The block itself drops through its loot table; an installed Overdrive Upgrade is returned
     // separately so breaking an endpoint never destroys a paid upgrade.
     if (!state.is(next.getBlock())
         && !level.isClientSide()
         && level.getBlockEntity(position) instanceof LinkEndpointEntity link)
       for (var drop : link.upgradeDrops())
-        net.minecraft.world.Containers.dropItemStack(
+        Containers.dropItemStack(
             level, position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5, drop);
     super.onRemove(state, level, position, next, moved);
   }

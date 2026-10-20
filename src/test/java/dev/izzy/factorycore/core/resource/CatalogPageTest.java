@@ -2,9 +2,13 @@ package dev.izzy.factorycore.core.resource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Locale;
+import java.util.Random;
+import java.util.TreeMap;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +18,7 @@ class CatalogPageTest {
     if (bytes > 0) components[bytes - 1] = (byte) index;
     return new ResourceKey(
         ResourceKind.ITEM,
-        "factorycore:key_" + String.format(java.util.Locale.ROOT, "%04d", index),
+        "factorycore:key_" + String.format(Locale.ROOT, "%04d", index),
         components);
   }
 
@@ -128,12 +132,9 @@ class CatalogPageTest {
 
   @Test
   void registryCatalogPreservesOfflineCountsAndRejectsOldPortableLease() {
-    var registry =
-        new dev.izzy.factorycore.core.storage.DeviceRegistry(
-            UUID.randomUUID(), () -> {}, UUID::randomUUID);
+    var registry = new DeviceRegistry(UUID.randomUUID(), () -> {}, UUID::randomUUID);
     var portable = registry.create(ResourceKind.ITEM, 1000, false, 100, 100).handle();
-    var location =
-        new dev.izzy.factorycore.core.storage.DeviceRegistry.Location("minecraft:overworld", 42, 0);
+    var location = new DeviceRegistry.Location("minecraft:overworld", 42, 0);
     var handle = registry.attach(portable, location).handle();
     registry.availability(handle, location, true);
     registry.insert(handle, key(1, 4), 10);
@@ -149,7 +150,7 @@ class CatalogPageTest {
   @Test
   void generatedMutationAndRestoreSequencePreservesPagedStockAndClaims() {
     long seed = 0xCA7A106L;
-    var random = new java.util.Random(seed);
+    var random = new Random(seed);
     var ledger = new ResourceLedger(UUID.randomUUID(), ResourceKind.ITEM, 1000, false, 128, 256);
     var owner = UUID.randomUUID();
     for (int step = 0; step < 5000; step++) {
@@ -166,7 +167,7 @@ class CatalogPageTest {
         }
       }
       if (step % 100 == 0 || step == 4999) {
-        var actual = new java.util.TreeMap<ResourceKey, Long>();
+        var actual = new TreeMap<ResourceKey, Long>();
         ResourceKey cursor = null;
         do {
           var page = ledger.catalog(cursor, 16);

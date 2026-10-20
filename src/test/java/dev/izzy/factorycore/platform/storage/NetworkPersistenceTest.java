@@ -6,8 +6,11 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Actor;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Change;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
+import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
@@ -100,22 +103,11 @@ class NetworkPersistenceTest {
     assertEquals(1, loaded.principalBindings());
     var migrated = loaded.save(new CompoundTag(), registries);
     assertEquals(DeviceSavedData.SCHEMA, migrated.getInt("Schema"));
+    assertTrue(migrated.getCompound("Buffers").getList("Buffers", Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getCompound("RouteCursors").getList("Cursors", Tag.TAG_COMPOUND).isEmpty());
     assertTrue(
-        migrated
-            .getCompound("Buffers")
-            .getList("Buffers", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("RouteCursors")
-            .getList("Cursors", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(
-        migrated
-            .getCompound("ExternalClaims")
-            .getList("Claims", net.minecraft.nbt.Tag.TAG_COMPOUND)
-            .isEmpty());
-    assertTrue(migrated.getList("Transfers", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty());
+        migrated.getCompound("ExternalClaims").getList("Claims", Tag.TAG_COMPOUND).isEmpty());
+    assertTrue(migrated.getList("Transfers", Tag.TAG_COMPOUND).isEmpty());
     assertEquals(tag.get("World"), migrated.get("World"));
     assertEquals(tag.get("Devices"), migrated.get("Devices"));
     assertEquals(tag.get("Networks"), migrated.get("Networks"));
@@ -124,7 +116,7 @@ class NetworkPersistenceTest {
     assertEquals(Change.OK, permissions.setGrants(new Actor(OWNER, false), PRINCIPAL, all));
     assertEquals(127, grant(loaded.save(new CompoundTag(), registries)).getInt("Permissions"));
     var bits =
-        java.util.Map.of(
+        Map.of(
             Permission.VIEW,
             1,
             Permission.DEPOSIT,
@@ -184,11 +176,8 @@ class NetworkPersistenceTest {
     var revoked = DeviceSavedData.open(storage(), folder.resolve(DeviceSavedData.NAME + ".dat"));
     assertFalse(revoked.network(NETWORK).allows(owner, Permission.VIEW));
     assertEquals(0, revoked.principalBindings());
-    var handle =
-        new dev.izzy.factorycore.core.storage.DeviceRegistry.Handle(
-            new UUID(0, 11), new UUID(0, 1), 2);
-    var stock =
-        revoked.registry().stock(handle, dev.izzy.factorycore.core.resource.ResourceKey.ENERGY);
+    var handle = new DeviceRegistry.Handle(new UUID(0, 11), new UUID(0, 1), 2);
+    var stock = revoked.registry().stock(handle, ResourceKey.ENERGY);
     assertEquals(17, stock.total());
     assertEquals(7, stock.reserved());
     assertFalse(stock.loaded());

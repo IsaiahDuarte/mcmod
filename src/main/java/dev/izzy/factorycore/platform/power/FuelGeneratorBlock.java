@@ -2,7 +2,9 @@ package dev.izzy.factorycore.platform.power;
 
 import com.mojang.serialization.MapCodec;
 import dev.izzy.factorycore.core.storage.FuelGenerator;
+import java.util.Locale;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
@@ -35,7 +37,7 @@ public final class FuelGeneratorBlock extends BaseEntityBlock {
     registerDefaultState(
         stateDefinition
             .any()
-            .setValue(HorizontalDirectionalBlock.FACING, net.minecraft.core.Direction.NORTH)
+            .setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH)
             .setValue(LIT, false));
   }
 
@@ -96,7 +98,7 @@ public final class FuelGeneratorBlock extends BaseEntityBlock {
           Component.translatable("message.factorycore.generator_unsupported"), true);
       return ItemInteractionResult.FAIL;
     }
-    var rest = generator.items(net.minecraft.core.Direction.UP).insertItem(0, held.copy(), false);
+    var rest = generator.items(Direction.UP).insertItem(0, held.copy(), false);
     int inserted = held.getCount() - rest.getCount();
     if (inserted == 0) return ItemInteractionResult.FAIL;
     if (!player.getAbilities().instabuild) held.shrink(inserted);
@@ -137,9 +139,7 @@ public final class FuelGeneratorBlock extends BaseEntityBlock {
             FuelGenerator.MAX_OUTPUT,
             Component.translatable(
                 "status.factorycore.generator."
-                    + (reason.isEmpty()
-                        ? core.status().name().toLowerCase(java.util.Locale.ROOT)
-                        : reason))),
+                    + (reason.isEmpty() ? core.status().name().toLowerCase(Locale.ROOT) : reason))),
         true);
     return InteractionResult.CONSUME;
   }

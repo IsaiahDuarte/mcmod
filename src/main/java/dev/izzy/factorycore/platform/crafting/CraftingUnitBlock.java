@@ -2,8 +2,10 @@ package dev.izzy.factorycore.platform.crafting;
 
 import com.mojang.serialization.MapCodec;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -92,16 +94,13 @@ public class CraftingUnitBlock extends BaseEntityBlock {
       return InteractionResult.PASS;
     }
     var status =
-        WorldNetworks.get(((net.minecraft.server.level.ServerLevel) level).getServer())
-            .membership(unit.origin())
-            .status();
+        WorldNetworks.get(((ServerLevel) level).getServer()).membership(unit.origin()).status();
     player.displayClientMessage(
         Component.translatable(
             "message.factorycore.crafting_unit_status",
             unit.patternCount(),
             PatternHolderEntity.SLOTS,
-            Component.translatable(
-                "status.factorycore." + status.name().toLowerCase(java.util.Locale.ROOT))),
+            Component.translatable("status.factorycore." + status.name().toLowerCase(Locale.ROOT))),
         true);
     return InteractionResult.CONSUME;
   }

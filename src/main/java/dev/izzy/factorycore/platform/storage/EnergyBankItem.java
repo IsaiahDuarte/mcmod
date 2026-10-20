@@ -1,7 +1,11 @@
 package dev.izzy.factorycore.platform.storage;
 
+import java.util.List;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
 
@@ -13,17 +17,11 @@ public final class EnergyBankItem extends BlockItem {
 
   @Override
   public void appendHoverText(
-      net.minecraft.world.item.ItemStack stack,
-      TooltipContext context,
-      java.util.List<net.minecraft.network.chat.Component> tooltip,
-      net.minecraft.world.item.TooltipFlag flag) {
+      ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
     super.appendHoverText(stack, context, tooltip, flag);
     var tier = ((EnergyBankBlock) getBlock()).tier();
-    tooltip.add(
-        net.minecraft.network.chat.Component.translatable(
-            "tooltip.factorycore.bank", tier.capacity(), tier.rate()));
-    tooltip.add(
-        net.minecraft.network.chat.Component.translatable("tooltip.factorycore.bank_upgrade"));
+    tooltip.add(Component.translatable("tooltip.factorycore.bank", tier.capacity(), tier.rate()));
+    tooltip.add(Component.translatable("tooltip.factorycore.bank_upgrade"));
   }
 
   @Override
