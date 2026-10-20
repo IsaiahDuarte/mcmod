@@ -17,11 +17,14 @@ import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
@@ -73,6 +76,10 @@ final class JeiClientVerification {
   private final Path report = Path.of(System.getProperty("factorycore.client.report"));
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean ready = new AtomicBoolean();
+
+  /** The suite's screenshot names; Gradle requires the same list (captures/jei.txt). */
+  private static final Set<String> CAPTURES = manifest();
+
   private final StringBuilder evidence = new StringBuilder();
   private IRecipeCategory<RecipeHolder<CraftingRecipe>> category;
   private RecipeHolder<CraftingRecipe> recipe;
@@ -381,12 +388,27 @@ final class JeiClientVerification {
     System.out.println("FACTORYCORE_JEI_STAGE " + stage);
   }
 
+  private static Set<String> manifest() {
+    try (var stream = JeiClientVerification.class.getResourceAsStream("/captures/jei.txt")) {
+      if (stream == null) throw new IllegalStateException("No capture manifest for jei");
+      return new String(stream.readAllBytes(), StandardCharsets.UTF_8)
+          .lines()
+          .map(String::strip)
+          .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+          .collect(Collectors.toUnmodifiableSet());
+    } catch (IOException error) {
+      throw new IllegalStateException("Cannot read capture manifest jei", error);
+    }
+  }
+
   private void capture(Minecraft client, String name) {
     try {
       Files.createDirectories(report.getParent().resolve("screenshots"));
     } catch (IOException error) {
       throw new IllegalStateException("Cannot prepare screenshot directory", error);
     }
+    if (!CAPTURES.contains(name))
+      throw new IllegalStateException(name + " is not listed in captures/jei.txt");
     evidence.append(name).append('\n');
     Screenshot.grab(
         report.getParent().toFile(),

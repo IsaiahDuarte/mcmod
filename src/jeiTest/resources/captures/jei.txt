@@ -1,0 +1,6 @@
+# Screenshots this suite must capture. Gradle requires each file; the verification refuses
+# to capture a name not listed here.
+jei-terminal-overlay.png
+jei-recipe-over-terminal.png
+jei-terminal-filled.png
+jei-program-ghost.png

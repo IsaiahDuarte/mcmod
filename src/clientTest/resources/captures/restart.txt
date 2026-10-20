@@ -1,0 +1,4 @@
+# Screenshots this suite must capture. Gradle requires each file; the verification refuses
+# to capture a name not listed here.
+restarted-terminal-preferences.png
+restarted-machine-stock.png

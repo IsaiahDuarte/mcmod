@@ -16,7 +16,6 @@ import java.nio.file.*;
 import java.util.Properties;
 import java.util.concurrent.atomic.*;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -37,6 +36,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 /** Real second-JVM reopen. Expected observations never feed a production load/restore API. */
 final class WorldRestartVerification {
   private final Path report = Path.of(System.getProperty("factorycore.client.report"));
+  private final Captures captures = new Captures("restart", report, null);
   private final Properties expected;
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean initial = new AtomicBoolean(), replenished = new AtomicBoolean();
@@ -292,11 +292,7 @@ final class WorldRestartVerification {
               + screen.height
               + " scale="
               + client.getWindow().getGuiScale());
-      Screenshot.grab(
-          report.getParent().toFile(),
-          "restarted-machine-stock.png",
-          client.getMainRenderTarget(),
-          c -> System.out.println("FACTORYCORE_RESTART_SCREENSHOT " + c.getString()));
+      captures.grab(client, "restarted-machine-stock.png");
       client.player.closeContainer();
       next();
       return;
@@ -321,11 +317,7 @@ final class WorldRestartVerification {
               .anyMatch(
                   child -> child instanceof EditBox edit && edit.getValue().equals("@minecraft")),
           "Actual reopened search widget restores text");
-      Screenshot.grab(
-          report.getParent().toFile(),
-          "restarted-terminal-preferences.png",
-          client.getMainRenderTarget(),
-          c -> System.out.println("FACTORYCORE_RESTART_SCREENSHOT " + c.getString()));
+      captures.grab(client, "restarted-terminal-preferences.png");
       try {
         Files.writeString(
             report,

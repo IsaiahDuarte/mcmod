@@ -77,6 +77,12 @@ Read the screenshots a graphical run produces; they have caught real layout and 
 assertions missed. `Screenshot.grab` captures the previously rendered frame, so capture a few
 ticks after a UI change.
 
+Each graphical suite lists its screenshots once, in `src/clientTest/resources/captures/<suite>.txt`
+(JEI: `src/jeiTest/resources/captures/jei.txt`). Gradle fails the run when a listed file is missing,
+and `Captures.grab` refuses a name that is not listed, so adding a capture means adding one line.
+Verification runs are declared with `verificationRun(...)` in `build.gradle`; dedicated-server runs
+get their world from `flatWorld` and pass only through `requirePass`.
+
 ## Required implementation coverage
 
 | Area | Required behaviors |

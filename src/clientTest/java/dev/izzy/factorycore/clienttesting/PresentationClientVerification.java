@@ -42,7 +42,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -102,6 +101,7 @@ public final class PresentationClientVerification {
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean serverDone = new AtomicBoolean();
   private final StringBuilder evidence = new StringBuilder();
+  private final Captures captures = new Captures("presentation", report, evidence);
   private final List<Step> steps = new ArrayList<>();
   private final List<BlockPos> fed = new ArrayList<>();
   private final List<String> chat = new java.util.concurrent.CopyOnWriteArrayList<>();
@@ -208,33 +208,6 @@ public final class PresentationClientVerification {
     step(client -> waited() >= count);
   }
 
-  private void capture(Minecraft client, String name) {
-    try {
-      Files.createDirectories(report.getParent().resolve("screenshots"));
-    } catch (IOException error) {
-      throw new IllegalStateException("Cannot prepare screenshot directory", error);
-    }
-    var window = client.getWindow();
-    evidence
-        .append(name)
-        .append(" framebuffer=")
-        .append(window.getWidth())
-        .append('x')
-        .append(window.getHeight())
-        .append(" gui=")
-        .append(window.getGuiScaledWidth())
-        .append('x')
-        .append(window.getGuiScaledHeight())
-        .append(" scale=")
-        .append(window.getGuiScale())
-        .append('\n');
-    Screenshot.grab(
-        report.getParent().toFile(),
-        name,
-        client.getMainRenderTarget(),
-        component -> System.out.println("FACTORYCORE_CLIENT_SCREENSHOT " + component.getString()));
-  }
-
   private static void check(boolean condition, String message) {
     if (!condition) throw new IllegalStateException(message);
   }
@@ -263,7 +236,7 @@ public final class PresentationClientVerification {
     step(
         client -> {
           aim(client, view);
-          capture(client, capture);
+          captures.grab(client, capture);
           return true;
         });
   }
@@ -381,7 +354,7 @@ public final class PresentationClientVerification {
                 .append(checkFits(client, client.screen))
                 .append('\n');
             if (captureAll || scale == 1 || scale == 4)
-              capture(client, name + "-scale-" + scale + ".png");
+              captures.grab(client, name + "-scale-" + scale + ".png");
             return true;
           });
     }
@@ -420,13 +393,13 @@ public final class PresentationClientVerification {
                   + view.missing()
                   + " "
                   + view.preview());
-          capture(client, "jobs-preview-scale-2.png");
+          captures.grab(client, "jobs-preview-scale-2.png");
           return press(client, "Start");
         });
     step(
         client -> {
           if (waited() < 6) return false;
-          capture(client, "jobs-started-scale-2.png");
+          captures.grab(client, "jobs-started-scale-2.png");
           return true;
         });
     serverUntil(
@@ -453,7 +426,7 @@ public final class PresentationClientVerification {
               .append("fit jobs scale=4: ")
               .append(checkFits(client, client.screen))
               .append('\n');
-          capture(client, "jobs-missing-scale-4.png");
+          captures.grab(client, "jobs-missing-scale-4.png");
           // Keep 64 planks with only 6 logs: the rule waits and the row must show it is blocked.
           return press(client, "Keep");
         });
@@ -462,7 +435,7 @@ public final class PresentationClientVerification {
           var rows = jobView(client).craftables();
           if (rows.isEmpty() || !rows.getFirst().note().equals("missing") || waited() < 6)
             return false;
-          capture(client, "jobs-keep-waiting-scale-4.png");
+          captures.grab(client, "jobs-keep-waiting-scale-4.png");
           press(client, "Keep");
           setScale(client, 2);
           press(client, "Items");
@@ -796,7 +769,7 @@ public final class PresentationClientVerification {
       String name = (third ? "held-third-person-" : "held-first-person-") + pair[0] + ".png";
       step(
           client -> {
-            capture(client, name);
+            captures.grab(client, name);
             return true;
           });
     }
@@ -827,7 +800,7 @@ public final class PresentationClientVerification {
             client -> {
               if (!(client.screen instanceof TooltipBoard) || waited() < 6) return false;
               String edge = targetCorner == 0 ? "edges" : "corner-" + targetCorner;
-              capture(client, "tooltips-" + edge + "-scale-" + targetScale + ".png");
+              captures.grab(client, "tooltips-" + edge + "-scale-" + targetScale + ".png");
               return true;
             });
       }
@@ -940,7 +913,7 @@ public final class PresentationClientVerification {
       step(
           client -> {
             if (waited() < 6) return false;
-            capture(client, "upgrade-tooltip-" + targetCorner + "-scale-4.png");
+            captures.grab(client, "upgrade-tooltip-" + targetCorner + "-scale-4.png");
             return true;
           });
     }

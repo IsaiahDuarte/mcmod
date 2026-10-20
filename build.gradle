@@ -54,210 +54,6 @@ neoForge {
         factorycore_jei_tests { sourceSet(sourceSets.jeiTest) }
     }
     runs {
-        gatewayDepthServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/gateway-depth-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.wireless.server", "true"
-            systemProperty "factorycore.wireless.depthLimited", "true"
-            systemProperty "factorycore.wireless.report", file("build/reports/gateway-depth/result.txt").absolutePath
-        }
-        wirelessLifecycleServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/wireless-lifecycle-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.wireless.server", "true"
-            systemProperty "factorycore.wireless.report", file("build/reports/wireless-lifecycle/result.txt").absolutePath
-        }
-        jeiClient {
-            client()
-            sourceSet = sourceSets.jeiTest
-            gameDirectory = file("build/client-jei-run")
-            loadedMods = [mods.factorycore, mods.factorycore_jei_tests]
-            systemProperty "factorycore.client.report", file("build/reports/client-jei/result.txt").absolutePath
-            systemProperty "factorycore.noWelcomeGuide", "true"
-        }
-        terminalClient {
-            client()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/client-terminal-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            systemProperty "factorycore.client.report", file("build/reports/client-terminal/result.txt").absolutePath
-            systemProperty "factorycore.noWelcomeGuide", "true"
-        }
-        presentationClient {
-            client()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/client-presentation-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            systemProperty "factorycore.client.report", file("build/reports/client-presentation/result.txt").absolutePath
-            systemProperty "factorycore.noWelcomeGuide", "true"
-            systemProperty "factorycore.presentation", "true"
-        }
-        terminalRestartClient {
-            client()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/client-terminal-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            systemProperty "factorycore.client.report", file("build/reports/client-restart/result.txt").absolutePath
-            systemProperty "factorycore.noWelcomeGuide", "true"
-            systemProperty "factorycore.client.seed", file("build/reports/client-terminal/restart.properties").absolutePath
-            systemProperty "factorycore.client.restart", "true"
-        }
-        stagingSeedServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/staging-server-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.staging.server", "true"
-            systemProperty "factorycore.staging.report", file("build/reports/staging-server/seed.txt").absolutePath
-            systemProperty "factorycore.staging.expected", file("build/reports/staging-server/expected.properties").absolutePath
-        }
-        stagingRecoveryServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/staging-server-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.staging.server", "true"
-            systemProperty "factorycore.staging.restore", "true"
-            systemProperty "factorycore.staging.report", file("build/reports/staging-server/restore.txt").absolutePath
-            systemProperty "factorycore.staging.expected", file("build/reports/staging-server/expected.properties").absolutePath
-        }
-        benchmarkServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/benchmark-server-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            jvmArgument '-Xmx2g'
-            systemProperty "factorycore.bench.server", "true"
-            systemProperty "factorycore.bench.output", file("build/benchmarks").absolutePath
-        }
-        saveOrderSeedServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/save-order-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.saveorder.server", "true"
-            systemProperty "factorycore.saveorder.report", file("build/reports/save-order/seed.txt").absolutePath
-            systemProperty "factorycore.saveorder.expected", file("build/reports/save-order/expected.properties").absolutePath
-        }
-        saveOrderRestoreServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/save-order-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.saveorder.server", "true"
-            systemProperty "factorycore.saveorder.restore", "true"
-            systemProperty "factorycore.saveorder.report", file("build/reports/save-order/restore.txt").absolutePath
-            systemProperty "factorycore.saveorder.expected", file("build/reports/save-order/expected.properties").absolutePath
-        }
-        interruptionSeedServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/interruption-run/seed")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.interruption.server", "true"
-            systemProperty "factorycore.interruption.variant", "seed"
-            systemProperty "factorycore.interruption.report", file("build/reports/interruption/seed.txt").absolutePath
-            systemProperty "factorycore.interruption.expected", file("build/reports/interruption/expected.properties").absolutePath
-        }
-        interruptionKillServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/interruption-run/kill")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.interruption.server", "true"
-            systemProperty "factorycore.interruption.variant", "kill"
-            systemProperty "factorycore.interruption.report", file("build/reports/interruption/kill.txt").absolutePath
-            systemProperty "factorycore.interruption.expected", file("build/reports/interruption/expected.properties").absolutePath
-        }
-        interruptionDataOldServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/interruption-run/data-old")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.interruption.server", "true"
-            systemProperty "factorycore.interruption.variant", "data-old"
-            systemProperty "factorycore.interruption.report", file("build/reports/interruption/data-old.txt").absolutePath
-            systemProperty "factorycore.interruption.expected", file("build/reports/interruption/expected.properties").absolutePath
-        }
-        interruptionChunksOldServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/interruption-run/chunks-old")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.interruption.server", "true"
-            systemProperty "factorycore.interruption.variant", "chunks-old"
-            systemProperty "factorycore.interruption.report", file("build/reports/interruption/chunks-old.txt").absolutePath
-            systemProperty "factorycore.interruption.expected", file("build/reports/interruption/expected.properties").absolutePath
-        }
-        saveOrderChunksSeedServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/save-order-chunks-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.saveorder.server", "true"
-            systemProperty "factorycore.saveorder.order", "chunks-old"
-            systemProperty "factorycore.saveorder.report", file("build/reports/save-order-chunks/seed.txt").absolutePath
-            systemProperty "factorycore.saveorder.expected", file("build/reports/save-order-chunks/expected.properties").absolutePath
-        }
-        saveOrderChunksRestoreServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/save-order-chunks-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.saveorder.server", "true"
-            systemProperty "factorycore.saveorder.order", "chunks-old"
-            systemProperty "factorycore.saveorder.restore", "true"
-            systemProperty "factorycore.saveorder.report", file("build/reports/save-order-chunks/restore.txt").absolutePath
-            systemProperty "factorycore.saveorder.expected", file("build/reports/save-order-chunks/expected.properties").absolutePath
-        }
-        // Multiplayer check (manual, needs a display): one dedicated server and two real clients.
-        multiplayerServer {
-            server()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/multiplayer-server-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArgument '--nogui'
-            systemProperty "factorycore.multiplayer.server", "true"
-            systemProperty "factorycore.multiplayer.dir", file("build/reports/multiplayer").absolutePath
-            systemProperty "factorycore.noWelcomeGuide", "true"
-        }
-        multiplayerOwnerClient {
-            client()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/multiplayer-owner-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArguments.addAll('--username', 'FactoryOwner')
-            systemProperty "factorycore.multiplayer.role", "owner"
-            systemProperty "factorycore.multiplayer.dir", file("build/reports/multiplayer").absolutePath
-            systemProperty "factorycore.noWelcomeGuide", "true"
-        }
-        multiplayerStrangerClient {
-            client()
-            sourceSet = sourceSets.clientTest
-            gameDirectory = file("build/multiplayer-stranger-run")
-            loadedMods = [mods.factorycore, mods.factorycore_client_tests]
-            programArguments.addAll('--username', 'FactoryGuest')
-            systemProperty "factorycore.multiplayer.role", "stranger"
-            systemProperty "factorycore.multiplayer.dir", file("build/reports/multiplayer").absolutePath
-            systemProperty "factorycore.noWelcomeGuide", "true"
-        }
         client {
             client()
             gameDirectory = file('run/client')
@@ -295,6 +91,92 @@ neoForge {
         testedMod = mods.factorycore
         loadedMods = [mods.factorycore]
     }
+}
+
+// Verification runs: the client-test mod in a dedicated server (--nogui) or a real client. Each
+// option maps to the run model; props become factorycore.* system properties (Files as paths).
+def reportFile = { String path -> file("build/reports/${path}") }
+def verificationRun = { Map o, String name ->
+    neoForge.runs.register(name) {
+        if (o.client) {
+            client()
+        } else {
+            server()
+            programArgument '--nogui'
+        }
+        sourceSet = o.sourceSet ?: sourceSets.clientTest
+        gameDirectory = file("build/${o.dir}")
+        loadedMods = o.mods ?: [neoForge.mods.factorycore, neoForge.mods.factorycore_client_tests]
+        o.get('jvm', []).each { jvmArgument it }
+        o.get('args', []).each { programArgument it }
+        o.get('props', [:]).each { key, value ->
+            systemProperty "factorycore.${key}", value instanceof File ? value.absolutePath : value.toString()
+        }
+    }
+}
+def clientReport = { String suite -> [noWelcomeGuide: true, 'client.report': reportFile("${suite}/result.txt")] }
+
+verificationRun('gatewayDepthServer', dir: 'gateway-depth-run',
+    props: ['wireless.server': true, 'wireless.depthLimited': true, 'wireless.report': reportFile('gateway-depth/result.txt')])
+verificationRun('wirelessLifecycleServer', dir: 'wireless-lifecycle-run',
+    props: ['wireless.server': true, 'wireless.report': reportFile('wireless-lifecycle/result.txt')])
+verificationRun('jeiClient', client: true, dir: 'client-jei-run', sourceSet: sourceSets.jeiTest,
+    mods: [neoForge.mods.factorycore, neoForge.mods.factorycore_jei_tests], props: clientReport('client-jei'))
+verificationRun('terminalClient', client: true, dir: 'client-terminal-run', props: clientReport('client-terminal'))
+verificationRun('presentationClient', client: true, dir: 'client-presentation-run',
+    props: clientReport('client-presentation') + [presentation: true])
+verificationRun('terminalRestartClient', client: true, dir: 'client-terminal-run',
+    props: clientReport('client-restart') + ['client.seed': reportFile('client-terminal/restart.properties'), 'client.restart': true])
+verificationRun('benchmarkServer', dir: 'benchmark-server-run', jvm: ['-Xmx2g'],
+    props: ['bench.server': true, 'bench.output': file('build/benchmarks')])
+// Seed/restore pairs share a world directory; the restore run reopens what the seed saved.
+[seed: false, recovery: true].each { phase, restore ->
+    verificationRun("staging${phase.capitalize()}Server", dir: 'staging-server-run',
+        props: ['staging.server': true, 'staging.report': reportFile("staging-server/${restore ? 'restore' : 'seed'}.txt"),
+                'staging.expected': reportFile('staging-server/expected.properties')] + (restore ? ['staging.restore': true] : [:]))
+}
+[saveOrder: [:], saveOrderChunks: ['saveorder.order': 'chunks-old']].each { suite, extra ->
+    def dir = suite == 'saveOrder' ? 'save-order' : 'save-order-chunks'
+    [seed: false, restore: true].each { phase, restore ->
+        verificationRun("${suite}${phase.capitalize()}Server", dir: "${dir}-run",
+            props: ['saveorder.server': true, 'saveorder.report': reportFile("${dir}/${phase}.txt"),
+                    'saveorder.expected': reportFile("${dir}/expected.properties")] + extra + (restore ? ['saveorder.restore': true] : [:]))
+    }
+}
+['seed', 'kill', 'data-old', 'chunks-old'].each { variant ->
+    verificationRun('interruption' + variant.split('-').collect { it.capitalize() }.join('') + 'Server', dir: "interruption-run/${variant}",
+        props: ['interruption.server': true, 'interruption.variant': variant, 'interruption.report': reportFile("interruption/${variant}.txt"),
+                'interruption.expected': reportFile('interruption/expected.properties')])
+}
+// Multiplayer check (manual, needs a display): one dedicated server and two real clients.
+verificationRun('multiplayerServer', dir: 'multiplayer-server-run',
+    props: ['multiplayer.server': true, 'multiplayer.dir': reportFile('multiplayer'), noWelcomeGuide: true])
+[owner: 'FactoryOwner', stranger: 'FactoryGuest'].each { role, username ->
+    verificationRun("multiplayer${role.capitalize()}Client", client: true, dir: "multiplayer-${role}-run", args: ['--username', username],
+        props: ['multiplayer.role': role, 'multiplayer.dir': reportFile('multiplayer'), noWelcomeGuide: true])
+}
+
+// A flat, structure-free world for dedicated-server runs; overrides replace or add properties.
+def flatWorld = { File directory, Map overrides = [:] ->
+    def settings = [
+        'level-type': 'minecraft:flat',
+        'generator-settings': '{"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}',
+        'level-seed': 385918, 'generate-structures': false, 'server-ip': '127.0.0.1', 'server-port': 0,
+        'online-mode': false, 'view-distance': 2, 'simulation-distance': 2] + overrides
+    directory.mkdirs()
+    new File(directory, 'server.properties').text = settings.collect { key, value -> "${key}=${value}" }.join('\n') + '\n'
+}
+// A verification run passes only by writing a report that starts with PASS.
+def requirePass = { File result, String failure ->
+    if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException(failure)
+}
+// Every name in the suite's capture manifest must exist as a non-empty screenshot.
+def requireCaptures = { String manifest, File screenshots ->
+    def missing = file(manifest).readLines()*.trim().findAll { it && !it.startsWith('#') }.findAll { name ->
+        def capture = new File(screenshots, name)
+        !capture.isFile() || capture.length() == 0
+    }
+    if (missing) throw new GradleException("Screenshots missing from ${screenshots}: ${missing}")
 }
 
 tasks.named('runGameTestServer', JavaExec) {
@@ -341,7 +223,6 @@ tasks.named('runAutomaticThroughputServer', JavaExec) {
             throw new GradleException('The isolated automatic throughput regression must execute and pass.')
     }
 }
-tasks.named('releaseCheck') { dependsOn tasks.named('runAutomaticThroughputServer') }
 
 tasks.named('runServer', JavaExec) {
     standardInput = System.in
@@ -446,35 +327,21 @@ tasks.named('check') { dependsOn tasks.named('compileClientTestJava'), tasks.nam
 tasks.named('runJeiClient', JavaExec) {
     doFirst {
         delete file('build/client-jei-run/saves/factorycore-jei-verification')
-        delete file('build/reports/client-jei')
+        delete reportFile('client-jei')
     }
     doLast {
-        def result = file('build/reports/client-jei/result.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('JEI graphical verification did not complete.')
-        def captures = ['jei-terminal-overlay.png', 'jei-recipe-over-terminal.png', 'jei-terminal-filled.png', 'jei-program-ghost.png']
-        if (captures.any { name ->
-            def capture = file("build/reports/client-jei/screenshots/${name}")
-            !capture.isFile() || capture.length() == 0
-        }) throw new GradleException('JEI screenshots are missing.')
+        requirePass(reportFile('client-jei/result.txt'), 'JEI graphical verification did not complete.')
+        requireCaptures('src/jeiTest/resources/captures/jei.txt', reportFile('client-jei/screenshots'))
     }
 }
 tasks.named('runTerminalClient', JavaExec) {
     doFirst {
         delete file('build/client-terminal-run/saves/factorycore-terminal-verification')
-        delete file('build/reports/client-terminal')
+        delete reportFile('client-terminal')
     }
     doLast {
-        def result = file('build/reports/client-terminal/result.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) {
-            throw new GradleException('Graphical terminal verification did not complete.')
-        }
-        def captures = ['scale-2-all-items.png', 'terminal-search-display-name.png', 'terminal-search-mod.png', 'terminal-search-tag.png', 'terminal-sort-quantity.png', 'terminal-search-reopened.png', 'terminal-preferences-before-restart.png', 'scale-3-iron.png', 'scale-4-iron.png', 'scale-4-next-page.png', 'buffer-scale-2-settings.png', 'buffer-scale-2-rules-page-1.png', 'buffer-scale-2-rules-page-2.png', 'buffer-scale-2-stock.png', 'buffer-scale-2-full.png', 'buffer-scale-3-inventory.png', 'buffer-scale-3-settings.png', 'buffer-scale-4-settings.png', 'buffer-scale-4-inventory.png', 'machine-scale-2-draft.png', 'machine-scale-3-draft.png', 'machine-scale-4-draft.png', 'machine-scale-4-reopened.png', 'machine-preset-scale-2-draft.png', 'machine-preset-scale-3-draft.png', 'machine-preset-scale-4-stock.png', 'terminal-grid-scale-4.png', 'terminal-grid-scale-2.png', 'gateway-policy-scale-2.png', 'gateway-policy-scale-4.png', 'program-editor-scale-2.png', 'program-inline-error-scale-2.png', 'program-native-items-scale-2.png', 'program-native-labels-scale-2.png', 'program-highlighted-scale-2.png', 'program-highlighted-scale-4.png', 'program-rule-preview-scale-4.png', 'guide-page-1.png', 'guide-page-2.png', 'terminal-fluids-scale-2.png', 'terminal-energy-scale-2.png', 'wireless-terminal-scale-2.png', 'art-blocks-front.png', 'art-blocks-top.png', 'art-cables.png', 'art-items-scale-2.png', 'art-items-scale-4.png']
-        if (captures.any { name ->
-            def capture = file("build/reports/client-terminal/screenshots/${name}")
-            !capture.isFile() || capture.length() == 0
-        }) {
-            throw new GradleException('Graphical terminal screenshots are missing.')
-        }
+        requirePass(reportFile('client-terminal/result.txt'), 'Graphical terminal verification did not complete.')
+        requireCaptures('src/clientTest/resources/captures/terminal.txt', reportFile('client-terminal/screenshots'))
     }
 }
 
@@ -483,98 +350,57 @@ tasks.named('runTerminalClient', JavaExec) {
 tasks.named('runPresentationClient', JavaExec) {
     doFirst {
         delete file('build/client-presentation-run/saves/factorycore-presentation-verification')
-        delete file('build/reports/client-presentation')
+        delete reportFile('client-presentation')
     }
     doLast {
-        def result = file('build/reports/client-presentation/result.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n'))
-            throw new GradleException('Graphical presentation verification did not complete.')
-        def screens = ['terminal', 'buffer', 'machine', 'program', 'gateway-policy', 'access', 'recovery', 'guide']
-        def captures = ['orientation-north-east-up.png', 'orientation-south-west-down.png', 'states-day.png', 'states-day-close.png', 'states-night.png', 'states-night-close.png', 'held-first-person-network_controller.png', 'held-first-person-network_cable.png', 'held-first-person-factory_guide.png', 'held-third-person-gateway.png', 'tooltips-edges-scale-4.png', 'tooltips-edges-scale-2.png', 'terminal-scale-2.png', 'terminal-scale-3.png'] + screens.collectMany { ["${it}-scale-1.png", "${it}-scale-4.png"] }
-        captures += [2, 4].collectMany { scale -> (1..3).collect { corner -> "tooltips-corner-${corner}-scale-${scale}.png" } }
-        captures += ['machine-throughput', 'machine-overdrive', 'buffer-throughput', 'buffer-overdrive', 'guide-throughput'].collectMany { ["${it}-scale-1.png", "${it}-scale-4.png"] }
-        captures += (0..1).collect { "upgrade-tooltip-${it}-scale-4.png" }
-        captures += ['jobs-preview-scale-2.png', 'jobs-started-scale-2.png', 'jobs-missing-scale-4.png', 'jobs-keep-waiting-scale-4.png']
-        def missing = captures.findAll { name ->
-            def capture = file("build/reports/client-presentation/screenshots/${name}")
-            !capture.isFile() || capture.length() == 0
-        }
-        if (missing) throw new GradleException("Presentation screenshots are missing: ${missing}")
-    }
-}
-
-tasks.named('runWirelessLifecycleServer', JavaExec) {
-    doFirst {
-        delete file('build/wireless-lifecycle-run/world')
-        delete file('build/reports/wireless-lifecycle')
-        def settings = file('build/wireless-lifecycle-run/server.properties')
-        settings.parentFile.mkdirs()
-        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
-    }
-    doLast {
-        def result = file('build/reports/wireless-lifecycle/result.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n'))
-            throw new GradleException('Native wireless endpoint lifecycle did not complete.')
-    }
-}
-tasks.named('releaseCheck') { dependsOn tasks.named('runWirelessLifecycleServer'), tasks.named('runGatewayDepthServer') }
-tasks.named('runGatewayDepthServer', JavaExec) {
-    doFirst {
-        delete file('build/gateway-depth-run/world')
-        delete file('build/reports/gateway-depth')
-        def settings = file('build/gateway-depth-run/server.properties')
-        settings.parentFile.mkdirs()
-        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
-        def config = file('build/gateway-depth-run/world/serverconfig/factorycore-server.toml')
-        config.parentFile.mkdirs()
-        config.text = '[network]\ngatewayDepth=1\n'
-    }
-    doLast {
-        def result = file('build/reports/gateway-depth/result.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n'))
-            throw new GradleException('Configured gateway nesting verification did not complete.')
+        requirePass(reportFile('client-presentation/result.txt'), 'Graphical presentation verification did not complete.')
+        requireCaptures('src/clientTest/resources/captures/presentation.txt', reportFile('client-presentation/screenshots'))
     }
 }
 
 // Separate JVM: reopen the completed seed world instead of recreating or repairing it.
 tasks.named('runTerminalRestartClient', JavaExec) {
     dependsOn tasks.named('runTerminalClient')
-    doFirst { delete file('build/reports/client-restart') }
+    doFirst { delete reportFile('client-restart') }
     doLast {
-        def result = file('build/reports/client-restart/result.txt')
-        def terminalCapture = file('build/reports/client-restart/screenshots/restarted-terminal-preferences.png')
-        if (!terminalCapture.isFile() || terminalCapture.length() < 1000) {
-            throw new GradleException('Restarted terminal preference screenshot is missing.')
-        }
-        def capture = file('build/reports/client-restart/screenshots/restarted-machine-stock.png')
-        if (!result.isFile() || !result.text.startsWith('PASS\n') || !capture.isFile() || capture.length() == 0) {
-            throw new GradleException('Separate-process world restart verification did not complete.')
-        }
+        requirePass(reportFile('client-restart/result.txt'), 'Separate-process world restart verification did not complete.')
+        requireCaptures('src/clientTest/resources/captures/restart.txt', reportFile('client-restart/screenshots'))
     }
+}
+
+tasks.named('runWirelessLifecycleServer', JavaExec) {
+    doFirst {
+        delete file('build/wireless-lifecycle-run/world')
+        delete reportFile('wireless-lifecycle')
+        flatWorld(file('build/wireless-lifecycle-run'))
+    }
+    doLast { requirePass(reportFile('wireless-lifecycle/result.txt'), 'Native wireless endpoint lifecycle did not complete.') }
+}
+tasks.named('runGatewayDepthServer', JavaExec) {
+    doFirst {
+        delete file('build/gateway-depth-run/world')
+        delete reportFile('gateway-depth')
+        flatWorld(file('build/gateway-depth-run'))
+        def config = file('build/gateway-depth-run/world/serverconfig/factorycore-server.toml')
+        config.parentFile.mkdirs()
+        config.text = '[network]\ngatewayDepth=1\n'
+    }
+    doLast { requirePass(reportFile('gateway-depth/result.txt'), 'Configured gateway nesting verification did not complete.') }
 }
 
 // Required headless native persistence probe: accepted calls, orderly exit, distinct-JVM recovery.
 tasks.named('runStagingSeedServer', JavaExec) {
     doFirst {
         delete file('build/staging-server-run/world')
-        delete file('build/reports/staging-server')
-        def settings = file('build/staging-server-run/server.properties')
-        settings.parentFile.mkdirs()
-        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+        delete reportFile('staging-server')
+        flatWorld(file('build/staging-server-run'))
     }
-    doLast {
-        def result = file('build/reports/staging-server/seed.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Native staging seed did not complete.')
-    }
+    doLast { requirePass(reportFile('staging-server/seed.txt'), 'Native staging seed did not complete.') }
 }
 tasks.named('runStagingRecoveryServer', JavaExec) {
     dependsOn tasks.named('runStagingSeedServer')
-    doLast {
-        def result = file('build/reports/staging-server/restore.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Native staging recovery did not complete.')
-    }
+    doLast { requirePass(reportFile('staging-server/restore.txt'), 'Native staging recovery did not complete.') }
 }
-tasks.named('releaseCheck') { dependsOn tasks.named('runStagingRecoveryServer') }
 
 // Required abrupt-kill and independent-save interruption of a real processing job (ADR 0057).
 // The seed saves S1/S2/S3 then SIGKILLs itself; each restore runs on its own copy of that world.
@@ -582,20 +408,16 @@ tasks.named('runInterruptionSeedServer', JavaExec) {
     ignoreExitValue = true
     doFirst {
         delete file('build/interruption-run')
-        delete file('build/reports/interruption')
-        def settings = file('build/interruption-run/seed/server.properties')
-        settings.parentFile.mkdirs()
-        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+        delete reportFile('interruption')
+        flatWorld(file('build/interruption-run/seed'))
     }
     doLast {
-        def result = file('build/reports/interruption/seed.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Interruption seed did not reach its kill point.')
+        requirePass(reportFile('interruption/seed.txt'), 'Interruption seed did not reach its kill point.')
         if (executionResult.get().exitValue != 137) throw new GradleException("Interruption seed was not killed (exit ${executionResult.get().exitValue}).")
     }
 }
 [kill: [:], 'data-old': ['data/factorycore_devices.dat': 's1', 'region/r.0.0.mca': 's2'], 'chunks-old': ['data/factorycore_devices.dat': 's2', 'region/r.0.0.mca': 's1']].each { variant, older ->
-    def task = 'runInterruption' + variant.split('-').collect { it.capitalize() }.join('') + 'Server'
-    tasks.named(task, JavaExec) {
+    tasks.named('runInterruption' + variant.split('-').collect { it.capitalize() }.join('') + 'Server', JavaExec) {
         dependsOn tasks.named('runInterruptionSeedServer')
         doFirst {
             def target = file("build/interruption-run/${variant}")
@@ -606,73 +428,41 @@ tasks.named('runInterruptionSeedServer', JavaExec) {
                 java.nio.file.Files.copy(source.toPath(), file("${target}/world/${path}").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
             }
         }
-        doLast {
-            def result = file("build/reports/interruption/${variant}.txt")
-            if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException("Interruption ${variant} restore did not complete.")
+        doLast { requirePass(reportFile("interruption/${variant}.txt"), "Interruption ${variant} restore did not complete.") }
+    }
+}
+
+// Required independent-save injection, both ways: canonical SavedData older than the chunks it
+// describes (saveOrder), and chunks older than the SavedData (saveOrderChunks).
+[saveOrder: ['save-order', 'data/factorycore_devices', 'SavedData', 'after chunks were saved but before SavedData was'],
+ saveOrderChunks: ['save-order-chunks', 'region/r.0.0', 'region file', 'after SavedData was saved but before the chunks were']].each { suite, spec ->
+    def dir = spec[0], stale = spec[1], what = spec[2]
+    tasks.named("run${suite.capitalize()}SeedServer", JavaExec) {
+        doFirst {
+            delete file("build/${dir}-run/world")
+            delete reportFile(dir)
+            flatWorld(file("build/${dir}-run"))
         }
+        doLast { requirePass(reportFile("${dir}/seed.txt"), 'Save-order seed did not complete.') }
     }
-    tasks.named('releaseCheck') { dependsOn tasks.named(task) }
+    tasks.named("run${suite.capitalize()}RestoreServer", JavaExec) {
+        dependsOn tasks.named("run${suite.capitalize()}SeedServer")
+        doFirst {
+            def before = file("build/${dir}-run/world/${stale}.before")
+            if (!before.isFile()) throw new GradleException("Save-order seed left no older ${what}.")
+            // Simulate an interruption between the two saves (spec[3]).
+            def current = file("build/${dir}-run/world/${stale}.${stale.startsWith('region') ? 'mca' : 'dat'}")
+            java.nio.file.Files.copy(before.toPath(), current.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+        doLast { requirePass(reportFile("${dir}/restore.txt"), 'Save-order restore did not complete.') }
+    }
 }
 
-// Required independent-save injection: canonical SavedData older than the chunks it describes.
-tasks.named('runSaveOrderSeedServer', JavaExec) {
-    doFirst {
-        delete file('build/save-order-run/world')
-        delete file('build/reports/save-order')
-        def settings = file('build/save-order-run/server.properties')
-        settings.parentFile.mkdirs()
-        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
-    }
-    doLast {
-        def result = file('build/reports/save-order/seed.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order seed did not complete.')
-    }
+tasks.named('releaseCheck') {
+    dependsOn(['AutomaticThroughput', 'WirelessLifecycle', 'GatewayDepth', 'StagingRecovery', 'InterruptionKill',
+               'InterruptionDataOld', 'InterruptionChunksOld', 'SaveOrderRestore', 'SaveOrderChunksRestore']
+        .collect { tasks.named("run${it}Server") })
 }
-tasks.named('runSaveOrderRestoreServer', JavaExec) {
-    dependsOn tasks.named('runSaveOrderSeedServer')
-    doFirst {
-        def data = file('build/save-order-run/world/data/factorycore_devices.dat')
-        def before = file('build/save-order-run/world/data/factorycore_devices.before')
-        if (!before.isFile()) throw new GradleException('Save-order seed left no older SavedData.')
-        // Simulate an interruption after chunks were saved but before SavedData was.
-        java.nio.file.Files.copy(before.toPath(), data.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-    }
-    doLast {
-        def result = file('build/reports/save-order/restore.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order restore did not complete.')
-    }
-}
-tasks.named('releaseCheck') { dependsOn tasks.named('runSaveOrderRestoreServer') }
-
-// Required converse injection: chunks older than the canonical SavedData that describes them.
-tasks.named('runSaveOrderChunksSeedServer', JavaExec) {
-    doFirst {
-        delete file('build/save-order-chunks-run/world')
-        delete file('build/reports/save-order-chunks')
-        def settings = file('build/save-order-chunks-run/server.properties')
-        settings.parentFile.mkdirs()
-        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
-    }
-    doLast {
-        def result = file('build/reports/save-order-chunks/seed.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order seed did not complete.')
-    }
-}
-tasks.named('runSaveOrderChunksRestoreServer', JavaExec) {
-    dependsOn tasks.named('runSaveOrderChunksSeedServer')
-    doFirst {
-        def region = file('build/save-order-chunks-run/world/region/r.0.0.mca')
-        def before = file('build/save-order-chunks-run/world/region/r.0.0.before')
-        if (!before.isFile()) throw new GradleException('Save-order seed left no older region file.')
-        // Simulate an interruption after SavedData was saved but before the chunks were.
-        java.nio.file.Files.copy(before.toPath(), region.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-    }
-    doLast {
-        def result = file('build/reports/save-order-chunks/restore.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order restore did not complete.')
-    }
-}
-tasks.named('releaseCheck') { dependsOn tasks.named('runSaveOrderChunksRestoreServer') }
 
 // Manual A15/D07 measurement (not part of check): dedicated-server workload benchmark.
 tasks.named('runBenchmarkServer', JavaExec) {
@@ -680,14 +470,9 @@ tasks.named('runBenchmarkServer', JavaExec) {
         delete file('build/benchmark-server-run/world')
         delete file('build/benchmarks/server-v1-summary.txt')
         delete file('build/benchmarks/server-v1.csv')
-        def settings = file('build/benchmark-server-run/server.properties')
-        settings.parentFile.mkdirs()
-        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n'
+        flatWorld(file('build/benchmark-server-run'))
     }
-    doLast {
-        def result = file('build/benchmarks/server-v1-summary.txt')
-        if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Server benchmark did not pass conservation.')
-    }
+    doLast { requirePass(file('build/benchmarks/server-v1-summary.txt'), 'Server benchmark did not pass conservation.') }
 }
 
 // Manual multiplayer check (not part of check; needs a display). Gradle runs JavaExec tasks of one
@@ -705,9 +490,9 @@ tasks.register('runMultiplayerCheck') {
         delete file('build/multiplayer-server-run/world')
         reports.mkdirs()
         int port = new ServerSocket(0, 0, InetAddress.getLoopbackAddress()).withCloseable { it.localPort }
-        def settings = file('build/multiplayer-server-run/server.properties')
-        settings.parentFile.mkdirs()
-        settings.text = 'level-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\nlevel-seed=385918\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=' + port + '\nonline-mode=false\nenforce-secure-profile=false\nspawn-protection=0\nallow-flight=true\ngamemode=survival\ndifficulty=peaceful\nspawn-monsters=false\nmax-players=4\nview-distance=4\nsimulation-distance=4\n'
+        flatWorld(file('build/multiplayer-server-run'), ['server-port': port, 'enforce-secure-profile': false, 'spawn-protection': 0,
+            'allow-flight': true, gamemode: 'survival', difficulty: 'peaceful', 'spawn-monsters': false, 'max-players': 4,
+            'view-distance': 4, 'simulation-distance': 4])
         new File(reports, 'port.txt').text = "${port}\n"
         // Mirrors RunGameTask.exec(): its classpath, environment and game directory are applied at
         // execution time, so the command line is assembled from the same configured properties.
@@ -748,18 +533,10 @@ tasks.register('runMultiplayerCheck') {
             processes.each { process -> if (process.alive) process.destroyForcibly() }
         }
         ['server', 'owner', 'stranger'].each { role ->
-            def result = file("build/reports/multiplayer/${role}/result.txt")
-            if (!result.isFile() || !result.text.startsWith('PASS\n'))
-                throw new GradleException("Multiplayer ${role} did not pass; see build/reports/multiplayer/${role}/result.txt and ${role}.log.")
+            requirePass(reportFile("multiplayer/${role}/result.txt"), "Multiplayer ${role} did not pass; see build/reports/multiplayer/${role}/result.txt and ${role}.log.")
         }
-        def captures = [
-            'owner': ['owner-policy-editable.png', 'owner-terminal-concurrent.png', 'owner-sees-stranger-take.png', 'owner-took-one.png', 'owner-sees-stranger-deposit.png', 'owner-concurrent-take.png', 'owner-after-revoke.png'],
-            'stranger': ['stranger-terminal-denied.png', 'stranger-self-grant-refused.png', 'stranger-policy-readonly.png', 'stranger-view-only.png', 'stranger-take-denied.png', 'stranger-terminal-concurrent.png', 'stranger-took-one.png', 'stranger-sees-owner-take.png', 'stranger-deposited.png', 'stranger-concurrent-take.png', 'stranger-revoked-closed.png', 'stranger-operator-granted.png']]
-        captures.each { role, names ->
-            names.each { name ->
-                def capture = file("build/reports/multiplayer/${role}/screenshots/${name}")
-                if (!capture.isFile() || capture.length() == 0) throw new GradleException("Multiplayer screenshot missing: ${role}/${name}")
-            }
+        ['owner', 'stranger'].each { role ->
+            requireCaptures("src/clientTest/resources/captures/multiplayer-${role}.txt", reportFile("multiplayer/${role}/screenshots"))
         }
     }
 }

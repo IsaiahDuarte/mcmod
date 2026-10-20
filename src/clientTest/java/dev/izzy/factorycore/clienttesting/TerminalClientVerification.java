@@ -29,7 +29,6 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -75,6 +74,7 @@ public final class TerminalClientVerification {
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean ready = new AtomicBoolean(), checked = new AtomicBoolean();
   private final StringBuilder evidence = new StringBuilder();
+  private final Captures captures = new Captures("terminal", report, evidence);
   private BufferedInterfaceEntity fixtureBuffer;
   private boolean importEnabled;
   private final RestartCheckpoint restartCheckpoint = new RestartCheckpoint();
@@ -335,14 +335,14 @@ public final class TerminalClientVerification {
           screen.children().stream()
               .anyMatch(child -> child instanceof EditBox edit && edit.getValue().equals("iron")),
           "Search text survives actual GUI-scale reinitialization");
-      capture(client, "scale-3-iron.png");
+      captures.grab(client, "scale-3-iron.png");
       client.options.guiScale().set(4);
       client.resizeDisplay();
       next();
       return;
     }
     if (stage == 8 && ticks - entered > 10) {
-      capture(client, "scale-4-iron.png");
+      captures.grab(client, "scale-4-iron.png");
       search(screen, "");
       next();
       return;
@@ -358,7 +358,7 @@ public final class TerminalClientVerification {
         && view.revision() > previousRevision
         && view.rows().size() == 2
         && !view.next()) {
-      capture(client, "scale-4-next-page.png");
+      captures.grab(client, "scale-4-next-page.png");
       click(screen, "Home");
       next();
       return;
@@ -388,24 +388,24 @@ public final class TerminalClientVerification {
                 && view.rows().getFirst().name().equals("Client hopper variant"),
             "Name sorting uses display names rather than registry order");
         checkNoOverlap(screen);
-        capture(client, "scale-2-all-items.png");
+        captures.grab(client, "scale-2-all-items.png");
         search(screen, "hopper variant");
       }
       case 1 -> {
         if (!view.search().equals("hopper variant") || view.rows().size() != 1) return;
         check(view.rows().getFirst().total().equals("23"), "Display-only query finds named stock");
-        capture(client, "terminal-search-display-name.png");
+        captures.grab(client, "terminal-search-display-name.png");
         search(screen, "@minecraft");
       }
       case 2 -> {
         if (!view.search().equals("@minecraft") || view.rows().size() != 8) return;
-        capture(client, "terminal-search-mod.png");
+        captures.grab(client, "terminal-search-mod.png");
         search(screen, "#minecraft:coals");
       }
       case 3 -> {
         if (!view.search().equals("#minecraft:coals") || view.rows().size() != 1) return;
         check(view.rows().getFirst().icon().equals("minecraft:coal"), "Loaded tag finds only coal");
-        capture(client, "terminal-search-tag.png");
+        captures.grab(client, "terminal-search-tag.png");
         search(screen, "@minecraft");
       }
       case 4 -> {
@@ -415,14 +415,14 @@ public final class TerminalClientVerification {
       case 5 -> {
         if (view.sort() != TerminalSearchSupport.QUANTITY) return;
         check(view.rows().getFirst().total().equals("23"), "Exact quantity sort puts23 ahead of3");
-        capture(client, "terminal-sort-quantity.png");
+        captures.grab(client, "terminal-sort-quantity.png");
         client.player.closeContainer();
       }
       case 7 -> {
         if (!view.search().equals("@minecraft") || view.sort() != TerminalSearchSupport.QUANTITY)
           return;
         check(view.rows().getFirst().total().equals("23"), "Reopen restores player's sorted query");
-        capture(client, "terminal-search-reopened.png");
+        captures.grab(client, "terminal-search-reopened.png");
         click(screen, "Qty");
       }
       case 8 -> {
@@ -490,7 +490,7 @@ public final class TerminalClientVerification {
         if (!grid.result().equals("minecraft:oak_planks")) return;
         check(grid.resultCount() == 4, "Actual server recipe preview for one log");
         checkNoOverlap(screen);
-        capture(client, "terminal-grid-scale-4.png");
+        captures.grab(client, "terminal-grid-scale-4.png");
         screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + TerminalScreen.GRID_Y + 9, 0);
         for (var child : screen.children())
           if (child instanceof EditBox edit) edit.setFocused(false);
@@ -526,7 +526,7 @@ public final class TerminalClientVerification {
       case 6 -> {
         if (ticks - entered < 10) return;
         checkNoOverlap(screen);
-        capture(client, "terminal-grid-scale-2.png");
+        captures.grab(client, "terminal-grid-scale-2.png");
         server.execute(
             () ->
                 server
@@ -567,7 +567,7 @@ public final class TerminalClientVerification {
         check(
             view.mode().equals("IMPORT") && !view.dirty(),
             "Native buffer menu opens saved Import settings");
-        capture(client, "buffer-scale-2-settings.png");
+        captures.grab(client, "buffer-scale-2-settings.png");
         click(screen, "Import");
         next();
       }
@@ -607,12 +607,12 @@ public final class TerminalClientVerification {
         check(
             view.dirty() && view.filter().equals("INCLUDE"),
             "Native registry/tag edits remain separate draft");
-        capture(client, "buffer-scale-2-rules-page-1.png");
+        captures.grab(client, "buffer-scale-2-rules-page-1.png");
         click(screen, "Next");
         next();
       }
       case 18 -> {
-        capture(client, "buffer-scale-2-rules-page-2.png");
+        captures.grab(client, "buffer-scale-2-rules-page-2.png");
         if (!sampleSeeded) {
           var server = client.getSingleplayerServer();
           var principal = client.player.getUUID();
@@ -672,7 +672,7 @@ public final class TerminalClientVerification {
         next();
       }
       case 26 -> {
-        capture(client, "buffer-scale-2-stock.png");
+        captures.grab(client, "buffer-scale-2-stock.png");
         click(screen, "Take 1");
         next();
       }
@@ -691,7 +691,7 @@ public final class TerminalClientVerification {
             client.player.getInventory().getItem(9).getCount() == 3
                 && view.slots().getFirst().count() == 8,
             "Full Stock goal retains player deposit without extraction");
-        capture(client, "buffer-scale-2-full.png");
+        captures.grab(client, "buffer-scale-2-full.png");
         click(screen, "Stock");
         next();
       }
@@ -756,23 +756,23 @@ public final class TerminalClientVerification {
       }
       case 34 -> {
         if (!checked.get()) return;
-        capture(client, "buffer-scale-3-inventory.png");
+        captures.grab(client, "buffer-scale-3-inventory.png");
         click(screen, "Settings");
         next();
       }
       case 35 -> {
-        capture(client, "buffer-scale-3-settings.png");
+        captures.grab(client, "buffer-scale-3-settings.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
         next();
       }
       case 36 -> {
-        capture(client, "buffer-scale-4-settings.png");
+        captures.grab(client, "buffer-scale-4-settings.png");
         click(screen, "Inventory");
         next();
       }
       case 37 -> {
-        capture(client, "buffer-scale-4-inventory.png");
+        captures.grab(client, "buffer-scale-4-inventory.png");
         next();
       }
       case 38 -> {
@@ -942,7 +942,7 @@ public final class TerminalClientVerification {
       return;
     }
     if (stage == 59 && checked.get()) {
-      capture(client, "machine-preset-scale-4-stock.png");
+      captures.grab(client, "machine-preset-scale-4-stock.png");
       client.player.closeContainer();
       checked.set(false);
       jump(61);
@@ -1079,7 +1079,7 @@ public final class TerminalClientVerification {
                   <= 94,
               "Policy column header fits: " + header);
         checkNoOverlap(screen);
-        capture(client, "gateway-policy-scale-2.png");
+        captures.grab(client, "gateway-policy-scale-2.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
         next();
@@ -1087,7 +1087,7 @@ public final class TerminalClientVerification {
       case 65 -> {
         if (ticks - entered < 10) return;
         checkNoOverlap(client.screen);
-        capture(client, "gateway-policy-scale-4.png");
+        captures.grab(client, "gateway-policy-scale-4.png");
         client.player.closeContainer();
         client.options.guiScale().set(2);
         client.resizeDisplay();
@@ -1105,9 +1105,10 @@ public final class TerminalClientVerification {
       case 67 -> {
         if (!(client.screen instanceof ProgramScreen screen) || ticks - entered < 10) return;
         checkNoOverlap(screen);
-        if (!programAuthoring.tick(client, screen, ticks, name -> capture(client, name))) return;
+        if (!programAuthoring.tick(client, screen, ticks, name -> captures.grab(client, name)))
+          return;
         checkNoOverlap(screen);
-        capture(client, "program-editor-scale-2.png");
+        captures.grab(client, "program-editor-scale-2.png");
         evidence.append(
             "program-authoring: typed source, atomic undo/redo, native item/local-label selection, cursor completion, highlighted GUI scales2/4 and read-only resolved rule preview\n");
         client.player.closeContainer();
@@ -1129,12 +1130,12 @@ public final class TerminalClientVerification {
       }
       case 69 -> {
         if (!(client.screen instanceof BookViewScreen screen)) return;
-        capture(client, "guide-page-1.png");
+        captures.grab(client, "guide-page-1.png");
         screen.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
         next();
       }
       case 70 -> {
-        capture(client, "guide-page-2.png");
+        captures.grab(client, "guide-page-2.png");
         client.screen.onClose();
         server.execute(
             () -> {
@@ -1192,7 +1193,7 @@ public final class TerminalClientVerification {
         var view = screen.getMenu().view();
         if (!view.status().equals("ready") || view.rows().isEmpty() || ticks - entered < 10) return;
         checkNoOverlap(screen);
-        capture(client, "wireless-terminal-scale-2.png");
+        captures.grab(client, "wireless-terminal-scale-2.png");
         evidence.append(
             "wireless: bound handheld opened the terminal "
                 + Math.round(Math.sqrt(client.player.distanceToSqr(Vec3.atCenterOf(ACCESS_POINT))))
@@ -1240,7 +1241,7 @@ public final class TerminalClientVerification {
             || ticks - entered < 10) return;
         String name = stage == 74 ? "Fluids" : "Energy";
         checkNoOverlap(screen);
-        capture(client, "terminal-" + name.toLowerCase(Locale.ROOT) + "-scale-2.png");
+        captures.grab(client, "terminal-" + name.toLowerCase(Locale.ROOT) + "-scale-2.png");
         evidence.append(
             "terminal-"
                 + name
@@ -1275,7 +1276,7 @@ public final class TerminalClientVerification {
         var view =
             stage == 91 ? ArtGallery.FRONT : stage == 92 ? ArtGallery.TOP : ArtGallery.CABLES;
         if (!aim(client, view) || ticks - entered < 80) return;
-        capture(
+        captures.grab(
             client,
             stage == 91
                 ? "art-blocks-front.png"
@@ -1315,14 +1316,14 @@ public final class TerminalClientVerification {
         if (!(client.screen instanceof ContainerScreen screen)
             || screen.getMenu().getItems().stream().filter(stack -> !stack.isEmpty()).count() < 32
             || ticks - entered < 10) return;
-        capture(client, "art-items-scale-2.png");
+        captures.grab(client, "art-items-scale-2.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
         next();
       }
       case 96 -> {
         if (ticks - entered < 10) return;
-        capture(client, "art-items-scale-4.png");
+        captures.grab(client, "art-items-scale-4.png");
         client.player.closeContainer();
         client.options.guiScale().set(2);
         client.resizeDisplay();
@@ -1361,7 +1362,7 @@ public final class TerminalClientVerification {
           click(screen, "Name");
           searchStep++;
         } else if (searchStep == 2 && view.sort() == TerminalSearchSupport.QUANTITY) {
-          capture(client, "terminal-preferences-before-restart.png");
+          captures.grab(client, "terminal-preferences-before-restart.png");
           client.player.closeContainer();
           searchStep++;
           server.execute(
@@ -1425,14 +1426,14 @@ public final class TerminalClientVerification {
       }
       case 42 -> {
         check(machineLabel(screen).equals("smelter"), "Machine draft populated at scale2");
-        capture(client, "machine-scale-2-draft.png");
+        captures.grab(client, "machine-scale-2-draft.png");
         client.options.guiScale().set(3);
         client.resizeDisplay();
         next();
       }
       case 43 -> {
         check(machineLabel(screen).equals("smelter"), "Machine draft survives GUI scale3");
-        capture(client, "machine-scale-3-draft.png");
+        captures.grab(client, "machine-scale-3-draft.png");
         // Select one indexed fluid tank (ADR 0053); Cancel at stage 44 discards the draft.
         click(screen, "Items");
         edit(screen, 2, "1", false);
@@ -1458,14 +1459,14 @@ public final class TerminalClientVerification {
                 // Typed through charTyped, which an uneditable box refuses.
                 && tankFields.get(3).getValue().equals("1"),
             "Fluid kind exposes an editable selected-tank window");
-        capture(client, "machine-scale-4-draft.png");
+        captures.grab(client, "machine-scale-4-draft.png");
         click(screen, "Cancel");
         checked.set(false);
         next();
       }
       case 46 -> {
         check(machineLabel(screen).isEmpty(), "Reopened form has saved values after Cancel");
-        capture(client, "machine-scale-4-reopened.png");
+        captures.grab(client, "machine-scale-4-reopened.png");
         fillMachine(screen);
         checked.set(false);
         click(screen, "Apply & Close");
@@ -1510,13 +1511,13 @@ public final class TerminalClientVerification {
         next();
       }
       case 57 -> {
-        capture(client, "machine-preset-scale-2-draft.png");
+        captures.grab(client, "machine-preset-scale-2-draft.png");
         client.options.guiScale().set(3);
         client.resizeDisplay();
         next();
       }
       case 58 -> {
-        capture(client, "machine-preset-scale-3-draft.png");
+        captures.grab(client, "machine-preset-scale-3-draft.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
         click(screen, "Deploy");
@@ -1689,32 +1690,5 @@ public final class TerminalClientVerification {
         return;
       }
     throw new IllegalStateException("Action missing: " + text);
-  }
-
-  private void capture(Minecraft client, String name) {
-    try {
-      Files.createDirectories(report.getParent().resolve("screenshots"));
-    } catch (IOException error) {
-      throw new IllegalStateException("Cannot prepare screenshot directory", error);
-    }
-    var window = client.getWindow();
-    evidence
-        .append(name)
-        .append(" framebuffer=")
-        .append(window.getWidth())
-        .append('x')
-        .append(window.getHeight())
-        .append(" gui=")
-        .append(window.getGuiScaledWidth())
-        .append('x')
-        .append(window.getGuiScaledHeight())
-        .append(" scale=")
-        .append(window.getGuiScale())
-        .append('\n');
-    Screenshot.grab(
-        report.getParent().toFile(),
-        name,
-        client.getMainRenderTarget(),
-        component -> System.out.println("FACTORYCORE_CLIENT_SCREENSHOT " + component.getString()));
   }
 }
