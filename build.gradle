@@ -316,6 +316,13 @@ tasks.named('runGameTestServer', JavaExec) {
     }
 }
 tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
+
+// Slow dedicated-server suites (separate JVMs, restarts, SIGKILL, save skew, fresh worlds).
+// `check` stays the fast inner loop; `python scripts/verify.py --full` runs both.
+tasks.register('releaseCheck') {
+    group = 'verification'
+    description = 'Runs every dedicated-server recovery, restart and workload suite.'
+}
 tasks.named('runGameTestServer') { dependsOn tasks.named('verifyRustGuest') }
 
 tasks.named('runAutomaticThroughputServer', JavaExec) {
@@ -334,7 +341,7 @@ tasks.named('runAutomaticThroughputServer', JavaExec) {
             throw new GradleException('The isolated automatic throughput regression must execute and pass.')
     }
 }
-tasks.named('check') { dependsOn tasks.named('runAutomaticThroughputServer') }
+tasks.named('releaseCheck') { dependsOn tasks.named('runAutomaticThroughputServer') }
 
 tasks.named('runServer', JavaExec) {
     standardInput = System.in
@@ -510,7 +517,7 @@ tasks.named('runWirelessLifecycleServer', JavaExec) {
             throw new GradleException('Native wireless endpoint lifecycle did not complete.')
     }
 }
-tasks.named('check') { dependsOn tasks.named('runWirelessLifecycleServer'), tasks.named('runGatewayDepthServer') }
+tasks.named('releaseCheck') { dependsOn tasks.named('runWirelessLifecycleServer'), tasks.named('runGatewayDepthServer') }
 tasks.named('runGatewayDepthServer', JavaExec) {
     doFirst {
         delete file('build/gateway-depth-run/world')
@@ -567,7 +574,7 @@ tasks.named('runStagingRecoveryServer', JavaExec) {
         if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Native staging recovery did not complete.')
     }
 }
-tasks.named('check') { dependsOn tasks.named('runStagingRecoveryServer') }
+tasks.named('releaseCheck') { dependsOn tasks.named('runStagingRecoveryServer') }
 
 // Required abrupt-kill and independent-save interruption of a real processing job (ADR 0057).
 // The seed saves S1/S2/S3 then SIGKILLs itself; each restore runs on its own copy of that world.
@@ -604,7 +611,7 @@ tasks.named('runInterruptionSeedServer', JavaExec) {
             if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException("Interruption ${variant} restore did not complete.")
         }
     }
-    tasks.named('check') { dependsOn tasks.named(task) }
+    tasks.named('releaseCheck') { dependsOn tasks.named(task) }
 }
 
 // Required independent-save injection: canonical SavedData older than the chunks it describes.
@@ -635,7 +642,7 @@ tasks.named('runSaveOrderRestoreServer', JavaExec) {
         if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order restore did not complete.')
     }
 }
-tasks.named('check') { dependsOn tasks.named('runSaveOrderRestoreServer') }
+tasks.named('releaseCheck') { dependsOn tasks.named('runSaveOrderRestoreServer') }
 
 // Required converse injection: chunks older than the canonical SavedData that describes them.
 tasks.named('runSaveOrderChunksSeedServer', JavaExec) {
@@ -665,7 +672,7 @@ tasks.named('runSaveOrderChunksRestoreServer', JavaExec) {
         if (!result.isFile() || !result.text.startsWith('PASS\n')) throw new GradleException('Save-order restore did not complete.')
     }
 }
-tasks.named('check') { dependsOn tasks.named('runSaveOrderChunksRestoreServer') }
+tasks.named('releaseCheck') { dependsOn tasks.named('runSaveOrderChunksRestoreServer') }
 
 // Manual A15/D07 measurement (not part of check): dedicated-server workload benchmark.
 tasks.named('runBenchmarkServer', JavaExec) {

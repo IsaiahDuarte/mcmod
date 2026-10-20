@@ -32,4 +32,4 @@ jobs:
       - name: Install pinned Rust guest tools
         run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
       - name: Verify repository
-        run: python scripts/verify.py
+        run: python scripts/verify.py --full

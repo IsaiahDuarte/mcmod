@@ -88,12 +88,21 @@ class RepositoryVerificationTests(unittest.TestCase):
         self.assertTrue(any("sdk/rust/build.rs" in error for error in verifier.verify(self.root)))
 
     def test_build_dispatches_real_required_command(self):
-        with patch.object(verifier.subprocess, "run") as run:
+        with patch.object(verifier.subprocess, "run") as run, patch.dict(
+            verifier.os.environ, {}, clear=True
+        ):
             run.return_value.returncode = 0
             self.assertTrue(verifier.run_implementation_checks(self.root, io.StringIO()))
         wrapper = self.root / ("gradlew.bat" if verifier.os.name == "nt" else "gradlew")
-        run.assert_called_once_with(
-            [str(wrapper), "--no-daemon", "build"], cwd=self.root, check=False
+        run.assert_called_once_with([str(wrapper), "build"], cwd=self.root, check=False)
+
+    def test_full_mode_adds_release_suites_and_ci_disables_the_daemon(self):
+        wrapper = Path("gradlew")
+        self.assertEqual(
+            ["gradlew", "build", "releaseCheck"], verifier.gradle_command(wrapper, True, False)
+        )
+        self.assertEqual(
+            ["gradlew", "--no-daemon", "build"], verifier.gradle_command(wrapper, False, True)
         )
 
     def test_failing_build_is_not_a_pass(self):
@@ -110,7 +119,8 @@ class RepositoryVerificationTests(unittest.TestCase):
         wrapper.write_text(script, encoding="utf-8")
         wrapper.chmod(0o755)
         stream = io.StringIO()
-        self.assertFalse(verifier.run_implementation_checks(self.root, stream))
+        with patch.dict(verifier.os.environ, {"CI": "true"}):
+            self.assertFalse(verifier.run_implementation_checks(self.root, stream))
         self.assertEqual("--no-daemon build", (self.root / "invoked.txt").read_text().strip())
         self.assertIn("exited 7", stream.getvalue())
 
