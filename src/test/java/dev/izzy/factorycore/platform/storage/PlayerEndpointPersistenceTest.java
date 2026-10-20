@@ -95,6 +95,36 @@ class PlayerEndpointPersistenceTest {
   }
 
   @Test
+  void cursorContextIsVersionedAndKeepsKnownStagingOnDisk() throws Exception {
+    var tag = fixture("transfer-player-cursor-context-v4");
+    var context = TransferContextCodec.decode(tag);
+    assertEquals(tag, TransferContextCodec.encode(context));
+    assertEquals(38, context.source().configuration());
+    var staged = snapshot(context, new UUID(0, 9), ResourceKind.ITEM);
+    context.validate(staged);
+    var old = tag.copy();
+    old.putInt("Schema", 3);
+    assertThrows(IllegalArgumentException.class, () -> TransferContextCodec.decode(old));
+    var invalid = tag.copy();
+    invalid.getCompound("Source").putLong("Configuration", 39);
+    assertThrows(IllegalArgumentException.class, () -> TransferContextCodec.decode(invalid));
+    var transfers =
+        TransferStateCodec.encode(
+            List.of(new TransferRegistry.Stored(new UUID(0, 999), staged, context)));
+    var data = fixture("registry-v8");
+    data.putInt("Schema", 10);
+    data.put("Transfers", transfers);
+    var loaded = DeviceSavedData.load(data, registries);
+    assertEquals("", loaded.diagnostic());
+    var disk = directory.resolve("cursor-stage.dat");
+    NbtIo.writeCompressed(loaded.save(new CompoundTag(), registries), disk);
+    var reloaded =
+        DeviceSavedData.load(NbtIo.readCompressed(disk, NbtAccounter.unlimitedHeap()), registries);
+    assertEquals(context, reloaded.transfers().context(new UUID(0, 999)));
+    assertEquals(23, reloaded.transfers().get(new UUID(0, 999)).staged());
+  }
+
+  @Test
   void schemaNineMigrationChangesOnlyVersionAndPlayerStagingSurvivesCompressedReload()
       throws Exception {
     var original = fixture("registry-v8");

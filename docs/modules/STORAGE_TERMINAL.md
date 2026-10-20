@@ -3,7 +3,7 @@
 The access-only Storage Terminal exposes the existing wired TERMINAL role and
 shared item search/routes/player inventory endpoints. It stores no inventory,
 network identity, grants or transferable authority. Copies are access shells;
-world schema ten is unchanged. [ADR 0017](../decisions/0017-storage-terminal-menu.md)
+the current world envelope remains schema 13 (cursor context alone uses nested schema 4). [ADR 0017](../decisions/0017-storage-terminal-menu.md)
 records alternatives and scope. All mutable operations run on the server thread.
 
 ## Authentication and lifecycle
@@ -23,10 +23,12 @@ actual own slot 0–35, normalizes its exact components and compares the fingerp
 before admission; the player port rechecks that exact key before extraction. Vanilla
 quick-move returns empty, so stale vanilla shift-click packets cannot substitute
 a changed item. Ordinary own-inventory rearrangement uses native container slots.
-Armor, offhand, cursor and crafting slots are excluded from network transfers.
+Armor, offhand and crafting slots are excluded. The menu's real cursor is an explicit
+session-bound player endpoint (slot 36), described in [player transfers](PLAYER_INVENTORY_TRANSFERS.md).
+It shares the same backing/rates; it is never catalog stock or a second inventory.
 
 Each menu accepts at most one action every two actual server ticks and one transfer
-in flight. Eight server-retained exact row keys are the only withdrawal selections;
+in flight. At most 256 server-retained exact row keys are the only withdrawal selections;
 read-only paging/search is refused while an action runs. Search polls at most once
 per five ticks. All observations and transfers use shared queues/limits/permissions,
 not GUI-owned stock counters. Deposits need View and Deposit; withdrawals View and
@@ -37,31 +39,58 @@ Accepted staging is retained canonically under its original actor. Completed,
 zero-staged/no-pending records retire. Unresolved player backing blocks new moves.
 Return finds only that player's canonical operation and uses guarded known progress,
 returning to the original source without re-extraction. Uncertain calls remain frozen;
-loss of View/original topology may require the unfinished administrator recovery UI.
+loss of View/original topology may require the Transfer Recovery screen or operator
+reconciliation.
 Independent player/world-file interruption safety remains unverified.
 
 ## Projection and controls
 
-The server projects at most eight rows: token, base item registry icon, plain name
-at most 96 characters and exact decimal total/reserved/available counts at most 32 characters.
-Full components, provider references and search cursors remain server-only. The
-client sends back only the row token under that revision. Exact identity and stable
-resource order come from the server query. Current counts are advisory, not claims.
-The query's bounded session memory and idle expiry are specified in
-[storage search](STORAGE_SEARCH.md); this menu touches its query while open.
+The wire protocol is version 3. The server projects up to 256 rows: token, base registry
+icon, plain name (96 characters) and exact decimal total/reserved/available counts (32
+characters). Full components, native endpoints and topology/query cursors stay server-only.
+WINDOW uses selection as an offset (0–65,536) and amount as viewport size (1–256).
+The returned view includes actual offset, total matching rows, size, resource kind and
+unfiltered capacity summary. Index construction is scheduled in batches of at most 32 row
+references; a completed window lookup is O(viewport size), including component-heavy keys.
+Display names come from the observation's bounded cache, avoiding repeated component decoding.
+Search scope and grant stamps are revalidated before every selection or window read.
+The menu retains at most 256 exact rows/names across a periodic rescan to avoid
+flashing. This bounded per-menu display snapshot is separate from the query budget
+and is released on replacement, explicit refresh, scope invalidation or closure.
 
-The native 280×232 screen includes name/registry/mod/tag search and name/quantity sorting, Home/Next paging, Take 1,
-Take 64, Return and native main inventory slots. Shift-click deposits up to 64;
-1–8 select rows when the search field is unfocused, Enter submits focused search,
-and action buttons use native keyboard focus/tooltips. Labels abbreviate counts
-using integer division; row hover shows exact decimal amounts. Icons deliberately
-omit native components. Metadata-rich tooltips,
-offline cache, crafting/fluid/energy/job tabs remain unfinished release work.
+The adaptive screen displays at least 9×4 item cells at the minimum supported 427×240
+GUI; larger GUIs show more columns/rows, bounded to 256. The mouse wheel scrolls by a row;
+the scrollbar supports direct clicks and dragging. Items/Fluids/Energy/Jobs are visible tabs.
+Search coalesces typing after four idle client ticks, retains unsent typing while busy,
+and retries when the shared two-tick command gate admits it. Name/Qty and saved per-player
+preferences retain their existing meaning. Main inventory slot identities/order remain
+unchanged when client-only coordinates move down for extra grid rows.
 
-Example: craft the terminal with four iron, three glass and two redstone; connect
-it beside an owned controller/drive, use it, search `iron`, select an exact row,
-and Take 1. Shift-click the resulting own slot to deposit it again. Recipe unlock
-uses glass. [Player guide](../PLAYER_GUIDE.md) documents the player/recovery limits.
+TAKE_CURSOR resolves the current server row and its actual native maximum stack size,
+then withdraws up to one stack. HALF_CURSOR withdraws half of that available stack rounded
+up. WITHDRAW sends up to one stack to the player's main inventory (Shift-click).
+DEPOSIT_CURSOR resolves the server's carried stack, checks its exact-key fingerprint,
+and deposits up to 64; the real remainder stays on the cursor. Clicking any item-grid cell
+with carried items deposits them. Shift-clicking an own inventory slot also deposits it.
+The server revalidates menu/session/revision, scope, grants, rates and fit at execution through
+the existing shared routes/accounting. Stale or changed cursors cannot substitute another key.
+Closing cancels undispatched work; vanilla returns/drops carried items exactly once, while
+known canonical staging remains owned. Explicit cursor staging recovery returns to the same
+player's current main inventory, never a replacement menu's cursor; uncertain calls freeze.
+
+Tab/Enter activate grid cells and tabs. Ctrl-click or 1–8 selects a network row for the
+existing Row→ ghost authoring control. Hover shows exact total/reserved/available counts.
+The item-capacity bar counts loaded authorized item cells once, independently of search or
+window, including reserved units. Infinite shows no limit. External items contribute to used
+units but make effective capacity unknown; label that limitation and suppress a finite ratio.
+Hover retains exact used and known cell-capacity totals, using arbitrary-precision decimals.
+Count overlays use vanilla item-decoration depth, with long compact labels scaled
+to fit one cell. The crafting grid suppresses its redundant idle status label.
+No offline/private storage or buffers are added to the network view.
+
+Example: connect a terminal to an owned controller/drive, type `iron`, left-click its row
+to take a stack, then click the grid with that carried stack to deposit it again. Right-click
+picks up half; Shift-click goes to inventory. [Player guide](../PLAYER_GUIDE.md) records controls.
 
 ## Verification limits
 
@@ -154,7 +183,7 @@ display name, including custom names; `@minecraft` matches a mod namespace and
 total units descending (reservations remain separately visible). Matching variants
 remain distinct. Name sorting uses the first 256 characters and exact identity breaks
 ties. Search/sort are read-only and use the same VIEW authorization and bounded
-scheduled catalog as transfers. Selecting a sort restarts the query at Home; a stale
+scheduled catalog as transfers. Selecting a sort restarts the query at the first window; a stale
 page anchor also returns Home. No raw catalog cursor is sent to clients.
 
 The Name/Qty button is keyboard-focusable. Search/sort state is stored per player

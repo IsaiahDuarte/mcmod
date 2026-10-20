@@ -12,6 +12,7 @@ held-first-person-factory_guide.png
 held-third-person-gateway.png
 tooltips-edges-scale-4.png
 tooltips-edges-scale-2.png
+terminal-keyboard-scale-4.png
 terminal-scale-2.png
 terminal-scale-3.png
 terminal-scale-1.png

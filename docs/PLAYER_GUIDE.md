@@ -290,13 +290,20 @@ with an empty hand. You need View permission; deposits additionally need Deposit
 and withdrawals need Withdraw. The terminal is an access point and stores no
 items itself. It unlocks in the recipe book when you obtain glass.
 
-Search matches registry names, for example `iron` or `minecraft:iron_ingot`.
-Click a visible item (or press 1–8 while outside the search field), then Take 1
-or Take 64. Shift-click one of your inventory slots to deposit up to 64 of that
-exact item. Full destinations keep the remainder owned; they never void items.
-Armor, offhand and cursor stacks are excluded from transfers. Home/Next page
-through eight exact item identities at a time. Search again to refresh stock.
-Hover a row for exact total/reserved/available counts; short labels abbreviate large counts.
+Type in Search to filter as you type: display names and registry names work, `@minecraft`
+selects a mod, and `#minecraft:planks` selects a tag. Name/Qty changes the sort order;
+your search and sort survive reopening. Scroll the grid with the mouse wheel or drag
+the scrollbar. Larger GUI sizes show more items.
+
+Left-click an item to pick up a stack; right-click takes half, rounded up. Shift-click
+sends the stack into your inventory. Click the item grid with items on your cursor to
+deposit them, or Shift-click an inventory slot. Full storage leaves the remainder
+on your cursor/inventory. Armor and offhand slots are excluded. Closing normally
+returns carried items to your inventory (or drops them if full).
+
+Hover an item for exact total/reserved/available counts; short labels abbreviate large
+counts. The capacity bar shows used/total item-cell units, including reserved items.
+Infinite cells show no limit. External storage with unknown capacity is labelled.
 Counts are observations, not reservations, so another user may take stock first.
 
 Leaving the dimension/range, replacing/unloading the block, or losing View
@@ -305,22 +312,22 @@ already owns known staged items, Return requests their return to the original
 source; free that source's space first. Uncertain writes are frozen and need
 administrator recovery. If all View permission or the original network is gone,
 the terminal cannot provide cleanup; the admin recovery interface remains pending.
-Use the **Items/Fluids/Energy** button next to Search to change the view. In Fluids,
+Use the **Items**, **Fluids**, **Energy** and **Jobs** tabs to change the view. In Fluids,
 select a fluid and press **Fill** to fill the first empty bucket or tank item in your
 inventory, or Shift-click a filled container to empty it into storage. In Energy, hold an
 FE item and press **Charge** or **Drain** (up to 1,000 FE each time), or
 Shift-click an item to discharge it. Nothing moves if the container cannot take or give
-the fluid, or if there is no room. Sorting is not implemented yet; see the crafting grid
-below.
+the fluid, or if there is no room.
 
 ### Terminal crafting grid
 
 The right side of the terminal has a 3×3 crafting grid of *ghost* cells. Click a
-cell to highlight it, then Ctrl-click an item in your inventory, or select a network
-row and press **Row→**. The cell shows a faded icon; no item moves into the grid,
+cell to highlight it, then Ctrl-click an item in your inventory, or Ctrl-click a network
+item (or use 1–8) and press **Row→**. The cell shows a faded icon; no item moves into the grid,
 so closing the screen never loses anything. Right-click a cell to clear it, or press
 **Clear**. The result appears beside the grid when the pattern matches a crafting
-recipe.
+recipe. The idle grid has no status label; failures such as missing items or a full
+inventory appear when they affect a craft.
 
 **Craft** (or C) crafts once; **×64** (or Shift+C) crafts up to 64 times. Ingredients
 come from your main inventory (not armor, offhand or cursor). If some are missing

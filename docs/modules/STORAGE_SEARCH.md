@@ -140,5 +140,26 @@ pages; a refresh obtains a new view. Exclusive cursors can miss newly inserted k
 before their position until refresh. Terminal transfers must use shared current
 revalidation/accounting, never cached available counts. Frontends must cap payloads,
 keep cursor/key tokens server-side, bound polling/deltas and present progress,
-staleness/quota/provider errors. Terminal packets/screens, actual client actions,
-full restart/independent-file behavior and full workload evidence remain unfinished.
+staleness/quota/provider errors. Terminal packets/screens and actual client actions
+are implemented; full independent-file recovery and workload evidence remain partial.
+
+## U3 display windows and item capacity
+
+`window(id, actor, offset, limit)` is the terminal's server-only display projection.
+Offset is 0–65,536 and limit 1–256; invalid bounds throw. It shares `result`'s scope,
+principal/grant checks and idle lifecycle. The sorted index is materialized at most
+32 references per shared scheduled query after catalog collection, with the existing
+1,024-byte per-entry index charge covering these references. No partial index is
+presented as complete. Completed windows use bounded random access, with cached
+names and exact counts; they do not copy native components into client packets.
+Cancellation, expiry or failure clears the index with the rest of the session.
+
+The capacity summary is independent of search text and window. When an authorized
+source first appears, a digital item's exact total/capacity/infinite flag is read from
+its canonical owner. External item totals add once per observed provider page; their
+effective item-unit capacity is marked unknown because stack limits/filters can vary.
+The existing source alias/conflict checks prevent counting a backing twice. Empty
+cells still contribute capacity. Used includes reserved stock; totals use BigInteger.
+Only loaded validated authorized sources are observed; no private child capacity,
+implicit chunk load or offline estimate is introduced. Summaries span ticks and are
+advisory, just as the corresponding catalog is.

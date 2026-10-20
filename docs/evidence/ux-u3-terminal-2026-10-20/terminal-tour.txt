@@ -1,0 +1,63 @@
+PASS
+scale-2-all-items.png framebuffer=1708x960 gui=854x480 scale=2.0
+terminal-search-display-name.png framebuffer=1708x960 gui=854x480 scale=2.0
+terminal-search-mod.png framebuffer=1708x960 gui=854x480 scale=2.0
+terminal-search-tag.png framebuffer=1708x960 gui=854x480 scale=2.0
+terminal-sort-quantity.png framebuffer=1708x960 gui=854x480 scale=2.0
+terminal-search-reopened.png framebuffer=1708x960 gui=854x480 scale=2.0
+terminal-search: display name, registry, @mod, #loaded tag; name/quantity sort; physical reopen preserves accepted query/sort
+scale-3-iron.png framebuffer=1708x960 gui=570x320 scale=3.0
+scale-4-iron.png framebuffer=1708x960 gui=427x240 scale=4.0
+scale-4-next-page.png framebuffer=1708x960 gui=427x240 scale=4.0
+terminal-scrollbar-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+terminal-grid-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+terminal-grid-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+terminal-grid: own ghost, Row→, right-click clear, Craft 1 log -> 4 planks
+buffer-scale-2-settings.png framebuffer=1708x960 gui=854x480 scale=2.0
+buffer-scale-2-rules-page-1.png framebuffer=1708x960 gui=854x480 scale=2.0
+buffer-scale-2-rules-page-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+buffer-scale-2-stock.png framebuffer=1708x960 gui=854x480 scale=2.0
+buffer-scale-2-full.png framebuffer=1708x960 gui=854x480 scale=2.0
+buffer-scale-3-inventory.png framebuffer=1708x960 gui=570x320 scale=3.0
+buffer-scale-3-settings.png framebuffer=1708x960 gui=570x320 scale=3.0
+buffer-scale-4-settings.png framebuffer=1708x960 gui=427x240 scale=4.0
+buffer-scale-4-inventory.png framebuffer=1708x960 gui=427x240 scale=4.0
+machine-scale-2-draft.png framebuffer=1708x960 gui=854x480 scale=2.0
+machine-scale-3-draft.png framebuffer=1708x960 gui=570x320 scale=3.0
+machine-scale-4-draft.png framebuffer=1708x960 gui=427x240 scale=4.0
+machine-scale-4-reopened.png framebuffer=1708x960 gui=427x240 scale=4.0
+machine-preset-scale-2-draft.png framebuffer=1708x960 gui=854x480 scale=2.0
+machine-preset-scale-3-draft.png framebuffer=1708x960 gui=570x320 scale=3.0
+machine-preset-scale-4-stock.png framebuffer=1708x960 gui=427x240 scale=4.0
+gateway-policy-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+gateway-policy-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+gateway-policy: owner toggled the first branch permission
+program-inline-error-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+program-native-items-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+program-native-labels-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+program-highlighted-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+program-highlighted-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+program-rule-preview-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+program-editor-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+program-authoring: typed source, atomic undo/redo, native item/local-label selection, cursor completion, highlighted GUI scales2/4 and read-only resolved rule preview
+guide-page-1.png framebuffer=1708x960 gui=854x480 scale=2.0
+guide-page-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+guide: item use opened the Factory Guide; paged 1 -> 2
+wireless-terminal-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+wireless: bound handheld opened the terminal 19 blocks from the access point; rows=110
+terminal-fluids-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+terminal-Fluids: [Lava=300, Water=1200]
+terminal-energy-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+terminal-Energy: [Energy=500]
+art-gallery: placed 31 blocks
+art-blocks-front.png framebuffer=1708x960 gui=854x480 scale=2.0
+art-blocks-top.png framebuffer=1708x960 gui=854x480 scale=2.0
+art-cables.png framebuffer=1708x960 gui=854x480 scale=2.0
+art-items: chest holds 34 Factory Core items
+art-items-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+art-items-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+terminal-preferences-before-restart.png framebuffer=1708x960 gui=854x480 scale=2.0
+Tour: gateway policy toggle (actual sneak-use C2S), program editor, Factory Guide pages 1-2 (actual item use), wireless handheld terminal beyond wired reach, terminal Fluids/Energy views; no overlapping controls.
+Art: every Factory Core block in a front/top view, connected cable run with a sideways gateway, and every item in a double chest at GUI scales 2 and 4.
+Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.
+Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample. Restart checkpoint adds1200mB water (400 held),300mB lava and500FE.

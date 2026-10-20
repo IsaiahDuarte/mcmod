@@ -68,3 +68,42 @@ The fixture exposed native initMenu's broadcast-before-assignment order; menu ho
 must not close another current menu during that early sync. An outbound packet
 regression and [graphical evidence](../evidence/terminal-client-v1-2026-10-13.md)
 verify the fix. No persistence/authority/scope change is introduced by verification.
+
+
+## U3 — Adaptive grid and bounded display windows (2026-10-20)
+
+Replace item paging/buttons with a responsive grid, mouse wheel and draggable scrollbar.
+At the minimum supported 427×240 GUI it shows at least 9 columns × 4 rows; larger GUI
+sizes show more cells, bounded to 256. Items/Fluids/Energy/Jobs are explicit tabs. Search
+updates after four idle client ticks and coalesces unsent text while a transfer is busy.
+Name/Qty sorting and per-player schema-one preferences remain. Crafting/processing controls
+retain their semantics and move down with extra grid rows; U4 owns their tab/panel redesign.
+
+The wire protocol advances to version 3. WINDOW carries a bounded offset (0–65,536) and
+size (1–256), never a key or topology cursor. The search builds its sorted random-access
+index at most 32 row references per shared scheduled query; existing per-row metadata charges
+cover this bounded index. Only completed authorized observations can be windowed. Windows
+project base icons/names/exact decimal counts; full component bytes stay server-side, including
+for component-heavy keys. Current row tokens and revisions still guard every mutation.
+Legacy HOME/NEXT/WITHDRAW commands remain server-compatible for native callers; item-screen
+Home/Next/Search/Take 1/Take 64 controls are removed.
+
+Left click takes up to one actual item stack onto the cursor, right click takes half that
+available stack rounded up, Shift-click takes a stack into the player's main inventory, and
+clicking the grid with carried items deposits those exact items. Ctrl-click selects a row
+for the existing ghost authoring controls. The server derives stack size and exact identity,
+rechecks cursor fingerprints for deposits, and uses ADR 0016's menu-bound player port through
+shared scheduled routes/staging. Ordinary carried items remain subject to vanilla close/death
+handling. No client count is authoritative.
+
+The capacity bar summarizes loaded authorized item cells, independent of the search/window.
+Used units include reservations. Infinite item cells show no limit. Accessible external item
+stock contributes to the used count, but its effective shared item capacity can depend on
+stack sizes and filters: label capacity unknown and do not draw a finite ratio. Hover shows
+known cell capacity and the external limitation. Source backings are counted once under the
+existing catalog alias checks; child-private or unavailable storage is not added. Totals use
+BigInteger and remain exact in the payload and hover.
+
+This amends the original eight-row display and cursor exclusion, without changing network
+permission, reservation or storage semantics. Verification is tracked in the UX/implementation
+plans; implementation alone is not graphical or restart evidence.

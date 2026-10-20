@@ -11,8 +11,10 @@ import dev.izzy.factorycore.core.resource.ResourceLedger;
 import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -39,6 +41,26 @@ public final class WorldStorageSearch {
     }
   }
 
+  /**
+   * A bounded display window; offsets address the completed sorted observation, never a live key.
+   */
+  public record Window(
+      OperationResult.Reason reason,
+      boolean complete,
+      List<CatalogCounts.Row> rows,
+      List<String> names,
+      int offset,
+      int total,
+      BigInteger used,
+      BigInteger capacity,
+      boolean infinite,
+      boolean external) {
+    public Window {
+      rows = List.copyOf(rows);
+      names = List.copyOf(names);
+    }
+  }
+
   private static final class Search {
     final UUID id;
     final NetworkPermissions.Actor actor;
@@ -51,6 +73,10 @@ public final class WorldStorageSearch {
     final long grantsGeneration;
     CatalogCounts counts = new CatalogCounts();
     final Map<UUID, WorldStorageTransfers.Endpoint> sources = new HashMap<>();
+    final List<CatalogCounts.Row> index = new ArrayList<>();
+    BigInteger used = BigInteger.ZERO, capacity = BigInteger.ZERO;
+    boolean infinite, external;
+    Iterator<CatalogCounts.Row> indexing;
     UUID ticket;
     OperationResult.Reason reason = OperationResult.Reason.OK;
     boolean complete;
@@ -188,6 +214,43 @@ public final class WorldStorageSearch {
     return new Result(OperationResult.Reason.OK, true, search.pages, rows, more ? last : null);
   }
 
+  public Window window(UUID id, NetworkPermissions.Actor actor, int offset, int limit) {
+    if (offset < 0 || offset > CatalogCounts.MAX_CONTRIBUTIONS || limit < 1 || limit > 256)
+      throw new IllegalArgumentException("Invalid display window");
+    var state = result(id, actor, null, 1);
+    var search = searches.get(id);
+    if (state.reason() != OperationResult.Reason.OK || search == null)
+      return new Window(
+          state.reason(),
+          true,
+          List.of(),
+          List.of(),
+          0,
+          0,
+          BigInteger.ZERO,
+          BigInteger.ZERO,
+          false,
+          false);
+    int start = Math.min(offset, Math.max(0, search.index.size() - 1));
+    return new Window(
+        state.reason(),
+        state.complete(),
+        state.complete()
+            ? search.index.subList(start, Math.min(search.index.size(), start + limit))
+            : List.of(),
+        state.complete()
+            ? search.index.subList(start, Math.min(search.index.size(), start + limit)).stream()
+                .map(row -> search.names.get(row.key()))
+                .toList()
+            : List.of(),
+        start,
+        search.index.size(),
+        search.used,
+        search.capacity,
+        search.infinite,
+        search.external);
+  }
+
   public boolean close(UUID id, NetworkPermissions.Actor actor) {
     checkThread();
     var search = searches.get(Objects.requireNonNull(id));
@@ -240,7 +303,17 @@ public final class WorldStorageSearch {
                   search.sources.put(source, page.source());
                   search.charge += 384;
                   bytes += 384;
+                  if (page.source() instanceof WorldStorageTransfers.Digital digital) {
+                    var owner = saved.registry().ownership(digital.handle().backing());
+                    search.used = search.used.add(BigInteger.valueOf(owner.total()));
+                    search.capacity =
+                        search.capacity.add(BigInteger.valueOf(owner.definition().capacity()));
+                    search.infinite |= owner.definition().infinite();
+                  } else search.external = true;
                 }
+                if (page.source() instanceof WorldStorageTransfers.External)
+                  for (var row : page.rows())
+                    search.used = search.used.add(BigInteger.valueOf(row.total()));
                 for (var row : page.rows()) {
                   var codec = new PlatformResourceCodec(server.registryAccess());
                   String name;
@@ -277,14 +350,42 @@ public final class WorldStorageSearch {
                 }
               }
               if (page.next() == null) {
-                search.ticket = null;
-                search.complete = true;
+                search.indexing = search.ordered.iterator();
+                index(search);
               } else {
                 var admission = observe(search, page.next());
                 if (admission.rejection() != OperationResult.Reason.OK)
                   fail(search, admission.rejection());
               }
             });
+  }
+
+  /** Materialize at most 32 sorted row references per shared scheduler turn for O(1) scrolling. */
+  private void index(Search search) {
+    search.ticket = UUID.randomUUID();
+    var admission =
+        transfers.query(
+            search.ticket,
+            search.actor,
+            search.origin,
+            search.kind,
+            () -> {
+              if (searches.get(search.id) != search) return;
+              if (!valid(search, search.actor)) {
+                fail(search, OperationResult.Reason.DENIED);
+                return;
+              }
+              search.touched = server.getTickCount();
+              for (int i = 0; i < 32 && search.indexing.hasNext(); i++)
+                search.index.add(search.indexing.next());
+              if (search.indexing.hasNext()) index(search);
+              else {
+                search.ticket = null;
+                search.indexing = null;
+                search.complete = true;
+              }
+            });
+    if (admission.rejection() != OperationResult.Reason.OK) fail(search, admission.rejection());
   }
 
   private boolean valid(Search search, NetworkPermissions.Actor actor) {
@@ -299,6 +400,8 @@ public final class WorldStorageSearch {
   private void fail(Search search, OperationResult.Reason reason) {
     bytes -= search.charge - 2048;
     search.charge = 2048;
+    search.indexing = null;
+    search.index.clear();
     search.sources.clear();
     search.ordered.clear();
     search.names.clear();
@@ -315,6 +418,8 @@ public final class WorldStorageSearch {
       if (server.getTickCount() - search.touched >= IDLE_TICKS) {
         bytes -= search.charge;
         search.counts = null;
+        search.indexing = null;
+        search.index.clear();
         search.sources.clear();
         search.ordered.clear();
         search.names.clear();
@@ -324,6 +429,8 @@ public final class WorldStorageSearch {
           && !transfers.routeTicketActive(search.ticket)) {
         bytes -= search.charge;
         search.counts = null;
+        search.indexing = null;
+        search.index.clear();
         search.sources.clear();
         search.ordered.clear();
         search.names.clear();
@@ -336,6 +443,8 @@ public final class WorldStorageSearch {
     if (searches.remove(search.id, search)) {
       bytes -= search.charge;
       search.counts = null;
+      search.indexing = null;
+      search.index.clear();
       search.sources.clear();
       search.ordered.clear();
       search.names.clear();

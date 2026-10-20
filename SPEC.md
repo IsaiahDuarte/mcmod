@@ -216,6 +216,7 @@ The main terminal opens to searchable Items. Additional views are Fluids, Energy
 ### Items and manual crafting
 
 - Search by display name, registry ID, mod, and supported tags; sort by name/quantity and show availability/reservations.
+- Show a responsive scrolling item grid (at least 9×4 at the minimum supported GUI), a scrollbar/mouse wheel, visible Items/Fluids/Energy/Jobs tabs, and live search. Left-click takes a stack to the cursor, right-click half rounded up, Shift-click sends it to inventory, and a carried-stack click deposits it. Show used/total item units; label unknown external capacity and Infinite explicitly.
 - Deposit/withdraw normal stacks through server-authoritative requests. Bulk actions are bounded and display partial results.
 - A built-in 3-by-3 ghost recipe grid fills from owned inventory and authorized network stock. JEI recipe transfer fills the grid without consuming items.
 - Craft-on-click revalidates the recipe and reserves/extracts exactly the current ingredients. Cursor/player inventory receives the output; owned staging retains anything that cannot be returned. Recipe remainders follow the same accounting.

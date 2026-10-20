@@ -36,11 +36,14 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private UUID query, route;
   private ResourceKey after, next;
   private List<CatalogCounts.Row> selections = List.of();
+  private List<String> selectionNames = List.of();
   private String text = "", status = "loading";
   private ResourceKind kind = ResourceKind.ITEM;
   private int sort = TerminalSearchSupport.NAME;
   private long revision = 1;
-  private int scanned;
+  private int scanned, offset, totalRows, pageSize = 8;
+  private String used = "0", capacity = "0";
+  private boolean infinite, external;
 
   /**
    * A completed observation is re-read after this many ticks so changes made by other sessions,
@@ -207,6 +210,22 @@ public final class TerminalMenu extends AbstractContainerMenu {
     return player == viewer && (terminal == null || terminal.canUse(player()));
   }
 
+  /**
+   * Client-only coordinates; slot identities/order remain the server's native 36-slot inventory.
+   */
+  public void layoutInventory(int extra) {
+    if (terminal != null)
+      throw new IllegalStateException("Only the client lays out inventory slots");
+    for (int i = 0; i < slots.size(); i++) {
+      var old = slots.get(i);
+      int y = i < 27 ? 148 + 18 * (i / 9) : 210;
+      var replacement =
+          new Slot(old.container, old.getContainerSlot(), 59 + 18 * (i % 9), y + extra);
+      replacement.index = i;
+      slots.set(i, replacement);
+    }
+  }
+
   @Override
   public ItemStack quickMoveStack(Player player, int slot) {
     return ItemStack.EMPTY;
@@ -240,30 +259,69 @@ public final class TerminalMenu extends AbstractContainerMenu {
       jobs.refreshCraftables();
     }
     if (query != null && !busy) {
-      var result = transfers().search().result(query, actor(), after, 8);
+      var result = transfers().search().window(query, actor(), offset, pageSize);
       if (result.reason() == OperationResult.Reason.DENIED) {
         // A captured scope/grant or the exclusive sorted-page anchor went stale.
         after = null;
+        selections = List.of();
+        selectionNames = List.of();
+        next = null;
+        totalRows = 0;
+        offset = 0;
+        used = "0";
+        capacity = "0";
+        infinite = false;
+        external = false;
+        revision++;
         rescan(tick);
-        result = query == null ? null : transfers().search().result(query, actor(), after, 8);
+        result =
+            query == null ? null : transfers().search().window(query, actor(), offset, pageSize);
       }
       if (result == null) {
         selections = List.of();
+        selectionNames = List.of();
         next = null;
         revision++;
       } else if (result.reason() != OperationResult.Reason.OK) {
         selections = List.of();
+        selectionNames = List.of();
         next = null;
         status = result.reason().name().toLowerCase(Locale.ROOT);
         closeSearch();
         revision++;
-      } else if (result.complete() && !selections.equals(result.rows())) {
+      } else if (result.complete() && !selections.equals(result.rows())
+          || result.complete()
+              && (offset != result.offset()
+                  || totalRows != result.total()
+                  || !used.equals(result.used().toString())
+                  || !capacity.equals(result.capacity().toString())
+                  || infinite != result.infinite()
+                  || external != result.external())) {
         selections = result.rows();
-        next = result.next();
+        selectionNames = result.names();
+        offset = result.offset();
+        totalRows = result.total();
+        used = result.used().toString();
+        capacity = result.capacity().toString();
+        infinite = result.infinite();
+        external = result.external();
+        next =
+            offset + result.rows().size() < result.total() && !result.rows().isEmpty()
+                ? result.rows().getLast().key()
+                : null;
         if (status.equals("loading")) status = "ready";
         revision++;
       } else if (result.complete() && status.equals("loading")) {
-        next = result.next();
+        offset = result.offset();
+        totalRows = result.total();
+        used = result.used().toString();
+        capacity = result.capacity().toString();
+        infinite = result.infinite();
+        external = result.external();
+        next =
+            offset + result.rows().size() < result.total() && !result.rows().isEmpty()
+                ? result.rows().getLast().key()
+                : null;
         status = "ready";
         revision++;
       }
@@ -281,6 +339,10 @@ public final class TerminalMenu extends AbstractContainerMenu {
         transfers().search().start(query, actor(), terminal.origin(), kind, text, sort);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
+      selections = List.of();
+      selectionNames = List.of();
+      next = null;
+      revision++;
       status = submission.rejection().name().toLowerCase(Locale.ROOT);
     }
   }
@@ -308,6 +370,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     after = null;
     next = null;
     selections = List.of();
+    selectionNames = List.of();
     revision++;
     status = "loading";
     scanned = player().server.getTickCount();
@@ -330,6 +393,9 @@ public final class TerminalMenu extends AbstractContainerMenu {
         action == TerminalPackets.WITHDRAW
             || action == TerminalPackets.DEPOSIT
             || action == TerminalPackets.RETURN
+            || action == TerminalPackets.TAKE_CURSOR
+            || action == TerminalPackets.HALF_CURSOR
+            || action == TerminalPackets.DEPOSIT_CURSOR
             || (action >= TerminalPackets.FILL && action <= TerminalPackets.DISCHARGE);
     if (mutating && !terminal.spendAction(sender)) {
       status = "no_power";
@@ -338,6 +404,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
       return;
     }
     if (command.action() == TerminalPackets.SEARCH) {
+      offset = 0;
       text = command.text();
       savePreferences();
       refresh();
@@ -346,15 +413,29 @@ public final class TerminalMenu extends AbstractContainerMenu {
     }
     if (command.action() == TerminalPackets.SORT) {
       if (command.selection() > TerminalSearchSupport.QUANTITY) return;
+      offset = 0;
       sort = command.selection();
       savePreferences();
       refresh();
       publish();
       return;
     }
+    if (command.action() == TerminalPackets.WINDOW) {
+      offset = Math.min(command.selection(), Math.max(0, totalRows - 1));
+      pageSize = command.amount();
+      selections = List.of();
+      selectionNames = List.of();
+      status = "loading";
+      revision++;
+      protocol.pollNow();
+      broadcastChanges();
+      return;
+    }
     if (command.action() == TerminalPackets.HOME) {
+      offset = 0;
       after = null;
       selections = List.of();
+      selectionNames = List.of();
       status = "loading";
       revision++;
       protocol.pollNow();
@@ -363,8 +444,10 @@ public final class TerminalMenu extends AbstractContainerMenu {
     }
     if (command.action() == TerminalPackets.NEXT) {
       if (next != null) {
+        offset += selections.size();
         after = next;
         selections = List.of();
+        selectionNames = List.of();
         next = null;
         status = "loading";
         revision++;
@@ -375,12 +458,13 @@ public final class TerminalMenu extends AbstractContainerMenu {
     }
     if (command.action() == TerminalPackets.KIND) {
       if (command.selection() > 2) return;
+      offset = 0;
       kind = ResourceKind.values()[command.selection()];
       refresh();
       publish();
       return;
     }
-    if (command.action() >= TerminalPackets.FILL) {
+    if (command.action() >= TerminalPackets.FILL && command.action() <= TerminalPackets.DISCHARGE) {
       var containers = new TerminalContainers(sender, terminal.origin());
       String outcome;
       if (command.action() == TerminalPackets.FILL) {
@@ -425,21 +509,41 @@ public final class TerminalMenu extends AbstractContainerMenu {
     WorldStorageRoutes.Direction direction;
     long amount = command.amount();
     if (kind != ResourceKind.ITEM) return;
-    if (command.action() == TerminalPackets.WITHDRAW) {
+    if (command.action() == TerminalPackets.WITHDRAW
+        || command.action() == TerminalPackets.TAKE_CURSOR
+        || command.action() == TerminalPackets.HALF_CURSOR) {
       if (command.selection() >= selections.size()) return;
       // A ready observation is advisory; revalidate its captured scope/grants before selecting it.
       if (query == null
-          || transfers().search().result(query, actor(), after, 8).reason()
+          || transfers().search().window(query, actor(), offset, pageSize).reason()
               != OperationResult.Reason.OK) {
         refresh();
         publish();
         return;
       }
       key = selections.get(command.selection()).key();
-      endpoint = transfers().inventory(sender, -1);
+      var selectedStack = new PlatformResourceCodec(sender.registryAccess()).itemStack(key, 1);
+      long stackAmount = Math.min(64, selectedStack.getMaxStackSize());
+      if (command.action() != TerminalPackets.WITHDRAW) {
+        if (!getCarried().isEmpty()) return;
+        amount =
+            Math.min(
+                stackAmount,
+                selections
+                    .get(command.selection())
+                    .available()
+                    .min(java.math.BigInteger.valueOf(64))
+                    .longValue());
+        if (command.action() == TerminalPackets.HALF_CURSOR) amount = (amount + 1) / 2;
+        amount = Math.max(1, amount);
+      } else amount = Math.min(amount, stackAmount);
+      endpoint =
+          transfers().inventory(sender, command.action() == TerminalPackets.WITHDRAW ? -1 : 36);
       direction = WorldStorageRoutes.Direction.FROM_STORAGE;
-    } else if (command.action() == TerminalPackets.DEPOSIT) {
-      var stack = sender.getInventory().getItem(command.selection());
+    } else if (command.action() == TerminalPackets.DEPOSIT
+        || command.action() == TerminalPackets.DEPOSIT_CURSOR) {
+      boolean cursor = command.action() == TerminalPackets.DEPOSIT_CURSOR;
+      var stack = cursor ? getCarried() : sender.getInventory().getItem(command.selection());
       if (stack.isEmpty()) return;
       try {
         key = new PlatformResourceCodec(sender.registryAccess()).itemKey(stack);
@@ -450,7 +554,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
       }
       if (!MessageDigest.isEqual(TerminalPackets.fingerprint(key), command.fingerprint())) return;
       amount = Math.min(amount, stack.getCount());
-      endpoint = transfers().inventory(sender, command.selection());
+      endpoint = transfers().inventory(sender, cursor ? 36 : command.selection());
       direction = WorldStorageRoutes.Direction.TO_STORAGE;
     } else return;
     if (unresolved() != null) {
@@ -700,21 +804,9 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   private void publish() {
     var rows = new ArrayList<TerminalPackets.Row>();
-    var codec = new PlatformResourceCodec(player().registryAccess());
     for (int index = 0; index < selections.size(); index++) {
       var row = selections.get(index);
-      String name;
-      try {
-        var shown =
-            switch (row.key().kind()) {
-              case ITEM -> codec.itemStack(row.key(), 1).getHoverName();
-              case FLUID -> codec.fluidStack(row.key(), 1).getHoverName();
-              case ENERGY -> Component.translatable("gui.factorycore.terminal.energy");
-            };
-        name = shown.getString().replaceAll("[\\p{Cntrl}§]", "");
-      } catch (IllegalArgumentException unsupported) {
-        name = row.key().registryId();
-      }
+      String name = selectionNames.get(index).replaceAll("[\\p{Cntrl}§]", "");
       if (name.length() > 96) name = name.substring(0, 96);
       rows.add(
           new TerminalPackets.Row(
@@ -744,7 +836,15 @@ public final class TerminalMenu extends AbstractContainerMenu {
             busy,
             staged,
             text,
-            sort);
+            sort,
+            offset,
+            totalRows,
+            pageSize,
+            kind.ordinal(),
+            used,
+            capacity,
+            infinite,
+            external);
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);
@@ -788,6 +888,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
       pendingCrafts = 0;
       closeSearch();
       selections = List.of();
+      selectionNames = List.of();
       if (route != null && !transfers().inExecution()) transfers().routes().cancel(route, actor());
     }
     super.removed(player);

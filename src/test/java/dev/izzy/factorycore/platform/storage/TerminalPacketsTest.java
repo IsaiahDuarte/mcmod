@@ -99,13 +99,95 @@ class TerminalPacketsTest {
   }
 
   @Test
+  void maximumWindowAndCursorActionsRoundTripWithoutSendingComponentKeys() {
+    var session = UUID.randomUUID();
+    var rows =
+        java.util.stream.IntStream.range(0, TerminalPackets.MAX_ROWS)
+            .mapToObj(
+                i ->
+                    new TerminalPackets.Row(
+                        i,
+                        "minecraft:iron_ingot",
+                        "Variant " + i,
+                        "9223372036854775907",
+                        "50",
+                        "9223372036854775857"))
+            .toList();
+    var view =
+        new TerminalPackets.View(
+            17,
+            session,
+            42,
+            "ready",
+            rows,
+            true,
+            false,
+            "0",
+            "",
+            0,
+            128,
+            512,
+            256,
+            0,
+            "9223372036854775907",
+            "9223372036854792191",
+            true,
+            false);
+    var output = buffer();
+    try {
+      TerminalPackets.View.CODEC.encode(output, view);
+      assertTrue(output.readableBytes() < 65536, "Only bounded names/icons/counts are projected");
+      assertEquals(view, TerminalPackets.View.CODEC.decode(output));
+      for (int action :
+          new int[] {
+            TerminalPackets.WINDOW,
+            TerminalPackets.TAKE_CURSOR,
+            TerminalPackets.HALF_CURSOR,
+            TerminalPackets.DEPOSIT_CURSOR
+          }) {
+        int selection =
+            action == TerminalPackets.WINDOW
+                ? 65536
+                : action == TerminalPackets.DEPOSIT_CURSOR ? 0 : 255;
+        int amount = action == TerminalPackets.WINDOW ? 256 : 64;
+        var command =
+            new TerminalPackets.Command(
+                17, session, 42, action, selection, amount, "", new byte[32]);
+        TerminalPackets.Command.CODEC.encode(output, command);
+        var decoded = TerminalPackets.Command.CODEC.decode(output);
+        assertEquals(action, decoded.action());
+        assertEquals(selection, decoded.selection());
+        assertEquals(amount, decoded.amount());
+      }
+      assertFalse(output.isReadable());
+    } finally {
+      output.release();
+    }
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.Command(
+                17, session, 42, TerminalPackets.WINDOW, 65537, 256, "", new byte[32]));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.Command(
+                17, session, 42, TerminalPackets.WINDOW, 0, 257, "", new byte[32]));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.Command(
+                17, session, 42, TerminalPackets.TAKE_CURSOR, 256, 64, "", new byte[32]));
+  }
+
+  @Test
   void oversizedAndInvalidInboundCommandsRejectBeforeMenuExecution() {
     UUID session = UUID.randomUUID();
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.SORT + 1, 0, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.DEPOSIT_CURSOR + 1, 0, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalPackets.Command(1, session, 1, 4, 36, 1, "", new byte[32]));
@@ -142,7 +224,8 @@ class TerminalPacketsTest {
     }
     var rows =
         Collections.nCopies(
-            9, new TerminalPackets.Row(0, "minecraft:iron_ingot", "Iron", "1", "0", "1"));
+            TerminalPackets.MAX_ROWS + 1,
+            new TerminalPackets.Row(0, "minecraft:iron_ingot", "Iron", "1", "0", "1"));
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalPackets.View(1, session, 1, "ready", rows, false, false, "0"));

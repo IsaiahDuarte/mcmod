@@ -342,12 +342,18 @@ public final class WorldStorageTransfers {
 
   public sealed interface Endpoint permits Digital, External, Buffered, PlayerInventory {}
 
-  public record PlayerInventory(UUID principal, UUID backing, long connection, int slot)
+  /** Own slots 0–35, whole-inventory destination -1, or cursor 36 bound to menuSession. */
+  public record PlayerInventory(
+      UUID principal, UUID backing, long connection, int slot, UUID menuSession)
       implements Endpoint {
+    public PlayerInventory(UUID principal, UUID backing, long connection, int slot) {
+      this(principal, backing, connection, slot, null);
+    }
+
     public PlayerInventory {
       Objects.requireNonNull(principal);
       Objects.requireNonNull(backing);
-      if (connection <= 0 || slot < -1 || slot >= 36)
+      if (connection <= 0 || slot < -1 || slot > 36 || (slot == 36) != (menuSession != null))
         throw new IllegalArgumentException("Invalid player inventory endpoint");
     }
   }

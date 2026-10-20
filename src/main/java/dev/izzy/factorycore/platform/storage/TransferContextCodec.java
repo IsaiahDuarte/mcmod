@@ -7,7 +7,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 
 /**
- * Context schemas one/two/three for legacy/buffer/player unions; absent data invents no endpoint.
+ * Context schemas one–four for legacy/buffer/player/cursor references; absent data invents no
+ * endpoint.
  */
 final class TransferContextCodec {
   private TransferContextCodec() {}
@@ -18,7 +19,7 @@ final class TransferContextCodec {
         "Schema",
         context.source().type() == TransferContext.Type.PLAYER
                 || context.destination().type() == TransferContext.Type.PLAYER
-            ? 3
+            ? (cursor(context) ? 4 : 3)
             : context.source().type() == TransferContext.Type.BUFFER
                     || context.destination().type() == TransferContext.Type.BUFFER
                 ? 2
@@ -56,7 +57,7 @@ final class TransferContextCodec {
             .equals(tag.getAllKeys())
         || !tag.contains("Schema", Tag.TAG_INT)
         || tag.getInt("Schema") < 1
-        || tag.getInt("Schema") > 3)
+        || tag.getInt("Schema") > 4)
       throw new IllegalArgumentException("Unsupported transfer context");
     for (var field : new String[] {"World", "Network", "Segment"})
       if (!tag.hasUUID(field))
@@ -80,9 +81,16 @@ final class TransferContextCodec {
     boolean player =
         context.source().type() == TransferContext.Type.PLAYER
             || context.destination().type() == TransferContext.Type.PLAYER;
-    if (tag.getInt("Schema") != (player ? 3 : buffered ? 2 : 1))
+    if (tag.getInt("Schema") != (player ? (cursor(context) ? 4 : 3) : buffered ? 2 : 1))
       throw new IllegalArgumentException("Endpoint union does not match its context schema");
     return context;
+  }
+
+  private static boolean cursor(TransferContext context) {
+    return context.source().type() == TransferContext.Type.PLAYER
+            && context.source().configuration() == 38
+        || context.destination().type() == TransferContext.Type.PLAYER
+            && context.destination().configuration() == 38;
   }
 
   private static TransferContext.Endpoint endpoint(CompoundTag tag) {

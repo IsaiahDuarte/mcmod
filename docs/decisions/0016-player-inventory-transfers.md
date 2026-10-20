@@ -56,3 +56,28 @@ all independently saved files or a full reconnect/restart recovery guarantee.
 Pending-call quarantine is mandatory; full interrupted-save evidence and durable
 reconciliation remain D03/P7 requirements before release. Headless mock-login tests
 use the pinned platform's real PlayerList registration, not an authentication bypass.
+
+
+## U3 — Menu cursor extension (2026-10-20)
+
+Standard terminal pickup/deposit requires the player's real carried stack. Extend the same
+PLAYER adapter with transient slot 36 (the cursor), sharing the world/player backing and
+128-item per-direction tick allowances. Runtime endpoints also capture the terminal menu's
+session UUID. Every port call checks the exact current authenticated body and menu session;
+queued work keeps the terminal's current View/transfer grants, selection revision and scope
+guards. Closing or replacing the menu invalidates its cursor endpoint. Armor, offhand and
+crafting slots remain excluded. Native main-inventory rearrangement is unchanged.
+
+Nested transfer context schema 4 represents cursor selection as PLAYER configuration 38.
+Slots 0–35 still encode as 1–36; whole-inventory destinations remain configuration 37 and
+schema 3. Prior context versions and the world-13 golden remain byte-for-byte unchanged;
+no top-level world section changes. Old readers reject unknown nested schema 4 and preserve
+the world for recovery. Schema-4 decoding requires an actual cursor endpoint and validates
+item kind, original actor and world/player backing exactly as schema 3 does.
+
+The cursor has no independent contents copy. Vanilla owns carried items and returns/drops
+them normally when the screen closes. Explicit known staging recovery binds cursor references
+to that player's current main inventory, never to a newly opened cursor, and never extracts
+again. Uncertain calls remain quarantined. Player/chunk/world files still save independently;
+this does not claim crash atomicity. A temporary inventory slot used as a cursor proxy was
+rejected because it would misstate ownership, capacity and stale-slot behavior.

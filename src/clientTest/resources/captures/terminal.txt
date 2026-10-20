@@ -10,6 +10,7 @@ terminal-preferences-before-restart.png
 scale-3-iron.png
 scale-4-iron.png
 scale-4-next-page.png
+terminal-scrollbar-scale-4.png
 buffer-scale-2-settings.png
 buffer-scale-2-rules-page-1.png
 buffer-scale-2-rules-page-2.png

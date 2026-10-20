@@ -33,7 +33,7 @@ public record TransferContext(
               ? configuration != 0 || !device.equals(backing)
               : configuration <= 0
                   || type == Type.BUFFER && !device.equals(backing)
-                  || type == Type.PLAYER && configuration > 37))
+                  || type == Type.PLAYER && configuration > 38))
         throw new IllegalArgumentException("Invalid saved transfer endpoint");
     }
   }

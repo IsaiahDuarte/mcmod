@@ -25,6 +25,9 @@ public final class TerminalPackets {
    */
   public static final int KIND = 6, FILL = 7, EMPTY = 8, CHARGE = 9, DISCHARGE = 10, SORT = 11;
 
+  public static final int WINDOW = 12, TAKE_CURSOR = 13, HALF_CURSOR = 14, DEPOSIT_CURSOR = 15;
+  public static final int MAX_ROWS = 256, MAX_OFFSET = 65536;
+
   public record Command(
       int menu,
       UUID session,
@@ -42,12 +45,20 @@ public final class TerminalPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > SORT
+          || action > DEPOSIT_CURSOR
           || selection < 0
-          || selection >= 36
+          || selection
+              >= (action == WINDOW
+                  ? MAX_OFFSET + 1
+                  : action == WITHDRAW
+                          || action == TAKE_CURSOR
+                          || action == HALF_CURSOR
+                          || action == FILL
+                      ? MAX_ROWS
+                      : 36)
           || (action == SORT && selection > TerminalSearchSupport.QUANTITY)
           || amount < 1
-          || amount > 64
+          || amount > (action == WINDOW ? MAX_ROWS : 64)
           || text.length() > 128
           || fingerprint.length != 32)
         throw new IllegalArgumentException("Invalid terminal command bounds");
@@ -91,7 +102,7 @@ public final class TerminalPackets {
       int token, String icon, String name, String total, String reserved, String available) {
     public Row {
       if (token < 0
-          || token >= 8
+          || token >= MAX_ROWS
           || icon.length() > 256
           || name.length() > 96
           || total.length() > 32
@@ -111,7 +122,15 @@ public final class TerminalPackets {
       boolean busy,
       String staged,
       String search,
-      int sort)
+      int sort,
+      int offset,
+      int total,
+      int size,
+      int kind,
+      String used,
+      String capacity,
+      boolean infinite,
+      boolean external)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_view"));
@@ -138,13 +157,55 @@ public final class TerminalPackets {
           TerminalSearchSupport.NAME);
     }
 
+    public View(
+        int menu,
+        UUID session,
+        long revision,
+        String status,
+        List<Row> rows,
+        boolean next,
+        boolean busy,
+        String staged,
+        String search,
+        int sort) {
+      this(
+          menu,
+          session,
+          revision,
+          status,
+          rows,
+          next,
+          busy,
+          staged,
+          search,
+          sort,
+          0,
+          rows.size(),
+          8,
+          0,
+          "0",
+          "0",
+          false,
+          false);
+    }
+
     public View {
       if (search.length() > 128
           || sort < TerminalSearchSupport.NAME
           || sort > TerminalSearchSupport.QUANTITY)
         throw new IllegalArgumentException("Invalid terminal preferences");
+      if (offset < 0
+          || total < 0
+          || total > MAX_OFFSET
+          || offset > total
+          || size < 1
+          || size > MAX_ROWS
+          || kind < 0
+          || kind > 2
+          || used.length() > 32
+          || capacity.length() > 32) throw new IllegalArgumentException("Invalid terminal window");
       rows = List.copyOf(rows);
-      if (rows.size() > 8 || status.length() > 64 || staged.length() > 32)
+      if (rows.size() > MAX_ROWS || status.length() > 64 || staged.length() > 32)
         throw new IllegalArgumentException("Invalid terminal view bounds");
     }
 
@@ -174,6 +235,14 @@ public final class TerminalPackets {
               buffer.writeUtf(value.staged, 32);
               buffer.writeUtf(value.search, 128);
               buffer.writeVarInt(value.sort);
+              buffer.writeVarInt(value.offset);
+              buffer.writeVarInt(value.total);
+              buffer.writeVarInt(value.size);
+              buffer.writeVarInt(value.kind);
+              buffer.writeUtf(value.used, 32);
+              buffer.writeUtf(value.capacity, 32);
+              buffer.writeBoolean(value.infinite);
+              buffer.writeBoolean(value.external);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -181,7 +250,8 @@ public final class TerminalPackets {
               long revision = buffer.readLong();
               String status = buffer.readUtf(64);
               int size = buffer.readVarInt();
-              if (size < 0 || size > 8) throw new IllegalArgumentException("Terminal row count");
+              if (size < 0 || size > MAX_ROWS)
+                throw new IllegalArgumentException("Terminal row count");
               var rows = new ArrayList<Row>();
               for (int index = 0; index < size; index++)
                 rows.add(
@@ -202,7 +272,15 @@ public final class TerminalPackets {
                   buffer.readBoolean(),
                   buffer.readUtf(32),
                   buffer.readUtf(128),
-                  buffer.readVarInt());
+                  buffer.readVarInt(),
+                  buffer.readVarInt(),
+                  buffer.readVarInt(),
+                  buffer.readVarInt(),
+                  buffer.readVarInt(),
+                  buffer.readUtf(32),
+                  buffer.readUtf(32),
+                  buffer.readBoolean(),
+                  buffer.readBoolean());
             });
   }
 
@@ -220,7 +298,7 @@ public final class TerminalPackets {
   }
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("2");
+    var registrar = event.registrar("3");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, TerminalMenu.class, TerminalMenu::command);
     MenuPayloads.toServer(

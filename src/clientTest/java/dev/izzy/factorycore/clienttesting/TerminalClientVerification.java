@@ -87,7 +87,7 @@ public final class TerminalClientVerification {
       ACCESS_POINT = new BlockPos(1, 66, 1);
   private int stage, ticks, entered, rule, craftStep, policyMask;
   private boolean sampleSeeded;
-  private int searchStep;
+  private int searchStep, scrollStep;
   private final ProgramAuthoringClientVerification programAuthoring =
       new ProgramAuthoringClientVerification();
   private long previousRevision;
@@ -137,9 +137,12 @@ public final class TerminalClientVerification {
       return;
     }
     if (stage == 0 && client.screen instanceof TitleScreen) {
-      client.getWindow().setWindowed(1280, 960);
+      var window = client.getWindow();
+      double ratio = (double) window.getWidth() / Math.max(1, window.getScreenWidth());
+      window.setWindowed((int) Math.round(1708 / ratio), (int) Math.round(960 / ratio));
       client.options.guiScale().set(2);
       client.options.pauseOnLostFocus = false;
+      client.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
       client
           .createWorldOpenFlows()
           .createFreshLevel(
@@ -212,6 +215,15 @@ public final class TerminalClientVerification {
                                   .amount()
                               == 3,
                           "Live seed stock admission");
+                    for (int i = 0; i < 100; i++) {
+                      var scrollItem = new ItemStack(Items.STONE);
+                      scrollItem.set(
+                          DataComponents.CUSTOM_NAME,
+                          Component.literal(String.format(Locale.ROOT, "Scroll %03d", i)));
+                      check(
+                          saved.registry().insert(cell, codec.itemKey(scrollItem), 1).amount() == 1,
+                          "Scroll seed admission");
+                    }
                     fixtureBuffer.configure(
                         new NetworkPermissions.Actor(player.getUUID(), false),
                         BufferRegistry.Mode.IMPORT);
@@ -267,36 +279,19 @@ public final class TerminalClientVerification {
       check(selected >= 0, "Actual hopper components appear separately from plain iron");
       for (var child : screen.children()) if (child instanceof EditBox edit) edit.setFocused(false);
       screen.keyPressed(GLFW.GLFW_KEY_1 + selected, 0, 0);
-      click(screen, "Take 1");
+      screen.mouseClicked(screen.itemX(selected) + 9, screen.itemY(selected) + 9, 0);
       next();
       return;
     }
-    if (stage == 5
-        && !client.player.getInventory().getItem(0).isEmpty()
-        && client.player.getInventory().getItem(0).getCount() == 1
-        && view.rows().size() == 2
-        && !view.busy()) {
+    if (stage == 5 && menu.getCarried().getCount() == 23 && !view.busy()) {
       check(
-          ItemStack.isSameItemSameComponents(client.player.getInventory().getItem(0), named(1)),
-          "Native button withdrawal delivers exact item through real connection");
-      var digest =
-          TerminalPackets.fingerprint(
-              new PlatformResourceCodec(client.level.registryAccess())
-                  .itemKey(client.player.getInventory().getItem(0)));
-      PacketDistributor.sendToServer(
-          new TerminalPackets.Command(
-              menu.containerId,
-              menu.session(),
-              view.revision(),
-              TerminalPackets.DEPOSIT,
-              0,
-              1,
-              "",
-              digest));
+          ItemStack.isSameItemSameComponents(menu.getCarried(), named(1)),
+          "Native left-click withdraws exact components onto the cursor");
+      screen.mouseClicked(screen.itemX(0) + 9, screen.itemY(0) + 9, 0);
       next();
       return;
     }
-    if (stage == 6 && client.player.getInventory().getItem(0).isEmpty() && !view.busy()) {
+    if (stage == 6 && menu.getCarried().isEmpty() && !view.busy()) {
       if (!checked.get()) {
         var server = client.getSingleplayerServer();
         var principal = client.player.getUUID();
@@ -347,23 +342,43 @@ public final class TerminalClientVerification {
       next();
       return;
     }
-    if (stage == 9 && view.rows().size() == 8 && view.next() && !view.busy()) {
+    if (stage == 9 && view.rows().size() == view.size() && view.next() && !view.busy()) {
       previousRevision = view.revision();
-      click(screen, "Next");
+      screen.mouseScrolled(screen.itemX(0) + 9, screen.itemY(0) + 9, 0, -1);
       next();
       return;
     }
     if (stage == 10
         && ticks - entered >= 4
         && view.revision() > previousRevision
-        && view.rows().size() == 2
-        && !view.next()) {
-      captures.grab(client, "scale-4-next-page.png");
-      click(screen, "Home");
+        && view.offset() > 0) {
+      if (scrollStep == 0) {
+        captures.grab(client, "scale-4-next-page.png");
+        double x = screen.itemX(0) + 18 * screen.columns() + 5;
+        double y = screen.itemY(0) + screen.rows() * 18 - 2;
+        screen.mouseClicked(x, screen.itemY(0) + 2, 0);
+        screen.mouseDragged(x, y, 0, 0, y - screen.itemY(0));
+        screen.mouseReleased(x, y, 0);
+        previousRevision = view.revision();
+        scrollStep++;
+        return;
+      }
+      int lastRow =
+          Math.max(
+              0,
+              ((view.total() + screen.columns() - 1) / screen.columns() - screen.rows())
+                  * screen.columns());
+      if (view.offset() != lastRow) return;
+      captures.grab(client, "terminal-scrollbar-scale-4.png");
+      for (int i = 0; i < 20; i++)
+        screen.mouseScrolled(screen.itemX(0) + 9, screen.itemY(0) + 9, 0, 1);
       next();
       return;
     }
-    if (stage == 11 && craftStep < 8 && (craftStep > 0 || view.rows().size() == 8 && view.next())) {
+    if (stage == 11
+        && craftStep < 8
+        && (craftStep > 0
+            || view.offset() == 0 && view.rows().size() == view.size() && view.next())) {
       craftTick(client, screen);
       return;
     }
@@ -381,8 +396,11 @@ public final class TerminalClientVerification {
     if (!view.status().equals("ready") || view.busy() || ticks - entered < 5) return;
     switch (searchStep) {
       case 0 -> {
-        if (view.rows().size() != 8) return;
-        check(view.next(), "Initial eight-row page has additional stock");
+        if (view.rows().size() != Math.min(view.size(), 110) || view.total() != 110) return;
+        if (view.size() != screen.columns() * screen.rows()) return;
+        check(
+            view.size() == screen.columns() * screen.rows(),
+            "Grid requests its full adaptive viewport");
         check(
             view.sort() == TerminalSearchSupport.NAME
                 && view.rows().getFirst().name().equals("Client hopper variant"),
@@ -398,7 +416,9 @@ public final class TerminalClientVerification {
         search(screen, "@minecraft");
       }
       case 2 -> {
-        if (!view.search().equals("@minecraft") || view.rows().size() != 8) return;
+        if (!view.search().equals("@minecraft")
+            || view.rows().size() != Math.min(view.size(), 110)
+            || view.total() != 110) return;
         captures.grab(client, "terminal-search-mod.png");
         search(screen, "#minecraft:coals");
       }
@@ -409,7 +429,9 @@ public final class TerminalClientVerification {
         search(screen, "@minecraft");
       }
       case 4 -> {
-        if (!view.search().equals("@minecraft") || view.rows().size() != 8) return;
+        if (!view.search().equals("@minecraft")
+            || view.rows().size() != Math.min(view.size(), 110)
+            || view.total() != 110) return;
         click(screen, "Name");
       }
       case 5 -> {
@@ -430,7 +452,9 @@ public final class TerminalClientVerification {
         search(screen, "");
       }
       case 9 -> {
-        if (!view.search().isEmpty() || view.rows().size() != 8) return;
+        if (!view.search().isEmpty()
+            || view.rows().size() != Math.min(view.size(), 110)
+            || view.total() != 110) return;
         evidence.append(
             "terminal-search: display name, registry, @mod, #loaded tag; name/quantity sort; physical reopen preserves accepted query/sort\n");
         previousRevision = view.revision();
@@ -454,7 +478,7 @@ public final class TerminalClientVerification {
     var grid = menu.gridView();
     var server = client.getSingleplayerServer();
     var principal = client.player.getUUID();
-    double left = (screen.width - 344) / 2.0, top = (screen.height - 232) / 2.0;
+    double left = screen.getGuiLeft(), top = screen.getGuiTop();
     switch (craftStep) {
       case 0 -> {
         server.execute(
@@ -468,7 +492,7 @@ public final class TerminalClientVerification {
       }
       case 1 -> {
         if (!client.player.getInventory().getItem(20).is(Items.OAK_LOG)) return;
-        screen.mouseClicked(left + TerminalScreen.GRID_X + 9, top + TerminalScreen.GRID_Y + 9, 0);
+        screen.mouseClicked(left + TerminalScreen.GRID_X + 9, top + screen.gridY() + 9, 0);
         var digest =
             TerminalPackets.fingerprint(
                 new PlatformResourceCodec(client.level.registryAccess())
@@ -491,7 +515,7 @@ public final class TerminalClientVerification {
         check(grid.resultCount() == 4, "Actual server recipe preview for one log");
         checkNoOverlap(screen);
         captures.grab(client, "terminal-grid-scale-4.png");
-        screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + TerminalScreen.GRID_Y + 9, 0);
+        screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + screen.gridY() + 9, 0);
         for (var child : screen.children())
           if (child instanceof EditBox edit) edit.setFocused(false);
         screen.keyPressed(GLFW.GLFW_KEY_1, 0, 0);
@@ -501,7 +525,7 @@ public final class TerminalClientVerification {
       case 3 -> {
         if (grid.cells().get(1).isEmpty() || !grid.result().isEmpty()) return;
         check(grid.status().equals("ready"), "Row ghost breaks the recipe without moving stock");
-        screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + TerminalScreen.GRID_Y + 9, 1);
+        screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + screen.gridY() + 9, 1);
         craftStep++;
       }
       case 4 -> {
@@ -982,7 +1006,7 @@ public final class TerminalClientVerification {
               + evidence
               + "Tour: gateway policy toggle (actual sneak-use C2S), program editor, Factory Guide pages 1-2 (actual item use), wireless handheld terminal beyond wired reach, terminal Fluids/Energy views; no overlapping controls.\n"
               + "Art: every Factory Core block in a front/top view, connected cable run with a sideways gateway, and every item in a double chest at GUI scales 2 and 4.\n"
-              + "Input: terminal search/row/Take1/Next/Home; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
+              + "Input: terminal live search, cursor pickup/deposit, wheel and scrollbar drag; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
               + "Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample. Restart checkpoint adds1200mB water (400 held),300mB lava and500FE.\n");
     } catch (IOException error) {
       throw new IllegalStateException(error);
@@ -1229,7 +1253,7 @@ public final class TerminalClientVerification {
         if (!(client.screen instanceof TerminalScreen screen)
             || !screen.getMenu().view().status().equals("ready")) return;
         previousRevision = screen.getMenu().view().revision();
-        click(screen, "Items");
+        click(screen, "Fluids");
         next();
       }
       case 74, 75 -> {
@@ -1249,7 +1273,7 @@ public final class TerminalClientVerification {
                 + view.rows().stream().map(row -> row.name() + "=" + row.total()).toList()
                 + "\n");
         previousRevision = view.revision();
-        click(screen, name);
+        if (stage == 74) click(screen, "Energy");
         next();
       }
       case 76 -> {
@@ -1647,7 +1671,6 @@ public final class TerminalClientVerification {
         edit.setFocused(true);
         screen.setFocused(edit);
         for (char character : text.toCharArray()) screen.charTyped(character, 0);
-        screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
         return;
       }
     throw new IllegalStateException("Search widget missing");

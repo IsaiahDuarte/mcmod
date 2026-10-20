@@ -1,7 +1,7 @@
 # Authenticated player inventory transfers
 
-P3 shared-transfer endpoint implemented; physical terminal/menu/client controls
-remain missing. This is not a complete player storage loop. See
+P3 shared-transfer endpoint and physical/wireless terminal controls are implemented.
+Release acceptance remains partial; see
 [player boundary decision](../decisions/0016-player-inventory-transfers.md),
 [shared transfers](WORLD_STORAGE_TRANSFERS.md) and [search](STORAGE_SEARCH.md).
 
@@ -10,8 +10,9 @@ remain missing. This is not a complete player storage loop. See
 `WorldStorageTransfers.inventory(serverPlayer, slot)` creates a server-only
 PlayerInventory endpoint for PlayerList's exact live ServerPlayer. Slot is 0–35
 for one selected main-inventory slot, or -1 for the whole 36-slot destination.
-Whole inventory cannot be a fresh extraction source. Armor/offhand/cursor/crafting
-slots are excluded. Invalid slot/parameters throw IllegalArgumentException;
+Slot 36 is the real cursor of the currently open TerminalMenu; its runtime endpoint also
+captures that menu's random session UUID. A stale or replaced menu cannot reuse the endpoint.
+Whole inventory cannot be a fresh extraction source. Armor/offhand/crafting slots are excluded. Invalid slot/parameters throw IllegalArgumentException;
 unauthenticated/offline/dead/wrong-server players or technical binding/rate-owner
 limits throw IllegalStateException. All calls belong to the server thread.
 
@@ -29,8 +30,7 @@ Every request checks that the operation actor matches the endpoint's principal,
 nonce/backing/current PlayerList object, live state and server, current dimension,
 and distance within eight blocks of the server-derived origin. Captured ports
 recheck the same object/binding/dimension/distance before every operation/slot.
-Another actor or operator flag cannot spend that inventory. A future menu must
-also validate its current lease/menu/session and selection revision; this endpoint
+Another actor or operator flag cannot spend that inventory. The terminal also validates its current lease/menu/session and selection revision; this endpoint
 alone is not an authenticated client packet boundary.
 
 The player's local source does not require network WITHDRAW merely to deposit its
@@ -81,6 +81,9 @@ schemas one through nine migrate without changing tables/counts/claims/context.
 New player contexts in older envelopes reject and preserve raw authority data.
 Player endpoint fields are principal UUID, derived backing, accepted connection
 nonce and configuration 1–36 for slots 0–35 or 37 for the whole destination.
+The menu cursor uses configuration 38 under nested context schema 4; older contexts
+remain byte-identical and the top-level world envelope remains schema 13. Unknown
+schema-4 readers reject and preserve the authority for recovery.
 Validation requires item staging, the operation's exact principal and derived
 world/player identity; whole source, malformed/future/foreign identity data rejects.
 Context metadata grants no permission and saves no second inventory. Unknown/future
@@ -93,14 +96,17 @@ It never extracts a refill or adopts another actor. Normal delivery rechecks cur
 network source/destination permissions and original origin/root/segment; source-slot
 cleanup does not require revoked resource grants, but retains current identity/
 range/dimension/scope checks. A changed/full original slot retains staging; free it
-and request return again. Unknown pending calls remain UNCERTAIN and cannot replay
+and request return again. Cursor references explicitly recover to that player's main
+inventory, since a closed cursor is no longer a stable holder; recovery never extracts
+again or fills another screen's carried stack. Unknown pending calls remain UNCERTAIN and cannot replay
 or refund. Automatic buffer-import recovery never adopts PLAYER destinations.
 
 Player files and world authority save independently. Fixed context/migration and
 compressed staging checks are not proof of crash atomicity, complete reconnect/
 restart recovery or independently interrupted file safety. Those remain D03/P7
 release work; do not infer certainty from an old matching coordinate/player UUID.
-No user-facing reconciliation or recovery menu exists yet.
+The Transfer Recovery screen exposes the shared known-return/settle/retire rules;
+uncertain ownership still requires operator reconciliation.
 
 ## Evidence and next work
 
@@ -112,5 +118,6 @@ items: deposit, full inventory/equipment exclusion, partial matching fills, stal
 slot/other actor, deposit-only grants, shared directions/rates, revocation/distance,
 owned blocked-slot cleanup after revocation, catalog exclusion, logout and pending
 intent non-replay/fresh extraction blocking. These are headless platform checks;
-terminal packets/screens, survival interactions, full restart/independent saves,
-multiplayer and client verification remain pending.
+U3 adds five native terminal-grid cases, context-four compatibility fixtures and
+graphical wired/wireless controls. Survival interactions, full independent-save
+recovery and multiplayer cursor gestures remain separate acceptance work.

@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
+import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
@@ -24,6 +25,7 @@ import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
+import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
@@ -44,6 +46,7 @@ import java.util.function.Predicate;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -447,14 +450,20 @@ public final class PresentationClientVerification {
   }
 
   private static long planks(ServerPlayer player) {
-    var level = player.serverLevel();
-    var drive = (StorageDriveEntity) level.getBlockEntity(PresentationScenes.SCREENS.east());
-    var cell = CellHandleData.read(drive.cell(0));
+    var drive =
+        (StorageDriveEntity) player.serverLevel().getBlockEntity(PresentationScenes.SCREENS.east());
     var key =
-        new PlatformResourceCodec(level.registryAccess()).itemKey(new ItemStack(Items.OAK_PLANKS));
-    var stock = DeviceSavedData.get(player.server).registry().stock(cell, key);
-    // -1 while the cell is offline, so waits never mistake a rebuilding network for an empty one.
-    return stock.loaded() ? stock.total() : -1;
+        new PlatformResourceCodec(player.registryAccess()).itemKey(new ItemStack(Items.OAK_PLANKS));
+    var registry = DeviceSavedData.get(player.server).registry();
+    long total = 0;
+    for (int i = 0; i < 4; i++) {
+      var cell = drive.cell(i);
+      if (cell.isEmpty()) continue;
+      var stock = registry.stock(CellHandleData.read(cell), key);
+      if (!stock.loaded()) return -1;
+      total = Math.addExact(total, stock.total());
+    }
+    return total;
   }
 
   private static TerminalJobPackets.View jobView(Minecraft client) {
@@ -669,6 +678,8 @@ public final class PresentationClientVerification {
             fed.add(new BlockPos(x, 65, PresentationScenes.STATE_Z + 3));
           fed.add(new BlockPos(46, 65, PresentationScenes.STATE_Z + 3));
           PresentationScenes.screens(player);
+          var drive = (StorageDriveEntity) level.getBlockEntity(PresentationScenes.SCREENS.east());
+          drive.installCell(new ItemStack(StorageContent.cell(CellTier.ADVANCED_ITEM)));
         });
     step(
         client -> {
@@ -822,7 +833,73 @@ public final class PresentationClientVerification {
               player.serverLevel(), base.getX() + 4.5, 65, base.getZ() + 2.5, 180, 15);
         });
     serverUntil(player -> valid(player, base.east(2)) && valid(player, base.east(8)));
+    server(
+        player -> {
+          var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(base.east());
+          var handle = CellHandleData.read(drive.cell(1));
+          var registry = DeviceSavedData.get(player.server).registry();
+          var codec = new PlatformResourceCodec(player.registryAccess());
+          ItemStack[] examples = {
+            new ItemStack(Items.STONE),
+            new ItemStack(Items.IRON_INGOT),
+            new ItemStack(Items.GOLD_INGOT),
+            new ItemStack(Items.DIAMOND),
+            new ItemStack(Items.EMERALD)
+          };
+          long[] counts = {1, 23, 64, 1234, 999000};
+          for (int i = 0; i < examples.length; i++)
+            check(
+                registry.insert(handle, codec.itemKey(examples[i]), counts[i]).amount()
+                    == counts[i],
+                "Count rendering stock admitted");
+          evidence.append(
+              "terminal count rendering: Stone=1, Iron=23, Gold=64, Diamond=1k (1234), Emerald=999k (999000); vanilla overlay layer; inspect full glyphs at scales 1–4.\n");
+        });
     use(base.east(2), Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof TerminalScreen)) return false;
+          setScale(client, 4);
+          return true;
+        });
+    step(
+        client -> {
+          if (!(client.screen instanceof TerminalScreen screen)
+              || waited() < 6
+              || screen.getMenu().view().size() != screen.columns() * screen.rows()) return false;
+          var cell =
+              screen.children().stream()
+                  .filter(
+                      child ->
+                          child instanceof AbstractButton button
+                              && !(child instanceof Button)
+                              && button.visible
+                              && button.active)
+                  .findFirst()
+                  .orElse(null);
+          if (cell == null) return false;
+          screen.setFocused(cell);
+          return true;
+        });
+    waitTicks(6);
+    step(
+        client -> {
+          captures.grab(client, "terminal-keyboard-scale-4.png");
+          return client.screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+        });
+    step(
+        client ->
+            !client.player.containerMenu.getCarried().isEmpty()
+                && waited() > 4
+                && client.screen instanceof TerminalScreen screen
+                && !screen.getMenu().view().busy()
+                && !screen.getMenu().view().rows().isEmpty());
+    step(
+        client -> {
+          var screen = (TerminalScreen) client.screen;
+          return screen.mouseClicked(screen.itemX(0) + 9, screen.itemY(0) + 9, 0);
+        });
+    step(client -> client.player.containerMenu.getCarried().isEmpty() && waited() > 4);
     scales("terminal", TerminalScreen.class, true);
     jobsTour(base);
     use(base.east(), Direction.SOUTH, false);

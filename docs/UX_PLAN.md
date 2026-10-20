@@ -108,8 +108,13 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   takes a stack, right takes half, shift-click goes to the inventory, clicking with a carried
   stack deposits it. Search updates as you type. Items/Fluids/Energy/Jobs become tabs. Show
   a network capacity bar (used/total item units). Remove Home/Next/Search/Take 1/Take 64.
-  Every request still goes through the existing authorized transfer path; only the client
-  and the page request shape change.
+  Every request still goes through the existing authorized transfer path. The cursor controls
+  require a menu-bound cursor variant of the existing player endpoint, with nested context
+  schema 4 for accepted cursor intent; ordinary slot contexts retain schema 3. This adapter
+  extension preserves shared scheduling/accounting and returns known cursor staging to the
+  owner's main inventory after closure/reconnect. No new resource owner or alternate transfer
+  path is introduced. ADR 0016/0017 record this necessary extension to the original page-only
+  implementation expectation.
   Files: `TerminalScreen.java`, terminal menu/packets, `STORAGE_TERMINAL.md`, ADR 0017
   amendment.
   Done when: native tests cover the new click actions (including partial and denied ones);

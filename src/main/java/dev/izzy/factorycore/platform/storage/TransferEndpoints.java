@@ -202,7 +202,7 @@ final class TransferEndpoints {
           player.principal(),
           player.backing(),
           player.connection(),
-          player.slot() < 0 ? 37 : player.slot() + 1);
+          player.slot() == 36 ? 38 : player.slot() < 0 ? 37 : player.slot() + 1);
     if (endpoint instanceof Buffered buffer)
       return new TransferContext.Endpoint(
           TransferContext.Type.BUFFER,

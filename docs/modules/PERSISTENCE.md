@@ -277,3 +277,17 @@ adopt`. This writes cell audit schema 3 evidence first and needs no world migrat
 The [two-JVM injection record](../evidence/save-order-v1-2026-10-18.md) shows an older
 SavedData with newer chunks: the mismatch is inert, then adoption moves the lease
 exactly once. See [ADR0046](../decisions/0046-independent-save-adoption.md).
+
+
+## Terminal cursor intent — nested context schema four
+
+U3 adds PLAYER configuration 38 for a terminal's real cursor. Only these contexts
+write nested schema 4; ordinary inventory slots/whole destinations retain schema 3
+and DIGITAL/EXTERNAL/BUFFER contexts retain their existing bytes. The top-level
+world schema and owned tables do not change. Older readers reject unknown nested
+contexts and preserve raw data. Runtime menu/session references are never persisted.
+Known cursor staging explicitly recovers into the original actor's current main
+inventory; it never replays extraction or writes into an unrelated menu's cursor.
+Unknown pending calls stay quarantined. A context-four fixture and compressed
+canonical reload check accompany the existing world/context goldens. Independent
+player/world save ordering remains outside the normal-save guarantee.

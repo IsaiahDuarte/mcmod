@@ -57,7 +57,7 @@ final class WorldPlayerInventories {
 
   WorldStorageTransfers.PlayerInventory endpoint(ServerPlayer player, int slot) {
     checkThread();
-    if (slot < -1 || slot >= SLOTS)
+    if (slot < -1 || slot > SLOTS)
       throw new IllegalArgumentException("Invalid player inventory slot");
     if (server.getPlayerList().getPlayer(player.getUUID()) != player
         || player.isRemoved()
@@ -85,7 +85,11 @@ final class WorldPlayerInventories {
     }
     budget(backing);
     return new WorldStorageTransfers.PlayerInventory(
-        player.getUUID(), backing, binding.nonce(), slot);
+        player.getUUID(),
+        backing,
+        binding.nonce(),
+        slot,
+        slot == SLOTS && player.containerMenu instanceof TerminalMenu menu ? menu.session() : null);
   }
 
   private Binding current(WorldStorageTransfers.PlayerInventory endpoint) {
@@ -93,6 +97,10 @@ final class WorldPlayerInventories {
     return binding != null
             && binding.nonce() == endpoint.connection()
             && binding.backing().equals(endpoint.backing())
+            && (endpoint.slot() != SLOTS
+                || binding.player().containerMenu instanceof TerminalMenu menu
+                    && menu.session().equals(endpoint.menuSession())
+                    && menu.stillValid(binding.player()))
             && server.getPlayerList().getPlayer(endpoint.principal()) == binding.player()
             && !binding.player().isRemoved()
             && binding.player().isAlive()
@@ -144,7 +152,7 @@ final class WorldPlayerInventories {
     if (player == null) return null;
     try {
       return endpoint(
-          player, reference.configuration() == 37 ? -1 : (int) reference.configuration() - 1);
+          player, reference.configuration() >= 37 ? -1 : (int) reference.configuration() - 1);
     } catch (IllegalArgumentException | IllegalStateException unavailable) {
       return null;
     }
@@ -170,6 +178,7 @@ final class WorldPlayerInventories {
     private final WorldStorageTransfers.PlayerInventory endpoint;
     private final Binding captured;
     private final NodeRegistry.Position origin;
+    private final net.minecraft.world.inventory.AbstractContainerMenu cursorMenu;
 
     PlayerPort(
         WorldStorageTransfers.PlayerInventory endpoint,
@@ -178,11 +187,17 @@ final class WorldPlayerInventories {
       this.endpoint = endpoint;
       this.captured = captured;
       this.origin = origin;
+      cursorMenu =
+          endpoint.slot() == SLOTS && captured != null ? captured.player().containerMenu : null;
     }
 
     private boolean usable() {
       return captured != null
           && current(endpoint) == captured
+          && (endpoint.slot() != SLOTS
+              || cursorMenu instanceof TerminalMenu menu
+                  && captured.player().containerMenu == cursorMenu
+                  && menu.stillValid(captured.player()))
           && captured
               .player()
               .serverLevel()
@@ -215,7 +230,10 @@ final class WorldPlayerInventories {
         return new OperationResult(0, OperationResult.Reason.WRONG_RESOURCE);
       long rate = RATE - budget(backingId()).extracted;
       if (amount > 0 && rate == 0) return new OperationResult(0, OperationResult.Reason.RATE_LIMIT);
-      var stack = captured.player().getInventory().getItem(endpoint.slot());
+      var stack =
+          endpoint.slot() == SLOTS
+              ? cursorMenu.getCarried()
+              : captured.player().getInventory().getItem(endpoint.slot());
       long available = matches(stack, key) ? Math.min(Math.min(amount, rate), stack.getCount()) : 0;
       return new OperationResult(
           available,
@@ -252,6 +270,14 @@ final class WorldPlayerInventories {
               Math.min(
                   nativeStack.getMaxStackSize(),
                   captured.player().getInventory().getMaxStackSize(nativeStack)));
+      if (endpoint.slot() == SLOTS) {
+        var current = cursorMenu.getCarried();
+        if (!current.isEmpty() && !matches(current, key)) return 0;
+        int accepted = (int) Math.min(offered, Math.max(0, limit - current.getCount()));
+        if (!simulate && accepted > 0)
+          cursorMenu.setCarried(codec.itemStack(key, current.getCount() + accepted));
+        return accepted;
+      }
       var inventory = captured.player().getInventory();
       long accepted = 0;
       int first = endpoint.slot() < 0 ? 0 : endpoint.slot();
@@ -289,7 +315,11 @@ final class WorldPlayerInventories {
     public long extract(ResourceKey key, long requested) {
       var available = available(key, requested).amount();
       if (available == 0) return 0;
-      var extracted = captured.player().getInventory().removeItem(endpoint.slot(), (int) available);
+      ItemStack extracted;
+      if (endpoint.slot() == SLOTS) {
+        extracted = cursorMenu.getCarried().split((int) available);
+      } else
+        extracted = captured.player().getInventory().removeItem(endpoint.slot(), (int) available);
       long actual = extracted.getCount();
       if (actual < 0 || actual > available || actual > 0 && !matches(extracted, key))
         throw new IllegalStateException(

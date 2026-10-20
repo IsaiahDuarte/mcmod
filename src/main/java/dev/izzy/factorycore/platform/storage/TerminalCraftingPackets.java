@@ -49,7 +49,7 @@ public final class TerminalCraftingPackets {
           || cell < -1
           || cell >= CELLS
           || source < 0
-          || source >= TerminalCrafting.SLOTS
+          || source >= (action == SET_ROW ? TerminalPackets.MAX_ROWS : TerminalCrafting.SLOTS)
           || crafts < 1
           || crafts > GridRequirement.MAX_CRAFTS
           || fingerprint.length != 32)
