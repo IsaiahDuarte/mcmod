@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
@@ -382,10 +383,28 @@ public final class WorldCraftingJobs {
     return list == null ? List.of() : List.copyOf(list);
   }
 
+  /** Records a finished job and tells its requester, if online, that it finished or cancelled. */
   private void notice(CraftingJob job, boolean cancelled) {
     var list = notices.computeIfAbsent(job.principal(), p -> new ArrayDeque<>());
     if (list.size() == MAX_NOTICES) list.removeFirst();
     list.addLast(new Notice(job.id(), job.request(), job.amount(), cancelled));
+    var player = server.getPlayerList().getPlayer(job.principal());
+    if (player == null) return;
+    Component name;
+    try {
+      name =
+          new PlatformResourceCodec(server.registryAccess())
+              .itemStack(job.request(), 1)
+              .getHoverName();
+    } catch (IllegalArgumentException notAnItem) {
+      name = Component.literal(job.request().registryId());
+    }
+    player.displayClientMessage(
+        Component.translatable(
+            cancelled ? "message.factorycore.job.cancelled" : "message.factorycore.job.finished",
+            job.amount(),
+            name),
+        false);
   }
 
   /** Queues one shared-scheduler task per runnable job that is not already queued. */

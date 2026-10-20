@@ -4,8 +4,6 @@ import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.platform.network.AccessPackets;
 import dev.izzy.factorycore.platform.network.NetworkAccessMenu;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -348,12 +346,5 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
             Component.translatable("gui.factorycore.access.status." + view.status()).getString(),
             136);
     graphics.drawString(font, status, 78, ROW_Y + ROWS * ROW_HEIGHT + 6, 0xd8dee9, false);
-  }
-
-  /** Visible principal names on this page, for client fixtures. */
-  public List<String> visibleNames() {
-    var names = new ArrayList<String>();
-    for (var row : menu.view().rows()) names.add(row.name());
-    return names;
   }
 }

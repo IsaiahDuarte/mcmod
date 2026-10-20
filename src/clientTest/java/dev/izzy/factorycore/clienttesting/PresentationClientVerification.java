@@ -103,6 +103,7 @@ public final class PresentationClientVerification {
   private final StringBuilder evidence = new StringBuilder();
   private final List<Step> steps = new ArrayList<>();
   private final List<BlockPos> fed = new ArrayList<>();
+  private final List<String> chat = new java.util.concurrent.CopyOnWriteArrayList<>();
   private int index;
   private int ticks;
   private int entered;
@@ -113,6 +114,9 @@ public final class PresentationClientVerification {
     buildSteps();
     NeoForge.EVENT_BUS.addListener(this::tick);
     NeoForge.EVENT_BUS.addListener(this::feed);
+    NeoForge.EVENT_BUS.addListener(
+        (net.neoforged.neoforge.client.event.ClientChatReceivedEvent.System event) ->
+            chat.add(event.getMessage().getString()));
   }
 
   // ------------------------------------------------------------------ plumbing
@@ -431,7 +435,11 @@ public final class PresentationClientVerification {
         player ->
             DeviceSavedData.get(player.server).craftingJobs().all().isEmpty()
                 && planks(player) == 8);
-    step(client -> waited() > 10 && jobView(client).jobs().isEmpty() && press(client, "×64"));
+    step(
+        client -> {
+          if (!chat.contains("Crafting job finished: 8 × Oak Planks")) return false;
+          return waited() > 10 && jobView(client).jobs().isEmpty() && press(client, "×64");
+        });
     step(
         client -> {
           var view = jobView(client);

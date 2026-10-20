@@ -496,6 +496,8 @@
   "gui.factorycore.program.status.running": "Running",
   "gui.factorycore.program.status.no_power": "Needs FE to run",
   "gui.factorycore.program.status.offline": "Network offline",
+  "message.factorycore.job.finished": "Crafting job finished: %s × %s",
+  "message.factorycore.job.cancelled": "Crafting job cancelled: %s × %s",
   "gui.factorycore.program.status.throttled": "Throttled: server busy, retrying",
   "gui.factorycore.program.status.delayed": "Running late: server busy",
   "gui.factorycore.program.wasm": "Upload Wasm",
