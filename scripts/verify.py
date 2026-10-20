@@ -21,7 +21,6 @@ REQUIRED_FILES = (
     "docs/TESTING.md",
     "docs/IMPLEMENTATION.md",
     "docs/LOGISTICSNETWORKS.md",
-    "docs/REVIEW.md",
     "docs/decisions/README.md",
     ".github/pull_request_template.md",
     ".github/workflows/quality.yml",

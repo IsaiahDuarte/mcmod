@@ -17,7 +17,6 @@ acceptance are still open. See the [current implementation evidence and next wor
 - [Product specification](SPEC.md): authoritative release scope, behavior, and acceptance criteria.
 - [Implementation handoff](docs/IMPLEMENTATION.md): ordered stages, decision gates, evidence tracking, and an instruction to give an implementing AI.
 - [Release asset inventory](docs/ASSETS.md): models, textures, device states, screens, onboarding and client verification status.
-- [Agent continuation task](docs/AGENT_HANDOFF.md): copyable goal-oriented handoff for the full first playable release.
 - [AI contributor instructions](AGENTS.md): required workflow and completion criteria.
 - [Engineering rules](docs/ENGINEERING.md): architecture, documentation, and change discipline.
 - [Verification requirements](docs/TESTING.md): current checks and required implementation gates.
@@ -42,7 +41,7 @@ acceptance are still open. See the [current implementation evidence and next wor
 - [Energy-bank accounting](docs/modules/ENERGY_BANKS.md): finite tiers and shared
   identity-based FE/tick budgets and physical bank capabilities; real chunks/client
   and complete powered progression evidence pending.
-- [Review findings](docs/REVIEW.md): contradictions corrected and remaining decision gates.
+- [Archive](docs/archive/): the original design review and the dated implementation work log.
 - [LogisticsNetworks comparison](docs/LOGISTICSNETWORKS.md): revision-specific overlap and design implications.
 
 ## Verify this repository
