@@ -5,6 +5,8 @@ import dev.izzy.factorycore.core.program.FriendlyCompiler;
 import dev.izzy.factorycore.core.program.ProgramPreview;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.session.MenuSession;
+import dev.izzy.factorycore.platform.session.TickGate;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -28,9 +30,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * stop need DEPLOY (checked by {@link WorldPrograms}). The client never names a controller.
  */
 public final class ProgramMenu extends AbstractContainerMenu {
+  private final MenuSession protocol;
   private final Player viewer;
   private final ProgramControllerEntity controller;
-  private final UUID session;
   private final BlockPos position;
   private final StringBuilder upload = new StringBuilder();
   private final ByteArrayOutputStream binary = new ByteArrayOutputStream();
@@ -38,16 +40,15 @@ public final class ProgramMenu extends AbstractContainerMenu {
   private int expected = -1;
   private List<String> diagnostics = List.of();
   private long revision = 1;
-  private int lastAction = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE;
   private boolean draftSent;
-  private int lastAuthor = Integer.MIN_VALUE;
+  private final TickGate authoring = new TickGate(5);
   private ProgramPackets.AuthorView authorView;
   private ProgramPackets.View view;
   private String draft = "";
   private boolean draftReceived;
 
   public ProgramMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-    this(id, inventory, null, buffer.readBlockPos(), buffer.readUUID());
+    this(id, inventory, null, buffer.readBlockPos(), MenuSession.read(buffer));
   }
 
   ProgramMenu(int id, Inventory inventory, ProgramControllerEntity controller, UUID session) {
@@ -62,15 +63,16 @@ public final class ProgramMenu extends AbstractContainerMenu {
       UUID session) {
     super(ProgramContent.MENU.get(), id);
     viewer = inventory.player;
+    protocol = new MenuSession(this, viewer, session, controller != null, 5);
     this.controller = controller;
     this.position = position;
-    this.session = session;
     view =
-        new ProgramPackets.View(id, session, 0, "stopped", "", 0, "", false, List.of(), List.of());
+        new ProgramPackets.View(
+            id, protocol.id(), 0, "stopped", "", 0, "", false, List.of(), List.of());
   }
 
   public UUID session() {
-    return session;
+    return protocol.id();
   }
 
   public BlockPos position() {
@@ -88,13 +90,12 @@ public final class ProgramMenu extends AbstractContainerMenu {
 
   public void accept(ProgramPackets.View packet) {
     if (controller == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.revision() >= view.revision()) view = packet;
   }
 
   public void accept(ProgramPackets.Draft packet) {
-    if (controller == null && packet.menu() == containerId && packet.session().equals(session)) {
+    if (controller == null && protocol.owns(packet.menu(), packet.session())) {
       draft = packet.text();
       draftReceived = true;
     }
@@ -109,19 +110,14 @@ public final class ProgramMenu extends AbstractContainerMenu {
   }
 
   public void accept(ProgramPackets.AuthorView packet) {
-    if (controller == null && packet.menu() == containerId && packet.session().equals(session))
-      authorView = packet;
+    if (controller == null && protocol.owns(packet.menu(), packet.session())) authorView = packet;
   }
 
   /** Current-scope authoring snapshot; VIEW is rechecked, and no runtime commands are published. */
   public void author(ServerPlayer sender, ProgramPackets.AuthorRequest request) {
-    if (sender != viewer
-        || request.menu() != containerId
-        || !request.session().equals(session)
-        || !authorized()) return;
-    int tick = sender.server.getTickCount();
-    if (lastAuthor != Integer.MIN_VALUE && tick - lastAuthor < 5) return;
-    lastAuthor = tick;
+    if (!protocol.fromViewer(sender, request.menu(), request.session())
+        || !authorized()
+        || !authoring.admit(sender.server.getTickCount())) return;
     var networks = WorldNetworks.get(sender.server);
     var member = networks.membership(controller.origin());
     var scope = member.scope().network() + "/" + member.scope().segment();
@@ -133,7 +129,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
     authorView =
         new ProgramPackets.AuthorView(
             containerId,
-            session,
+            protocol.id(),
             scope,
             labels.labels(),
             labels.more(),
@@ -192,7 +188,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
   @Override
   public void broadcastChanges() {
     super.broadcastChanges();
-    if (controller == null || player().containerMenu != this) return;
+    if (!protocol.server() || player().containerMenu != this) return;
     if (!authorized()) {
       player().closeContainer();
       return;
@@ -200,12 +196,9 @@ public final class ProgramMenu extends AbstractContainerMenu {
     if (!draftSent) {
       draftSent = true;
       PacketDistributor.sendToPlayer(
-          player(), new ProgramPackets.Draft(containerId, session, controller.draft()));
+          player(), new ProgramPackets.Draft(containerId, protocol.id(), controller.draft()));
     }
-    int tick = player().server.getTickCount();
-    if (lastPoll != Integer.MIN_VALUE && tick - lastPoll < 5) return;
-    lastPoll = tick;
-    publish();
+    if (protocol.admitPoll()) publish();
   }
 
   private void diagnose(List<FriendlyCompiler.Diagnostic> found) {
@@ -220,10 +213,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
   }
 
   public void command(ServerPlayer sender, ProgramPackets.Command command) {
-    if (sender != viewer
-        || command.menu() != containerId
-        || !command.session().equals(session)
-        || !authorized()) return;
+    if (!protocol.fromViewer(sender, command.menu(), command.session()) || !authorized()) return;
     if (command.action() == ProgramPackets.CHUNK) {
       if (command.index() == 0) {
         upload.setLength(0);
@@ -256,9 +246,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
       }
       return;
     }
-    int tick = sender.server.getTickCount();
-    if (lastAction != Integer.MIN_VALUE && tick - lastAction < 2) return;
-    lastAction = tick;
+    if (!protocol.admitRate()) return;
     var programs = WorldPrograms.get(sender.server);
     switch (command.action()) {
       case ProgramPackets.CHECK ->
@@ -280,10 +268,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
 
   /** Assembles a chunked Wasm artifact; the final chunk deploys it under the viewer's grants. */
   public void artifact(ServerPlayer sender, ProgramPackets.Artifact chunk) {
-    if (sender != viewer
-        || chunk.menu() != containerId
-        || !chunk.session().equals(session)
-        || !authorized()) return;
+    if (!protocol.fromViewer(sender, chunk.menu(), chunk.session()) || !authorized()) return;
     if (chunk.index() == 0) {
       binary.reset();
       binaryExpected = chunk.count();
@@ -309,7 +294,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
     var packet =
         new ProgramPackets.View(
             containerId,
-            session,
+            protocol.id(),
             revision,
             controller.state().name().toLowerCase(Locale.ROOT),
             message.length() > 256 ? message.substring(0, 256) : message,

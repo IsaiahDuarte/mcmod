@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.session.MenuSession;
 import java.security.MessageDigest;
 import java.util.*;
 import java.util.Collections;
@@ -28,9 +29,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * One physical access session. Exact selections and accepted operation ownership stay server-side.
  */
 public final class TerminalMenu extends AbstractContainerMenu {
+  private final MenuSession protocol;
   private final Player viewer;
   private final TerminalAccess terminal;
-  private final UUID session;
   private final BlockPos position;
   private UUID query, route;
   private ResourceKey after, next;
@@ -39,7 +40,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private ResourceKind kind = ResourceKind.ITEM;
   private int sort = TerminalSearchSupport.NAME;
   private long revision = 1;
-  private int lastCommand = Integer.MIN_VALUE, lastPoll = Integer.MIN_VALUE, scanned;
+  private int scanned;
 
   /**
    * A completed observation is re-read after this many ticks so changes made by other sessions,
@@ -47,7 +48,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
    */
   static final int RESCAN_TICKS = 20;
 
-  private boolean active = true, loaded, busy, reachRegistered;
+  private boolean loaded, busy, reachRegistered;
   private TerminalPackets.View view;
   private final TerminalCrafting crafting = new TerminalCrafting();
   private TerminalCraftingPackets.View gridView;
@@ -58,7 +59,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   private TerminalJobs jobs;
 
   public TerminalMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-    this(id, inventory, null, buffer.readBlockPos(), buffer.readUUID());
+    this(id, inventory, null, buffer.readBlockPos(), MenuSession.read(buffer));
   }
 
   TerminalMenu(int id, Inventory inventory, TerminalAccess terminal, UUID session) {
@@ -71,7 +72,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     this.viewer = inventory.player;
     this.terminal = terminal;
     this.position = position;
-    this.session = session;
+    protocol = new MenuSession(this, inventory.player, session, terminal != null, 5);
     if (terminal != null) {
       var preferences =
           viewer
@@ -93,11 +94,11 @@ public final class TerminalMenu extends AbstractContainerMenu {
       addSlot(new Slot(inventory, column, 59 + 18 * column, 210));
     view =
         new TerminalPackets.View(
-            id, session, revision, status, List.of(), false, false, "0", text, sort);
+            id, protocol.id(), revision, status, List.of(), false, false, "0", text, sort);
     jobView =
         new TerminalJobPackets.View(
             id,
-            session,
+            protocol.id(),
             0,
             List.of(),
             false,
@@ -109,11 +110,11 @@ public final class TerminalMenu extends AbstractContainerMenu {
             List.of(),
             "ready");
     if (terminal != null)
-      jobs = new TerminalJobs((ServerPlayer) viewer, terminal, id, session, jobView);
+      jobs = new TerminalJobs((ServerPlayer) viewer, terminal, id, protocol.id(), jobView);
     gridView =
         new TerminalCraftingPackets.View(
             id,
-            session,
+            protocol.id(),
             0,
             Collections.nCopies(TerminalCraftingPackets.CELLS, ""),
             Collections.nCopies(TerminalCraftingPackets.CELLS, 1),
@@ -132,8 +133,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   public void accept(TerminalJobPackets.View packet) {
     if (terminal == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.revision() >= jobView.revision()) jobView = packet;
   }
 
@@ -143,8 +143,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   public void accept(TerminalCraftingPackets.View packet) {
     if (terminal == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.gridRevision() >= gridView.gridRevision()) gridView = packet;
   }
 
@@ -163,7 +162,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   public UUID session() {
-    return session;
+    return protocol.id();
   }
 
   public BlockPos position() {
@@ -176,8 +175,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   public void accept(TerminalPackets.View packet) {
     if (terminal == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.revision() >= view.revision()) view = packet;
   }
 
@@ -198,7 +196,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   private boolean authorized() {
-    return active
+    return protocol.active()
         && terminal != null
         && player().containerMenu == this
         && terminal.canUse(player());
@@ -218,7 +216,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   public void broadcastChanges() {
     super.broadcastChanges();
     // Native initMenu broadcasts before assigning containerMenu; never close another menu.
-    if (terminal == null || !active || player().containerMenu != this) return;
+    if (!protocol.server() || !protocol.active() || player().containerMenu != this) return;
     if (!authorized()) {
       player().closeContainer();
       return;
@@ -234,9 +232,8 @@ public final class TerminalMenu extends AbstractContainerMenu {
       reachRegistered = true;
       transfers().playerReach(player(), terminal.origin(), terminal.reachSquared());
     }
+    if (!protocol.admitPoll()) return;
     int tick = player().server.getTickCount();
-    if (lastPoll != Integer.MIN_VALUE && tick - lastPoll < 5) return;
-    lastPoll = tick;
     if (!loaded) {
       loaded = true;
       refresh();
@@ -324,14 +321,10 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   public void command(ServerPlayer sender, TerminalPackets.Command command) {
-    if (sender != viewer
-        || command.menu() != containerId
-        || !command.session().equals(session)
+    if (!protocol.fromViewer(sender, command.menu(), command.session())
         || !authorized()
-        || busy) return;
-    int tick = sender.server.getTickCount();
-    if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
-    lastCommand = tick;
+        || busy
+        || !protocol.admitRate()) return;
     int action = command.action();
     boolean mutating =
         action == TerminalPackets.WITHDRAW
@@ -364,7 +357,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
       selections = List.of();
       status = "loading";
       revision++;
-      lastPoll = Integer.MIN_VALUE;
+      protocol.pollNow();
       broadcastChanges();
       return;
     }
@@ -375,7 +368,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
         next = null;
         status = "loading";
         revision++;
-        lastPoll = Integer.MIN_VALUE;
+        protocol.pollNow();
         broadcastChanges();
       }
       return;
@@ -493,11 +486,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
   /** Ghost edits and bounded crafting; ingredients come only from the player's own inventory. */
   /** Applies a recipe-viewer transfer as crafting-mode ghost cells; unknown IDs clear a cell. */
   public void gridFill(ServerPlayer sender, TerminalCraftingPackets.Fill fill) {
-    if (sender != viewer
-        || fill.menu() != containerId
-        || !fill.session().equals(session)
-        || !authorized()
-        || busy) return;
+    if (!protocol.fromViewer(sender, fill.menu(), fill.session()) || !authorized() || busy) return;
     int tick = sender.server.getTickCount();
     if (editWindow == Integer.MIN_VALUE || tick - editWindow >= 20) {
       editWindow = tick;
@@ -518,16 +507,12 @@ public final class TerminalMenu extends AbstractContainerMenu {
   }
 
   public void gridCommand(ServerPlayer sender, TerminalCraftingPackets.Command command) {
-    if (sender != viewer
-        || command.menu() != containerId
-        || !command.session().equals(session)
-        || !authorized()
-        || busy) return;
+    if (!protocol.fromViewer(sender, command.menu(), command.session()) || !authorized() || busy)
+      return;
     int tick = sender.server.getTickCount();
     if (command.action() == TerminalCraftingPackets.CRAFT
         || command.action() == TerminalCraftingPackets.ENCODE) {
-      if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
-      lastCommand = tick;
+      if (!protocol.admitRate()) return;
     } else {
       // Ghost edits move nothing; a separate bounded budget keeps recipe lookups bounded.
       if (editWindow == Integer.MIN_VALUE || tick - editWindow >= 20) {
@@ -620,13 +605,9 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   /** Autocrafting: page craftables, preview a row, start the previewed plan, cancel own jobs. */
   public void jobCommand(ServerPlayer sender, TerminalJobPackets.Command command) {
-    if (sender != viewer
-        || command.menu() != containerId
-        || !command.session().equals(session)
-        || !authorized()) return;
-    int tick = sender.server.getTickCount();
-    if (lastCommand != Integer.MIN_VALUE && tick - lastCommand < 2) return;
-    lastCommand = tick;
+    if (!protocol.fromViewer(sender, command.menu(), command.session())
+        || !authorized()
+        || !protocol.admitRate()) return;
     if (jobs.command(command)) publish();
   }
 
@@ -754,7 +735,16 @@ public final class TerminalMenu extends AbstractContainerMenu {
     }
     var packet =
         new TerminalPackets.View(
-            containerId, session, revision, status, rows, next != null, busy, staged, text, sort);
+            containerId,
+            protocol.id(),
+            revision,
+            status,
+            rows,
+            next != null,
+            busy,
+            staged,
+            text,
+            sort);
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);
@@ -773,7 +763,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     var grid =
         new TerminalCraftingPackets.View(
             containerId,
-            session,
+            protocol.id(),
             crafting.revision(),
             cells,
             counts,
@@ -792,8 +782,8 @@ public final class TerminalMenu extends AbstractContainerMenu {
 
   @Override
   public void removed(Player player) {
-    if (terminal != null && active) {
-      active = false;
+    if (terminal != null && protocol.active()) {
+      protocol.close();
       if (reachRegistered) transfers().playerReach(player(), terminal.origin(), 64);
       pendingCrafts = 0;
       closeSearch();

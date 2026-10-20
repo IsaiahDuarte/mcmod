@@ -9,6 +9,7 @@ import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
 import java.security.MessageDigest;
 import java.util.*;
@@ -25,15 +26,13 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /** Current authenticated physical editor. Apply validates the whole form before one publication. */
 public final class MachineSettingsMenu extends AbstractContainerMenu {
+  private final MenuSession protocol;
   private final Player viewer;
   private final MachineInterfaceEntity machine;
-  private final UUID session;
   private final NodeRegistry.Handle lease;
   private final NetworkTopology.Scope scope;
   private final Direction facing;
   private MachineSettingsPackets.View view;
-  private int lastPoll = Integer.MIN_VALUE;
-  private boolean active = true;
   private String status = "ready";
   private MachinePresets.Deployment presetBase;
   private long presetConfiguration, presetRevision = 1, presetGoal = 64;
@@ -41,19 +40,18 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
   private ResourceFilter presetFilter = ResourceFilter.all(ResourceKind.ITEM);
   private String presetStatus = "ready";
   private boolean presetDirty, presetBusy;
-  private int lastPresetCommand = Integer.MIN_VALUE;
   private UUID cleanupRequest;
   private MachinePresetPackets.View presetView;
 
   public MachineSettingsMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-    this(id, inventory, null, buffer.readUUID());
+    this(id, inventory, null, MenuSession.read(buffer));
   }
 
   MachineSettingsMenu(int id, Inventory inventory, MachineInterfaceEntity machine, UUID session) {
     super(MachineInterfaceContent.MENU.get(), id);
     this.viewer = inventory.player;
+    protocol = new MenuSession(this, viewer, session, machine != null, 5);
     this.machine = machine;
-    this.session = session;
     lease = machine == null ? null : machine.handle();
     facing = machine == null ? null : machine.targetDirection();
     scope = machine == null ? null : runtime().membership(machine.position()).scope();
@@ -61,7 +59,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
     presetView =
         new MachinePresetPackets.View(
             id,
-            session,
+            protocol.id(),
             presetRevision,
             ResourceKind.ITEM,
             MachinePresets.Mode.PAUSED,
@@ -79,7 +77,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
     view =
         new MachineSettingsPackets.View(
             id,
-            session,
+            protocol.id(),
             0,
             new MachineSettingsPackets.Form(
                 "", ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 64),
@@ -92,7 +90,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
   }
 
   public UUID session() {
-    return session;
+    return protocol.id();
   }
 
   public MachineSettingsPackets.View view() {
@@ -112,7 +110,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
   }
 
   private boolean current() {
-    return active
+    return protocol.active()
         && machine != null
         && lease.equals(machine.handle())
         && facing == machine.targetDirection()
@@ -126,8 +124,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
 
   public void accept(MachineSettingsPackets.View packet) {
     if (machine == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.generation() >= view.generation()) view = packet;
   }
 
@@ -136,7 +133,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
     var packet =
         new MachineSettingsPackets.View(
             containerId,
-            session,
+            protocol.id(),
             machine.generation(),
             new MachineSettingsPackets.Form(
                 machine.label(),
@@ -162,14 +159,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
   public void broadcastChanges() {
     super.broadcastChanges();
     // Native initMenu broadcasts before assigning the new container to the player.
-    if (machine == null || !active || player().containerMenu != this) return;
-    if (!current()) {
-      player().closeContainer();
-      return;
-    }
-    int tick = player().server.getTickCount();
-    if (lastPoll != Integer.MIN_VALUE && tick - lastPoll < 5) return;
-    lastPoll = tick;
+    if (!protocol.due(this::current)) return;
     if (view.generation() != 0 && view.generation() != machine.generation()) status = "stale";
     if (!Objects.equals(presetBase, saved().machinePresets().get(lease.id()))
         || presetConfiguration != machine.generation()) {
@@ -181,12 +171,8 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
   }
 
   public void apply(ServerPlayer sender, MachineSettingsPackets.Apply packet) {
-    if (sender != viewer
-        || sender.containerMenu != this
-        || packet.menu() != containerId
-        || !packet.session().equals(session)
-        || !current()
-        || presetBusy) return;
+    if (!protocol.fromViewer(sender, packet.menu(), packet.session()) || !current() || presetBusy)
+      return;
     if (packet.generation() != machine.generation()) {
       status = "stale";
       publish();
@@ -234,7 +220,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
 
   @Override
   public void removed(Player player) {
-    active = false;
+    protocol.close();
     if (cleanupRequest != null && !runtime().transfers().inExecution())
       runtime().transfers().cancelQueued(cleanupRequest, actor());
     super.removed(player);
@@ -250,8 +236,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
 
   public void acceptPreset(MachinePresetPackets.View packet) {
     if (machine == null
-        && packet.menu() == containerId
-        && packet.session().equals(session)
+        && protocol.owns(packet.menu(), packet.session())
         && packet.revision() >= presetView.revision()) presetView = packet;
   }
 
@@ -318,7 +303,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
     var packet =
         new MachinePresetPackets.View(
             containerId,
-            session,
+            protocol.id(),
             presetRevision,
             machine.settings().kind(),
             presetMode,
@@ -340,15 +325,10 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
   }
 
   public void presetCommand(ServerPlayer sender, MachinePresetPackets.Command packet) {
-    if (sender != viewer
-        || sender.containerMenu != this
-        || packet.menu() != containerId
-        || !packet.session().equals(session)
+    if (!protocol.fromViewer(sender, packet.menu(), packet.session())
         || !current()
-        || presetBusy) return;
-    int tick = sender.server.getTickCount();
-    if (lastPresetCommand != Integer.MIN_VALUE && tick - lastPresetCommand < 2) return;
-    lastPresetCommand = tick;
+        || presetBusy
+        || !protocol.admitRate()) return;
     if (!Objects.equals(presetBase, saved().machinePresets().get(lease.id()))
         || presetConfiguration != machine.generation()) {
       resetPreset();
