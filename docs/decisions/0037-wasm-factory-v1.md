@@ -17,18 +17,21 @@ section, bounded counts/locals/instructions/depth, custom sections stripped) wit
 131,072-byte artifact limit and only `factory_v1` function imports from a fixed set.
 
 **ABI `factory_v1`.** Guest exports `memory`, `factory_init()` and `factory_rule(i32)`.
-Host imports (strings are UTF-8 pointer/length pairs, ≤ 128 bytes; kinds 0 item,
-1 fluid, 2 energy; `tag` 1 means an item tag):
+Host imports (strings are UTF-8 pointer/length pairs, ≤ 128 bytes; resource kinds 0 item,
+1 fluid, 2 energy, 3 item tag). This table is the revision from
+[ADR 0054](0054-rust-sdk-v2.md); the state imports come from ADR 0044:
 
 | Import | Signature | Effect |
 | --- | --- | --- |
 | `register_rule(key, len, interval)` | `(i32,i32,i32)->i32` | init only; returns rule index |
 | `machines(label, len)` | `(i32,i32)->i64` | appends labeled machines; returns `base<<32 | count` |
-| `keep(h, kind, id, len, tag, amount)` | `(i32…,i64)->i32` | stages `Keep` |
-| `move_from(h, …, limit)` / `move_to(h, …, limit)` | same | stage `Move` machine→storage / storage→machine |
+| `keep_stocked(h, kind, id, len, amount)` | `(i32,i32,i32,i32,i64)->i32` | stages `Keep` |
+| `move_to_storage(h, …, limit)` / `move_from_storage(h, …, limit)` | same | stage `Move` machine→storage / storage→machine |
 | `craft(id, len, amount)` | `(i32,i32,i64)->i32` | stages `Craft` |
-| `stock(kind, id, len, tag)` | `(i32,i32,i32,i32)->i64` | available stock (host query) |
+| `stock(kind, id, len)` | `(i32,i32,i32)->i64` | available stock (host query) |
 | `log(text, len)` | `(i32,i32)->i32` | stages `Log` |
+| `state_read` / `state_write` | see ADR 0044 | persistent guest state |
+| `panic(text, len)` | `(i32,i32)->()` | traps with the guest's message (any phase) |
 
 Every effect is the same `ProgramCommand` the friendly language stages, so the
 platform pipeline, authority and accounting are shared. Bounds: init 100,000
@@ -38,10 +41,11 @@ instructions, each callback 65,536 instructions, 512 host calls, 64 call frames,
 commands and permanently fails the instance; there is no suspended stack, so reload
 re-initializes a fresh instance and re-registers rules by key.
 
-**SDK.** `sdk/rust` is a Cargo workspace (Rust 1.95.0, `wasm32-unknown-unknown`, no
-WASI) with the `factorycore` crate and an example guest equivalent to a friendly
-program. `scripts/verify_guest.py` runs fmt, clippy (native and wasm), tests and the
-release Wasm build, copying `smelter.wasm` for JVM parity tests.
+**SDK.** `sdk/rust` is a Cargo workspace (Rust 1.95.0, no WASI) with the `factorycore`
+crate and example guests equivalent to friendly programs; its v2 design (`wasm32v1-none`,
+`#[factorycore::program]`, native test host) is [ADR 0054](0054-rust-sdk-v2.md).
+`scripts/verify_guest.py` runs fmt, clippy (native and wasm), tests and the release Wasm
+builds, copying the examples for JVM parity tests.
 
 ## Alternatives
 

@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 /** The Rust SDK, the preflight allow-list and the runtime bindings share one host ABI. */
 class HostImportTest {
   private static final Pattern FUNCTION =
-      Pattern.compile("pub fn (\\w+)\\(([^)]*)\\)\\s*->\\s*(\\w+);");
+      Pattern.compile("pub fn (\\w+)\\(([^)]*)\\)\\s*(?:->\\s*(\\w+))?;");
 
   @Test
   void rustSdkDeclaresExactlyTheHostImports() throws Exception {
@@ -34,7 +34,8 @@ class HostImportTest {
         if (parameter.isBlank()) continue;
         parameters.add(type(parameter.substring(parameter.indexOf(':') + 1).trim()));
       }
-      rust.put(matcher.group(1), FunctionType.of(parameters, List.of(type(matcher.group(3)))));
+      var result = matcher.group(3) == null ? List.<ValType>of() : List.of(type(matcher.group(3)));
+      rust.put(matcher.group(1), FunctionType.of(parameters, result));
     }
     Map<String, FunctionType> host =
         Arrays.stream(HostImport.values())

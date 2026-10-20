@@ -1,0 +1,13 @@
+[package]
+name = "factorycore-restock"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+factorycore = { path = "../../factorycore", features = ["serde"] }
+serde = { version = "1", default-features = false, features = ["derive"] }

@@ -1,0 +1,11 @@
+error: rule key "tick" is already used by `tick`
+  --> tests/ui/fail/keys.rs:10:31
+   |
+10 |     #[rule(seconds = 2, key = "tick")]
+   |                               ^^^^^^
+
+error: rule keys must be 1..=64 characters
+  --> tests/ui/fail/keys.rs:13:31
+   |
+13 |     #[rule(seconds = 3, key = "")]
+   |                               ^^

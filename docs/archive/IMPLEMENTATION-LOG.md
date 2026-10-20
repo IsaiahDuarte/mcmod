@@ -3239,3 +3239,36 @@ Still open from this slice:
 - A06/A07 job detail UI and client controls.
 - Actionable A08 contention reasons with a program-versus-job GameTest.
 - Published-branch multiplayer.
+
+## Rust SDK v2 checkpoint — 2026-10-19
+
+P5/D04 rewrites the Rust SDK and revises the unreleased `factory_v1` ABI
+([ADR 0054](../decisions/0054-rust-sdk-v2.md)). Guests build for `wasm32v1-none` with
+`cargo guest`; `#[factorycore::program]`/`#[rule(...)]` generate registration and exports
+with compile-time interval/key/signature checks; host calls go through a `Rule` context with
+borrowed machine handles; `factorycore::testing` runs rules natively against a mock that
+mirrors the server's trap rules. The ABI folds the tag flag into resource kind 3, renames the
+machine imports to `keep_stocked`/`move_to_storage`/`move_from_storage`, and adds
+`panic(text, len)` so guest panics reach the controller log with message and location.
+The `serde` feature adds typed persistent state (`Rule::state`/`set_state`, postcard),
+shown by the new restock example. Artifacts: smelter 706→9,237 bytes, counter
+5,616→13,311 bytes (`core::fmt` for panic reports), restock 11,549 bytes. JVM 349→351
+(guest panic trap, typed state through the host and a reload); tooling 29→32 (artifact size/import checks); SDK
+native tests now cover rule commands, state commit/rollback, server limits and trybuild
+macro diagnostics.
+
+Verified on Linux (x86_64, Rust 1.95.0, JDK 21): `python3 scripts/verify_guest.py` passed;
+`./gradlew --no-daemon build` passed (351 JVM tests and all 305 required GameTests, including
+the two Wasm deployment GameTests on the rebuilt artifacts) when run with a temporary
+init script setting `dependencyLocking { lockMode = LockMode.LENIENT }`.
+
+Blocked: `python3 scripts/verify.py` passed its documentation/tooling stage (32 tests) but its
+Gradle stage fails on this Linux host before compilation, because the committed dependency
+lock state lists `ca.weblite:java-objc-bridge:1.1` and lacks
+`io.netty:netty-transport-native-epoll:4.1.97.Final` for `neoFormRuntimeDependencies`. The
+lockfile is unchanged by this checkpoint; a lock refresh that covers each supported OS is
+needed separately. CI has not run this change.
+
+Merged with main on 2026-10-20 after the P1 probe was retired and the ABI moved into one
+`HostImport` table: the table now carries the v2 machine imports, the 3-argument `stock` and
+the result-less `panic`, and `HostImportTest` checks it against `sdk/rust/factorycore/src/sys.rs`.

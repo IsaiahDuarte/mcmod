@@ -65,8 +65,10 @@ round-robin, fluids, energy, craft-when-low).
 `core.wasm.WasmPreflight.validate(bytes)` and `new WasmProgram(bytes, clock)` (throws on
 invalid artifacts or failed init); `rules()` lists `RuleSpec(key, interval)`;
 `invoke(index, host)` returns `Outcome(commands, instructions)` or throws
-`ProgramEvaluator.Trap`, after which `failed()` is true. ABI and limits:
-[ADR 0037](../decisions/0037-wasm-factory-v1.md); SDK: [sdk/rust](../../sdk/rust/README.md).
+`ProgramEvaluator.Trap`, after which `failed()` is true. A guest's `panic` import traps
+with its own message ("guest panicked: …"), which the controller log shows. ABI and limits:
+[ADR 0037](../decisions/0037-wasm-factory-v1.md) as revised by
+[ADR 0054](../decisions/0054-rust-sdk-v2.md); SDK: [sdk/rust](../../sdk/rust/README.md).
 
 
 ## Editor resource insertion

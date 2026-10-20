@@ -718,7 +718,9 @@ To run a Rust program, build it with the SDK (see `sdk/rust/README.md`), copy th
 `.wasm` file into `factorycore/programs` in your game folder and press **Upload Wasm**:
 the newest file is sent and deployed. A Wasm rule run needs about 260 FE available and
 costs 4 FE plus 1 FE per 256 instructions it actually uses. If it traps, it stops;
-Resume starts it fresh.
+Resume starts it fresh. When a Rust program panics, the log shows the panic message and
+source line, such as `trap fail: factory_rule: guest panicked: src/lib.rs:47: bedrock in
+storage`.
 
 When a rule cannot act, its log line says why:
 - **busy: a crafting job is using this machine.** A processing job leases that machine. A

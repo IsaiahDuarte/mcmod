@@ -285,7 +285,7 @@ tasks.withType(Test).configureEach {
 tasks.register('verifyRustGuest', Exec) {
     commandLine(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows') ? 'python' : 'python3', 'scripts/verify_guest.py')
     inputs.files(fileTree('sdk/rust') { exclude 'target/**' }, file('scripts/verify_guest.py'))
-    outputs.files('build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm')
+    outputs.files('build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm', 'build/test-guests/restock.wasm')
 }
 
 tasks.named('test') {
@@ -293,10 +293,11 @@ tasks.named('test') {
     systemProperty 'factorycore.test.jar', tasks.named('jar').get().archiveFile.get().asFile.absolutePath
     systemProperty 'factorycore.test.smelter', file('build/test-guests/smelter.wasm').absolutePath
     systemProperty 'factorycore.test.counter', file('build/test-guests/counter.wasm').absolutePath
-    systemProperty 'factorycore.test.sdk', file('sdk/rust/factorycore/src/lib.rs').absolutePath
+    systemProperty 'factorycore.test.restock', file('build/test-guests/restock.wasm').absolutePath
+    systemProperty 'factorycore.test.sdk', file('sdk/rust/factorycore/src/sys.rs').absolutePath
     systemProperty 'factorycore.test.sources', file('src/main/java').absolutePath
     inputs.dir('src/main/java')
-    inputs.files('build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm', 'sdk/rust/factorycore/src/lib.rs')
+    inputs.files('build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm', 'build/test-guests/restock.wasm', 'sdk/rust/factorycore/src/sys.rs')
 }
 
 spotless {

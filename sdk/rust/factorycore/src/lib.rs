@@ -1,199 +1,109 @@
-//! Rust SDK for Factory Core `factory_v1` programs (ADR 0037).
+//! Rust SDK for Factory Core programs (`factory_v1`, ADR 0037 and 0054).
 //!
-//! A program exports `factory_init`, which registers persistent rules with [`register`], and
-//! `factory_rule(index)`, which runs one rule. Inside a rule, calls such as
-//! [`Machine::keep_stocked`] only *stage* commands: the server publishes them after the callback
-//! returns and discards them all if the callback traps or exceeds a limit.
-#![cfg_attr(all(not(test), target_arch = "wasm32"), no_std)]
+//! A program is an inline module marked [`#[program]`](macro@program); each `fn(cx: &Rule)`
+//! inside marked `#[rule(...)]` runs on its own interval:
+//!
+//! ```
+//! use factorycore::prelude::*;
+//!
+//! #[factorycore::program]
+//! mod program {
+//!     use super::*;
+//!
+//!     #[rule(ticks = 10)]
+//!     fn smelt(cx: &Rule) {
+//!         for machine in cx.machines("smelter_in") {
+//!             machine.keep_stocked(item("raw_iron"), 64);
+//!         }
+//!     }
+//! }
+//! # fn main() {}
+//! ```
+//!
+//! Program crates are `#![no_std]` `cdylib`s built with `cargo guest` (see the SDK README).
+//!
+//! Calls on [`Rule`] and [`Machine`] *stage* commands; the server publishes them after the rule
+//! returns. If the rule panics or exceeds a limit, the rule's commands and state write are
+//! discarded and the controller stops the program until it is resumed. A panic's message and
+//! location appear in the controller log.
+//!
+//! Limits per rule: 65,536 Wasm instructions, 512 host calls, 256 staged commands, 64 machines
+//! per label, 128-byte text, 4,096 bytes of state. Test rules natively with [`testing`].
+#![no_std]
 
-/// A resource selector: registry IDs default to the `minecraft:` namespace.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Resource<'a> {
-    /// Items with this registry ID (any components).
-    Item(&'a str),
-    /// Fluids with this registry ID.
-    Fluid(&'a str),
-    /// Items in this item tag.
-    Tag(&'a str),
-    /// FE.
-    Energy,
+#[cfg(not(target_arch = "wasm32"))]
+extern crate std;
+
+mod resource;
+mod rule;
+mod sys;
+mod text;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod testing;
+
+pub use factorycore_macros::{program, rule};
+pub use resource::{ENERGY, Resource, ResourceKind, fluid, item, item_tag};
+pub use rule::{Machine, Machines, Rule, RuleDef};
+pub use text::MAX_TEXT;
+
+/// Maximum persistent state in bytes.
+pub const MAX_STATE: usize = 4_096;
+
+/// Everything a program usually needs: `use factorycore::prelude::*;`.
+pub mod prelude {
+    pub use crate::{ENERGY, Machine, Resource, Rule, fluid, item, item_tag, log, program};
 }
 
-impl Resource<'_> {
-    /// `(kind, id, tag)` as encoded by the `factory_v1` ABI.
-    pub fn encode(&self) -> (i32, &str, i32) {
-        match self {
-            Resource::Item(id) => (0, id, 0),
-            Resource::Fluid(id) => (1, id, 0),
-            Resource::Tag(id) => (0, id, 1),
-            Resource::Energy => (2, "", 0),
+/// Formats a line into the controller log without allocating, cut to 128 bytes:
+/// `log!(cx, "stocked {} of {}", count, total)`.
+#[macro_export]
+macro_rules! log {
+    ($cx:expr, $($format:tt)+) => {
+        $crate::__private::log($cx, ::core::format_args!($($format)+))
+    };
+}
+
+#[doc(hidden)]
+pub mod __private {
+    use crate::{Rule, RuleDef, sys, text};
+
+    /// `factory_init`: registers each rule; its host index must equal its position.
+    pub fn init(rules: &[RuleDef]) {
+        for (index, rule) in rules.iter().enumerate() {
+            if sys::register_rule(rule.key, rule.interval_ticks) as usize != index {
+                sys::panic("host assigned an unexpected rule index");
+            }
+        }
+    }
+
+    /// `factory_rule(index)`: runs one registered rule; unknown indexes do nothing.
+    pub fn dispatch(rules: &[RuleDef], index: i32) {
+        if let Some(rule) = usize::try_from(index).ok().and_then(|i| rules.get(i)) {
+            (rule.run)(&Rule::new());
+        }
+    }
+
+    pub fn log(cx: &Rule, arguments: core::fmt::Arguments<'_>) {
+        match arguments.as_str() {
+            Some(literal) => cx.log(literal),
+            None => {
+                let mut line = text::Line::new();
+                let _ = core::fmt::write(&mut line, arguments);
+                cx.log(line.as_str());
+            }
         }
     }
 }
 
-/// Splits the packed `(base << 32) | count` result of `machines`.
-pub fn unpack_selection(packed: i64) -> (i32, i32) {
-    ((packed >> 32) as i32, (packed & 0xffff_ffff) as i32)
-}
-
-#[cfg(target_arch = "wasm32")]
-mod host {
-    #[link(wasm_import_module = "factory_v1")]
-    extern "C" {
-        pub fn register_rule(key: *const u8, key_len: i32, interval: i32) -> i32;
-        pub fn machines(label: *const u8, label_len: i32) -> i64;
-        pub fn keep(
-            handle: i32,
-            kind: i32,
-            id: *const u8,
-            id_len: i32,
-            tag: i32,
-            amount: i64,
-        ) -> i32;
-        pub fn move_from(
-            handle: i32,
-            kind: i32,
-            id: *const u8,
-            id_len: i32,
-            tag: i32,
-            limit: i64,
-        ) -> i32;
-        pub fn move_to(
-            handle: i32,
-            kind: i32,
-            id: *const u8,
-            id_len: i32,
-            tag: i32,
-            limit: i64,
-        ) -> i32;
-        pub fn craft(id: *const u8, id_len: i32, amount: i64) -> i32;
-        pub fn stock(kind: i32, id: *const u8, id_len: i32, tag: i32) -> i64;
-        pub fn log(text: *const u8, text_len: i32) -> i32;
-        pub fn state_read(buffer: *mut u8, capacity: i32) -> i32;
-        pub fn state_write(data: *const u8, len: i32) -> i32;
+#[cfg(all(target_arch = "wasm32", feature = "panic-handler", not(test)))]
+#[panic_handler]
+fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
+    use core::fmt::Write;
+    let mut line = text::Line::new();
+    if let Some(location) = info.location() {
+        let _ = write!(line, "{}:{}: ", location.file(), location.line());
     }
-}
-
-/// Registers a persistent rule (only during `factory_init`); returns its index.
-#[cfg(target_arch = "wasm32")]
-pub fn register(key: &str, interval_ticks: i32) -> i32 {
-    unsafe { host::register_rule(key.as_ptr(), key.len() as i32, interval_ticks) }
-}
-
-/// One machine interface selected by label during this rule invocation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Machine(pub i32);
-
-/// Machines with a local label, in stable order (at most 64).
-#[cfg(target_arch = "wasm32")]
-pub fn machines(label: &str) -> impl Iterator<Item = Machine> {
-    let (base, count) =
-        unpack_selection(unsafe { host::machines(label.as_ptr(), label.len() as i32) });
-    (base..base + count).map(Machine)
-}
-
-#[cfg(target_arch = "wasm32")]
-impl Machine {
-    /// Requests the deficit so this machine holds `amount` matching units.
-    pub fn keep_stocked(self, resource: Resource<'_>, amount: i64) {
-        let (kind, id, tag) = resource.encode();
-        unsafe { host::keep(self.0, kind, id.as_ptr(), id.len() as i32, tag, amount) };
-    }
-
-    /// Moves at most `limit` matching units from this machine to storage.
-    pub fn move_to_storage(self, resource: Resource<'_>, limit: i64) {
-        let (kind, id, tag) = resource.encode();
-        unsafe { host::move_from(self.0, kind, id.as_ptr(), id.len() as i32, tag, limit) };
-    }
-
-    /// Moves at most `limit` matching units from storage to this machine.
-    pub fn move_from_storage(self, resource: Resource<'_>, limit: i64) {
-        let (kind, id, tag) = resource.encode();
-        unsafe { host::move_to(self.0, kind, id.as_ptr(), id.len() as i32, tag, limit) };
-    }
-}
-
-/// Requests crafting of `amount` units of an item (deduplicated per rule by the server).
-#[cfg(target_arch = "wasm32")]
-pub fn craft(item: &str, amount: i64) {
-    unsafe { host::craft(item.as_ptr(), item.len() as i32, amount) };
-}
-
-/// Available matching units in storage (requires the deployer's View permission).
-#[cfg(target_arch = "wasm32")]
-pub fn stock(resource: Resource<'_>) -> i64 {
-    let (kind, id, tag) = resource.encode();
-    unsafe { host::stock(kind, id.as_ptr(), id.len() as i32, tag) }
-}
-
-/// Appends a bounded log line (at most 128 bytes).
-#[cfg(target_arch = "wasm32")]
-pub fn log(text: &str) {
-    unsafe { host::log(text.as_ptr(), text.len() as i32) };
-}
-
-/// Persistent guest state: one blob of at most [`state::MAX`] bytes per deployment.
-///
-/// A [`state::save`] commits only if the current rule callback finishes without trapping, and
-/// the committed state is restored into the fresh instance after a reload or resume. Deploying
-/// again (even the same artifact) starts with no state. Guests version their own blob layout.
-pub mod state {
-    /// Maximum state size in bytes.
-    pub const MAX: usize = 4096;
-
-    /// Copies the committed state into `buffer`; returns its full length, or `None` if unset.
-    /// A shorter buffer receives a prefix.
-    #[cfg(target_arch = "wasm32")]
-    pub fn load(buffer: &mut [u8]) -> Option<usize> {
-        let len = unsafe { super::host::state_read(buffer.as_mut_ptr(), buffer.len() as i32) };
-        usize::try_from(len).ok()
-    }
-
-    /// Stages `data` as the new state (rule callbacks only; over [`MAX`] bytes traps).
-    #[cfg(target_arch = "wasm32")]
-    pub fn save(data: &[u8]) {
-        unsafe { super::host::state_write(data.as_ptr(), data.len() as i32) };
-    }
-}
-
-/// Writes `value` in decimal into `buffer`, returning the digits (no allocation).
-pub fn format_u64(value: u64, buffer: &mut [u8; 20]) -> &str {
-    let mut index = buffer.len();
-    let mut rest = value;
-    loop {
-        index -= 1;
-        buffer[index] = b'0' + (rest % 10) as u8;
-        rest /= 10;
-        if rest == 0 {
-            break;
-        }
-    }
-    core::str::from_utf8(&buffer[index..]).unwrap_or("")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn resources_encode_to_the_abi_kinds() {
-        assert_eq!(Resource::Item("raw_iron").encode(), (0, "raw_iron", 0));
-        assert_eq!(Resource::Fluid("water").encode(), (1, "water", 0));
-        assert_eq!(Resource::Tag("logs").encode(), (0, "logs", 1));
-        assert_eq!(Resource::Energy.encode(), (2, "", 0));
-    }
-
-    #[test]
-    fn decimal_formatting_has_no_allocation_and_covers_bounds() {
-        let mut buffer = [0; 20];
-        assert_eq!(format_u64(0, &mut buffer), "0");
-        assert_eq!(format_u64(1234, &mut buffer), "1234");
-        assert_eq!(format_u64(u64::MAX, &mut buffer), "18446744073709551615");
-    }
-
-    #[test]
-    fn selections_unpack_base_and_count() {
-        assert_eq!(unpack_selection((3_i64 << 32) | 2), (3, 2));
-        assert_eq!(unpack_selection(0), (0, 0));
-    }
+    let _ = write!(line, "{}", info.message());
+    sys::panic(line.as_str())
 }

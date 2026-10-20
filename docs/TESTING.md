@@ -38,8 +38,10 @@ rmdir /tmp/factorycore-gui.lock
   - ArchUnit architecture rules (the portable core has no Minecraft types, and optional
     integrations stay off mandatory class loading);
   - JUnit with no empty or skipped runs;
-  - the locked Rust guest build (`verifyRustGuest`: fmt, clippy, native tests and the Wasm
-    build);
+  - the locked Rust guest build (`verifyRustGuest`: the `sdk/rust` workspace's fmt, clippy,
+    native tests including the `factorycore::testing` mock and trybuild macro diagnostics, and
+    `wasm32v1-none` builds of the smelter, counter and restock examples, each at most 131,072
+    bytes and importing only `factory_v1`);
   - every native GameTest;
   - packaging, and compiling the client and JEI fixture source sets.
 

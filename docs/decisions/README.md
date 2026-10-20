@@ -130,6 +130,7 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 
 - [0053 — Selected tanks and fixed machine ports](0053-selected-tanks-and-fixed-machine-ports.md)
 
+- [0054 — Rust SDK v2 and the revised factory_v1 ABI](0054-rust-sdk-v2.md)
 - [0058 — Device state presentation and client coverage](0058-device-presentation.md)
 
 - [0054 — Paid throughput progression under unchanged fair budgets](0054-throughput-upgrades.md)

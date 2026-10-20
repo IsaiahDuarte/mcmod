@@ -1,0 +1,8 @@
+error: lifetime may not live long enough
+  --> tests/ui/fail/stale_handle.rs:12:18
+   |
+10 |     fn leak(cx: &Rule) {
+   |                 - let's call the lifetime of this reference `'1`
+11 |         let machine = cx.machines("in").next().unwrap();
+12 |         unsafe { KEPT = Some(machine) };
+   |                  ^^^^^^^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'static`

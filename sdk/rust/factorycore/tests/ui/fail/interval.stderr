@@ -1,0 +1,35 @@
+error: rule intervals must be 10..=72000 ticks (half a second to one hour)
+ --> tests/ui/fail/interval.rs:7:20
+  |
+7 |     #[rule(ticks = 5)]
+  |                    ^
+
+error: rule intervals must be 10..=72000 ticks (half a second to one hour)
+  --> tests/ui/fail/interval.rs:10:22
+   |
+10 |     #[rule(minutes = 61)]
+   |                      ^^
+
+error: add an interval: `ticks = N`, `seconds = N` or `minutes = N`
+  --> tests/ui/fail/interval.rs:13:7
+   |
+13 |     #[rule(key = "none")]
+   |       ^^^^
+
+error: add an interval: #[rule(ticks = N)], #[rule(seconds = N)] or #[rule(minutes = N)]
+  --> tests/ui/fail/interval.rs:16:7
+   |
+16 |     #[rule]
+   |       ^^^^
+
+error: a rule has exactly one interval
+  --> tests/ui/fail/interval.rs:19:24
+   |
+19 |     #[rule(ticks = 20, seconds = 1)]
+   |                        ^^^^^^^^^^^
+
+error: expected `ticks = N`, `seconds = N`, `minutes = N` or `key = "..."`
+  --> tests/ui/fail/interval.rs:22:12
+   |
+22 |     #[rule(hours = 1)]
+   |            ^^^^^

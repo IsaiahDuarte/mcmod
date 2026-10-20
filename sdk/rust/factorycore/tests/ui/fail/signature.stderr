@@ -1,0 +1,17 @@
+error: rules take one argument: `fn name(cx: &Rule)`
+ --> tests/ui/fail/signature.rs:8:8
+  |
+8 |     fn no_context() {}
+  |        ^^^^^^^^^^
+
+error: rules cannot be async
+  --> tests/ui/fail/signature.rs:11:5
+   |
+11 |     async fn waits(_cx: &Rule) {}
+   |     ^^^^^
+
+error: a function can only be one rule
+  --> tests/ui/fail/signature.rs:14:7
+   |
+14 |     #[rule(seconds = 2)]
+   |       ^^^^

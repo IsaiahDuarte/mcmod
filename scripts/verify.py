@@ -46,7 +46,12 @@ IGNORED_DIRS = {
 }
 UNWIRED_SOURCE_SUFFIXES = {".kt", ".kts", ".rs"}
 # Rust trees whose fmt/clippy/test/Wasm builds run in scripts/verify_guest.py.
-WIRED_RUST = ("sdk/rust/factorycore/src", "sdk/rust/examples")
+WIRED_RUST = (
+    "sdk/rust/factorycore/src",
+    "sdk/rust/factorycore/tests",
+    "sdk/rust/factorycore-macros/src",
+    "sdk/rust/examples",
+)
 INLINE_LINK = re.compile(
     r'!?\[[^\]\n]*\]\((<[^>\n]+>|[^)\s]+)(?:\s+"[^"\n]*")?\)'
 )
