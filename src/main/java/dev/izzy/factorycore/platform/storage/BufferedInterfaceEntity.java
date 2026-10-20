@@ -17,6 +17,8 @@ import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.BufferedItemHandler;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
+import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -28,6 +30,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
@@ -45,7 +48,7 @@ import net.neoforged.neoforge.items.IItemHandler;
 
 /** Loaded physical holder of one canonical inventory; no stock is saved into chunk/item NBT. */
 public final class BufferedInterfaceEntity extends BlockEntity
-    implements MenuProvider, WiredMember, CanonicalStorage {
+    implements MenuProvider, WiredMember, CanonicalStorage, ThroughputUpgradeable {
   private UUID opening;
 
   public boolean canUse(ServerPlayer player) {
@@ -318,7 +321,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
           NetworkPermissions.Permission.EDIT, NetworkPermissions.Permission.DEPLOY
         })
       if (!networks.allows(actor, position(), permission))
-        throw new IllegalStateException("Buffer deployment permission denied");
+        throw new PermissionDenied("Buffer deployment permission denied");
     if (mode != BufferRegistry.Mode.PAUSED)
       for (var permission :
           new NetworkPermissions.Permission[] {
@@ -327,7 +330,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
             NetworkPermissions.Permission.DEPOSIT
           })
         if (!networks.allows(actor, position(), permission))
-          throw new IllegalStateException("Buffer transfer permission denied");
+          throw new PermissionDenied("Buffer transfer permission denied");
     var deployment =
         authority()
             .buffers()
@@ -511,5 +514,29 @@ public final class BufferedInterfaceEntity extends BlockEntity
         "unowned",
         NetworkTopology.Role.STORAGE,
         WiredMember.placedValid(this::validatePlaced));
+  }
+
+  @Override
+  public boolean upgrade(NetworkPermissions.Actor actor, ThroughputTier item) {
+    try {
+      installThroughput(actor, item);
+      return true;
+    } catch (PermissionDenied denied) {
+      return false;
+    }
+  }
+
+  @Override
+  public Component throughputStatus(MinecraftServer server) {
+    return ThroughputStatus.buffer(server, this);
+  }
+
+  /** The actor lacks a permission this configuration needs; nothing changed. */
+  public static final class PermissionDenied extends IllegalStateException {
+    private static final long serialVersionUID = 1L;
+
+    PermissionDenied(String message) {
+      super(message);
+    }
   }
 }

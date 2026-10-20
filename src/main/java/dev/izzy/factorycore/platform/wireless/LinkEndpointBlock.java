@@ -163,12 +163,12 @@ public final class LinkEndpointBlock extends NetworkedBlock
   /**
    * May {@code player} configure this endpoint: Manage on its valid network, or owner of an orphan.
    */
-  public static boolean mayConfigure(ServerPlayer player, LinkEndpointEntity link) {
+  public static boolean mayConfigure(NetworkPermissions.Actor actor, LinkEndpointEntity link) {
     var origin = Positions.of(link.getLevel(), link.getBlockPos());
-    var networks = WorldNetworks.get(player.server);
+    var networks = WorldNetworks.get(link.getLevel().getServer());
     if (networks.membership(origin).status() == NetworkTopology.Status.VALID)
-      return networks.allows(Actors.of(player), origin, NetworkPermissions.Permission.MANAGE);
-    return player.getUUID().equals(link.owner()) || player.hasPermissions(Actors.OPERATOR_LEVEL);
+      return networks.allows(actor, origin, NetworkPermissions.Permission.MANAGE);
+    return actor.id().equals(link.owner()) || actor.operator();
   }
 
   /**
@@ -181,7 +181,8 @@ public final class LinkEndpointBlock extends NetworkedBlock
     var b = LinkEndpointEntity.loaded(level, second);
     if (a == null || b == null || !a.current() || !b.current()) return "missing";
     if (a.needsRecovery() || b.needsRecovery()) return "unknown_data";
-    if (!mayConfigure(player, a) || !mayConfigure(player, b)) return "denied";
+    var actor = Actors.of(player);
+    if (!mayConfigure(actor, a) || !mayConfigure(actor, b)) return "denied";
     for (var link : new LinkEndpointEntity[] {a, b}) {
       var old = link.partner();
       if (old != null

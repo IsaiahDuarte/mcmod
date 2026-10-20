@@ -14,8 +14,10 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
+import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -214,6 +216,41 @@ public final class ThroughputUpgradeGameTests {
                       && moved.tier() == ThroughputTier.ENDGAME
                       && moved.settings().rate() == 1024,
                   "Portable ownership retains the paid tier and rate");
+              end(f);
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * A foreign player is denied the same way on every upgradeable device: no item spent, no tier
+   * change, and a clean refusal rather than a device fault (the buffer used to surface its
+   * permission exception as a fault message).
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void foreignUpgradeIsDeniedAlikeOnEveryDevice(GameTestHelper h) {
+    var f = setup(h);
+    var stranger = TestPlayers.mock(h);
+    TestPlayers.connect(stranger);
+    stranger.setGameMode(GameType.SURVIVAL);
+    stranger.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    var actor = new NetworkPermissions.Actor(stranger.getUUID(), false);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              for (var device : List.<ThroughputUpgradeable>of(f.port, f.buffer))
+                h.assertTrue(
+                    !device.upgrade(actor, ThroughputTier.ADVANCED)
+                        && device.tier() == ThroughputTier.BASE,
+                    "Foreign actor is refused without a fault: " + device);
+              for (var target : List.of(PORT, BUFFER)) {
+                var item = new ItemStack(ThroughputContent.THROUGHPUT.get(), 1);
+                h.assertTrue(
+                    use(h, stranger, target, item) == InteractionResult.FAIL
+                        && item.getCount() == 1,
+                    "Denied use at " + target + " keeps the item");
+              }
+              stranger.connection.disconnect(Component.literal("Stranger done"));
               end(f);
             })
         .thenSucceed();

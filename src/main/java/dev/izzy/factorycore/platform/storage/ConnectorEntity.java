@@ -11,6 +11,8 @@ import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
+import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -22,6 +24,8 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -35,7 +39,8 @@ import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 
 /** Physical policy and reference holder; foreign contents are never copied into this block. */
-public class ConnectorEntity extends BlockEntity implements WiredMember, CanonicalStorage {
+public class ConnectorEntity extends BlockEntity
+    implements WiredMember, CanonicalStorage, ThroughputUpgradeable {
   private Tag data;
   private ConnectorData.State state;
   private String diagnostic = "";
@@ -577,5 +582,15 @@ public class ConnectorEntity extends BlockEntity implements WiredMember, Canonic
         machine ? NetworkTopology.Role.INTERFACE : NetworkTopology.Role.STORAGE,
         WiredMember.placedValid(this::validatePlaced) && !isRemoved(),
         machine ? label() : "");
+  }
+
+  @Override
+  public boolean upgrade(NetworkPermissions.Actor actor, ThroughputTier item) {
+    return installThroughput(actor, item) == NetworkAuthority.Decision.ALLOWED;
+  }
+
+  @Override
+  public Component throughputStatus(MinecraftServer server) {
+    return ThroughputStatus.port(server, this);
   }
 }

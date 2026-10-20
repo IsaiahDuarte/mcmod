@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.wireless;
 
+import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.resource.WirelessBudget;
@@ -8,6 +9,8 @@ import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.NetworkNodeBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
+import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
+import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -17,6 +20,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -32,7 +36,7 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * the pair as one reciprocal cable edge, so the normal generation, cycle, bypass and gateway policy
  * checks apply. It never loads chunks; an unloaded partner suspends the link segment.
  */
-public final class LinkEndpointEntity extends BlockEntity {
+public final class LinkEndpointEntity extends BlockEntity implements ThroughputUpgradeable {
   public static final long CAPACITY = 20_000;
   public static final long INPUT_RATE = 1_000;
   public static final long TICK_COST = 32;
@@ -339,5 +343,17 @@ public final class LinkEndpointEntity extends BlockEntity {
       return List.of(stack);
     }
     return ThroughputContent.installed(tier, true);
+  }
+
+  @Override
+  public boolean upgrade(NetworkPermissions.Actor actor, ThroughputTier item) {
+    if (!LinkEndpointBlock.mayConfigure(actor, this)) return false;
+    install(item);
+    return true;
+  }
+
+  @Override
+  public Component throughputStatus(MinecraftServer server) {
+    return ThroughputStatus.link(server, this);
   }
 }
