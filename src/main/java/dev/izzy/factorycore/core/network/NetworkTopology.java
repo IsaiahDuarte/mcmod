@@ -307,11 +307,20 @@ public final class NetworkTopology {
   /**
    * Nearest parent first; no child segments are returned. Trusted core use, not a client endpoint.
    */
+  /**
+   * Ancestor chains are immutable for a publication (gateways are records); cached per segment and
+   * dropped when a new publication replaces it. Bounded by the publication's segment count.
+   */
+  private final Map<UUID, List<Ancestor>> ancestry = new HashMap<>();
+
   public List<Ancestor> ancestors(Scope origin) {
     checkThread();
     requireScope(origin);
-    var path = new ArrayList<Ancestor>();
     var segment = publication.entries().get(origin.node()).segment();
+    var cached = ancestry.get(segment.id());
+    if (cached != null) return cached;
+    var start = segment.id();
+    var path = new ArrayList<Ancestor>();
     while (segment.parent != null) {
       if (path.size() == MAX_DEPTH) throw new IllegalStateException("Invalid published ancestry");
       var gate = segment.parent;
@@ -319,7 +328,9 @@ public final class NetworkTopology {
       segment = publication.segments().get(publication.local()[upstream]);
       path.add(new Ancestor(segment.id(), gate.policy()));
     }
-    return List.copyOf(path);
+    var result = List.copyOf(path);
+    ancestry.put(start, result);
+    return result;
   }
 
   private void requireScope(Scope scope) {
@@ -422,6 +433,7 @@ public final class NetworkTopology {
         case 8 -> publishNode();
         case 9 -> {
           publication = new Publication(capturedGeneration, entries, segments, indexes, local);
+          ancestry.clear();
           published = true;
           done = true;
         }

@@ -266,4 +266,25 @@ class NetworkTopologyTest {
     assertEquals(List.of(child), topology.machines(child, "machines", null, 64).machines());
     assertEquals(List.of(new Ancestor(id(1), GatewayPolicy.open())), topology.ancestors(child));
   }
+
+  @Test
+  void ancestorsReflectAGatewayPolicyChangeAfterRepublication() {
+    var topology = topology(8);
+    topology.putNode(node(1, Role.ROOT));
+    topology.putNode(node(2, Role.CABLE));
+    topology.putGateway(gate(100, 1, 2, true));
+    finish(topology, 1);
+    var child = topology.membership(id(2)).scope();
+    assertEquals(List.of(new Ancestor(id(1), GatewayPolicy.open())), topology.ancestors(child));
+    assertTrue(topology.ancestors(child) == topology.ancestors(child), "Cached per publication");
+
+    var restricted = GatewayPolicy.open().toggled(0);
+    topology.putGateway(new Gateway(id(100), id(1), id(2), restricted, true));
+    finish(topology, 1);
+    child = topology.membership(id(2)).scope();
+    assertEquals(
+        List.of(new Ancestor(id(1), restricted)),
+        topology.ancestors(child),
+        "A new publication drops cached ancestry");
+  }
 }
