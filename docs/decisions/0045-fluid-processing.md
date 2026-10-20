@@ -1,8 +1,8 @@
 # ADR 0045 — Fluid processing patterns
 
 Status: selected; native headless evidence with a test-only item+fluid machine. Amends ADR
-0032's "item only in version one". Graphical checks remain open; there is no fluid
-amount display in the grid.
+0032's "item only in version one". U4 adds fluid-kind projection and mB amounts to the crafting panel;
+current graphical verification is tracked in the UX/implementation plans.
 
 ## Decision
 
@@ -46,3 +46,12 @@ fluid cells.
 Machines whose fluid handler mixes input and output tanks must still only drain the
 declared output fluid; the drain is by fluid identity and amount. Exclusive use of the
 machine during a job still applies.
+
+
+## U4 display units (2026-10-20)
+
+The wire/encoder count remains 1–64 in 250 mB steps, preserving existing patterns
+and processing behavior. Player-facing selected amounts and hover use actual mB;
++ / − changes 250 mB per step and the maximum remains 16,000 mB. The grid view carries
+fluid kind explicitly so it can render a bucket icon and apply fluid units even
+when the resource browser has switched to Items. No ownership or schema change.

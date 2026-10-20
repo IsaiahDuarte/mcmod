@@ -376,6 +376,7 @@ public final class TerminalCraftingGameTests {
               var view = m.gridView();
               h.assertTrue(
                   !view.processing()
+                      && view.status().equals("filled")
                       && view.result().equals("minecraft:crafting_table")
                       && view.cells().get(0).equals(planks)
                       && view.cells().get(8).isEmpty(),
@@ -453,7 +454,10 @@ public final class TerminalCraftingGameTests {
               grid(f, TerminalCraftingPackets.COUNT, 0, 0, 4, new byte[32]);
               ghost(f, 9, 0);
               h.assertTrue(
-                  menu(f).gridView().cells().get(0).equals("minecraft:water"),
+                  menu(f).gridView().cells().get(0).equals("minecraft:water")
+                      && menu(f).gridView().fluid(0)
+                      && !menu(f).gridView().fluid(9)
+                      && menu(f).gridView().amount(0) == 1000,
                   "Processing mode accepts the fluid row: " + menu(f).gridView());
             })
         .thenIdle(3)
@@ -475,7 +479,8 @@ public final class TerminalCraftingGameTests {
                       + menu(f).gridView().status());
               grid(f, TerminalCraftingPackets.MODE, 0, 0, 1, new byte[32]);
               h.assertTrue(
-                  menu(f).gridView().cells().get(0).isEmpty(),
+                  menu(f).gridView().cells().get(0).isEmpty()
+                      && menu(f).gridView().fluidMask() == 0,
                   "Leaving processing mode drops fluid cells");
               logout(f);
             })

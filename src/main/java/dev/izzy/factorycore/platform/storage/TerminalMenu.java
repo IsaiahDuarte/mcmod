@@ -220,7 +220,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
       var old = slots.get(i);
       int y = i < 27 ? 148 + 18 * (i / 9) : 210;
       var replacement =
-          new Slot(old.container, old.getContainerSlot(), 59 + 18 * (i % 9), y + extra);
+          new Slot(old.container, old.getContainerSlot(), 10 + 18 * (i % 9), y + extra);
       replacement.index = i;
       slots.set(i, replacement);
     }
@@ -606,7 +606,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
       if (item == Items.AIR) continue;
       crafting.set(cell, codec.itemKey(new ItemStack(item)));
     }
-    gridStatus = "ready";
+    gridStatus = "filled";
     publish();
   }
 
@@ -851,10 +851,12 @@ public final class TerminalMenu extends AbstractContainerMenu {
     }
     var cells = new ArrayList<String>(TerminalCraftingPackets.CELLS);
     var counts = new ArrayList<Integer>(TerminalCraftingPackets.CELLS);
+    int fluidMask = 0;
     for (int index = 0; index < TerminalCraftingPackets.CELLS; index++) {
       var key = crafting.cell(index);
       cells.add(key == null ? "" : key.registryId());
       counts.add(crafting.count(index));
+      if (key != null && key.kind() == ResourceKind.FLUID) fluidMask |= 1 << index;
     }
     var result = crafting.preview(player());
     String resultName =
@@ -872,7 +874,8 @@ public final class TerminalMenu extends AbstractContainerMenu {
             resultName,
             Math.min(64, result.getCount()),
             gridStatus,
-            crafted);
+            crafted,
+            fluidMask);
     if (!grid.equals(gridView)) {
       gridView = grid;
       PacketDistributor.sendToPlayer(player(), grid);

@@ -129,7 +129,12 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   the graphical client shows the grid at scales 1–4; the wireless terminal uses the same
   screen.
 
-- [ ] **U4 — Terminal crafting panel layout (F3).**
+- [ ] **U4 — Terminal crafting panel layout (F3).** Implementation in progress;
+  collapsible panel, visible tabs, mB projection and regression fixtures are authored.
+  Fast/full headless verification passes (387 JVM, 337 native tests).
+  The first graphical launch failed because macOS reported its display asleep;
+  actual fit, crafting/encoding and JEI runs remain required before completion.
+  [Current evidence and resume steps](evidence/ux-u4-crafting-panel-2026-10-20.md).
   Move the crafting grid into a collapsible side panel or its own tab. Make Table / Inputs /
   Outputs visible as three labelled tabs, and show fluid amounts in mB instead of quarter
   buckets. Keep ghost semantics and JEI transfer.

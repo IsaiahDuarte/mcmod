@@ -43,3 +43,12 @@ verifies them in an isolated `jeiTest` source set, the only one with JEI at runt
 `net.mezzdev.config` group is allowed from JEI's maven for that run. A14
 "works without JEI" is evidenced by every headless run, since none has JEI on the
 classpath.
+
+
+## U4 panel visibility (2026-10-20)
+
+Receiving a nonempty JEI ghost fill opens the terminal's crafting panel on Table;
+the user need not expand it before using recipe transfer. The payload and server
+fill path are unchanged. The JEI fixture additionally exercises Craft, table Encode,
+Inputs/Outputs and processing Encode with JEI installed, preserving real stock.
+Physical recipe-plus clicks and ingredient dragging remain separate verification gaps.

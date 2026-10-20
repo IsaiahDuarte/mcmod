@@ -55,3 +55,9 @@ jobs-preview-scale-2.png
 jobs-started-scale-2.png
 jobs-missing-scale-4.png
 jobs-keep-waiting-scale-4.png
+crafting-table-scale-1.png
+crafting-table-scale-4.png
+crafting-inputs-scale-1.png
+crafting-inputs-scale-4.png
+crafting-outputs-scale-1.png
+crafting-outputs-scale-4.png

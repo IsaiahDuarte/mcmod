@@ -4,3 +4,5 @@ jei-terminal-overlay.png
 jei-recipe-over-terminal.png
 jei-terminal-filled.png
 jei-program-ghost.png
+jei-crafting-panel-scale-4.png
+jei-processing-panel-scale-4.png

@@ -55,6 +55,58 @@ class TerminalCraftingPacketsTest {
   }
 
   @Test
+  void fluidGhostsRoundTripWithMilliBucketDisplayUnitsAndStrictKinds() {
+    var cells = new java.util.ArrayList<>(Collections.nCopies(12, ""));
+    var counts = new java.util.ArrayList<>(Collections.nCopies(12, 1));
+    cells.set(0, "minecraft:water");
+    cells.set(9, "minecraft:lava");
+    cells.set(10, "minecraft:stone");
+    counts.set(0, 4);
+    counts.set(9, 64);
+    counts.set(10, 2);
+    var view =
+        new TerminalCraftingPackets.View(
+            1,
+            UUID.randomUUID(),
+            3,
+            cells,
+            counts,
+            true,
+            "minecraft:stone",
+            "Stone",
+            2,
+            "ready",
+            0,
+            (1 << 0) | (1 << 9));
+    var output = buffer();
+    try {
+      TerminalCraftingPackets.View.CODEC.encode(output, view);
+      var decoded = TerminalCraftingPackets.View.CODEC.decode(output);
+      assertEquals(view, decoded);
+      assertTrue(decoded.fluid(0));
+      assertTrue(decoded.fluid(9));
+      assertFalse(decoded.fluid(10));
+      assertEquals(1000, decoded.amount(0));
+      assertEquals(16000, decoded.amount(9));
+      assertEquals(2, decoded.amount(10));
+      assertFalse(output.isReadable());
+    } finally {
+      output.release();
+    }
+    for (int mask : new int[] {-1, 4096, 1 << 1})
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              new TerminalCraftingPackets.View(
+                  1, view.session(), 3, cells, counts, true, "", "", 0, "ready", 0, mask));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalCraftingPackets.View(
+                1, view.session(), 3, cells, counts, false, "", "", 0, "ready", 0, 1));
+  }
+
+  @Test
   void commandAndViewBoundsReject() {
     var id = UUID.randomUUID();
     var empty = new byte[32];

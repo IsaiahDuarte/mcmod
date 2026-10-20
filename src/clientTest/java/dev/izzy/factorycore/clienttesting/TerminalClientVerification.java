@@ -491,8 +491,12 @@ public final class TerminalClientVerification {
         craftStep++;
       }
       case 1 -> {
+        if (!screen.craftingOpen()) {
+          click(screen, "Crafting »");
+          return;
+        }
         if (!client.player.getInventory().getItem(20).is(Items.OAK_LOG)) return;
-        screen.mouseClicked(left + TerminalScreen.GRID_X + 9, top + screen.gridY() + 9, 0);
+        screen.mouseClicked(left + screen.gridX() + 9, top + screen.gridY() + 9, 0);
         var digest =
             TerminalPackets.fingerprint(
                 new PlatformResourceCodec(client.level.registryAccess())
@@ -515,17 +519,17 @@ public final class TerminalClientVerification {
         check(grid.resultCount() == 4, "Actual server recipe preview for one log");
         checkNoOverlap(screen);
         captures.grab(client, "terminal-grid-scale-4.png");
-        screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + screen.gridY() + 9, 0);
+        screen.mouseClicked(left + screen.gridX() + 27, top + screen.gridY() + 9, 0);
         for (var child : screen.children())
           if (child instanceof EditBox edit) edit.setFocused(false);
         screen.keyPressed(GLFW.GLFW_KEY_1, 0, 0);
-        click(screen, "Row→");
+        click(screen, "Use selected");
         craftStep++;
       }
       case 3 -> {
         if (grid.cells().get(1).isEmpty() || !grid.result().isEmpty()) return;
         check(grid.status().equals("ready"), "Row ghost breaks the recipe without moving stock");
-        screen.mouseClicked(left + TerminalScreen.GRID_X + 27, top + screen.gridY() + 9, 1);
+        screen.mouseClicked(left + screen.gridX() + 27, top + screen.gridY() + 9, 1);
         craftStep++;
       }
       case 4 -> {

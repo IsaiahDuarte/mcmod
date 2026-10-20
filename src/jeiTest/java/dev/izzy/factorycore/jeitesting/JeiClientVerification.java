@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
 import dev.izzy.factorycore.platform.client.ProgramTextEditor;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
+import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.program.ProgramContent;
@@ -33,6 +34,7 @@ import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
@@ -59,6 +61,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.fluids.FluidStack;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * JEI integration on a real client with JEI loaded (ADR 0043). It drives Factory Core's handlers
@@ -84,7 +87,7 @@ final class JeiClientVerification {
   private IRecipeCategory<RecipeHolder<CraftingRecipe>> category;
   private RecipeHolder<CraftingRecipe> recipe;
   private volatile DeviceRegistry.Handle cell;
-  private int stage, ticks, entered;
+  private int stage, ticks, entered, panelStage, panelEntered;
 
   void register() {
     NeoForge.EVENT_BUS.addListener(this::tick);
@@ -110,9 +113,12 @@ final class JeiClientVerification {
           return;
         }
         if (!(client.screen instanceof TitleScreen)) return;
-        client.getWindow().setWindowed(1280, 960);
+        var window = client.getWindow();
+        double ratio = (double) window.getWidth() / Math.max(1, window.getScreenWidth());
+        window.setWindowed((int) Math.round(1708 / ratio), (int) Math.round(960 / ratio));
         client.options.guiScale().set(2);
         client.options.pauseOnLostFocus = false;
+        client.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
         client
             .createWorldOpenFlows()
             .createFreshLevel(
@@ -199,50 +205,17 @@ final class JeiClientVerification {
         capture(client, "jei-recipe-over-terminal.png");
         var terminal = (TerminalScreen) runtime.getRecipesGui().getParentScreen().orElseThrow();
         TerminalMenu menu = terminal.getMenu();
-        var handler =
-            runtime
-                .getRecipeTransferManager()
-                .getRecipeTransferHandler(menu, category)
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException("JEI resolves Factory Core's terminal handler"));
-        var layout =
-            runtime
-                .getRecipeManager()
-                .createRecipeLayoutDrawable(
-                    category,
-                    recipe,
-                    runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup())
-                .orElseThrow();
-        @SuppressWarnings("removal")
-        var preview =
-            handler.transferRecipe(
-                menu, recipe, layout.getRecipeSlotsView(), client.player, false, false);
-        check(preview == null, "JEI transfer preview reports no error: " + preview);
-        @SuppressWarnings("removal")
-        var result =
-            handler.transferRecipe(
-                menu, recipe, layout.getRecipeSlotsView(), client.player, false, true);
-        check(result == null, "JEI transfer reports no error: " + result);
+        var handler = transfer(client, menu);
         client.setScreen(terminal);
-        evidence
-            .append("jei: resolved terminal transfer handler ")
-            .append(handler.getClass().getName())
-            .append('\n');
+        evidence.append("jei: resolved terminal transfer handler ").append(handler).append('\n');
         next();
       }
       case 5 -> {
         if (!(client.screen instanceof TerminalScreen screen)) return;
         var grid = screen.getMenu().gridView();
-        if (!grid.result().equals("minecraft:crafting_table") || ticks - entered < 10) return;
-        long planks =
-            grid.cells().stream().filter(cell -> cell.equals("minecraft:oak_planks")).count();
-        check(planks == 4, "Transfer chose the oak planks the terminal stocks: " + grid.cells());
-        capture(client, "jei-terminal-filled.png");
-        evidence
-            .append("jei: crafting table recipe filled the ghost grid ")
-            .append(grid.cells())
-            .append('\n');
+        if (panelStage == 0
+            && (!grid.result().equals("minecraft:crafting_table") || ticks - entered < 10)) return;
+        if (!panelTour(client, screen)) return;
         client.player.closeContainer();
         next();
       }
@@ -322,6 +295,176 @@ final class JeiClientVerification {
     }
   }
 
+  private String transfer(Minecraft client, TerminalMenu menu) {
+    var runtime = RuntimeCapture.runtime;
+    var handler =
+        runtime
+            .getRecipeTransferManager()
+            .getRecipeTransferHandler(menu, category)
+            .orElseThrow(
+                () -> new IllegalStateException("JEI resolves Factory Core's terminal handler"));
+    var layout =
+        runtime
+            .getRecipeManager()
+            .createRecipeLayoutDrawable(
+                category, recipe, runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup())
+            .orElseThrow();
+    @SuppressWarnings("removal")
+    var preview =
+        handler.transferRecipe(
+            menu, recipe, layout.getRecipeSlotsView(), client.player, false, false);
+    check(preview == null, "JEI transfer preview reports no error: " + preview);
+    @SuppressWarnings("removal")
+    var result =
+        handler.transferRecipe(
+            menu, recipe, layout.getRecipeSlotsView(), client.player, false, true);
+    check(result == null, "JEI transfer reports no error: " + result);
+    return handler.getClass().getName();
+  }
+
+  private boolean panelTour(Minecraft client, TerminalScreen screen) {
+    var grid = screen.getMenu().gridView();
+    if (ticks - panelEntered < 6) return false;
+    switch (panelStage) {
+      case 0 -> {
+        check(screen.craftingOpen(), "JEI fill automatically opens the collapsed crafting panel");
+        long planks =
+            grid.cells().stream().filter(cell -> cell.equals("minecraft:oak_planks")).count();
+        check(planks == 4, "JEI chooses four stocked oak plank ghosts");
+        check(
+            client.player.getInventory().countItem(Items.CRAFTING_TABLE) == 0,
+            "JEI fill alone produces no real output");
+        capture(client, "jei-terminal-filled.png");
+        client.options.guiScale().set(4);
+        client.resizeDisplay();
+      }
+      case 1 -> {
+        check(client.getWindow().getGuiScale() == 4, "JEI panel runs at the minimum GUI scale");
+        capture(client, "jei-crafting-panel-scale-4.png");
+        if (!press(screen, "Encode")) return false;
+      }
+      case 2 -> {
+        if (!grid.status().equals("encoded")
+            || client.player.getInventory().countItem(CraftingContent.CRAFTING_PATTERN.get()) != 1)
+          return false;
+        check(
+            client.player.getInventory().countItem(CraftingContent.CRAFTING_PATTERN.get()) == 1,
+            "JEI-filled table recipe encodes one crafting pattern");
+        if (!press(screen, "Craft")) return false;
+      }
+      case 3 -> {
+        if (!grid.status().equals("crafted")
+            || client.player.getInventory().countItem(Items.CRAFTING_TABLE) != 1) return false;
+        check(
+            client.player.getInventory().countItem(Items.CRAFTING_TABLE) == 1,
+            "JEI-filled recipe crafts one real table");
+        if (!press(screen, "Inputs")) return false;
+      }
+      case 4 -> {
+        if (!grid.processing()) return false;
+        if (!press(screen, "Outputs")) return false;
+      }
+      case 5 -> {
+        var rows = screen.getMenu().view().rows();
+        int stone = -1;
+        for (int row = 0; row < Math.min(8, rows.size()); row++)
+          if (rows.get(row).icon().equals("minecraft:stone")) stone = row;
+        if (stone < 0 || screen.getMenu().view().busy()) return false;
+        screen.keyPressed(GLFW.GLFW_KEY_1 + stone, 0, 0);
+        if (!press(screen, "Use selected")) return false;
+      }
+      case 6 -> {
+        if (!grid.cells().get(9).equals("minecraft:stone")) return false;
+        capture(client, "jei-processing-panel-scale-4.png");
+        if (!press(screen, "Encode")) return false;
+      }
+      case 7 -> {
+        if (!grid.status().equals("encoded")) return false;
+        var patterns =
+            client.player.getInventory().items.stream()
+                .filter(stack -> stack.has(CraftingContent.PROCESSING.get()))
+                .toList();
+        if (patterns.isEmpty()) return false;
+        check(patterns.size() == 1, "Processing authoring works with JEI loaded");
+        var contents = patterns.getFirst().get(CraftingContent.PROCESSING.get());
+        check(
+            contents.inputs().size() == 4
+                && contents.inputs().stream()
+                    .allMatch(stack -> stack.is(Items.OAK_PLANKS) && stack.getCount() == 1)
+                && contents.outputs().size() == 1
+                && contents.outputs().getFirst().is(Items.STONE),
+            "Declared processing ghosts encode exact inputs/output");
+        check(
+            client.player.getInventory().countItem(CraftingContent.BLANK_PATTERN.get()) == 0,
+            "Each encoder consumes one blank");
+        if (!ready.compareAndSet(true, false)) return false;
+        var server = client.getSingleplayerServer();
+        var id = client.player.getUUID();
+        server.execute(
+            () -> {
+              try {
+                var player = server.getPlayerList().getPlayer(id);
+                var codec = new PlatformResourceCodec(player.registryAccess());
+                var registry = DeviceSavedData.get(server).registry();
+                check(
+                    registry.stock(cell, codec.itemKey(new ItemStack(Items.OAK_PLANKS))).total()
+                            == 12
+                        && registry.stock(cell, codec.itemKey(new ItemStack(Items.STONE))).total()
+                            == 1,
+                    "Only the actual craft consumes stock; encoding preserves all declared resources");
+                ready.set(true);
+              } catch (RuntimeException error) {
+                failure.set(error);
+              }
+            });
+      }
+      case 8 -> {
+        if (!ready.get()) return false;
+        if (!press(screen, "« Crafting")) return false;
+      }
+      case 9 -> {
+        check(!screen.craftingOpen(), "Panel stays collapsed with processing ghosts");
+        transfer(client, screen.getMenu());
+      }
+      case 10 -> {
+        if (grid.processing() || !grid.status().equals("filled") || !screen.craftingOpen())
+          return false;
+        check(
+            grid.result().equals("minecraft:crafting_table"),
+            "A second JEI transfer replaces the processing declaration with its table recipe");
+        var table =
+            screen.children().stream()
+                .filter(
+                    child ->
+                        child instanceof Button button
+                            && button.visible
+                            && button.getMessage().getString().equals("Table"))
+                .map(child -> (Button) child)
+                .findFirst()
+                .orElseThrow();
+        check(!table.active, "JEI fill selects the Table tab");
+        evidence.append(
+            "jei: fill reveals crafting panel; real Craft and table Encode; visible Inputs/Outputs author a processing pattern at scale 4; exact stock 12 planks + 1 stone, one crafted table, one pattern of each kind; second JEI transfer reopens Table from collapsed Outputs.\n");
+        return true;
+      }
+      default -> throw new IllegalStateException("Unknown panel stage " + panelStage);
+    }
+    panelStage++;
+    panelEntered = ticks;
+    return false;
+  }
+
+  private static boolean press(TerminalScreen screen, String name) {
+    for (var child : screen.children())
+      if (child instanceof Button button
+          && button.visible
+          && button.active
+          && button.getMessage().getString().equals(name))
+        return screen.mouseClicked(
+            button.getX() + button.getWidth() / 2.0, button.getY() + button.getHeight() / 2.0, 0);
+    return false;
+  }
+
   private static <I> void drop(
       IGhostIngredientHandler<ProgramScreen> handler,
       ProgramScreen screen,
@@ -355,6 +498,7 @@ final class JeiClientVerification {
     level.setBlock(TERMINAL, TerminalContent.BLOCK.get().defaultBlockState(), 3);
     level.setBlock(PROGRAM, ProgramContent.BLOCK.get().defaultBlockState(), 3);
     player.getInventory().clearContent();
+    player.getInventory().setItem(22, new ItemStack(CraftingContent.BLANK_PATTERN.get(), 2));
     player.teleportTo(4.5, 65, 4.5);
     player.setYRot(135);
     player.setXRot(10);
@@ -372,6 +516,17 @@ final class JeiClientVerification {
       check(
           DeviceSavedData.get(player.server).registry().insert(cell, planks, 16).amount() == 16,
           "Seed sixteen oak planks");
+      check(
+          DeviceSavedData.get(player.server)
+                  .registry()
+                  .insert(
+                      cell,
+                      new PlatformResourceCodec(player.registryAccess())
+                          .itemKey(new ItemStack(Items.STONE)),
+                      1)
+                  .amount()
+              == 1,
+          "Seed processing output sample");
       ready.set(true);
     } catch (RuntimeException error) {
       failure.set(error);

@@ -218,7 +218,7 @@ The main terminal opens to searchable Items. Additional views are Fluids, Energy
 - Search by display name, registry ID, mod, and supported tags; sort by name/quantity and show availability/reservations.
 - Show a responsive scrolling item grid (at least 9×4 at the minimum supported GUI), a scrollbar/mouse wheel, visible Items/Fluids/Energy/Jobs tabs, and live search. Left-click takes a stack to the cursor, right-click half rounded up, Shift-click sends it to inventory, and a carried-stack click deposits it. Show used/total item units; label unknown external capacity and Infinite explicitly.
 - Deposit/withdraw normal stacks through server-authoritative requests. Bulk actions are bounded and display partial results.
-- A built-in 3-by-3 ghost recipe grid fills from owned inventory and authorized network stock. JEI recipe transfer fills the grid without consuming items.
+- A built-in 3-by-3 ghost recipe grid in a collapsible crafting panel fills from owned inventory and authorized network stock. Table/Inputs/Outputs are visible labelled tabs; processing fluid amounts display in mB. JEI recipe transfer reveals and fills the grid without consuming items.
 - Craft-on-click revalidates the recipe and reserves/extracts exactly the current ingredients. Cursor/player inventory receives the output; owned staging retains anything that cannot be returned. Recipe remainders follow the same accounting.
 - Bulk crafting processes a bounded number per request and stops cleanly on missing ingredients or output space. No unlimited shift-click loop on the server thread.
 - Grid inputs are ghost selections, not hidden stacks that can disappear when the screen closes.

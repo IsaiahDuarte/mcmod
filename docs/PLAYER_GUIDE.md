@@ -321,9 +321,11 @@ the fluid, or if there is no room.
 
 ### Terminal crafting grid
 
-The right side of the terminal has a 3×3 crafting grid of *ghost* cells. Click a
+Press **Crafting »** to open the side panel, then choose **Table** for the 3×3
+crafting grid of *ghost* cells. **« Crafting** collapses it and gives the resource
+browser more space. Collapsing or changing GUI scale preserves your selections. Click a
 cell to highlight it, then Ctrl-click an item in your inventory, or Ctrl-click a network
-item (or use 1–8) and press **Row→**. The cell shows a faded icon; no item moves into the grid,
+item (or use 1–8) and press **Use selected**. No item moves into the grid,
 so closing the screen never loses anything. Right-click a cell to clear it, or press
 **Clear**. The result appears beside the grid when the pattern matches a crafting
 recipe. The idle grid has no status label; failures such as missing items or a full
@@ -671,11 +673,12 @@ it. You can run up to eight jobs; a network holds at most 64.
 
 ### Processing patterns and Crafting Interfaces
 
-For machine recipes (smelting and similar), press the **Grid** mode button (left of
-your inventory, normally **Table**) until it reads **Inputs**: put the machine's ingredients in the grid (scroll over a cell to
-change its count). Press again for **Outputs** and set what the machine produces in the
-first row (the first is the main product). Press **Encode** with a Blank Pattern to
-get a Processing Pattern.
+For machine recipes (smelting and similar), open **Crafting »** and choose **Inputs**.
+Set the machine's ingredient ghosts, then choose **Outputs** and fill up to three
+output cells. Select a ghost and use **+ / −**, or scroll over it, to adjust its
+amount; Shift-scroll changes eight steps. Item amounts are 1–64. Press **Encode**
+with a Blank Pattern to get a Processing Pattern. Switching between Inputs and
+Outputs keeps both declarations; **Clear** clears both.
 
 Place a Crafting Interface against the machine (it faces the block you click) and wire
 it to your network; insert the processing pattern. Autocrafting then puts the inputs
@@ -791,7 +794,7 @@ from a book and a redstone dust.
 ## JEI (optional)
 
 With Just Enough Items installed, press JEI's **+** button on a crafting recipe while the
-terminal is open to fill the grid. This places ghost entries only; nothing is moved until
+terminal is open to reveal the crafting panel and fill its Table grid. This places ghost entries only; nothing is moved until
 you craft. Drag an item or fluid from JEI onto the Program editor to type its
 `item("…")` or `fluid("…")` expression (a space separates it from the text before it). Without JEI, everything still works through the
 terminal rows and by typing IDs.
@@ -799,11 +802,12 @@ terminal rows and by typing IDs.
 
 ### Fluid processing
 
-In the terminal grid's processing mode, switch the terminal view to **Fluids** and select a
-fluid to place it in a cell. A fluid cell's count is in quarter buckets: 4 means 1,000 mB,
-and 64 means 16,000 mB. Patterns may mix items and fluids. The Crafting Interface uses the
-machine's fluid tanks for fluids, so the machine must accept fluids from that side.
-Leaving processing mode removes fluid cells from the grid.
+With the crafting panel on **Inputs** or **Outputs**, switch the resource browser to
+**Fluids**, select the fluid, highlight a ghost cell and press **Use selected**.
+Fluid ghosts show bucket icons and mB amounts. The selected amount and hover give
+exact mB; **+ / −** changes 250 mB per step, from 250 to 16,000 mB. Patterns may mix
+items and fluids. The Crafting Interface uses the machine's fluid tanks, so the
+machine must accept fluids from that side. Choosing **Table** removes fluid ghosts.
 
 
 ### After a crash: adopting a cell

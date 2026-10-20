@@ -104,16 +104,57 @@ public final class TerminalCraftingPackets {
       String resultName,
       int resultCount,
       String status,
-      int crafted)
+      int crafted,
+      int fluidMask)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
             ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_grid_view"));
 
+    public View(
+        int menu,
+        UUID session,
+        long gridRevision,
+        List<String> cells,
+        List<Integer> counts,
+        boolean processing,
+        String result,
+        String resultName,
+        int resultCount,
+        String status,
+        int crafted) {
+      this(
+          menu,
+          session,
+          gridRevision,
+          cells,
+          counts,
+          processing,
+          result,
+          resultName,
+          resultCount,
+          status,
+          crafted,
+          0);
+    }
+
+    public boolean fluid(int cell) {
+      if (cell < 0 || cell >= CELLS) throw new IllegalArgumentException("Grid cell");
+      return (fluidMask & (1 << cell)) != 0;
+    }
+
+    /** Display units: mB for fluids, item units otherwise; processing wire counts remain 1–64. */
+    public int amount(int cell) {
+      return fluid(cell) ? counts.get(cell) * TerminalCrafting.FLUID_UNIT : counts.get(cell);
+    }
+
     public View {
       cells = List.copyOf(cells);
       counts = List.copyOf(counts);
-      if (cells.size() != CELLS
+      if (fluidMask < 0
+          || fluidMask >= (1 << CELLS)
+          || !processing && fluidMask != 0
+          || cells.size() != CELLS
           || counts.size() != CELLS
           || counts.stream().anyMatch(count -> count < 1 || count > 64)
           || cells.stream().anyMatch(cell -> cell.length() > 256)
@@ -125,6 +166,9 @@ public final class TerminalCraftingPackets {
           || crafted < 0
           || crafted > GridRequirement.MAX_CRAFTS)
         throw new IllegalArgumentException("Invalid grid view bounds");
+      for (int cell = 0; cell < CELLS; cell++)
+        if ((fluidMask & (1 << cell)) != 0 && cells.get(cell).isEmpty())
+          throw new IllegalArgumentException("Empty fluid ghost");
     }
 
     @Override
@@ -146,6 +190,7 @@ public final class TerminalCraftingPackets {
               buffer.writeVarInt(value.resultCount);
               buffer.writeUtf(value.status, 64);
               buffer.writeVarInt(value.crafted);
+              buffer.writeVarInt(value.fluidMask);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -167,6 +212,7 @@ public final class TerminalCraftingPackets {
                   buffer.readUtf(96),
                   buffer.readVarInt(),
                   buffer.readUtf(64),
+                  buffer.readVarInt(),
                   buffer.readVarInt());
             });
   }

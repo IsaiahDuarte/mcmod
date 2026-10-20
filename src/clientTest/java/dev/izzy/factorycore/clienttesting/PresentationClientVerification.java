@@ -17,6 +17,7 @@ import dev.izzy.factorycore.platform.client.NetworkAccessScreen;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
 import dev.izzy.factorycore.platform.client.RecoveryScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
+import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -76,11 +77,13 @@ import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.fluids.FluidStack;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -373,6 +376,273 @@ public final class PresentationClientVerification {
     step(client -> client.screen == null && waited() > 4);
   }
 
+  private static TerminalScreen terminal(Minecraft client) {
+    return (TerminalScreen) client.screen;
+  }
+
+  private static boolean useGhost(Minecraft client, String id) {
+    var screen = terminal(client);
+    var view = screen.getMenu().view();
+    if (view.busy() || waitedForRows(screen)) return false;
+    for (int row = 0; row < Math.min(8, view.rows().size()); row++) {
+      if (!view.rows().get(row).icon().equals(id)) continue;
+      screen.keyPressed(GLFW.GLFW_KEY_1 + row, 0, 0);
+      return press(client, "Use selected");
+    }
+    return false;
+  }
+
+  private static boolean waitedForRows(TerminalScreen screen) {
+    return screen.getMenu().view().size() != screen.columns() * screen.rows();
+  }
+
+  private void panelCaptures(String name) {
+    for (int target : new int[] {1, 4}) {
+      step(
+          client -> {
+            setScale(client, target);
+            return true;
+          });
+      step(
+          client -> {
+            if (waited() < 6 || waitedForRows(terminal(client))) return false;
+            evidence
+                .append("fit ")
+                .append(name)
+                .append(" scale=")
+                .append(target)
+                .append(": ")
+                .append(checkFits(client, client.screen))
+                .append('\n');
+            check(
+                terminal(client).columns() >= 9 && terminal(client).rows() >= 4,
+                "Expanded crafting panel keeps a usable resource browser");
+            captures.grab(client, name + "-scale-" + target + ".png");
+            return true;
+          });
+    }
+  }
+
+  private void countGhost(int cell, int amount) {
+    for (int value = 2; value <= amount; value++) {
+      int previous = value - 1;
+      step(
+          client ->
+              terminal(client).getMenu().gridView().counts().get(cell) == previous
+                  && waited() > 2
+                  && press(client, "+"));
+    }
+    step(
+        client ->
+            terminal(client).getMenu().gridView().counts().get(cell) == amount && waited() > 4);
+  }
+
+  /** Actual panel controls, crafts, both encoders and exact fluid units at scales 1 and 4. */
+  private void craftingTour(BlockPos base) {
+    server(
+        player -> {
+          var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(base.east());
+          check(
+              drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID))) == 2,
+              "Fluid cell installed");
+          player.getInventory().clearContent();
+          player.getInventory().setItem(22, new ItemStack(CraftingContent.BLANK_PATTERN.get(), 2));
+        });
+    serverUntil(
+        player -> {
+          var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(base.east());
+          var key =
+              new PlatformResourceCodec(player.registryAccess())
+                  .fluidKey(new FluidStack(Fluids.WATER, 1));
+          return valid(player, base.east(2))
+              && DeviceSavedData.get(player.server)
+                  .registry()
+                  .stock(CellHandleData.read(drive.cell(2)), key)
+                  .loaded();
+        });
+    server(
+        player -> {
+          var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(base.east());
+          var saved = DeviceSavedData.get(player.server);
+          var codec = new PlatformResourceCodec(player.registryAccess());
+          check(
+              saved
+                      .registry()
+                      .insert(
+                          CellHandleData.read(drive.cell(1)),
+                          codec.itemKey(new ItemStack(Items.OAK_LOG)),
+                          1)
+                      .amount()
+                  == 1,
+              "Craft log admitted");
+          check(
+              saved
+                      .registry()
+                      .insert(
+                          CellHandleData.read(drive.cell(2)),
+                          codec.fluidKey(new FluidStack(Fluids.WATER, 1)),
+                          4000)
+                      .amount()
+                  == 4000,
+              "Processing water admitted");
+        });
+    use(base.east(2), Direction.SOUTH, false);
+    step(
+        client ->
+            client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Crafting »"));
+    step(
+        client ->
+            terminal(client).craftingOpen()
+                && waited() > 6
+                && useGhost(client, "minecraft:oak_log"));
+    step(
+        client ->
+            terminal(client).getMenu().gridView().result().equals("minecraft:oak_planks")
+                && waited() > 4);
+    panelCaptures("crafting-table");
+    step(client -> press(client, "Encode"));
+    step(
+        client -> terminal(client).getMenu().gridView().status().equals("encoded") && waited() > 4);
+    server(
+        player -> {
+          var patterns =
+              player.getInventory().items.stream()
+                  .filter(stack -> stack.has(CraftingContent.PATTERN.get()))
+                  .toList();
+          check(
+              patterns.size() == 1
+                  && patterns.getFirst().get(CraftingContent.PATTERN.get()).output().getCount()
+                      == 4,
+              "Table Encode creates one exact four-plank pattern");
+          check(
+              player.getInventory().countItem(CraftingContent.BLANK_PATTERN.get()) == 1,
+              "Table Encode consumes one blank");
+        });
+    step(client -> press(client, "Craft"));
+    step(
+        client -> terminal(client).getMenu().gridView().status().equals("crafted") && waited() > 4);
+    server(
+        player ->
+            check(
+                player.getInventory().countItem(Items.OAK_PLANKS) == 4,
+                "Craft returns four real planks"));
+    step(client -> press(client, "Clear"));
+    step(
+        client ->
+            terminal(client).getMenu().gridView().cells().stream().allMatch(String::isEmpty)
+                && waited() > 4
+                && press(client, "Inputs"));
+    step(
+        client ->
+            terminal(client).getMenu().gridView().processing()
+                && waited() > 4
+                && press(client, "Fluids"));
+    step(
+        client ->
+            terminal(client).getMenu().view().kind() == 1
+                && waited() > 6
+                && useGhost(client, "minecraft:water"));
+    step(client -> terminal(client).getMenu().gridView().fluid(0) && waited() > 4);
+    countGhost(0, 4);
+    step(client -> press(client, "−"));
+    step(
+        client ->
+            terminal(client).getMenu().gridView().amount(0) == 750
+                && waited() > 4
+                && press(client, "+"));
+    step(client -> terminal(client).getMenu().gridView().amount(0) == 1000 && waited() > 4);
+    panelCaptures("crafting-inputs");
+    step(client -> press(client, "Outputs"));
+    step(client -> waited() > 4 && useGhost(client, "minecraft:water"));
+    step(client -> terminal(client).getMenu().gridView().fluid(9) && waited() > 4);
+    countGhost(9, 2);
+    step(client -> press(client, "Items"));
+    step(client -> terminal(client).getMenu().view().kind() == 0 && waited() > 6);
+    step(
+        client -> {
+          var screen = terminal(client);
+          screen.mouseClicked(
+              screen.getGuiLeft() + screen.gridX() + 27,
+              screen.getGuiTop() + screen.gridY() + 9,
+              0);
+          return useGhost(client, "minecraft:stone");
+        });
+    step(
+        client ->
+            terminal(client).getMenu().gridView().cells().get(10).equals("minecraft:stone")
+                && waited() > 4);
+    countGhost(10, 2);
+    panelCaptures("crafting-outputs");
+    step(client -> press(client, "« Crafting"));
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          check(!terminal(client).craftingOpen(), "Panel stays collapsed with populated ghosts");
+          check(
+              terminal(client).getMenu().gridView().amount(0) == 1000
+                  && terminal(client).getMenu().gridView().amount(9) == 500,
+              "Collapse preserves all ghosts");
+          return press(client, "Crafting »");
+        });
+    step(client -> terminal(client).craftingOpen() && waited() > 6 && press(client, "Encode"));
+    step(
+        client -> terminal(client).getMenu().gridView().status().equals("encoded") && waited() > 4);
+    server(
+        player -> {
+          var pattern =
+              player.getInventory().items.stream()
+                  .filter(stack -> stack.has(CraftingContent.PROCESSING.get()))
+                  .findFirst()
+                  .orElseThrow()
+                  .get(CraftingContent.PROCESSING.get());
+          check(
+              pattern.inputs().isEmpty()
+                  && pattern.fluidInputs().size() == 1
+                  && pattern.fluidInputs().getFirst().getAmount() == 1000
+                  && pattern.outputs().size() == 1
+                  && pattern.outputs().getFirst().is(Items.STONE)
+                  && pattern.outputs().getFirst().getCount() == 2
+                  && pattern.fluidOutputs().size() == 1
+                  && pattern.fluidOutputs().getFirst().getAmount() == 500,
+              "Processing Encode preserves exact item and mB declarations");
+          check(
+              player.getInventory().countItem(CraftingContent.BLANK_PATTERN.get()) == 0,
+              "Both encoders each consume exactly one blank");
+          var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(base.east());
+          var codec = new PlatformResourceCodec(player.registryAccess());
+          var registry = DeviceSavedData.get(player.server).registry();
+          check(
+              registry
+                          .stock(
+                              CellHandleData.read(drive.cell(2)),
+                              codec.fluidKey(new FluidStack(Fluids.WATER, 1)))
+                          .total()
+                      == 4000
+                  && registry
+                          .stock(
+                              CellHandleData.read(drive.cell(1)),
+                              codec.itemKey(new ItemStack(Items.STONE)))
+                          .total()
+                      == 1,
+              "Ghost edits and encoding consume no declared resources");
+          player.getInventory().clearContent();
+        });
+    step(client -> press(client, "Table"));
+    step(
+        client -> {
+          if (waited() < 6 || terminal(client).getMenu().gridView().processing()) return false;
+          check(
+              terminal(client).getMenu().gridView().fluidMask() == 0,
+              "Table drops fluid ghosts under the existing contract");
+          evidence.append(
+              "crafting panel: real table craft and both encoders; 1000 mB water input -> 2 Stone + 500 mB water output, no declared stock consumed; collapse/reopen and scale changes retain ghosts.\n");
+          client.player.closeContainer();
+          setScale(client, 2);
+          return true;
+        });
+    step(client -> client.screen == null && waited() > 4);
+  }
+
   /**
    * Terminal Jobs mode through real clicks: a pattern's craftable row, ×8 preview, Start, the
    * finished delivery, then a ×64 shortage preview at scale 4 with fit checks.
@@ -459,7 +729,9 @@ public final class PresentationClientVerification {
     for (int i = 0; i < 4; i++) {
       var cell = drive.cell(i);
       if (cell.isEmpty()) continue;
-      var stock = registry.stock(CellHandleData.read(cell), key);
+      var handle = CellHandleData.read(cell);
+      if (registry.ownership(handle.backing()).definition().kind() != ResourceKind.ITEM) continue;
+      var stock = registry.stock(handle, key);
       if (!stock.loaded()) return -1;
       total = Math.addExact(total, stock.total());
     }
@@ -901,6 +1173,7 @@ public final class PresentationClientVerification {
         });
     step(client -> client.player.containerMenu.getCarried().isEmpty() && waited() > 4);
     scales("terminal", TerminalScreen.class, true);
+    craftingTour(base);
     jobsTour(base);
     use(base.east(), Direction.SOUTH, false);
     step(client -> client.screen instanceof DriveScreen && waited() > 4);

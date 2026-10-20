@@ -107,3 +107,23 @@ BigInteger and remain exact in the payload and hover.
 This amends the original eight-row display and cursor exclusion, without changing network
 permission, reservation or storage semantics. Verification is tracked in the UX/implementation
 plans; implementation alone is not graphical or restart evidence.
+
+
+## U4 — Collapsible crafting panel (2026-10-20)
+
+Use a collapsible right-side panel alongside the resource browser rather than a
+separate full-screen crafting tab: selecting authorized network items/fluids must
+stay available during ghost authoring. At minimum GUI size the open panel still
+leaves at least 9×4 resource cells; the inventory retains native slot identities.
+The three labelled Table/Inputs/Outputs tabs replace the cyclic mode control.
+Ghosts and selection survive collapse/resize; a received nonempty recipe-viewer fill
+reveals its panel automatically. Existing mode/clear/craft/encode commands and
+server permission/revision/accounting rules are unchanged.
+
+Protocol 4 adds a 12-bit fluid mask to the grid view so item and fluid IDs cannot be
+confused. Client display converts internal quarter-bucket counts to mB; the selected
+amount, hover and +/− help use mB explicitly. Actual processing declarations remain
+250–16,000 mB per fluid cell. A raw-mB editor was rejected for this layout slice:
+changing accepted quantities would alter the processing contract without improving
+this display fix. No saved format changes. Graphical fit, real crafting/encoding,
+processing authoring and JEI callback verification are required before U4 is complete.

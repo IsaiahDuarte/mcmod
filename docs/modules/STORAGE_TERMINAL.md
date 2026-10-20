@@ -45,7 +45,7 @@ Independent player/world-file interruption safety remains unverified.
 
 ## Projection and controls
 
-The wire protocol is version 3. The server projects up to 256 rows: token, base registry
+The wire protocol is version 4. The server projects up to 256 rows: token, base registry
 icon, plain name (96 characters) and exact decimal total/reserved/available counts (32
 characters). Full components, native endpoints and topology/query cursors stay server-only.
 WINDOW uses selection as an offset (0–65,536) and amount as viewport size (1–256).
@@ -79,7 +79,7 @@ known canonical staging remains owned. Explicit cursor staging recovery returns 
 player's current main inventory, never a replacement menu's cursor; uncertain calls freeze.
 
 Tab/Enter activate grid cells and tabs. Ctrl-click or 1–8 selects a network row for the
-existing Row→ ghost authoring control. Hover shows exact total/reserved/available counts.
+Use selected ghost authoring control. Hover shows exact total/reserved/available counts.
 The item-capacity bar counts loaded authorized item cells once, independently of search or
 window, including reserved units. Infinite shows no limit. External items contribute to used
 units but make effective capacity unknown; label that limitation and suppress a finite ratio.
@@ -131,8 +131,9 @@ gridRevision, action, cell, source, crafts, fingerprint)` actions are SET_OWN
 (source = own slot 0–35, exact-key fingerprint), SET_ROW (source = current row under
 `viewRevision`), CLEAR (cell -1 clears all) and CRAFT (1–64 crafts under the current
 `gridRevision`). Stale revisions, mismatched fingerprints, busy sessions and edits
-over 32 per second are ignored. `View` carries nine base registry icons, the result
-icon/name/count, status (`empty`, `ready`, `no_recipe`, `gathering`, `crafted`,
+over 32 per second are ignored. `View` carries twelve base registry IDs (nine inputs/three outputs), per-cell counts,
+a 12-bit fluid-kind mask, processing mode, the result
+icon/name/count, status (`empty`, `ready`, `filled`, `no_recipe`, `gathering`, `crafted`,
 `partial`, `shortage`, `full`, `reserved`, `unsupported`) and the last crafted
 count. The server resolves keys, matches recipes and owns all quantities.
 
@@ -233,3 +234,26 @@ fill/empty a bucket, residual 500 FE limits charging, reverse discharge shares t
 exhausted cap, the next tick replenishes it, and dishonest item execution changes
 only disposable copies. This fixture remains unverified until the native suite
 runs successfully.
+
+
+## U4 crafting panel
+
+The client keeps a collapsible right-side panel, closed for a new empty session.
+The adjacent browser remains at least 9×4 at GUI 427×240; closing the panel restores
+its width. Table, Inputs and Outputs are separate visible buttons. Inputs/Outputs
+share the existing processing mode and preserve both declarations; Table uses the
+existing rule that leaving processing drops fluid ghosts. Clear still clears all
+inputs/outputs. The selected page/target and ghosts survive collapse and GUI resize.
+A newly received recipe-viewer fill (`filled` status at a new grid revision) reveals the panel;
+ordinary ghost edits and crafting outcomes do not reopen a deliberately collapsed panel.
+
+Protocol 4 adds a validated fluid-kind bit mask to the grid projection. A bit may
+name only a nonempty cell while processing. Exact components/keys remain server-side.
+`View.amount(cell)` converts the existing 1–64 processing count to item units or mB
+(250 mB per fluid step); counts and encoding limits are unchanged. The UI uses bucket
+icons for fluids, compact mB-number overlays, exact selected/hover amounts with units,
+and bounded +/− buttons or wheel input. Only Table shows a recipe-result preview;
+processing outputs are the declared ghost cells, avoiding a misleading single-bucket
+preview for a fractional fluid output. No quantity, mode or permission authority
+moves to the client. No persistence format changes. Native projection/codec regressions
+and graphical/JEI fixtures cover this slice; successful runs belong in acceptance evidence.
