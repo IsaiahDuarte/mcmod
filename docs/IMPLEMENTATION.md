@@ -12,6 +12,7 @@ optional JEI, onboarding and original art. Graphical tours cover every screen at
 A required SIGKILL/save-skew suite covers processing jobs. A01–A17 stay **partial** until the
 gaps in the acceptance table close. A17 needs a human survival playtest. The dated history of
 how this was built is in the [work log archive](archive/IMPLEMENTATION-LOG.md).
+Player-experience simplification work is sequenced in the [UX plan](UX_PLAN.md).
 
 ## How an AI should proceed
 
