@@ -50,9 +50,6 @@ persists ledgers; durable transfer/job staging and full interruption validation 
 Negative quantities, invalid identities or malformed construction parameters
 throw `IllegalArgumentException`; thread violations throw `IllegalStateException`.
 Expected storage rejection is an `OperationResult`, not an exception.
-`StorageTotals.total` accepts an explicitly bounded caller-selected store list,
-deduplicates identical backing references and uses `BigInteger` for aggregate
-counts. Different store objects claiming one UUID reject as conflicting ownership.
 P2 adds authorized view construction and durable owner resolution.
 
 ## Transfers and external handlers
@@ -120,7 +117,6 @@ capability, with no optional mod dependency:
 
 | Port | Contract and bounds |
 | --- | --- |
-| `LedgerPort` | Digital ledger, optional reservation owner; all mutations obey ledger availability. |
 | `ItemHandlerPort` | Explicit slot window of 1–64 slots on the selected side; scans at most that window and mutates at most one slot per call. Insertion returns accepted units from NeoForge's remainder-stack result. Extraction rejects wrong metadata/quantity. Repeated scheduled calls progress through stock. |
 | `FluidHandlerPort` | Whole capability: one resource-sensitive fill/drain call in mB. Explicit selected windows: at most64 genuine indexed tank calls. Both preserve components and validate returned identity/amount; no whole-handler/refund fallback. A handler's internal work is external; performance evidence only covers supported representative handlers. |
 | `EnergyHandlerPort` | One receive/extract call in FE with actual returned amount and handler rate limits; no implicit energy consumption. |
@@ -132,8 +128,9 @@ implementation time cannot be preempted by guest instruction metering.
 
 ## Example
 
-This portable example uses a test identity; platform callers obtain a key from
-`PlatformResourceCodec.itemKey`/`fluidKey` so it can reconstruct real stacks.
+This portable example uses a test identity and `LedgerPort`, a test-source adapter that exposes a
+ledger as a port; platform callers obtain keys from `PlatformResourceCodec.itemKey`/`fluidKey` and
+use the platform ports above.
 
 ```java
 var iron = new ResourceKey(ResourceKind.ITEM, "minecraft:iron_ingot", new byte[0]);

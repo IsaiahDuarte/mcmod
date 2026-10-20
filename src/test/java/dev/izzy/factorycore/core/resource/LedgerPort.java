@@ -3,7 +3,11 @@ package dev.izzy.factorycore.core.resource;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Reservation-aware digital endpoint; null claim owner selects unreserved stock. */
+/**
+ * Test adapter: a reservation-aware ledger endpoint (null claim owner selects unreserved stock).
+ * Production endpoints are the platform ports; accounting tests drive staged transfers through
+ * this.
+ */
 public final class LedgerPort implements ResourcePort {
   private final ResourceLedger ledger;
   private final UUID claimOwner;

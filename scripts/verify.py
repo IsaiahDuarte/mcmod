@@ -36,9 +36,6 @@ REQUIRED_FILES = (
     "config/pmd/ruleset.xml",
     "scripts/verify_guest.py",
     "tests/tooling/test_verify_guest.py",
-    "experiments/wasm-guest/Cargo.toml",
-    "experiments/wasm-guest/Cargo.lock",
-    "experiments/wasm-guest/rust-toolchain.toml",
     "sdk/rust/Cargo.toml",
     "sdk/rust/Cargo.lock",
     "sdk/rust/rust-toolchain.toml",
@@ -49,7 +46,7 @@ IGNORED_DIRS = {
 }
 UNWIRED_SOURCE_SUFFIXES = {".kt", ".kts", ".rs"}
 # Rust trees whose fmt/clippy/test/Wasm builds run in scripts/verify_guest.py.
-WIRED_RUST = ("experiments/wasm-guest/src", "sdk/rust/factorycore/src", "sdk/rust/examples")
+WIRED_RUST = ("sdk/rust/factorycore/src", "sdk/rust/examples")
 INLINE_LINK = re.compile(
     r'!?\[[^\]\n]*\]\((<[^>\n]+>|[^)\s]+)(?:\s+"[^"\n]*")?\)'
 )

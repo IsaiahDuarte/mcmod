@@ -2,7 +2,6 @@ package dev.izzy.factorycore.core.resource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -23,23 +22,17 @@ class ResourceAccountingTest {
   }
 
   @Test
-  void infiniteTierAndAggregatesAreExactAtSignedLongBoundary() {
+  void infiniteTierIsExactAtSignedLongBoundary() {
     var first = ledger(1, true);
     var second = ledger(1, true);
     assertEquals(Long.MAX_VALUE, first.insert(IRON, Long.MAX_VALUE).amount());
     assertEquals(OperationResult.Reason.TECHNICAL_LIMIT, first.insert(IRON, 1).reason());
     assertEquals(Long.MAX_VALUE, second.insert(IRON, Long.MAX_VALUE).amount());
-    assertEquals(
-        BigInteger.valueOf(Long.MAX_VALUE).multiply(BigInteger.TWO),
-        StorageTotals.total(List.of(first, first, second), IRON));
     long exact = 9_007_199_254_740_993L;
     assertEquals(
         Long.MAX_VALUE - exact, first.extract(IRON, Long.MAX_VALUE - exact, null).amount());
     assertEquals(exact, first.stock(IRON).total());
     assertThrows(IllegalArgumentException.class, () -> first.insert(IRON, -1));
-    var impostor = new ResourceLedger(first.id(), ResourceKind.ITEM, 1, false, 10, 10);
-    assertThrows(
-        IllegalArgumentException.class, () -> StorageTotals.total(List.of(first, impostor), IRON));
   }
 
   @Test

@@ -386,17 +386,16 @@ tasks.withType(Test).configureEach {
 
 tasks.register('verifyRustGuest', Exec) {
     commandLine(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows') ? 'python' : 'python3', 'scripts/verify_guest.py')
-    inputs.files(fileTree('experiments/wasm-guest'), fileTree('sdk/rust') { exclude 'target/**' }, file('scripts/verify_guest.py'))
-    outputs.files('build/test-guests/probe.wasm', 'build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm')
+    inputs.files(fileTree('sdk/rust') { exclude 'target/**' }, file('scripts/verify_guest.py'))
+    outputs.files('build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm')
 }
 
 tasks.named('test') {
     dependsOn tasks.named('jar'), tasks.named('verifyRustGuest')
     systemProperty 'factorycore.test.jar', tasks.named('jar').get().archiveFile.get().asFile.absolutePath
-    systemProperty 'factorycore.test.guest', file('build/test-guests/probe.wasm').absolutePath
     systemProperty 'factorycore.test.smelter', file('build/test-guests/smelter.wasm').absolutePath
     systemProperty 'factorycore.test.counter', file('build/test-guests/counter.wasm').absolutePath
-    inputs.files('build/test-guests/probe.wasm', 'build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm')
+    inputs.files('build/test-guests/smelter.wasm', 'build/test-guests/counter.wasm')
 }
 
 spotless {
@@ -435,9 +434,9 @@ tasks.register('coreBenchmark', JavaExec) {
 tasks.register('wasmBenchmark', JavaExec) {
     dependsOn tasks.named('testClasses'), tasks.named('verifyRustGuest')
     classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'dev.izzy.factorycore.wasm.WasmBenchmark'
+    mainClass = 'dev.izzy.factorycore.core.wasm.WasmBenchmark'
     maxHeapSize = '2g'
-    systemProperty 'factorycore.test.guest', file('build/test-guests/probe.wasm').absolutePath
+    systemProperty 'factorycore.test.smelter', file('build/test-guests/smelter.wasm').absolutePath
 }
 
 

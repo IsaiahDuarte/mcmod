@@ -2,7 +2,6 @@ package dev.izzy.factorycore.core.network;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -253,29 +252,5 @@ class WiredDiscoveryTest {
     var seeds = Collections.nCopies(WiredDiscovery.MAX_SEEDS + 1, pos(0));
     discovery = new WiredDiscovery(UUID.randomUUID(), 8, seeds.iterator(), p -> null, () -> 1);
     assertEquals(WiredDiscovery.State.FAILED, finish(discovery).state());
-  }
-
-  @Test
-  void commonSchedulerReschedulesAndRejectedAdmissionCancels() {
-    var scheduler =
-        new FairScheduler(FairScheduler.Limits.defaults(), () -> 0, f -> fail(f.diagnostic()));
-    var discovery = job(branch(), 1);
-    var task = new DiscoveryTask(scheduler, id(100), id(101), "discovery", discovery, 1);
-    assertEquals(FairScheduler.Admission.ACCEPTED, task.submit());
-    for (int i = 0; i < 100 && scheduler.backlog() > 0; i++) scheduler.tick();
-    assertEquals(0, scheduler.backlog());
-    assertEquals(
-        NetworkTopology.Status.VALID, discovery.publishedTopology().membership(id(3)).status());
-    var limited =
-        new FairScheduler(
-            new FairScheduler.Limits(1, 1, 1, 1, 1, 1, 1, 1, 1, 100),
-            () -> 0,
-            f -> fail(f.diagnostic()));
-    var rejected = job(branch(), 1);
-    var denied = new DiscoveryTask(limited, id(100), id(101), "discovery", rejected, 2);
-    assertEquals(FairScheduler.Admission.COST_LIMIT, denied.submit());
-    assertFalse(denied.diagnostic().isEmpty());
-    assertEquals(WiredDiscovery.State.CANCELLED, rejected.advance(1).state());
-    assertEquals(0, limited.backlog());
   }
 }
