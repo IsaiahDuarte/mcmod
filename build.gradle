@@ -501,6 +501,8 @@ tasks.register('checkGeneratedResources') {
     }
 }
 tasks.named('runDataCheck') { doFirst { delete file('build/generated-check') } }
+// Regenerate from scratch: the generator's hash cache would skip hand-edited or orphaned files.
+tasks.named('runData') { doFirst { delete file('src/generated/resources') } }
 tasks.named('check') { dependsOn tasks.named('checkGeneratedResources') }
 
 tasks.named('releaseCheck') {

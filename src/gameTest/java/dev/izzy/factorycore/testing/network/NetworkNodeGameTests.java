@@ -267,15 +267,9 @@ public final class NetworkNodeGameTests {
               == (entry.getKey().equals("network_cable") ? 8 : 1),
           "Bounded expected output");
       helper.assertTrue(
-          helper
-                  .getLevel()
-                  .getServer()
-                  .getAdvancements()
-                  .get(
-                      ResourceLocation.fromNamespaceAndPath(
-                          "factorycore", "recipes/" + entry.getKey()))
-              != null,
-          "Recipe unlock exists");
+          helper.getLevel().getServer().getAdvancements().getAllAdvancements().stream()
+              .anyMatch(advancement -> advancement.value().rewards().recipes().contains(id)),
+          "An advancement unlocks " + id);
     }
     helper.setBlock(FIRST, NetworkContent.CONTROLLER.get());
     helper.assertTrue(

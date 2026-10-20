@@ -23,8 +23,9 @@ specific feedback purpose and bounded rendering cost.
 
 Registry-derived resources are generated, not hand-written: `./gradlew runData`
 (`platform/client/data/FactoryCoreData`) writes every item model except the
-cable's hand-authored geometry, plus the `mineable/pickaxe` and
-`needs_iron_tool` block tags, into `src/generated/resources`. That tree is
+cable's hand-authored geometry, the `mineable/pickaxe` and `needs_iron_tool`
+block tags, and every crafting recipe (one row each in `FactoryCoreData.Recipes`)
+with its unlock advancement, into `src/generated/resources`. That tree is
 committed; `checkGeneratedResources` (part of `check`) fails when it is stale.
 A file lives in exactly one of `src/generated` and `src/main/resources`.
 
