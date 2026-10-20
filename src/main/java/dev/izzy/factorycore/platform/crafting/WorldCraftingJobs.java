@@ -27,9 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.LongUnaryOperator;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
@@ -40,10 +38,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 /**
  * Server-thread autocrafting runtime over canonical {@code CraftingJobs}. Submission plans against
@@ -70,6 +65,7 @@ public final class WorldCraftingJobs {
   private record Cell(DeviceRegistry.Handle handle, long available) {}
 
   private final MinecraftServer server;
+  private final MachineIo io;
   private final Map<UUID, Long> retryAt = new HashMap<>();
   private final Map<UUID, RecipeHolder<CraftingRecipe>> recipes = new HashMap<>();
   private final Map<UUID, ArrayDeque<Notice>> notices = new HashMap<>();
@@ -82,6 +78,7 @@ public final class WorldCraftingJobs {
 
   private WorldCraftingJobs(MinecraftServer server) {
     this.server = server;
+    io = new MachineIo(server, job -> anchor(job, null));
   }
 
   public static WorldCraftingJobs get(MinecraftServer server) {
@@ -489,11 +486,11 @@ public final class WorldCraftingJobs {
         && reachable(holder, offer.pattern())) {
       var outputs = expected(offer.pattern());
       var codec = new PlatformResourceCodec(server.registryAccess());
-      var journal = new Journal(job, machine.entity());
+      var journal = new MachineIo.Journal(saved().registry().world(), job, machine.entity());
       try {
-        if (holder.machine() != null) collect(job, outputs, holder.machine(), codec, journal);
+        if (holder.machine() != null) io.collect(job, outputs, holder.machine(), codec, journal);
         if (holder.fluidMachine() != null)
-          collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
+          io.collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
       } catch (RuntimeException uncertain) {
         // The journal keeps its pending mark; nothing is retried or refunded.
         job.waiting("uncertain");
@@ -564,24 +561,6 @@ public final class WorldCraftingJobs {
   }
 
   /** Journals each real machine call: pending before it starts, settled after it returns. */
-  private final class Journal {
-    private final CraftingJob job;
-    private final BlockEntity machine;
-
-    Journal(CraftingJob job, BlockEntity machine) {
-      this.job = job;
-      this.machine = machine;
-    }
-
-    void begin() {
-      ProcessingJournal.write(machine, saved().registry().world(), job.id(), job.dispatch(), true);
-    }
-
-    void settle() {
-      ProcessingJournal.write(machine, saved().registry().world(), job.id(), job.dispatch(), false);
-    }
-  }
-
   private WorldCrafting.Offer findDispatched(CraftingJob job) {
     int index = job.current();
     if (index < 0) return null;
@@ -703,7 +682,7 @@ public final class WorldCraftingJobs {
     return false;
   }
 
-  private static ResourceKey keyOf(PlatformResourceCodec codec, ItemStack stack) {
+  static ResourceKey keyOf(PlatformResourceCodec codec, ItemStack stack) {
     try {
       return codec.itemKey(stack);
     } catch (IllegalArgumentException unsupported) {
@@ -736,7 +715,7 @@ public final class WorldCraftingJobs {
       if (admission != OperationResult.Reason.OK) return "reserved";
       for (var key : outputs.keySet())
         if (key.kind() == ResourceKind.FLUID
-            ? containsFluid(holder.fluidMachine(), key)
+            ? MachineIo.containsFluid(holder.fluidMachine(), key)
             : contains(holder.machine(), key, codec)) return "output_not_clean";
       var blocked = journalBlocks(job, machineTarget(holder));
       if (blocked != null) return blocked;
@@ -767,15 +746,15 @@ public final class WorldCraftingJobs {
     if (machine == null) return "machine_missing";
     var disagreement = journalCheck(job, machine);
     if (disagreement != null) return disagreement;
-    var journal = new Journal(job, machine);
+    var journal = new MachineIo.Journal(saved().registry().world(), job, machine);
     try {
       if (holder.machine() != null) {
-        insert(job, pattern.inputs(), holder.machine(), codec, journal);
-        collect(job, outputs, holder.machine(), codec, journal);
+        io.insert(job, pattern.inputs(), holder.machine(), codec, journal);
+        io.collect(job, outputs, holder.machine(), codec, journal);
       }
       if (holder.fluidMachine() != null) {
-        insertFluids(job, pattern.inputs(), holder.fluidMachine(), codec, journal);
-        collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
+        io.insertFluids(job, pattern.inputs(), holder.fluidMachine(), codec, journal);
+        io.collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
       }
     } catch (RuntimeException uncertain) {
       // The started call's outcome is unknown: its pending journal mark stays with the machine's
@@ -802,128 +781,6 @@ public final class WorldCraftingJobs {
     boolean fluids = keys.stream().anyMatch(key -> key.kind() == ResourceKind.FLUID);
     if (keys.stream().anyMatch(key -> key.kind() == ResourceKind.ENERGY)) return false;
     return (!items || holder.machine() != null) && (!fluids || holder.fluidMachine() != null);
-  }
-
-  private static boolean containsFluid(IFluidHandler tanks, ResourceKey key) {
-    for (int tank = 0; tank < tanks.getTanks(); tank++) {
-      var present = tanks.getFluidInTank(tank);
-      if (!present.isEmpty()
-          && key.registryId().equals(BuiltInRegistries.FLUID.getKey(present.getFluid()).toString()))
-        return true;
-    }
-    return false;
-  }
-
-  /** Fills exactly what the machine accepts of each staged fluid input; the rest stays staged. */
-  private void insertFluids(
-      CraftingJob job,
-      Map<ResourceKey, Long> inputs,
-      IFluidHandler tanks,
-      PlatformResourceCodec codec,
-      Journal journal) {
-    tanks = meteredFluids(job, tanks, codec);
-    if (tanks == null) return;
-    for (var input : inputs.entrySet()) {
-      if (input.getKey().kind() != ResourceKind.FLUID) continue;
-      long remaining =
-          Math.min(
-              input.getValue() - job.dispatch().inserted().getOrDefault(input.getKey(), 0L),
-              job.stagedAmount(input.getKey()));
-      if (remaining <= 0) continue;
-      var offer = codec.fluidStack(input.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
-      journal.begin();
-      int accepted = tanks.fill(offer, IFluidHandler.FluidAction.EXECUTE);
-      if (accepted > remaining)
-        throw new IllegalStateException("Machine accepted more fluid than offered");
-      if (accepted > 0) job.inserted(input.getKey(), accepted);
-      journal.settle();
-    }
-  }
-
-  /** Drains only the expected fluid outputs from the leased machine into job staging. */
-  private void collectFluids(
-      CraftingJob job,
-      Map<ResourceKey, Long> outputs,
-      IFluidHandler tanks,
-      PlatformResourceCodec codec,
-      Journal journal) {
-    tanks = meteredFluids(job, tanks, codec);
-    if (tanks == null) return;
-    for (var output : outputs.entrySet()) {
-      if (output.getKey().kind() != ResourceKind.FLUID) continue;
-      long remaining =
-          output.getValue() - job.dispatch().collected().getOrDefault(output.getKey(), 0L);
-      if (remaining <= 0) continue;
-      var want = codec.fluidStack(output.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
-      if (!containsFluid(tanks, output.getKey())) continue;
-      journal.begin();
-      var got = tanks.drain(want, IFluidHandler.FluidAction.EXECUTE);
-      if (!got.isEmpty()) {
-        if (!codec.fluidKey(got).equals(output.getKey()) || got.getAmount() > remaining)
-          throw new IllegalStateException("Machine drained an unexpected fluid");
-        job.collected(output.getKey(), got.getAmount());
-      }
-      journal.settle();
-    }
-  }
-
-  private void insert(
-      CraftingJob job,
-      Map<ResourceKey, Long> inputs,
-      IItemHandler machine,
-      PlatformResourceCodec codec,
-      Journal journal) {
-    machine = meteredItems(job, machine, codec);
-    if (machine == null) return;
-    for (var input : inputs.entrySet()) {
-      if (input.getKey().kind() != ResourceKind.ITEM) continue;
-      long remaining =
-          Math.min(
-              input.getValue() - job.dispatch().inserted().getOrDefault(input.getKey(), 0L),
-              job.stagedAmount(input.getKey()));
-      while (remaining > 0) {
-        var stack = codec.itemStack(input.getKey(), 1);
-        int size = (int) Math.min(remaining, stack.getMaxStackSize());
-        stack.setCount(size);
-        journal.begin();
-        var rest = ItemHandlerHelper.insertItem(machine, stack, false);
-        int accepted = size - rest.getCount();
-        if (accepted > 0) job.inserted(input.getKey(), accepted);
-        journal.settle();
-        if (accepted <= 0) break;
-        remaining -= accepted;
-      }
-    }
-  }
-
-  /** Extracts expected outputs from the leased machine; anything else extracted is staged too. */
-  private void collect(
-      CraftingJob job,
-      Map<ResourceKey, Long> outputs,
-      IItemHandler machine,
-      PlatformResourceCodec codec,
-      Journal journal) {
-    machine = meteredItems(job, machine, codec);
-    if (machine == null) return;
-    for (var output : outputs.entrySet())
-      for (int slot = 0;
-          output.getKey().kind() == ResourceKind.ITEM && slot < machine.getSlots();
-          slot++) {
-        long remaining =
-            output.getValue() - job.dispatch().collected().getOrDefault(output.getKey(), 0L);
-        if (remaining <= 0) break;
-        var present = machine.getStackInSlot(slot);
-        if (present.isEmpty() || !output.getKey().equals(keyOf(codec, present))) continue;
-        journal.begin();
-        var got = machine.extractItem(slot, (int) Math.min(remaining, present.getCount()), false);
-        if (!got.isEmpty()) {
-          var key = keyOf(codec, got);
-          if (key == null || !key.equals(output.getKey()) || got.getCount() > remaining)
-            throw new IllegalStateException("Machine returned an unexpected stack");
-          job.collected(key, got.getCount());
-        }
-        journal.settle();
-      }
   }
 
   /** Moves reserved units into job staging; stops at offline or moved ledgers. */
@@ -1027,153 +884,6 @@ public final class WorldCraftingJobs {
       job.waiting("full");
       retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
     }
-  }
-
-  /** Job staging resides in its request segment; external machine dispatch is a separate leg. */
-  private long meterMachine(
-      CraftingJob job,
-      ResourceKey key,
-      long amount,
-      boolean simulate,
-      LongUnaryOperator operation) {
-    var origin = anchor(job, null);
-    if (origin == null || job.dispatch() == null) return 0;
-    var machine = job.dispatch().machine();
-    if (simulate) {
-      long offer = networks().movementAvailable(origin, machine, key, amount);
-      return offer == 0 ? 0 : operation.applyAsLong(offer);
-    }
-    var permit = networks().movement(origin, machine, key, amount);
-    if (permit.amount() == 0) {
-      permit.finish(0);
-      return 0;
-    }
-    long actual = operation.applyAsLong(permit.amount());
-    permit.finish(actual);
-    return actual;
-  }
-
-  private IItemHandler meteredItems(
-      CraftingJob job, IItemHandler delegate, PlatformResourceCodec codec) {
-    if (anchor(job, null) == null || job.dispatch() == null) return null;
-    return new IItemHandler() {
-      @Override
-      public int getSlots() {
-        return delegate.getSlots();
-      }
-
-      @Override
-      public ItemStack getStackInSlot(int slot) {
-        return delegate.getStackInSlot(slot);
-      }
-
-      @Override
-      public int getSlotLimit(int slot) {
-        return delegate.getSlotLimit(slot);
-      }
-
-      @Override
-      public boolean isItemValid(int slot, ItemStack stack) {
-        return delegate.isItemValid(slot, stack);
-      }
-
-      @Override
-      public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-        if (stack.isEmpty()) return ItemStack.EMPTY;
-        long accepted =
-            meterMachine(
-                job,
-                codec.itemKey(stack),
-                stack.getCount(),
-                simulate,
-                offered -> {
-                  var rest =
-                      delegate.insertItem(slot, stack.copyWithCount((int) offered), simulate);
-                  if (!rest.isEmpty() && !ItemStack.isSameItemSameComponents(rest, stack))
-                    throw new IllegalStateException(
-                        "Processing handler changed an offered identity");
-                  return offered - rest.getCount();
-                });
-        return stack.copyWithCount(stack.getCount() - (int) accepted);
-      }
-
-      @Override
-      public ItemStack extractItem(int slot, int amount, boolean simulate) {
-        var present = delegate.getStackInSlot(slot);
-        if (present.isEmpty()) return ItemStack.EMPTY;
-        var extracted = new ItemStack[] {ItemStack.EMPTY};
-        meterMachine(
-            job,
-            codec.itemKey(present),
-            amount,
-            simulate,
-            offered -> {
-              extracted[0] = delegate.extractItem(slot, (int) offered, simulate);
-              return extracted[0].getCount();
-            });
-        return extracted[0];
-      }
-    };
-  }
-
-  private IFluidHandler meteredFluids(
-      CraftingJob job, IFluidHandler delegate, PlatformResourceCodec codec) {
-    if (anchor(job, null) == null || job.dispatch() == null) return null;
-    return new IFluidHandler() {
-      @Override
-      public int getTanks() {
-        return delegate.getTanks();
-      }
-
-      @Override
-      public FluidStack getFluidInTank(int tank) {
-        return delegate.getFluidInTank(tank);
-      }
-
-      @Override
-      public int getTankCapacity(int tank) {
-        return delegate.getTankCapacity(tank);
-      }
-
-      @Override
-      public boolean isFluidValid(int tank, FluidStack stack) {
-        return delegate.isFluidValid(tank, stack);
-      }
-
-      @Override
-      public int fill(FluidStack stack, FluidAction action) {
-        if (stack.isEmpty()) return 0;
-        return (int)
-            meterMachine(
-                job,
-                codec.fluidKey(stack),
-                stack.getAmount(),
-                action.simulate(),
-                offered -> delegate.fill(stack.copyWithAmount((int) offered), action));
-      }
-
-      @Override
-      public FluidStack drain(FluidStack stack, FluidAction action) {
-        if (stack.isEmpty()) return FluidStack.EMPTY;
-        var got = new FluidStack[] {FluidStack.EMPTY};
-        meterMachine(
-            job,
-            codec.fluidKey(stack),
-            stack.getAmount(),
-            action.simulate(),
-            offered -> {
-              got[0] = delegate.drain(stack.copyWithAmount((int) offered), action);
-              return got[0].getAmount();
-            });
-        return got[0];
-      }
-
-      @Override
-      public FluidStack drain(int amount, FluidAction action) {
-        var present = delegate.drain(amount, FluidAction.SIMULATE);
-        return present.isEmpty() ? present : drain(present, action);
-      }
-    };
   }
 
   private void checkThread() {
