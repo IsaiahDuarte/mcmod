@@ -15,6 +15,7 @@ import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformFilterTags;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -29,8 +30,6 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -1618,13 +1617,10 @@ public final class WorldStorageTransfers {
   private BufferedInterfaceEntity physical(Buffered endpoint, boolean ownedReturn) {
     var location = saved.nodes().definition(endpoint.handle()).position();
     if (location == null) return null;
-    var level =
-        server.getLevel(
-            net.minecraft.resources.ResourceKey.create(
-                Registries.DIMENSION, ResourceLocation.parse(location.dimension())));
+    var level = server.getLevel(Loaded.dimension(location.dimension()));
     if (level == null) return null;
     var position = BlockPos.of(location.block());
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var chunk = Loaded.chunk(level, position);
     if (chunk == null
         || !(chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK)
             instanceof BufferedInterfaceEntity holder)
@@ -1676,13 +1672,11 @@ public final class WorldStorageTransfers {
   private BlockEntity physical(DeviceRegistry.Handle handle) {
     var location = saved.registry().definition(handle).location();
     if (location == null) return null;
-    var dimension =
-        net.minecraft.resources.ResourceKey.create(
-            Registries.DIMENSION, ResourceLocation.parse(location.dimension()));
+    var dimension = Loaded.dimension(location.dimension());
     ServerLevel level = server.getLevel(dimension);
     if (level == null) return null;
     var position = BlockPos.of(location.position());
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var chunk = Loaded.chunk(level, position);
     if (chunk == null) return null;
     var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
     if (entity == null || entity.isRemoved()) return null;

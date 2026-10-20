@@ -12,6 +12,7 @@ import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.FactoryCoreConfig;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.ConnectorEntity;
@@ -36,8 +37,6 @@ import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -483,7 +482,7 @@ public final class WorldNetworks {
     }
     var level = level(position.dimension());
     var block = BlockPos.of(position.block());
-    var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+    var chunk = Loaded.chunk(level, block);
     assign(position, region);
     if (chunk == null) return;
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
@@ -705,9 +704,7 @@ public final class WorldNetworks {
   }
 
   private ServerLevel level(String dimension) {
-    var key =
-        net.minecraft.resources.ResourceKey.create(
-            Registries.DIMENSION, ResourceLocation.parse(dimension));
+    var key = Loaded.dimension(dimension);
     var level = server.getLevel(key);
     if (level == null) throw new IllegalStateException("Unknown networking dimension");
     return level;

@@ -11,6 +11,7 @@ import dev.izzy.factorycore.core.resource.TransferContext;
 import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.ItemBuffer;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.BufferedItemHandler;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -21,13 +22,10 @@ import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
@@ -119,10 +117,7 @@ public final class BufferedInterfaceEntity extends BlockEntity implements MenuPr
   }
 
   private boolean physicallyCurrent() {
-    var chunk =
-        serverLevel()
-            .getChunkSource()
-            .getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    var chunk = Loaded.chunk(serverLevel(), worldPosition);
     return chunk != null
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }
@@ -222,14 +217,9 @@ public final class BufferedInterfaceEntity extends BlockEntity implements MenuPr
         || saved.transfers().unresolved(expected.id()) != null)
       throw new IllegalStateException("Buffer lease cannot be adopted");
     var old = owner.position();
-    var oldLevel =
-        server
-            .getServer()
-            .getLevel(
-                ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(old.dimension())));
+    var oldLevel = server.getServer().getLevel(Loaded.dimension(old.dimension()));
     var oldPos = BlockPos.of(old.block());
-    if (oldLevel == null
-        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
       throw new IllegalStateException("Old canonical holder must be loaded");
     if (oldLevel.getBlockEntity(oldPos) instanceof BufferedInterfaceEntity previous
         && previous.state != null

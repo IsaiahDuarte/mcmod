@@ -12,6 +12,7 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.MachinePresets;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.EnergyHandlerPort;
@@ -37,8 +38,6 @@ import java.util.function.LongSupplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.CompoundContainer;
@@ -103,13 +102,10 @@ public final class WorldConnectors {
         || node.kind() == NodeRegistry.Kind.MACHINE_INTERFACE
             && !from.scope().segment().equals(target.scope().segment()))
       return new Registration(OperationResult.Reason.DENIED, null);
-    var level =
-        server.getLevel(
-            net.minecraft.resources.ResourceKey.create(
-                Registries.DIMENSION, ResourceLocation.parse(position.dimension())));
+    var level = server.getLevel(Loaded.dimension(position.dimension()));
     if (level == null) return new Registration(OperationResult.Reason.OFFLINE, null);
     var block = BlockPos.of(position.block());
-    var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+    var chunk = Loaded.chunk(level, block);
     if (chunk == null
         || !(chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK)
             instanceof ConnectorEntity owner)
@@ -474,13 +470,10 @@ public final class WorldConnectors {
     if (saved.nodes().validate(handle.connector()) != NodeRegistry.Failure.OK) return null;
     var location = saved.nodes().definition(handle.connector()).position();
     if (location == null) return null;
-    var level =
-        server.getLevel(
-            net.minecraft.resources.ResourceKey.create(
-                Registries.DIMENSION, ResourceLocation.parse(location.dimension())));
+    var level = server.getLevel(Loaded.dimension(location.dimension()));
     if (level == null) return null;
     var position = BlockPos.of(location.block());
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var chunk = Loaded.chunk(level, position);
     if (chunk == null
         || !(chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK)
             instanceof ConnectorEntity owner)
@@ -496,13 +489,10 @@ public final class WorldConnectors {
     try {
       var location = saved.nodes().definition(connector).position();
       if (location == null) return new Registration(OperationResult.Reason.OFFLINE, null);
-      var level =
-          server.getLevel(
-              net.minecraft.resources.ResourceKey.create(
-                  Registries.DIMENSION, ResourceLocation.parse(location.dimension())));
+      var level = server.getLevel(Loaded.dimension(location.dimension()));
       if (level == null) return new Registration(OperationResult.Reason.OFFLINE, null);
       var position = BlockPos.of(location.block());
-      var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+      var chunk = Loaded.chunk(level, position);
       if (chunk == null
           || !(chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK)
               instanceof ConnectorEntity owner)
@@ -789,13 +779,11 @@ public final class WorldConnectors {
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   public OperationResult.Reason processingAdmission(NodeRegistry.Position target) {
     checkThread();
-    var dimension =
-        net.minecraft.resources.ResourceKey.create(
-            Registries.DIMENSION, ResourceLocation.parse(target.dimension()));
+    var dimension = Loaded.dimension(target.dimension());
     var level = server.getLevel(dimension);
     if (level == null) return OperationResult.Reason.RESERVED;
     var position = BlockPos.of(target.block());
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var chunk = Loaded.chunk(level, position);
     if (chunk == null) return OperationResult.Reason.RESERVED;
     var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
     if (entity == null) return OperationResult.Reason.OK;
@@ -809,11 +797,7 @@ public final class WorldConnectors {
         var ids = new ArrayList<UUID>();
         for (var provider : providers) {
           var block = BlockPos.of(provider.position().block());
-          var partChunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
-          var part =
-              partChunk == null
-                  ? null
-                  : partChunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
+          var part = Loaded.blockEntity(level, block);
           if (part == null) return OperationResult.Reason.RESERVED;
           var id =
               ExternalProviderIdentity.read(
@@ -850,18 +834,11 @@ public final class WorldConnectors {
   public Map<ResourceKind, UUID> processingIdentity(
       NodeRegistry.Position target, boolean initialize) {
     checkThread();
-    var dimension =
-        net.minecraft.resources.ResourceKey.create(
-            Registries.DIMENSION, ResourceLocation.parse(target.dimension()));
+    var dimension = Loaded.dimension(target.dimension());
     var level = server.getLevel(dimension);
     if (level == null) return Map.of();
     var position = BlockPos.of(target.block());
-    var targetChunk =
-        level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
-    var targetEntity =
-        targetChunk == null
-            ? null
-            : targetChunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
+    var targetEntity = Loaded.blockEntity(level, position);
     if (!(targetEntity instanceof ExternalBackingProvider)
         && !(targetEntity instanceof Container
             && targetEntity
@@ -879,11 +856,7 @@ public final class WorldConnectors {
         var types = new StringBuilder();
         for (var member : members) {
           var block = BlockPos.of(member.position().block());
-          var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
-          var entity =
-              chunk == null
-                  ? null
-                  : chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
+          var entity = Loaded.blockEntity(level, block);
           if (entity == null || entity.isRemoved()) return Map.of();
           var id = identities.get(entity);
           if (id == null) {
@@ -1049,11 +1022,7 @@ public final class WorldConnectors {
     UUID world = saved.registry().world();
     for (var provider : selected) {
       var position = BlockPos.of(provider.position().block());
-      var chunk =
-          owner
-              .serverLevel()
-              .getChunkSource()
-              .getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+      var chunk = Loaded.chunk(owner.serverLevel(), position);
       if (chunk == null) throw new IllegalStateException("Provider component unloaded");
       var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
       if (entity == null || entity.isRemoved())
@@ -1085,11 +1054,7 @@ public final class WorldConnectors {
     if (!sided && handler.getClass() != InvWrapper.class) return false;
     for (var provider : selected) {
       var position = BlockPos.of(provider.position().block());
-      var chunk =
-          owner
-              .serverLevel()
-              .getChunkSource()
-              .getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+      var chunk = Loaded.chunk(owner.serverLevel(), position);
       if (chunk == null) return false;
       var entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
       if (!(sided ? sidedView(handler, entity) : invView(handler, entity))) return false;
@@ -1115,11 +1080,7 @@ public final class WorldConnectors {
 
   private BlockEntity providerEntity(ConnectorEntity owner) {
     var position = owner.getBlockPos().relative(owner.targetDirection());
-    var chunk =
-        owner
-            .serverLevel()
-            .getChunkSource()
-            .getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var chunk = Loaded.chunk(owner.serverLevel(), position);
     return chunk == null
         ? null
         : chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
@@ -1142,7 +1103,7 @@ public final class WorldConnectors {
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   private List<Provider> providerPositions(
       ServerLevel level, BlockPos position, ResourceKind kind) {
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var chunk = Loaded.chunk(level, position);
     if (chunk == null) return null;
     BlockEntity entity = chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK);
     if (entity instanceof EnergyBankEntity
@@ -1168,7 +1129,7 @@ public final class WorldConnectors {
       if (!copied.contains(position) || new HashSet<>(copied).size() != copied.size())
         throw new IllegalArgumentException("Invalid provider backing description");
       for (var block : copied) {
-        var backingChunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+        var backingChunk = Loaded.chunk(level, block);
         if (backingChunk == null) return null;
         var part = backingChunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
         if (part instanceof EnergyBankEntity
@@ -1195,8 +1156,7 @@ public final class WorldConnectors {
     if (!(state.getBlock() instanceof ChestBlock)
         || state.getValue(ChestBlock.TYPE) == ChestType.SINGLE) return List.of(first);
     var otherPosition = position.relative(ChestBlock.getConnectedDirection(state));
-    var otherChunk =
-        level.getChunkSource().getChunkNow(otherPosition.getX() >> 4, otherPosition.getZ() >> 4);
+    var otherChunk = Loaded.chunk(level, otherPosition);
     if (otherChunk == null) return null;
     var second =
         new Provider(

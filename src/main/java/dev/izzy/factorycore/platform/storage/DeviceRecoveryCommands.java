@@ -6,11 +6,11 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import java.io.IOException;
 import java.util.*;
 import net.minecraft.commands.*;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.*;
 import net.minecraft.server.MinecraftServer;
@@ -90,7 +90,7 @@ final class DeviceRecoveryCommands {
       if (owner == null || !matches(owner, bank) || owner.handle().generation() != generation)
         throw new IllegalStateException("Canonical lease changed");
       var level = source.getLevel();
-      if (level.getChunkSource().getChunkNow(drive.getX() >> 4, drive.getZ() >> 4) == null)
+      if (Loaded.chunk(level, drive) == null)
         throw new IllegalStateException("Adopting holder unavailable");
       var entity = level.getBlockEntity(drive);
       if (!(bank ? entity instanceof EnergyBankEntity : entity instanceof StorageDriveEntity))
@@ -251,13 +251,9 @@ final class DeviceRecoveryCommands {
           || saved.transfers().unresolved(owner.handle().backing()) != null)
         throw new IllegalStateException("Conflict changed or transfer unresolved");
       var location = owner.definition().location();
-      var level =
-          server.getLevel(
-              ResourceKey.create(
-                  Registries.DIMENSION, ResourceLocation.parse(location.dimension())));
+      var level = server.getLevel(Loaded.dimension(location.dimension()));
       var pos = BlockPos.of(location.position());
-      if (level == null
-          || level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null)
+      if (level == null || Loaded.chunk(level, pos) == null)
         throw new IllegalStateException("Canonical holder unavailable");
       if (!admitRepair(source)) return 0;
       var holder = level.getBlockEntity(pos);

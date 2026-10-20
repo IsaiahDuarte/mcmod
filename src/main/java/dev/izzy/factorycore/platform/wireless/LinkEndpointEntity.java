@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.wireless;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.resource.WirelessBudget;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.NetworkNodeBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -142,7 +143,7 @@ public final class LinkEndpointEntity extends BlockEntity {
   public boolean touchesGateway() {
     if (!(level instanceof ServerLevel server)) return false;
     var neighbor = worldPosition.relative(back());
-    var chunk = server.getChunkSource().getChunkNow(neighbor.getX() >> 4, neighbor.getZ() >> 4);
+    var chunk = Loaded.chunk(server, neighbor);
     return chunk != null
         && chunk.getBlockState(neighbor).getBlock() instanceof NetworkNodeBlock node
         && node.kind() == NodeRegistry.Kind.GATEWAY;
@@ -150,7 +151,7 @@ public final class LinkEndpointEntity extends BlockEntity {
 
   /** The loaded endpoint at {@code position}, without loading its chunk. */
   static LinkEndpointEntity loaded(ServerLevel level, BlockPos position) {
-    var chunk = level.getChunkSource().getChunkNow(position.getX() >> 4, position.getZ() >> 4);
+    var chunk = Loaded.chunk(level, position);
     return chunk != null
             && chunk.getBlockEntity(position, LevelChunk.EntityCreationType.CHECK)
                 instanceof LinkEndpointEntity link
@@ -227,8 +228,7 @@ public final class LinkEndpointEntity extends BlockEntity {
 
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel server)) return false;
-    var chunk =
-        server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    var chunk = Loaded.chunk(server, worldPosition);
     return chunk != null
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }

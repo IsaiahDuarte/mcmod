@@ -17,6 +17,7 @@ import dev.izzy.factorycore.core.resource.StagedTransfer;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.wasm.WasmProgram;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
@@ -468,7 +469,7 @@ public final class WorldPrograms {
     for (var level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(position.dimension())) continue;
       var pos = BlockPos.of(position.block());
-      if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) return null;
+      if (Loaded.chunk(level, pos) == null) return null;
       if (!(level.getBlockEntity(pos) instanceof MachineInterfaceEntity owner)) return null;
       var target = networks().membership(owner.position());
       var origin = networks().membership(controller.origin());

@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.program.ProgramIr;
 import dev.izzy.factorycore.core.program.ProgramLog;
 import dev.izzy.factorycore.core.wasm.WasmPreflight;
 import dev.izzy.factorycore.core.wasm.WasmProgram;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.util.List;
@@ -277,8 +278,7 @@ public final class ProgramControllerEntity extends BlockEntity {
 
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel server)) return false;
-    var chunk =
-        server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    var chunk = Loaded.chunk(server, worldPosition);
     return chunk != null
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }

@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.GatewayPolicy;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.network.WiredDiscovery;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.crafting.PatternHolderEntity;
 import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
@@ -51,7 +52,7 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
     if (!position.dimension().equals(level.dimension().location().toString()))
       throw new IllegalArgumentException("Foreign discovery dimension");
     var block = BlockPos.of(position.block());
-    var chunk = level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4);
+    var chunk = Loaded.chunk(level, block);
     if (chunk == null) {
       var previous = cached.apply(position);
       return previous == null ? null : previous.unloaded();

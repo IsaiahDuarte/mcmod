@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.*;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -39,10 +40,7 @@ public final class TerminalEntity extends BlockEntity implements MenuProvider, T
 
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel)) return false;
-    var chunk =
-        serverLevel()
-            .getChunkSource()
-            .getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    var chunk = Loaded.chunk(serverLevel(), worldPosition);
     return chunk != null
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }

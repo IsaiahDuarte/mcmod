@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.crafting;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -80,8 +81,7 @@ public abstract class PatternHolderEntity extends BlockEntity {
   /** True while this exact holder is the loaded block entity at its position. */
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel server)) return false;
-    var chunk =
-        server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    var chunk = Loaded.chunk(server, worldPosition);
     return chunk != null
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }

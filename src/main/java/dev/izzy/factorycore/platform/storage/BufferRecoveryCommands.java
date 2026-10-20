@@ -4,14 +4,12 @@ import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import java.io.IOException;
 import java.util.UUID;
 import net.minecraft.commands.*;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 
 /** Bounded operator inspection and exact original-holder repair, never preset deployment. */
 final class BufferRecoveryCommands {
@@ -82,7 +80,7 @@ final class BufferRecoveryCommands {
           || owner.generation() != generation)
         throw new IllegalStateException("Canonical buffer changed");
       var level = source.getLevel();
-      if (level.getChunkSource().getChunkNow(at.getX() >> 4, at.getZ() >> 4) == null
+      if (Loaded.chunk(level, at) == null
           || !(level.getBlockEntity(at) instanceof BufferedInterfaceEntity buffer))
         throw new IllegalStateException("Adopting buffer unavailable");
       if (!DeviceRecoveryCommands.admitRepair(source)) return 0;
@@ -192,13 +190,10 @@ final class BufferRecoveryCommands {
           || saved.transfers().unresolved(id) != null)
         throw new IllegalStateException("Expected conflict unavailable");
       var position = owner.position();
-      var level =
-          server.getLevel(
-              ResourceKey.create(
-                  Registries.DIMENSION, ResourceLocation.parse(position.dimension())));
+      var level = server.getLevel(Loaded.dimension(position.dimension()));
       var pos = BlockPos.of(position.block());
       if (level == null
-          || level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null
+          || Loaded.chunk(level, pos) == null
           || !(level.getBlockEntity(pos) instanceof BufferedInterfaceEntity buffer))
         throw new IllegalStateException("Original canonical buffer not loaded");
       if (!DeviceRecoveryCommands.admitRepair(source)) return 0;

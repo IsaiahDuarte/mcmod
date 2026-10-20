@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.wireless;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -99,8 +100,7 @@ public final class AccessPointEntity extends BlockEntity {
 
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel server)) return false;
-    var chunk =
-        server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    var chunk = Loaded.chunk(server, worldPosition);
     return chunk != null
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }

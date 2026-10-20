@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.crafting;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import java.io.IOException;
@@ -70,7 +71,7 @@ public final class ProcessingRecoveryCommands {
       source.sendFailure(Component.translatable("command.factorycore.recovery.unavailable"));
       return 0;
     }
-    var chunk = level.getChunkSource().getChunkNow(at.getX() >> 4, at.getZ() >> 4);
+    var chunk = Loaded.chunk(level, at);
     if (chunk == null) {
       fail(source, "unloaded");
       return 0;

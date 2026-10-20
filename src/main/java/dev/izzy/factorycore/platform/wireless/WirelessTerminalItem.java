@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.wireless;
 
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import java.util.List;
 import net.minecraft.ChatFormatting;
@@ -68,7 +69,7 @@ public final class WirelessTerminalItem extends Item {
       return "out_of_range";
     var pos = BlockPos.of(binding.position());
     var level = player.serverLevel();
-    if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null
+    if (Loaded.chunk(level, pos) == null
         || !(level.getBlockEntity(pos) instanceof AccessPointEntity point)) return "missing";
     if (point.energy() < AccessPointEntity.TICK_COST) return "no_power";
     var access = new WirelessAccess(point, hand);

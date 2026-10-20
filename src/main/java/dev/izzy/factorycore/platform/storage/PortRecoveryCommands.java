@@ -4,14 +4,12 @@ import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import java.io.IOException;
 import java.util.UUID;
 import net.minecraft.commands.*;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 
 /**
  * Bounded operator inspection and exact original-holder repair, never permission/policy editing.
@@ -83,7 +81,7 @@ final class PortRecoveryCommands {
           || owner.generation() != generation
           || owner.kind() != NodeRegistry.Kind.CONNECTOR
               && owner.kind() != NodeRegistry.Kind.MACHINE_INTERFACE
-          || level.getChunkSource().getChunkNow(at.getX() >> 4, at.getZ() >> 4) == null
+          || Loaded.chunk(level, at) == null
           || !(level.getBlockEntity(at) instanceof ConnectorEntity port))
         throw new IllegalStateException("Adopting port unavailable");
       if (!DeviceRecoveryCommands.admitRepair(source)) return 0;
@@ -196,13 +194,10 @@ final class PortRecoveryCommands {
           || saved.transfers().unresolvedDevice(id) != null)
         throw new IllegalStateException("Expected conflict unavailable");
       var position = owner.position();
-      var level =
-          server.getLevel(
-              ResourceKey.create(
-                  Registries.DIMENSION, ResourceLocation.parse(position.dimension())));
+      var level = server.getLevel(Loaded.dimension(position.dimension()));
       var pos = BlockPos.of(position.block());
       if (level == null
-          || level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null
+          || Loaded.chunk(level, pos) == null
           || !(level.getBlockEntity(pos) instanceof ConnectorEntity port))
         throw new IllegalStateException("Original canonical port not loaded");
       if (!DeviceRecoveryCommands.admitRepair(source)) return 0;

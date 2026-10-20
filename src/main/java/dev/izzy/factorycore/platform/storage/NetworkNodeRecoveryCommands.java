@@ -4,15 +4,13 @@ import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import java.io.IOException;
 import java.util.UUID;
 import net.minecraft.commands.*;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 
 /**
  * Bounded operator inspection and exact original-holder repair, never permission/policy editing.
@@ -86,7 +84,7 @@ final class NetworkNodeRecoveryCommands {
           || owner.generation() != generation)
         throw new IllegalStateException("Canonical node changed");
       var level = source.getLevel();
-      if (level.getChunkSource().getChunkNow(at.getX() >> 4, at.getZ() >> 4) == null
+      if (Loaded.chunk(level, at) == null
           || !(level.getBlockEntity(at) instanceof NetworkNodeEntity node))
         throw new IllegalStateException("Adopting node unavailable");
       if (!DeviceRecoveryCommands.admitRepair(source)) return 0;
@@ -205,13 +203,10 @@ final class NetworkNodeRecoveryCommands {
           || saved.transfers().unresolvedDevice(id) != null)
         throw new IllegalStateException("Expected conflict unavailable");
       var position = owner.position();
-      var level =
-          server.getLevel(
-              ResourceKey.create(
-                  Registries.DIMENSION, ResourceLocation.parse(position.dimension())));
+      var level = server.getLevel(Loaded.dimension(position.dimension()));
       var pos = BlockPos.of(position.block());
       if (level == null
-          || level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null
+          || Loaded.chunk(level, pos) == null
           || !(level.getBlockEntity(pos) instanceof NetworkNodeEntity node))
         throw new IllegalStateException("Original canonical node not loaded");
       if (!DeviceRecoveryCommands.admitRepair(source)) return 0;

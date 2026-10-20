@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -10,13 +11,10 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
@@ -120,8 +118,7 @@ public final class StorageDriveEntity extends BlockEntity {
     if (!(level instanceof ServerLevel server)
         || isRemoved()
         || rejected != null
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
+        || Loaded.chunk(server, worldPosition) == null
         || server.getBlockEntity(worldPosition) != this)
       throw new IllegalStateException("Canonical drive must be loaded and readable");
     var saved = DeviceSavedData.get(server.getServer());
@@ -178,8 +175,7 @@ public final class StorageDriveEntity extends BlockEntity {
     if (!(level instanceof ServerLevel server)
         || isRemoved()
         || rejected != null
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
+        || Loaded.chunk(server, worldPosition) == null
         || server.getBlockEntity(worldPosition) != this)
       throw new IllegalStateException("Adopting drive must be loaded and readable");
     var saved = DeviceSavedData.get(server.getServer());
@@ -204,15 +200,9 @@ public final class StorageDriveEntity extends BlockEntity {
         || item.tier().infinite() != owner.definition().infinite())
       throw new IllegalStateException("Exact mismatched cell reference required");
     var canonical = owner.definition().location();
-    var oldLevel =
-        server
-            .getServer()
-            .getLevel(
-                ResourceKey.create(
-                    Registries.DIMENSION, ResourceLocation.parse(canonical.dimension())));
+    var oldLevel = server.getServer().getLevel(Loaded.dimension(canonical.dimension()));
     var oldPos = BlockPos.of(canonical.position());
-    if (oldLevel == null
-        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
       throw new IllegalStateException("Old canonical holder must be loaded");
     if (oldLevel.getBlockEntity(oldPos) instanceof StorageDriveEntity old) {
       for (int index = 0; index < old.cells.length; index++) {

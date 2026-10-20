@@ -13,6 +13,7 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.WirelessBudget;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
@@ -522,7 +523,7 @@ public final class WorldCraftingJobs {
     for (var level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(target.dimension())) continue;
       var pos = BlockPos.of(target.block());
-      var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+      var chunk = Loaded.chunk(level, pos);
       if (chunk == null) return new BlockEntityRef(false, null);
       var entity = chunk.getBlockEntity(pos, LevelChunk.EntityCreationType.CHECK);
       return new BlockEntityRef(true, entity == null || entity.isRemoved() ? null : entity);
@@ -653,7 +654,7 @@ public final class WorldCraftingJobs {
     for (var level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(position.dimension())) continue;
       var pos = BlockPos.of(position.block());
-      if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) return null;
+      if (Loaded.chunk(level, pos) == null) return null;
       return level.getBlockEntity(pos) instanceof CraftingInterfaceEntity holder && holder.current()
           ? holder
           : null;

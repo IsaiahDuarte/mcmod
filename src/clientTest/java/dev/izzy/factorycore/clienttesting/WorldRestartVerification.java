@@ -4,6 +4,7 @@ import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.*;
 
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.MachinePresets;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
@@ -209,11 +210,7 @@ final class WorldRestartVerification {
                 reopenDiagnostic.set("player absent");
                 return;
               }
-              var chunk =
-                  player
-                      .serverLevel()
-                      .getChunkSource()
-                      .getChunkNow(MACHINE.getX() >> 4, MACHINE.getZ() >> 4);
+              var chunk = Loaded.chunk(player.serverLevel(), MACHINE);
               var entity = chunk == null ? null : chunk.getBlockEntity(MACHINE);
               var machine = entity instanceof MachineInterfaceEntity found ? found : null;
               boolean canUse = machine != null && machine.canUse(player);

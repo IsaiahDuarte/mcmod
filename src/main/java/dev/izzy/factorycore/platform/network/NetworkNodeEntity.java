@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import java.io.IOException;
@@ -10,13 +11,10 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -100,8 +98,7 @@ public final class NetworkNodeEntity extends BlockEntity {
     if (!(level instanceof ServerLevel server)
         || !server.getServer().isSameThread()
         || isRemoved()
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
+        || Loaded.chunk(server, worldPosition) == null
         || server.getBlockEntity(worldPosition) != this
         || !expected.equals(handle)
         || !expected.equals(NodeHandleData.read(data))
@@ -153,8 +150,7 @@ public final class NetworkNodeEntity extends BlockEntity {
     if (!(level instanceof ServerLevel server)
         || !server.getServer().isSameThread()
         || isRemoved()
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
+        || Loaded.chunk(server, worldPosition) == null
         || server.getBlockEntity(worldPosition) != this
         || handle == null
         || expected.kind() != kind())
@@ -174,14 +170,9 @@ public final class NetworkNodeEntity extends BlockEntity {
         || saved.transfers().unresolvedDevice(expected.id()) != null)
       throw new IllegalStateException("Network-node lease cannot be adopted");
     var old = owner.position();
-    var oldLevel =
-        server
-            .getServer()
-            .getLevel(
-                ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(old.dimension())));
+    var oldLevel = server.getServer().getLevel(Loaded.dimension(old.dimension()));
     var oldPos = BlockPos.of(old.block());
-    if (oldLevel == null
-        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
       throw new IllegalStateException("Old canonical holder must be loaded");
     if (oldLevel.getBlockEntity(oldPos) instanceof NetworkNodeEntity previous
         && previous.handle != null

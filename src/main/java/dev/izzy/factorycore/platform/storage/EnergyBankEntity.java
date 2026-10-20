@@ -5,18 +5,17 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.storage.EnergyBankOwnership;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
 import java.nio.file.Path;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -89,8 +88,7 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
   public Path repairConflict(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || isRemoved()
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
+        || Loaded.chunk(server, worldPosition) == null
         || server.getBlockEntity(worldPosition) != this
         || !expected.equals(handle)
         || !expected.equals(EnergyBankHandleData.read(data)))
@@ -139,8 +137,7 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
   public Path adoptBank(DeviceRegistry.Handle expected) throws IOException {
     if (!(level instanceof ServerLevel server)
         || isRemoved()
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
+        || Loaded.chunk(server, worldPosition) == null
         || server.getBlockEntity(worldPosition) != this
         || handle == null)
       throw new IllegalStateException("Adopting bank must be loaded and readable");
@@ -160,15 +157,9 @@ public final class EnergyBankEntity extends BlockEntity implements IEnergyStorag
         || owner.definition().capacity() != tier().capacity()
         || saved.transfers().unresolved(expected.backing()) != null)
       throw new IllegalStateException("Bank lease cannot be adopted");
-    var oldLevel =
-        server
-            .getServer()
-            .getLevel(
-                net.minecraft.resources.ResourceKey.create(
-                    Registries.DIMENSION, ResourceLocation.parse(canonical.dimension())));
+    var oldLevel = server.getServer().getLevel(Loaded.dimension(canonical.dimension()));
     var oldPos = BlockPos.of(canonical.position());
-    if (oldLevel == null
-        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
       throw new IllegalStateException("Old canonical holder must be loaded");
     if (oldLevel.getBlockEntity(oldPos) instanceof EnergyBankEntity old
         && old.handle != null

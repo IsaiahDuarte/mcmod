@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -15,12 +16,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -137,8 +135,7 @@ public class ConnectorEntity extends BlockEntity {
   @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
   public Path repairConflict(NodeRegistry.Handle expected) throws IOException {
     var server = serverLevel();
-    var chunk =
-        server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4);
+    var chunk = Loaded.chunk(server, worldPosition);
     if (isRemoved()
         || chunk == null
         || server.getBlockEntity(worldPosition) != this
@@ -211,8 +208,7 @@ public class ConnectorEntity extends BlockEntity {
     var saved = authority();
     var owner = saved.nodes().evidence(expected.id());
     if (isRemoved()
-        || server.getChunkSource().getChunkNow(worldPosition.getX() >> 4, worldPosition.getZ() >> 4)
-            == null
+        || Loaded.chunk(server, worldPosition) == null
         || server.getBlockEntity(worldPosition) != this
         || state == null
         || !state.equals(ConnectorData.read(data))
@@ -232,14 +228,9 @@ public class ConnectorEntity extends BlockEntity {
         || saved.transfers().hasUnscopedUncertain(saved::canonicalIdentity))
       throw new IllegalStateException("Port lease cannot be adopted");
     var old = owner.position();
-    var oldLevel =
-        server
-            .getServer()
-            .getLevel(
-                ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(old.dimension())));
+    var oldLevel = server.getServer().getLevel(Loaded.dimension(old.dimension()));
     var oldPos = BlockPos.of(old.block());
-    if (oldLevel == null
-        || oldLevel.getChunkSource().getChunkNow(oldPos.getX() >> 4, oldPos.getZ() >> 4) == null)
+    if (oldLevel == null || Loaded.chunk(oldLevel, oldPos) == null)
       throw new IllegalStateException("Old canonical port must be loaded");
     if (oldLevel.getBlockEntity(oldPos) instanceof ConnectorEntity previous
         && previous.handle() != null
