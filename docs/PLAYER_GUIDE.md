@@ -158,8 +158,8 @@ controllers have no owner until a player explicitly uses one. Copies cannot
 create a second owner; conflicting references need recovery.
 
 Eight Cables use six iron and three redstone. A Gateway uses four iron, two
-quartz, two redstone and one ender pearl. Its red output face is downstream and
-its eye face is upstream; only those two faces connect. Use it to inspect the
+quartz, two redstone and one ender pearl. Its amber cross face is upstream (toward
+the controller) and its blue dot face is downstream (the branch); only those two faces connect. Use it to inspect the
 directions. Controllers/cables connect on all six faces. The current textures
 use vanilla assets.
 
@@ -290,7 +290,7 @@ or Take 64. Shift-click one of your inventory slots to deposit up to 64 of that
 exact item. Full destinations keep the remainder owned; they never void items.
 Armor, offhand and cursor stacks are excluded from transfers. Home/Next page
 through eight exact item identities at a time. Search again to refresh stock.
-Hover a row for exact total/held/free counts; short labels abbreviate large counts.
+Hover a row for exact total/reserved/available counts; short labels abbreviate large counts.
 Counts are observations, not reservations, so another user may take stock first.
 
 Leaving the dimension/range, replacing/unloading the block, or losing View

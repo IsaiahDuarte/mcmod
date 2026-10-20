@@ -67,7 +67,13 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
 
 ## Wave A — no contract change
 
-- [ ] **U1 — Copy fixes and gateway faces (F5, F6).**
+- [x] **U1 — Copy fixes and gateway faces (F5, F6).** Done 2026-10-20 (commit subject
+  `U1:`). 80 strings rewritten ("in transit", "Reserved/Available", "container", "server
+  load", "unsaved changes"); `LangKeysTest.playerTextAvoidsInternalWords` covers `gui`,
+  `tooltip`, `guide`, `status` and `message` keys ("draft" stays allowed in the program
+  editor, where it is a real concept). `runTerminalClient` passed all 98 stages; terminal and
+  machine screens checked at scales 2–4. Guide page 11 is length-tested but was not
+  re-screenshotted.
   Fix guide page 11 and PLAYER_GUIDE to "amber cross face is upstream, blue dot face is
   downstream", consistent with the tooltip. Rewrite the player-visible strings that leak
   internals: terminal counts, "server: OK" / "server budget", "Draft: Apply saves; Cancel

@@ -43,7 +43,7 @@ Independent player/world-file interruption safety remains unverified.
 ## Projection and controls
 
 The server projects at most eight rows: token, base item registry icon, plain name
-at most 96 characters and exact decimal total/held/free counts at most 32 characters.
+at most 96 characters and exact decimal total/reserved/available counts at most 32 characters.
 Full components, provider references and search cursors remain server-only. The
 client sends back only the row token under that revision. Exact identity and stable
 resource order come from the server query. Current counts are advisory, not claims.

@@ -49,4 +49,42 @@ class LangKeysTest {
     assertTrue(checked > 100, "Translation keys must be inspected: " + checked);
     assertEquals(Set.of(), missing);
   }
+
+  /**
+   * Implementation words that mean nothing to a player (docs/UX_PLAN.md U1). "Draft" is allowed
+   * only in the program editor, where a saved draft is a real, separately deployed program.
+   */
+  private static final Pattern INTERNAL_WORD =
+      Pattern.compile(
+          "\\b(stag(?:ing|ed)|principal|segment|budget|draft|canonical|leased?|quarantin\\w*"
+              + "|backing|schema|handler|provider)\\b",
+          Pattern.CASE_INSENSITIVE);
+
+  private static final Pattern PLAYER_KEY =
+      Pattern.compile("(?:gui|tooltip|guide|status|message)\\.factorycore\\..*");
+
+  @Test
+  void playerTextAvoidsInternalWords() throws Exception {
+    var offending = new TreeSet<String>();
+    int checked = 0;
+    try (var stream = getClass().getResourceAsStream("/assets/factorycore/lang/en_us.json")) {
+      assertNotNull(stream, "lang on the test classpath");
+      var lang =
+          JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+              .getAsJsonObject();
+      for (var entry : lang.entrySet()) {
+        if (!PLAYER_KEY.matcher(entry.getKey()).matches()) continue;
+        checked++;
+        var matcher = INTERNAL_WORD.matcher(entry.getValue().getAsString());
+        while (matcher.find()) {
+          boolean programDraft =
+              entry.getKey().startsWith("gui.factorycore.program.")
+                  && matcher.group().equalsIgnoreCase("draft");
+          if (!programDraft) offending.add(entry.getKey() + " (" + matcher.group() + ")");
+        }
+      }
+    }
+    assertTrue(checked > 300, "Player-facing keys must be inspected: " + checked);
+    assertEquals(Set.of(), offending);
+  }
 }
