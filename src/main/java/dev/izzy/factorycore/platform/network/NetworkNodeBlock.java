@@ -8,7 +8,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.LivingEntity;
@@ -27,7 +26,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
 
-public final class NetworkNodeBlock extends Block implements EntityBlock {
+public final class NetworkNodeBlock extends NetworkedBlock implements EntityBlock {
   private final NodeRegistry.Kind kind;
 
   public NetworkNodeBlock(Properties properties, NodeRegistry.Kind kind) {
@@ -159,38 +158,9 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
   }
 
   @Override
-  protected void onPlace(
-      BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
-    super.onPlace(state, level, position, previous, moved);
-    if (!DeviceLamp.onlyLampChanged(previous, state)) WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void neighborChanged(
-      BlockState state,
-      Level level,
-      BlockPos position,
-      Block neighbor,
-      BlockPos from,
-      boolean moved) {
-    super.neighborChanged(state, level, position, neighbor, from, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void onRemove(
-      BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    if (!DeviceLamp.onlyLampChanged(state, next)) WorldNetworks.changed(level, position);
-    if (!state.is(next.getBlock())
-        && !level.isClientSide()
-        && level.getBlockEntity(position) instanceof NetworkNodeEntity node) {
-      Containers.dropItemStack(
-          level,
-          position.getX() + 0.5,
-          position.getY() + 0.5,
-          position.getZ() + 0.5,
-          node.portableForBreak());
-    }
-    super.onRemove(state, level, position, next, moved);
+  protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
+    return blockEntity instanceof NetworkNodeEntity node
+        ? List.of(node.portableForBreak())
+        : List.of();
   }
 }

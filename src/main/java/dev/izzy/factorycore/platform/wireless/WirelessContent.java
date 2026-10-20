@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.wireless;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
@@ -9,9 +10,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -66,12 +65,7 @@ public final class WirelessContent {
 
   public static final DeferredBlock<AccessPointBlock> ACCESS_POINT =
       BLOCKS.registerBlock(
-          "wireless_access_point",
-          AccessPointBlock::new,
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL));
+          "wireless_access_point", AccessPointBlock::new, DeviceProperties.machine());
 
   public static final DeferredItem<BlockItem> ACCESS_POINT_ITEM =
       ITEMS.register(
@@ -90,12 +84,7 @@ public final class WirelessContent {
 
   public static final DeferredBlock<LinkEndpointBlock> LINK =
       BLOCKS.registerBlock(
-          "wireless_link_endpoint",
-          LinkEndpointBlock::new,
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL));
+          "wireless_link_endpoint", LinkEndpointBlock::new, DeviceProperties.machine());
 
   public static final DeferredItem<BlockItem> LINK_ITEM =
       ITEMS.register(

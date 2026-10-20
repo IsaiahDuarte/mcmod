@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.crafting;
 
 import com.mojang.serialization.MapCodec;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import java.util.List;
 import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -13,15 +15,15 @@ import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
 /** Wired holder of up to nine patterns. Pattern items are ordinary, physically owned. */
-public class CraftingUnitBlock extends BaseEntityBlock {
+public class CraftingUnitBlock extends NetworkedBlock implements EntityBlock {
   public static final MapCodec<CraftingUnitBlock> CODEC = simpleCodec(CraftingUnitBlock::new);
 
   public CraftingUnitBlock(Properties properties) {
@@ -29,7 +31,7 @@ public class CraftingUnitBlock extends BaseEntityBlock {
   }
 
   @Override
-  protected MapCodec<? extends BaseEntityBlock> codec() {
+  protected MapCodec<? extends Block> codec() {
     return CODEC;
   }
 
@@ -106,38 +108,16 @@ public class CraftingUnitBlock extends BaseEntityBlock {
   }
 
   @Override
-  protected void onPlace(
-      BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
-    super.onPlace(state, level, position, previous, moved);
-    WorldNetworks.changed(level, position);
+  protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
+    return blockEntity instanceof PatternHolderEntity unit ? unitDrops(unit) : List.of();
   }
 
-  @Override
-  protected void neighborChanged(
-      BlockState state,
-      Level level,
-      BlockPos position,
-      Block neighbor,
-      BlockPos from,
-      boolean moved) {
-    super.neighborChanged(state, level, position, neighbor, from, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void onRemove(
-      BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    WorldNetworks.changed(level, position);
-    if (!state.is(next.getBlock())
-        && level.getBlockEntity(position) instanceof PatternHolderEntity unit
-        && unit.diagnostic().isEmpty())
-      for (int slot = 0; slot < PatternHolderEntity.SLOTS; slot++)
-        Containers.dropItemStack(
-            level,
-            position.getX(),
-            position.getY(),
-            position.getZ(),
-            unit.patterns().getStackInSlot(slot).copy());
-    super.onRemove(state, level, position, next, moved);
+  /** A healthy unit hands back its patterns; a faulted one keeps them for recovery. */
+  private static List<ItemStack> unitDrops(PatternHolderEntity unit) {
+    if (!unit.diagnostic().isEmpty()) return List.of();
+    var drops = new java.util.ArrayList<ItemStack>();
+    for (int slot = 0; slot < PatternHolderEntity.SLOTS; slot++)
+      drops.add(unit.patterns().getStackInSlot(slot).copy());
+    return drops;
   }
 }

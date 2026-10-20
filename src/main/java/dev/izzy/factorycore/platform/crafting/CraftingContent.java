@@ -1,14 +1,13 @@
 package dev.izzy.factorycore.platform.crafting;
 
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -61,24 +60,13 @@ public final class CraftingContent {
 
   public static final DeferredBlock<CraftingInterfaceBlock> INTERFACE =
       BLOCKS.registerBlock(
-          "crafting_interface",
-          CraftingInterfaceBlock::new,
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL));
+          "crafting_interface", CraftingInterfaceBlock::new, DeviceProperties.machine());
 
   public static final DeferredItem<BlockItem> INTERFACE_ITEM =
       ITEMS.registerSimpleBlockItem("crafting_interface", INTERFACE);
 
   public static final DeferredBlock<CraftingUnitBlock> UNIT =
-      BLOCKS.registerBlock(
-          "crafting_unit",
-          CraftingUnitBlock::new,
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL));
+      BLOCKS.registerBlock("crafting_unit", CraftingUnitBlock::new, DeviceProperties.machine());
 
   public static final DeferredItem<BlockItem> UNIT_ITEM =
       ITEMS.registerSimpleBlockItem("crafting_unit", UNIT);

@@ -11,7 +11,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.PipeBlock;
@@ -29,7 +28,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * matching selection/collision shape. Discovery still reads block identity through {@link
  * WorldWireReader}, so a stale arm can never create or remove a network link.
  */
-public final class NetworkCableBlock extends Block {
+public final class NetworkCableBlock extends NetworkedBlock {
   private static final VoxelShape CORE = box(6, 6, 6, 10, 10, 10);
   private static final Map<Direction, VoxelShape> ARMS = new EnumMap<>(Direction.class);
 
@@ -110,31 +109,5 @@ public final class NetworkCableBlock extends Block {
   protected VoxelShape getShape(
       BlockState state, BlockGetter level, BlockPos position, CollisionContext context) {
     return shapes.get(state);
-  }
-
-  @Override
-  protected void onPlace(
-      BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
-    super.onPlace(state, level, position, previous, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void neighborChanged(
-      BlockState state,
-      Level level,
-      BlockPos position,
-      Block neighbor,
-      BlockPos from,
-      boolean moved) {
-    super.neighborChanged(state, level, position, neighbor, from, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void onRemove(
-      BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    WorldNetworks.changed(level, position);
-    super.onRemove(state, level, position, next, moved);
   }
 }

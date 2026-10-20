@@ -1,14 +1,15 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.LeasedBlockItem;
 import java.util.EnumMap;
 import java.util.Locale;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -26,22 +27,31 @@ public final class EnergyBankContent {
       DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FactoryCoreMod.MOD_ID);
   private static final EnumMap<EnergyBankTier, DeferredBlock<EnergyBankBlock>> BANKS =
       new EnumMap<>(EnergyBankTier.class);
-  private static final EnumMap<EnergyBankTier, DeferredItem<EnergyBankItem>> BANK_ITEMS =
+  private static final EnumMap<EnergyBankTier, DeferredItem<LeasedBlockItem>> BANK_ITEMS =
       new EnumMap<>(EnergyBankTier.class);
 
   static {
     for (var tier : EnergyBankTier.values()) {
       var name = tier.name().toLowerCase(Locale.ROOT) + "_energy_bank";
       var block =
-          BLOCKS.registerBlock(
-              name,
-              p -> new EnergyBankBlock(p, tier),
-              BlockBehaviour.Properties.of()
-                  .strength(3.5f)
-                  .requiresCorrectToolForDrops()
-                  .sound(SoundType.METAL));
+          BLOCKS.registerBlock(name, p -> new EnergyBankBlock(p, tier), DeviceProperties.machine());
       BANKS.put(tier, block);
-      BANK_ITEMS.put(tier, ITEMS.register(name, () -> new EnergyBankItem(block.get())));
+      BANK_ITEMS.put(
+          tier,
+          ITEMS.register(
+              name,
+              () ->
+                  new LeasedBlockItem(
+                      block.get(),
+                      ((LeasedBlockItem.Tooltip)
+                              (stack, lines) ->
+                                  lines.add(
+                                      Component.translatable(
+                                          "tooltip.factorycore.bank",
+                                          tier.capacity(),
+                                          tier.rate())))
+                          .then(
+                              LeasedBlockItem.Tooltip.lines("tooltip.factorycore.bank_upgrade")))));
     }
   }
 

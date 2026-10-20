@@ -1,13 +1,12 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.*;
@@ -22,13 +21,7 @@ public final class TerminalContent {
   private static final DeferredRegister<MenuType<?>> MENUS =
       DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
   public static final DeferredBlock<TerminalBlock> BLOCK =
-      BLOCKS.registerBlock(
-          "storage_terminal",
-          TerminalBlock::new,
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL));
+      BLOCKS.registerBlock("storage_terminal", TerminalBlock::new, DeviceProperties.machine());
   public static final DeferredItem<BlockItem> ITEM =
       ITEMS.register(
           "storage_terminal", () -> new TerminalItem(BLOCK.get(), new Item.Properties()));

@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.LeasedBlockItem;
 import dev.izzy.factorycore.platform.storage.ConnectorBlock;
 import dev.izzy.factorycore.platform.storage.EnergyBankBlock;
 import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
@@ -11,7 +13,6 @@ import java.util.Objects;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
@@ -40,10 +41,13 @@ public final class NetworkContent {
           "gateway", p -> new NetworkNodeBlock(p, NodeRegistry.Kind.GATEWAY), properties());
   public static final DeferredBlock<NetworkCableBlock> CABLE =
       BLOCKS.registerBlock("network_cable", NetworkCableBlock::new, properties().noOcclusion());
-  public static final DeferredItem<NetworkNodeItem> CONTROLLER_ITEM =
-      ITEMS.register("network_controller", () -> new NetworkNodeItem(CONTROLLER.get()));
-  public static final DeferredItem<NetworkNodeItem> GATEWAY_ITEM =
-      ITEMS.register("gateway", () -> new NetworkNodeItem(GATEWAY.get()));
+  public static final DeferredItem<LeasedBlockItem> CONTROLLER_ITEM =
+      ITEMS.register(
+          "network_controller",
+          () -> new LeasedBlockItem(CONTROLLER.get(), LeasedBlockItem.Tooltip.lines()));
+  public static final DeferredItem<LeasedBlockItem> GATEWAY_ITEM =
+      ITEMS.register(
+          "gateway", () -> new LeasedBlockItem(GATEWAY.get(), LeasedBlockItem.Tooltip.lines()));
   public static final DeferredItem<?> CABLE_ITEM = ITEMS.registerSimpleBlockItem(CABLE);
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<NetworkNodeEntity>>
       NODE_ENTITY =
@@ -78,10 +82,7 @@ public final class NetworkContent {
   private NetworkContent() {}
 
   private static BlockBehaviour.Properties properties() {
-    return BlockBehaviour.Properties.of()
-        .strength(3.5f)
-        .requiresCorrectToolForDrops()
-        .sound(SoundType.METAL);
+    return DeviceProperties.machine();
   }
 
   public static void register(IEventBus bus) {

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.program;
 
 import com.mojang.serialization.MapCodec;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.util.Locale;
@@ -12,8 +13,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -23,7 +24,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 
 /** Wired Program Controller. One deployed program runs in its segment. */
-public final class ProgramControllerBlock extends BaseEntityBlock {
+public final class ProgramControllerBlock extends NetworkedBlock implements EntityBlock {
   public static final MapCodec<ProgramControllerBlock> CODEC =
       simpleCodec(ProgramControllerBlock::new);
 
@@ -43,7 +44,7 @@ public final class ProgramControllerBlock extends BaseEntityBlock {
       Level level, BlockState state, BlockEntityType<T> type) {
     return level.isClientSide()
         ? null
-        : createTickerHelper(
+        : ticker(
             type,
             ProgramContent.ENTITY.get(),
             (tickLevel, position, tickState, controller) -> {
@@ -70,7 +71,7 @@ public final class ProgramControllerBlock extends BaseEntityBlock {
   }
 
   @Override
-  protected MapCodec<? extends BaseEntityBlock> codec() {
+  protected MapCodec<? extends Block> codec() {
     return CODEC;
   }
 
@@ -108,31 +109,5 @@ public final class ProgramControllerBlock extends BaseEntityBlock {
             controller.message()),
         true);
     return InteractionResult.CONSUME;
-  }
-
-  @Override
-  protected void onPlace(
-      BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
-    super.onPlace(state, level, position, previous, moved);
-    if (!DeviceLamp.onlyLampChanged(previous, state)) WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void neighborChanged(
-      BlockState state,
-      Level level,
-      BlockPos position,
-      Block neighbor,
-      BlockPos from,
-      boolean moved) {
-    super.neighborChanged(state, level, position, neighbor, from, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void onRemove(
-      BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    if (!DeviceLamp.onlyLampChanged(state, next)) WorldNetworks.changed(level, position);
-    super.onRemove(state, level, position, next, moved);
   }
 }

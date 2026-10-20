@@ -1,11 +1,11 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.LeasedBlockItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -24,12 +24,22 @@ public final class MachineInterfaceContent {
       BLOCKS.registerBlock(
           "machine_interface",
           properties -> new ConnectorBlock(properties, true),
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL));
-  public static final DeferredItem<MachineInterfaceItem> ITEM =
-      ITEMS.register("machine_interface", () -> new MachineInterfaceItem(BLOCK.get()));
+          DeviceProperties.machine());
+  public static final DeferredItem<LeasedBlockItem> ITEM =
+      ITEMS.register(
+          "machine_interface",
+          () ->
+              new LeasedBlockItem(
+                  BLOCK.get(),
+                  LeasedBlockItem.Tooltip.lines(
+                          "tooltip.factorycore.machine",
+                          "tooltip.factorycore.machine_controls",
+                          "tooltip.factorycore.machine_access",
+                          "tooltip.factorycore.machine_priority",
+                          "tooltip.factorycore.machine_unique")
+                      .then(
+                          LeasedBlockItem.Tooltip.throughput(
+                              ConnectorData.FIELD, tag -> ConnectorData.read(tag).tier()))));
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MachineInterfaceEntity>>
       ENTITY =
           ENTITIES.register(

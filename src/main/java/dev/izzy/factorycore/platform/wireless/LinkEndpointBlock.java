@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
 import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeItem;
@@ -18,7 +19,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
@@ -27,8 +27,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -44,7 +44,7 @@ import net.minecraft.world.phys.BlockHitResult;
  * Wireless Link Endpoint. Sneak-use one endpoint, then sneak-use another within range to pair them;
  * plain use shows the link state.
  */
-public final class LinkEndpointBlock extends BaseEntityBlock {
+public final class LinkEndpointBlock extends NetworkedBlock implements EntityBlock {
   public static final MapCodec<LinkEndpointBlock> CODEC = simpleCodec(LinkEndpointBlock::new);
 
   /** Server-thread pairing selections: player → first endpoint and the tick it was chosen. */
@@ -63,7 +63,7 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   }
 
   @Override
-  protected MapCodec<? extends BaseEntityBlock> codec() {
+  protected MapCodec<? extends Block> codec() {
     return CODEC;
   }
 
@@ -93,8 +93,7 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
       Level level, BlockState state, BlockEntityType<T> type) {
     return level.isClientSide()
         ? null
-        : createTickerHelper(
-            type, WirelessContent.LINK_ENTITY.get(), (l, p, s, link) -> link.serverTick());
+        : ticker(type, WirelessContent.LINK_ENTITY.get(), (l, p, s, link) -> link.serverTick());
   }
 
   @Override
@@ -209,36 +208,7 @@ public final class LinkEndpointBlock extends BaseEntityBlock {
   }
 
   @Override
-  protected void onPlace(
-      BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
-    super.onPlace(state, level, position, previous, moved);
-    if (!DeviceLamp.onlyLampChanged(previous, state)) WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void neighborChanged(
-      BlockState state,
-      Level level,
-      BlockPos position,
-      Block neighbor,
-      BlockPos from,
-      boolean moved) {
-    super.neighborChanged(state, level, position, neighbor, from, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void onRemove(
-      BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    if (!DeviceLamp.onlyLampChanged(state, next)) WorldNetworks.changed(level, position);
-    // The block itself drops through its loot table; an installed Overdrive Upgrade is returned
-    // separately so breaking an endpoint never destroys a paid upgrade.
-    if (!state.is(next.getBlock())
-        && !level.isClientSide()
-        && level.getBlockEntity(position) instanceof LinkEndpointEntity link)
-      for (var drop : link.upgradeDrops())
-        Containers.dropItemStack(
-            level, position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5, drop);
-    super.onRemove(state, level, position, next, moved);
+  protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
+    return blockEntity instanceof LinkEndpointEntity link ? link.upgradeDrops() : List.of();
   }
 }

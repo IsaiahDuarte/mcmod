@@ -1,11 +1,11 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.LeasedBlockItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -24,14 +24,24 @@ public final class BufferedInterfaceContent {
       DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FactoryCoreMod.MOD_ID);
   public static final DeferredBlock<BufferedInterfaceBlock> BLOCK =
       BLOCKS.registerBlock(
+          "buffered_interface", BufferedInterfaceBlock::new, DeviceProperties.machine());
+  public static final DeferredItem<LeasedBlockItem> ITEM =
+      ITEMS.register(
           "buffered_interface",
-          BufferedInterfaceBlock::new,
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL));
-  public static final DeferredItem<BufferedInterfaceItem> ITEM =
-      ITEMS.register("buffered_interface", () -> new BufferedInterfaceItem(BLOCK.get()));
+          () ->
+              new LeasedBlockItem(
+                  BLOCK.get(),
+                  LeasedBlockItem.Tooltip.lines(
+                          "tooltip.factorycore.buffer_slots",
+                          "tooltip.factorycore.buffer_move",
+                          "tooltip.factorycore.buffer_import",
+                          "tooltip.factorycore.buffer_cleanup",
+                          "tooltip.factorycore.buffer_filter",
+                          "tooltip.factorycore.buffer_rate",
+                          "tooltip.factorycore.buffer_export_stock")
+                      .then(
+                          LeasedBlockItem.Tooltip.throughput(
+                              BufferData.FIELD, tag -> BufferData.read(tag).tier()))));
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BufferedInterfaceEntity>>
       ENTITY =
           ENTITIES.register(

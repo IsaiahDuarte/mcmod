@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.program;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
@@ -9,9 +10,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -59,12 +58,7 @@ public final class ProgramContent {
 
   public static final DeferredBlock<ProgramControllerBlock> BLOCK =
       BLOCKS.registerBlock(
-          "program_controller",
-          ProgramControllerBlock::new,
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL));
+          "program_controller", ProgramControllerBlock::new, DeviceProperties.machine());
 
   public static final DeferredItem<BlockItem> ITEM =
       ITEMS.register("program_controller", () -> new BlockItem(BLOCK.get(), new Item.Properties()));

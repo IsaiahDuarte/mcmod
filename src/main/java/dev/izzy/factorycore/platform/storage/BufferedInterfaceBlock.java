@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
@@ -16,21 +17,19 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
 
-public final class BufferedInterfaceBlock extends Block implements EntityBlock {
+public final class BufferedInterfaceBlock extends NetworkedBlock implements EntityBlock {
   public BufferedInterfaceBlock(Properties properties) {
     super(properties);
   }
@@ -263,37 +262,9 @@ public final class BufferedInterfaceBlock extends Block implements EntityBlock {
   }
 
   @Override
-  protected void onPlace(
-      BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
-    super.onPlace(state, level, position, previous, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void neighborChanged(
-      BlockState state,
-      Level level,
-      BlockPos position,
-      Block neighbor,
-      BlockPos from,
-      boolean moved) {
-    super.neighborChanged(state, level, position, neighbor, from, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void onRemove(
-      BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    WorldNetworks.changed(level, position);
-    if (!state.is(next.getBlock())
-        && !level.isClientSide()
-        && level.getBlockEntity(position) instanceof BufferedInterfaceEntity buffer)
-      Containers.dropItemStack(
-          level,
-          position.getX() + .5,
-          position.getY() + .5,
-          position.getZ() + .5,
-          buffer.portableForBreak());
-    super.onRemove(state, level, position, next, moved);
+  protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
+    return blockEntity instanceof BufferedInterfaceEntity buffer
+        ? List.of(buffer.portableForBreak())
+        : List.of();
   }
 }

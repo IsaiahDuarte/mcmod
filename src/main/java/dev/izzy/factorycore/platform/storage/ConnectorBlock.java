@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
 import java.util.List;
@@ -15,7 +16,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -36,7 +36,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public final class ConnectorBlock extends Block implements EntityBlock {
+public final class ConnectorBlock extends NetworkedBlock implements EntityBlock {
   private final boolean machine;
 
   public ConnectorBlock(Properties properties) {
@@ -223,37 +223,9 @@ public final class ConnectorBlock extends Block implements EntityBlock {
   }
 
   @Override
-  protected void onPlace(
-      BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
-    super.onPlace(state, level, position, previous, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void neighborChanged(
-      BlockState state,
-      Level level,
-      BlockPos position,
-      Block neighbor,
-      BlockPos from,
-      boolean moved) {
-    super.neighborChanged(state, level, position, neighbor, from, moved);
-    WorldNetworks.changed(level, position);
-  }
-
-  @Override
-  protected void onRemove(
-      BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    WorldNetworks.changed(level, position);
-    if (!state.is(next.getBlock())
-        && !level.isClientSide()
-        && level.getBlockEntity(position) instanceof ConnectorEntity entity)
-      Containers.dropItemStack(
-          level,
-          position.getX() + 0.5,
-          position.getY() + 0.5,
-          position.getZ() + 0.5,
-          entity.portableForBreak());
-    super.onRemove(state, level, position, next, moved);
+  protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
+    return blockEntity instanceof ConnectorEntity entity
+        ? List.of(entity.portableForBreak())
+        : List.of();
   }
 }

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.guide.GuideContent;
@@ -16,9 +17,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -35,13 +34,7 @@ public final class StorageContent {
   private static final DeferredRegister<CreativeModeTab> TABS =
       DeferredRegister.create(Registries.CREATIVE_MODE_TAB, FactoryCoreMod.MOD_ID);
   public static final DeferredBlock<StorageDriveBlock> DRIVE =
-      BLOCKS.registerBlock(
-          "storage_drive",
-          StorageDriveBlock::new,
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL));
+      BLOCKS.registerBlock("storage_drive", StorageDriveBlock::new, DeviceProperties.machine());
   public static final DeferredItem<?> DRIVE_ITEM = ITEMS.registerSimpleBlockItem(DRIVE);
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<StorageDriveEntity>>
       DRIVE_ENTITY =

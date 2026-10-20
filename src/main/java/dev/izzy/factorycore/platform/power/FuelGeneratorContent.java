@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.izzy.factorycore.core.storage.FuelGenerator;
+import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentType;
@@ -11,9 +12,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -84,10 +83,7 @@ public final class FuelGeneratorContent {
       BLOCKS.registerBlock(
           "fuel_generator",
           FuelGeneratorBlock::new,
-          BlockBehaviour.Properties.of()
-              .strength(3.5f)
-              .requiresCorrectToolForDrops()
-              .sound(SoundType.METAL)
+          DeviceProperties.machine()
               .lightLevel(state -> state.getValue(FuelGeneratorBlock.LIT) ? 13 : 0));
 
   public static final DeferredItem<FuelGeneratorItem> ITEM =
