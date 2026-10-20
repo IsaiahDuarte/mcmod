@@ -17,6 +17,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * keeps packet/session validation and rate limiting and calls in only for accepted commands.
  */
 final class TerminalJobs {
+  private static final java.util.Set<String> HEALTHY_RULES =
+      java.util.Set.of("", "satisfied", "started", "in_flight");
+
   private final ServerPlayer viewer;
   private final TerminalAccess terminal;
   private final int menu;
@@ -164,7 +167,14 @@ final class TerminalJobs {
     for (var key : craftables) {
       // A craftable row's amount carries the viewer's keep-stock threshold, if any.
       var rule = runtime.rule(actor(), terminal.origin(), key);
-      rows.add(entry(key, rule == null ? "" : Long.toString(rule.low())));
+      var row = entry(key, rule == null ? "" : Long.toString(rule.low()));
+      var status = rule == null ? "" : runtime.ruleStatus(rule.id());
+      // Only a blocked rule is "waiting"; satisfied, started and in-flight rules are healthy.
+      var waiting = HEALTHY_RULES.contains(status) ? "" : status;
+      rows.add(
+          waiting.isEmpty()
+              ? row
+              : new TerminalJobPackets.Entry(row.icon(), row.name(), row.amount(), waiting));
     }
     var missing = new ArrayList<TerminalJobPackets.Entry>();
     int steps = 0;

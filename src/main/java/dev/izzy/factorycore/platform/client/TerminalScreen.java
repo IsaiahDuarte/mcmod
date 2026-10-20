@@ -477,8 +477,16 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         var item = icon(craftables.get(index).icon());
         if (item != null) graphics.renderItem(item.getDefaultInstance(), x + 6, topPos + 47);
         var keep = craftables.get(index).amount();
+        // Green when the keep-stock rule is satisfied; amber with "!" when it is waiting.
+        boolean waiting = !craftables.get(index).note().isEmpty();
+        if (!keep.isEmpty()) graphics.fill(x + 1, topPos + 63, x + 27, topPos + 74, 0xd01a1d21);
         if (!keep.isEmpty())
-          graphics.drawCenteredString(font, "≥" + compact(keep), x + 14, topPos + 65, 0xb8e986);
+          graphics.drawCenteredString(
+              font,
+              (waiting ? "!≥" : "≥") + compact(keep),
+              x + 14,
+              topPos + 65,
+              waiting ? 0xffb347 : 0xb8e986);
       }
       return;
     }
@@ -674,11 +682,17 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
           mouseX,
           mouseY);
     } else if (jobsMode && over && row < menu.jobView().craftables().size()) {
+      var craftable = menu.jobView().craftables().get(row);
       graphics.renderTooltip(
           font,
           List.of(
-              Component.literal(menu.jobView().craftables().get(row).name()),
-              Component.translatable("gui.factorycore.terminal.job.select.help")),
+              Component.literal(craftable.name()),
+              craftable.note().isEmpty()
+                  ? Component.translatable("gui.factorycore.terminal.job.select.help")
+                  : Component.translatable(
+                      "gui.factorycore.terminal.job.keep.waiting",
+                      Component.translatable(
+                          "gui.factorycore.terminal.job.status." + craftable.note()))),
           Optional.empty(),
           mouseX,
           mouseY);

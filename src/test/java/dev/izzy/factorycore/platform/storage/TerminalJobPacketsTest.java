@@ -39,7 +39,8 @@ class TerminalJobPacketsTest {
             3,
             id,
             9,
-            List.of(stick),
+            List.of(
+                stick, new TerminalJobPackets.Entry("minecraft:torch", "Torch", "16", "missing")),
             true,
             stick,
             "",
@@ -98,5 +99,8 @@ class TerminalJobPacketsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalJobPackets.Entry("x".repeat(257), "", ""));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new TerminalJobPackets.Entry("minecraft:stick", "", "", "x".repeat(65)));
   }
 }

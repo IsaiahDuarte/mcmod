@@ -456,6 +456,16 @@ public final class PresentationClientVerification {
               .append(checkFits(client, client.screen))
               .append('\n');
           capture(client, "jobs-missing-scale-4.png");
+          // Keep 64 planks with only 6 logs: the rule waits and the row must show it is blocked.
+          return press(client, "Keep");
+        });
+    step(
+        client -> {
+          var rows = jobView(client).craftables();
+          if (rows.isEmpty() || !rows.getFirst().note().equals("missing") || waited() < 6)
+            return false;
+          capture(client, "jobs-keep-waiting-scale-4.png");
+          press(client, "Keep");
           setScale(client, 2);
           press(client, "Items");
           client.screen.onClose();

@@ -79,7 +79,7 @@ public final class TerminalJobGameTests {
   }
 
   @SuppressWarnings("removal") // Pinned helper performs actual PlayerList authentication.
-  @GameTest(template = "empty", timeoutTicks = 600)
+  @GameTest(template = "empty", timeoutTicks = 900)
   public static void terminalPreviewsStartsTracksAndCancelsJobs(GameTestHelper h) {
     var player = h.makeMockServerPlayerInLevel();
     NetworkRegistry.configureMockConnection(player.connection.getConnection());
@@ -230,6 +230,20 @@ public final class TerminalJobGameTests {
                           .amount()
                           .equals("8"),
                   "Keep sets a rule shown on the row: " + m.jobView());
+              // Starve the rule: with no sticks, planks or logs left it cannot craft, and the row
+              // must say why.
+              var planks = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
+              for (var key : List.of(stick, planks, log)) {
+                long available = saved.registry().stock(cell, key).available();
+                if (available > 0) saved.registry().extract(cell, key, available, null);
+              }
+            })
+        .thenWaitUntil(
+            () -> {
+              var m = menu(h, player);
+              m.broadcastChanges();
+              var note = m.jobView().craftables().get(row(m, "minecraft:stick")).note();
+              h.assertTrue(note.equals("missing"), "A blocked keep rule is shown: '" + note + "'");
             })
         .thenIdle(3)
         .thenExecute(
