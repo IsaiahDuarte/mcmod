@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.session.MenuPayloads;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -12,7 +13,6 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 public final class TerminalPackets {
@@ -221,51 +221,39 @@ public final class TerminalPackets {
 
   public static void register(RegisterPayloadHandlersEvent event) {
     var registrar = event.registrar("2");
-    registrar.playToServer(
-        Command.TYPE,
-        Command.CODEC,
-        (value, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof TerminalMenu menu) menu.command(player, value);
-        });
-    registrar.playToServer(
+    MenuPayloads.toServer(
+        registrar, Command.TYPE, Command.CODEC, TerminalMenu.class, TerminalMenu::command);
+    MenuPayloads.toServer(
+        registrar,
         TerminalJobPackets.Command.TYPE,
         TerminalJobPackets.Command.CODEC,
-        (value, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof TerminalMenu menu) menu.jobCommand(player, value);
-        });
-    registrar.playToClient(
+        TerminalMenu.class,
+        TerminalMenu::jobCommand);
+    MenuPayloads.toClient(
+        registrar,
         TerminalJobPackets.View.TYPE,
         TerminalJobPackets.View.CODEC,
-        (value, context) -> {
-          if (context.player().containerMenu instanceof TerminalMenu menu) menu.accept(value);
-        });
-    registrar.playToServer(
+        TerminalMenu.class,
+        TerminalMenu::accept);
+    MenuPayloads.toServer(
+        registrar,
         TerminalCraftingPackets.Command.TYPE,
         TerminalCraftingPackets.Command.CODEC,
-        (value, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof TerminalMenu menu) menu.gridCommand(player, value);
-        });
-    registrar.playToServer(
+        TerminalMenu.class,
+        TerminalMenu::gridCommand);
+    MenuPayloads.toServer(
+        registrar,
         TerminalCraftingPackets.Fill.TYPE,
         TerminalCraftingPackets.Fill.CODEC,
-        (value, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof TerminalMenu menu) menu.gridFill(player, value);
-        });
-    registrar.playToClient(
+        TerminalMenu.class,
+        TerminalMenu::gridFill);
+    MenuPayloads.toClient(
+        registrar,
         TerminalCraftingPackets.View.TYPE,
         TerminalCraftingPackets.View.CODEC,
-        (value, context) -> {
-          if (context.player().containerMenu instanceof TerminalMenu menu) menu.accept(value);
-        });
-    registrar.playToClient(
-        View.TYPE,
-        View.CODEC,
-        (value, context) -> {
-          if (context.player().containerMenu instanceof TerminalMenu menu) menu.accept(value);
-        });
+        TerminalMenu.class,
+        TerminalMenu::accept);
+    MenuPayloads.toClient(
+        registrar, View.TYPE, View.CODEC, TerminalMenu.class, TerminalMenu::accept);
   }
 }

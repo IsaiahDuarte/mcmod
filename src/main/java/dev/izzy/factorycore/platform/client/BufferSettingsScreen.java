@@ -191,11 +191,8 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
 
   private Button button(String key, int x, int y, int width, Runnable action) {
     return addRenderableWidget(
-        Button.builder(Component.translatable("gui.factorycore.buffer." + key), b -> action.run())
-            .bounds(leftPos + x, topPos + y, width, 18)
-            .tooltip(
-                Tooltip.create(Component.translatable("gui.factorycore.buffer." + key + ".help")))
-            .build());
+        ScreenButtons.labeled(
+            "gui.factorycore.buffer.", key, leftPos + x, topPos + y, width, 18, action));
   }
 
   private void number(EditBox box, int action) {

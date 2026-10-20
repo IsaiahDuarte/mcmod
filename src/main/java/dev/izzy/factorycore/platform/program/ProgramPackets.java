@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.program;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.session.MenuPayloads;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -9,7 +10,6 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 /**
@@ -359,44 +359,16 @@ public final class ProgramPackets {
 
   public static void register(RegisterPayloadHandlersEvent event) {
     var registrar = event.registrar("1");
-    registrar.playToServer(
-        Command.TYPE,
-        Command.CODEC,
-        (value, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof ProgramMenu menu) menu.command(player, value);
-        });
-    registrar.playToServer(
-        AuthorRequest.TYPE,
-        AuthorRequest.CODEC,
-        (value, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof ProgramMenu menu) menu.author(player, value);
-        });
-    registrar.playToClient(
-        AuthorView.TYPE,
-        AuthorView.CODEC,
-        (value, context) -> {
-          if (context.player().containerMenu instanceof ProgramMenu menu) menu.accept(value);
-        });
-    registrar.playToServer(
-        Artifact.TYPE,
-        Artifact.CODEC,
-        (value, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof ProgramMenu menu) menu.artifact(player, value);
-        });
-    registrar.playToClient(
-        View.TYPE,
-        View.CODEC,
-        (value, context) -> {
-          if (context.player().containerMenu instanceof ProgramMenu menu) menu.accept(value);
-        });
-    registrar.playToClient(
-        Draft.TYPE,
-        Draft.CODEC,
-        (value, context) -> {
-          if (context.player().containerMenu instanceof ProgramMenu menu) menu.accept(value);
-        });
+    MenuPayloads.toServer(
+        registrar, Command.TYPE, Command.CODEC, ProgramMenu.class, ProgramMenu::command);
+    MenuPayloads.toServer(
+        registrar, AuthorRequest.TYPE, AuthorRequest.CODEC, ProgramMenu.class, ProgramMenu::author);
+    MenuPayloads.toClient(
+        registrar, AuthorView.TYPE, AuthorView.CODEC, ProgramMenu.class, ProgramMenu::accept);
+    MenuPayloads.toServer(
+        registrar, Artifact.TYPE, Artifact.CODEC, ProgramMenu.class, ProgramMenu::artifact);
+    MenuPayloads.toClient(registrar, View.TYPE, View.CODEC, ProgramMenu.class, ProgramMenu::accept);
+    MenuPayloads.toClient(
+        registrar, Draft.TYPE, Draft.CODEC, ProgramMenu.class, ProgramMenu::accept);
   }
 }

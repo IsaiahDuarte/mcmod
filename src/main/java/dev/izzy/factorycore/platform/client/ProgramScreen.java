@@ -312,11 +312,8 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
 
   private Button button(String key, int x, int y, Runnable action) {
     return addRenderableWidget(
-        Button.builder(Component.translatable("gui.factorycore.program." + key), b -> action.run())
-            .bounds(leftPos + x, topPos + y, 102, 16)
-            .tooltip(
-                Tooltip.create(Component.translatable("gui.factorycore.program." + key + ".help")))
-            .build());
+        ScreenButtons.labeled(
+            "gui.factorycore.program.", key, leftPos + x, topPos + y, 102, 16, action));
   }
 
   /** Sends the editor text as bounded draft chunks, then the optional follow-up action. */

@@ -2,12 +2,12 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.session.MenuPayloads;
 import java.util.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 public final class BufferSettingsPackets {
@@ -210,20 +210,9 @@ public final class BufferSettingsPackets {
 
   public static void register(RegisterPayloadHandlersEvent event) {
     var r = event.registrar("3");
-    r.playToServer(
-        Command.TYPE,
-        Command.CODEC,
-        (packet, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof BufferSettingsMenu menu)
-            menu.command(player, packet);
-        });
-    r.playToClient(
-        View.TYPE,
-        View.CODEC,
-        (packet, context) -> {
-          if (context.player().containerMenu instanceof BufferSettingsMenu menu)
-            menu.accept(packet);
-        });
+    MenuPayloads.toServer(
+        r, Command.TYPE, Command.CODEC, BufferSettingsMenu.class, BufferSettingsMenu::command);
+    MenuPayloads.toClient(
+        r, View.TYPE, View.CODEC, BufferSettingsMenu.class, BufferSettingsMenu::accept);
   }
 }

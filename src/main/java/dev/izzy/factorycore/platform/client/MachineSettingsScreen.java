@@ -189,11 +189,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
 
   private Button button(String key, int x, int y, int width, Runnable action) {
     return addRenderableWidget(
-        Button.builder(Component.translatable("gui.factorycore.machine." + key), b -> action.run())
-            .bounds(leftPos + x, topPos + y, width, 18)
-            .tooltip(
-                Tooltip.create(Component.translatable("gui.factorycore.machine." + key + ".help")))
-            .build());
+        ScreenButtons.labeled(
+            "gui.factorycore.machine.", key, leftPos + x, topPos + y, width, 18, action));
   }
 
   private void load(MachineSettingsPackets.Form form) {

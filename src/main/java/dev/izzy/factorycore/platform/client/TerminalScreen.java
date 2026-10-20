@@ -250,14 +250,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private Button jobButton(String key, int x, int width, Runnable action) {
     return addRenderableWidget(
-        Button.builder(
-                Component.translatable("gui.factorycore.terminal.job." + key),
-                button -> action.run())
-            .bounds(leftPos + x, topPos + 118, width, 18)
-            .tooltip(
-                Tooltip.create(
-                    Component.translatable("gui.factorycore.terminal.job." + key + ".help")))
-            .build());
+        ScreenButtons.labeled(
+            "gui.factorycore.terminal.job.", key, leftPos + x, topPos + 118, width, 18, action));
   }
 
   private void job(int action, int selection, int amount) {
@@ -315,12 +309,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private Button button(String key, int x, int width, Runnable action) {
     return addRenderableWidget(
-        Button.builder(
-                Component.translatable("gui.factorycore.terminal." + key), button -> action.run())
-            .bounds(leftPos + x, topPos + 118, width, 18)
-            .tooltip(
-                Tooltip.create(Component.translatable("gui.factorycore.terminal." + key + ".help")))
-            .build());
+        ScreenButtons.labeled(
+            "gui.factorycore.terminal.", key, leftPos + x, topPos + 118, width, 18, action));
   }
 
   private void send(int action, int selection, int amount, byte[] fingerprint) {

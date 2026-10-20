@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.session.MenuPayloads;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -9,7 +10,6 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 /**
@@ -210,19 +210,13 @@ public final class AccessPackets {
 
   public static void register(RegisterPayloadHandlersEvent event) {
     var registrar = event.registrar("1");
-    registrar.playToServer(
+    MenuPayloads.toServer(
+        registrar,
         Command.TYPE,
         Command.CODEC,
-        (packet, context) -> {
-          if (context.player() instanceof ServerPlayer player
-              && player.containerMenu instanceof NetworkAccessMenu menu)
-            menu.command(player, packet);
-        });
-    registrar.playToClient(
-        View.TYPE,
-        View.CODEC,
-        (packet, context) -> {
-          if (context.player().containerMenu instanceof NetworkAccessMenu menu) menu.accept(packet);
-        });
+        NetworkAccessMenu.class,
+        NetworkAccessMenu::command);
+    MenuPayloads.toClient(
+        registrar, View.TYPE, View.CODEC, NetworkAccessMenu.class, NetworkAccessMenu::accept);
   }
 }
