@@ -1,0 +1,28 @@
+PASS
+idle mod_ms median=0.0207 p95=0.0403 p99=0.0593 max=0.2326 | server_tick_ms median=0.2155 p99=0.5870 max=3.9335
+idle mod_ticks_over 2ms=0 5ms=0 10ms=0 of 1000
+idle scheduler_backlog median=0 p99=0 max=0 used_heap=258473984
+idle items_in_machine_chests=0
+idle probe state=STOPPED message= energy=10000 logs=[]
+small mod_ms median=0.4951 p95=1.3025 p99=1.5169 max=9.4843 | server_tick_ms median=0.6465 p99=1.8823 max=9.5598
+small mod_ticks_over 2ms=4 5ms=2 10ms=0 of 1000
+small scheduler_backlog median=4 p99=8 max=8 used_heap=318235128
+small items_in_machine_chests=960
+small probe state=RUNNING message= energy=10000 logs=[]
+large mod_ms median=1.4497 p95=1.9788 p99=2.9098 max=6.0178 | server_tick_ms median=1.5758 p99=5.1402 max=6.2220
+large mod_ticks_over 2ms=45 5ms=3 10ms=0 of 1000
+large scheduler_backlog median=42 p99=113 max=124 used_heap=409513016
+large items_in_machine_chests=15584
+large probe state=RUNNING message= energy=10000 logs=[move minecraft:cobblestone: technical_limit (×82)]
+overload mod_ms median=1.3837 p95=2.5100 p99=3.0621 max=4.7650 | server_tick_ms median=1.6427 p99=5.0619 max=5.5673
+overload mod_ticks_over 2ms=231 5ms=0 10ms=0 of 1000
+overload scheduler_backlog median=964 p99=1113 max=1138 used_heap=332812992
+overload items_in_machine_chests=16848
+overload probe state=RUNNING message= energy=10000 logs=[rule o7 ran 23 ticks late: server busy, rule o1 ran 20 ticks late: server busy, rule o5 ran 23 ticks late: server busy, move minecraft:cobblestone: technical_limit (×16)]
+conservation expected=524288 actual=524288 true
+idle-wide networks=1024
+idle-wide mod_ms median=0.0368 p95=0.0501 p99=0.0624 max=0.1807 | server_tick_ms median=0.5305 p99=0.7770 max=62.7640
+idle-wide mod_ticks_over 2ms=0 5ms=0 10ms=0 of 1000
+idle-wide scheduler_backlog median=0 p99=0 max=0 used_heap=281374864
+idle-wide scheduler_quiet=true
+java=21.0.12 os=Mac OS X 15.3.1 arch=aarch64 cpus=8 max_heap=2147483648 used_heap=281374864

@@ -1,0 +1,28 @@
+PASS
+idle mod_ms median=0.0295 p95=0.0494 p99=0.0640 max=0.1893 | server_tick_ms median=0.2739 p99=0.5817 max=7.1761
+idle mod_ticks_over 2ms=0 5ms=0 10ms=0 of 1000
+idle scheduler_backlog median=0 p99=0 max=0 used_heap=289345040
+idle items_in_machine_chests=0
+idle probe state=STOPPED message= energy=10000 logs=[]
+small mod_ms median=0.4879 p95=1.2364 p99=1.5079 max=2.8569 | server_tick_ms median=0.7369 p99=1.9394 max=3.2906
+small mod_ticks_over 2ms=3 5ms=0 10ms=0 of 1000
+small scheduler_backlog median=4 p99=8 max=8 used_heap=310512784
+small items_in_machine_chests=960
+small probe state=RUNNING message= energy=10000 logs=[]
+large mod_ms median=1.6867 p95=3.1696 p99=8.2777 max=36.3171 | server_tick_ms median=1.9104 p99=10.5219 max=36.5768
+large mod_ticks_over 2ms=271 5ms=20 10ms=7 of 1000
+large scheduler_backlog median=43 p99=111 max=125 used_heap=315241712
+large items_in_machine_chests=15664
+large probe state=RUNNING message= energy=10000 logs=[move minecraft:cobblestone: technical_limit (×104)]
+overload mod_ms median=1.7915 p95=2.5556 p99=3.3806 max=5.4511 | server_tick_ms median=2.1568 p99=5.6874 max=7.8935
+overload mod_ticks_over 2ms=395 5ms=2 10ms=0 of 1000
+overload scheduler_backlog median=958 p99=1088 max=1122 used_heap=295605168
+overload items_in_machine_chests=17520
+overload probe state=RUNNING message= energy=9995 logs=[rule o7 ran 23 ticks late: server busy, rule o1 ran 20 ticks late: server busy, rule o5 ran 23 ticks late: server busy, move minecraft:cobblestone: technical_limit (×7), rule o6 ran 23 ticks late: server busy, move minecraft:cobblestone: technical_limit (×2), rule o7 ran 23 ticks late: server busy, move minecraft:cobblestone: technical_limit (×11)]
+conservation expected=524288 actual=524288 true
+idle-wide networks=1024
+idle-wide mod_ms median=0.0290 p95=0.0444 p99=0.0576 max=0.1690 | server_tick_ms median=0.4742 p99=0.7941 max=60.1013
+idle-wide mod_ticks_over 2ms=0 5ms=0 10ms=0 of 1000
+idle-wide scheduler_backlog median=0 p99=0 max=0 used_heap=370548296
+idle-wide scheduler_quiet=true
+java=21.0.12 os=Mac OS X 15.3.1 arch=aarch64 cpus=8 max_heap=2147483648 used_heap=370548296
