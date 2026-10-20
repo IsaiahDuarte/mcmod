@@ -33,6 +33,7 @@ public final class FactoryCoreMod {
 
   public FactoryCoreMod(IEventBus bus, ModContainer container) {
     container.registerConfig(ModConfig.Type.SERVER, FactoryCoreConfig.SERVER);
+    FactoryRegistries.register(bus);
     StorageContent.register(bus);
     TerminalContent.register(bus);
     BufferedInterfaceContent.register(bus);

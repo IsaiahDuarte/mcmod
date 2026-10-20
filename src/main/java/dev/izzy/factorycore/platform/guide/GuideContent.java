@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.guide;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.FactoryRegistries;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.network.chat.Component;
@@ -11,7 +12,6 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
  * Factory Guide: a localized, read-only book that walks from a first network to wireless links.
@@ -22,10 +22,8 @@ public final class GuideContent {
   public static final int PAGES = 16;
 
   private static final String GIVEN = FactoryCoreMod.MOD_ID + ":guide_given";
-  private static final DeferredRegister.Items ITEMS =
-      DeferredRegister.createItems(FactoryCoreMod.MOD_ID);
   public static final DeferredItem<GuideItem> GUIDE =
-      ITEMS.register("factory_guide", GuideItem::new);
+      FactoryRegistries.ITEMS.register("factory_guide", GuideItem::new);
 
   private GuideContent() {}
 
@@ -57,7 +55,6 @@ public final class GuideContent {
   }
 
   public static void register(IEventBus bus) {
-    ITEMS.register(bus);
     NeoForge.EVENT_BUS.addListener(GuideContent::loggedIn);
   }
 }

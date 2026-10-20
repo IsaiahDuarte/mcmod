@@ -5,10 +5,9 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.izzy.factorycore.core.storage.FuelGenerator;
 import dev.izzy.factorycore.platform.DeviceProperties;
-import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.FactoryRegistries;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentType;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.component.CustomData;
@@ -19,17 +18,8 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class FuelGeneratorContent {
-  private static final DeferredRegister.Blocks BLOCKS =
-      DeferredRegister.createBlocks(FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister.Items ITEMS =
-      DeferredRegister.createItems(FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister<BlockEntityType<?>> ENTITIES =
-      DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister.DataComponents COMPONENTS =
-      DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, FactoryCoreMod.MOD_ID);
 
   private record RawState(long energy, long burnRemaining, long burnTotal) {}
 
@@ -59,7 +49,7 @@ public final class FuelGeneratorContent {
   public static final DeferredHolder<
           DataComponentType<?>, DataComponentType<FuelGenerator.Snapshot>>
       STATE =
-          COMPONENTS.registerComponentType(
+          FactoryRegistries.COMPONENTS.registerComponentType(
               "generator_state",
               builder ->
                   builder
@@ -76,24 +66,21 @@ public final class FuelGeneratorContent {
 
   /** Exact unsupported-schema block-entity data, carried unchanged by a broken generator. */
   public static final DeferredHolder<DataComponentType<?>, DataComponentType<CustomData>> RETAINED =
-      COMPONENTS.registerComponentType(
+      FactoryRegistries.COMPONENTS.registerComponentType(
           "generator_retained", builder -> builder.persistent(CustomData.CODEC));
 
   public static final DeferredBlock<FuelGeneratorBlock> BLOCK =
-      BLOCKS.registerBlock(
+      FactoryRegistries.BLOCKS.registerBlock(
           "fuel_generator",
           FuelGeneratorBlock::new,
           DeviceProperties.machine()
               .lightLevel(state -> state.getValue(FuelGeneratorBlock.LIT) ? 13 : 0));
 
   public static final DeferredItem<FuelGeneratorItem> ITEM =
-      ITEMS.register("fuel_generator", () -> new FuelGeneratorItem(BLOCK.get()));
+      FactoryRegistries.ITEMS.register("fuel_generator", () -> new FuelGeneratorItem(BLOCK.get()));
 
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FuelGeneratorEntity>>
-      ENTITY =
-          ENTITIES.register(
-              "fuel_generator",
-              () -> BlockEntityType.Builder.of(FuelGeneratorEntity::new, BLOCK.get()).build(null));
+      ENTITY = FactoryRegistries.entity("fuel_generator", FuelGeneratorEntity::new, BLOCK);
 
   private FuelGeneratorContent() {}
 
@@ -107,10 +94,6 @@ public final class FuelGeneratorContent {
   }
 
   public static void register(IEventBus bus) {
-    BLOCKS.register(bus);
-    ITEMS.register(bus);
-    ENTITIES.register(bus);
-    COMPONENTS.register(bus);
     bus.addListener(FuelGeneratorContent::capabilities);
   }
 }

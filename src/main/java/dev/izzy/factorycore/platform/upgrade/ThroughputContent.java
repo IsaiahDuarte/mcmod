@@ -2,7 +2,7 @@ package dev.izzy.factorycore.platform.upgrade;
 
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
-import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.FactoryRegistries;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -11,7 +11,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
  * Paid throughput upgrades (ADR 0054). The Throughput Upgrade (Advanced) and Overdrive Upgrade
@@ -19,13 +18,12 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  * (Overdrive only) a Wireless Link Endpoint.
  */
 public final class ThroughputContent {
-  private static final DeferredRegister.Items ITEMS =
-      DeferredRegister.createItems(FactoryCoreMod.MOD_ID);
   public static final DeferredItem<ThroughputUpgradeItem> THROUGHPUT =
-      ITEMS.register(
+      FactoryRegistries.ITEMS.register(
           "throughput_upgrade", () -> new ThroughputUpgradeItem(ThroughputTier.ADVANCED));
   public static final DeferredItem<ThroughputUpgradeItem> OVERDRIVE =
-      ITEMS.register("overdrive_upgrade", () -> new ThroughputUpgradeItem(ThroughputTier.ENDGAME));
+      FactoryRegistries.ITEMS.register(
+          "overdrive_upgrade", () -> new ThroughputUpgradeItem(ThroughputTier.ENDGAME));
 
   private ThroughputContent() {}
 
@@ -81,6 +79,6 @@ public final class ThroughputContent {
   }
 
   public static void register(IEventBus bus) {
-    ITEMS.register(bus);
+    // Loading this class adds its entries to FactoryRegistries before registration.
   }
 }

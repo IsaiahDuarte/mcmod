@@ -3,9 +3,8 @@ package dev.izzy.factorycore.platform.program;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import dev.izzy.factorycore.platform.DeviceProperties;
-import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.FactoryRegistries;
 import net.minecraft.core.component.DataComponentType;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
@@ -14,27 +13,15 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
-import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class ProgramContent {
-  private static final DeferredRegister.Blocks BLOCKS =
-      DeferredRegister.createBlocks(FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister.Items ITEMS =
-      DeferredRegister.createItems(FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister<BlockEntityType<?>> ENTITIES =
-      DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister<MenuType<?>> MENUS =
-      DeferredRegister.create(Registries.MENU, FactoryCoreMod.MOD_ID);
-  private static final DeferredRegister.DataComponents COMPONENTS =
-      DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, FactoryCoreMod.MOD_ID);
 
   /** Draft source carried by a broken controller; deployment is never carried. */
   public static final DeferredHolder<DataComponentType<?>, DataComponentType<String>> DRAFT =
-      COMPONENTS.registerComponentType(
+      FactoryRegistries.COMPONENTS.registerComponentType(
           "program_draft",
           builder ->
               builder
@@ -44,7 +31,7 @@ public final class ProgramContent {
 
   /** Stored FE carried by a broken controller. */
   public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>> ENERGY =
-      COMPONENTS.registerComponentType(
+      FactoryRegistries.COMPONENTS.registerComponentType(
           "program_energy",
           builder ->
               builder
@@ -57,22 +44,18 @@ public final class ProgramContent {
                   .networkSynchronized(ByteBufCodecs.VAR_LONG));
 
   public static final DeferredBlock<ProgramControllerBlock> BLOCK =
-      BLOCKS.registerBlock(
+      FactoryRegistries.BLOCKS.registerBlock(
           "program_controller", ProgramControllerBlock::new, DeviceProperties.machine());
 
   public static final DeferredItem<BlockItem> ITEM =
-      ITEMS.register("program_controller", () -> new BlockItem(BLOCK.get(), new Item.Properties()));
+      FactoryRegistries.ITEMS.register(
+          "program_controller", () -> new BlockItem(BLOCK.get(), new Item.Properties()));
 
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ProgramControllerEntity>>
-      ENTITY =
-          ENTITIES.register(
-              "program_controller",
-              () ->
-                  BlockEntityType.Builder.of(ProgramControllerEntity::new, BLOCK.get())
-                      .build(null));
+      ENTITY = FactoryRegistries.entity("program_controller", ProgramControllerEntity::new, BLOCK);
 
   public static final DeferredHolder<MenuType<?>, MenuType<ProgramMenu>> MENU =
-      MENUS.register("program_controller", () -> IMenuTypeExtension.create(ProgramMenu::new));
+      FactoryRegistries.menu("program_controller", ProgramMenu::new);
 
   private ProgramContent() {}
 
@@ -84,11 +67,6 @@ public final class ProgramContent {
   }
 
   public static void register(IEventBus bus) {
-    BLOCKS.register(bus);
-    ITEMS.register(bus);
-    ENTITIES.register(bus);
-    COMPONENTS.register(bus);
-    MENUS.register(bus);
     bus.addListener(ProgramContent::capabilities);
     bus.addListener(ProgramPackets::register);
   }
