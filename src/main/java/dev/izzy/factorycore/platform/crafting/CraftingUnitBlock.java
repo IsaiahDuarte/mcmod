@@ -1,11 +1,13 @@
 package dev.izzy.factorycore.platform.crafting;
 
 import com.mojang.serialization.MapCodec;
+import dev.izzy.factorycore.platform.CarriedComponents;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
@@ -23,7 +25,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
 /** Wired holder of up to nine patterns. Pattern items are ordinary, physically owned. */
-public class CraftingUnitBlock extends NetworkedBlock implements EntityBlock {
+public class CraftingUnitBlock extends NetworkedBlock implements EntityBlock, CarriedComponents {
   public static final MapCodec<CraftingUnitBlock> CODEC = simpleCodec(CraftingUnitBlock::new);
 
   public CraftingUnitBlock(Properties properties) {
@@ -119,5 +121,10 @@ public class CraftingUnitBlock extends NetworkedBlock implements EntityBlock {
     for (int slot = 0; slot < PatternHolderEntity.SLOTS; slot++)
       drops.add(unit.patterns().getStackInSlot(slot).copy());
     return drops;
+  }
+
+  @Override
+  public List<DataComponentType<?>> carriedComponents() {
+    return List.of(CraftingContent.RETAINED.get());
   }
 }

@@ -1,12 +1,15 @@
 package dev.izzy.factorycore.platform.program;
 
 import com.mojang.serialization.MapCodec;
+import dev.izzy.factorycore.platform.CarriedComponents;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
+import java.util.List;
 import java.util.Locale;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,7 +27,8 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 
 /** Wired Program Controller. One deployed program runs in its segment. */
-public final class ProgramControllerBlock extends NetworkedBlock implements EntityBlock {
+public final class ProgramControllerBlock extends NetworkedBlock
+    implements EntityBlock, CarriedComponents {
   public static final MapCodec<ProgramControllerBlock> CODEC =
       simpleCodec(ProgramControllerBlock::new);
 
@@ -109,5 +113,10 @@ public final class ProgramControllerBlock extends NetworkedBlock implements Enti
             controller.message()),
         true);
     return InteractionResult.CONSUME;
+  }
+
+  @Override
+  public List<DataComponentType<?>> carriedComponents() {
+    return List.of(ProgramContent.DRAFT.get(), ProgramContent.ENERGY.get());
   }
 }

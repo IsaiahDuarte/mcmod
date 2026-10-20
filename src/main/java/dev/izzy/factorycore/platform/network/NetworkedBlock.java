@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.LootParams;
 
 /**
  * A block that takes part in a network: placing it, changing a neighbor or removing it asks the
@@ -40,6 +41,19 @@ public abstract class NetworkedBlock extends Block {
   /** True when only cosmetic state changed, so the network need not rebuild (default: lamp). */
   protected boolean cosmeticOnly(BlockState before, BlockState after) {
     return DeviceLamp.onlyLampChanged(before, after);
+  }
+
+  /**
+   * True when breaking hands back the lease-carrying item from {@link #dropsOnBreak} instead of a
+   * loot table. Such blocks drop nothing through loot and get no generated loot table.
+   */
+  public boolean dropsLeasedItem() {
+    return false;
+  }
+
+  @Override
+  protected List<ItemStack> getDrops(BlockState state, LootParams.Builder parameters) {
+    return dropsLeasedItem() ? List.of() : super.getDrops(state, parameters);
   }
 
   /** Items handed back when the block is broken (server only; not on a mere state change). */

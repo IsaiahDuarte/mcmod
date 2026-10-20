@@ -17,7 +17,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
 
 public final class EnergyBankBlock extends NetworkedBlock implements EntityBlock {
@@ -87,8 +86,8 @@ public final class EnergyBankBlock extends NetworkedBlock implements EntityBlock
   }
 
   @Override
-  protected List<ItemStack> getDrops(BlockState state, LootParams.Builder parameters) {
-    return List.of();
+  public boolean dropsLeasedItem() {
+    return true;
   }
 
   @Override

@@ -2,9 +2,12 @@ package dev.izzy.factorycore.platform.power;
 
 import com.mojang.serialization.MapCodec;
 import dev.izzy.factorycore.core.storage.FuelGenerator;
+import dev.izzy.factorycore.platform.CarriedComponents;
+import java.util.List;
 import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
@@ -28,7 +31,7 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
 /** Standalone vanilla-fuel FE source. It is not a network node and needs no controller. */
-public final class FuelGeneratorBlock extends BaseEntityBlock {
+public final class FuelGeneratorBlock extends BaseEntityBlock implements CarriedComponents {
   public static final MapCodec<FuelGeneratorBlock> CODEC = simpleCodec(FuelGeneratorBlock::new);
   public static final BooleanProperty LIT = BlockStateProperties.LIT;
 
@@ -159,5 +162,10 @@ public final class FuelGeneratorBlock extends BaseEntityBlock {
             generator.slots().getStackInSlot(slot).copy());
     }
     super.onRemove(state, level, position, next, moved);
+  }
+
+  @Override
+  public List<DataComponentType<?>> carriedComponents() {
+    return List.of(FuelGeneratorContent.STATE.get(), FuelGeneratorContent.RETAINED.get());
   }
 }

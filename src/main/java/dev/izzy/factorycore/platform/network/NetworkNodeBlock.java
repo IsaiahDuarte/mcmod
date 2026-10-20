@@ -23,7 +23,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
 
 public final class NetworkNodeBlock extends NetworkedBlock implements EntityBlock {
@@ -155,8 +154,8 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
   }
 
   @Override
-  protected List<ItemStack> getDrops(BlockState state, LootParams.Builder parameters) {
-    return List.of();
+  public boolean dropsLeasedItem() {
+    return true;
   }
 
   @Override

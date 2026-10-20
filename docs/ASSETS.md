@@ -25,7 +25,11 @@ Registry-derived resources are generated, not hand-written: `./gradlew runData`
 (`platform/client/data/FactoryCoreData`) writes every item model except the
 cable's hand-authored geometry, the `mineable/pickaxe` and `needs_iron_tool`
 block tags, and every crafting recipe (one row each in `FactoryCoreData.Recipes`)
-with its unlock advancement, into `src/generated/resources`. That tree is
+with its unlock advancement, and block loot tables, into
+`src/generated/resources`. Loot follows each block's own drop policy:
+`NetworkedBlock.dropsLeasedItem()` devices drop their lease item from code and
+get no table, and `CarriedComponents` blocks copy exactly the components they
+list. That tree is
 committed; `checkGeneratedResources` (part of `check`) fails when it is stale.
 A file lives in exactly one of `src/generated` and `src/main/resources`.
 

@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.client.data;
 
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
+import dev.izzy.factorycore.platform.CarriedComponents;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
 import dev.izzy.factorycore.platform.storage.ConnectorContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankContent;
@@ -14,6 +16,8 @@ import java.util.stream.Stream;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
+import net.minecraft.data.loot.BlockLootSubProvider;
+import net.minecraft.data.loot.LootTableProvider;
 import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
@@ -21,11 +25,18 @@ import net.minecraft.data.recipes.ShapedRecipeBuilder;
 import net.minecraft.data.recipes.ShapelessRecipeBuilder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.functions.CopyComponentsFunction;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -56,6 +67,15 @@ public final class FactoryCoreData {
     generator.addProvider(
         event.includeServer(), new BlockTagSets(output, event.getLookupProvider(), files));
     generator.addProvider(event.includeServer(), new Recipes(output, event.getLookupProvider()));
+    generator.addProvider(
+        event.includeServer(),
+        new LootTableProvider(
+            output,
+            Set.of(),
+            List.of(
+                new LootTableProvider.SubProviderEntry(
+                    BlockDrops::new, LootContextParamSets.BLOCK)),
+            event.getLookupProvider()));
   }
 
   private static List<Block> blocks() {
@@ -486,6 +506,46 @@ public final class FactoryCoreData {
               ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, path));
       if (item == Items.AIR) throw new IllegalArgumentException("Unregistered item " + path);
       return item;
+    }
+  }
+
+  /**
+   * Block loot from each block's own drop policy: leased devices ({@link
+   * NetworkedBlock#dropsLeasedItem}) get no table; {@link CarriedComponents} blocks drop themselves
+   * with those components copied from the block entity (always, so explosions never lose state);
+   * everything else drops itself when it survives the explosion.
+   */
+  private static final class BlockDrops extends BlockLootSubProvider {
+    BlockDrops(HolderLookup.Provider lookup) {
+      super(Set.of(), FeatureFlags.REGISTRY.allFlags(), lookup);
+    }
+
+    @Override
+    protected Iterable<Block> getKnownBlocks() {
+      return blocks().stream()
+          .filter(
+              block -> !(block instanceof NetworkedBlock networked && networked.dropsLeasedItem()))
+          .toList();
+    }
+
+    @Override
+    protected void generate() {
+      for (var block : getKnownBlocks()) {
+        if (!(block instanceof CarriedComponents carried)) {
+          dropSelf(block);
+          continue;
+        }
+        var copy =
+            CopyComponentsFunction.copyComponents(CopyComponentsFunction.Source.BLOCK_ENTITY);
+        for (var component : carried.carriedComponents()) copy.include(component);
+        add(
+            block,
+            LootTable.lootTable()
+                .withPool(
+                    LootPool.lootPool()
+                        .setRolls(ConstantValue.exactly(1))
+                        .add(LootItem.lootTableItem(block).apply(copy))));
+      }
     }
   }
 }
