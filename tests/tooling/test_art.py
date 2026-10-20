@@ -1,6 +1,7 @@
 """The committed textures must be exactly what tools/art/generate_art.py produces."""
 
 import importlib.util
+import json
 from pathlib import Path
 import struct
 import unittest
@@ -24,6 +25,10 @@ class ArtGeneratorTests(unittest.TestCase):
 
     def test_textures_are_16px_rgba_pngs(self):
         for path, data in art.outputs().items():
+            if path.suffix == ".json":
+                # Status overlays now generate models/blockstates alongside textures.
+                self.assertIsInstance(json.loads(data), dict, path)
+                continue
             if path == art.SHEET:
                 continue
             self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n", path)
@@ -49,6 +54,21 @@ class ArtGeneratorTests(unittest.TestCase):
             for j in range(i + 1, len(shapes)):
                 self.assertNotEqual(shapes[i], shapes[j], (cells[i], cells[j]))
         self.assertNotEqual(gray("starter_item_cell"), gray("starter_fluid_cell"))
+
+    def test_throughput_upgrades_differ_from_each_other_and_modules_in_shape(self):
+        """ADR 0054: speed upgrades must read differently from capacity modules without color."""
+
+        def opaque(name):
+            canvas = art.item_textures()[name]
+            return [[a > 0 and (r * 299 + g * 587 + b * 114) // 1000 > 128 for r, g, b, a in row]
+                    for row in canvas.pixels]
+
+        names = ["throughput_upgrade", "overdrive_upgrade", "advanced_module", "infinite_module"]
+        shapes = {name: opaque(name) for name in names}
+        self.assertNotEqual(shapes["throughput_upgrade"], shapes["overdrive_upgrade"])
+        for upgrade in ("throughput_upgrade", "overdrive_upgrade"):
+            for module in ("advanced_module", "infinite_module"):
+                self.assertNotEqual(shapes[upgrade], shapes[module], (upgrade, module))
 
 
 if __name__ == "__main__":

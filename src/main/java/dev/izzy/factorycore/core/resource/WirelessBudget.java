@@ -3,7 +3,6 @@ package dev.izzy.factorycore.core.resource;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -24,6 +23,18 @@ public final class WirelessBudget {
         first = second;
         second = swap;
       }
+    }
+  }
+
+  /**
+   * One crossed pair and its throughput multiplier (ADR 0054): 1 normally, or the Overdrive scale
+   * when both endpoints carry it. Usage stays keyed by the physical pair, so an upgrade or
+   * re-publication inside a tick never resets units already spent.
+   */
+  public record Hop(Link link, int scale) {
+    public Hop {
+      Objects.requireNonNull(link);
+      if (scale < 1 || scale > 64) throw new IllegalArgumentException("Invalid link scale");
     }
   }
 
@@ -87,20 +98,35 @@ public final class WirelessBudget {
     return new Permit(List.of(), 0, ResourceKind.ITEM, 0, reason);
   }
 
-  private List<Link> path(List<Link> path) {
+  private static List<Hop> base(List<Link> path) {
     if (path.size() > MAX_PATH) throw new IllegalArgumentException("Wireless path exceeds depth");
-    return List.copyOf(new LinkedHashSet<>(path));
+    var hops = new ArrayList<Hop>(path.size());
+    for (var link : path) hops.add(new Hop(link, 1));
+    return hops;
+  }
+
+  /** Deduplicated by physical pair; a pair published twice keeps its smaller scale. */
+  private static java.util.Map<Link, Integer> hops(List<Hop> path) {
+    if (path.size() > MAX_PATH) throw new IllegalArgumentException("Wireless path exceeds depth");
+    var hops = new LinkedHashMap<Link, Integer>();
+    for (var hop : path) hops.merge(hop.link(), hop.scale(), Math::min);
+    return hops;
   }
 
   /** Advisory capacity; does not debit throughput or create cache entries. */
   public long available(List<Link> path, long tick, ResourceKind kind, long requested) {
+    return availableHops(base(path), tick, kind, requested);
+  }
+
+  /** Advisory capacity with per-pair upgrade scales; never debits or creates cache entries. */
+  public long availableHops(List<Hop> path, long tick, ResourceKind kind, long requested) {
     checkThread();
     OperationResult.requireQuantity(requested);
     long result = requested;
-    for (var link : path(path)) {
-      var use = usage.get(link);
+    for (var hop : hops(path).entrySet()) {
+      var use = usage.get(hop.getKey());
       long spent = use != null && use.tick == tick ? use.used[kind.ordinal()] : 0;
-      result = Math.min(result, limit(kind) - spent);
+      result = Math.min(result, Math.max(0, limit(kind) * hop.getValue() - spent));
     }
     return result;
   }
@@ -109,9 +135,15 @@ public final class WirelessBudget {
    * Atomically reserve the same units on every hop before mutation, bounded by the tightest hop.
    */
   public Permit claim(List<Link> path, long tick, ResourceKind kind, long requested) {
+    return claimHops(base(path), tick, kind, requested);
+  }
+
+  /** {@link #claim} with per-pair upgrade scales. */
+  public Permit claimHops(List<Hop> path, long tick, ResourceKind kind, long requested) {
     checkThread();
-    var links = path(path);
-    long amount = available(links, tick, kind, requested);
+    var scaled = hops(path);
+    var links = List.copyOf(scaled.keySet());
+    long amount = availableHops(path, tick, kind, requested);
     var uses = new ArrayList<Usage>();
     for (var link : links) {
       var use = usage.get(link);

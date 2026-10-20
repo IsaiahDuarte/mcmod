@@ -82,14 +82,21 @@ public final class MachineSettingsPackets {
       Form form,
       String side,
       String status,
-      boolean editable)
+      boolean editable,
+      String tier,
+      int maxRate,
+      boolean throttled)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
             ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "machine_settings_view"));
 
     public View {
-      if (side.length() > 16 || status.length() > 32)
+      if (side.length() > 16
+          || status.length() > 32
+          || tier.length() > 16
+          || maxRate < 1
+          || maxRate > dev.izzy.factorycore.core.resource.ThroughputTier.maxQuantum(form.kind()))
         throw new IllegalArgumentException("Machine view bounds");
     }
 
@@ -108,6 +115,9 @@ public final class MachineSettingsPackets {
               b.writeUtf(v.side(), 16);
               b.writeUtf(v.status(), 32);
               b.writeBoolean(v.editable());
+              b.writeUtf(v.tier(), 16);
+              b.writeVarInt(v.maxRate());
+              b.writeBoolean(v.throttled());
             },
             b ->
                 new View(
@@ -117,13 +127,16 @@ public final class MachineSettingsPackets {
                     read(b),
                     b.readUtf(16),
                     b.readUtf(32),
+                    b.readBoolean(),
+                    b.readUtf(16),
+                    b.readVarInt(),
                     b.readBoolean()));
   }
 
   private MachineSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("1");
+    var registrar = event.registrar("2");
     registrar.playToServer(
         Apply.TYPE,
         Apply.CODEC,

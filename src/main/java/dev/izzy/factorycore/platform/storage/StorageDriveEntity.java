@@ -31,6 +31,31 @@ public final class StorageDriveEntity extends BlockEntity {
     super(StorageContent.DRIVE_ENTITY.get(), position, state);
   }
 
+  /**
+   * Mirrors bay occupancy to the block state for rendering, without neighbor or shape updates. A
+   * drive being replaced or removed no longer has its own block at this position and is skipped.
+   */
+  @Override
+  public void setChanged() {
+    super.setChanged();
+    syncBays();
+  }
+
+  private void syncBays() {
+    if (level == null || level.isClientSide() || isRemoved()) return;
+    var state = level.getBlockState(worldPosition);
+    if (!(state.getBlock() instanceof StorageDriveBlock)) return;
+    var next = state;
+    for (int slot = 0; slot < cells.length; slot++)
+      next = next.setValue(StorageDriveBlock.BAYS.get(slot), !cells[slot].isEmpty());
+    if (next != state)
+      level.setBlock(
+          worldPosition,
+          next,
+          net.minecraft.world.level.block.Block.UPDATE_CLIENTS
+              | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE);
+  }
+
   public String diagnostic() {
     return diagnostic;
   }
@@ -231,7 +256,7 @@ public final class StorageDriveEntity extends BlockEntity {
           deactivate(slot);
           ItemStack retained = cells[slot].copy();
           retained.set(
-              DataComponents.CUSTOM_NAME, Component.literal("Cell needs ownership recovery"));
+              DataComponents.CUSTOM_NAME, Component.translatable("item.factorycore.cell_recovery"));
           dropped.add(retained);
           cells[slot] = ItemStack.EMPTY;
           diagnostic = failure.getMessage();
@@ -243,7 +268,8 @@ public final class StorageDriveEntity extends BlockEntity {
 
   private ItemStack recoveryStack(CompoundTag original) {
     ItemStack stack = new ItemStack(StorageContent.DRIVE_ITEM.get());
-    stack.set(DataComponents.CUSTOM_NAME, Component.literal("Storage Drive (data needs recovery)"));
+    stack.set(
+        DataComponents.CUSTOM_NAME, Component.translatable("item.factorycore.drive_recovery"));
     CustomData.update(
         DataComponents.CUSTOM_DATA, stack, data -> data.put(RECOVERY, original.copy()));
     return stack;
@@ -265,9 +291,16 @@ public final class StorageDriveEntity extends BlockEntity {
   }
 
   @Override
+  @SuppressWarnings("PMD.CloseResource") // Borrowed level; Minecraft owns its lifecycle.
   public void onLoad() {
     super.onLoad();
     networkingChanged();
+    // Worlds saved before bay lamps existed: publish occupancy after, not during, chunk loading.
+    if (level instanceof ServerLevel server)
+      server
+          .getServer()
+          .tell(
+              new net.minecraft.server.TickTask(server.getServer().getTickCount(), this::syncBays));
     if (!(level instanceof ServerLevel) || rejected != null) return;
     for (int slot = 0; slot < cells.length; slot++) {
       if (!cells[slot].isEmpty()) {

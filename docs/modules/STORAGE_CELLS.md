@@ -106,3 +106,14 @@ preservation, failed audit without authority changes and unresolved transfer ref
 A repaired physical reference reloads with the consumed generation; replaying the
 old chunk snapshot stays inert. This is controlled snapshot replay, not an injected
 hard-crash/independent filesystem-save experiment.
+
+## Drive bay presentation
+
+Four `bay_1`–`bay_4` block-state flags mirror nonempty physical drive slots.
+They are presentation only; installation, ownership and routing always consult
+the block entity and canonical registry. Updates send client state without
+neighbor/shape updates or network rebuilds. A deferred server-thread refresh on
+load derives flags for older saves; no canonical schema or stock migration is
+needed. See [ADR 0058](../decisions/0058-device-presentation.md) and
+`PresentationStateGameTests` for native bay/lamp verification. Client appearance
+is a separate graphical gate.

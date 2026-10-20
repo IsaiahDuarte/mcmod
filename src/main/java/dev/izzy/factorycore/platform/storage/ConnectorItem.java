@@ -23,6 +23,28 @@ public final class ConnectorItem extends BlockItem {
     tooltip.add(Component.translatable("tooltip.factorycore.connector_access"));
     tooltip.add(Component.translatable("tooltip.factorycore.connector_priority"));
     tooltip.add(Component.translatable("tooltip.factorycore.connector_unique"));
+    throughputTooltip(stack, tooltip);
+  }
+
+  /** Shows a portable port's installed upgrade or its need for data recovery. */
+  static void throughputTooltip(ItemStack stack, List<Component> tooltip) {
+    var custom =
+        stack
+            .getOrDefault(
+                net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                net.minecraft.world.item.component.CustomData.EMPTY)
+            .copyTag();
+    if (!custom.contains(ConnectorData.FIELD)) return;
+    try {
+      var tier = ConnectorData.read(custom.get(ConnectorData.FIELD)).tier();
+      if (tier != dev.izzy.factorycore.core.resource.ThroughputTier.BASE)
+        tooltip.add(
+            Component.translatable(
+                "tooltip.factorycore.throughput_installed",
+                dev.izzy.factorycore.platform.upgrade.ThroughputContent.name(tier)));
+    } catch (IllegalArgumentException unreadable) {
+      tooltip.add(Component.translatable("tooltip.factorycore.throughput_unreadable"));
+    }
   }
 
   @Override

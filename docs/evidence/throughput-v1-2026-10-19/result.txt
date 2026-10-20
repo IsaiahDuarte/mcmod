@@ -1,0 +1,370 @@
+PASS
+orientations: placed 44 blocks
+states: row z=40: root(active) roots(fault) gateway(fault) gateway(active) drives(0,1+3,4) generators(unlit,lit); row z=43: programs(stopped,running,paused,trapped) access points(active,fault) links(active pair, fault pair, off); arms z=47
+orientation-north-east-up.png framebuffer=1708x960 gui=854x480 scale=2.0
+orientation-south-west-down.png framebuffer=1708x960 gui=854x480 scale=2.0
+lamps: root active, joined roots fault, rootless gateway fault, rooted gateway active; programs off/active/paused/fault; access points active/fault; links active/active/fault/off
+states-day.png framebuffer=1708x960 gui=854x480 scale=2.0
+states-day-close.png framebuffer=1708x960 gui=854x480 scale=2.0
+states-night.png framebuffer=1708x960 gui=854x480 scale=2.0
+states-night-close.png framebuffer=1708x960 gui=854x480 scale=2.0
+held-first-person-network_controller.png framebuffer=1708x960 gui=854x480 scale=2.0
+held-first-person-network_cable.png framebuffer=1708x960 gui=854x480 scale=2.0
+held-first-person-factory_guide.png framebuffer=1708x960 gui=854x480 scale=2.0
+held-third-person-gateway.png framebuffer=1708x960 gui=854x480 scale=2.0
+tooltip advanced_energy_bank: [Advanced Energy Bank, Capacity 10000000 FE; input and output 16000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip advanced_fluid_cell: [Advanced Fluid Cell, Capacity: 4096000 mB, Unbound empty cell]
+tooltip advanced_item_cell: [Advanced Item Cell, Capacity: 1048576 items, Unbound empty cell]
+tooltip advanced_module: [Advanced Module, Hold an Expanded cell or bank in the offhand, then use this module to upgrade it to Advanced.]
+tooltip blank_pattern: [Blank Pattern, Encode a crafting or processing recipe in the terminal's grid.]
+tooltip buffered_interface: [Buffered Interface, Nine real item slots; accepts hopper input., Contents stay with its ownership reference when moved., Crouch-use with both hands empty to toggle Import / Paused., Crouch-use with offhand redstone to return your known staging., Offhand sample: use for item type, sneak-use for exact data. Sneak with paper clears., Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude)., Sneak with compass cycles modes; sneak with chest changes stock goal.]
+tooltip crafting_interface: [Crafting Interface, Front faces a machine; runs processing patterns through it.]
+tooltip crafting_pattern: [Crafting Pattern, Unreadable pattern data]
+tooltip crafting_unit: [Crafting Unit, Runs crafting-table patterns placed in it for network crafting jobs.]
+tooltip expanded_energy_bank: [Expanded Energy Bank, Capacity 1000000 FE; input and output 4000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip expanded_fluid_cell: [Expanded Fluid Cell, Capacity: 256000 mB, Unbound empty cell]
+tooltip expanded_item_cell: [Expanded Item Cell, Capacity: 65536 items, Unbound empty cell]
+tooltip expansion_module: [Expansion Module, Hold a Starter cell or bank in the offhand, then use this module to upgrade it to Expanded.]
+tooltip factory_guide: [Factory Guide, Use to read the in-game guide: first network, automation, crafting and upgrades.]
+tooltip fuel_generator: [Fuel Generator, Stored: 0 / 100000 FE, 20 FE per burn tick, up to 80 FE/tick output]
+tooltip gateway: [Gateway, Dot face is downstream (child branch), cross face upstream. Sneak-use to edit branch policy., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip infinite_item_cell: [Infinite Item Cell, Capacity: Infinite (technical limits apply), Unbound empty cell]
+tooltip infinite_module: [Infinite Module, Hold an Advanced item cell in the offhand, then use this module to upgrade it to Infinite.]
+tooltip machine_interface: [Machine Interface, Local machine port. Its stock is not listed in the storage terminal., Offhand renamed paper/name tag labels; sneak with paper clears., Offhand redstone cycles access; sneak empty-handed cycles resource kind., Empty hands open settings for label, slots, access, priority and rate., One current backing registration per resource kind. Moving invalidates old handles.]
+tooltip network_cable: [Network Cable, Joins devices in one segment. Arms appear only toward faces that accept a connection.]
+tooltip network_controller: [Network Controller, Root of one network. Connect cables to any face; use it to see the network status., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip overdrive_upgrade: [Overdrive Upgrade, After Throughput: ports 1,024 items / 16,000 mB / 32,000 FE per tick; buffers 576 items/tick. Both link ends: 4x pair limits., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip processing_pattern: [Processing Pattern, Unreadable pattern data]
+tooltip program_controller: [Program Controller, Runs one deployed program in its segment. Use to open the editor; needs FE., Lamp: lit code = running · || = paused · ! = trapped or offline]
+tooltip starter_energy_bank: [Starter Energy Bank, Capacity 100000 FE; input and output 1000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip starter_fluid_cell: [Starter Fluid Cell, Capacity: 16000 mB, Unbound empty cell]
+tooltip starter_item_cell: [Starter Item Cell, Capacity: 8192 items, Unbound empty cell]
+tooltip storage_connector: [Storage Connector, Socket touches provider; cables use other faces., Empty hands + crouch-use: change resource., Empty-hand use + offhand redstone: access., Offhand iron/gold: +/- stack-size priority., Each backing store is registered once.]
+tooltip storage_drive: [Storage Drive, Holds four storage cells. An occupied bay shows a cell handle and lit lamp.]
+tooltip storage_terminal: [Storage Terminal, Connect to a cable. Use to search; shift-click your inventory to deposit.]
+tooltip throughput_upgrade: [Throughput Upgrade, Ports: 256 items / 4,000 mB / 8,000 FE per tick. Buffers: 256 items/tick., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip wireless_access_point: [Wireless Access Point, Lets bound handheld terminals reach this network within range while powered., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip wireless_link_endpoint: [Wireless Link Endpoint, Place against a gateway, then sneak-use two endpoints to pair them. Needs FE., Lamp: lit = paired/powered · ! = setup/power fault]
+tooltip wireless_terminal: [Wireless Terminal, 0 / 20000 FE (64 FE per action), Not bound]
+tooltips-edges-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+tooltip advanced_energy_bank: [Advanced Energy Bank, Capacity 10000000 FE; input and output 16000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip advanced_fluid_cell: [Advanced Fluid Cell, Capacity: 4096000 mB, Unbound empty cell]
+tooltip advanced_item_cell: [Advanced Item Cell, Capacity: 1048576 items, Unbound empty cell]
+tooltip advanced_module: [Advanced Module, Hold an Expanded cell or bank in the offhand, then use this module to upgrade it to Advanced.]
+tooltip blank_pattern: [Blank Pattern, Encode a crafting or processing recipe in the terminal's grid.]
+tooltip buffered_interface: [Buffered Interface, Nine real item slots; accepts hopper input., Contents stay with its ownership reference when moved., Crouch-use with both hands empty to toggle Import / Paused., Crouch-use with offhand redstone to return your known staging., Offhand sample: use for item type, sneak-use for exact data. Sneak with paper clears., Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude)., Sneak with compass cycles modes; sneak with chest changes stock goal.]
+tooltip crafting_interface: [Crafting Interface, Front faces a machine; runs processing patterns through it.]
+tooltip crafting_pattern: [Crafting Pattern, Unreadable pattern data]
+tooltip crafting_unit: [Crafting Unit, Runs crafting-table patterns placed in it for network crafting jobs.]
+tooltip expanded_energy_bank: [Expanded Energy Bank, Capacity 1000000 FE; input and output 4000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip expanded_fluid_cell: [Expanded Fluid Cell, Capacity: 256000 mB, Unbound empty cell]
+tooltip expanded_item_cell: [Expanded Item Cell, Capacity: 65536 items, Unbound empty cell]
+tooltip expansion_module: [Expansion Module, Hold a Starter cell or bank in the offhand, then use this module to upgrade it to Expanded.]
+tooltip factory_guide: [Factory Guide, Use to read the in-game guide: first network, automation, crafting and upgrades.]
+tooltip fuel_generator: [Fuel Generator, Stored: 0 / 100000 FE, 20 FE per burn tick, up to 80 FE/tick output]
+tooltip gateway: [Gateway, Dot face is downstream (child branch), cross face upstream. Sneak-use to edit branch policy., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip infinite_item_cell: [Infinite Item Cell, Capacity: Infinite (technical limits apply), Unbound empty cell]
+tooltip infinite_module: [Infinite Module, Hold an Advanced item cell in the offhand, then use this module to upgrade it to Infinite.]
+tooltip machine_interface: [Machine Interface, Local machine port. Its stock is not listed in the storage terminal., Offhand renamed paper/name tag labels; sneak with paper clears., Offhand redstone cycles access; sneak empty-handed cycles resource kind., Empty hands open settings for label, slots, access, priority and rate., One current backing registration per resource kind. Moving invalidates old handles.]
+tooltip network_cable: [Network Cable, Joins devices in one segment. Arms appear only toward faces that accept a connection.]
+tooltip network_controller: [Network Controller, Root of one network. Connect cables to any face; use it to see the network status., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip overdrive_upgrade: [Overdrive Upgrade, After Throughput: ports 1,024 items / 16,000 mB / 32,000 FE per tick; buffers 576 items/tick. Both link ends: 4x pair limits., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip processing_pattern: [Processing Pattern, Unreadable pattern data]
+tooltip program_controller: [Program Controller, Runs one deployed program in its segment. Use to open the editor; needs FE., Lamp: lit code = running · || = paused · ! = trapped or offline]
+tooltip starter_energy_bank: [Starter Energy Bank, Capacity 100000 FE; input and output 1000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip starter_fluid_cell: [Starter Fluid Cell, Capacity: 16000 mB, Unbound empty cell]
+tooltip starter_item_cell: [Starter Item Cell, Capacity: 8192 items, Unbound empty cell]
+tooltip storage_connector: [Storage Connector, Socket touches provider; cables use other faces., Empty hands + crouch-use: change resource., Empty-hand use + offhand redstone: access., Offhand iron/gold: +/- stack-size priority., Each backing store is registered once.]
+tooltip storage_drive: [Storage Drive, Holds four storage cells. An occupied bay shows a cell handle and lit lamp.]
+tooltip storage_terminal: [Storage Terminal, Connect to a cable. Use to search; shift-click your inventory to deposit.]
+tooltip throughput_upgrade: [Throughput Upgrade, Ports: 256 items / 4,000 mB / 8,000 FE per tick. Buffers: 256 items/tick., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip wireless_access_point: [Wireless Access Point, Lets bound handheld terminals reach this network within range while powered., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip wireless_link_endpoint: [Wireless Link Endpoint, Place against a gateway, then sneak-use two endpoints to pair them. Needs FE., Lamp: lit = paired/powered · ! = setup/power fault]
+tooltip wireless_terminal: [Wireless Terminal, 0 / 20000 FE (64 FE per action), Not bound]
+tooltips-corner-1-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+tooltip advanced_energy_bank: [Advanced Energy Bank, Capacity 10000000 FE; input and output 16000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip advanced_fluid_cell: [Advanced Fluid Cell, Capacity: 4096000 mB, Unbound empty cell]
+tooltip advanced_item_cell: [Advanced Item Cell, Capacity: 1048576 items, Unbound empty cell]
+tooltip advanced_module: [Advanced Module, Hold an Expanded cell or bank in the offhand, then use this module to upgrade it to Advanced.]
+tooltip blank_pattern: [Blank Pattern, Encode a crafting or processing recipe in the terminal's grid.]
+tooltip buffered_interface: [Buffered Interface, Nine real item slots; accepts hopper input., Contents stay with its ownership reference when moved., Crouch-use with both hands empty to toggle Import / Paused., Crouch-use with offhand redstone to return your known staging., Offhand sample: use for item type, sneak-use for exact data. Sneak with paper clears., Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude)., Sneak with compass cycles modes; sneak with chest changes stock goal.]
+tooltip crafting_interface: [Crafting Interface, Front faces a machine; runs processing patterns through it.]
+tooltip crafting_pattern: [Crafting Pattern, Unreadable pattern data]
+tooltip crafting_unit: [Crafting Unit, Runs crafting-table patterns placed in it for network crafting jobs.]
+tooltip expanded_energy_bank: [Expanded Energy Bank, Capacity 1000000 FE; input and output 4000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip expanded_fluid_cell: [Expanded Fluid Cell, Capacity: 256000 mB, Unbound empty cell]
+tooltip expanded_item_cell: [Expanded Item Cell, Capacity: 65536 items, Unbound empty cell]
+tooltip expansion_module: [Expansion Module, Hold a Starter cell or bank in the offhand, then use this module to upgrade it to Expanded.]
+tooltip factory_guide: [Factory Guide, Use to read the in-game guide: first network, automation, crafting and upgrades.]
+tooltip fuel_generator: [Fuel Generator, Stored: 0 / 100000 FE, 20 FE per burn tick, up to 80 FE/tick output]
+tooltip gateway: [Gateway, Dot face is downstream (child branch), cross face upstream. Sneak-use to edit branch policy., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip infinite_item_cell: [Infinite Item Cell, Capacity: Infinite (technical limits apply), Unbound empty cell]
+tooltip infinite_module: [Infinite Module, Hold an Advanced item cell in the offhand, then use this module to upgrade it to Infinite.]
+tooltip machine_interface: [Machine Interface, Local machine port. Its stock is not listed in the storage terminal., Offhand renamed paper/name tag labels; sneak with paper clears., Offhand redstone cycles access; sneak empty-handed cycles resource kind., Empty hands open settings for label, slots, access, priority and rate., One current backing registration per resource kind. Moving invalidates old handles.]
+tooltip network_cable: [Network Cable, Joins devices in one segment. Arms appear only toward faces that accept a connection.]
+tooltip network_controller: [Network Controller, Root of one network. Connect cables to any face; use it to see the network status., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip overdrive_upgrade: [Overdrive Upgrade, After Throughput: ports 1,024 items / 16,000 mB / 32,000 FE per tick; buffers 576 items/tick. Both link ends: 4x pair limits., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip processing_pattern: [Processing Pattern, Unreadable pattern data]
+tooltip program_controller: [Program Controller, Runs one deployed program in its segment. Use to open the editor; needs FE., Lamp: lit code = running · || = paused · ! = trapped or offline]
+tooltip starter_energy_bank: [Starter Energy Bank, Capacity 100000 FE; input and output 1000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip starter_fluid_cell: [Starter Fluid Cell, Capacity: 16000 mB, Unbound empty cell]
+tooltip starter_item_cell: [Starter Item Cell, Capacity: 8192 items, Unbound empty cell]
+tooltip storage_connector: [Storage Connector, Socket touches provider; cables use other faces., Empty hands + crouch-use: change resource., Empty-hand use + offhand redstone: access., Offhand iron/gold: +/- stack-size priority., Each backing store is registered once.]
+tooltip storage_drive: [Storage Drive, Holds four storage cells. An occupied bay shows a cell handle and lit lamp.]
+tooltip storage_terminal: [Storage Terminal, Connect to a cable. Use to search; shift-click your inventory to deposit.]
+tooltip throughput_upgrade: [Throughput Upgrade, Ports: 256 items / 4,000 mB / 8,000 FE per tick. Buffers: 256 items/tick., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip wireless_access_point: [Wireless Access Point, Lets bound handheld terminals reach this network within range while powered., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip wireless_link_endpoint: [Wireless Link Endpoint, Place against a gateway, then sneak-use two endpoints to pair them. Needs FE., Lamp: lit = paired/powered · ! = setup/power fault]
+tooltip wireless_terminal: [Wireless Terminal, 0 / 20000 FE (64 FE per action), Not bound]
+tooltips-corner-2-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+tooltip advanced_energy_bank: [Advanced Energy Bank, Capacity 10000000 FE; input and output 16000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip advanced_fluid_cell: [Advanced Fluid Cell, Capacity: 4096000 mB, Unbound empty cell]
+tooltip advanced_item_cell: [Advanced Item Cell, Capacity: 1048576 items, Unbound empty cell]
+tooltip advanced_module: [Advanced Module, Hold an Expanded cell or bank in the offhand, then use this module to upgrade it to Advanced.]
+tooltip blank_pattern: [Blank Pattern, Encode a crafting or processing recipe in the terminal's grid.]
+tooltip buffered_interface: [Buffered Interface, Nine real item slots; accepts hopper input., Contents stay with its ownership reference when moved., Crouch-use with both hands empty to toggle Import / Paused., Crouch-use with offhand redstone to return your known staging., Offhand sample: use for item type, sneak-use for exact data. Sneak with paper clears., Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude)., Sneak with compass cycles modes; sneak with chest changes stock goal.]
+tooltip crafting_interface: [Crafting Interface, Front faces a machine; runs processing patterns through it.]
+tooltip crafting_pattern: [Crafting Pattern, Unreadable pattern data]
+tooltip crafting_unit: [Crafting Unit, Runs crafting-table patterns placed in it for network crafting jobs.]
+tooltip expanded_energy_bank: [Expanded Energy Bank, Capacity 1000000 FE; input and output 4000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip expanded_fluid_cell: [Expanded Fluid Cell, Capacity: 256000 mB, Unbound empty cell]
+tooltip expanded_item_cell: [Expanded Item Cell, Capacity: 65536 items, Unbound empty cell]
+tooltip expansion_module: [Expansion Module, Hold a Starter cell or bank in the offhand, then use this module to upgrade it to Expanded.]
+tooltip factory_guide: [Factory Guide, Use to read the in-game guide: first network, automation, crafting and upgrades.]
+tooltip fuel_generator: [Fuel Generator, Stored: 0 / 100000 FE, 20 FE per burn tick, up to 80 FE/tick output]
+tooltip gateway: [Gateway, Dot face is downstream (child branch), cross face upstream. Sneak-use to edit branch policy., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip infinite_item_cell: [Infinite Item Cell, Capacity: Infinite (technical limits apply), Unbound empty cell]
+tooltip infinite_module: [Infinite Module, Hold an Advanced item cell in the offhand, then use this module to upgrade it to Infinite.]
+tooltip machine_interface: [Machine Interface, Local machine port. Its stock is not listed in the storage terminal., Offhand renamed paper/name tag labels; sneak with paper clears., Offhand redstone cycles access; sneak empty-handed cycles resource kind., Empty hands open settings for label, slots, access, priority and rate., One current backing registration per resource kind. Moving invalidates old handles.]
+tooltip network_cable: [Network Cable, Joins devices in one segment. Arms appear only toward faces that accept a connection.]
+tooltip network_controller: [Network Controller, Root of one network. Connect cables to any face; use it to see the network status., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip overdrive_upgrade: [Overdrive Upgrade, After Throughput: ports 1,024 items / 16,000 mB / 32,000 FE per tick; buffers 576 items/tick. Both link ends: 4x pair limits., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip processing_pattern: [Processing Pattern, Unreadable pattern data]
+tooltip program_controller: [Program Controller, Runs one deployed program in its segment. Use to open the editor; needs FE., Lamp: lit code = running · || = paused · ! = trapped or offline]
+tooltip starter_energy_bank: [Starter Energy Bank, Capacity 100000 FE; input and output 1000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip starter_fluid_cell: [Starter Fluid Cell, Capacity: 16000 mB, Unbound empty cell]
+tooltip starter_item_cell: [Starter Item Cell, Capacity: 8192 items, Unbound empty cell]
+tooltip storage_connector: [Storage Connector, Socket touches provider; cables use other faces., Empty hands + crouch-use: change resource., Empty-hand use + offhand redstone: access., Offhand iron/gold: +/- stack-size priority., Each backing store is registered once.]
+tooltip storage_drive: [Storage Drive, Holds four storage cells. An occupied bay shows a cell handle and lit lamp.]
+tooltip storage_terminal: [Storage Terminal, Connect to a cable. Use to search; shift-click your inventory to deposit.]
+tooltip throughput_upgrade: [Throughput Upgrade, Ports: 256 items / 4,000 mB / 8,000 FE per tick. Buffers: 256 items/tick., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip wireless_access_point: [Wireless Access Point, Lets bound handheld terminals reach this network within range while powered., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip wireless_link_endpoint: [Wireless Link Endpoint, Place against a gateway, then sneak-use two endpoints to pair them. Needs FE., Lamp: lit = paired/powered · ! = setup/power fault]
+tooltip wireless_terminal: [Wireless Terminal, 0 / 20000 FE (64 FE per action), Not bound]
+tooltips-corner-3-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+tooltip advanced_energy_bank: [Advanced Energy Bank, Capacity 10000000 FE; input and output 16000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip advanced_fluid_cell: [Advanced Fluid Cell, Capacity: 4096000 mB, Unbound empty cell]
+tooltip advanced_item_cell: [Advanced Item Cell, Capacity: 1048576 items, Unbound empty cell]
+tooltip advanced_module: [Advanced Module, Hold an Expanded cell or bank in the offhand, then use this module to upgrade it to Advanced.]
+tooltip blank_pattern: [Blank Pattern, Encode a crafting or processing recipe in the terminal's grid.]
+tooltip buffered_interface: [Buffered Interface, Nine real item slots; accepts hopper input., Contents stay with its ownership reference when moved., Crouch-use with both hands empty to toggle Import / Paused., Crouch-use with offhand redstone to return your known staging., Offhand sample: use for item type, sneak-use for exact data. Sneak with paper clears., Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude)., Sneak with compass cycles modes; sneak with chest changes stock goal.]
+tooltip crafting_interface: [Crafting Interface, Front faces a machine; runs processing patterns through it.]
+tooltip crafting_pattern: [Crafting Pattern, Unreadable pattern data]
+tooltip crafting_unit: [Crafting Unit, Runs crafting-table patterns placed in it for network crafting jobs.]
+tooltip expanded_energy_bank: [Expanded Energy Bank, Capacity 1000000 FE; input and output 4000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip expanded_fluid_cell: [Expanded Fluid Cell, Capacity: 256000 mB, Unbound empty cell]
+tooltip expanded_item_cell: [Expanded Item Cell, Capacity: 65536 items, Unbound empty cell]
+tooltip expansion_module: [Expansion Module, Hold a Starter cell or bank in the offhand, then use this module to upgrade it to Expanded.]
+tooltip factory_guide: [Factory Guide, Use to read the in-game guide: first network, automation, crafting and upgrades.]
+tooltip fuel_generator: [Fuel Generator, Stored: 0 / 100000 FE, 20 FE per burn tick, up to 80 FE/tick output]
+tooltip gateway: [Gateway, Dot face is downstream (child branch), cross face upstream. Sneak-use to edit branch policy., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip infinite_item_cell: [Infinite Item Cell, Capacity: Infinite (technical limits apply), Unbound empty cell]
+tooltip infinite_module: [Infinite Module, Hold an Advanced item cell in the offhand, then use this module to upgrade it to Infinite.]
+tooltip machine_interface: [Machine Interface, Local machine port. Its stock is not listed in the storage terminal., Offhand renamed paper/name tag labels; sneak with paper clears., Offhand redstone cycles access; sneak empty-handed cycles resource kind., Empty hands open settings for label, slots, access, priority and rate., One current backing registration per resource kind. Moving invalidates old handles.]
+tooltip network_cable: [Network Cable, Joins devices in one segment. Arms appear only toward faces that accept a connection.]
+tooltip network_controller: [Network Controller, Root of one network. Connect cables to any face; use it to see the network status., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip overdrive_upgrade: [Overdrive Upgrade, After Throughput: ports 1,024 items / 16,000 mB / 32,000 FE per tick; buffers 576 items/tick. Both link ends: 4x pair limits., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip processing_pattern: [Processing Pattern, Unreadable pattern data]
+tooltip program_controller: [Program Controller, Runs one deployed program in its segment. Use to open the editor; needs FE., Lamp: lit code = running · || = paused · ! = trapped or offline]
+tooltip starter_energy_bank: [Starter Energy Bank, Capacity 100000 FE; input and output 1000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip starter_fluid_cell: [Starter Fluid Cell, Capacity: 16000 mB, Unbound empty cell]
+tooltip starter_item_cell: [Starter Item Cell, Capacity: 8192 items, Unbound empty cell]
+tooltip storage_connector: [Storage Connector, Socket touches provider; cables use other faces., Empty hands + crouch-use: change resource., Empty-hand use + offhand redstone: access., Offhand iron/gold: +/- stack-size priority., Each backing store is registered once.]
+tooltip storage_drive: [Storage Drive, Holds four storage cells. An occupied bay shows a cell handle and lit lamp.]
+tooltip storage_terminal: [Storage Terminal, Connect to a cable. Use to search; shift-click your inventory to deposit.]
+tooltip throughput_upgrade: [Throughput Upgrade, Ports: 256 items / 4,000 mB / 8,000 FE per tick. Buffers: 256 items/tick., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip wireless_access_point: [Wireless Access Point, Lets bound handheld terminals reach this network within range while powered., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip wireless_link_endpoint: [Wireless Link Endpoint, Place against a gateway, then sneak-use two endpoints to pair them. Needs FE., Lamp: lit = paired/powered · ! = setup/power fault]
+tooltip wireless_terminal: [Wireless Terminal, 0 / 20000 FE (64 FE per action), Not bound]
+tooltips-edges-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+tooltip advanced_energy_bank: [Advanced Energy Bank, Capacity 10000000 FE; input and output 16000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip advanced_fluid_cell: [Advanced Fluid Cell, Capacity: 4096000 mB, Unbound empty cell]
+tooltip advanced_item_cell: [Advanced Item Cell, Capacity: 1048576 items, Unbound empty cell]
+tooltip advanced_module: [Advanced Module, Hold an Expanded cell or bank in the offhand, then use this module to upgrade it to Advanced.]
+tooltip blank_pattern: [Blank Pattern, Encode a crafting or processing recipe in the terminal's grid.]
+tooltip buffered_interface: [Buffered Interface, Nine real item slots; accepts hopper input., Contents stay with its ownership reference when moved., Crouch-use with both hands empty to toggle Import / Paused., Crouch-use with offhand redstone to return your known staging., Offhand sample: use for item type, sneak-use for exact data. Sneak with paper clears., Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude)., Sneak with compass cycles modes; sneak with chest changes stock goal.]
+tooltip crafting_interface: [Crafting Interface, Front faces a machine; runs processing patterns through it.]
+tooltip crafting_pattern: [Crafting Pattern, Unreadable pattern data]
+tooltip crafting_unit: [Crafting Unit, Runs crafting-table patterns placed in it for network crafting jobs.]
+tooltip expanded_energy_bank: [Expanded Energy Bank, Capacity 1000000 FE; input and output 4000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip expanded_fluid_cell: [Expanded Fluid Cell, Capacity: 256000 mB, Unbound empty cell]
+tooltip expanded_item_cell: [Expanded Item Cell, Capacity: 65536 items, Unbound empty cell]
+tooltip expansion_module: [Expansion Module, Hold a Starter cell or bank in the offhand, then use this module to upgrade it to Expanded.]
+tooltip factory_guide: [Factory Guide, Use to read the in-game guide: first network, automation, crafting and upgrades.]
+tooltip fuel_generator: [Fuel Generator, Stored: 0 / 100000 FE, 20 FE per burn tick, up to 80 FE/tick output]
+tooltip gateway: [Gateway, Dot face is downstream (child branch), cross face upstream. Sneak-use to edit branch policy., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip infinite_item_cell: [Infinite Item Cell, Capacity: Infinite (technical limits apply), Unbound empty cell]
+tooltip infinite_module: [Infinite Module, Hold an Advanced item cell in the offhand, then use this module to upgrade it to Infinite.]
+tooltip machine_interface: [Machine Interface, Local machine port. Its stock is not listed in the storage terminal., Offhand renamed paper/name tag labels; sneak with paper clears., Offhand redstone cycles access; sneak empty-handed cycles resource kind., Empty hands open settings for label, slots, access, priority and rate., One current backing registration per resource kind. Moving invalidates old handles.]
+tooltip network_cable: [Network Cable, Joins devices in one segment. Arms appear only toward faces that accept a connection.]
+tooltip network_controller: [Network Controller, Root of one network. Connect cables to any face; use it to see the network status., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip overdrive_upgrade: [Overdrive Upgrade, After Throughput: ports 1,024 items / 16,000 mB / 32,000 FE per tick; buffers 576 items/tick. Both link ends: 4x pair limits., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip processing_pattern: [Processing Pattern, Unreadable pattern data]
+tooltip program_controller: [Program Controller, Runs one deployed program in its segment. Use to open the editor; needs FE., Lamp: lit code = running · || = paused · ! = trapped or offline]
+tooltip starter_energy_bank: [Starter Energy Bank, Capacity 100000 FE; input and output 1000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip starter_fluid_cell: [Starter Fluid Cell, Capacity: 16000 mB, Unbound empty cell]
+tooltip starter_item_cell: [Starter Item Cell, Capacity: 8192 items, Unbound empty cell]
+tooltip storage_connector: [Storage Connector, Socket touches provider; cables use other faces., Empty hands + crouch-use: change resource., Empty-hand use + offhand redstone: access., Offhand iron/gold: +/- stack-size priority., Each backing store is registered once.]
+tooltip storage_drive: [Storage Drive, Holds four storage cells. An occupied bay shows a cell handle and lit lamp.]
+tooltip storage_terminal: [Storage Terminal, Connect to a cable. Use to search; shift-click your inventory to deposit.]
+tooltip throughput_upgrade: [Throughput Upgrade, Ports: 256 items / 4,000 mB / 8,000 FE per tick. Buffers: 256 items/tick., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip wireless_access_point: [Wireless Access Point, Lets bound handheld terminals reach this network within range while powered., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip wireless_link_endpoint: [Wireless Link Endpoint, Place against a gateway, then sneak-use two endpoints to pair them. Needs FE., Lamp: lit = paired/powered · ! = setup/power fault]
+tooltip wireless_terminal: [Wireless Terminal, 0 / 20000 FE (64 FE per action), Not bound]
+tooltips-corner-1-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+tooltip advanced_energy_bank: [Advanced Energy Bank, Capacity 10000000 FE; input and output 16000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip advanced_fluid_cell: [Advanced Fluid Cell, Capacity: 4096000 mB, Unbound empty cell]
+tooltip advanced_item_cell: [Advanced Item Cell, Capacity: 1048576 items, Unbound empty cell]
+tooltip advanced_module: [Advanced Module, Hold an Expanded cell or bank in the offhand, then use this module to upgrade it to Advanced.]
+tooltip blank_pattern: [Blank Pattern, Encode a crafting or processing recipe in the terminal's grid.]
+tooltip buffered_interface: [Buffered Interface, Nine real item slots; accepts hopper input., Contents stay with its ownership reference when moved., Crouch-use with both hands empty to toggle Import / Paused., Crouch-use with offhand redstone to return your known staging., Offhand sample: use for item type, sneak-use for exact data. Sneak with paper clears., Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude)., Sneak with compass cycles modes; sneak with chest changes stock goal.]
+tooltip crafting_interface: [Crafting Interface, Front faces a machine; runs processing patterns through it.]
+tooltip crafting_pattern: [Crafting Pattern, Unreadable pattern data]
+tooltip crafting_unit: [Crafting Unit, Runs crafting-table patterns placed in it for network crafting jobs.]
+tooltip expanded_energy_bank: [Expanded Energy Bank, Capacity 1000000 FE; input and output 4000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip expanded_fluid_cell: [Expanded Fluid Cell, Capacity: 256000 mB, Unbound empty cell]
+tooltip expanded_item_cell: [Expanded Item Cell, Capacity: 65536 items, Unbound empty cell]
+tooltip expansion_module: [Expansion Module, Hold a Starter cell or bank in the offhand, then use this module to upgrade it to Expanded.]
+tooltip factory_guide: [Factory Guide, Use to read the in-game guide: first network, automation, crafting and upgrades.]
+tooltip fuel_generator: [Fuel Generator, Stored: 0 / 100000 FE, 20 FE per burn tick, up to 80 FE/tick output]
+tooltip gateway: [Gateway, Dot face is downstream (child branch), cross face upstream. Sneak-use to edit branch policy., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip infinite_item_cell: [Infinite Item Cell, Capacity: Infinite (technical limits apply), Unbound empty cell]
+tooltip infinite_module: [Infinite Module, Hold an Advanced item cell in the offhand, then use this module to upgrade it to Infinite.]
+tooltip machine_interface: [Machine Interface, Local machine port. Its stock is not listed in the storage terminal., Offhand renamed paper/name tag labels; sneak with paper clears., Offhand redstone cycles access; sneak empty-handed cycles resource kind., Empty hands open settings for label, slots, access, priority and rate., One current backing registration per resource kind. Moving invalidates old handles.]
+tooltip network_cable: [Network Cable, Joins devices in one segment. Arms appear only toward faces that accept a connection.]
+tooltip network_controller: [Network Controller, Root of one network. Connect cables to any face; use it to see the network status., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip overdrive_upgrade: [Overdrive Upgrade, After Throughput: ports 1,024 items / 16,000 mB / 32,000 FE per tick; buffers 576 items/tick. Both link ends: 4x pair limits., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip processing_pattern: [Processing Pattern, Unreadable pattern data]
+tooltip program_controller: [Program Controller, Runs one deployed program in its segment. Use to open the editor; needs FE., Lamp: lit code = running · || = paused · ! = trapped or offline]
+tooltip starter_energy_bank: [Starter Energy Bank, Capacity 100000 FE; input and output 1000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip starter_fluid_cell: [Starter Fluid Cell, Capacity: 16000 mB, Unbound empty cell]
+tooltip starter_item_cell: [Starter Item Cell, Capacity: 8192 items, Unbound empty cell]
+tooltip storage_connector: [Storage Connector, Socket touches provider; cables use other faces., Empty hands + crouch-use: change resource., Empty-hand use + offhand redstone: access., Offhand iron/gold: +/- stack-size priority., Each backing store is registered once.]
+tooltip storage_drive: [Storage Drive, Holds four storage cells. An occupied bay shows a cell handle and lit lamp.]
+tooltip storage_terminal: [Storage Terminal, Connect to a cable. Use to search; shift-click your inventory to deposit.]
+tooltip throughput_upgrade: [Throughput Upgrade, Ports: 256 items / 4,000 mB / 8,000 FE per tick. Buffers: 256 items/tick., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip wireless_access_point: [Wireless Access Point, Lets bound handheld terminals reach this network within range while powered., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip wireless_link_endpoint: [Wireless Link Endpoint, Place against a gateway, then sneak-use two endpoints to pair them. Needs FE., Lamp: lit = paired/powered · ! = setup/power fault]
+tooltip wireless_terminal: [Wireless Terminal, 0 / 20000 FE (64 FE per action), Not bound]
+tooltips-corner-2-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+tooltip advanced_energy_bank: [Advanced Energy Bank, Capacity 10000000 FE; input and output 16000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip advanced_fluid_cell: [Advanced Fluid Cell, Capacity: 4096000 mB, Unbound empty cell]
+tooltip advanced_item_cell: [Advanced Item Cell, Capacity: 1048576 items, Unbound empty cell]
+tooltip advanced_module: [Advanced Module, Hold an Expanded cell or bank in the offhand, then use this module to upgrade it to Advanced.]
+tooltip blank_pattern: [Blank Pattern, Encode a crafting or processing recipe in the terminal's grid.]
+tooltip buffered_interface: [Buffered Interface, Nine real item slots; accepts hopper input., Contents stay with its ownership reference when moved., Crouch-use with both hands empty to toggle Import / Paused., Crouch-use with offhand redstone to return your known staging., Offhand sample: use for item type, sneak-use for exact data. Sneak with paper clears., Sneak with offhand clock changes rate; named name tags select IDs/#tags (sneak to exclude)., Sneak with compass cycles modes; sneak with chest changes stock goal.]
+tooltip crafting_interface: [Crafting Interface, Front faces a machine; runs processing patterns through it.]
+tooltip crafting_pattern: [Crafting Pattern, Unreadable pattern data]
+tooltip crafting_unit: [Crafting Unit, Runs crafting-table patterns placed in it for network crafting jobs.]
+tooltip expanded_energy_bank: [Expanded Energy Bank, Capacity 1000000 FE; input and output 4000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip expanded_fluid_cell: [Expanded Fluid Cell, Capacity: 256000 mB, Unbound empty cell]
+tooltip expanded_item_cell: [Expanded Item Cell, Capacity: 65536 items, Unbound empty cell]
+tooltip expansion_module: [Expansion Module, Hold a Starter cell or bank in the offhand, then use this module to upgrade it to Expanded.]
+tooltip factory_guide: [Factory Guide, Use to read the in-game guide: first network, automation, crafting and upgrades.]
+tooltip fuel_generator: [Fuel Generator, Stored: 0 / 100000 FE, 20 FE per burn tick, up to 80 FE/tick output]
+tooltip gateway: [Gateway, Dot face is downstream (child branch), cross face upstream. Sneak-use to edit branch policy., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip infinite_item_cell: [Infinite Item Cell, Capacity: Infinite (technical limits apply), Unbound empty cell]
+tooltip infinite_module: [Infinite Module, Hold an Advanced item cell in the offhand, then use this module to upgrade it to Infinite.]
+tooltip machine_interface: [Machine Interface, Local machine port. Its stock is not listed in the storage terminal., Offhand renamed paper/name tag labels; sneak with paper clears., Offhand redstone cycles access; sneak empty-handed cycles resource kind., Empty hands open settings for label, slots, access, priority and rate., One current backing registration per resource kind. Moving invalidates old handles.]
+tooltip network_cable: [Network Cable, Joins devices in one segment. Arms appear only toward faces that accept a connection.]
+tooltip network_controller: [Network Controller, Root of one network. Connect cables to any face; use it to see the network status., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip overdrive_upgrade: [Overdrive Upgrade, After Throughput: ports 1,024 items / 16,000 mB / 32,000 FE per tick; buffers 576 items/tick. Both link ends: 4x pair limits., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip processing_pattern: [Processing Pattern, Unreadable pattern data]
+tooltip program_controller: [Program Controller, Runs one deployed program in its segment. Use to open the editor; needs FE., Lamp: lit code = running · || = paused · ! = trapped or offline]
+tooltip starter_energy_bank: [Starter Energy Bank, Capacity 100000 FE; input and output 1000 FE/tick each, Break to move; hold offhand and use sequential Expansion/Advanced modules. No Infinite tier.]
+tooltip starter_fluid_cell: [Starter Fluid Cell, Capacity: 16000 mB, Unbound empty cell]
+tooltip starter_item_cell: [Starter Item Cell, Capacity: 8192 items, Unbound empty cell]
+tooltip storage_connector: [Storage Connector, Socket touches provider; cables use other faces., Empty hands + crouch-use: change resource., Empty-hand use + offhand redstone: access., Offhand iron/gold: +/- stack-size priority., Each backing store is registered once.]
+tooltip storage_drive: [Storage Drive, Holds four storage cells. An occupied bay shows a cell handle and lit lamp.]
+tooltip storage_terminal: [Storage Terminal, Connect to a cable. Use to search; shift-click your inventory to deposit.]
+tooltip throughput_upgrade: [Throughput Upgrade, Ports: 256 items / 4,000 mB / 8,000 FE per tick. Buffers: 256 items/tick., Use on device: Edit rights; buffers also Deploy; links Manage. Failed use costs nothing. Links drop upgrades; other devices retain them., Shared server budgets still apply; busy factories may be throttled.]
+tooltip wireless_access_point: [Wireless Access Point, Lets bound handheld terminals reach this network within range while powered., Lamp: lit symbol = online · ! = needs attention · dark = idle]
+tooltip wireless_link_endpoint: [Wireless Link Endpoint, Place against a gateway, then sneak-use two endpoints to pair them. Needs FE., Lamp: lit = paired/powered · ! = setup/power fault]
+tooltip wireless_terminal: [Wireless Terminal, 0 / 20000 FE (64 FE per action), Not bound]
+tooltips-corner-3-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+fit terminal scale=1: TerminalScreen panel=344x232 gui=1708x960 controls=17
+terminal-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit terminal scale=2: TerminalScreen panel=344x232 gui=854x480 controls=17
+terminal-scale-2.png framebuffer=1708x960 gui=854x480 scale=2.0
+fit terminal scale=3: TerminalScreen panel=344x232 gui=570x320 controls=17
+terminal-scale-3.png framebuffer=1708x960 gui=570x320 scale=3.0
+fit terminal scale=4: TerminalScreen panel=344x232 gui=427x240 controls=17
+terminal-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+fit buffer scale=1: BufferSettingsScreen panel=320x232 gui=1708x960 controls=18
+buffer-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit buffer scale=2: BufferSettingsScreen panel=320x232 gui=854x480 controls=18
+fit buffer scale=3: BufferSettingsScreen panel=320x232 gui=570x320 controls=18
+fit buffer scale=4: BufferSettingsScreen panel=320x232 gui=427x240 controls=18
+buffer-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+fit machine scale=1: MachineSettingsScreen panel=300x236 gui=1708x960 controls=12
+machine-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit machine scale=2: MachineSettingsScreen panel=300x236 gui=854x480 controls=12
+fit machine scale=3: MachineSettingsScreen panel=300x236 gui=570x320 controls=12
+fit machine scale=4: MachineSettingsScreen panel=300x236 gui=427x240 controls=12
+machine-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+machine-throughput: real survival use consumed one; synced rate=256
+fit machine-throughput scale=1: MachineSettingsScreen panel=300x236 gui=1708x960 controls=12
+machine-throughput-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit machine-throughput scale=2: MachineSettingsScreen panel=300x236 gui=854x480 controls=12
+fit machine-throughput scale=3: MachineSettingsScreen panel=300x236 gui=570x320 controls=12
+fit machine-throughput scale=4: MachineSettingsScreen panel=300x236 gui=427x240 controls=12
+machine-throughput-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+machine-overdrive: real survival use consumed one; synced rate=1024
+fit machine-overdrive scale=1: MachineSettingsScreen panel=300x236 gui=1708x960 controls=12
+machine-overdrive-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit machine-overdrive scale=2: MachineSettingsScreen panel=300x236 gui=854x480 controls=12
+fit machine-overdrive scale=3: MachineSettingsScreen panel=300x236 gui=570x320 controls=12
+fit machine-overdrive scale=4: MachineSettingsScreen panel=300x236 gui=427x240 controls=12
+machine-overdrive-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+buffer-throughput: real survival use consumed one; synced rate=256
+fit buffer-throughput scale=1: BufferSettingsScreen panel=320x232 gui=1708x960 controls=18
+buffer-throughput-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit buffer-throughput scale=2: BufferSettingsScreen panel=320x232 gui=854x480 controls=18
+fit buffer-throughput scale=3: BufferSettingsScreen panel=320x232 gui=570x320 controls=18
+fit buffer-throughput scale=4: BufferSettingsScreen panel=320x232 gui=427x240 controls=18
+buffer-throughput-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+buffer-overdrive: real survival use consumed one; synced rate=576
+fit buffer-overdrive scale=1: BufferSettingsScreen panel=320x232 gui=1708x960 controls=18
+buffer-overdrive-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit buffer-overdrive scale=2: BufferSettingsScreen panel=320x232 gui=854x480 controls=18
+fit buffer-overdrive scale=3: BufferSettingsScreen panel=320x232 gui=570x320 controls=18
+fit buffer-overdrive scale=4: BufferSettingsScreen panel=320x232 gui=427x240 controls=18
+buffer-overdrive-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+fit program scale=1: ProgramScreen panel=344x240 gui=1708x960 controls=11
+program-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit program scale=2: ProgramScreen panel=344x240 gui=854x480 controls=11
+fit program scale=3: ProgramScreen panel=344x240 gui=570x320 controls=11
+fit program scale=4: ProgramScreen panel=344x240 gui=427x240 controls=11
+program-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+fit gateway-policy scale=1: GatewayPolicyScreen panel=300x204 gui=1708x960 controls=17
+gateway-policy-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit gateway-policy scale=2: GatewayPolicyScreen panel=300x204 gui=854x480 controls=17
+fit gateway-policy scale=3: GatewayPolicyScreen panel=300x204 gui=570x320 controls=17
+fit gateway-policy scale=4: GatewayPolicyScreen panel=300x204 gui=427x240 controls=17
+gateway-policy-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+fit guide-throughput scale=1: BookViewScreen panel=none gui=1708x960 controls=2
+guide-throughput-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit guide-throughput scale=2: BookViewScreen panel=none gui=854x480 controls=2
+fit guide-throughput scale=3: BookViewScreen panel=none gui=570x320 controls=2
+fit guide-throughput scale=4: BookViewScreen panel=none gui=427x240 controls=2
+guide-throughput-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+fit guide scale=1: BookViewScreen panel=none gui=1708x960 controls=2
+guide-scale-1.png framebuffer=1708x960 gui=1708x960 scale=1.0
+fit guide scale=2: BookViewScreen panel=none gui=854x480 controls=2
+fit guide scale=3: BookViewScreen panel=none gui=570x320 controls=2
+fit guide scale=4: BookViewScreen panel=none gui=427x240 controls=2
+guide-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+upgrade-tooltip-0-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+upgrade-tooltip-1-scale-4.png framebuffer=1708x960 gui=427x240 scale=4.0
+Orientation: every FACING device in all six facings, horizontal devices in four; two opposite corner views show every front.
+Screens: terminal, buffer settings, machine settings, program editor, gateway policy and guide at GUI scales 1-4 in a 1708x960 framebuffer (427x240 at scale 4): panels and controls on screen, no overlap, labels fit.

@@ -220,6 +220,30 @@ public final class WorldCraftingJobs {
     return new Submission(id, plan, "");
   }
 
+  /**
+   * Submits a job carrying a persistent request link (a program's rule/item command). The link is
+   * saved with the job, so a restarted server or reloaded controller never submits a second job for
+   * the same link while the first exists; such a request returns reason {@code in_flight}.
+   */
+  public Submission submitLinked(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      ResourceKey key,
+      long amount,
+      UUID link) {
+    checkThread();
+    Objects.requireNonNull(link);
+    if (linked(link)) return new Submission(null, null, "in_flight");
+    return submit(actor, origin, key, amount, link);
+  }
+
+  /** True while a saved job carries {@code link} as its rule or program request link. */
+  public boolean linked(UUID link) {
+    checkThread();
+    for (var job : saved().craftingJobs().all()) if (link.equals(job.rule())) return true;
+    return false;
+  }
+
   private void release(UUID backing, UUID owner, ResourceKey key) {
     var registry = saved().registry();
     var ownership = registry.ownership(backing);
@@ -380,7 +404,11 @@ public final class WorldCraftingJobs {
     var job = jobs.get(id);
     if (job == null) return;
     boolean cancelling = job.state() == CraftingJob.State.CANCELLING;
-    if (cancelling && job.dispatch() != null) cleanup(job);
+    if (cancelling && job.dispatch() != null && !cleanup(job)) {
+      // An unverifiable or disagreeing machine journal freezes every job resource (ADR 0057).
+      jobs.changed();
+      return;
+    }
     if (job.state() == CraftingJob.State.DELIVERING || cancelling) {
       deliver(job);
       if (job.finished()) {
@@ -405,23 +433,57 @@ public final class WorldCraftingJobs {
   /**
    * Bounded cleanup record after cancel: keep collecting the dispatch's expected outputs from its
    * machine for at most {@link #MAX_CLEANUP_PASSES} passes, then abandon the remainder in place.
+   * Returns false while the job must stay frozen: the leased machine's chunk is not loaded so its
+   * journal cannot be checked, or the journal disagrees with the job (ADR 0057). A loaded target
+   * that is no longer the original provider holds none of this job's journal and does not block.
    */
-  private void cleanup(CraftingJob job) {
+  private boolean cleanup(CraftingJob job) {
+    var dispatch = job.dispatch();
+    boolean legacy = dispatch.target() == null || dispatch.providers().isEmpty();
+    BlockEntityRef machine = null;
+    boolean original = false;
+    if (!legacy) {
+      machine = target(dispatch.target());
+      if (!machine.loaded()) {
+        job.waiting("machine_unloaded");
+        retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
+        return false;
+      }
+      original =
+          machine.entity() != null
+              && dispatch
+                  .providers()
+                  .equals(networks().connectors().processingIdentity(dispatch.target(), false));
+      if (original) {
+        var disagreement = journalCheck(job, machine.entity());
+        if (disagreement != null) {
+          job.waiting(disagreement);
+          retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
+          return false;
+        }
+      }
+      if (!job.reason().isEmpty()) job.waiting("");
+    }
     int passes = cleanups.merge(job.id(), 1, Integer::sum);
-    var holder = interfaceAt(job.dispatch().machine());
+    var holder = interfaceAt(dispatch.machine());
     var offer = holder == null ? null : findDispatched(job);
     if (offer != null
-        && job.dispatch().target() != null
-        && !job.dispatch().providers().isEmpty()
-        && job.dispatch().target().equals(machineTarget(holder))
-        && job.dispatch()
-            .providers()
-            .equals(networks().connectors().processingIdentity(job.dispatch().target(), false))
+        && original
+        && dispatch.target().equals(machineTarget(holder))
         && reachable(holder, offer.pattern())) {
       var outputs = expected(offer.pattern());
       var codec = new PlatformResourceCodec(server.registryAccess());
-      if (holder.machine() != null) collect(job, outputs, holder.machine(), codec);
-      if (holder.fluidMachine() != null) collectFluids(job, outputs, holder.fluidMachine(), codec);
+      var journal = new Journal(job, machine.entity());
+      try {
+        if (holder.machine() != null) collect(job, outputs, holder.machine(), codec, journal);
+        if (holder.fluidMachine() != null)
+          collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
+      } catch (RuntimeException uncertain) {
+        // The journal keeps its pending mark; nothing is retried or refunded.
+        job.waiting("uncertain");
+        retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
+        return false;
+      }
       boolean done =
           outputs.entrySet().stream()
               .allMatch(
@@ -429,9 +491,83 @@ public final class WorldCraftingJobs {
       if (done) passes = MAX_CLEANUP_PASSES;
     }
     if (passes >= MAX_CLEANUP_PASSES) {
+      if (original) ProcessingJournal.clear(machine.entity());
       job.abandonDispatch();
       cleanups.remove(job.id());
     } else retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
+    return true;
+  }
+
+  /** Loaded state of a dispatch target: {@code entity} is null when no block entity is there. */
+  private record BlockEntityRef(
+      boolean loaded, net.minecraft.world.level.block.entity.BlockEntity entity) {}
+
+  /** Reads a target without loading its chunk. */
+  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed level.
+  private BlockEntityRef target(NodeRegistry.Position target) {
+    for (var level : server.getAllLevels()) {
+      if (!level.dimension().location().toString().equals(target.dimension())) continue;
+      var pos = net.minecraft.core.BlockPos.of(target.block());
+      var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+      if (chunk == null) return new BlockEntityRef(false, null);
+      var entity =
+          chunk.getBlockEntity(
+              pos, net.minecraft.world.level.chunk.LevelChunk.EntityCreationType.CHECK);
+      return new BlockEntityRef(true, entity == null || entity.isRemoved() ? null : entity);
+    }
+    return new BlockEntityRef(false, null);
+  }
+
+  /** Null when the machine's journal proves the job's dispatch progress, else a wait reason. */
+  private String journalCheck(
+      CraftingJob job, net.minecraft.world.level.block.entity.BlockEntity machine) {
+    try {
+      return ProcessingJournal.check(
+          ProcessingJournal.read(machine, saved().registry().world()), job.id(), job.dispatch());
+    } catch (IllegalArgumentException unreadable) {
+      return "save_mismatch";
+    }
+  }
+
+  /**
+   * Before a new dispatch: a journal left by an earlier dispatch blocks this machine unless it
+   * proves that nothing moved and no call is outstanding, in which case it is cleared. Returns null
+   * when dispatch may proceed.
+   */
+  private String journalBlocks(CraftingJob job, NodeRegistry.Position position) {
+    var machine = target(position);
+    if (!machine.loaded() || machine.entity() == null) return null;
+    ProcessingJournal.Entry entry;
+    try {
+      entry = ProcessingJournal.read(machine.entity(), saved().registry().world());
+    } catch (IllegalArgumentException unreadable) {
+      return "machine_journal";
+    }
+    if (entry == null) return null;
+    var owner = saved().craftingJobs().get(entry.job());
+    if (!entry.empty() || owner != null && owner != job && owner.dispatch() != null)
+      return "machine_journal";
+    ProcessingJournal.clear(machine.entity());
+    return null;
+  }
+
+  /** Journals each real machine call: pending before it starts, settled after it returns. */
+  private final class Journal {
+    private final CraftingJob job;
+    private final net.minecraft.world.level.block.entity.BlockEntity machine;
+
+    Journal(CraftingJob job, net.minecraft.world.level.block.entity.BlockEntity machine) {
+      this.job = job;
+      this.machine = machine;
+    }
+
+    void begin() {
+      ProcessingJournal.write(machine, saved().registry().world(), job.id(), job.dispatch(), true);
+    }
+
+    void settle() {
+      ProcessingJournal.write(machine, saved().registry().world(), job.id(), job.dispatch(), false);
+    }
   }
 
   private WorldCrafting.Offer findDispatched(CraftingJob job) {
@@ -595,6 +731,8 @@ public final class WorldCraftingJobs {
         if (key.kind() == ResourceKind.FLUID
             ? containsFluid(holder.fluidMachine(), key)
             : contains(holder.machine(), key, codec)) return "output_not_clean";
+      var blocked = journalBlocks(job, machineTarget(holder));
+      if (blocked != null) return blocked;
       var providers = networks().connectors().processingIdentity(machineTarget(holder), true);
       if (providers.isEmpty()) return "machine_identity";
       for (var input : pattern.inputs().entrySet()) {
@@ -603,6 +741,10 @@ public final class WorldCraftingJobs {
         if (job.stagedAmount(input.getKey()) < input.getValue()) return "offline";
       }
       job.dispatch(holder.origin(), machineTarget(holder), providers);
+      var captured = target(machineTarget(holder));
+      if (captured.entity() != null)
+        ProcessingJournal.write(
+            captured.entity(), saved().registry().world(), job.id(), job.dispatch(), false);
     }
     var holder = interfaceAt(job.dispatch().machine());
     if (holder == null) return "machine_missing";
@@ -614,13 +756,24 @@ public final class WorldCraftingJobs {
         .equals(networks().connectors().processingIdentity(job.dispatch().target(), false)))
       return "machine_replaced";
     if (!reachable(holder, pattern)) return "machine_missing";
-    if (holder.machine() != null) {
-      insert(job, pattern.inputs(), holder.machine(), codec);
-      collect(job, outputs, holder.machine(), codec);
-    }
-    if (holder.fluidMachine() != null) {
-      insertFluids(job, pattern.inputs(), holder.fluidMachine(), codec);
-      collectFluids(job, outputs, holder.fluidMachine(), codec);
+    var machine = target(job.dispatch().target()).entity();
+    if (machine == null) return "machine_missing";
+    var disagreement = journalCheck(job, machine);
+    if (disagreement != null) return disagreement;
+    var journal = new Journal(job, machine);
+    try {
+      if (holder.machine() != null) {
+        insert(job, pattern.inputs(), holder.machine(), codec, journal);
+        collect(job, outputs, holder.machine(), codec, journal);
+      }
+      if (holder.fluidMachine() != null) {
+        insertFluids(job, pattern.inputs(), holder.fluidMachine(), codec, journal);
+        collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
+      }
+    } catch (RuntimeException uncertain) {
+      // The started call's outcome is unknown: its pending journal mark stays with the machine's
+      // own saved contents, and no later pass, cancellation or restart replays or refunds it.
+      return "uncertain";
     }
     var dispatch = job.dispatch();
     for (var input : pattern.inputs().entrySet())
@@ -630,6 +783,7 @@ public final class WorldCraftingJobs {
       if (dispatch.collected().getOrDefault(output.getKey(), 0L) < output.getValue())
         return "processing";
     job.processed(pattern.inputs(), outputs);
+    ProcessingJournal.clear(machine);
     return null;
   }
 
@@ -663,7 +817,8 @@ public final class WorldCraftingJobs {
       CraftingJob job,
       Map<ResourceKey, Long> inputs,
       net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
-      PlatformResourceCodec codec) {
+      PlatformResourceCodec codec,
+      Journal journal) {
     tanks = meteredFluids(job, tanks, codec);
     if (tanks == null) return;
     for (var input : inputs.entrySet()) {
@@ -674,10 +829,14 @@ public final class WorldCraftingJobs {
               job.stagedAmount(input.getKey()));
       if (remaining <= 0) continue;
       var offer = codec.fluidStack(input.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
+      journal.begin();
       int accepted =
           tanks.fill(
               offer, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
-      if (accepted > 0) job.inserted(input.getKey(), Math.min(accepted, remaining));
+      if (accepted > remaining)
+        throw new IllegalStateException("Machine accepted more fluid than offered");
+      if (accepted > 0) job.inserted(input.getKey(), accepted);
+      journal.settle();
     }
   }
 
@@ -686,7 +845,8 @@ public final class WorldCraftingJobs {
       CraftingJob job,
       Map<ResourceKey, Long> outputs,
       net.neoforged.neoforge.fluids.capability.IFluidHandler tanks,
-      PlatformResourceCodec codec) {
+      PlatformResourceCodec codec,
+      Journal journal) {
     tanks = meteredFluids(job, tanks, codec);
     if (tanks == null) return;
     for (var output : outputs.entrySet()) {
@@ -695,13 +855,17 @@ public final class WorldCraftingJobs {
           output.getValue() - job.dispatch().collected().getOrDefault(output.getKey(), 0L);
       if (remaining <= 0) continue;
       var want = codec.fluidStack(output.getKey(), (int) Math.min(remaining, Integer.MAX_VALUE));
+      if (!containsFluid(tanks, output.getKey())) continue;
+      journal.begin();
       var got =
           tanks.drain(
               want, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
-      if (got.isEmpty()) continue;
-      if (!codec.fluidKey(got).equals(output.getKey()) || got.getAmount() > remaining)
-        throw new IllegalStateException("Machine drained an unexpected fluid");
-      job.collected(output.getKey(), got.getAmount());
+      if (!got.isEmpty()) {
+        if (!codec.fluidKey(got).equals(output.getKey()) || got.getAmount() > remaining)
+          throw new IllegalStateException("Machine drained an unexpected fluid");
+        job.collected(output.getKey(), got.getAmount());
+      }
+      journal.settle();
     }
   }
 
@@ -709,7 +873,8 @@ public final class WorldCraftingJobs {
       CraftingJob job,
       Map<ResourceKey, Long> inputs,
       net.neoforged.neoforge.items.IItemHandler machine,
-      PlatformResourceCodec codec) {
+      PlatformResourceCodec codec,
+      Journal journal) {
     machine = meteredItems(job, machine, codec);
     if (machine == null) return;
     for (var input : inputs.entrySet()) {
@@ -722,10 +887,12 @@ public final class WorldCraftingJobs {
         var stack = codec.itemStack(input.getKey(), 1);
         int size = (int) Math.min(remaining, stack.getMaxStackSize());
         stack.setCount(size);
+        journal.begin();
         var rest = net.neoforged.neoforge.items.ItemHandlerHelper.insertItem(machine, stack, false);
         int accepted = size - rest.getCount();
+        if (accepted > 0) job.inserted(input.getKey(), accepted);
+        journal.settle();
         if (accepted <= 0) break;
-        job.inserted(input.getKey(), accepted);
         remaining -= accepted;
       }
     }
@@ -736,7 +903,8 @@ public final class WorldCraftingJobs {
       CraftingJob job,
       Map<ResourceKey, Long> outputs,
       net.neoforged.neoforge.items.IItemHandler machine,
-      PlatformResourceCodec codec) {
+      PlatformResourceCodec codec,
+      Journal journal) {
     machine = meteredItems(job, machine, codec);
     if (machine == null) return;
     for (var output : outputs.entrySet())
@@ -748,12 +916,15 @@ public final class WorldCraftingJobs {
         if (remaining <= 0) break;
         var present = machine.getStackInSlot(slot);
         if (present.isEmpty() || !output.getKey().equals(keyOf(codec, present))) continue;
+        journal.begin();
         var got = machine.extractItem(slot, (int) Math.min(remaining, present.getCount()), false);
-        if (got.isEmpty()) continue;
-        var key = keyOf(codec, got);
-        if (key == null)
-          throw new IllegalStateException("Machine returned an unrepresentable stack");
-        job.collected(key, got.getCount());
+        if (!got.isEmpty()) {
+          var key = keyOf(codec, got);
+          if (key == null || !key.equals(output.getKey()) || got.getCount() > remaining)
+            throw new IllegalStateException("Machine returned an unexpected stack");
+          job.collected(key, got.getCount());
+        }
+        journal.settle();
       }
   }
 

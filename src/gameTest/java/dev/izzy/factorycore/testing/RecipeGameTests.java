@@ -87,7 +87,9 @@ public final class RecipeGameTests {
     for (var advancement : h.getLevel().getServer().getAdvancements().getAllAdvancements())
       unlocked.addAll(advancement.value().rewards().recipes());
     var recipes = modRecipes(h);
-    h.assertTrue(recipes.size() == 23, "All 23 Factory Core crafting recipes load");
+    h.assertTrue(
+        recipes.size() == 25,
+        "All 25 Factory Core crafting recipes, including speed upgrades, load");
     for (var holder : recipes) {
       var input = input(holder.value());
       var found = manager.getRecipeFor(RecipeType.CRAFTING, input, h.getLevel());
@@ -115,6 +117,26 @@ public final class RecipeGameTests {
           results.contains(key.getPath()) != NON_RECIPE.contains(key.getPath()),
           "Exactly one survival source (recipe or documented upgrade/encoding): " + key);
     }
+    h.succeed();
+  }
+
+  @GameTest(template = "empty")
+  public static void paidThroughputRecipesConsumeExactMaterialsAndProduceFourOverdrives(
+      GameTestHelper h) {
+    var kit = new LinkedHashMap<Item, Integer>();
+    kit.put(Items.IRON_INGOT, 4);
+    kit.put(Items.DIAMOND, 6);
+    kit.put(Items.REDSTONE, 2);
+    kit.put(Items.HOPPER, 1);
+    kit.put(Items.NETHERITE_INGOT, 4);
+    kit.put(Items.NETHER_STAR, 1);
+    var player = playerWith(h, kit);
+    var menu = table(h, player);
+    craft(h, player, menu, "throughput_upgrade");
+    craft(h, player, menu, "overdrive_upgrade");
+    menu.removed(player);
+    assertOnly(h, player, Map.of("throughput_upgrade", 1, "overdrive_upgrade", 4));
+    player.connection.disconnect(Component.literal("Throughput recipe fixture complete"));
     h.succeed();
   }
 

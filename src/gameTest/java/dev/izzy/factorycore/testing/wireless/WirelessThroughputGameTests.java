@@ -227,6 +227,79 @@ public final class WirelessThroughputGameTests {
     return result.transfer() == null ? 0 : result.transfer().delivered();
   }
 
+  @GameTest(template = "empty", batch = "wireless_overdrive", timeoutTicks = 600)
+  public static void bothPaidEndsRaiseSharedResourceCapsWithoutRaisingBankRates(GameTestHelper h) {
+    var f = setup(h);
+    var extraRoot = bank(h, ROOT_BANK.above());
+    var extraChild = bank(h, CHILD_BANK.above());
+    h.startSequence()
+        .thenIdle(3)
+        .thenExecute(() -> pair(h, f))
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () ->
+                f.ends
+                    .getFirst()
+                    .install(dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME))
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  f.ends.getFirst().pairScale() == 1,
+                  "One paid endpoint cannot raise the pair's limit");
+              f.ends.get(1).install(dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME);
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  f.ends.getFirst().pairScale() == 4 && f.ends.get(1).pairScale() == 4,
+                  "Both paid ends publish the upgraded pair scale");
+              f.saved.registry().insert(f.root[0], IRON, 2000);
+              f.saved.registry().insert(f.root[2], WATER, 16000);
+              f.saved.registry().insert(f.rootBank, ResourceKey.ENERGY, 16000);
+              f.saved.registry().insert(extraRoot, ResourceKey.ENERGY, 16000);
+              var denied = submitOne(h, f, ROOT, f.root[0], f.child[0], IRON, 128);
+              h.assertTrue(
+                  denied.reason()
+                          == dev.izzy.factorycore.core.resource.OperationResult.Reason.DENIED
+                      && f.stock(f.root[0], IRON) == 2000,
+                  "Upgraded routing still denies a root request into child-private storage");
+              long available =
+                  f.networks.movementAvailable(position(h, ROOT), position(h, CHILD), IRON, 2000);
+              long actualItems = move(h, f, CHILD, f.root[0], f.child[0], IRON, 1500);
+              h.assertTrue(
+                  actualItems == 1024,
+                  "Actual item callers share the 1024-item upgraded cap; available="
+                      + available
+                      + " actual="
+                      + actualItems
+                      + " localScale="
+                      + f.ends.getFirst().pairScale());
+              h.assertTrue(
+                  move(h, f, CHILD, f.root[2], f.child[2], WATER, 16000) == 16000
+                      && move(h, f, CHILD, f.child[2], f.root[2], WATER, 1) == 0,
+                  "Fluid callers share 16000 mB in both directions");
+              h.assertTrue(
+                  move(h, f, CHILD, f.rootBank, f.childBank, ResourceKey.ENERGY, 16000) == 16000
+                      && move(h, f, CHILD, extraRoot, extraChild, ResourceKey.ENERGY, 16000)
+                          == 16000
+                      && move(h, f, CHILD, f.childBank, f.rootBank, ResourceKey.ENERGY, 1) == 0,
+                  "Two finite banks use the shared 32000 FE cap without raising either bank's rate");
+              h.assertTrue(
+                  f.stock(f.root[0], IRON) + f.stock(f.child[0], IRON) == 2000
+                      && f.stock(f.root[2], WATER) + f.stock(f.child[2], WATER) == 16000
+                      && f.stock(f.rootBank, ResourceKey.ENERGY)
+                              + f.stock(f.childBank, ResourceKey.ENERGY)
+                              + f.stock(extraRoot, ResourceKey.ENERGY)
+                              + f.stock(extraChild, ResourceKey.ENERGY)
+                          == 32000,
+                  "All upgraded resource movements conserve exact ownership");
+              f.player.connection.disconnect(Component.literal("Overdrive pair fixture complete"));
+            })
+        .thenSucceed();
+  }
+
   /** Moves up to {@code amount} as successive transfer quanta inside one fixed server tick. */
   private static long move(
       GameTestHelper h,

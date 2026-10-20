@@ -1,6 +1,6 @@
 # ADR 0053 — Selected tanks and fixed machine partitions
 
-Status: Accepted implementation decision; integrated verification pending.
+Status: Accepted implementation decision; native GameTests pass in the canonical verifier (2026-10-18). The graphical tour selects fluid tank 1 with a one-tank window at scale 4 ([capture](../evidence/program-authoring-client-v1-2026-10-19/machine-fluid-tank-window-scale-4.png)).
 
 ## Context
 

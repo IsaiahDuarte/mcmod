@@ -31,15 +31,32 @@ public final class ProgramPreview {
             + " ("
             + rule.interval()
             + " ticks)");
+    // Players know machines by local label, so name each target "label" #n, not its internal ID.
+    var names = new java.util.HashMap<java.util.UUID, String>();
+    ProgramEvaluator.Host naming =
+        new ProgramEvaluator.Host() {
+          @Override
+          public List<java.util.UUID> machines(String label) {
+            var found = host.machines(label);
+            for (int i = 0; i < found.size(); i++)
+              names.putIfAbsent(found.get(i), "\"" + label + "\" #" + (i + 1));
+            return found;
+          }
+
+          @Override
+          public long stock(ResourceFilter filter) {
+            return host.stock(filter);
+          }
+        };
     try {
-      var commands = ProgramEvaluator.invoke(rule, host);
+      var commands = ProgramEvaluator.invoke(rule, naming);
       if (commands.isEmpty()) lines.add("No actions at the current stock and local labels");
       for (var command : commands) {
         if (lines.size() == MAX_LINES - 1 && commands.size() > MAX_LINES - 1) {
           lines.add("More actions omitted; total " + commands.size());
           break;
         }
-        var line = describe(command);
+        var line = describe(command, names);
         lines.add(line.length() > 192 ? line.substring(0, 189) + "..." : line);
       }
     } catch (ProgramEvaluator.Trap failure) {
@@ -58,17 +75,25 @@ public final class ProgramPreview {
             : term instanceof ResourceFilter.Tag tag ? "#" + tag.id() : term.toString());
   }
 
-  private static String describe(ProgramCommand command) {
+  private static String describe(
+      ProgramCommand command, java.util.Map<java.util.UUID, String> names) {
     return switch (command) {
       case ProgramCommand.Keep keep ->
-          "Keep " + keep.amount() + " " + filter(keep.filter()) + " at " + keep.machine();
+          "Keep "
+              + keep.amount()
+              + " "
+              + filter(keep.filter())
+              + " at "
+              + names.getOrDefault(keep.machine(), String.valueOf(keep.machine()));
       case ProgramCommand.Move move ->
           "Move <= "
               + move.limit()
               + " "
               + filter(move.filter())
               + " "
-              + (move.from() == null ? "storage -> " + move.to() : move.from() + " -> storage");
+              + (move.from() == null
+                  ? "storage -> " + names.getOrDefault(move.to(), String.valueOf(move.to()))
+                  : names.getOrDefault(move.from(), String.valueOf(move.from())) + " -> storage");
       case ProgramCommand.Craft craft -> "Craft " + craft.amount() + " " + craft.item();
       case ProgramCommand.Log log -> "Log: " + log.text();
     };

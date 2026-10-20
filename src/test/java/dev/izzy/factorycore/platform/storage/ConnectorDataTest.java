@@ -10,6 +10,47 @@ import org.junit.jupiter.api.Test;
 
 class ConnectorDataTest {
   @Test
+  void upgradedPortAndMachineSchemasRetainTierAndRejectImpossibleOrFutureData() {
+    for (var kind :
+        java.util.List.of(NodeRegistry.Kind.CONNECTOR, NodeRegistry.Kind.MACHINE_INTERFACE)) {
+      var lease = new NodeRegistry.Handle(UUID.randomUUID(), UUID.randomUUID(), 3, kind);
+      for (var tier :
+          java.util.List.of(
+              dev.izzy.factorycore.core.resource.ThroughputTier.ADVANCED,
+              dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME)) {
+        var state =
+            new ConnectorData.State(
+                lease,
+                new ConnectorSettings(
+                    ResourceKind.FLUID,
+                    ConnectorSettings.Access.READ_WRITE,
+                    0,
+                    0,
+                    64,
+                    tier.portRate(ResourceKind.FLUID)),
+                7,
+                "retained fault",
+                kind == NodeRegistry.Kind.MACHINE_INTERFACE ? "coolant" : "",
+                tier);
+        var tag = ConnectorData.write(state);
+        assertEquals(kind == NodeRegistry.Kind.CONNECTOR ? 3 : 4, tag.getInt("Schema"));
+        assertEquals(state, ConnectorData.read(tag));
+        for (String invalid : java.util.List.of("BASE", "FUTURE")) {
+          var malformed = tag.copy();
+          malformed.putString("Throughput", invalid);
+          var before = malformed.copy();
+          assertThrows(IllegalArgumentException.class, () -> ConnectorData.read(malformed));
+          assertEquals(before, malformed);
+        }
+        var oversized = tag.copy();
+        oversized.putString("Throughput", "ADVANCED");
+        oversized.putInt("Rate", 4001);
+        assertThrows(IllegalArgumentException.class, () -> ConnectorData.read(oversized));
+      }
+    }
+  }
+
+  @Test
   void committedLocalFixtureFreezesFieldTypesAndPolicies() throws Exception {
     try (var input = getClass().getResourceAsStream("/persistence/connector-v1.snbt")) {
       assertNotNull(input);

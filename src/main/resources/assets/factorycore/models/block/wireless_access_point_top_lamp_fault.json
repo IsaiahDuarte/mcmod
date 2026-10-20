@@ -1,0 +1,6 @@
+{
+  "parent": "factorycore:block/status_overlay_up",
+  "textures": {
+    "overlay": "factorycore:block/wireless_access_point_top_lamp_fault"
+  }
+}

@@ -34,7 +34,10 @@ public final class EnergyBankContent {
           BLOCKS.registerBlock(
               name,
               p -> new EnergyBankBlock(p, tier),
-              BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops());
+              BlockBehaviour.Properties.of()
+                  .strength(3.5f)
+                  .requiresCorrectToolForDrops()
+                  .sound(net.minecraft.world.level.block.SoundType.METAL));
       BANKS.put(tier, block);
       BANK_ITEMS.put(tier, ITEMS.register(name, () -> new EnergyBankItem(block.get())));
     }

@@ -8,6 +8,28 @@ import net.minecraft.nbt.*;
 import org.junit.jupiter.api.Test;
 
 class BufferDataTest {
+  @Test
+  void upgradedReferenceRetainsLeaseAndRejectsUnknownTierWithoutTouchingEvidence()
+      throws Exception {
+    var old = BufferData.read(fixture());
+    for (var tier :
+        java.util.List.of(
+            dev.izzy.factorycore.core.resource.ThroughputTier.ADVANCED,
+            dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME)) {
+      var state = new BufferData.State(old.lease(), old.principal(), old.configuration(), tier);
+      var tag = BufferData.write(state);
+      assertEquals(2, tag.getInt("Schema"));
+      assertEquals(state, BufferData.read(tag));
+      for (String invalid : java.util.List.of("BASE", "FUTURE")) {
+        var malformed = tag.copy();
+        malformed.putString("Throughput", invalid);
+        var before = malformed.copy();
+        assertThrows(IllegalArgumentException.class, () -> BufferData.read(malformed));
+        assertEquals(before, malformed);
+      }
+    }
+  }
+
   private CompoundTag fixture() throws Exception {
     try (var input = getClass().getResourceAsStream("/persistence/buffer-reference-v1.snbt")) {
       assertNotNull(input);
@@ -28,13 +50,14 @@ class BufferDataTest {
 
   @Test
   void malformedFutureFieldsAndInvalidConfigurationRejectWithoutChangingRawData() throws Exception {
-    for (int mode = 0; mode < 5; mode++) {
+    for (int mode = 0; mode < 6; mode++) {
       var tag = fixture();
       if (mode == 0) tag.putInt("Schema", 2);
       if (mode == 1) tag.putString("Future", "retain");
       if (mode == 2) tag.putInt("Generation", 3);
       if (mode == 3) tag.putLong("Configuration", 0);
       if (mode == 4) tag.remove("Principal");
+      if (mode == 5) tag.putInt("Schema", 3);
       var original = tag.copy();
       assertThrows(IllegalArgumentException.class, () -> BufferData.read(tag));
       assertEquals(original, tag);

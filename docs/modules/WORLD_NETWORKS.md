@@ -19,6 +19,14 @@ lease rebinding and drive cell installation/removal also notify it. Block-entity
 load/removal and chunk load/unload invalidate known membership. Server post-ticks
 run scheduled work; server stop releases the static runtime reference.
 
+Fresh-region seeding uses `NetworkCableBlock.linksTo`, the same eligibility rule
+as physical cable arms. This includes isolated buffers, crafting devices,
+Program Controllers and access points, in addition to structural/storage blocks.
+An isolated access point therefore completes discovery with NO_ROOT instead of
+remaining untracked/REBUILDING indefinitely. This grants no usable scope; normal
+topology and current authority still gate mutations. Cosmetic lamp and drive-bay
+updates do not invalidate topology (see [ADR 0058](../decisions/0058-device-presentation.md)).
+
 An edit checks at most its own position and six neighbors. Affected publications
 are cancelled immediately; their registry routing predicate denies stock use
 before another tick. Repeated notifications coalesce until a scheduled replacement.

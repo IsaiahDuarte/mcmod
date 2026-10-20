@@ -123,7 +123,7 @@ public final class WorldMachinePresets {
 
   private void retry(Entry e, OperationResult.Reason reason) {
     e.reason = reason;
-    e.nextTick = server.getTickCount() + 20;
+    e.nextTick = server.getTickCount() + (reason == OperationResult.Reason.RATE_LIMIT ? 1 : 20);
     activate(e);
   }
 
@@ -176,27 +176,32 @@ public final class WorldMachinePresets {
         activate(e);
         continue;
       }
-      e.scheduledFor = d;
-      var admitted =
-          networks
-              .scheduler()
-              .submit(
-                  d.authority().network(),
-                  d.authority().principal(),
-                  e.task(),
-                  16,
-                  () -> {
-                    e.scheduled = false;
-                    active.remove(e);
-                    e.active = false;
-                    if (entries.get(e.node) == e) step(e, d);
-                  });
-      if (admitted == FairScheduler.Admission.ACCEPTED
-          || admitted == FairScheduler.Admission.REPLACED) {
-        e.scheduled = true;
-        activate(e);
-      } else retry(e, OperationResult.Reason.TECHNICAL_LIMIT);
+      schedule(e, d);
     }
+  }
+
+  /** One continuation still pays the shared queue, credits, visits and time budget. */
+  private void schedule(Entry e, MachinePresets.Deployment d) {
+    e.scheduledFor = d;
+    var admitted =
+        networks
+            .scheduler()
+            .submit(
+                d.authority().network(),
+                d.authority().principal(),
+                e.task(),
+                16,
+                () -> {
+                  e.scheduled = false;
+                  active.remove(e);
+                  e.active = false;
+                  if (entries.get(e.node) == e) step(e, d);
+                });
+    if (admitted == FairScheduler.Admission.ACCEPTED
+        || admitted == FairScheduler.Admission.REPLACED) {
+      e.scheduled = true;
+      activate(e);
+    } else retry(e, OperationResult.Reason.TECHNICAL_LIMIT);
   }
 
   private void step(Entry e, MachinePresets.Deployment d) {
@@ -411,6 +416,17 @@ public final class WorldMachinePresets {
       ResourceKey key,
       long amount,
       WorldStorageRoutes.Direction direction) {
+    // A platform item call returns at most one stack. Charge for that bounded operation;
+    // successful continuations can consume the remaining installed rate through the scheduler.
+    long requested =
+        key.kind() == ResourceKind.ITEM
+            ? Math.min(
+                amount,
+                new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                        server.registryAccess())
+                    .itemStack(key, 1)
+                    .getMaxStackSize())
+            : amount;
     var id = UUID.randomUUID();
     e.request = id;
     e.route = true;
@@ -425,13 +441,13 @@ public final class WorldMachinePresets {
                 e.owner.position(),
                 new WorldStorageTransfers.External(e.handle),
                 key,
-                amount,
+                requested,
                 direction,
                 r -> finish(e, id, r.move(), 0),
                 () -> valid(e, d) && matches(d, key),
                 () ->
                     saved.transfers().unresolved(e.handle.backing()) == null
-                        && (d.mode() != MachinePresets.Mode.STOCK || room(e, d) >= amount)));
+                        && (d.mode() != MachinePresets.Mode.STOCK || room(e, d) >= requested)));
   }
 
   private void admitted(Entry e, WorldStorageTransfers.Submission submission) {
@@ -454,6 +470,10 @@ public final class WorldMachinePresets {
     if (move != null && move.delivered() > before) {
       e.pages = 0;
       wake(e);
+      var deployment = saved.machinePresets().get(e.node);
+      if (deployment != null
+          && deployment.mode() != MachinePresets.Mode.PAUSED
+          && valid(e, deployment)) schedule(e, deployment);
     } else retry(e, result.reason());
   }
 }

@@ -58,6 +58,7 @@ public final class WorldNetworks {
   private final Map<String, WorldWireReader> readers = new HashMap<>();
   private final ArrayDeque<Region> active = new ArrayDeque<>();
   private String diagnostic = "";
+  private static final String SCHEDULING_LIMIT = "Network scheduling limit: ";
   private final dev.izzy.factorycore.core.resource.WirelessBudget wirelessBudget =
       new dev.izzy.factorycore.core.resource.WirelessBudget();
 
@@ -67,7 +68,7 @@ public final class WorldNetworks {
     final Set<NodeRegistry.Position> points = new LinkedHashSet<>();
     final DiscoverySeeds sources;
     final Map<UUID, Structural> structures = new HashMap<>();
-    final Map<UUID, dev.izzy.factorycore.core.resource.WirelessBudget.Link> wireless =
+    final Map<UUID, dev.izzy.factorycore.core.resource.WirelessBudget.Hop> wireless =
         new HashMap<>();
     NetworkAuthority authority;
     final RegionReference<Region> reference = new RegionReference<>(this);
@@ -204,6 +205,27 @@ public final class WorldNetworks {
         .setGrants(actor, membership.scope(), principal, grants);
   }
 
+  /**
+   * Explicit ownership transfer of the network that owns {@code origin} (ADR 0055). Only the
+   * current owner or a server operator may transfer, and only with current Manage at {@code origin}
+   * (so ancestor branch policy applies); delegated Manage holders cannot take or give away
+   * ownership. The nil UUID is never a principal. Invalid scopes return {@code DENIED}.
+   */
+  public NetworkPermissions.Change transferOwnership(
+      NetworkPermissions.Actor actor, NodeRegistry.Position origin, UUID nextOwner) {
+    checkThread();
+    if (nextOwner.equals(new UUID(0, 0))) return NetworkPermissions.Change.DENIED;
+    var membership = membership(origin);
+    if (membership.status() != NetworkTopology.Status.VALID)
+      return NetworkPermissions.Change.DENIED;
+    var current = saved.network(membership.scope().network()).snapshot();
+    if (!actor.operator() && !actor.id().equals(current.owner()))
+      return NetworkPermissions.Change.DENIED;
+    return resolve(owners.get(origin))
+        .authority
+        .transferOwnership(actor, membership.scope(), nextOwner);
+  }
+
   /** Current owner/grants of the network at {@code origin}, or null without Manage there. */
   public NetworkPermissions.State grants(
       NetworkPermissions.Actor actor, NodeRegistry.Position origin) {
@@ -232,6 +254,8 @@ public final class WorldNetworks {
     checkThread();
     if (imports != null) imports.tick();
     if (machinePresets != null) machinePresets.tick();
+    if (!active.isEmpty() && !scheduler.isQueued(WORK_NETWORK, WORK_PROGRAM, "world-regions"))
+      wake();
     scheduler.tick();
   }
 
@@ -387,11 +411,14 @@ public final class WorldNetworks {
 
   private void wake() {
     if (active.isEmpty()) return;
-    var admission = scheduler.submit(WORK_NETWORK, WORK_PROGRAM, "world-regions", STEP, this::step);
+    // Topology work uses the scheduler's reserved maintenance slots, so saturated script/job
+    // queues delay but never strand a rebuild; tick() retries a refused wake.
+    var admission =
+        scheduler.submitReserved(WORK_NETWORK, WORK_PROGRAM, "world-regions", STEP, this::step);
     if (admission != FairScheduler.Admission.ACCEPTED
         && admission != FairScheduler.Admission.REPLACED) {
-      diagnostic = "Network scheduling limit: " + admission;
-    }
+      diagnostic = SCHEDULING_LIMIT + admission;
+    } else if (diagnostic.startsWith(SCHEDULING_LIMIT)) diagnostic = "";
   }
 
   private void step() {
@@ -476,8 +503,11 @@ public final class WorldNetworks {
           invalidate(region);
           return;
         }
-        var previous = region.wireless.putIfAbsent(member.scope().segment(), pair);
-        if (previous != null && !previous.equals(pair))
+        var previous =
+            region.wireless.putIfAbsent(
+                member.scope().segment(),
+                new dev.izzy.factorycore.core.resource.WirelessBudget.Hop(pair, link.pairScale()));
+        if (previous != null && !previous.link().equals(pair))
           throw new IllegalStateException("Ambiguous wireless bridge segment");
       }
     }
@@ -594,7 +624,7 @@ public final class WorldNetworks {
    * collecting ancestor segments therefore identifies each crossed pair without scanning geometry.
    * Null means stale/unavailable; empty is a valid wired path. This grants no resource authority.
    */
-  private List<dev.izzy.factorycore.core.resource.WirelessBudget.Link> wirelessPath(
+  private List<dev.izzy.factorycore.core.resource.WirelessBudget.Hop> wirelessPath(
       NodeRegistry.Position from, NodeRegistry.Position to) {
     var first = membership(from);
     var second = membership(to);
@@ -618,8 +648,7 @@ public final class WorldNetworks {
         break;
       }
     if (common == null) return null;
-    var path =
-        new java.util.LinkedHashSet<dev.izzy.factorycore.core.resource.WirelessBudget.Link>();
+    var path = new java.util.LinkedHashSet<dev.izzy.factorycore.core.resource.WirelessBudget.Hop>();
     for (var chain : List.of(a, b))
       for (var segment : chain) {
         if (segment.equals(common)) break;
@@ -636,7 +665,7 @@ public final class WorldNetworks {
     var path = wirelessPath(from, to);
     return path == null
         ? 0
-        : wirelessBudget.available(path, server.getTickCount(), key.kind(), amount);
+        : wirelessBudget.availableHops(path, server.getTickCount(), key.kind(), amount);
   }
 
   /**
@@ -649,7 +678,7 @@ public final class WorldNetworks {
     var path = wirelessPath(from, to);
     return path == null
         ? wirelessBudget.denied(dev.izzy.factorycore.core.resource.OperationResult.Reason.OFFLINE)
-        : wirelessBudget.claim(path, server.getTickCount(), key.kind(), amount);
+        : wirelessBudget.claimHops(path, server.getTickCount(), key.kind(), amount);
   }
 
   private boolean available(DeviceRegistry.Location location) {
@@ -666,7 +695,7 @@ public final class WorldNetworks {
     if (chunk == null) return false;
     var state = chunk.getBlockState(block);
     for (var direction : Direction.values())
-      if (NetworkContent.connects(state, direction)) return true;
+      if (NetworkCableBlock.linksTo(state, direction)) return true;
     return false;
   }
 

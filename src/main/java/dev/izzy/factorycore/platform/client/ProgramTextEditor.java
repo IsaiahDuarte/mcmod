@@ -144,6 +144,8 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
 
   @Override
   public boolean mouseClicked(double x, double y, int button) {
+    // Hidden behind the picker or preview, the editor must not swallow clicks meant for them.
+    if (!visible) return false;
     if (button == 0 && withinContentAreaPoint(x, y)) {
       field.setSelecting(Screen.hasShiftDown());
       field.seekCursorToPoint(

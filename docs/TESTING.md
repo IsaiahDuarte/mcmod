@@ -1,5 +1,41 @@
 # Verification requirements
 
+## Presentation continuation fixture
+
+`./gradlew runPresentationClient` runs the isolated graphical gallery described
+in [ADR 0058](decisions/0058-device-presentation.md). It replaces only its generated
+world under `build/client-presentation-run` and report under
+`build/reports/client-presentation`. A PASS report and 44 named screenshots are
+required. It covers directional variants from opposite corners, status lamps and
+drive bays by day/night, representative held items, translated item tooltips at
+screen corners, and terminal/buffer/machine/program/gateway-policy/guide panels
+at GUI scales 1–4. Framebuffer 1708×960 establishes 427×240 GUI pixels at scale 4.
+Read the captures before claiming appearance verified. Screens added after this
+fixture need separate coverage; this run does not establish survival acceptance.
+
+The throughput extension uses actual client survival interactions to install
+both tiers on a machine and buffer, verifies consumption and synced rates,
+checks buffer numeric fields survive scale changes, and captures the speed guide
+page and both upgrade tooltips. Every upgraded settings panel is checked at
+scales 1–4; captures are retained at scales 1 and 4.
+
+`./gradlew runAutomaticThroughputServer` is also required by `check`. Its fresh
+world runs exactly one GameTest in `factorycore_throughput_tests`, importing
+1,728 real chest items at each tier with exact conservation and requiring
+Advanced to finish in fewer server ticks than Base and Endgame in fewer than
+Advanced. The report must contain exactly one passing case without skips. This
+separate namespace/template prevents earlier suite fixtures' persistent ledger
+records from consuming the measured discovery budget. The existing full native
+suite remains required. This functional speed regression is not a controlled
+large-factory A15/A16 benchmark or a promise of nominal ceilings under load.
+
+`PresentationStateGameTests.lampsAndBaysMirrorDeviceState` is required by the
+canonical build. It checks native state refresh and bay occupancy and verifies a
+cosmetic lamp update leaves valid membership intact. Expanded
+`AssetCoverageGameTests` checks every registered state has models and local
+model/texture references exist. Generated JSON is parsed by the art tooling test;
+its original 16×16 RGBA PNG checks still apply to all generated textures.
+
 ## Current executable checks
 
 Run from the repository root with Python 3.11 or later:
@@ -19,6 +55,8 @@ bootstrap guard, not a complete source inventory or permanent language restricti
 Generated/build/dependency directories are excluded. Tooling tests exercise missing
 docs/build/guest files, broken/escaping links, unwired sources, JVM dispatch/failure,
 empty/skipped Rust summaries and valid docs.
+
+The JVM build also runs a required abrupt-kill suite ([ADR 0057](decisions/0057-processing-journal-and-interruption.md)). A seed dedicated server SIGKILLs itself mid-job (Gradle requires exit 137). Three restore servers then check, on copies of its world, plain resume plus older-SavedData and older-chunk save skew.
 
 The [CI workflow](../.github/workflows/quality.yml) runs the canonical command on Windows and Linux. It is prepared for GitHub; no remote execution or branch protection has been configured here.
 

@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
+import dev.izzy.factorycore.core.program.HostBudget;
 import dev.izzy.factorycore.core.program.ProgramCommand;
 import dev.izzy.factorycore.core.program.ProgramEvaluator;
 import dev.izzy.factorycore.core.program.ProgramIr;
@@ -45,6 +46,9 @@ public final class WorldPrograms {
   public static final int MAX_QUEUE = 64;
   public static final int MAX_STOCK_PAGES = 64;
 
+  /** A rule invocation this many ticks after its due tick reports {@code delayed}. */
+  public static final int DELAY_TICKS = 20;
+
   /** Same page bound as preset discovery; pages also visit devices outside this scope. */
   public static final int MAX_CATALOG_PAGES = WorldStorageSearch.MAX_PAGES;
 
@@ -73,9 +77,17 @@ public final class WorldPrograms {
   private static final class Runtime {
     final Map<String, Long> due = new HashMap<>();
     final ArrayDeque<Pending> queue = new ArrayDeque<>();
-    final Map<String, UUID> crafts = new HashMap<>();
+
+    /** Tick each rule's queued invocation became due; used to expose scheduling latency. */
+    final Map<String, Long> scheduled = new HashMap<>();
+
     UUID deployment, request;
     String status = "";
+
+    /** A storage search saw matching stock that crafting reservations fully held. */
+    boolean reservedSeen;
+
+    long lag;
   }
 
   private final MinecraftServer server;
@@ -145,8 +157,8 @@ public final class WorldPrograms {
     controller.deploy(controller.draft(), result.program(), actor.id());
     var runtime = controllers.computeIfAbsent(controller, c -> new Runtime());
     runtime.due.clear();
+    runtime.scheduled.clear();
     runtime.queue.clear();
-    runtime.crafts.clear();
     runtime.deployment = controller.deployment();
     return List.of();
   }
@@ -170,8 +182,8 @@ public final class WorldPrograms {
     controller.deployWasm(artifact, instance, actor.id());
     var runtime = controllers.computeIfAbsent(controller, c -> new Runtime());
     runtime.due.clear();
+    runtime.scheduled.clear();
     runtime.queue.clear();
-    runtime.crafts.clear();
     runtime.deployment = controller.deployment();
     return List.of();
   }
@@ -194,6 +206,7 @@ public final class WorldPrograms {
       if (!failure.isEmpty()) return false;
     } else controller.state(next, "");
     if (next == ProgramControllerEntity.State.RUNNING) runtime.due.clear();
+    runtime.scheduled.clear();
     return true;
   }
 
@@ -218,6 +231,7 @@ public final class WorldPrograms {
       if (!controller.deployment().equals(runtime.deployment)) {
         runtime.deployment = controller.deployment();
         runtime.due.clear();
+        runtime.scheduled.clear();
         runtime.queue.clear();
       }
       var member = networks().membership(controller.origin());
@@ -232,16 +246,46 @@ public final class WorldPrograms {
         runtime.due.put(rule.key(), now + rule.interval());
         if (scheduler.isQueued(member.scope().network(), controller.deployment(), key)) continue;
         var deployment = controller.deployment();
-        scheduler.submit(
-            member.scope().network(),
-            deployment,
-            key,
-            TASK_COST,
-            () -> invoke(controller, deployment, rule));
+        var admission =
+            scheduler.submit(
+                member.scope().network(),
+                deployment,
+                key,
+                TASK_COST,
+                () -> invoke(controller, deployment, rule));
+        if (admission == dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.ACCEPTED
+            || admission == dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.REPLACED)
+          runtime.scheduled.putIfAbsent(rule.key(), now);
+        else throttled(controller, runtime, rule.key(), admission);
       }
       if (runtime.request == null && !runtime.queue.isEmpty())
         execute(controller, runtime, runtime.queue.poll());
     }
+  }
+
+  /**
+   * The shared scheduler refused this invocation (world overload or a quota); it is coalesced into
+   * the rule's next due tick. The transition is logged once, not on every refusal.
+   */
+  private static void throttled(
+      ProgramControllerEntity controller,
+      Runtime runtime,
+      String rule,
+      dev.izzy.factorycore.core.scheduling.FairScheduler.Admission admission) {
+    if (!runtime.status.equals("throttled"))
+      controller.log(
+          "rule "
+              + rule
+              + " throttled: server work "
+              + admission.name().toLowerCase(java.util.Locale.ROOT)
+              + "; retrying at its next interval");
+    runtime.status = "throttled";
+  }
+
+  /** Latest scheduling latency of this controller's rule invocations, in ticks. */
+  public long lag(ProgramControllerEntity controller) {
+    var runtime = controllers.get(controller);
+    return runtime == null ? 0 : runtime.lag;
   }
 
   /** One rule invocation: authority, power, bounded evaluation, then publication. */
@@ -250,6 +294,8 @@ public final class WorldPrograms {
     if (runtime == null
         || controller.state() != ProgramControllerEntity.State.RUNNING
         || !deployment.equals(controller.deployment())) return;
+    Long dueAt = runtime.scheduled.remove(rule.key());
+    long lag = dueAt == null ? 0 : Math.max(0, server.getTickCount() - dueAt);
     var actor = deployer(controller);
     if (!allowed(actor, controller)) {
       controller.state(ProgramControllerEntity.State.PAUSED, "Deployer lost Deploy permission");
@@ -274,12 +320,13 @@ public final class WorldPrograms {
         var instance = controller.wasm();
         if (instance == null || instance.failed())
           throw new ProgramEvaluator.Trap("guest instance unavailable");
-        var outcome = instance.invoke(rule.index(), host(controller, actor));
+        var outcome = instance.invoke(rule.index(), host(controller, actor, new HostBudget()));
         commands = outcome.commands();
         work = outcome.instructions();
         if (outcome.stateChanged()) controller.guestState(instance.state());
       } else {
-        var outcome = ProgramEvaluator.evaluate(rule.friendly(), host(controller, actor));
+        var outcome =
+            ProgramEvaluator.evaluate(rule.friendly(), host(controller, actor, new HostBudget()));
         commands = outcome.commands();
         work = outcome.steps();
       }
@@ -292,13 +339,19 @@ public final class WorldPrograms {
       return;
     }
     controller.spend(BASE_COST + (work + STEPS_PER_FE - 1) / STEPS_PER_FE);
-    runtime.status = "running";
+    runtime.lag = lag;
+    if (lag >= DELAY_TICKS) {
+      if (!runtime.status.equals("delayed"))
+        controller.log("rule " + rule.key() + " ran " + lag + " ticks late: server busy");
+      runtime.status = "delayed";
+    } else runtime.status = "running";
     runtime.queue.removeIf(pending -> pending.rule().equals(rule.key()));
+    var lines = new ArrayList<String>();
+    for (var command : commands)
+      if (command instanceof ProgramCommand.Log log) lines.add(log.text());
+    controller.logInvocation(rule.key(), lines);
     for (var command : commands) {
-      if (command instanceof ProgramCommand.Log log) {
-        controller.log(rule.key() + ": " + log.text());
-        continue;
-      }
+      if (command instanceof ProgramCommand.Log) continue;
       if (runtime.queue.size() == MAX_QUEUE) {
         controller.log(rule.key() + ": command queue full; later commands dropped");
         break;
@@ -319,11 +372,12 @@ public final class WorldPrograms {
       return new dev.izzy.factorycore.core.program.ProgramPreview.Result(
           0, 0, List.of("Fix compiler diagnostics before previewing the saved draft"));
     return dev.izzy.factorycore.core.program.ProgramPreview.evaluate(
-        compiled.program(), rule, host(controller, actor));
+        compiled.program(), rule, host(controller, actor, new HostBudget()));
   }
 
+  /** Read-only host whose queries are charged to {@code budget} (one per invocation). */
   private ProgramEvaluator.Host host(
-      ProgramControllerEntity controller, NetworkPermissions.Actor actor) {
+      ProgramControllerEntity controller, NetworkPermissions.Actor actor, HostBudget budget) {
     return new ProgramEvaluator.Host() {
       @Override
       public List<UUID> machines(String label) {
@@ -335,6 +389,7 @@ public final class WorldPrograms {
                     label,
                     null,
                     ProgramEvaluator.MAX_MACHINES_PER_LABEL);
+        budget.charge(1 + query.machines().size() / 16, "machines(\"" + label + "\")");
         if (query.decision() != NetworkAuthority.Decision.ALLOWED) return List.of();
         if (query.more()) throw new IllegalStateException("more than 64 machines labeled " + label);
         return query.machines().stream().map(NetworkTopology.Scope::node).toList();
@@ -345,14 +400,17 @@ public final class WorldPrograms {
         if (networks().authorize(actor, controller.origin(), NetworkPermissions.Permission.VIEW)
             != NetworkAuthority.Decision.ALLOWED)
           throw new IllegalStateException("reading storage needs View permission");
-        return storageStock(controller, actor, filter);
+        return storageStock(controller, actor, filter, budget);
       }
     };
   }
 
   /** Available matching units in digital cells of the controller's VIEW storage, bounded. */
   private long storageStock(
-      ProgramControllerEntity controller, NetworkPermissions.Actor actor, ResourceFilter filter) {
+      ProgramControllerEntity controller,
+      NetworkPermissions.Actor actor,
+      ResourceFilter filter,
+      HostBudget budget) {
     var registry = saved().registry();
     var transfers = networks().transfers();
     var probe = new ResourceKey(filter.kind(), "factorycore:catalog", new byte[0]);
@@ -373,6 +431,7 @@ public final class WorldPrograms {
         do {
           if (++pages > MAX_STOCK_PAGES)
             throw new IllegalStateException("storage too large to count");
+          budget.charge(1, "stock queries");
           var entries = registry.catalog(handle, cursor, 16);
           for (var entry : entries.entries())
             if (filter.matches(entry.key(), this::tagged))
@@ -458,8 +517,13 @@ public final class WorldPrograms {
         controller, runtime, actor, owner, registration.handle(), keep.filter(), missing, null, 0);
   }
 
+  /** Log text for a refused operation; contention reasons say what holds the resource (A08). */
   private static String name(OperationResult.Reason reason) {
-    return reason.name().toLowerCase(java.util.Locale.ROOT);
+    return switch (reason) {
+      case BUSY -> "busy: a crafting job is using this machine; retrying next interval";
+      case RATE_LIMIT -> "rate limit reached this tick; retrying next interval";
+      default -> reason.name().toLowerCase(java.util.Locale.ROOT);
+    };
   }
 
   private static String unbound(WorldConnectors.Registration registration) {
@@ -525,6 +589,7 @@ public final class WorldPrograms {
       controller.log("storage: nothing matching in the first " + MAX_CATALOG_PAGES + " pages");
       return;
     }
+    if (pages == 0) runtime.reservedSeen = false;
     var id = UUID.randomUUID();
     runtime.request = id;
     var submission =
@@ -544,7 +609,10 @@ public final class WorldPrograms {
                     controller.log("storage: " + name(page.reason()));
                     return;
                   }
-                  for (var row : page.rows())
+                  for (var row : page.rows()) {
+                    if (row.total() > 0
+                        && row.total() - row.reserved() <= 0
+                        && filter.matches(row.key(), this::tagged)) runtime.reservedSeen = true;
                     if (row.total() - row.reserved() > 0
                         && filter.matches(row.key(), this::tagged)) {
                       route(
@@ -558,6 +626,7 @@ public final class WorldPrograms {
                           WorldStorageRoutes.Direction.FROM_STORAGE);
                       return;
                     }
+                  }
                   if (page.next() != null)
                     fromStorage(
                         controller,
@@ -569,7 +638,11 @@ public final class WorldPrograms {
                         amount,
                         page.next(),
                         pages + 1);
-                  else controller.log("storage: shortage");
+                  else
+                    controller.log(
+                        runtime.reservedSeen
+                            ? "storage: matching stock is reserved by crafting jobs; retrying"
+                            : "storage: shortage");
                 });
     if (submission.rejection() != OperationResult.Reason.OK) {
       runtime.request = null;
@@ -628,18 +701,26 @@ public final class WorldPrograms {
       NetworkPermissions.Actor actor,
       String rule,
       ProgramCommand.Craft craft) {
-    var dedupe = rule + "|" + craft.item();
+    // The dedupe link is derived from the persisted deployment and saved with the job, so neither a
+    // server restart nor a controller chunk reload can submit a second job for the same request.
+    var link = craftLink(controller.deployment(), rule, craft.item());
     var jobs = WorldCraftingJobs.get(server);
-    var previous = runtime.crafts.get(dedupe);
-    if (previous != null && saved().craftingJobs().get(previous) != null) return;
+    if (jobs.linked(link)) return;
     var item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(craft.item()));
     if (item.isEmpty()) {
       controller.log(rule + ": unknown item " + craft.item());
       return;
     }
     var key = new PlatformResourceCodec(server.registryAccess()).itemKey(new ItemStack(item.get()));
-    var submission = jobs.submit(actor, controller.origin(), key, craft.amount());
-    if (submission.job() != null) runtime.crafts.put(dedupe, submission.job());
-    else controller.log(rule + ": craft " + craft.item() + " " + submission.reason());
+    var submission = jobs.submitLinked(actor, controller.origin(), key, craft.amount(), link);
+    if (submission.job() == null)
+      controller.log(rule + ": craft " + craft.item() + " " + submission.reason());
+  }
+
+  /** Name-based link for one deployment's rule/item craft request (never a random rule ID). */
+  public static UUID craftLink(UUID deployment, String rule, String item) {
+    return UUID.nameUUIDFromBytes(
+        ("factorycore:program-craft:v1:" + deployment + "|" + rule + "|" + item)
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 }

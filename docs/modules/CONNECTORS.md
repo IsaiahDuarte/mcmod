@@ -83,9 +83,22 @@ These are workload bounds, not representative full-server timing measurements.
 
 ## Public server API and transfer example
 
+`installThroughput(authenticatedActor, tier)` installs the next paid step and
+sets its resource-kind rate to the new ceiling. It runs on the server thread,
+validates the current lease and Edit authority, returns a denied decision without
+mutation, and throws before mutation for wrong/repeated steps or generation
+overflow. Only the item-use caller consumes a paid item, after ALLOWED.
+Base → Advanced → Endgame port ceilings are 128/1,000/1,000,
+256/4,000/8,000 and 1,024/16,000/32,000 items/mB/FE per tick per direction.
+Contents and foreign holds remain with the original provider. Old endpoint
+handles become stale; existing staging retains its recorded owner and recovery
+path. Portable references retain the tier under schema3 (machine:4), while base
+schema1/2 fixtures remain byte-identical. See [ADR 0054](../decisions/0054-throughput-upgrades.md).
+
 `ConnectorSettings(kind, access, priority, firstSlot, slotCount, rate)` validates
 non-null type/access, priority -1,000..1,000, nonnegative platform item index,
-1..64 selected slots and positive rate up to 128 items or 1,000 mB/FE. The item
+1..64 selected slots and positive rate up to 1,024 items, 16,000 mB or 32,000 FE.
+The physical installed tier further limits configuration (Base: 128/1,000/1,000). The item
 window means up to `slotCount` slots starting at `firstSlot`, clamped to current
 handler size. Energy requires firstSlot=0 and slotCount=64. Fluid0/64 retains whole-handler
 semantics; other bounded tank windows require explicit indexed mutation support.
@@ -360,8 +373,8 @@ For a provider with separate global input/output item slots, return
 `List.of(new PortWindow(0,1), new PortWindow(1,1))`; two interfaces configured0/1
 and1/1 may bind concurrently. Their stable derived backing IDs keep foreign
 holds/staging distinct. Duplicate/overlapping/undeclared windows refuse; concurrent
-partitions share the existing physical-group128 item or1000mB per-direction tick
-ceiling plus each connector's configured rate. Different resource kinds keep
+partitions share one physical-group spending counter per direction. Each call
+is bounded by its port's installed tier ceiling and its configured local rate. Different resource kinds keep
 independent budgets. Closing/reconfiguring one binding removes only its own
 claims, never another port registration or resource hold.
 

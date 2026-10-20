@@ -258,7 +258,8 @@ public final class NetworkNodeEntity extends BlockEntity {
           stack,
           custom -> custom.put(NodeHandleData.FIELD, data.copy()));
     if (!diagnostic.isEmpty())
-      stack.set(DataComponents.CUSTOM_NAME, Component.literal("Network node (ownership recovery)"));
+      stack.set(
+          DataComponents.CUSTOM_NAME, Component.translatable("item.factorycore.node_recovery"));
     return stack;
   }
 

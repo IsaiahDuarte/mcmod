@@ -434,6 +434,29 @@ See [binding contract](modules/MACHINE_INTERFACES.md) for current limits.
 The compact machine editor fits Minecraft’s minimum240-pixel GUI height. Rules show four at a time; Prev/Next selects across all sixteen supported rules.
 
 
+## Network Access screen
+
+Sneak-use a Network Controller, or press **Access…** on a gateway's policy screen, to manage who can use the network.
+
+- **Rows.** Each player has a row of seven toggles: V view, D deposit, W withdraw, C craft, E edit
+  interfaces/patterns, P deploy programs and M manage.
+- **Gateway limits.** The header shows the limits that gateways above this point apply. A toggle
+  marked `*` is granted but blocked by a gateway here.
+- **Revoke** removes all of that player's grants.
+- **Owner** hands the network to that player. You must press **Confirm** within 10 seconds. Only
+  the owner or a server operator can transfer ownership; a player who was given Manage cannot.
+- **Losing Manage.** If you lose Manage while the screen is open, it says so and turns read-only.
+  Without Manage you see only your own access.
+- **Recovery….** This button opens the Transfer Recovery screen.
+
+## Transfer Recovery screen
+
+`/factorycore recovery screen` lists interrupted transfers you own; operators see everyone's.
+
+- Pick a record to see its safe next step, then press **Return**, **Settle** or **Retire**.
+  These follow the same rules as the recovery commands below.
+- Uncertain transfers offer no action. They are never replayed or refunded automatically.
+
 ## Recovery commands
 
 Operators (permission level2) and server console can use
@@ -699,6 +722,15 @@ Resume starts it fresh. When a Rust program panics, the log shows the panic mess
 source line, such as `trap fail: factory_rule: guest panicked: src/lib.rs:47: bedrock in
 storage`.
 
+When a rule cannot act, its log line says why:
+- **busy: a crafting job is using this machine.** A processing job leases that machine. A
+  cancelled job keeps the lease for up to a minute while it collects outputs.
+- **matching stock is reserved by crafting jobs.** Running jobs have claimed all the matching
+  stock.
+- **rate limit reached this tick.**
+- **throttled / running late: server busy.** The server is overloaded.
+
+Every rule retries at its next interval without losing items.
 
 ## Wireless access
 
@@ -843,3 +875,52 @@ old cancellation cleanup. Restore the original saved machine, or cancel and
 inspect already inserted inputs/outputs manually. An older dispatch without
 provider identity asks for cancellation and inspection; it never adopts whichever
 machine is now present.
+
+## Paid speed upgrades
+
+Capacity modules and speed upgrades are separate. Craft a Throughput Upgrade
+from four iron, two diamonds, two redstone and a hopper. Use it on a placed
+Storage Connector, Machine Interface or Buffered Interface, then use Overdrive
+for the next step. Four netherite, four diamonds and a Nether star craft four
+Overdrives. Repeated, skipped or denied steps consume nothing.
+
+| Hardware | Base | Throughput | Overdrive |
+| --- | --- | --- | --- |
+| Connector/machine items per tick | 128 max (default 64) | 256 | 1,024 |
+| Connector/machine mB per tick | 1,000 | 4,000 | 16,000 |
+| Connector/machine FE per tick | 1,000 | 8,000 | 32,000 |
+| Buffer network items per tick | 64 | 256 | 576 |
+
+For example, place a Machine Interface facing a barrel, apply Throughput, open
+Binding and verify its 256-item rate. Installation pauses the machine preset;
+reapply its filter/mode/goal to resume with your current grants. You may lower
+the rate afterwards. Buffers require the normal deployment grants; links require
+Manage or ownership of an orphan. The shared server work budget can visibly
+throttle any tier; an upgrade does not guarantee achieved throughput.
+Automatic machine item presets now schedule successive stacks through that same
+budget instead of waiting for a fresh preset sweep after every successful stack.
+Large storage catalogs can still limit achieved speed before the hardware cap.
+
+Ports and buffers retain upgrades when moved. Link endpoints take Overdrive
+directly; both ends need it to raise their shared bidirectional caps from
+256/4,000/8,000 to 1,024/16,000/32,000 items/mB/FE per tick. Breaking a known
+upgraded link drops its Overdrive separately for reinstallation. Unsupported
+link data becomes one inert recovery item with its original evidence; keep it
+for a compatible build or investigation. It never produces a guessed refund.
+
+## Device appearance and status
+
+The four drive bays show which slots contain cells. Removing a cell clears only
+its bay marker. Controller and gateway lamps show a connected network with a lit
+symbol and a fault with an exclamation mark; use empty-hand inspection for the
+cause. During rebuilding, the lamp keeps its previous appearance until validation
+finishes. Program lamps distinguish running, paused (two bars), trapped (fault),
+and stopped (dark). An access-point lamp follows its network and power state.
+Link lamps indicate local pairing/power; inspect gateway/network status to check
+routing. An unpaired link stays dark. Lamp refresh can take up to one second.
+Tooltips include the legend.
+
+The supported minimum framebuffer is 1708×960 for GUI scale 4 (427×240 GUI
+pixels). GUI scales 1–4 have a dedicated presentation fixture; its verification
+status is tracked in the implementation plan. Screens below this minimum are
+not established as supported by that fixture.

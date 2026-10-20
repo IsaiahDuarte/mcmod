@@ -1,0 +1,8 @@
+fit access scale=1: NetworkAccessScreen panel=300x200 gui=1708x960 controls=10
+fit access scale=2: NetworkAccessScreen panel=300x200 gui=854x480 controls=10
+fit access scale=3: NetworkAccessScreen panel=300x200 gui=570x320 controls=10
+fit access scale=4: NetworkAccessScreen panel=300x200 gui=427x240 controls=10
+fit recovery scale=1: RecoveryScreen panel=300x204 gui=1708x960 controls=5
+fit recovery scale=2: RecoveryScreen panel=300x204 gui=854x480 controls=5
+fit recovery scale=3: RecoveryScreen panel=300x204 gui=570x320 controls=5
+fit recovery scale=4: RecoveryScreen panel=300x204 gui=427x240 controls=5

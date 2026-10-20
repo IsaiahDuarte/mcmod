@@ -48,7 +48,7 @@ final class ProgramAuthoringClientVerification {
         click(screen, "minecraft:coal");
         require(
             editor.getValue().equals(SOURCE + " item(\"minecraft:coal\")"),
-            "Native item picker inserts a working escaped expression");
+            "Native item picker inserts a working escaped expression: " + editor.getValue());
         screen.keyPressed(GLFW.GLFW_KEY_Z, 0, GLFW.GLFW_MOD_CONTROL);
         require(editor.getValue().equals(SOURCE), "Item picker insertion is one undo step");
         click(screen, "Insert / complete");
@@ -100,7 +100,10 @@ final class ProgramAuthoringClientVerification {
         if (author == null || author.preview().isEmpty()) return false;
         require(
             author.preview().stream()
-                .anyMatch(line -> line.contains("Move <= 4 item minecraft:iron_ingot")),
+                .anyMatch(
+                    line ->
+                        line.contains("Move <= 4 item minecraft:iron_ingot")
+                            && line.contains("\"smelter\" #1 -> storage")),
             "Server preview resolves the draft's real local target");
         require(!screen.getMenu().view().deployed(), "Preview does not deploy the program");
         capture.accept("program-rule-preview-scale-4.png");

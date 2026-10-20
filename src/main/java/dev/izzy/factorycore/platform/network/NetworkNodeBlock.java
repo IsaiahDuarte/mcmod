@@ -28,7 +28,10 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
     super(properties);
     this.kind = kind;
     registerDefaultState(
-        stateDefinition.any().setValue(BlockStateProperties.FACING, Direction.NORTH));
+        stateDefinition
+            .any()
+            .setValue(BlockStateProperties.FACING, Direction.NORTH)
+            .setValue(DeviceLamp.PROPERTY, DeviceLamp.OFF));
   }
 
   public NodeRegistry.Kind kind() {
@@ -43,7 +46,7 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
 
   @Override
   protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-    builder.add(BlockStateProperties.FACING);
+    builder.add(BlockStateProperties.FACING, DeviceLamp.PROPERTY);
   }
 
   @Override
@@ -55,6 +58,29 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
   @Override
   public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
     return new NetworkNodeEntity(position, state);
+  }
+
+  /** Server lamp refresh: one bounded membership lookup per node per {@link DeviceLamp#PERIOD}. */
+  @Override
+  public <T extends BlockEntity>
+      net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+          Level level,
+          BlockState state,
+          net.minecraft.world.level.block.entity.BlockEntityType<T> type) {
+    if (level.isClientSide() || type != NetworkContent.NODE_ENTITY.get()) return null;
+    return (tickLevel, position, tickState, entity) -> {
+      if (!DeviceLamp.due(tickLevel, position)
+          || !(tickLevel instanceof net.minecraft.server.level.ServerLevel server)) return;
+      var status =
+          WorldNetworks.get(server.getServer())
+              .membership(((NetworkNodeEntity) entity).position())
+              .status();
+      DeviceLamp.show(
+          tickLevel,
+          position,
+          tickState,
+          DeviceLamp.of(status, tickState.getValue(DeviceLamp.PROPERTY)));
+    };
   }
 
   @Override
@@ -84,15 +110,22 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
           WorldNetworks.get(((net.minecraft.server.level.ServerLevel) level).getServer())
               .membership(node.position())
               .status();
-      String message =
+      var routingText =
+          Component.translatable(
+              "status.factorycore." + routing.name().toLowerCase(java.util.Locale.ROOT));
+      Component message =
           kind == NodeRegistry.Kind.GATEWAY
-              ? "Downstream: "
-                  + state.getValue(BlockStateProperties.FACING).getName()
-                  + "; upstream: "
-                  + state.getValue(BlockStateProperties.FACING).getOpposite().getName()
-                  + "; "
-                  + routing
-              : "Network " + node.handle().id() + "; " + routing;
+              ? Component.translatable(
+                  "message.factorycore.gateway_status",
+                  Component.translatable(
+                      "direction.factorycore."
+                          + state.getValue(BlockStateProperties.FACING).getName()),
+                  Component.translatable(
+                      "direction.factorycore."
+                          + state.getValue(BlockStateProperties.FACING).getOpposite().getName()),
+                  routingText)
+              : Component.translatable(
+                  "message.factorycore.node_status", node.handle().id().toString(), routingText);
       // Sneak-use opens the gateway policy editor; it shows read-only toggles without Manage.
       if (kind == NodeRegistry.Kind.GATEWAY
           && player.isShiftKeyDown()
@@ -104,7 +137,15 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
             buffer -> buffer.writeBlockPos(position));
         return InteractionResult.CONSUME;
       }
-      player.displayClientMessage(Component.literal(message), true);
+      // Sneak-use on a controller opens the Network Access screen (ADR 0055).
+      if (kind == NodeRegistry.Kind.CONTROLLER
+          && player.isShiftKeyDown()
+          && player instanceof net.minecraft.server.level.ServerPlayer server
+          && node.handle() != null) {
+        NetworkAccessMenu.open(server, node);
+        return InteractionResult.CONSUME;
+      }
+      player.displayClientMessage(message, true);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
       player.displayClientMessage(Component.literal(failure.getMessage()), true);
@@ -121,7 +162,7 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
   protected void onPlace(
       BlockState state, Level level, BlockPos position, BlockState previous, boolean moved) {
     super.onPlace(state, level, position, previous, moved);
-    WorldNetworks.changed(level, position);
+    if (!DeviceLamp.onlyLampChanged(previous, state)) WorldNetworks.changed(level, position);
   }
 
   @Override
@@ -139,7 +180,7 @@ public final class NetworkNodeBlock extends Block implements EntityBlock {
   @Override
   protected void onRemove(
       BlockState state, Level level, BlockPos position, BlockState next, boolean moved) {
-    WorldNetworks.changed(level, position);
+    if (!DeviceLamp.onlyLampChanged(state, next)) WorldNetworks.changed(level, position);
     if (!state.is(next.getBlock())
         && !level.isClientSide()
         && level.getBlockEntity(position) instanceof NetworkNodeEntity node) {

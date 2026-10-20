@@ -139,7 +139,18 @@ public final class BufferExportGameTests {
                 helper.assertTrue(
                     f.buffer.inventory().total(f.iron) == 20
                         && f.saved.registry().stock(f.cell, f.iron).total() == 73,
-                    "Stock replenishes only exact deficit"))
+                    "Stock replenishes only exact deficit: buffer="
+                        + f.buffer.inventory().total(f.iron)
+                        + " cell="
+                        + f.saved.registry().stock(f.cell, f.iron).total()
+                        + " status="
+                        + f.runtime.imports().status(f.buffer)
+                        + " membership="
+                        + f.runtime.membership(f.buffer.position()).status()
+                        + " diagnostic="
+                        + f.runtime.diagnostic()
+                        + " transfer="
+                        + f.saved.transfers().unresolved(f.buffer.handle().id())))
         .thenSucceed();
   }
 

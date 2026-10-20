@@ -123,3 +123,7 @@ The menu rechecks VIEW/reach/loaded scope and accepts at most one query per five
 ticks. `AuthorView` carries scope IDs, at most 16 labels of 64 characters, the page's
 `more` flag, selected/total rules and up to eight 192-character preview lines. Invalid
 session requests disclose nothing. The payloads do not alter saved schema or ABI.
+
+## Limits and overload (ADR 0056)
+
+Each rule invocation has a 256-unit host-work budget: one unit per storage catalog page, and 1 + found/16 per label query. Exceeding it traps the invocation. Friendly rules allow at most 512 host calls, the same as Wasm. The program log keeps 16 lines of up to 160 characters, collapses immediate repeats, and keeps at most 8 guest lines per invocation. A refused scheduler admission sets status `throttled`, and an invocation 20 or more ticks late sets `delayed`; each is logged once. See [ADR 0056](../decisions/0056-program-limits-and-overload.md).

@@ -1,0 +1,3 @@
+PASS
+mode=seed pid=97186
+S1 after job 1 inserted 1; S2 after job 1 finished; S3 with job 2 inserted 1; SIGKILL without a final save.

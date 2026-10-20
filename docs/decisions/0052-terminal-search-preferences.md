@@ -1,6 +1,6 @@
 # ADR 0052: bounded terminal search, sort and player preferences
 
-Status: implemented; integrated and graphical verification pending.
+Status: implemented; headless, graphical and fresh-JVM restart checks passed 2026-10-19.
 
 ## Decision
 
@@ -36,4 +36,4 @@ Focused unit/packet and native menu tests are included. Normal save/reopen uses
 NeoForge persisted-player data. The graphical tour and
 fresh-JVM restart fixture now require display/mod/tag queries, name/quantity
 buttons and persisted nondefault preference projection, with required captures.
-These are unverified until run and recorded; this is partial R08/A11 evidence.
+They passed on 2026-10-19 ([evidence](../evidence/program-authoring-client-v1-2026-10-19.md)); this is partial R08/A11 evidence.

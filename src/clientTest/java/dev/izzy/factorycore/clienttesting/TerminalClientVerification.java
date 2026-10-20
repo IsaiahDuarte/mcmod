@@ -1467,12 +1467,31 @@ public final class TerminalClientVerification {
       case 43 -> {
         check(machineLabel(screen).equals("smelter"), "Machine draft survives GUI scale3");
         capture(client, "machine-scale-3-draft.png");
+        // Select one indexed fluid tank (ADR 0053); Cancel at stage 44 discards the draft.
+        click(screen, "Items");
+        edit(screen, 2, "1", false);
+        edit(screen, 3, "1", false);
         client.options.guiScale().set(4);
         client.resizeDisplay();
         next();
       }
       case 44 -> {
         check(machineLabel(screen).equals("smelter"), "Machine draft survives GUI scale4");
+        var tankFields =
+            screen.children().stream()
+                .filter(child -> child instanceof EditBox)
+                .map(child -> (EditBox) child)
+                .toList();
+        check(
+            screen.children().stream()
+                    .anyMatch(
+                        child ->
+                            child instanceof Button button
+                                && button.getMessage().getString().equals("Fluids (mB)"))
+                && tankFields.get(2).getValue().equals("1")
+                // Typed through charTyped, which an uneditable box refuses.
+                && tankFields.get(3).getValue().equals("1"),
+            "Fluid kind exposes an editable selected-tank window");
         capture(client, "machine-scale-4-draft.png");
         click(screen, "Cancel");
         checked.set(false);

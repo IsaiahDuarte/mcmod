@@ -23,19 +23,22 @@ public final class CellItem extends Item {
   public void appendHoverText(
       ItemStack stack, TooltipContext context, List<Component> lines, TooltipFlag flags) {
     lines.add(
-        Component.literal(
-            "Capacity: "
-                + (tier.infinite() ? "Infinite (technical limits apply)" : tier.capacity())
-                + (tier.kind() == dev.izzy.factorycore.core.resource.ResourceKind.ITEM
-                    ? " items"
-                    : " mB")));
+        tier.infinite()
+            ? Component.translatable("tooltip.factorycore.cell_capacity_infinite")
+            : Component.translatable(
+                tier.kind() == dev.izzy.factorycore.core.resource.ResourceKind.ITEM
+                    ? "tooltip.factorycore.cell_capacity_items"
+                    : "tooltip.factorycore.cell_capacity_fluid",
+                tier.capacity()));
     try {
       var handle = CellHandleData.read(stack);
       lines.add(
-          Component.literal(
-              handle == null ? "Unbound empty cell" : "Backing: " + handle.backing()));
+          handle == null
+              ? Component.translatable("tooltip.factorycore.cell_unbound")
+              : Component.translatable(
+                  "tooltip.factorycore.cell_backing", handle.backing().toString()));
     } catch (IllegalArgumentException invalid) {
-      lines.add(Component.literal("Invalid cell data: " + invalid.getMessage()));
+      lines.add(Component.translatable("tooltip.factorycore.cell_invalid", invalid.getMessage()));
     }
   }
 }

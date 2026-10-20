@@ -30,13 +30,17 @@ public final class LinkEndpointEntity extends BlockEntity {
   private Long partner;
   private UUID owner;
   private boolean powered;
+  private dev.izzy.factorycore.core.resource.ThroughputTier tier =
+      dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+  private CompoundTag rejected;
+  private static final String RECOVERY = "FactoryCoreLinkRecovery";
   private long inputTick = Long.MIN_VALUE, inputThisTick;
 
   private final IEnergyStorage storage =
       new IEnergyStorage() {
         @Override
         public int receiveEnergy(int amount, boolean simulate) {
-          if (amount <= 0 || level == null || level.isClientSide()) return 0;
+          if (amount <= 0 || level == null || level.isClientSide() || rejected != null) return 0;
           long tick = level.getGameTime();
           long used = tick == inputTick ? inputThisTick : 0;
           long accepted =
@@ -150,11 +154,21 @@ public final class LinkEndpointEntity extends BlockEntity {
 
   /** Why the link is inactive, or an empty string when it offers its wireless port. */
   public String diagnostic() {
+    if (rejected != null) return "unknown_data";
     if (partner == null) return "unpaired";
     if (!touchesGateway()) return "needs_gateway";
     if (!inRange(worldPosition, partner())) return "out_of_range";
     if (!powered) return "no_power";
     return "";
+  }
+
+  /** Presentation lamp: off while unpaired, lit while offering its port, fault otherwise. */
+  dev.izzy.factorycore.platform.network.DeviceLamp lamp() {
+    var reason = diagnostic();
+    if ("unpaired".equals(reason)) return dev.izzy.factorycore.platform.network.DeviceLamp.OFF;
+    return reason.isEmpty()
+        ? dev.izzy.factorycore.platform.network.DeviceLamp.ACTIVE
+        : dev.izzy.factorycore.platform.network.DeviceLamp.FAULT;
   }
 
   public boolean active() {
@@ -172,6 +186,37 @@ public final class LinkEndpointEntity extends BlockEntity {
         new NodeRegistry.Position(dimension, other.getBlockPos().asLong()));
   }
 
+  /** Installed throughput upgrade; BASE or ENDGAME (Overdrive) for link endpoints. */
+  public dev.izzy.factorycore.core.resource.ThroughputTier tier() {
+    return tier;
+  }
+
+  /**
+   * Installs an Overdrive upgrade. The caller has already checked MANAGE authority and consumes the
+   * item only after this returns. Both ends of a pair are re-discovered so the new scale is
+   * published through normal topology preparation.
+   */
+  public void install(dev.izzy.factorycore.core.resource.ThroughputTier upgrade) {
+    if (rejected != null) throw new IllegalStateException("upgrade_unknown_data");
+    var next = tier.upgradeWith(upgrade, true);
+    if (next == null) throw new IllegalStateException("upgrade_not_applicable");
+    tier = next;
+    setChanged();
+    refresh();
+  }
+
+  /**
+   * Per-pair multiplier on the ADR 0050 caps: the Overdrive scale only when both loaded, reciprocal
+   * ends carry it; otherwise 1. Never loads the partner chunk.
+   */
+  public int pairScale() {
+    if (!(level instanceof ServerLevel server) || partner == null) return 1;
+    var other = loaded(server, partner());
+    return other != null && worldPosition.equals(other.partner())
+        ? Math.min(tier.linkScale(), other.tier.linkScale())
+        : 1;
+  }
+
   public boolean current() {
     if (isRemoved() || !(level instanceof ServerLevel server)) return false;
     var chunk =
@@ -182,6 +227,10 @@ public final class LinkEndpointEntity extends BlockEntity {
 
   /** Pays operating power; a change in powered state re-discovers both ends. */
   void serverTick() {
+    if (level != null && dev.izzy.factorycore.platform.network.DeviceLamp.due(level, worldPosition))
+      dev.izzy.factorycore.platform.network.DeviceLamp.show(
+          level, worldPosition, getBlockState(), lamp());
+    if (rejected != null) return;
     if (partner == null) return;
     boolean next = energy >= TICK_COST;
     if (next) {
@@ -213,18 +262,86 @@ public final class LinkEndpointEntity extends BlockEntity {
 
   @Override
   protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    if (rejected != null) {
+      tag.merge(rejected.copy());
+      return;
+    }
     super.saveAdditional(tag, registries);
     tag.putLong("Energy", energy);
     if (partner != null) tag.putLong("Partner", partner);
     if (owner != null) tag.putUUID("Owner", owner);
+    if (tier != dev.izzy.factorycore.core.resource.ThroughputTier.BASE)
+      tag.putString("Throughput", tier.name());
   }
 
   @Override
   protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.loadAdditional(tag, registries);
+    if (tag.contains(RECOVERY)) {
+      rejected = tag.copy();
+      powered = false;
+      tier = dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+      return;
+    }
     energy = Math.max(0, Math.min(CAPACITY, tag.getLong("Energy")));
     partner = tag.contains("Partner") ? tag.getLong("Partner") : null;
     owner = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     powered = partner != null && energy >= TICK_COST;
+    // Absence is the legacy base format. Unsupported values preserve the whole before-state and
+    // remain inert, including across break/place, rather than becoming an unupgraded live endpoint.
+    tier = dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+    rejected = null;
+    if (tag.contains("Throughput")) {
+      try {
+        if (!tag.contains("Throughput", net.minecraft.nbt.Tag.TAG_STRING))
+          throw new IllegalArgumentException("Invalid throughput type");
+        tier = dev.izzy.factorycore.core.resource.ThroughputTier.parse(tag.getString("Throughput"));
+        if (tier != dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME)
+          throw new IllegalArgumentException("Unsupported link throughput tier");
+      } catch (IllegalArgumentException unknown) {
+        tier = dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+        rejected = tag.copy();
+        powered = false;
+      }
+    }
+  }
+
+  public boolean needsRecovery() {
+    return rejected != null;
+  }
+
+  /**
+   * Recovery envelopes are re-read through the strict loader, never treated as live item grants.
+   */
+  public void restoreRecovery(
+      net.minecraft.world.item.ItemStack stack, HolderLookup.Provider registries) {
+    var data =
+        stack
+            .getOrDefault(
+                net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                net.minecraft.world.item.component.CustomData.EMPTY)
+            .copyTag();
+    if (!data.contains(RECOVERY)) return;
+    if (data.contains(RECOVERY, net.minecraft.nbt.Tag.TAG_COMPOUND))
+      loadAdditional(data.getCompound(RECOVERY), registries);
+    else rejected = data.copy();
+    setChanged();
+    refresh();
+  }
+
+  /** Known upgrades return separately; unknown data stays in exactly one inert endpoint item. */
+  public java.util.List<net.minecraft.world.item.ItemStack> upgradeDrops() {
+    if (rejected != null) {
+      var stack = new net.minecraft.world.item.ItemStack(WirelessContent.LINK_ITEM.get());
+      stack.set(
+          net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+          net.minecraft.network.chat.Component.translatable("item.factorycore.link_recovery"));
+      net.minecraft.world.item.component.CustomData.update(
+          net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+          stack,
+          data -> data.put(RECOVERY, rejected.copy()));
+      return java.util.List.of(stack);
+    }
+    return dev.izzy.factorycore.platform.upgrade.ThroughputContent.installed(tier, true);
   }
 }

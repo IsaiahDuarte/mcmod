@@ -1,31 +1,21 @@
 package dev.izzy.factorycore.platform.storage;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
-import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.*;
-import dev.izzy.factorycore.platform.network.WorldNetworks;
-import java.io.IOException;
 import java.util.*;
 import net.minecraft.commands.*;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 /** Operator-only inspection; known cleanup remains exclusively the authenticated original owner. */
 public final class RecoveryCommands {
-  private static final Map<MinecraftServer, Map<UUID, Integer>> REQUESTS = new WeakHashMap<>();
-
-  private static final Map<MinecraftServer, Integer> RETIRE_TIMES = new WeakHashMap<>();
-
   private RecoveryCommands() {}
 
   public static void stopped(ServerStoppedEvent event) {
     DeviceRecoveryCommands.stopped(event.getServer());
-    REQUESTS.remove(event.getServer());
-    RETIRE_TIMES.remove(event.getServer());
+    RecoveryActions.stopped(event.getServer());
   }
 
   public static void register(RegisterCommandsEvent event) {
@@ -40,6 +30,20 @@ public final class RecoveryCommands {
                         .then(BufferRecoveryCommands.commands())
                         .then(NetworkNodeRecoveryCommands.commands())
                         .then(PortRecoveryCommands.commands())
+                        .then(
+                            Commands.literal("screen")
+                                .requires(
+                                    s ->
+                                        s.getEntity() instanceof ServerPlayer player
+                                            && s.source == player)
+                                .executes(
+                                    c -> {
+                                      RecoveryMenu.open((ServerPlayer) c.getSource().getEntity());
+                                      return 1;
+                                    }))
+                        .then(
+                            dev.izzy.factorycore.platform.crafting.ProcessingRecoveryCommands
+                                .commands())
                         .then(
                             Commands.literal("list")
                                 .requires(s -> s.hasPermission(2))
@@ -203,143 +207,59 @@ public final class RecoveryCommands {
     }
   }
 
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   private static int retire(CommandSourceStack source, String text) {
     UUID id = parse(source, text);
     if (id == null) return 0;
-    var server = source.getServer();
-    try {
-      var saved = DeviceSavedData.get(server);
-      var records = saved.transfers();
-      if (!records.contains(id)) {
-        fail(source, "missing");
-        return 0;
-      }
-      var move = records.get(id);
-      if (move.state() != StagedTransfer.State.COMPLETE
-          || move.pending() != StagedTransfer.PendingCall.NONE
-          || move.staged() != 0) {
-        fail(source, "not_complete");
-        return 0;
-      }
-      int tick = server.getTickCount();
-      var previous = RETIRE_TIMES.get(server);
-      if (previous != null && tick - previous < 20) {
-        fail(source, "rate");
-        return 0;
-      }
-      RETIRE_TIMES.put(server, tick);
-      var path =
-          RecoveryAudit.preserve(
-              server.getWorldPath(LevelResource.ROOT),
-              saved.registry().world(),
-              new TransferRegistry.Stored(id, move, records.context(id)));
-      records.retire(id);
-      source.sendSuccess(
-          () ->
-              Component.translatable(
-                  "command.factorycore.recovery.retired",
-                  id.toString(),
-                  path.getFileName().toString()),
-          false);
-      return 1;
-    } catch (IOException evidenceFailure) {
-      fail(source, "audit");
-      return 0;
-    } catch (IllegalStateException unavailable) {
-      fail(source, "unavailable");
+    var outcome = RecoveryActions.retire(source.getServer(), id);
+    if (!outcome.reason().equals("retired")) {
+      fail(source, outcome.reason());
       return 0;
     }
+    source.sendSuccess(
+        () ->
+            Component.translatable(
+                "command.factorycore.recovery.retired", id.toString(), outcome.evidence()),
+        false);
+    return 1;
   }
 
   /**
    * Original-owner known cleanup ({@code return}) or legacy settlement ({@code settle}, ADR 0047)
    * for a record without endpoint context. Both preserve before-state evidence first, use shared
-   * scheduling and never extract.
+   * scheduling and never extract. The command source itself must be the executing player.
    */
-  @SuppressWarnings("PMD.CloseResource") // Minecraft owns the borrowed server.
   private static int returning(CommandSourceStack source, String text, boolean settle) {
     UUID id = parse(source, text);
     if (id == null) return 0;
     var player = (ServerPlayer) source.getEntity();
-    var server = source.getServer();
-    if (source.source != player
-        || server.getPlayerList().getPlayer(player.getUUID()) != player
-        || !player.isAlive()) {
+    if (source.source != player) {
       fail(source, "owner");
       return 0;
     }
-    try {
-      var saved = DeviceSavedData.get(server);
-      var records = saved.transfers();
-      if (!records.contains(id) || !records.get(id).owner().equals(player.getUUID())) {
-        fail(source, "owner");
-        return 0;
-      }
-      var move = records.get(id);
-      if (move.pending() != StagedTransfer.PendingCall.NONE
-          || move.state() == StagedTransfer.State.QUARANTINED) {
-        fail(source, "uncertain");
-        return 0;
-      }
-      if (move.state() == StagedTransfer.State.COMPLETE) {
-        fail(source, "complete");
-        return 0;
-      }
-      if ((records.context(id) == null) != settle) {
-        fail(source, settle ? "settle_scoped" : "legacy");
-        return 0;
-      }
-      var times = REQUESTS.computeIfAbsent(server, s -> new HashMap<>());
-      int tick = server.getTickCount();
-      var previous = times.get(player.getUUID());
-      if (previous != null && tick - previous < 20) {
-        fail(source, "rate");
-        return 0;
-      }
-      times.entrySet().removeIf(entry -> tick - entry.getValue() >= 20);
-      if (previous == null && times.size() >= 256) {
-        fail(source, "limit");
-        return 0;
-      }
-      times.put(player.getUUID(), tick);
-      var path =
-          RecoveryAudit.preserve(
-              server.getWorldPath(LevelResource.ROOT),
-              saved.registry().world(),
-              new TransferRegistry.Stored(id, move, records.context(id)));
-      var actor = new NetworkPermissions.Actor(player.getUUID(), player.hasPermissions(2));
-      java.util.function.Consumer<WorldStorageTransfers.Result> report =
-          completed ->
-              source.sendSuccess(
-                  () ->
-                      Component.translatable(
-                          "command.factorycore.recovery." + (settle ? "settled" : "result"),
-                          id.toString(),
-                          completed.reason().name(),
-                          completed.transfer() == null ? 0 : completed.transfer().returned(),
-                          completed.transfer() == null ? 0 : completed.transfer().delivered(),
-                          completed.transfer() == null ? 0 : completed.transfer().staged()),
-                  false);
-      var transfers = WorldNetworks.get(server).transfers();
-      var result =
-          settle
-              ? transfers.settleLegacy(id, actor, report)
-              : transfers.progress(id, actor, true, report);
-      source.sendSuccess(
-          () ->
-              Component.translatable(
-                  "command.factorycore.recovery.queued",
-                  result.rejection().name(),
-                  path.getFileName().toString()),
-          false);
-      return result.rejection() == OperationResult.Reason.OK ? 1 : 0;
-    } catch (IOException evidenceFailure) {
-      fail(source, "audit");
-      return 0;
-    } catch (IllegalStateException quarantined) {
-      fail(source, "unavailable");
+    java.util.function.Consumer<WorldStorageTransfers.Result> report =
+        completed ->
+            source.sendSuccess(
+                () ->
+                    Component.translatable(
+                        "command.factorycore.recovery." + (settle ? "settled" : "result"),
+                        id.toString(),
+                        completed.reason().name(),
+                        completed.transfer() == null ? 0 : completed.transfer().returned(),
+                        completed.transfer() == null ? 0 : completed.transfer().delivered(),
+                        completed.transfer() == null ? 0 : completed.transfer().staged()),
+                false);
+    var outcome = RecoveryActions.request(player, id, settle, report);
+    if (!outcome.reason().equals("queued")) {
+      fail(source, outcome.reason());
       return 0;
     }
+    source.sendSuccess(
+        () ->
+            Component.translatable(
+                "command.factorycore.recovery.queued",
+                outcome.admission().name(),
+                outcome.evidence()),
+        false);
+    return outcome.admission() == OperationResult.Reason.OK ? 1 : 0;
   }
 }

@@ -77,11 +77,23 @@ public final class NetworkContent {
               () ->
                   net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
                       GatewayPolicyMenu::new));
+  public static final DeferredHolder<
+          net.minecraft.world.inventory.MenuType<?>,
+          net.minecraft.world.inventory.MenuType<NetworkAccessMenu>>
+      ACCESS_MENU =
+          MENUS.register(
+              "network_access",
+              () ->
+                  net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(
+                      NetworkAccessMenu::new));
 
   private NetworkContent() {}
 
   private static BlockBehaviour.Properties properties() {
-    return BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops();
+    return BlockBehaviour.Properties.of()
+        .strength(3.5f)
+        .requiresCorrectToolForDrops()
+        .sound(net.minecraft.world.level.block.SoundType.METAL);
   }
 
   public static void register(IEventBus bus) {
@@ -89,5 +101,6 @@ public final class NetworkContent {
     ITEMS.register(bus);
     ENTITIES.register(bus);
     MENUS.register(bus);
+    bus.addListener(AccessPackets::register);
   }
 }

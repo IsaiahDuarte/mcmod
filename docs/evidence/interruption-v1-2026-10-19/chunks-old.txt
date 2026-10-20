@@ -1,0 +1,3 @@
+PASS
+mode=chunks-old pid=97207
+S2 SavedData with S1 chunks: the orphan job-1 journal blocked job 3 as machine_journal with no dispatch for 100 ticks; resolution preserved evidence and removed the journal; job 3 then refused the 1 rolled-back ingots as output_not_clean (taken out by hand, never absorbed) and finished with exactly one ingot added (3 in storage).

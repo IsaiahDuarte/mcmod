@@ -166,7 +166,7 @@ complete player terminal/all-key search and remaining presets.
 
 Explicit `WorldStorageTransfers.Buffered(handle, configuration)` item endpoints
 now use current root/segment/grants and loaded reference checks. Network input and
-output each share 64 item units per backing ID/tick; direct mechanical hopper
+output each share the configured rate per backing ID/tick (tier caps 64/256/576); direct mechanical hopper
 access remains real local inventory. ItemBuffer.admitInsert returns typed FULL or
 TECHNICAL_LIMIT before consuming input. Buffered context schema two persists
 accepted identity/generations under world schema nine, preserving old context-one
@@ -293,9 +293,19 @@ operations, remaining presets and inventory screens are the next player-path wor
 
 ## Filtered Import and network rate policy
 
+Paid Throughput/Overdrive installation raises the physical network ceiling to
+256/576 items per tick, using the same server-thread configure path. It preserves
+the nine owned slots, stable identity, mode/filter/goal and existing staging
+ownership. Current Edit/Deploy and active-mode resource grants are revalidated;
+failed installation consumes no item. Portable reference schema2 stores the tier;
+base references retain schema1 bytes. Canonical slot/policy schemas and world13
+are unchanged. Configuration above the installed tier refuses before publishing.
+See [ADR 0054](../decisions/0054-throughput-upgrades.md) for lifecycle and fair costs.
+
 [ADR 0018](../decisions/0018-buffer-filter-policy.md) adds canonical BufferPolicy to
 one existing deployment. It contains an item [ResourceFilter](RESOURCE_FILTERS.md)
-and a1–64 items/tick network rate, separately for insertion/extraction. Default
+and a 1–576 items/tick absolute network rate, separately for insertion/extraction.
+The physical tier caps accepted configuration at 64/256/576 items/tick. Default
 ALL/64 remains byte-compatible buffers-v2. Any nondefault policy writes buffers-v3;
 each deployment then has Policy `{Schema:1, Rate:int, Mode:string, Terms:list}`.
 Terms are strict REGISTRY/TAG `{Type,Id}` or EXACT `{Type,Id,Components:byte-array}`.

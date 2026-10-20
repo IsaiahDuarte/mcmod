@@ -22,6 +22,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   private EditBox search;
   private Button category;
   private final java.util.List<Button> choices = new java.util.ArrayList<>();
+  private boolean refocusEditor;
   private Button previousPage, nextPage;
   private boolean selecting, completing, previewing;
   private int kind, page, previewRule, previewPage;
@@ -292,6 +293,19 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     rebuildChoices();
     setFocused(editor);
     editor.setFocused(true);
+    refocusEditor = true;
+  }
+
+  @Override
+  public boolean mouseClicked(double x, double y, int button) {
+    boolean handled = super.mouseClicked(x, y, button);
+    // Vanilla focuses the clicked row after its action; keep typing and undo in the editor.
+    if (refocusEditor) {
+      refocusEditor = false;
+      setFocused(editor);
+      editor.setFocused(true);
+    }
+    return handled;
   }
 
   private Button button(String key, int x, int y, Runnable action) {

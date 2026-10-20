@@ -75,6 +75,7 @@ public final class FairScheduler {
     final Map<UUID, Program> programs = new HashMap<>();
     final ArrayDeque<Program> activePrograms = new ArrayDeque<>();
     long epoch = -1;
+    long deferred = Long.MIN_VALUE;
     int spent;
     boolean active;
 
@@ -99,7 +100,28 @@ public final class FairScheduler {
     this.failures = Objects.requireNonNull(failures);
   }
 
+  /**
+   * Slots beyond {@code queuedTotal} usable only through {@link #submitReserved}. Saturating
+   * script/job work then cannot starve bounded world maintenance such as topology rebuilds.
+   */
+  public static final int RESERVED_SLOTS = 8;
+
   public Admission submit(UUID networkId, UUID programId, String key, int cost, Runnable action) {
+    return admit(networkId, programId, key, cost, action, limits.queuedTotal());
+  }
+
+  /**
+   * World-maintenance admission with the same per-network/program/cost bounds, but which may use up
+   * to {@link #RESERVED_SLOTS} slots beyond the shared {@code queuedTotal}. Callers must keep a
+   * small fixed number of coalesced keys; execution still shares the per-tick fair rotation.
+   */
+  public Admission submitReserved(
+      UUID networkId, UUID programId, String key, int cost, Runnable action) {
+    return admit(networkId, programId, key, cost, action, limits.queuedTotal() + RESERVED_SLOTS);
+  }
+
+  private Admission admit(
+      UUID networkId, UUID programId, String key, int cost, Runnable action, int total) {
     checkThread();
     Objects.requireNonNull(networkId);
     Objects.requireNonNull(programId);
@@ -118,7 +140,7 @@ public final class FairScheduler {
     }
     boolean replacing = program != null && program.tasks.containsKey(key);
     if (!replacing
-        && (queued >= limits.queuedTotal()
+        && (queued >= total
             || (program != null && program.tasks.size() >= limits.queuedPerProgram())))
       return Admission.QUEUE_FULL;
     if (network == null) {
@@ -178,9 +200,12 @@ public final class FairScheduler {
         var iterator = program.tasks.entrySet().iterator();
         var task = iterator.next().getValue();
         try {
-          if (task.cost() <= limits.programCredits() - program.spent
-              && task.cost() <= limits.networkCredits() - network.spent
-              && task.cost() <= limits.globalCredits() - credits) {
+          boolean affordable =
+              task.cost() <= limits.programCredits() - program.spent
+                  && task.cost() <= limits.networkCredits() - network.spent
+                  && task.cost() <= limits.globalCredits() - credits;
+          if (!affordable) network.deferred = epoch;
+          if (affordable) {
             iterator.remove();
             queued--;
             executed++;
@@ -213,7 +238,24 @@ public final class FairScheduler {
     } finally {
       ticking = false;
     }
+    // Work left after a shared tick limit stopped the round waited for the fair budget. At most
+    // the bounded active-network queue is stamped; idle networks are never visited.
+    for (var waiting : activeNetworks) waiting.deferred = epoch;
     return new TickReport(visits, executed, failed, credits, queued, timeLimited);
+  }
+
+  /**
+   * Visible throttling (ADR 0054): true when queued work of this network waited for a shared fair
+   * budget (credits, visits, task count or time) within the last {@code window} scheduler ticks.
+   * Paid upgrades never change these budgets; this only reports that the server capped the work.
+   */
+  public boolean throttled(UUID networkId, int window) {
+    checkThread();
+    if (window < 1) throw new IllegalArgumentException("Throttle window must be positive");
+    var network = networks.get(networkId);
+    return network != null
+        && network.deferred != Long.MIN_VALUE
+        && epoch - network.deferred < window;
   }
 
   /** True only while this keyed action remains undispatched. */

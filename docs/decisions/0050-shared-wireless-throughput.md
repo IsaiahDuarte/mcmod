@@ -1,6 +1,6 @@
 # ADR 0050 — Shared wireless resource throughput
 
-Status: accepted design; integrated runtime verification in progress.
+Status: accepted; native GameTests pass in the canonical verifier (2026-10-18). No repeated throughput measurement yet.
 
 ## Context
 

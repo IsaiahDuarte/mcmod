@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.core.storage;
 
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import java.util.Objects;
 
 /** Immutable foreign-provider policy; counts and rates use the selected resource's units. */
@@ -15,7 +16,8 @@ public record ConnectorSettings(
   public ConnectorSettings {
     Objects.requireNonNull(kind);
     Objects.requireNonNull(access);
-    int maximum = kind == ResourceKind.ITEM ? 128 : 1000;
+    // Absolute ceiling; the installed ThroughputTier further bounds each physical port (ADR 0054).
+    long maximum = ThroughputTier.maxQuantum(kind);
     if (priority < -1000
         || priority > 1000
         || firstSlot < 0
@@ -26,6 +28,11 @@ public record ConnectorSettings(
       throw new IllegalArgumentException("Connector settings exceed bounded limits");
     if (kind == ResourceKind.ENERGY && (firstSlot != 0 || slotCount != 64))
       throw new IllegalArgumentException("Energy has no indexed window");
+  }
+
+  /** Rejects a rate above what the physical port's installed tier allows. */
+  public boolean fits(ThroughputTier tier) {
+    return rate <= tier.portRate(kind);
   }
 
   /** Legacy fluid defaults mean the whole capability, including paginated large catalogs. */

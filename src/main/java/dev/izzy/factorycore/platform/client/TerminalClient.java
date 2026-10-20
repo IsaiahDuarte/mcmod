@@ -25,5 +25,10 @@ public final class TerminalClient {
     event.register(
         dev.izzy.factorycore.platform.network.NetworkContent.POLICY_MENU.get(),
         GatewayPolicyScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.network.NetworkContent.ACCESS_MENU.get(),
+        NetworkAccessScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.storage.RecoveryContent.MENU.get(), RecoveryScreen::new);
   }
 }

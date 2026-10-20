@@ -10,6 +10,29 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class WirelessBudgetTest {
+  @Test
+  void upgradedAndNestedPairsShareExistingUsageAcrossScaleChanges() {
+    var budget = new WirelessBudget();
+    var pair = link(0);
+    var nested = link(1);
+    var upgraded = List.of(new WirelessBudget.Hop(pair, 4));
+    budget.claim(List.of(pair), 10, ResourceKind.ITEM, 200).finish(200);
+    var enlarged = budget.claimHops(upgraded, 10, ResourceKind.ITEM, 1024);
+    assertEquals(824, enlarged.amount());
+    enlarged.finish(824);
+    assertEquals(0, budget.availableHops(upgraded, 10, ResourceKind.ITEM, 1));
+    assertEquals(0, budget.available(List.of(pair), 10, ResourceKind.ITEM, 1));
+    assertEquals(1024, budget.claimHops(upgraded, 11, ResourceKind.ITEM, 2000).amount());
+    assertEquals(16000, budget.claimHops(upgraded, 11, ResourceKind.FLUID, 20000).amount());
+    assertEquals(32000, budget.claimHops(upgraded, 11, ResourceKind.ENERGY, 40000).amount());
+    var mixed = List.of(new WirelessBudget.Hop(pair, 4), new WirelessBudget.Hop(nested, 1));
+    assertEquals(256, budget.claimHops(mixed, 12, ResourceKind.ITEM, 1024).amount());
+    assertEquals(768, budget.availableHops(upgraded, 12, ResourceKind.ITEM, 1024));
+    var repeated = List.of(new WirelessBudget.Hop(pair, 4), new WirelessBudget.Hop(pair, 1));
+    assertEquals(256, budget.claimHops(repeated, 13, ResourceKind.ITEM, 1024).amount());
+    assertThrows(IllegalArgumentException.class, () -> new WirelessBudget.Hop(pair, 0));
+  }
+
   private static WirelessBudget.Link link(int value) {
     return new WirelessBudget.Link(
         new NodeRegistry.Position("minecraft:overworld", value * 2L),

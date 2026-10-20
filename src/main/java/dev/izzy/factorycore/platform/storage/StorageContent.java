@@ -29,7 +29,10 @@ public final class StorageContent {
       BLOCKS.registerBlock(
           "storage_drive",
           StorageDriveBlock::new,
-          BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops());
+          BlockBehaviour.Properties.of()
+              .strength(3.5f)
+              .requiresCorrectToolForDrops()
+              .sound(net.minecraft.world.level.block.SoundType.METAL));
   public static final DeferredItem<?> DRIVE_ITEM = ITEMS.registerSimpleBlockItem(DRIVE);
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<StorageDriveEntity>>
       DRIVE_ENTITY =
@@ -87,6 +90,12 @@ public final class StorageContent {
                         output.accept(EXPANSION.get());
                         output.accept(ADVANCED.get());
                         output.accept(INFINITE.get());
+                        output.accept(
+                            dev.izzy.factorycore.platform.upgrade.ThroughputContent.THROUGHPUT
+                                .get());
+                        output.accept(
+                            dev.izzy.factorycore.platform.upgrade.ThroughputContent.OVERDRIVE
+                                .get());
                       })
                   .build());
 

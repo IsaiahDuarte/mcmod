@@ -1,5 +1,10 @@
 # Full-release implementation handoff
 
+For the latest exact revisions, integrated fixes, verification limits and next
+steps, start with [HANDOFF-2026-10-19.md](HANDOFF-2026-10-19.md). The original
+continuation prompt below preserves the full release objective; its initial
+interrupted-slice inventory predates the latest checkpoint.
+
 Copy the following task into an agent session rooted at this repository. This is
 a continuation toward the full first playable release; milestone demonstrations
 are checkpoints. No new goal skill is installed by this file.
@@ -19,24 +24,36 @@ docs/TESTING.md and docs/ASSETS.md, then relevant module docs/ADRs and existing
 code/tests. Inspect current git changes and preserve unrelated work. Do not
 delegate unless I explicitly request it.
 
-Current recorded baseline: Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21.
-Canonical world writer is schema13 (CraftingJobs added); older schema numbers below identify introduction/migration history. Machine reference2, buffer policy2 and transfer context3 remain current formats.
-P0 is locally verified; P1/P2/P3 are partial; P4–P7 are unstarted. Cells/drives,
-controller/gateway/cable ownership, automatic wired availability, core resource
-accounting and scheduling exist. Physical energy banks, capabilities and portable
-upgrades have local headless evidence; a small separate-JVM integrated restart and
-native one-chunk distance-driven unload/reload now preserve canonical/physical
-state and resume item Stock. Broader staged/save-order/client asset evidence
-remains pending. Canonical transfer staging and accepted operation context now persist with schema-five migration
-and conservative pending-intent recovery; scheduled digital cell/bank endpoints now exist; sided connector primitives now exist; bounded advisory external stock pages now share the scheduler; portable foreign claim metadata/revalidation introduced by schema six now persists under canonical schema ten; scheduled principal-owned reserve/release/claimed moves and background hold enforcement now exist; crafting-job claim ownership/reconciliation remains missing. Bounded live exact-key digital/foreign catalog discovery now exists; bounded explicit global priority routes now have portable/core and headless world evidence; persisted rotation now exists under schema-seven canonical preferences; bounded all-key discovery/registry-text search now exists; general automatic recovery dispatch remains
-missing. Explicit scheduled delivery/owned cleanup now rebinds validated saved endpoints without re-extraction. Accepted source/destination/origin context now persists alongside staging. World-scoped provider component markers now retain
-backing identity across supported block-entity NBT save/load.
-The nine-slot owned ItemBuffer and NeoForge hopper handler prerequisite now exist; canonical buffer ownership/persistence now exists under schema eight; physical Buffered Interface blocks/capabilities now have real hopper, backpressure, movement/clone and recipe evidence; explicit authorized network buffer endpoints and staging recovery now exist under schema nine/context two; canonical authenticated preset deployment authority now exists in nested buffer schema two; bounded automatic Import/Paused controls, real hopper-to-cell/full-storage backpressure and original-owner staged cleanup now have headless evidence; bounded all-key discovery/search now has server-side component/world evidence; physical item terminal/menu controls now exist with headless evidence; partial graphical search/Take1/paging/deposit-payload evidence at scales2–4 now exists; manual/additional client checks and export/stock/filter controls remain pending. Bounded immutable selector/stock-deficit models now have portable and actual native tag/thread evidence; canonical guarded filtered Import and shared network rates now exist under nested buffers-v3/policy-v1, with native sample/name-tag/clock/paper controls and core/world evidence; automatic buffered Export/Stock now has scheduled priority discovery, canonical buffers-v4/policy-v2 goals, native compass/chest controls and conservation/backpressure/contention evidence; native settings/inventory menu and server-owned draft controls now exist with headless evidence; actual buffer and machine settings client verification now has recorded native interaction/scales2–4/conservation evidence (docs/evidence/settings-client-v1-2026-10-17.md); prior no-display failure is historical; explicit moved/requested feedback now has native partial/full/conservation evidence; machine-interface local labels, selected item windows and whole sided fluid/FE transfers now have component/headless evidence under world schema11 and reference schema2; a native authenticated machine settings editor now exposes labels/type/access/windows/priority/rates with atomic Apply/Cancel; canonical machine presets now use world12/table2 configuration fences and original-principal/configuration/scope/grant guards; bounded automatic item/mB/FE Import/Export/Stock now has native conservation/backpressure/staging/recovery evidence through a trusted server API; player preset authoring/client Stock flows now exist with component/native/graphical evidence; a small separate-JVM orderly integrated restart now preserves complete canonical/physical state and resumes item Stock; native distance-driven unload/reload also preserves leases, rejects cached offline capabilities and resumes Stock; a loaded child now suspends during real upstream root unload and resumes after revalidation. Flat retained-seed queues fix finite cable rebuild depth failures. Actual accepted staged operations now have required two-JVM dedicated-server save/reopen evidence for known delivery/return and frozen post-insert uncertainty. The shared graphical staging extension is compiled but unverified while no active display is available. Operator inspection, audited original-owner known cleanup and empty-record retirement have a supported command slice. Audited canonical item/fluid cell and finite energy-bank conflict repair now preserves stock/claims and bank rate spending, rotates the lease and invalidates old copies, only at the loaded exact original holder without unresolved transfers. Bank audits retain full block/reference state in standalone schema2; cell audit schema1/world12 remain unchanged. Audited Buffered Interface recovery now preserves exact slots and original deployment, rotates its structural lease and makes old handlers/queued work stale. The accepted preset stays on the old lease until a currently authorized player reapplies it; operator repair does not become the deployer. Buffer audit schema3 retains complete slots/deployment/physical evidence. Audited controller/gateway conflict repair now preserves logical network/segment IDs, controller owner/grants/permission generation and gateway policy/orientation, requiring normal topology revalidation. Node audit schema4 retains exact node/grants/physical evidence; ordinary accepted transfers remain unchanged under existing guards. Audited connector/Machine Interface conflict repair now preserves settings/label/face/configuration and foreign contents/holds, invalidates old mod ports and requires authorized explicit machine redeployment; port audit schema5 retains remembered registration/deployment/fence evidence. Unresolved or unscoped-legacy transfer/ownership combinations, missing/stale canonical holders, independent-save/interrupt recovery, selected tanks and coordinated multiport integration remain unfinished. Continue from those prerequisites before crafting/programming and full release integration.
-Rust/Wasm is a test-only feasibility probe. Explicit authenticated player inventory endpoints and known staged cleanup now exist
-under world schema ten/context three; physical terminal item menus/client controls have partial graphical evidence; production
-scripting, crafting and wireless remain missing. Legacy device visuals are placeholders; native bank models
-are implemented with client inspection pending.
-Confirm this baseline against the current checkout before choosing work.
+Current platform: Minecraft 1.21.1 / NeoForge 21.1.252 / Java 21. Read the
+current acceptance table and last dated checkpoints in docs/IMPLEMENTATION.md;
+older dated checkpoints describe introduction history, not today's missing work.
+The world writer is schema 13; check nested codecs for their own versions.
+
+The interrupted 2026-10-19 session has been inventoried in docs/CONTINUATION.md.
+Main was clean at 0d92ed2; the last fluid-tank graphical commit had landed. Four
+new WIP branches have committed code and individual handoffs. The fifth,
+presentation, was uncommitted and is preserved in 9a387bf, then integrated for
+verification. Keep all retained worktrees; do not re-merge the four older slices
+already recovered in bfe3a4a. Check current git status/log before continuing.
+
+P0 is locally verified on macOS arm64. P1–P7 are in progress. Storage, canonical
+ownership/recovery, wired topology, shared transfers/presets, terminal search and
+saved preferences, crafting/processing/publication/keep-stock, friendly/Rust-Wasm
+programs and authoring, fluid/energy actions, shared wireless resource caps,
+optional JEI callbacks, original art and onboarding all have partial local evidence.
+Orderly restart, independent-save storage adoption, real chunk/root/wireless
+unload and two-client terminal permissions have dedicated fixtures. Production
+Wasm and crafting are implemented; do not restart them from older bootstrap notes.
+
+Finish the interrupted slices with docs and verification: presentation, paid
+throughput upgrades, processing/program interruption recovery, program host/log
+limits and jobs/contention controls, access/ownership/recovery screens. Then finish
+broader gateway/staged lifecycle, actual JEI gestures, multiplayer crafting/program
+scenarios, repeated controlled performance/client/packet/crafting/Wasm workloads,
+supported OS execution and release/asset reconciliation. A17 requires the user's
+human survival playtest and working endgame factory; automated recipe reachability
+is not that evidence. Every A01–A17 row remains partial until its full contract
+and evidence are satisfied. Confirm this state against the checkout before work.
 
 Resume from the earliest incomplete prerequisite; do not rebuild completed
 bootstrap work. Resolve decision gates through evidence and ADRs. Close P1/P2

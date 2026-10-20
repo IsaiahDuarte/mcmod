@@ -1,0 +1,3 @@
+PASS
+mode=data-old pid=97227
+S1 SavedData with S2 chunks: job 1 quarantined as save_mismatch with no machine or ledger change for 100 ticks; resolution preserved evidence and aligned the journal; the job then waited with 0 ingots in storage. The 2 ingots that the S2 chunk had already handed back are lost to the skew and reported, never re-created (processing).

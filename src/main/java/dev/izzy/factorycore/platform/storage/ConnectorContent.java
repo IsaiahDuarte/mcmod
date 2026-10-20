@@ -21,7 +21,10 @@ public final class ConnectorContent {
       BLOCKS.registerBlock(
           "storage_connector",
           ConnectorBlock::new,
-          BlockBehaviour.Properties.of().strength(3.5f).requiresCorrectToolForDrops());
+          BlockBehaviour.Properties.of()
+              .strength(3.5f)
+              .requiresCorrectToolForDrops()
+              .sound(net.minecraft.world.level.block.SoundType.METAL));
   public static final DeferredItem<ConnectorItem> ITEM =
       ITEMS.register("storage_connector", () -> new ConnectorItem(BLOCK.get()));
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ConnectorEntity>> ENTITY =
