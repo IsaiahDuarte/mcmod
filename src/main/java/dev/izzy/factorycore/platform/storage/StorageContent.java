@@ -12,7 +12,10 @@ import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
@@ -49,6 +52,13 @@ public final class StorageContent {
       ITEMS.register("advanced_module", () -> new CellUpgradeItem(2));
   public static final DeferredItem<CellUpgradeItem> INFINITE =
       ITEMS.register("infinite_module", () -> new CellUpgradeItem(3));
+
+  /**
+   * Items left out of the creative tab: encoded patterns are meaningless without their recipe data.
+   * Every other Factory Core item is shown, curated ones first.
+   */
+  public static final Set<String> TAB_HIDDEN = Set.of("crafting_pattern", "processing_pattern");
+
   public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB =
       TABS.register(
           "factorycore",
@@ -58,31 +68,38 @@ public final class StorageContent {
                   .icon(() -> DRIVE_ITEM.get().getDefaultInstance())
                   .displayItems(
                       (parameters, output) -> {
-                        output.accept(DRIVE_ITEM.get());
-                        output.accept(TerminalContent.ITEM.get());
-                        output.accept(BufferedInterfaceContent.ITEM.get());
-                        output.accept(ConnectorContent.ITEM.get());
-                        output.accept(MachineInterfaceContent.ITEM.get());
-                        output.accept(NetworkContent.CONTROLLER_ITEM.get());
-                        output.accept(NetworkContent.GATEWAY_ITEM.get());
-                        output.accept(NetworkContent.CABLE_ITEM.get());
+                        var shown = new LinkedHashSet<Item>();
+                        shown.add(DRIVE_ITEM.get());
+                        shown.add(TerminalContent.ITEM.get());
+                        shown.add(BufferedInterfaceContent.ITEM.get());
+                        shown.add(ConnectorContent.ITEM.get());
+                        shown.add(MachineInterfaceContent.ITEM.get());
+                        shown.add(NetworkContent.CONTROLLER_ITEM.get());
+                        shown.add(NetworkContent.GATEWAY_ITEM.get());
+                        shown.add(NetworkContent.CABLE_ITEM.get());
                         for (var tier : EnergyBankTier.values())
-                          output.accept(EnergyBankContent.item(tier));
-                        output.accept(FuelGeneratorContent.ITEM.get());
-                        output.accept(CraftingContent.UNIT_ITEM.get());
-                        output.accept(CraftingContent.INTERFACE_ITEM.get());
-                        output.accept(ProgramContent.ITEM.get());
-                        output.accept(WirelessContent.ACCESS_POINT_ITEM.get());
-                        output.accept(WirelessContent.HANDHELD.get());
-                        output.accept(WirelessContent.LINK_ITEM.get());
-                        output.accept(GuideContent.GUIDE.get());
-                        output.accept(CraftingContent.BLANK_PATTERN.get());
-                        for (var tier : CellTier.values()) output.accept(cell(tier));
-                        output.accept(EXPANSION.get());
-                        output.accept(ADVANCED.get());
-                        output.accept(INFINITE.get());
-                        output.accept(ThroughputContent.THROUGHPUT.get());
-                        output.accept(ThroughputContent.OVERDRIVE.get());
+                          shown.add(EnergyBankContent.item(tier));
+                        shown.add(FuelGeneratorContent.ITEM.get());
+                        shown.add(CraftingContent.UNIT_ITEM.get());
+                        shown.add(CraftingContent.INTERFACE_ITEM.get());
+                        shown.add(ProgramContent.ITEM.get());
+                        shown.add(WirelessContent.ACCESS_POINT_ITEM.get());
+                        shown.add(WirelessContent.HANDHELD.get());
+                        shown.add(WirelessContent.LINK_ITEM.get());
+                        shown.add(GuideContent.GUIDE.get());
+                        shown.add(CraftingContent.BLANK_PATTERN.get());
+                        for (var tier : CellTier.values()) shown.add(cell(tier));
+                        shown.add(EXPANSION.get());
+                        shown.add(ADVANCED.get());
+                        shown.add(INFINITE.get());
+                        shown.add(ThroughputContent.THROUGHPUT.get());
+                        shown.add(ThroughputContent.OVERDRIVE.get());
+                        // Anything registered later still appears, after the curated order.
+                        for (var id : BuiltInRegistries.ITEM.keySet())
+                          if (id.getNamespace().equals(FactoryCoreMod.MOD_ID)
+                              && !TAB_HIDDEN.contains(id.getPath()))
+                            shown.add(BuiltInRegistries.ITEM.get(id));
+                        shown.forEach(output::accept);
                       })
                   .build());
 

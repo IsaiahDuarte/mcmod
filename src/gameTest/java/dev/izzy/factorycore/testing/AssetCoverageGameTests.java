@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.storage.StorageContent;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -16,6 +17,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -131,6 +133,28 @@ public final class AssetCoverageGameTests {
               present("textures/" + texturePath + ".png"),
               "Texture " + texture.getValue().getAsString() + " in " + model);
       }
+  }
+
+  /** The creative tab shows every Factory Core item once, except the declared hidden ones. */
+  @GameTest(template = "empty")
+  public static void creativeTabShowsEveryItem(GameTestHelper helper) {
+    var tab = StorageContent.TAB.get();
+    tab.buildContents(
+        new CreativeModeTab.ItemDisplayParameters(
+            helper.getLevel().enabledFeatures(), false, helper.getLevel().registryAccess()));
+    var shown = new ArrayList<String>();
+    for (var stack : tab.getDisplayItems())
+      shown.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath());
+    var expected = new HashSet<String>();
+    for (var id : BuiltInRegistries.ITEM.keySet())
+      if (id.getNamespace().equals(NAMESPACE) && !StorageContent.TAB_HIDDEN.contains(id.getPath()))
+        expected.add(id.getPath());
+    helper.assertTrue(
+        shown.size() == new HashSet<>(shown).size(), "Creative tab lists no item twice: " + shown);
+    helper.assertTrue(
+        new HashSet<>(shown).equals(expected), "Creative tab " + shown + " != " + expected);
+    helper.assertTrue(shown.get(0).equals("storage_drive"), "Curated order comes first");
+    helper.succeed();
   }
 
   @GameTest(template = "empty")
