@@ -335,7 +335,7 @@ public final class WorldStorageTransfers {
     var ticket = queued.get(id);
     return id.equals(executing)
         || ticket != null
-            && networks.scheduler().isQueued(ticket.network(), ticket.principal(), taskKey(id));
+            && networks.scheduler().isQueued(ticket.network(), ticket.principal(), ticket.key());
   }
 
   boolean inExecution() {
@@ -394,7 +394,8 @@ public final class WorldStorageTransfers {
     }
   }
 
-  private record Queued(UUID network, UUID segment, UUID principal, int bytes) {}
+  /** {@code key} is the scheduler task key, built once per queued transfer. */
+  private record Queued(UUID network, UUID segment, UUID principal, int bytes, String key) {}
 
   private final MinecraftServer server;
   private final WorldNetworks networks;
@@ -679,7 +680,7 @@ public final class WorldStorageTransfers {
     if (queued.containsKey(id) || queued.size() >= 256 || queuedBytes > 2 * 1024 * 1024 - bytes)
       return new Submission(
           FairScheduler.Admission.QUEUE_FULL, OperationResult.Reason.TECHNICAL_LIMIT);
-    var ticket = new Queued(network, segment, actor.id(), bytes);
+    var ticket = new Queued(network, segment, actor.id(), bytes, taskKey(id));
     queued.put(id, ticket);
     queuedBytes += bytes;
     var admission =
@@ -688,7 +689,7 @@ public final class WorldStorageTransfers {
             .submit(
                 network,
                 actor.id(),
-                taskKey(id),
+                ticket.key(),
                 cost,
                 () -> {
                   executing = id;
@@ -1030,7 +1031,7 @@ public final class WorldStorageTransfers {
     checkThread();
     var ticket = queued.get(id);
     if (ticket == null || !ticket.principal().equals(actor.id())) return false;
-    networks.scheduler().cancelTask(ticket.network(), ticket.principal(), taskKey(id));
+    networks.scheduler().cancelTask(ticket.network(), ticket.principal(), ticket.key());
     release(id);
     return true;
   }
@@ -1042,9 +1043,7 @@ public final class WorldStorageTransfers {
       var entry = iterator.next();
       var ticket = entry.getValue();
       if (!entry.getKey().equals(executing)
-          && !networks
-              .scheduler()
-              .isQueued(ticket.network(), ticket.principal(), taskKey(entry.getKey()))) {
+          && !networks.scheduler().isQueued(ticket.network(), ticket.principal(), ticket.key())) {
         queuedBytes -= ticket.bytes();
         iterator.remove();
       }

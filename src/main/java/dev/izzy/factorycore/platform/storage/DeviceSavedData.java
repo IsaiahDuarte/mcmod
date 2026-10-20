@@ -183,19 +183,28 @@ public final class DeviceSavedData extends SavedData {
     }
   }
 
+  private static final SavedData.Factory<DeviceSavedData> FACTORY =
+      new SavedData.Factory<>(DeviceSavedData::create, DeviceSavedData::load);
+
+  /** Per-server hooks (bank clock, buffer stack limits) are attached to this instance. */
+  private boolean attached;
+
   public static DeviceSavedData get(MinecraftServer server) {
     if (!server.isSameThread())
       throw new IllegalStateException("Device registry belongs to the server thread");
-    var saved =
-        open(
-            server.overworld().getDataStorage(),
-            server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(NAME + ".dat"));
-    if (saved.registry != null && saved.energyBanks == null)
-      saved.energyBanks =
-          new EnergyBankAccess(saved.registry, () -> Integer.toUnsignedLong(server.getTickCount()));
-    if (saved.buffers != null) {
-      var codec = new PlatformResourceCodec(server.registryAccess());
-      saved.buffers.stackLimit(key -> codec.itemStack(key, 1).getMaxStackSize());
+    // Called many times per tick: the loaded instance is returned without resolving the file path
+    // or rebuilding per-server hooks, which are attached once per loaded instance.
+    var saved = open(server.overworld().getDataStorage(), () -> dataFile(server));
+    if (!saved.attached) {
+      saved.attached = true;
+      if (saved.registry != null && saved.energyBanks == null)
+        saved.energyBanks =
+            new EnergyBankAccess(
+                saved.registry, () -> Integer.toUnsignedLong(server.getTickCount()));
+      if (saved.buffers != null) {
+        var codec = new PlatformResourceCodec(server.registryAccess());
+        saved.buffers.stackLimit(key -> codec.itemStack(key, 1).getMaxStackSize());
+      }
     }
     return saved;
   }
@@ -217,10 +226,19 @@ public final class DeviceSavedData extends SavedData {
     }
   }
 
+  private static Path dataFile(MinecraftServer server) {
+    return server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(NAME + ".dat");
+  }
+
   static DeviceSavedData open(DimensionDataStorage storage, Path file) {
-    var loaded =
-        storage.get(new SavedData.Factory<>(DeviceSavedData::create, DeviceSavedData::load), NAME);
+    return open(storage, () -> file);
+  }
+
+  private static DeviceSavedData open(
+      DimensionDataStorage storage, java.util.function.Supplier<Path> fileLookup) {
+    var loaded = storage.get(FACTORY, NAME);
     if (loaded != null) return loaded;
+    var file = fileLookup.get();
     // DimensionDataStorage catches deserialization/I/O errors. Absence must be proven before
     // creation.
     if (!Files.notExists(file))

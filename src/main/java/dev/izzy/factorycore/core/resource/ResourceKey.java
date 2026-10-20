@@ -1,13 +1,12 @@
 package dev.izzy.factorycore.core.resource;
 
+import dev.izzy.factorycore.core.NamespacedId;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 /** Immutable exact identity. Component encoding belongs to the platform adapter. */
 public final class ResourceKey implements Comparable<ResourceKey> {
   public static final int MAX_COMPONENT_BYTES = 65_536;
-  private static final Pattern REGISTRY_ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9/._-]+");
   public static final ResourceKey ENERGY =
       new ResourceKey(ResourceKind.ENERGY, "neoforge:energy", new byte[0]);
   private final ResourceKind kind;
@@ -19,7 +18,7 @@ public final class ResourceKey implements Comparable<ResourceKey> {
     this.kind = Objects.requireNonNull(kind);
     this.registryId = Objects.requireNonNull(registryId);
     Objects.requireNonNull(components);
-    if (registryId.length() > 256 || !REGISTRY_ID.matcher(registryId).matches()) {
+    if (!NamespacedId.isValid(registryId)) {
       throw new IllegalArgumentException("Invalid or oversized registry identity");
     }
     if (components.length > MAX_COMPONENT_BYTES) {

@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.core.storage;
 
+import dev.izzy.factorycore.core.NamespacedId;
 import dev.izzy.factorycore.core.resource.LedgerState;
 import dev.izzy.factorycore.core.resource.LedgerStateCodec;
 import dev.izzy.factorycore.core.resource.OperationResult;
@@ -18,7 +19,6 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 /**
  * Single-authority device stock. World adapters supply validated locations and permission checks.
@@ -27,7 +27,6 @@ public final class DeviceRegistry {
   public static final int MAX_DEVICES = 1024;
   public static final long MAX_LEDGER_BYTES = 64L * 1024 * 1024;
   public static final long MAX_WORLD_ENTRIES = 65536;
-  private static final Pattern DIMENSION = Pattern.compile("[a-z0-9_.-]+:[a-z0-9/._-]+");
 
   public enum Failure {
     OK,
@@ -51,11 +50,8 @@ public final class DeviceRegistry {
 
   public record Location(String dimension, long position, int slot) {
     public Location {
-      if (dimension == null
-          || dimension.length() > 256
-          || !DIMENSION.matcher(dimension).matches()
-          || slot < 0
-          || slot >= 64) throw new IllegalArgumentException("Invalid device location");
+      if (!NamespacedId.isValid(dimension) || slot < 0 || slot >= 64)
+        throw new IllegalArgumentException("Invalid device location");
     }
   }
 

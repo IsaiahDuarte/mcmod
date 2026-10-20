@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.core.network;
 
+import dev.izzy.factorycore.core.NamespacedId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -9,12 +10,10 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 /** Canonical structural leases, independent of stock and permission generations. */
 public final class NodeRegistry {
   public static final int MAX_NODES = 4096;
-  private static final Pattern DIMENSION = Pattern.compile("[a-z0-9_.-]+:[a-z0-9/._-]+");
 
   public enum Kind {
     CONTROLLER,
@@ -38,7 +37,7 @@ public final class NodeRegistry {
 
   public record Position(String dimension, long block) {
     public Position {
-      if (dimension == null || dimension.length() > 256 || !DIMENSION.matcher(dimension).matches())
+      if (!NamespacedId.isValid(dimension))
         throw new IllegalArgumentException("Invalid structural position");
     }
   }
