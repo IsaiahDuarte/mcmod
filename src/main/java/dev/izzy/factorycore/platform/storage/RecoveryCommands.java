@@ -31,9 +31,9 @@ public final class RecoveryCommands {
                     Commands.literal("recovery")
                         .then(DeviceRecoveryCommands.commands(false))
                         .then(DeviceRecoveryCommands.commands(true))
-                        .then(BufferRecoveryCommands.commands())
-                        .then(NetworkNodeRecoveryCommands.commands())
-                        .then(PortRecoveryCommands.commands())
+                        .then(NodeRecovery.BUFFER.commands())
+                        .then(NodeRecovery.NODE.commands())
+                        .then(NodeRecovery.PORT.commands())
                         .then(
                             Commands.literal("screen")
                                 .requires(
