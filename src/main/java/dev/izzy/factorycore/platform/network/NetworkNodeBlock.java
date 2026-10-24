@@ -126,10 +126,9 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
                   routingText)
               : Component.translatable(
                   "message.factorycore.node_status", node.handle().id().toString(), routingText);
-      // Sneak-use opens the gateway policy editor; it shows read-only toggles without Manage.
-      if (kind == NodeRegistry.Kind.GATEWAY
-          && player.isShiftKeyDown()
-          && player instanceof ServerPlayer server) {
+      // Use opens the gateway policy editor (U7: status shows on screen, not in chat); it shows
+      // read-only toggles without Manage.
+      if (kind == NodeRegistry.Kind.GATEWAY && player instanceof ServerPlayer server) {
         server.openMenu(
             new SimpleMenuProvider(
                 (id, inventory, who) -> new GatewayPolicyMenu(id, inventory, node),
@@ -137,9 +136,8 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
             buffer -> buffer.writeBlockPos(position));
         return InteractionResult.CONSUME;
       }
-      // Sneak-use on a controller opens the Network Access screen (ADR 0055).
+      // Use on a controller opens the Network Access screen (ADR 0055) with its status strip.
       if (kind == NodeRegistry.Kind.CONTROLLER
-          && player.isShiftKeyDown()
           && player instanceof ServerPlayer server
           && node.handle() != null) {
         NetworkAccessMenu.open(server, node);

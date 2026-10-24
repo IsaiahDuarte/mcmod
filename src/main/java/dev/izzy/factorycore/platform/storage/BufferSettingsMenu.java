@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
 import java.security.MessageDigest;
 import java.util.*;
@@ -21,8 +22,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * Server-owned draft and exact inventory selections. Clients never submit root/actor/component
  * authority.
  */
-public final class BufferSettingsMenu extends AbstractContainerMenu {
+public final class BufferSettingsMenu extends AbstractContainerMenu implements DeviceStatus.Holder {
   private final MenuSession protocol;
+  private DeviceStatus.View deviceStatus;
   private final Player viewer;
   private final BufferedInterfaceEntity holder;
   private final BlockPos position;
@@ -82,6 +84,18 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
         new BufferSettingsPackets.View(
             id, nonce, revision, "PAUSED", "ALL", 64, 64, List.of(), List.of(), status, false,
             false, false, 0, 0, 0);
+    deviceStatus = DeviceStatus.View.pending(id, nonce);
+  }
+
+  @Override
+  public DeviceStatus.View deviceStatus() {
+    return deviceStatus;
+  }
+
+  @Override
+  public void acceptDeviceStatus(DeviceStatus.View packet) {
+    if (holder == null)
+      deviceStatus = DeviceStatus.accept(containerId, protocol.id(), deviceStatus, packet);
   }
 
   public UUID session() {
@@ -181,6 +195,19 @@ public final class BufferSettingsMenu extends AbstractContainerMenu {
       }
     }
     publish();
+    var running = WorldNetworks.get(player().server).imports().status(holder);
+    deviceStatus =
+        DeviceStatus.publish(
+            player(),
+            deviceStatus,
+            DeviceStatus.of(
+                player().server,
+                containerId,
+                protocol.id(),
+                holder.position(),
+                "status.factorycore.buffer_reason."
+                    + running.reason().name().toLowerCase(java.util.Locale.ROOT),
+                ""));
   }
 
   public void command(ServerPlayer sender, BufferSettingsPackets.Command packet) {

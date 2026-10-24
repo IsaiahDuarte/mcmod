@@ -1,6 +1,8 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -21,13 +23,14 @@ import net.minecraft.world.item.ItemStack;
  * Shift-clicking a cell in the inventory installs it in the first empty bay. Like sneak-use on the
  * block, this is physical access: it needs no network grant.
  */
-public final class DriveMenu extends AbstractContainerMenu {
+public final class DriveMenu extends AbstractContainerMenu implements DeviceStatus.Holder {
   public static final int BAY_X = 8, BAY_Y = 18, BAY_HEIGHT = 26, INVENTORY_Y = 158;
   private static final int POLL_TICKS = 10;
   private final MenuSession session;
   private final StorageDriveEntity drive;
   private String status = "ready", detail = "";
   private DrivePackets.View view;
+  private DeviceStatus.View deviceStatus;
 
   /** Client constructor. */
   public DriveMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
@@ -46,6 +49,18 @@ public final class DriveMenu extends AbstractContainerMenu {
     var empty = new ArrayList<DrivePackets.Bay>();
     for (int bay = 0; bay < DrivePackets.BAYS; bay++) empty.add(DrivePackets.Bay.EMPTY);
     view = new DrivePackets.View(id, session, 0, empty, "loading", "");
+    deviceStatus = DeviceStatus.View.pending(id, session);
+  }
+
+  @Override
+  public DeviceStatus.View deviceStatus() {
+    return deviceStatus;
+  }
+
+  @Override
+  public void acceptDeviceStatus(DeviceStatus.View packet) {
+    if (!session.server())
+      deviceStatus = DeviceStatus.accept(containerId, session.id(), deviceStatus, packet);
   }
 
   public static void open(ServerPlayer player, StorageDriveEntity drive) {
@@ -149,7 +164,19 @@ public final class DriveMenu extends AbstractContainerMenu {
   @Override
   public void broadcastChanges() {
     super.broadcastChanges();
-    if (session.admitPoll()) publish();
+    if (!session.admitPoll()) return;
+    publish();
+    deviceStatus =
+        DeviceStatus.publish(
+            session.player(),
+            deviceStatus,
+            DeviceStatus.of(
+                session.player().server,
+                containerId,
+                session.id(),
+                Positions.of(drive.getLevel(), drive.getBlockPos()),
+                "",
+                ""));
   }
 
   private void publish() {

@@ -201,6 +201,8 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
   @Override
   protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
     g.drawString(font, title, 10, 10, 0xffffff, false);
+    int strip = 10 + font.width(title) + 10;
+    StatusStrip.draw(g, font, menu.deviceStatus(), strip, 10, imageWidth - 10 - strip);
     text(g, "priority", 10, 58);
     text(g, "rate", 160, 58);
     text(g, "window_first", 10, 82);
@@ -228,13 +230,6 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
                 "throughput.factorycore.server." + (view.throttled() ? "throttled" : "ok"))),
         116,
         view.throttled() ? 0xe4bc83 : 0xd3e5ed);
-    line(
-        g,
-        Component.translatable(
-            "gui.factorycore.connector.container",
-            Component.translatable("reason.factorycore." + view.binding())),
-        128,
-        view.binding().equals("ok") ? 0x9fd49b : 0xe4bc83);
     String state = invalid ? "invalid" : view.editable() ? view.status() : "denied";
     line(g, Component.translatable("gui.factorycore.machine.status." + state), 146, 0xe4bc83);
   }

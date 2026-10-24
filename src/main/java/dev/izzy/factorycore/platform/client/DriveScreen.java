@@ -115,6 +115,8 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu> {
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     graphics.drawString(font, title, 8, 6, 0xffffff, false);
+    int strip = 8 + font.width(title) + 10;
+    StatusStrip.draw(graphics, font, menu.deviceStatus(), strip, 6, imageWidth - 8 - strip);
     graphics.drawString(font, playerInventoryTitle, 8, inventoryLabelY, 0xd8dee9, false);
     for (int bay = 0; bay < DrivePackets.BAYS; bay++) {
       var row = menu.view().bays().get(bay);

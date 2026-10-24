@@ -407,24 +407,30 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     graphics.fill(leftPos + 8, topPos + 182, leftPos + imageWidth - 8, topPos + 232, 0xff171d22);
   }
 
+  /** The strip follows the title on the free part of the title row. */
+  private int stripX() {
+    return 8 + font.width(title) + 10;
+  }
+
+  @Override
+  public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
+    super.render(graphics, mouseX, mouseY, partial);
+    StatusStrip.tooltip(
+        graphics,
+        font,
+        menu.deviceStatus(),
+        leftPos + stripX(),
+        topPos + 6,
+        imageWidth - 8 - stripX(),
+        mouseX,
+        mouseY);
+  }
+
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     graphics.drawString(font, title, 8, 6, 0xffffff, false);
     var view = menu.view();
-    var state =
-        Component.translatable(
-            "gui.factorycore.program.state",
-            Component.translatable("status.factorycore.program." + view.state()),
-            view.energy());
-    // Runtime problems (no FE, offline network) share the state line so nothing overlaps.
-    if (!view.status().isEmpty() && !view.status().equals("running"))
-      state =
-          state
-              .copy()
-              .append(" · ")
-              .append(Component.translatable("gui.factorycore.program.status." + view.status()));
-    graphics.drawString(
-        font, font.plainSubstrByWidth(state.getString(), 104), controlsX(), 6, 0xe4bc83, false);
+    StatusStrip.draw(graphics, font, menu.deviceStatus(), stripX(), 6, imageWidth - 8 - stripX());
     if (menu.authorView() != null)
       scope.setTooltip(Tooltip.create(Component.literal(menu.authorView().scope())));
     if (previewing) {

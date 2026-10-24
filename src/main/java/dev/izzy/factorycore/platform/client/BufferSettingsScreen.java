@@ -345,9 +345,15 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     }
   }
 
+  /** The strip shares the title row with the tabs (from x=174); hover shows it in full. */
+  private int stripX() {
+    return 8 + font.width(title) + 8;
+  }
+
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     graphics.drawString(font, title, 8, 8, 0xffffff, false);
+    StatusStrip.draw(graphics, font, menu.deviceStatus(), stripX(), 8, 170 - stripX());
     var view = menu.view();
     if (menu.inventoryTab()) {
       graphics.drawString(
@@ -409,6 +415,15 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
   public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     super.render(graphics, mouseX, mouseY, partial);
     renderTooltip(graphics, mouseX, mouseY);
+    StatusStrip.tooltip(
+        graphics,
+        font,
+        menu.deviceStatus(),
+        leftPos + stripX(),
+        topPos + 8,
+        170 - stripX(),
+        mouseX,
+        mouseY);
     if (!menu.inventoryTab()
         && mouseX >= leftPos + 10
         && mouseX < leftPos + 310

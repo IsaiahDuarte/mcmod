@@ -10,7 +10,6 @@ import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
-import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.core.BlockPos;
@@ -219,40 +218,7 @@ public final class BufferedInterfaceBlock extends NetworkedBlock implements Enti
             Component.translatable("message.factorycore.buffer_denied"), true);
         return InteractionResult.FAIL;
       }
-      var slots = buffer.inventory().snapshot().slots();
-      int items = slots.stream().mapToInt(slot -> slot.count()).sum();
-      long occupied = slots.stream().filter(slot -> slot.key() != null).count();
-      player.displayClientMessage(
-          Component.translatable("message.factorycore.buffer_status", items, occupied), false);
-      var deployment =
-          DeviceSavedData.get(buffer.serverLevel().getServer())
-              .buffers()
-              .deployment(buffer.handle().id());
-      var policy = deployment == null ? BufferPolicy.DEFAULT : deployment.policy();
-      player.displayClientMessage(
-          Component.translatable(
-              "message.factorycore.buffer_policy",
-              policy.rate(),
-              Component.translatable(
-                  "status.factorycore.buffer_filter."
-                      + policy.filter().mode().name().toLowerCase(Locale.ROOT)),
-              policy.filter().terms().size()),
-          false);
-      player.displayClientMessage(
-          Component.translatable("message.factorycore.buffer_target", policy.target()), false);
-      player.displayClientMessage(
-          ThroughputStatus.buffer(buffer.serverLevel().getServer(), buffer), false);
-      var status = WorldNetworks.get(buffer.serverLevel().getServer()).imports().status(buffer);
-      player.displayClientMessage(
-          Component.translatable(
-              "message.factorycore.buffer_import_status",
-              Component.translatable(
-                  "status.factorycore.buffer_mode."
-                      + status.mode().name().toLowerCase(Locale.ROOT)),
-              Component.translatable(
-                  "status.factorycore.buffer_reason."
-                      + status.reason().name().toLowerCase(Locale.ROOT))),
-          false);
+      // Contents, policy, rate and import state are on the screen and its status strip (U7).
       if (player instanceof ServerPlayer server && buffer.canUse(server))
         server.openMenu(
             buffer,

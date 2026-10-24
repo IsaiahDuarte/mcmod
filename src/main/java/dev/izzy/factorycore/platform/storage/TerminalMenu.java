@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
 import java.security.MessageDigest;
 import java.util.*;
@@ -28,8 +29,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 /**
  * One physical access session. Exact selections and accepted operation ownership stay server-side.
  */
-public final class TerminalMenu extends AbstractContainerMenu {
+public final class TerminalMenu extends AbstractContainerMenu implements DeviceStatus.Holder {
   private final MenuSession protocol;
+  private DeviceStatus.View deviceStatus;
   private final Player viewer;
   private final TerminalAccess terminal;
   private final BlockPos position;
@@ -76,6 +78,7 @@ public final class TerminalMenu extends AbstractContainerMenu {
     this.terminal = terminal;
     this.position = position;
     protocol = new MenuSession(this, inventory.player, session, terminal != null, 5);
+    deviceStatus = DeviceStatus.View.pending(id, session);
     if (terminal != null) {
       var preferences =
           viewer
@@ -168,6 +171,17 @@ public final class TerminalMenu extends AbstractContainerMenu {
     return protocol.id();
   }
 
+  @Override
+  public DeviceStatus.View deviceStatus() {
+    return deviceStatus;
+  }
+
+  @Override
+  public void acceptDeviceStatus(DeviceStatus.View packet) {
+    if (terminal == null)
+      deviceStatus = DeviceStatus.accept(containerId, protocol.id(), deviceStatus, packet);
+  }
+
   public BlockPos position() {
     return position;
   }
@@ -252,6 +266,12 @@ public final class TerminalMenu extends AbstractContainerMenu {
       transfers().playerReach(player(), terminal.origin(), terminal.reachSquared());
     }
     if (!protocol.admitPoll()) return;
+    deviceStatus =
+        DeviceStatus.publish(
+            player(),
+            deviceStatus,
+            DeviceStatus.of(
+                player().server, containerId, protocol.id(), terminal.origin(), "", ""));
     int tick = player().server.getTickCount();
     if (!loaded) {
       loaded = true;

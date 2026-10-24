@@ -161,7 +161,8 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   authority, and say so in the ADR.
   Done when: GameTests cover each default and its permission-denied case.
 
-- [ ] **U7 — Status on screens, not chat (F4).**
+- [x] **U7 — Status on screens, not chat (F4).** Done 2026-10-24.
+  [Evidence](evidence/ux-u7-status-strip-2026-10-24.md).
   Every device screen gets the same one-line status strip at the top (state, reason, power).
   Empty-hand use opens the screen for every device that has one; chat output stays only for
   devices without a screen. Inspection results that are now duplicated in chat are removed.

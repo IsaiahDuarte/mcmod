@@ -165,9 +165,17 @@ create a second owner; conflicting references need recovery.
 
 Eight Cables use six iron and three redstone. A Gateway uses four iron, two
 quartz, two redstone and one ender pearl. Its amber cross face is upstream (toward
-the controller) and its blue dot face is downstream (the branch); only those two faces connect. Use it to inspect the
-directions. Controllers/cables connect on all six faces. The current textures
+the controller) and its blue dot face is downstream (the branch); only those two faces connect. Use it to open
+its policy screen. Controllers/cables connect on all six faces. The current textures
 use vanilla assets.
+
+Every device screen shows a status strip near the top: a green or amber lamp, the
+network state (Online, Connecting, No controller, Two controllers connected, and
+so on), the device's own reason (for example "Container: Ready" or a program's
+"No FE"), and stored energy for powered devices. Hover a shortened strip to read
+all of it. Devices with a screen open it on empty-hand use and no longer print
+their status in chat; devices without a screen (Crafting Unit, energy devices,
+access points and links) still report in the action bar.
 
 Connect drives by cables to exactly one commissioned controller. Installed cells
 become available after server validation. Use the controller/gateway to inspect
@@ -461,7 +469,7 @@ The compact machine editor fits Minecraft’s minimum240-pixel GUI height. Rules
 
 ## Network Access screen
 
-Sneak-use a Network Controller, or press **Access…** on a gateway's policy screen, to manage who can use the network.
+Use a Network Controller, or press **Access…** on a gateway's policy screen, to manage who can use the network.
 
 - **Rows.** Each player has a row of seven toggles: V view, D deposit, W withdraw, C craft, E edit
   interfaces/patterns, P deploy programs and M manage.
@@ -786,7 +794,7 @@ sent through the link. Wired connections retain their device limits.
 
 ## Gateway rules
 
-Sneak-use a gateway to open its policy editor. The left column (**Branch grants**) chooses what the branch
+Use a gateway to open its policy editor. The left column (**Branch grants**) chooses what the branch
 may do in the parent network, for example letting the parent craft its patterns. The middle
 column (**Inherited access**) chooses what the branch may do with parent stock, and the right column (**Resource kinds**) chooses
 which resource kinds (items, fluids, energy) the branch can see. You need Manage to change

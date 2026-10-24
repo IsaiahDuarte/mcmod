@@ -240,6 +240,8 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
     var view = menu.view();
     int all = (1 << PERMISSIONS) - 1;
     graphics.drawString(font, title, 8, 6, 0xffffff, false);
+    int strip = 8 + font.width(title) + 10;
+    StatusStrip.draw(graphics, font, menu.deviceStatus(), strip, 6, imageWidth - 8 - strip);
     if (view.manage())
       line(
           graphics,

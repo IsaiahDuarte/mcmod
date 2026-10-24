@@ -9,6 +9,7 @@ import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
 import java.util.Locale;
@@ -28,7 +29,8 @@ import net.minecraft.world.item.ItemStack;
  * authority in one configuration change, exactly like {@link ConnectorEntity#configure}. The view
  * polls the container registration so the status line shows why the connector is not ready.
  */
-public final class ConnectorSettingsMenu extends AbstractContainerMenu {
+public final class ConnectorSettingsMenu extends AbstractContainerMenu
+    implements DeviceStatus.Holder {
   /** The registration probe touches the foreign container, so it is polled sparingly. */
   private static final int POLL_TICKS = 10;
 
@@ -40,6 +42,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu {
   private final Direction facing;
   private ConnectorSettingsPackets.View view;
   private String status = "ready";
+  private DeviceStatus.View deviceStatus;
 
   public ConnectorSettingsMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
     this(id, inventory, null, MenuSession.read(buffer));
@@ -53,6 +56,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu {
     lease = connector == null ? null : connector.handle();
     facing = connector == null ? null : connector.targetDirection();
     scope = connector == null ? null : runtime().membership(connector.position()).scope();
+    deviceStatus = DeviceStatus.View.pending(id, protocol.id());
     view =
         new ConnectorSettingsPackets.View(
             id,
@@ -102,6 +106,17 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu {
     return runtime().allows(actor(), connector.position(), NetworkPermissions.Permission.EDIT);
   }
 
+  @Override
+  public DeviceStatus.View deviceStatus() {
+    return deviceStatus;
+  }
+
+  @Override
+  public void acceptDeviceStatus(DeviceStatus.View packet) {
+    if (connector == null)
+      deviceStatus = DeviceStatus.accept(containerId, protocol.id(), deviceStatus, packet);
+  }
+
   public void accept(ConnectorSettingsPackets.View packet) {
     if (connector == null
         && protocol.owns(packet.menu(), packet.session())
@@ -111,6 +126,17 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu {
   private void publish() {
     var settings = connector.settings();
     var binding = runtime().connectors().bind(connector).reason();
+    deviceStatus =
+        DeviceStatus.publish(
+            player(),
+            deviceStatus,
+            DeviceStatus.of(
+                player().server,
+                containerId,
+                protocol.id(),
+                connector.position(),
+                "reason.factorycore." + binding.name().toLowerCase(Locale.ROOT),
+                ""));
     view =
         protocol.publish(
             view,

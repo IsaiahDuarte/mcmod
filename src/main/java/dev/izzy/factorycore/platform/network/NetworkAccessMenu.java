@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.RecoveryMenu;
@@ -35,7 +36,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * ancestor gateway branch policy) is checked at execution. Viewers without Manage see only their
  * own effective access and the gateway limits that apply here, never other principals.
  */
-public final class NetworkAccessMenu extends AbstractContainerMenu {
+public final class NetworkAccessMenu extends AbstractContainerMenu implements DeviceStatus.Holder {
   /** Ticks a requested ownership transfer waits for explicit confirmation. */
   public static final int CONFIRM_TICKS = 200;
 
@@ -43,6 +44,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   private final MenuSession protocol;
   private final Player viewer;
   private final NetworkNodeEntity anchor;
+  private DeviceStatus.View deviceStatus;
   private final BlockPos position;
   private final NodeRegistry.Handle lease;
   private UUID network;
@@ -68,6 +70,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
     this.position = position;
     lease = anchor == null ? null : anchor.handle();
     view = empty(id, session, 0, "loading");
+    deviceStatus = DeviceStatus.View.pending(id, session);
     if (anchor != null) {
       var membership = WorldNetworks.get(player().server).membership(anchor.position());
       network =
@@ -111,6 +114,17 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
         "",
         status,
         0);
+  }
+
+  @Override
+  public DeviceStatus.View deviceStatus() {
+    return deviceStatus;
+  }
+
+  @Override
+  public void acceptDeviceStatus(DeviceStatus.View packet) {
+    if (anchor == null)
+      deviceStatus = DeviceStatus.accept(containerId, protocol.id(), deviceStatus, packet);
   }
 
   public UUID session() {
@@ -176,7 +190,14 @@ public final class NetworkAccessMenu extends AbstractContainerMenu {
   @Override
   public void broadcastChanges() {
     super.broadcastChanges();
-    if (protocol.admitPoll()) publish();
+    if (!protocol.admitPoll()) return;
+    publish();
+    deviceStatus =
+        DeviceStatus.publish(
+            player(),
+            deviceStatus,
+            DeviceStatus.of(
+                player().server, containerId, protocol.id(), anchor.position(), "", ""));
   }
 
   /** Server: one client action, accepted only from the session's own connected player. */

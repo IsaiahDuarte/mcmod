@@ -40,6 +40,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   private int selectedRule, selectedSlot;
   private MachineSettingsPackets.Form lastForm;
 
+  private static final int STRIP_WIDTH = 144;
+
   public MachineSettingsScreen(MachineSettingsMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
     imageWidth = 300;
@@ -374,6 +376,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   @Override
   protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
     g.drawString(font, title, 10, 10, 0xffffff, false);
+    // The tabs (from x=158) share the title row, so the strip takes the line below the title.
+    StatusStrip.draw(g, font, menu.deviceStatus(), 10, 20, STRIP_WIDTH);
     if (presets) {
       renderPresets(g);
       return;
@@ -477,6 +481,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   public void render(GuiGraphics g, int x, int y, float partial) {
     super.render(g, x, y, partial);
     renderTooltip(g, x, y);
+    StatusStrip.tooltip(g, font, menu.deviceStatus(), leftPos + 10, topPos + 20, STRIP_WIDTH, x, y);
     if (presets
         && x >= leftPos + 10
         && x < leftPos + 290

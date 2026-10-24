@@ -2,9 +2,13 @@ package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.GatewayPolicy;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import java.util.Locale;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,7 +36,7 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
     buffer.readBlockPos();
     gateway = null;
     viewer = inventory.player;
-    data = new SimpleContainerData(3);
+    data = new SimpleContainerData(4);
     addDataSlots(data);
   }
 
@@ -48,7 +52,16 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
             return switch (index) {
               case 0 -> mask & 0xffff;
               case 1 -> mask >>> 16;
-              default -> viewer instanceof ServerPlayer player && mayManage(player) ? 1 : 0;
+              case 2 -> viewer instanceof ServerPlayer player && mayManage(player) ? 1 : 0;
+              // Network state ordinal + 1 for the status strip; 0 means not yet synced.
+              default ->
+                  gateway.handle() == null
+                      ? 0
+                      : WorldNetworks.get(gateway.getLevel().getServer())
+                              .membership(gateway.position())
+                              .status()
+                              .ordinal()
+                          + 1;
             };
           }
 
@@ -57,7 +70,7 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
 
           @Override
           public int getCount() {
-            return 3;
+            return 4;
           }
         };
     addDataSlots(data);
@@ -72,6 +85,20 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
 
   public boolean editable() {
     return data.get(2) == 1;
+  }
+
+  /** The status strip (U7), from the synchronized network state; the gateway has no reason. */
+  public DeviceStatus.View deviceStatus() {
+    int state = data.get(3);
+    var statuses = NetworkTopology.Status.values();
+    return new DeviceStatus.View(
+        containerId,
+        new UUID(0, 0),
+        state < 1 || state > statuses.length
+            ? ""
+            : statuses[state - 1].name().toLowerCase(Locale.ROOT),
+        "",
+        "");
   }
 
   private boolean mayManage(ServerPlayer player) {

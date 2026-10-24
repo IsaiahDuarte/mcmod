@@ -106,6 +106,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private int target, craftSelected, jobSelected;
   public static final int JOBS_X = 276;
+  private static final int STRIP_X = 336;
 
   public TerminalScreen(TerminalMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
@@ -842,6 +843,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     graphics.drawString(font, title, 8, 7, 0xffffff, false);
+    // The title row holds search and sort, so the strip sits at the right of the tab row.
+    StatusStrip.draw(graphics, font, menu.deviceStatus(), STRIP_X, 27, imageWidth - 8 - STRIP_X);
     graphics.drawString(font, playerInventoryTitle, 10, 136 + extra, 0xeeeeee, false);
     if (jobsMode) {
       renderJobLabels(graphics);
@@ -928,6 +931,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     super.render(graphics, mouseX, mouseY, partial);
     renderTooltip(graphics, mouseX, mouseY);
+    StatusStrip.tooltip(
+        graphics,
+        font,
+        menu.deviceStatus(),
+        leftPos + STRIP_X,
+        topPos + 27,
+        imageWidth - 8 - STRIP_X,
+        mouseX,
+        mouseY);
     int row = jobsMode ? (mouseX - leftPos - 12) / 32 : rowAt(mouseX, mouseY);
     boolean over =
         mouseX >= leftPos + 12

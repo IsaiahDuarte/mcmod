@@ -9,6 +9,7 @@ import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
 import java.security.MessageDigest;
@@ -25,7 +26,8 @@ import net.neoforged.neoforge.fluids.FluidUtil;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /** Current authenticated physical editor. Apply validates the whole form before one publication. */
-public final class MachineSettingsMenu extends AbstractContainerMenu {
+public final class MachineSettingsMenu extends AbstractContainerMenu
+    implements DeviceStatus.Holder {
   private final MenuSession protocol;
   private final Player viewer;
   private final MachineInterfaceEntity machine;
@@ -42,6 +44,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
   private boolean presetDirty, presetBusy;
   private UUID cleanupRequest;
   private MachinePresetPackets.View presetView;
+  private DeviceStatus.View deviceStatus;
 
   public MachineSettingsMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
     this(id, inventory, null, MenuSession.read(buffer));
@@ -56,6 +59,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
     facing = machine == null ? null : machine.targetDirection();
     scope = machine == null ? null : runtime().membership(machine.position()).scope();
     if (machine != null && resetPreset()) presetStatus = "resumable";
+    deviceStatus = DeviceStatus.View.pending(id, protocol.id());
     presetView =
         new MachinePresetPackets.View(
             id,
@@ -91,6 +95,17 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
 
   public UUID session() {
     return protocol.id();
+  }
+
+  @Override
+  public DeviceStatus.View deviceStatus() {
+    return deviceStatus;
+  }
+
+  @Override
+  public void acceptDeviceStatus(DeviceStatus.View packet) {
+    if (machine == null)
+      deviceStatus = DeviceStatus.accept(containerId, protocol.id(), deviceStatus, packet);
   }
 
   public MachineSettingsPackets.View view() {
@@ -167,6 +182,20 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
     }
     publish();
     publishPreset();
+    deviceStatus =
+        DeviceStatus.publish(
+            player(),
+            deviceStatus,
+            DeviceStatus.of(
+                player().server,
+                containerId,
+                protocol.id(),
+                machine.position(),
+                // A paused preset has no runtime reason worth showing; say it is paused.
+                presetView.running() == MachinePresets.Mode.PAUSED
+                    ? "status.factorycore.buffer_mode.paused"
+                    : "status.factorycore.buffer_reason." + presetView.reason(),
+                ""));
   }
 
   public void apply(ServerPlayer sender, MachineSettingsPackets.Apply packet) {

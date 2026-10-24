@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.program.FriendlyCompiler;
 import dev.izzy.factorycore.core.program.ProgramPreview;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.session.TickGate;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
@@ -29,7 +30,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * One editor session. Viewing needs VIEW; saving the draft needs EDIT; deploy, pause, resume and
  * stop need DEPLOY (checked by {@link WorldPrograms}). The client never names a controller.
  */
-public final class ProgramMenu extends AbstractContainerMenu {
+public final class ProgramMenu extends AbstractContainerMenu implements DeviceStatus.Holder {
   private final MenuSession protocol;
   private final Player viewer;
   private final ProgramControllerEntity controller;
@@ -44,6 +45,7 @@ public final class ProgramMenu extends AbstractContainerMenu {
   private final TickGate authoring = new TickGate(5);
   private ProgramPackets.AuthorView authorView;
   private ProgramPackets.View view;
+  private DeviceStatus.View deviceStatus;
   private String draft = "";
   private boolean draftReceived;
 
@@ -69,6 +71,18 @@ public final class ProgramMenu extends AbstractContainerMenu {
     view =
         new ProgramPackets.View(
             id, protocol.id(), 0, "stopped", "", 0, "", false, List.of(), List.of());
+    deviceStatus = DeviceStatus.View.pending(id, protocol.id());
+  }
+
+  @Override
+  public DeviceStatus.View deviceStatus() {
+    return deviceStatus;
+  }
+
+  @Override
+  public void acceptDeviceStatus(DeviceStatus.View packet) {
+    if (controller == null)
+      deviceStatus = DeviceStatus.accept(containerId, protocol.id(), deviceStatus, packet);
   }
 
   public UUID session() {
@@ -309,5 +323,20 @@ public final class ProgramMenu extends AbstractContainerMenu {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);
     }
+    deviceStatus =
+        DeviceStatus.publish(
+            player(),
+            deviceStatus,
+            DeviceStatus.of(
+                player().server,
+                containerId,
+                protocol.id(),
+                controller.origin(),
+                // A runtime problem (no FE, offline) explains more than the requested state.
+                packet.status().isEmpty() || packet.status().equals("running")
+                    ? "status.factorycore.program."
+                        + controller.state().name().toLowerCase(Locale.ROOT)
+                    : "gui.factorycore.program.status." + packet.status(),
+                DeviceStatus.energy(controller.energy(), ProgramControllerEntity.CAPACITY)));
   }
 }
