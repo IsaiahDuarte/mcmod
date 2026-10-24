@@ -32,9 +32,9 @@ public final class MachinePresetAuthorityGameTests {
   private static Fixture setup(GameTestHelper h) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
-    h.setBlock(MACHINE, MachineInterfaceContent.BLOCK.get());
+    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH));
     MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
     return new Fixture(actor, machine, root, DeviceSavedData.get(h.getLevel().getServer()));
   }
 

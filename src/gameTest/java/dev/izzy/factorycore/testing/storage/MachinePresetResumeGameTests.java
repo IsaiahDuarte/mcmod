@@ -11,7 +11,8 @@ import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.MachinePresetPackets;
 import dev.izzy.factorycore.platform.storage.MachineSettingsMenu;
@@ -20,6 +21,7 @@ import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -48,9 +50,9 @@ public final class MachinePresetResumeGameTests {
   private static Fixture setup(GameTestHelper h) {
     var owner = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     NetworkNodeEntity root = Net.in(h, owner.id()).controller(ROOT);
-    h.setBlock(MACHINE, MachineInterfaceContent.BLOCK.get());
+    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH));
     MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
     return new Fixture(owner, machine, root, DeviceSavedData.get(h.getLevel().getServer()));
   }
 

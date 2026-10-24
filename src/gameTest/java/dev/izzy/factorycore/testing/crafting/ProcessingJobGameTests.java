@@ -20,7 +20,8 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
@@ -527,14 +528,9 @@ public final class ProcessingJobGameTests {
     second.patterns().insertItem(0, goldPattern, false);
     h.setBlock(new BlockPos(2, 1, 2), NetworkContent.CABLE.get());
     var portPos = new BlockPos(2, 1, 3);
-    h.setBlock(
-        portPos,
-        MachineInterfaceContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.WEST));
+    h.setBlock(portPos, InterfaceContent.state(InterfaceKind.MACHINE, Direction.WEST));
     MachineInterfaceEntity port = h.getBlockEntity(portPos);
-    port.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    port.place(new ItemStack(InterfaceContent.ITEM.get()));
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     var gold = codec.itemKey(new ItemStack(Items.GOLD_INGOT));
     var rawGold = codec.itemKey(new ItemStack(Items.RAW_GOLD));

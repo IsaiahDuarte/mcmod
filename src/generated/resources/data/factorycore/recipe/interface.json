@@ -5,20 +5,20 @@
     "C": {
       "item": "minecraft:copper_ingot"
     },
-    "I": {
-      "item": "minecraft:iron_ingot"
+    "H": {
+      "item": "minecraft:hopper"
     },
     "R": {
       "item": "minecraft:redstone"
     }
   },
   "pattern": [
-    "ICI",
     "CRC",
-    "ICI"
+    "RHR",
+    "CRC"
   ],
   "result": {
     "count": 1,
-    "id": "factorycore:machine_interface"
+    "id": "factorycore:interface"
   }
 }

@@ -67,13 +67,9 @@ public final class StorageSearchGameTests {
       gate.commission(null);
     }
     helper.setBlock(
-        connectorPosition,
-        ConnectorContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
+        connectorPosition, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
     ConnectorEntity connector = helper.getBlockEntity(connectorPosition);
-    connector.place(new ItemStack(ConnectorContent.ITEM.get()));
+    connector.place(new ItemStack(InterfaceContent.ITEM.get()));
     helper.setBlock(providerPosition, ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity provider = helper.getBlockEntity(providerPosition);
     StorageDriveEntity drive = Net.in(helper).drive(DRIVE, CellTier.STARTER_ITEM);

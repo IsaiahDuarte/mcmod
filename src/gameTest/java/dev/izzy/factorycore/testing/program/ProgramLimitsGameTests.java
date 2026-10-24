@@ -22,7 +22,8 @@ import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
@@ -175,14 +176,9 @@ public final class ProgramLimitsGameTests {
       handles.add(CellHandleData.read(drive.cell(i)));
     }
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
-    h.setBlock(
-        MACHINE,
-        MachineInterfaceContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
     MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
     h.setBlock(CHEST, Blocks.CHEST);
     ChestBlockEntity chest = h.getBlockEntity(CHEST);
     chest.setItem(0, new ItemStack(Items.IRON_INGOT, 20));

@@ -245,7 +245,7 @@ final class WorldRestartVerification {
         && ticks - entered > 30
         && client.screen == null
         && client.player.distanceToSqr(4.5, 65, 4.5) < 4
-        && client.level.getBlockState(MACHINE).is(MachineInterfaceContent.BLOCK.get())) {
+        && client.level.getBlockState(MACHINE).is(InterfaceContent.BLOCK.get())) {
       lastOpen = ticks;
       openAttempts++;
       System.out.println(

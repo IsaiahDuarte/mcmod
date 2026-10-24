@@ -1,5 +1,7 @@
 # Physical storage connectors
 
+> Since U11 ([ADR 0059](../decisions/0059-unified-interface.md)) this device is the **Storage** mode of the single `factorycore:interface` block (`InterfaceBlock`, `kind=storage`); the old standalone block and item ids are gone. The entity, lease kind, persisted schema and recovery tools described below are unchanged.
+
 Implemented P2/P3 server primitive: a sided connector registers a foreign item,
 fluid or FE provider and participates in the shared scheduled transfer path.
 Bounded observations and principal-owned saved foreign holds now share world scheduling. No aggregate catalog, automatic preset, terminal frontend

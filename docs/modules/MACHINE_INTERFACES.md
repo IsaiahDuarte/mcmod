@@ -1,5 +1,7 @@
 # Machine Interfaces
 
+> Since U11 ([ADR 0059](../decisions/0059-unified-interface.md)) this device is the **Machine** mode of the single `factorycore:interface` block (`InterfaceBlock`, `kind=machine`); the old standalone block and item ids are gone. The entity, lease kind, persisted schema and recovery tools described below are unchanged.
+
 Implemented P3 binding prerequisite; see [ADR 0019](../decisions/0019-local-machine-bindings.md).
 Automatic machine preset runtime is implemented through a trusted server API.
 Player preset authoring and explicit selected-tank/fixed-partition adapters are implemented.

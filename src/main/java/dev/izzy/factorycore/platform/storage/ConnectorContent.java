@@ -1,36 +1,15 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryRegistries;
-import dev.izzy.factorycore.platform.LeasedBlockItem;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredItem;
 
+/** Storage-mode entity and screen types of the unified Interface (ADR 0059). */
 public final class ConnectorContent {
-  public static final DeferredBlock<ConnectorBlock> BLOCK =
-      FactoryRegistries.BLOCKS.registerBlock(
-          "storage_connector", ConnectorBlock::new, DeviceProperties.machine());
-  public static final DeferredItem<LeasedBlockItem> ITEM =
-      FactoryRegistries.ITEMS.register(
-          "storage_connector",
-          () ->
-              new LeasedBlockItem(
-                  BLOCK.get(),
-                  LeasedBlockItem.Tooltip.lines(
-                          "tooltip.factorycore.connector",
-                          "tooltip.factorycore.connector_controls",
-                          "tooltip.factorycore.connector_access",
-                          "tooltip.factorycore.connector_priority",
-                          "tooltip.factorycore.connector_unique")
-                      .then(
-                          LeasedBlockItem.Tooltip.throughput(
-                              ConnectorData.FIELD, tag -> ConnectorData.read(tag).tier()))));
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ConnectorEntity>> ENTITY =
-      FactoryRegistries.entity("storage_connector", ConnectorEntity::new, BLOCK);
+      FactoryRegistries.entity("storage_connector", ConnectorEntity::new, InterfaceContent.BLOCK);
 
   public static final DeferredHolder<MenuType<?>, MenuType<ConnectorSettingsMenu>> MENU =
       FactoryRegistries.menu("connector_settings", ConnectorSettingsMenu::new);

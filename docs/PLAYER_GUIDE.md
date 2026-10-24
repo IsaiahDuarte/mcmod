@@ -4,7 +4,7 @@ This development build provides Storage Drives, item/fluid cells and upgrade
 modules on Minecraft 1.21.1 / NeoForge 21.1.252. Network Controllers, Gateways and Cables now have physical placement and
 ownership. Valid wired networks now activate installed cells after bounded server rebuilding.
 Finite Energy Banks expose real NeoForge energy ports on valid wired networks.
-Buffered Interfaces now import real hopper items into permitted storage without code.
+Interfaces in Buffer mode import real hopper items into permitted storage without code.
 Storage Terminals provide item transfers, a manual crafting grid, saved patterns/jobs, and fluid/container and energy-item actions. Presets, friendly/Rust programs, wireless access/links and an in-game guide are implemented. Client and native checks cover parts of these flows; this remains an incomplete development build. The implementation plan records remaining behavior and verification gaps.
 
 ## Cells and drives
@@ -53,9 +53,7 @@ consumes a cell or bank. Patterns are encoded from Blank Patterns in the termina
 | Starter | Starter Item Cell | 4 iron ingots, 4 redstone dust, 1 chest |
 | Starter | Starter Fluid Cell | 7 glass blocks, 1 empty bucket, 1 redstone dust |
 | Starter | Storage Terminal | 4 iron ingots, 3 glass blocks, 2 redstone dust |
-| Starter | Buffered Interface | 4 iron ingots, 2 glass blocks, 2 redstone dust, 1 hopper |
-| Starter | Storage Connector | 4 copper ingots, 4 redstone dust, 1 hopper |
-| Starter | Machine Interface | 4 iron ingots, 4 copper ingots, 1 redstone dust |
+| Starter | Interface | 4 copper ingots, 4 redstone dust, 1 hopper |
 | Starter | Fuel Generator | 4 iron ingots, 3 copper ingots, 1 furnace, 1 redstone dust |
 | Starter | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
@@ -198,10 +196,24 @@ If a technical workload limit blocks rebuilding, resources remain owned and
 unavailable rather than being discarded.
 
 
-## Storage Connector (partial development feature)
+## Interface
 
-Craft with four copper, four redstone and one hopper. Place its copper socket
-against a container and cable the other faces. Use it with both hands empty to
+One **Interface** block (four copper, four redstone and one hopper) does three jobs.
+It picks its **mode** from what you place it against:
+
+- against a chest, barrel or shulker box: **Storage**, where the container joins
+  network storage;
+- against another block that holds items, fluids or energy (a furnace or tank, for
+  example): **Machine**, a labelled machine port with Import/Export/Stock presets;
+- against nothing usable: **Buffer**, with its own nine slots for hoppers.
+
+Storage and Machine have a socket that faces the container; cable the other faces.
+A Buffer accepts cables on every face. Breaking an Interface keeps its mode, its
+settings and anything it owns, so placing it again restores it.
+
+### Storage mode
+
+Place its socket against a container and cable the other faces. Use it with both hands empty to
 open its settings: resource (Items/Fluids/Energy), access, priority (-1000 to
 1000; higher-priority containers are used first), first slot, slot window and
 rate per tick. The screen also shows which side of the container is used, the
@@ -246,10 +258,10 @@ are unfinished. Keep matching world backups; do not downgrade this save to an
 older mod binary or replay an uncertain operation.
 
 
-## Buffered Interfaces
+## Buffer mode
 
-Craft a Buffered Interface using four iron ingots, two glass blocks, two redstone
-and a hopper. Its top has nine raised slot markers. A hopper pointing into any
+An Interface placed against nothing usable is a Buffer. Its top has nine raised slot
+markers. A hopper pointing into any
 face deposits real items into its nine inventory slots. Stack sizes and exact
 item components are preserved; a tool occupies one item per slot. If all slots
 are full, the hopper keeps its remaining items and resumes when space returns.
@@ -288,7 +300,7 @@ still need administrative recovery; keep their references and world backups.
 Export/stock/filter presets, an inventory screen and the terminal loop remain
 unfinished in this development build.
 
-Breaking the block drops one portable Buffered Interface reference containing
+Breaking the block drops one portable Buffer-mode Interface reference containing
 its canonical ownership identity, preserving the contents. Placing it again
 moves that inventory and invalidates older references/capabilities. Creative
 placement consumes the reference too. Copied stale/placed references cannot
@@ -400,7 +412,7 @@ pending; the current native controls have headless behavior evidence.
 
 ## Buffer settings screen
 
-With both hands empty, use a Buffered Interface to open Settings. Choose a mode,
+With both hands empty, use a Buffer-mode Interface to open Settings. Choose a mode,
 filter, rate and stock goal; type an item ID or tag and add it, or choose Sample
 and click your item to copy an exact rule without consuming it. Select a rule to
 remove it. Changes stay in a draft until Apply; Reset discards the draft. Up to
@@ -417,10 +429,10 @@ shows zero moved and leaves your stack owned.
 The screen is implemented, but actual client verification is still pending.
 
 
-## Local machine bindings
+## Machine mode
 
-Craft a Machine Interface with four iron, four copper and one redstone (ICI /
-CRC / ICI). Place its socket against a machine and connect wires to another face.
+Place an Interface with its socket against a machine and connect cables to another
+face.
 With an empty main hand, use renamed paper/name tag in your offhand to copy a
 local label; sneak-paper clears it. Tools are not consumed. Labels are case-sensitive
 and private to the current segment, even when storage is shared through a gateway.
@@ -532,7 +544,7 @@ A transfer from before accepted endpoints were recorded may show "No accepted
 endpoint context". Its original logged-in owner can run
 `/factorycore recovery settle <UUID>` instead of `return`:
 
-- Staging from a Factory Core cell, bank or Buffered Interface returns there under
+- Staging from a Factory Core cell, bank or Buffer-mode Interface returns there under
   the owned-cleanup exemption, without requiring a new resource grant.
 - Otherwise, staging destined for a Factory Core cell or bank can be delivered
   there only with current Deposit permission.
@@ -590,7 +602,7 @@ Neither command chooses another survivor or resolves interrupted independent-sav
 mismatches, unsupported raw data or uncertain external outcomes. Preserve backups
 and retained evidence for those cases.
 
-Buffered Interfaces have operator `/factorycore recovery buffer list [after-UUID]`,
+Buffer-mode Interfaces have operator `/factorycore recovery buffer list [after-UUID]`,
 `show <backing-UUID>` and `repair <backing-UUID> <generation>` commands. Show reports
 the canonical position/count and original accepted preset principal/settings.
 Repair requires the loaded original holder with the exact reference and no unresolved
@@ -627,11 +639,11 @@ or independent-save mismatches still need backup/evidence investigation.
 
 Node archives use standalone binary schema4 with the same device archive quotas
 and20-tick server repair throttle. List visits at most16 structural handles and
-may show zero matching records with a next cursor. Connector and Machine Interface
+may show zero matching records with a next cursor. Storage- and Machine-mode Interface
 conflicts use the separate port command below.
 
 
-Connector and Machine Interface conflicts use operator `/factorycore recovery port
+Storage- and Machine-mode Interface conflicts use operator `/factorycore recovery port
 list [after-UUID]`, `show <port-UUID>` and `repair <port-UUID> <generation>`. Only
 the loaded original canonical holder with its exact matching reference can be
 repaired. Show reports kind/generation/position and, for a machine, the accepted
@@ -729,7 +741,7 @@ waits. Use it with an empty hand to see its state, FE and last message.
 
 Programs use the friendly language (see the programs reference): rules like
 `every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage }`.
-Label Machine Interfaces in their settings to target them. Deploying needs Deploy
+Label Machine-mode Interfaces in their settings to target them. Deploying needs Deploy
 permission; the program then acts with the deployer's current permissions, and pauses
 if the deployer loses Deploy. Reading storage with `if stock(...)` needs View. A rule
 that does too much work at once stops the program with an error instead of doing part
@@ -857,11 +869,11 @@ Energy banks work the same way: `/factorycore recovery bank adopt <backing> <gen
 Controllers and gateways: `/factorycore recovery node adopt <id> <generation> <x y z>`.
 Ownership, grants and gateway rules stay as they were.
 
-Buffered Interfaces: `/factorycore recovery buffer adopt <id> <generation> <x y z>`. Their
+Buffer-mode Interfaces: `/factorycore recovery buffer adopt <id> <generation> <x y z>`. Their
 items stay. Re-enable Import, Export or Stock afterwards.
 
 
-Connectors and Machine Interfaces also support `/factorycore recovery port adopt
+Storage- and Machine-mode Interfaces also support `/factorycore recovery port adopt
 <id> <generation> <x y z>`. The old canonical position must be loaded and no longer
 reference the port; the selected stale holder must have matching identity and
 casing with no provider fault. Provider contents are untouched. Machine presets
@@ -928,7 +940,7 @@ machine is now present.
 
 Capacity modules and speed upgrades are separate. Craft a Throughput Upgrade
 from four iron, two diamonds, two redstone and a hopper. Use it on a placed
-Storage Connector, Machine Interface or Buffered Interface, then use Overdrive
+Interface, then use Overdrive
 for the next step. Four netherite, four diamonds and a Nether star craft four
 Overdrives. Repeated, skipped or denied steps consume nothing.
 
@@ -939,7 +951,7 @@ Overdrives. Repeated, skipped or denied steps consume nothing.
 | Connector/machine FE per tick | 1,000 | 8,000 | 32,000 |
 | Buffer network items per tick | 64 | 256 | 576 |
 
-For example, place a Machine Interface facing a barrel, apply Throughput, open
+For example, place a Machine-mode Interface facing a barrel, apply Throughput, open
 Binding and verify its 256-item rate. Installation pauses the machine preset;
 reapply its filter/mode/goal to resume with your current grants. You may lower
 the rate afterwards. Buffers require the normal deployment grants; links require

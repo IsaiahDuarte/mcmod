@@ -30,7 +30,6 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.entity.HopperBlockEntity;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -150,7 +149,7 @@ public final class BufferedInterfaceGameTests {
       GameTestHelper helper) {
     helper.setBlock(BUFFER.below(), Blocks.STONE);
     var player = helper.makeMockPlayer(GameType.CREATIVE);
-    var stack = new ItemStack(BufferedInterfaceContent.ITEM.get());
+    var stack = new ItemStack(InterfaceContent.ITEM.get());
     player.setItemInHand(InteractionHand.MAIN_HAND, stack);
     var hit =
         new BlockHitResult(
@@ -175,7 +174,7 @@ public final class BufferedInterfaceGameTests {
             .getEntitiesOfClass(
                 ItemEntity.class,
                 new AABB(helper.absolutePos(BUFFER)).inflate(.8),
-                e -> e.getItem().is(BufferedInterfaceContent.ITEM.get()));
+                e -> e.getItem().is(InterfaceContent.ITEM.get()));
     helper.assertTrue(
         drops.size() == 1 && drops.getFirst().getItem().getCount() == 1,
         "Exactly one portable buffer drop");
@@ -191,7 +190,7 @@ public final class BufferedInterfaceGameTests {
                 == NodeRegistry.Failure.STALE,
         "Break advances generation while retaining canonical identity");
     var moved = new BlockPos(2, 1, 2);
-    helper.setBlock(moved, BufferedInterfaceContent.BLOCK.get());
+    helper.setBlock(moved, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH));
     BufferedInterfaceEntity replacement = helper.getBlockEntity(moved);
     replacement.place(portable, player.getUUID());
     helper.assertTrue(
@@ -218,7 +217,7 @@ public final class BufferedInterfaceGameTests {
         buffer.capability().getStackInSlot(8).getCount() == 19,
         "Lifecycle reload rebinds exact canonical slots");
     var copyPos = new BlockPos(3, 1, 3);
-    helper.setBlock(copyPos, BufferedInterfaceContent.BLOCK.get());
+    helper.setBlock(copyPos, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH));
     BufferedInterfaceEntity copy = helper.getBlockEntity(copyPos);
     copy.loadWithComponents(nbt, helper.getLevel().registryAccess());
     copy.onLoad();
@@ -239,7 +238,7 @@ public final class BufferedInterfaceGameTests {
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void futureReferenceSurvivesBreakWithoutAllocatingEmptyInventory(
       GameTestHelper helper) {
-    helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
+    helper.setBlock(BUFFER, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH));
     BufferedInterfaceEntity buffer = helper.getBlockEntity(BUFFER);
     var future = new CompoundTag();
     future.putInt("Schema", 77);
@@ -266,14 +265,9 @@ public final class BufferedInterfaceGameTests {
   public static void declaredForeignGroupCannotAliasOwnedBuffer(GameTestHelper helper) {
     var buffer = setup(helper);
     var connectorPos = new BlockPos(2, 1, 2);
-    helper.setBlock(
-        connectorPos,
-        ConnectorContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    helper.setBlock(connectorPos, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
     ConnectorEntity connector = helper.getBlockEntity(connectorPos);
-    connector.place(new ItemStack(ConnectorContent.ITEM.get()));
+    connector.place(new ItemStack(InterfaceContent.ITEM.get()));
     helper.setBlock(new BlockPos(3, 1, 2), ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity provider = helper.getBlockEntity(new BlockPos(3, 1, 2));
     provider.extendedBacking = true;
@@ -299,7 +293,7 @@ public final class BufferedInterfaceGameTests {
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void recipeUsesStarterMaterialsAndUnlocksWithoutExistingBufferReference(
       GameTestHelper helper) {
-    var id = ResourceLocation.fromNamespaceAndPath("factorycore", "buffered_interface");
+    var id = ResourceLocation.fromNamespaceAndPath("factorycore", "interface");
     var recipe = helper.getLevel().getRecipeManager().byKey(id).orElseThrow().value();
     var costs = new HashMap<String, Integer>();
     for (var ingredient : recipe.getIngredients())
@@ -309,11 +303,11 @@ public final class BufferedInterfaceGameTests {
         costs.merge(item.getPath(), 1, Integer::sum);
       }
     helper.assertTrue(
-        costs.equals(Map.of("iron_ingot", 4, "glass", 2, "redstone", 2, "hopper", 1)),
-        "Exact starter buffer recipe");
+        costs.equals(Map.of("copper_ingot", 4, "redstone", 4, "hopper", 1)),
+        "Exact starter Interface recipe");
     var result = recipe.getResultItem(helper.getLevel().registryAccess());
     helper.assertTrue(
-        result.is(BufferedInterfaceContent.ITEM.get())
+        result.is(InterfaceContent.ITEM.get())
             && result.getCount() == 1
             && result.get(DataComponents.CUSTOM_DATA) == null,
         "Recipe creates one fresh unbound device, never consumes populated ownership");
@@ -322,9 +316,7 @@ public final class BufferedInterfaceGameTests {
                 .getLevel()
                 .getServer()
                 .getAdvancements()
-                .get(
-                    ResourceLocation.fromNamespaceAndPath(
-                        "factorycore", "recipes/misc/buffered_interface"))
+                .get(ResourceLocation.fromNamespaceAndPath("factorycore", "recipes/misc/interface"))
             != null,
         "Recipe book unlock loaded");
     helper.succeed();

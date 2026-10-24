@@ -33,7 +33,6 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BarrelBlockEntity;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -68,14 +67,9 @@ public final class ThroughputUpgradeGameTests {
     player.getInventory().clearContent();
     h.setBlock(ROOT, NetworkContent.CONTROLLER.get());
     ((NetworkNodeEntity) h.getBlockEntity(ROOT)).commission(player.getUUID());
-    h.setBlock(
-        PORT,
-        ConnectorContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    h.setBlock(PORT, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
     ConnectorEntity port = h.getBlockEntity(PORT);
-    port.place(new ItemStack(ConnectorContent.ITEM.get()));
+    port.place(new ItemStack(InterfaceContent.ITEM.get()));
     h.setBlock(PROVIDER, Blocks.BARREL);
     BarrelBlockEntity barrel = h.getBlockEntity(PROVIDER);
     for (int slot = 0; slot < barrel.getContainerSize(); slot++)
@@ -203,12 +197,7 @@ public final class ThroughputUpgradeGameTests {
                       + f.port.settings().rate());
               var portable = f.port.portableForBreak();
               h.setBlock(PORT, Blocks.AIR);
-              h.setBlock(
-                  PORT,
-                  ConnectorContent.BLOCK
-                      .get()
-                      .defaultBlockState()
-                      .setValue(BlockStateProperties.FACING, Direction.EAST));
+              h.setBlock(PORT, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
               ConnectorEntity moved = h.getBlockEntity(PORT);
               moved.place(portable);
               h.assertTrue(
@@ -291,7 +280,7 @@ public final class ThroughputUpgradeGameTests {
                   "Buffer takes exactly one paid second step");
               var portable = f.buffer.portableForBreak();
               h.setBlock(BUFFER, Blocks.AIR);
-              h.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
+              h.setBlock(BUFFER, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH));
               BufferedInterfaceEntity moved = h.getBlockEntity(BUFFER);
               moved.place(portable, f.player.getUUID());
               h.assertTrue(

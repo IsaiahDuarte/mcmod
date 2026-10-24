@@ -8,10 +8,9 @@ import dev.izzy.factorycore.platform.power.FuelGeneratorBlock;
 import dev.izzy.factorycore.platform.power.FuelGeneratorContent;
 import dev.izzy.factorycore.platform.power.FuelGeneratorEntity;
 import dev.izzy.factorycore.platform.program.ProgramContent;
-import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
-import dev.izzy.factorycore.platform.storage.ConnectorContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankContent;
-import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
@@ -61,9 +60,9 @@ final class ArtGallery {
             NetworkContent.CONTROLLER.get().defaultBlockState(),
             StorageContent.DRIVE.get().defaultBlockState(),
             TerminalContent.BLOCK.get().defaultBlockState(),
-            BufferedInterfaceContent.BLOCK.get().defaultBlockState(),
-            ConnectorContent.BLOCK.get().defaultBlockState(),
-            MachineInterfaceContent.BLOCK.get().defaultBlockState(),
+            InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH),
+            InterfaceContent.state(InterfaceKind.STORAGE, Direction.NORTH),
+            InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH),
             facing(NetworkContent.GATEWAY.get().defaultBlockState(), Direction.NORTH),
             EnergyBankContent.block(EnergyBankTier.STARTER).defaultBlockState(),
             EnergyBankContent.block(EnergyBankTier.EXPANDED).defaultBlockState());

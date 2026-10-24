@@ -1,0 +1,68 @@
+{
+  "variants": {
+    "facing=north,kind=storage": {
+      "model": "factorycore:block/storage_connector"
+    },
+    "facing=east,kind=storage": {
+      "model": "factorycore:block/storage_connector",
+      "y": 90
+    },
+    "facing=south,kind=storage": {
+      "model": "factorycore:block/storage_connector",
+      "y": 180
+    },
+    "facing=west,kind=storage": {
+      "model": "factorycore:block/storage_connector",
+      "y": 270
+    },
+    "facing=up,kind=storage": {
+      "model": "factorycore:block/storage_connector",
+      "x": 270
+    },
+    "facing=down,kind=storage": {
+      "model": "factorycore:block/storage_connector",
+      "x": 90
+    },
+    "facing=north,kind=machine": {
+      "model": "factorycore:block/machine_interface"
+    },
+    "facing=east,kind=machine": {
+      "model": "factorycore:block/machine_interface",
+      "y": 90
+    },
+    "facing=south,kind=machine": {
+      "model": "factorycore:block/machine_interface",
+      "y": 180
+    },
+    "facing=west,kind=machine": {
+      "model": "factorycore:block/machine_interface",
+      "y": 270
+    },
+    "facing=up,kind=machine": {
+      "model": "factorycore:block/machine_interface",
+      "x": 270
+    },
+    "facing=down,kind=machine": {
+      "model": "factorycore:block/machine_interface",
+      "x": 90
+    },
+    "facing=north,kind=buffer": {
+      "model": "factorycore:block/buffered_interface"
+    },
+    "facing=east,kind=buffer": {
+      "model": "factorycore:block/buffered_interface"
+    },
+    "facing=south,kind=buffer": {
+      "model": "factorycore:block/buffered_interface"
+    },
+    "facing=west,kind=buffer": {
+      "model": "factorycore:block/buffered_interface"
+    },
+    "facing=up,kind=buffer": {
+      "model": "factorycore:block/buffered_interface"
+    },
+    "facing=down,kind=buffer": {
+      "model": "factorycore:block/buffered_interface"
+    }
+  }
+}

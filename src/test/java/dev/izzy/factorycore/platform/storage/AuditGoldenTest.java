@@ -240,7 +240,7 @@ class AuditGoldenTest {
         new BufferData.State(
             new NodeRegistry.Handle(WORLD, ID, 7, buffer.kind()), new UUID(0, 105), 4);
     var bufferHolder = holder(BufferData.FIELD, BufferData.write(reference));
-    var bufferState = tag("{Name:'factorycore:buffered_interface'}");
+    var bufferState = tag("{Name:'factorycore:interface'}");
     assertGolden(
         "buffer",
         DeviceRecoveryAudit.preserveBuffer(
@@ -270,7 +270,7 @@ class AuditGoldenTest {
             "",
             "furnace");
     var physical = holder(ConnectorData.FIELD, ConnectorData.write(reference));
-    var state = tag("{Name:'factorycore:machine_interface'}");
+    var state = tag("{Name:'factorycore:interface'}");
     var binding =
         new WorldConnectors.Handle(
             reference.lease(), 5, new UUID(0, 106), new UUID(0, 107), ResourceKind.ITEM);

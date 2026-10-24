@@ -4,9 +4,8 @@ import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.CarriedComponents;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
-import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
-import dev.izzy.factorycore.platform.storage.ConnectorContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
 import java.util.ArrayList;
 import java.util.List;
@@ -125,10 +124,7 @@ public final class FactoryCoreData {
       var iron = tag(BlockTags.NEEDS_IRON_TOOL);
       Stream.concat(
               Stream.of(EnergyBankTier.values()).map(EnergyBankContent::block),
-              Stream.of(
-                  ConnectorContent.BLOCK.get(),
-                  BufferedInterfaceContent.BLOCK.get(),
-                  TerminalContent.BLOCK.get()))
+              Stream.of(InterfaceContent.BLOCK.get(), TerminalContent.BLOCK.get()))
           .forEach(iron::add);
     }
   }
@@ -241,22 +237,7 @@ public final class FactoryCoreData {
       shaped(
           out,
           misc,
-          "buffered_interface",
-          1,
-          Items.HOPPER,
-          "IGI/RHR/IGI",
-          'I',
-          Items.IRON_INGOT,
-          'G',
-          Items.GLASS,
-          'R',
-          Items.REDSTONE,
-          'H',
-          Items.HOPPER);
-      shaped(
-          out,
-          misc,
-          "storage_connector",
+          "interface",
           1,
           Items.HOPPER,
           "CRC/RHR/CRC",
@@ -266,19 +247,6 @@ public final class FactoryCoreData {
           Items.REDSTONE,
           'H',
           Items.HOPPER);
-      shaped(
-          out,
-          misc,
-          "machine_interface",
-          1,
-          Items.REDSTONE,
-          "ICI/CRC/ICI",
-          'I',
-          Items.IRON_INGOT,
-          'C',
-          Items.COPPER_INGOT,
-          'R',
-          Items.REDSTONE);
       shaped(
           out,
           misc,

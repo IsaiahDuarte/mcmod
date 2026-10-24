@@ -400,7 +400,7 @@ public final class BufferImportGameTests {
 
   private static BufferedInterfaceEntity recoveryCopy(GameTestHelper h, CompoundTag raw) {
     var position = new BlockPos(3, 1, 3);
-    h.setBlock(position, BufferedInterfaceContent.BLOCK.get());
+    h.setBlock(position, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH));
     BufferedInterfaceEntity clone = h.getBlockEntity(position);
     clone.loadWithComponents(raw, h.getLevel().registryAccess());
     clone.onLoad();
@@ -917,13 +917,13 @@ public final class BufferImportGameTests {
                                 .getEntitiesOfClass(
                                     ItemEntity.class,
                                     new AABB(helper.absolutePos(BUFFER)).inflate(.8),
-                                    entity ->
-                                        entity.getItem().is(BufferedInterfaceContent.ITEM.get()));
+                                    entity -> entity.getItem().is(InterfaceContent.ITEM.get()));
                         helper.assertTrue(
                             drops.size() == 1, "One portable canonical reference after removal");
                         var stack = drops.getFirst().getItem().copy();
                         drops.getFirst().discard();
-                        helper.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
+                        helper.setBlock(
+                            BUFFER, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH));
                         moved[0] = helper.getBlockEntity(BUFFER);
                         moved[0].place(stack, fixture.actor().id());
                       });
@@ -1057,7 +1057,7 @@ public final class BufferImportGameTests {
               var before = f.buffer.saveWithFullMetadata(access);
               // The canonical save records the buffer broken at BUFFER and placed at `far`...
               var portable = f.buffer.portableForBreak();
-              h.setBlock(far, BufferedInterfaceContent.BLOCK.get());
+              h.setBlock(far, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH));
               BufferedInterfaceEntity placed = h.getBlockEntity(far);
               placed.place(portable, f.actor.id());
               canonical[0] = placed.handle().generation();

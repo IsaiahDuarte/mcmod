@@ -91,14 +91,9 @@ public final class ConnectorGameTests {
   }
 
   private static ConnectorEntity connector(GameTestHelper helper, BlockPos pos, Direction facing) {
-    helper.setBlock(
-        pos,
-        ConnectorContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, facing));
+    helper.setBlock(pos, InterfaceContent.state(InterfaceKind.STORAGE, facing));
     ConnectorEntity entity = helper.getBlockEntity(pos);
-    entity.place(new ItemStack(ConnectorContent.ITEM.get()));
+    entity.place(new ItemStack(InterfaceContent.ITEM.get()));
     return entity;
   }
 
@@ -427,11 +422,7 @@ public final class ConnectorGameTests {
               var portable = setup.connector().portableForBreak();
               helper.setBlock(CONNECTOR, Blocks.AIR);
               helper.setBlock(
-                  movedPos,
-                  ConnectorContent.BLOCK
-                      .get()
-                      .defaultBlockState()
-                      .setValue(BlockStateProperties.FACING, Direction.EAST));
+                  movedPos, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
               ConnectorEntity moved = helper.getBlockEntity(movedPos);
               moved.place(portable);
               helper.assertTrue(
@@ -441,7 +432,8 @@ public final class ConnectorGameTests {
                       && moved.settings().priority() == -10
                       && moved.settings().firstSlot() == 2,
                   "Portable transition retains one identity and selected policy");
-              helper.setBlock(CONNECTOR, ConnectorContent.BLOCK.get());
+              helper.setBlock(
+                  CONNECTOR, InterfaceContent.state(InterfaceKind.STORAGE, Direction.NORTH));
               ConnectorEntity copy = helper.getBlockEntity(CONNECTOR);
               copy.place(portable.copy());
               helper.assertTrue(
@@ -535,11 +527,7 @@ public final class ConnectorGameTests {
                   setup.runtime().connectors().port(old[0]).insert(key, 64) == 64,
                   "First provider receives known amount");
               helper.setBlock(
-                  CONNECTOR,
-                  ConnectorContent.BLOCK
-                      .get()
-                      .defaultBlockState()
-                      .setValue(BlockStateProperties.FACING, Direction.SOUTH));
+                  CONNECTOR, InterfaceContent.state(InterfaceKind.STORAGE, Direction.SOUTH));
               helper.assertTrue(
                   !setup
                       .runtime()
@@ -827,11 +815,7 @@ public final class ConnectorGameTests {
                       && provider.items.getStackInSlot(1).isEmpty(),
                   "Only selected slot participates");
               for (var direction : Direction.values()) {
-                var state =
-                    ConnectorContent.BLOCK
-                        .get()
-                        .defaultBlockState()
-                        .setValue(BlockStateProperties.FACING, direction);
+                var state = InterfaceContent.state(InterfaceKind.STORAGE, direction);
                 for (var face : Direction.values())
                   helper.assertTrue(
                       NetworkedBlock.wired(state, face) == (face != direction),
@@ -854,8 +838,7 @@ public final class ConnectorGameTests {
                   helper
                       .getLevel()
                       .getRecipeManager()
-                      .byKey(
-                          ResourceLocation.fromNamespaceAndPath("factorycore", "storage_connector"))
+                      .byKey(ResourceLocation.fromNamespaceAndPath("factorycore", "interface"))
                       .isPresent(),
                   "Survival recipe loaded");
             })
@@ -2414,14 +2397,11 @@ public final class ConnectorGameTests {
   private static void portAdoption(GameTestHelper h, boolean machine) {
     var f = setup(h);
     if (machine) {
-      h.setBlock(
-          CONNECTOR,
-          MachineInterfaceContent.BLOCK
-              .get()
-              .defaultBlockState()
-              .setValue(BlockStateProperties.FACING, Direction.EAST));
+      // Same block, new kind: clear it first so a fresh machine entity replaces the connector.
+      h.setBlock(CONNECTOR, Blocks.AIR);
+      h.setBlock(CONNECTOR, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
       MachineInterfaceEntity port = h.getBlockEntity(CONNECTOR);
-      port.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+      port.place(new ItemStack(InterfaceContent.ITEM.get()));
     }
     ConnectorEntity port = h.getBlockEntity(CONNECTOR);
     h.setBlock(PROVIDER, Blocks.CHEST);

@@ -1,9 +1,10 @@
 package dev.izzy.factorycore.testing.network;
 
 import dev.izzy.factorycore.platform.network.NetworkAccessMenu;
-import dev.izzy.factorycore.platform.storage.ConnectorContent;
 import dev.izzy.factorycore.platform.storage.ConnectorEntity;
 import dev.izzy.factorycore.platform.storage.ConnectorSettingsMenu;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
@@ -12,7 +13,6 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -32,14 +32,9 @@ public final class DeviceStatusGameTests {
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT).above()));
     player.getInventory().clearContent();
     Net.in(h, player.getUUID()).controller(ROOT);
-    h.setBlock(
-        CONNECTOR,
-        ConnectorContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    h.setBlock(CONNECTOR, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
     ConnectorEntity connector = h.getBlockEntity(CONNECTOR);
-    connector.place(new ItemStack(ConnectorContent.ITEM.get()));
+    connector.place(new ItemStack(InterfaceContent.ITEM.get()));
     h.startSequence()
         .thenWaitUntil(() -> h.assertTrue(connector.canUse(player), "Wired owner ready"))
         .thenExecute(

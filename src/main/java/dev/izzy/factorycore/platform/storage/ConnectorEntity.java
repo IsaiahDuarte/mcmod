@@ -63,7 +63,7 @@ public class ConnectorEntity extends BlockEntity
   }
 
   protected Item portableItem() {
-    return ConnectorContent.ITEM.get();
+    return InterfaceContent.ITEM.get();
   }
 
   public String label() {

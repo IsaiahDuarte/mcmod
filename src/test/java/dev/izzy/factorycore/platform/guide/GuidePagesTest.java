@@ -42,7 +42,10 @@ class GuidePagesTest {
           "Storage Drive",
           "hopper",
           "upgrade",
-          "Machine Interface",
+          // ADR 0059: one Interface; the guide must teach its Machine and Buffer modes.
+          "Interface",
+          "Machine mode",
+          "Buffer mode",
           "Pattern",
           "Program Controller",
           "Wireless",

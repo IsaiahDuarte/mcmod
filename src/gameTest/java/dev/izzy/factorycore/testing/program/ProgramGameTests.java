@@ -19,7 +19,8 @@ import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
@@ -38,7 +39,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -79,14 +79,9 @@ public final class ProgramGameTests {
     NetworkNodeEntity root = Net.in(h, owner.id()).controller(ROOT);
     StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
-    h.setBlock(
-        MACHINE,
-        MachineInterfaceContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
     MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
     h.setBlock(CHEST, Blocks.CHEST);
     return new Fixture(
         owner,

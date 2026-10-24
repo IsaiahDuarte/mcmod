@@ -71,7 +71,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
 
   @Override
   public Component getDisplayName() {
-    return Component.translatable("block.factorycore.buffered_interface");
+    return Component.translatable("gui.factorycore.interface.title.buffer");
   }
 
   @Override
@@ -492,7 +492,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
   }
 
   public ItemStack portableForBreak() {
-    var stack = new ItemStack(BufferedInterfaceContent.ITEM.get());
+    var stack = new ItemStack(InterfaceContent.ITEM.get());
     if (state != null && diagnostic.isEmpty()) {
       try {
         validatePlaced();

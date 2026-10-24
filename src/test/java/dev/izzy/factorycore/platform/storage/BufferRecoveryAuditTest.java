@@ -62,7 +62,7 @@ class BufferRecoveryAuditTest {
     var physical = new CompoundTag();
     physical.put(BufferData.FIELD, BufferData.write(state));
     physical.putString("retained", "full holder data");
-    var blockState = TagParser.parseTag("{Name:'factorycore:buffered_interface'}");
+    var blockState = TagParser.parseTag("{Name:'factorycore:interface'}");
     for (var configured : new boolean[] {false, true}) {
       var deployment = configured ? deployment(ID) : null;
       var file =

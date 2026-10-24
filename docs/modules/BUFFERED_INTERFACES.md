@@ -1,5 +1,7 @@
 # Buffered Interfaces
 
+> Since U11 ([ADR 0059](../decisions/0059-unified-interface.md)) this device is the **Buffer** mode of the single `factorycore:interface` block (`InterfaceBlock`, `kind=buffer`); the old standalone block and item ids are gone. The entity, lease kind, persisted schema and recovery tools described below are unchanged.
+
 P3 prerequisite component: `ItemBuffer` and `BufferedItemHandler` implement the
 selected nine-slot owned inventory and its NeoForge automation view. The canonical world table/structural lease now exists. The physical block and hopper inventory path are implemented with headless world
 evidence. Automatic filtered Import/Export/Stock and Paused controls are implemented; native settings/inventory screens are implemented with headless authority evidence; actual client interaction remains pending;

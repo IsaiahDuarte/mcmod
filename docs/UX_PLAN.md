@@ -188,7 +188,7 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
 - [x] **U10 — Migration spike.** Dropped: UD7 resolved as no migrations or legacy support.
 
 - [ ] **U11 — Unified Interface (needs UD1).**
-  Progress: design accepted in [ADR 0059](decisions/0059-unified-interface.md) (2026-10-24). Next: U11a block/item unification with `kind` state, U11b mode switching and shared mode row, U11c fixtures/docs.
+  Progress: design accepted in [ADR 0059](decisions/0059-unified-interface.md) (2026-10-24). U11a (one block/item with a `kind` state, placement-chosen mode, single recipe, old ids removed) done. Next: U11b mode switching and shared mode row, U11c remaining docs/fixtures cleanup.
   One block faces a container. Modes: Storage (registers the container as network storage,
   today's Connector), Machine (labelled for presets/programs, today's Machine Interface), and
   Import/Export/Stock. With no container attached it uses its own 9-slot buffer, so the

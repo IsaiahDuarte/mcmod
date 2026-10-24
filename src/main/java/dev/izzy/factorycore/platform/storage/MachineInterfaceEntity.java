@@ -32,7 +32,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity implements Men
 
   @Override
   public Component getDisplayName() {
-    return Component.translatable("block.factorycore.machine_interface");
+    return Component.translatable("gui.factorycore.interface.title.machine");
   }
 
   @Override
@@ -264,7 +264,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity implements Men
 
   @Override
   protected Item portableItem() {
-    return MachineInterfaceContent.ITEM.get();
+    return InterfaceContent.ITEM.get();
   }
 
   public NetworkAuthority.Decision relabel(NetworkPermissions.Actor actor, String label) {

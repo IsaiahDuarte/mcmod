@@ -4,11 +4,12 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
-import dev.izzy.factorycore.platform.storage.ConnectorContent;
 import dev.izzy.factorycore.platform.storage.ConnectorEntity;
 import dev.izzy.factorycore.platform.storage.ConnectorSettingsMenu;
 import dev.izzy.factorycore.platform.storage.ConnectorSettingsPackets;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineSettingsPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -22,7 +23,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -50,14 +50,9 @@ public final class ConnectorSettingsGameTests {
   private static Fixture setup(GameTestHelper h) {
     var player = player(h);
     NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
-    h.setBlock(
-        CONNECTOR,
-        ConnectorContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    h.setBlock(CONNECTOR, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
     ConnectorEntity connector = h.getBlockEntity(CONNECTOR);
-    connector.place(new ItemStack(ConnectorContent.ITEM.get()));
+    connector.place(new ItemStack(InterfaceContent.ITEM.get()));
     h.setBlock(CHEST, Blocks.CHEST);
     return new Fixture(player, connector, root);
   }

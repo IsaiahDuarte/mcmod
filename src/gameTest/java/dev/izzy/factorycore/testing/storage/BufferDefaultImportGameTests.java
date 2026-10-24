@@ -4,13 +4,15 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
-import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -45,17 +47,13 @@ public final class BufferDefaultImportGameTests {
 
   /** Places the buffer the way a player does, through the block's placement hook. */
   private static BufferedInterfaceEntity place(GameTestHelper h, ServerPlayer placer) {
-    h.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get());
+    h.setBlock(BUFFER, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH));
     var position = h.absolutePos(BUFFER);
     var state = h.getLevel().getBlockState(position);
     state
         .getBlock()
         .setPlacedBy(
-            h.getLevel(),
-            position,
-            state,
-            placer,
-            new ItemStack(BufferedInterfaceContent.ITEM.get()));
+            h.getLevel(), position, state, placer, new ItemStack(InterfaceContent.ITEM.get()));
     return h.getBlockEntity(BUFFER);
   }
 

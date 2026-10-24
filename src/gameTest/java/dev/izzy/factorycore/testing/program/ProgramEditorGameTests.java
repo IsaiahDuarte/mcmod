@@ -10,7 +10,8 @@ import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.program.ProgramMenu;
 import dev.izzy.factorycore.platform.program.ProgramPackets;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -18,6 +19,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -180,9 +182,9 @@ public final class ProgramEditorGameTests {
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
     ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
     var machinePos = new BlockPos(2, 1, 1);
-    h.setBlock(machinePos, MachineInterfaceContent.BLOCK.get());
+    h.setBlock(machinePos, InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH));
     MachineInterfaceEntity machine = h.getBlockEntity(machinePos);
-    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
     h.startSequence()
         .thenWaitUntil(
             () ->

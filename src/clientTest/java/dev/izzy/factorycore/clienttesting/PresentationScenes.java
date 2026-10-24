@@ -12,13 +12,12 @@ import dev.izzy.factorycore.platform.power.FuelGeneratorEntity;
 import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
-import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
-import dev.izzy.factorycore.platform.storage.ConnectorContent;
 import dev.izzy.factorycore.platform.storage.ConnectorEntity;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
@@ -94,7 +93,10 @@ final class PresentationScenes {
   private PresentationScenes() {}
 
   private static BlockState facing(Block block, Direction direction) {
-    var state = block.defaultBlockState();
+    return facing(block.defaultBlockState(), direction);
+  }
+
+  private static BlockState facing(BlockState state, Direction direction) {
     return state.hasProperty(BlockStateProperties.FACING)
         ? state.setValue(BlockStateProperties.FACING, direction)
         : state.setValue(HorizontalDirectionalBlock.FACING, direction);
@@ -112,23 +114,23 @@ final class PresentationScenes {
    * (the last two are horizontal-only and skip up/down). Returns the number of blocks placed.
    */
   static int orientations(ServerLevel level) {
-    List<Block> rows =
+    List<BlockState> rows =
         List.of(
-            NetworkContent.CONTROLLER.get(),
-            NetworkContent.GATEWAY.get(),
-            ConnectorContent.BLOCK.get(),
-            MachineInterfaceContent.BLOCK.get(),
-            CraftingContent.INTERFACE.get(),
-            WirelessContent.LINK.get(),
-            TerminalContent.BLOCK.get(),
-            FuelGeneratorContent.BLOCK.get());
+            NetworkContent.CONTROLLER.get().defaultBlockState(),
+            NetworkContent.GATEWAY.get().defaultBlockState(),
+            InterfaceContent.state(InterfaceKind.STORAGE, Direction.NORTH),
+            InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH),
+            CraftingContent.INTERFACE.get().defaultBlockState(),
+            WirelessContent.LINK.get().defaultBlockState(),
+            TerminalContent.BLOCK.get().defaultBlockState(),
+            FuelGeneratorContent.BLOCK.get().defaultBlockState());
     int placed = 0;
     for (int row = 0; row < rows.size(); row++)
       for (int column = 0; column < FACINGS.size(); column++) {
         var direction = FACINGS.get(column);
         var block = rows.get(row);
-        if (direction.getAxis().isVertical()
-            && !block.defaultBlockState().hasProperty(BlockStateProperties.FACING)) continue;
+        if (direction.getAxis().isVertical() && !block.hasProperty(BlockStateProperties.FACING))
+          continue;
         level.setBlock(
             new BlockPos(ORIENT_X + column * SPACING, ORIENT_Y, ORIENT_Z + row * SPACING),
             facing(block, direction),
@@ -245,16 +247,18 @@ final class PresentationScenes {
     int arms = lamps + 4;
     level.setBlock(new BlockPos(41, 65, arms), Blocks.CHEST.defaultBlockState(), 3);
     level.setBlock(
-        new BlockPos(41, 66, arms), facing(ConnectorContent.BLOCK.get(), Direction.DOWN), 3);
+        new BlockPos(41, 66, arms),
+        InterfaceContent.state(InterfaceKind.STORAGE, Direction.DOWN),
+        3);
     ((ConnectorEntity) level.getBlockEntity(new BlockPos(41, 66, arms)))
-        .place(new ItemStack(ConnectorContent.ITEM.get()));
+        .place(new ItemStack(InterfaceContent.ITEM.get()));
     level.setBlock(new BlockPos(44, 65, arms), Blocks.FURNACE.defaultBlockState(), 3);
     level.setBlock(
         new BlockPos(44, 65, arms - 1),
-        facing(MachineInterfaceContent.BLOCK.get(), Direction.SOUTH),
+        InterfaceContent.state(InterfaceKind.MACHINE, Direction.SOUTH),
         3);
     ((MachineInterfaceEntity) level.getBlockEntity(new BlockPos(44, 65, arms - 1)))
-        .place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+        .place(new ItemStack(InterfaceContent.ITEM.get()));
     var cable = NetworkContent.CABLE.get();
     for (var position :
         List.of(
@@ -322,13 +326,13 @@ final class PresentationScenes {
     root(level, base, player);
     drive(level, base.east(), 0);
     level.setBlock(base.east(2), facing(TerminalContent.BLOCK.get(), Direction.SOUTH), 3);
-    level.setBlock(base.east(3), BufferedInterfaceContent.BLOCK.get().defaultBlockState(), 3);
+    level.setBlock(base.east(3), InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH), 3);
     ((BufferedInterfaceEntity) level.getBlockEntity(base.east(3)))
-        .place(new ItemStack(BufferedInterfaceContent.ITEM.get()), player.getUUID());
+        .place(new ItemStack(InterfaceContent.ITEM.get()), player.getUUID());
     level.setBlock(base.east(4).north(), Blocks.CHEST.defaultBlockState(), 3);
-    level.setBlock(base.east(4), facing(MachineInterfaceContent.BLOCK.get(), Direction.NORTH), 3);
+    level.setBlock(base.east(4), InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH), 3);
     ((MachineInterfaceEntity) level.getBlockEntity(base.east(4)))
-        .place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+        .place(new ItemStack(InterfaceContent.ITEM.get()));
     level.setBlock(base.east(5), ProgramContent.BLOCK.get().defaultBlockState(), 3);
     level.setBlock(base.east(6), NetworkContent.CABLE.get().defaultBlockState(), 3);
     level.setBlock(base.east(7), facing(NetworkContent.GATEWAY.get(), Direction.EAST), 3);
@@ -336,9 +340,10 @@ final class PresentationScenes {
     level.setBlock(base.east(8), NetworkContent.CABLE.get().defaultBlockState(), 3);
     // Storage Connector off the cable, socket north into its own chest (U5 screen).
     level.setBlock(base.east(6).north(2), Blocks.CHEST.defaultBlockState(), 3);
-    level.setBlock(base.east(6).north(), facing(ConnectorContent.BLOCK.get(), Direction.NORTH), 3);
+    level.setBlock(
+        base.east(6).north(), InterfaceContent.state(InterfaceKind.STORAGE, Direction.NORTH), 3);
     ((ConnectorEntity) level.getBlockEntity(base.east(6).north()))
-        .place(new ItemStack(ConnectorContent.ITEM.get()));
+        .place(new ItemStack(InterfaceContent.ITEM.get()));
   }
 
   static void teleport(ServerPlayer player, View view) {

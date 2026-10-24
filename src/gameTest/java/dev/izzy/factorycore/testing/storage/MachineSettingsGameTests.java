@@ -12,6 +12,7 @@ import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.*;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -36,9 +37,9 @@ public final class MachineSettingsGameTests {
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
-    h.setBlock(MACHINE, MachineInterfaceContent.BLOCK.get());
+    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH));
     MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
     return new Fixture(player, machine, root);
   }
 

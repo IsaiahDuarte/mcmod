@@ -64,9 +64,7 @@ public final class StorageContent {
                         var shown = new LinkedHashSet<Item>();
                         shown.add(DRIVE_ITEM.get());
                         shown.add(TerminalContent.ITEM.get());
-                        shown.add(BufferedInterfaceContent.ITEM.get());
-                        shown.add(ConnectorContent.ITEM.get());
-                        shown.add(MachineInterfaceContent.ITEM.get());
+                        shown.add(InterfaceContent.ITEM.get());
                         shown.add(NetworkContent.CONTROLLER_ITEM.get());
                         shown.add(NetworkContent.GATEWAY_ITEM.get());
                         shown.add(NetworkContent.CABLE_ITEM.get());

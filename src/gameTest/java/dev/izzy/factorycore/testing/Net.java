@@ -12,13 +12,13 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
-import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
-import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
@@ -28,7 +28,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 /**
  * Builds a test network in one place: each call places a real block and puts its device in the
@@ -99,9 +98,9 @@ public final class Net {
 
   /** A placed Buffered Interface leased to {@link #owner()}. */
   public BufferedInterfaceEntity buffer(BlockPos position) {
-    helper.setBlock(position, BufferedInterfaceContent.BLOCK.get());
+    helper.setBlock(position, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH));
     BufferedInterfaceEntity buffer = helper.getBlockEntity(position);
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), owner.id());
+    buffer.place(new ItemStack(InterfaceContent.ITEM.get()), owner.id());
     return buffer;
   }
 
@@ -114,14 +113,9 @@ public final class Net {
 
   /** A placed Machine Interface whose target face is {@code facing}. */
   public MachineInterfaceEntity machine(BlockPos position, Direction facing) {
-    helper.setBlock(
-        position,
-        MachineInterfaceContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, facing));
+    helper.setBlock(position, InterfaceContent.state(InterfaceKind.MACHINE, facing));
     MachineInterfaceEntity machine = helper.getBlockEntity(position);
-    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
     return machine;
   }
 

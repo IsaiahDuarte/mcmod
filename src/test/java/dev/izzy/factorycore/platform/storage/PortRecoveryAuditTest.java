@@ -63,8 +63,7 @@ class PortRecoveryAuditTest {
       var reference = reference(machine);
       var physical = physical(reference);
       var blockState = new CompoundTag();
-      blockState.putString(
-          "Name", machine ? "factorycore:machine_interface" : "factorycore:storage_connector");
+      blockState.putString("Name", machine ? "factorycore:interface" : "factorycore:interface");
       var binding =
           new WorldConnectors.Handle(
               reference.lease(), 5, UUID.randomUUID(), UUID.randomUUID(), ResourceKind.ITEM);

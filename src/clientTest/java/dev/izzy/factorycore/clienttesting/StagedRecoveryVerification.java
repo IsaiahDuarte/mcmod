@@ -14,7 +14,6 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.*;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 /** Actual accepted scheduled operations; expectations never synthesize or restore staging. */
 final class StagedRecoveryVerification {
@@ -60,13 +59,11 @@ final class StagedRecoveryVerification {
         for (int i = 0; i < 3; i++) {
           level.setBlock(
               MACHINES.get(i),
-              MachineInterfaceContent.BLOCK
-                  .get()
-                  .defaultBlockState()
-                  .setValue(BlockStateProperties.FACING, i == 1 ? Direction.EAST : Direction.SOUTH),
+              InterfaceContent.state(
+                  InterfaceKind.MACHINE, i == 1 ? Direction.EAST : Direction.SOUTH),
               3);
           ((MachineInterfaceEntity) level.getBlockEntity(MACHINES.get(i)))
-              .place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+              .place(new ItemStack(InterfaceContent.ITEM.get()));
           level.setBlock(target(i), RecoveryProvider.BLOCK.get().defaultBlockState(), 3);
         }
         ((RecoveryProvider.Provider) level.getBlockEntity(target(2))).failAfterInsert = true;

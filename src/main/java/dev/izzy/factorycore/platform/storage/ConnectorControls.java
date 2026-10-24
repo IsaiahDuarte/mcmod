@@ -5,93 +5,28 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.Actors;
-import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.EntityBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.shapes.CollisionContext;
-import net.minecraft.world.phys.shapes.Shapes;
-import net.minecraft.world.phys.shapes.VoxelShape;
 
-public final class ConnectorBlock extends NetworkedBlock implements EntityBlock {
-  private final boolean machine;
+/** Storage- and Machine-mode behavior of the unified {@link InterfaceBlock} (ADR 0059). */
+final class ConnectorControls {
+  private ConnectorControls() {}
 
-  public ConnectorBlock(Properties properties) {
-    this(properties, false);
-  }
-
-  ConnectorBlock(Properties properties, boolean machine) {
-    super(properties);
-    this.machine = machine;
-    registerDefaultState(
-        stateDefinition.any().setValue(BlockStateProperties.FACING, Direction.NORTH));
-  }
-
-  @Override
-  protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-    builder.add(BlockStateProperties.FACING);
-  }
-
-  @Override
-  public BlockState getStateForPlacement(BlockPlaceContext context) {
-    return defaultBlockState()
-        .setValue(BlockStateProperties.FACING, context.getClickedFace().getOpposite());
-  }
-
-  private static final Map<Direction, VoxelShape> SHAPES =
-      Map.of(
-          Direction.NORTH, Shapes.or(Block.box(0, 0, 3, 16, 16, 16), Block.box(3, 3, 0, 13, 13, 3)),
-          Direction.SOUTH,
-              Shapes.or(Block.box(0, 0, 0, 16, 16, 13), Block.box(3, 3, 13, 13, 13, 16)),
-          Direction.EAST,
-              Shapes.or(Block.box(0, 0, 0, 13, 16, 16), Block.box(13, 3, 3, 16, 13, 13)),
-          Direction.WEST, Shapes.or(Block.box(3, 0, 0, 16, 16, 16), Block.box(0, 3, 3, 3, 13, 13)),
-          Direction.UP, Shapes.or(Block.box(0, 0, 0, 16, 13, 16), Block.box(3, 13, 3, 13, 16, 13)),
-          Direction.DOWN, Shapes.or(Block.box(0, 3, 0, 16, 16, 16), Block.box(3, 0, 3, 13, 3, 13)));
-
-  @Override
-  protected VoxelShape getShape(
-      BlockState state, BlockGetter level, BlockPos position, CollisionContext context) {
-    return SHAPES.get(state.getValue(BlockStateProperties.FACING));
-  }
-
-  @Override
-  public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
-    return machine
-        ? new MachineInterfaceEntity(position, state)
-        : new ConnectorEntity(position, state);
-  }
-
-  @Override
-  public void setPlacedBy(
-      Level level, BlockPos position, BlockState state, LivingEntity placer, ItemStack stack) {
-    super.setPlacedBy(level, position, state, placer, stack);
-    if (!level.isClientSide() && level.getBlockEntity(position) instanceof ConnectorEntity entity) {
+  /** Placement: binds the connector or machine lease carried by (or created for) the item. */
+  static void placed(Level level, BlockPos position, LivingEntity placer, ItemStack stack) {
+    if (level.getBlockEntity(position) instanceof ConnectorEntity entity) {
       try {
         entity.place(stack);
       } catch (IllegalArgumentException | IllegalStateException failure) {
@@ -103,9 +38,8 @@ public final class ConnectorBlock extends NetworkedBlock implements EntityBlock 
     }
   }
 
-  @Override
-  protected InteractionResult useWithoutItem(
-      BlockState state, Level level, BlockPos position, Player player, BlockHitResult hit) {
+  /** Empty-hand use in Storage or Machine mode: the settings screen or offhand shortcuts. */
+  static InteractionResult use(Level level, BlockPos position, Player player) {
     if (!player.getMainHandItem().isEmpty()) return InteractionResult.PASS;
     if (level.isClientSide()) return InteractionResult.SUCCESS;
     if (!(level.getBlockEntity(position) instanceof ConnectorEntity entity))
@@ -158,7 +92,7 @@ public final class ConnectorBlock extends NetworkedBlock implements EntityBlock 
         if (!entity.canUse(viewer)) return InteractionResult.FAIL;
         MenuSession.open(
             viewer,
-            Component.translatable("block.factorycore.storage_connector"),
+            Component.translatable("gui.factorycore.interface.title.storage"),
             (id, inventory, session) -> new ConnectorSettingsMenu(id, inventory, entity, session));
         return InteractionResult.CONSUME;
       }
@@ -228,30 +162,5 @@ public final class ConnectorBlock extends NetworkedBlock implements EntityBlock 
           true);
       return InteractionResult.FAIL;
     }
-  }
-
-  @Override
-  protected void tick(BlockState state, ServerLevel level, BlockPos position, RandomSource random) {
-    if (level.getBlockEntity(position) instanceof MachineInterfaceEntity machine
-        && machine.applyPendingResume())
-      level.scheduleTick(position, this, MachineInterfaceEntity.RESUME_TICKS);
-  }
-
-  @Override
-  public boolean dropsLeasedItem() {
-    return true;
-  }
-
-  @Override
-  protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
-    return blockEntity instanceof ConnectorEntity entity
-        ? List.of(entity.portableForBreak())
-        : List.of();
-  }
-
-  /** Every face except the one facing its target machine. */
-  @Override
-  public boolean wiredFace(BlockState state, Direction face) {
-    return face != state.getValue(BlockStateProperties.FACING);
   }
 }

@@ -17,7 +17,6 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -35,14 +34,9 @@ public final class WorldExternalClaimsGameTests {
     var guest = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     NetworkNodeEntity root = Net.in(helper, admin.id()).controller(rootPos);
     helper.setBlock(new BlockPos(2, 1, 1), NetworkContent.CABLE.get());
-    helper.setBlock(
-        connectorPos,
-        ConnectorContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    helper.setBlock(connectorPos, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
     ConnectorEntity connector = helper.getBlockEntity(connectorPos);
-    connector.place(new ItemStack(ConnectorContent.ITEM.get()));
+    connector.place(new ItemStack(InterfaceContent.ITEM.get()));
     helper.setBlock(new BlockPos(4, 1, 1), ConnectorFixture.BLOCK.get());
     ConnectorFixture.ProviderEntity provider = helper.getBlockEntity(new BlockPos(4, 1, 1));
     provider.items.setStackInSlot(0, new ItemStack(Items.IRON_INGOT, 64));

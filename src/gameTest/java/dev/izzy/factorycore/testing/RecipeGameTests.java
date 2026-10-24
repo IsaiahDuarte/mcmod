@@ -91,8 +91,8 @@ public final class RecipeGameTests {
       unlocked.addAll(advancement.value().rewards().recipes());
     var recipes = modRecipes(h);
     h.assertTrue(
-        recipes.size() == 25,
-        "All 25 Factory Core crafting recipes, including speed upgrades, load");
+        recipes.size() == 23,
+        "All 23 Factory Core crafting recipes, including speed upgrades, load");
     for (var holder : recipes) {
       var input = input(holder.value());
       var found = manager.getRecipeFor(RecipeType.CRAFTING, input, h.getLevel());
@@ -215,11 +215,12 @@ public final class RecipeGameTests {
   @GameTest(template = "empty")
   public static void starterNetworkCraftsFromAVanillaInventory(GameTestHelper h) {
     var kit = new LinkedHashMap<Item, Integer>();
-    kit.put(Items.IRON_INGOT, 39);
-    kit.put(Items.REDSTONE, 35);
-    kit.put(Items.COPPER_INGOT, 12);
-    kit.put(Items.GLASS, 13);
-    kit.put(Items.HOPPER, 3);
+    // One Interface recipe (ADR 0059) replaces the connector, machine and buffer recipes.
+    kit.put(Items.IRON_INGOT, 31);
+    kit.put(Items.REDSTONE, 32);
+    kit.put(Items.COPPER_INGOT, 8);
+    kit.put(Items.GLASS, 11);
+    kit.put(Items.HOPPER, 2);
     kit.put(Items.CHEST, 1);
     kit.put(Items.FURNACE, 1);
     kit.put(Items.BUCKET, 1);
@@ -236,9 +237,7 @@ public final class RecipeGameTests {
             "starter_item_cell",
             "starter_fluid_cell",
             "storage_terminal",
-            "buffered_interface",
-            "storage_connector",
-            "machine_interface",
+            "interface",
             "fuel_generator",
             "starter_energy_bank",
             "factory_guide",

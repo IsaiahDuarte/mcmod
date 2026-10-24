@@ -55,14 +55,9 @@ public final class MachineInterfaceGameTests {
   }
 
   private static MachineInterfaceEntity machine(GameTestHelper h, BlockPos p, Direction face) {
-    h.setBlock(
-        p,
-        MachineInterfaceContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, face));
+    h.setBlock(p, InterfaceContent.state(InterfaceKind.MACHINE, face));
     MachineInterfaceEntity machine = h.getBlockEntity(p);
-    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
     return machine;
   }
 
@@ -389,8 +384,7 @@ public final class MachineInterfaceGameTests {
               var recipe =
                   h.getLevel()
                       .getRecipeManager()
-                      .byKey(
-                          ResourceLocation.fromNamespaceAndPath("factorycore", "machine_interface"))
+                      .byKey(ResourceLocation.fromNamespaceAndPath("factorycore", "interface"))
                       .orElseThrow()
                       .value();
               var costs = new HashMap<String, Integer>();
@@ -401,16 +395,16 @@ public final class MachineInterfaceGameTests {
               h.assertTrue(
                   costs.equals(
                       Map.of(
-                          "minecraft:iron_ingot",
-                          4,
                           "minecraft:copper_ingot",
                           4,
                           "minecraft:redstone",
+                          4,
+                          "minecraft:hopper",
                           1)),
-                  "Machine recipe uses exact selected vanilla starter materials");
+                  "Interface recipe uses exact selected vanilla starter materials");
               var result = recipe.getResultItem(h.getLevel().registryAccess());
               h.assertTrue(
-                  result.is(MachineInterfaceContent.ITEM.get())
+                  result.is(InterfaceContent.ITEM.get())
                       && result.get(DataComponents.CUSTOM_DATA) == null,
                   "Crafted machine casing has no copied lease or inventory");
               player.connection.disconnect(Component.literal("Machine fixture complete"));

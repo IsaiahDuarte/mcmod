@@ -23,7 +23,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
@@ -52,14 +51,9 @@ public final class MachinePresetGameTests {
   private static Fixture setup(GameTestHelper h, ResourceKind kind) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
-    h.setBlock(
-        MACHINE,
-        MachineInterfaceContent.BLOCK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
     MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
     h.setBlock(PROVIDER, kind == ResourceKind.ITEM ? Blocks.CHEST : ConnectorFixture.BLOCK.get());
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     var key =

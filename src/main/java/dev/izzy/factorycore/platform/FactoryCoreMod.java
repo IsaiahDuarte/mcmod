@@ -12,6 +12,7 @@ import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
 import dev.izzy.factorycore.platform.storage.ConnectorContent;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.EnergyBankContent;
+import dev.izzy.factorycore.platform.storage.InterfaceContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
 import dev.izzy.factorycore.platform.storage.RecoveryCommands;
 import dev.izzy.factorycore.platform.storage.RecoveryContent;
@@ -37,6 +38,7 @@ public final class FactoryCoreMod {
     StorageContent.register(bus);
     TerminalContent.register(bus);
     BufferedInterfaceContent.register(bus);
+    InterfaceContent.register(bus);
     ConnectorContent.register(bus);
     MachineInterfaceContent.register(bus);
     EnergyBankContent.register(bus);

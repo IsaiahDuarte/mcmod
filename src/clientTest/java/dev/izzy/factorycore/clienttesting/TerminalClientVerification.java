@@ -816,13 +816,10 @@ public final class TerminalClientVerification {
                 var level = player.serverLevel();
                 level.setBlock(
                     new BlockPos(2, 65, 2),
-                    MachineInterfaceContent.BLOCK
-                        .get()
-                        .defaultBlockState()
-                        .setValue(BlockStateProperties.FACING, Direction.SOUTH),
+                    InterfaceContent.state(InterfaceKind.MACHINE, Direction.SOUTH),
                     3);
                 ((MachineInterfaceEntity) level.getBlockEntity(new BlockPos(2, 65, 2)))
-                    .place(new ItemStack(MachineInterfaceContent.ITEM.get()));
+                    .place(new ItemStack(InterfaceContent.ITEM.get()));
                 level.setBlock(new BlockPos(2, 65, 3), Blocks.CHEST.defaultBlockState(), 3);
                 ready.set(true);
               } catch (RuntimeException error) {
@@ -862,7 +859,7 @@ public final class TerminalClientVerification {
     if (stage == 40
         && !ready.get()
         && client.screen == null
-        && client.level.getBlockState(location).is(MachineInterfaceContent.BLOCK.get())) {
+        && client.level.getBlockState(location).is(InterfaceContent.BLOCK.get())) {
       client.gameMode.useItemOn(
           client.player,
           InteractionHand.MAIN_HAND,
@@ -1085,11 +1082,23 @@ public final class TerminalClientVerification {
         if (!(client.screen instanceof GatewayPolicyScreen screen) || !screen.getMenu().editable())
           return;
         shift(client, false);
+        // U8: the screen opens on its presets; Custom reveals the toggles (next tick).
+        if (screen.children().stream()
+            .anyMatch(
+                child ->
+                    child instanceof Button button
+                        && button.visible
+                        && button.active
+                        && button.getMessage().getString().equals("Custom"))) {
+          click(screen, "Custom");
+          return;
+        }
         policyMask = screen.getMenu().policy().mask();
         var first =
             screen.children().stream()
-                .filter(child -> child instanceof Button)
+                .filter(child -> child instanceof Button button && button.visible)
                 .map(child -> (Button) child)
+                .filter(button -> button.getMessage().getString().startsWith("View: "))
                 .findFirst()
                 .orElseThrow();
         screen.mouseClicked(
@@ -1104,9 +1113,12 @@ public final class TerminalClientVerification {
             "Actual policy click flips exactly the first branch permission");
         for (var header : new String[] {"branch", "inherited", "kinds"})
           check(
-              client.font.width(Component.translatable("gui.factorycore.gateway_policy." + header))
-                  <= 94,
-              "Policy column header fits: " + header);
+              client
+                      .font
+                      .split(Component.translatable("gui.factorycore.gateway_policy." + header), 94)
+                      .size()
+                  <= 2,
+              "Policy column header fits in two lines: " + header);
         checkNoOverlap(screen);
         captures.grab(client, "gateway-policy-scale-2.png");
         client.options.guiScale().set(4);
@@ -1649,10 +1661,10 @@ public final class TerminalClientVerification {
     drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
     cell = CellHandleData.read(drive.cell(0));
     level.setBlock(TERMINAL, TerminalContent.BLOCK.get().defaultBlockState(), 3);
-    level.setBlock(BUFFER, BufferedInterfaceContent.BLOCK.get().defaultBlockState(), 3);
+    level.setBlock(BUFFER, InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH), 3);
     var buffer = (BufferedInterfaceEntity) level.getBlockEntity(BUFFER);
     fixtureBuffer = buffer;
-    buffer.place(new ItemStack(BufferedInterfaceContent.ITEM.get()), player.getUUID());
+    buffer.place(new ItemStack(InterfaceContent.ITEM.get()), player.getUUID());
     level.setBlock(
         BUFFER.above(),
         Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN),

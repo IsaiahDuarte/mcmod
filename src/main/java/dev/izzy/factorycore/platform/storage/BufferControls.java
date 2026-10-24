@@ -7,7 +7,6 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.platform.Actors;
-import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.List;
@@ -15,61 +14,41 @@ import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.EntityBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.level.block.Block;
 
-public final class BufferedInterfaceBlock extends NetworkedBlock implements EntityBlock {
-  public BufferedInterfaceBlock(Properties properties) {
-    super(properties);
-  }
+/** Buffer-mode behavior of the unified {@link InterfaceBlock} (ADR 0059). */
+final class BufferControls {
+  private BufferControls() {}
 
-  @Override
-  public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
-    return new BufferedInterfaceEntity(position, state);
-  }
-
-  @Override
-  public void setPlacedBy(
-      Level level, BlockPos position, BlockState state, LivingEntity placer, ItemStack stack) {
-    super.setPlacedBy(level, position, state, placer, stack);
-    if (!level.isClientSide()
-        && placer != null
-        && level.getBlockEntity(position) instanceof BufferedInterfaceEntity buffer)
-      try {
-        buffer.place(stack, placer.getUUID());
-        if (placer instanceof ServerPlayer) {
-          buffer.requestDefaultImport(placer.getUUID());
-          level.scheduleTick(position, this, BufferedInterfaceEntity.DEFAULT_IMPORT_TICKS);
-        }
-      } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
-        if (placer instanceof Player player)
-          player.displayClientMessage(
-              Component.translatable("message.factorycore.buffer_fault", failure.getMessage()),
-              true);
+  /**
+   * Placement: binds the lease, then asks for the U6 Import default under a live placing player.
+   */
+  static void placed(
+      Block block, Level level, BlockPos position, LivingEntity placer, ItemStack stack) {
+    if (placer == null
+        || !(level.getBlockEntity(position) instanceof BufferedInterfaceEntity buffer)) return;
+    try {
+      buffer.place(stack, placer.getUUID());
+      if (placer instanceof ServerPlayer) {
+        buffer.requestDefaultImport(placer.getUUID());
+        level.scheduleTick(position, block, BufferedInterfaceEntity.DEFAULT_IMPORT_TICKS);
       }
+    } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
+      if (placer instanceof Player player)
+        player.displayClientMessage(
+            Component.translatable("message.factorycore.buffer_fault", failure.getMessage()), true);
+    }
   }
 
-  @Override
-  protected void tick(BlockState state, ServerLevel level, BlockPos position, RandomSource random) {
-    if (level.getBlockEntity(position) instanceof BufferedInterfaceEntity buffer
-        && buffer.applyDefaultImport())
-      level.scheduleTick(position, this, BufferedInterfaceEntity.DEFAULT_IMPORT_TICKS);
-  }
-
-  @Override
-  protected InteractionResult useWithoutItem(
-      BlockState state, Level level, BlockPos position, Player player, BlockHitResult hit) {
+  /** Empty-hand use in Buffer mode: offhand shortcuts, otherwise the settings screen. */
+  static InteractionResult use(Level level, BlockPos position, Player player) {
     if (!player.getMainHandItem().isEmpty()) return InteractionResult.PASS;
     if (level.isClientSide()) return InteractionResult.SUCCESS;
     if (!(level.getBlockEntity(position) instanceof BufferedInterfaceEntity buffer))
@@ -232,17 +211,5 @@ public final class BufferedInterfaceBlock extends NetworkedBlock implements Enti
           Component.translatable("message.factorycore.buffer_fault", failure.getMessage()), true);
       return InteractionResult.FAIL;
     }
-  }
-
-  @Override
-  public boolean dropsLeasedItem() {
-    return true;
-  }
-
-  @Override
-  protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
-    return blockEntity instanceof BufferedInterfaceEntity buffer
-        ? List.of(buffer.portableForBreak())
-        : List.of();
   }
 }
