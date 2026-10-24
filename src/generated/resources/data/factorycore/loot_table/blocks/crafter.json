@@ -15,11 +15,11 @@
               "source": "block_entity"
             }
           ],
-          "name": "factorycore:crafting_unit"
+          "name": "factorycore:crafter"
         }
       ],
       "rolls": 1.0
     }
   ],
-  "random_sequence": "factorycore:blocks/crafting_unit"
+  "random_sequence": "factorycore:blocks/crafter"
 }

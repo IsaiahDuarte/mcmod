@@ -641,19 +641,19 @@ public final class WorldCraftingJobs {
   }
 
   /** The loaded current interface at a dispatch position, or null. */
-  private CraftingInterfaceEntity interfaceAt(NodeRegistry.Position position) {
+  private CrafterEntity interfaceAt(NodeRegistry.Position position) {
     for (ServerLevel level : server.getAllLevels()) {
       if (!level.dimension().location().toString().equals(position.dimension())) continue;
       var pos = BlockPos.of(position.block());
       if (Loaded.chunk(level, pos) == null) return null;
-      return level.getBlockEntity(pos) instanceof CraftingInterfaceEntity holder && holder.current()
+      return level.getBlockEntity(pos) instanceof CrafterEntity holder && holder.current()
           ? holder
           : null;
     }
     return null;
   }
 
-  private static NodeRegistry.Position machineTarget(CraftingInterfaceEntity holder) {
+  private static NodeRegistry.Position machineTarget(CrafterEntity holder) {
     return new NodeRegistry.Position(
         holder.origin().dimension(), holder.getBlockPos().relative(holder.facing()).asLong());
   }
@@ -719,7 +719,7 @@ public final class WorldCraftingJobs {
     var codec = new PlatformResourceCodec(server.registryAccess());
     var outputs = expected(pattern);
     if (job.dispatch() == null) {
-      var holder = (CraftingInterfaceEntity) offer.unit();
+      var holder = (CrafterEntity) offer.unit();
       if (!reachable(holder, pattern)) return "machine_missing";
       if (leasedByOther(machineTarget(holder), job.id())) return "busy";
       var admission = networks().connectors().processingAdmission(machineTarget(holder));
@@ -786,7 +786,7 @@ public final class WorldCraftingJobs {
   }
 
   /** True when the machine exposes every handler kind the pattern's keys need. */
-  private static boolean reachable(CraftingInterfaceEntity holder, Pattern pattern) {
+  private static boolean reachable(CrafterEntity holder, Pattern pattern) {
     var keys = new HashSet<>(pattern.inputs().keySet());
     keys.addAll(expected(pattern).keySet());
     boolean items = keys.stream().anyMatch(key -> key.kind() == ResourceKind.ITEM);

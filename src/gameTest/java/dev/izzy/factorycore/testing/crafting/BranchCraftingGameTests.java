@@ -9,8 +9,8 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.crafting.WorldCrafting;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
@@ -85,8 +85,8 @@ public final class BranchCraftingGameTests {
             .setValue(BlockStateProperties.FACING, Direction.EAST));
     NetworkNodeEntity gate = h.getBlockEntity(GATEWAY);
     gate.commission(null);
-    h.setBlock(CHILD_UNIT, CraftingContent.UNIT.get());
-    CraftingUnitEntity unit = h.getBlockEntity(CHILD_UNIT);
+    h.setBlock(CHILD_UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(CHILD_UNIT);
     unit.patterns()
         .insertItem(0, pattern(new int[] {0}, Items.OAK_LOG, Items.OAK_PLANKS, 4), false);
     unit.patterns()

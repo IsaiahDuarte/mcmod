@@ -3,8 +3,8 @@ package dev.izzy.factorycore.testing.crafting;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
@@ -85,8 +85,8 @@ public final class TerminalJobGameTests {
     player.getInventory().clearContent();
     NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
     StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
-    h.setBlock(UNIT, CraftingContent.UNIT.get());
-    CraftingUnitEntity unit = h.getBlockEntity(UNIT);
+    h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(UNIT);
     unit.patterns()
         .insertItem(0, pattern(new int[] {0}, Items.OAK_LOG, Items.OAK_PLANKS, 4), false);
     unit.patterns()

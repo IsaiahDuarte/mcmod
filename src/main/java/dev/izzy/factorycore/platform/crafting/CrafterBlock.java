@@ -7,6 +7,7 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -16,20 +17,40 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
 
-/** Wired holder of up to nine patterns. Pattern items are ordinary, physically owned. */
-public class CraftingUnitBlock extends NetworkedBlock implements EntityBlock, CarriedComponents {
-  public static final MapCodec<CraftingUnitBlock> CODEC = simpleCodec(CraftingUnitBlock::new);
+/**
+ * The Crafter (ADR 0060): a wired holder of up to nine crafting-table or processing patterns that
+ * faces the machine its processing patterns use. Pattern items are ordinary, physically owned.
+ */
+public final class CrafterBlock extends NetworkedBlock implements EntityBlock, CarriedComponents {
+  public static final MapCodec<CrafterBlock> CODEC = simpleCodec(CrafterBlock::new);
 
-  public CraftingUnitBlock(Properties properties) {
+  public CrafterBlock(Properties properties) {
     super(properties);
+    registerDefaultState(
+        stateDefinition.any().setValue(BlockStateProperties.FACING, Direction.NORTH));
+  }
+
+  @Override
+  protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+    builder.add(BlockStateProperties.FACING);
+  }
+
+  /** Faces the clicked block, so placing against a furnace binds that furnace. */
+  @Override
+  public BlockState getStateForPlacement(BlockPlaceContext context) {
+    return defaultBlockState()
+        .setValue(BlockStateProperties.FACING, context.getClickedFace().getOpposite());
   }
 
   @Override
@@ -44,7 +65,7 @@ public class CraftingUnitBlock extends NetworkedBlock implements EntityBlock, Ca
 
   @Override
   public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
-    return new CraftingUnitEntity(position, state);
+    return new CrafterEntity(position, state);
   }
 
   /** Using a pattern inserts it into the first free slot. */

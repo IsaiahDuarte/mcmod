@@ -9,8 +9,8 @@ import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -278,8 +278,8 @@ public final class ProgramGameTests {
   public static void revokedDeployGrantPausesAndCraftCommandsRequestJobs(GameTestHelper h) {
     var f = setup(h);
     var member = new NetworkPermissions.Actor(UUID.randomUUID(), false);
-    h.setBlock(UNIT, CraftingContent.UNIT.get());
-    CraftingUnitEntity unit = h.getBlockEntity(UNIT);
+    h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(UNIT);
     var cells = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
     cells.set(0, new ItemStack(Items.OAK_LOG));
     var pattern = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());

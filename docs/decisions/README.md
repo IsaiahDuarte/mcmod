@@ -142,3 +142,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0057 — Processing dispatch journal and interruption recovery](0057-processing-journal-and-interruption.md)
 
 - [0059 — Unified Interface block](0059-unified-interface.md)
+
+- [0060 — Crafter block](0060-crafter.md)

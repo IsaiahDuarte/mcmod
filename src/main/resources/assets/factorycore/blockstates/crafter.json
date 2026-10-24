@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "factorycore:block/crafter"
+    },
+    "facing=south": {
+      "model": "factorycore:block/crafter",
+      "y": 180
+    },
+    "facing=east": {
+      "model": "factorycore:block/crafter",
+      "y": 90
+    },
+    "facing=west": {
+      "model": "factorycore:block/crafter",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "factorycore:block/crafter",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "factorycore:block/crafter",
+      "x": 90
+    }
+  }
+}

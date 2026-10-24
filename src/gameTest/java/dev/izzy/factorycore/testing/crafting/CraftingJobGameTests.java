@@ -8,8 +8,8 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
@@ -45,7 +45,7 @@ public final class CraftingJobGameTests {
       NodeRegistry.Position origin,
       DeviceSavedData saved,
       DeviceRegistry.Handle cell,
-      CraftingUnitEntity unit,
+      CrafterEntity unit,
       ResourceKey log,
       ResourceKey planks,
       ResourceKey stick) {
@@ -84,8 +84,8 @@ public final class CraftingJobGameTests {
     var owner = UUID.randomUUID();
     NetworkNodeEntity root = Net.in(h, owner).controller(ROOT);
     StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
-    h.setBlock(UNIT, CraftingContent.UNIT.get());
-    CraftingUnitEntity unit = h.getBlockEntity(UNIT);
+    h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(UNIT);
     unit.patterns()
         .insertItem(0, pattern(new int[] {0}, Items.OAK_LOG, Items.OAK_PLANKS, 4), false);
     unit.patterns()

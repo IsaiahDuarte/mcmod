@@ -8,8 +8,8 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.crafting.ProcessingJournal;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
@@ -118,11 +118,11 @@ public final class ProcessingJournalGameTests {
     h.setBlock(MACHINE, ConnectorFixture.BLOCK.get());
     h.setBlock(
         INTERFACE,
-        CraftingContent.INTERFACE
+        CraftingContent.CRAFTER
             .get()
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.EAST));
-    CraftingInterfaceEntity face = h.getBlockEntity(INTERFACE);
+    CrafterEntity face = h.getBlockEntity(INTERFACE);
     face.patterns().insertItem(0, pattern(), false);
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     var dimension = h.getLevel().dimension().location().toString();

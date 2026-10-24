@@ -12,8 +12,8 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.crafting.ProcessingJournal;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
@@ -190,7 +190,7 @@ final class InterruptionVerification {
         furnace().setItem(1, new ItemStack(Items.COAL, 8));
         level.setBlock(
             INTERFACE,
-            CraftingContent.INTERFACE
+            CraftingContent.CRAFTER
                 .get()
                 .defaultBlockState()
                 .setValue(BlockStateProperties.FACING, Direction.SOUTH),
@@ -204,9 +204,7 @@ final class InterruptionVerification {
                 0,
                 List.of(new ItemStack(Items.RAW_IRON)),
                 List.of(new ItemStack(Items.IRON_INGOT))));
-        ((CraftingInterfaceEntity) level.getBlockEntity(INTERFACE))
-            .patterns()
-            .insertItem(0, pattern, false);
+        ((CrafterEntity) level.getBlockEntity(INTERFACE)).patterns().insertItem(0, pattern, false);
         phase = 1;
       }
       case 1 -> {

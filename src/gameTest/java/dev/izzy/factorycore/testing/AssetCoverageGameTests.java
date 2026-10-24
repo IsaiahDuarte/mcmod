@@ -207,7 +207,7 @@ public final class AssetCoverageGameTests {
       helper.assertTrue(lang.has(key), "Lamp legend " + key);
     // Lower bounds catch an empty registry without pinning the count other slices extend.
     helper.assertTrue(
-        blocks >= 15 && items >= 30 && states > blocks,
+        blocks >= 14 && items >= 30 && states > blocks,
         "Inventory " + blocks + " blocks / " + states + " states / " + items + " items");
     helper.succeed();
   }

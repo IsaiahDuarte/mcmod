@@ -304,7 +304,7 @@ public final class FactoryCoreData {
       shaped(
           out,
           misc,
-          "crafting_unit",
+          "crafter",
           1,
           Items.GOLD_INGOT,
           "IGI/RTR/IGI",
@@ -316,21 +316,6 @@ public final class FactoryCoreData {
           Items.REDSTONE,
           'T',
           Items.CRAFTING_TABLE);
-      shaped(
-          out,
-          misc,
-          "crafting_interface",
-          1,
-          Items.GOLD_INGOT,
-          "IGI/RHR/IGI",
-          'I',
-          Items.IRON_INGOT,
-          'G',
-          Items.GOLD_INGOT,
-          'R',
-          Items.REDSTONE,
-          'H',
-          Items.HOPPER);
       shaped(
           out,
           misc,

@@ -2,8 +2,8 @@ package dev.izzy.factorycore.testing.crafting;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.crafting.WorldCrafting;
 import dev.izzy.factorycore.platform.network.NetworkContent;
@@ -89,12 +89,12 @@ public final class CraftingUnitGameTests {
             .setValue(BlockStateProperties.FACING, Direction.EAST));
     NetworkNodeEntity gate = h.getBlockEntity(GATEWAY);
     gate.commission(null);
-    h.setBlock(CHILD_UNIT, CraftingContent.UNIT.get());
-    h.setBlock(ROOT_UNIT, CraftingContent.UNIT.get());
-    h.setBlock(COPY_UNIT, CraftingContent.UNIT.get());
-    CraftingUnitEntity rootUnit = h.getBlockEntity(ROOT_UNIT);
-    CraftingUnitEntity copyUnit = h.getBlockEntity(COPY_UNIT);
-    CraftingUnitEntity childUnit = h.getBlockEntity(CHILD_UNIT);
+    h.setBlock(CHILD_UNIT, CraftingContent.CRAFTER.get());
+    h.setBlock(ROOT_UNIT, CraftingContent.CRAFTER.get());
+    h.setBlock(COPY_UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity rootUnit = h.getBlockEntity(ROOT_UNIT);
+    CrafterEntity copyUnit = h.getBlockEntity(COPY_UNIT);
+    CrafterEntity childUnit = h.getBlockEntity(CHILD_UNIT);
     var planks = pattern(Items.OAK_LOG, Items.OAK_PLANKS, 4);
     var sticks = pattern(Items.OAK_PLANKS, Items.STICK, 4);
     h.setBlock(
@@ -147,8 +147,8 @@ public final class CraftingUnitGameTests {
 
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void breakingDropsEveryPatternAndUnsupportedDataIsRetained(GameTestHelper h) {
-    h.setBlock(ROOT_UNIT, CraftingContent.UNIT.get());
-    CraftingUnitEntity unit = h.getBlockEntity(ROOT_UNIT);
+    h.setBlock(ROOT_UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(ROOT_UNIT);
     unit.patterns().insertItem(0, pattern(Items.OAK_LOG, Items.OAK_PLANKS, 4), false);
     unit.patterns().insertItem(4, pattern(Items.BIRCH_LOG, Items.BIRCH_PLANKS, 4), false);
     h.startSequence()
@@ -172,10 +172,10 @@ public final class CraftingUnitGameTests {
                 drop.discard();
               }
               h.assertTrue(
-                  counts.equals(Map.of("crafting_unit", 1, "crafting_pattern", 2)),
+                  counts.equals(Map.of("crafter", 1, "crafting_pattern", 2)),
                   "Unit and both patterns drop: " + counts);
-              h.setBlock(ROOT_UNIT, CraftingContent.UNIT.get());
-              CraftingUnitEntity future = h.getBlockEntity(ROOT_UNIT);
+              h.setBlock(ROOT_UNIT, CraftingContent.CRAFTER.get());
+              CrafterEntity future = h.getBlockEntity(ROOT_UNIT);
               var tag = new CompoundTag();
               tag.putInt("Schema", 2);
               tag.putString("Future", "kept");
@@ -197,8 +197,8 @@ public final class CraftingUnitGameTests {
               h.assertTrue(retained.size() == 1, "Only the unit drops");
               var device = retained.getFirst().getItem().copy();
               retained.getFirst().discard();
-              h.setBlock(ROOT_UNIT, CraftingContent.UNIT.get());
-              CraftingUnitEntity placed = h.getBlockEntity(ROOT_UNIT);
+              h.setBlock(ROOT_UNIT, CraftingContent.CRAFTER.get());
+              CrafterEntity placed = h.getBlockEntity(ROOT_UNIT);
               placed.applyComponentsFromItemStack(device);
               h.assertTrue(
                   placed.saveWithoutMetadata(h.getLevel().registryAccess()).equals(tag),
@@ -312,7 +312,7 @@ public final class CraftingUnitGameTests {
     var expected =
         Map.of(
             "blank_pattern", Map.of("paper", 4, "redstone", 4, "iron_ingot", 1),
-            "crafting_unit",
+            "crafter",
                 Map.of("iron_ingot", 4, "gold_ingot", 2, "redstone", 2, "crafting_table", 1));
     for (var entry : expected.entrySet()) {
       var id = ResourceLocation.fromNamespaceAndPath("factorycore", entry.getKey());

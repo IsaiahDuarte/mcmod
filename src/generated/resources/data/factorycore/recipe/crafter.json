@@ -5,23 +5,23 @@
     "G": {
       "item": "minecraft:gold_ingot"
     },
-    "H": {
-      "item": "minecraft:hopper"
-    },
     "I": {
       "item": "minecraft:iron_ingot"
     },
     "R": {
       "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "minecraft:crafting_table"
     }
   },
   "pattern": [
     "IGI",
-    "RHR",
+    "RTR",
     "IGI"
   ],
   "result": {
     "count": 1,
-    "id": "factorycore:crafting_interface"
+    "id": "factorycore:crafter"
   }
 }

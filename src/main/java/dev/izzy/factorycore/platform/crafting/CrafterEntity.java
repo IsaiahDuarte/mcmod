@@ -12,23 +12,27 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /**
- * Processing pattern holder facing one machine. A job's persisted dispatch is the only lease on the
- * machine port; the interface itself stores no job state and owns no resources.
+ * The Crafter (ADR 0060): one holder for crafting-table and processing patterns, facing one
+ * machine. Crafting-table patterns run without the machine; processing patterns are pushed into it.
+ * A job's persisted dispatch is the only lease on the machine port; the Crafter itself stores no
+ * job state and owns no resources.
  */
-public final class CraftingInterfaceEntity extends PatternHolderEntity {
+public final class CrafterEntity extends PatternHolderEntity {
   private BlockCapabilityCache<IItemHandler, Direction> machine, sided;
   private BlockCapabilityCache<IFluidHandler, Direction> tanks, sidedTanks;
   private Direction tankFacing;
   private Direction cachedFacing;
 
-  public CraftingInterfaceEntity(BlockPos position, BlockState state) {
-    super(CraftingContent.INTERFACE_ENTITY.get(), position, state);
+  public CrafterEntity(BlockPos position, BlockState state) {
+    super(CraftingContent.CRAFTER_ENTITY.get(), position, state);
   }
 
   @Override
   protected boolean accepts(ItemStack stack) {
-    return stack.is(CraftingContent.PROCESSING_PATTERN.get())
-        && stack.get(CraftingContent.PROCESSING.get()) != null;
+    return stack.is(CraftingContent.CRAFTING_PATTERN.get())
+            && stack.get(CraftingContent.PATTERN.get()) != null
+        || stack.is(CraftingContent.PROCESSING_PATTERN.get())
+            && stack.get(CraftingContent.PROCESSING.get()) != null;
   }
 
   public Direction facing() {

@@ -3,8 +3,8 @@ package dev.izzy.factorycore.testing.storage;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.*;
@@ -241,11 +241,11 @@ public final class IndexedMachinePortsGameTests {
     var craftingPos = new BlockPos(4, 1, 0);
     h.setBlock(
         craftingPos,
-        CraftingContent.INTERFACE
+        CraftingContent.CRAFTER
             .get()
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.SOUTH));
-    CraftingInterfaceEntity crafting = h.getBlockEntity(craftingPos);
+    CrafterEntity crafting = h.getBlockEntity(craftingPos);
     var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
     pattern.set(
         CraftingContent.PROCESSING.get(),

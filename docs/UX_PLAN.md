@@ -199,6 +199,7 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   relevant ADRs.
 
 - [ ] **U12 — Crafter (needs UD1).**
+  Progress: U12a done 2026-10-24 ([ADR 0060](decisions/0060-crafter.md)): one `crafter` block/entity holds both pattern kinds; old ids removed; fast checks pass. Open: player-guide/module-doc rename, graphical runs, a focused mixed-pattern GameTest, and the vanilla "Crafter" name clash (UD4).
   One block holds patterns. Crafting-table patterns run inside it; processing patterns are
   pushed into the machine it faces. Same leases and output attribution as today. Delete the
   Crafting Unit and Crafting Interface outright (UD7).

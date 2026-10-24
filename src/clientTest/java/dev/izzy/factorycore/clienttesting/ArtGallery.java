@@ -74,8 +74,8 @@ final class ArtGallery {
                 .get()
                 .defaultBlockState()
                 .setValue(FuelGeneratorBlock.LIT, true),
-            CraftingContent.UNIT.get().defaultBlockState(),
-            CraftingContent.INTERFACE.get().defaultBlockState(),
+            CraftingContent.CRAFTER.get().defaultBlockState(),
+            CraftingContent.CRAFTER.get().defaultBlockState(),
             ProgramContent.BLOCK.get().defaultBlockState(),
             WirelessContent.ACCESS_POINT.get().defaultBlockState(),
             facing(WirelessContent.LINK.get().defaultBlockState(), Direction.NORTH),

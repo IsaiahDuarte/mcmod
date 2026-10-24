@@ -8,9 +8,8 @@ import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
-import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
@@ -145,11 +144,11 @@ public final class WirelessCraftingGameTests {
       furnace.setItem(1, new ItemStack(Items.COAL, 2));
       h.setBlock(
           UNIT,
-          CraftingContent.INTERFACE
+          CraftingContent.CRAFTER
               .get()
               .defaultBlockState()
               .setValue(BlockStateProperties.FACING, Direction.EAST));
-      CraftingInterfaceEntity face = h.getBlockEntity(UNIT);
+      CrafterEntity face = h.getBlockEntity(UNIT);
       var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
       pattern.set(
           CraftingContent.PROCESSING.get(),
@@ -161,8 +160,8 @@ public final class WirelessCraftingGameTests {
               List.of(new ItemStack(Items.IRON_INGOT))));
       face.patterns().insertItem(0, pattern, false);
     } else {
-      h.setBlock(UNIT, CraftingContent.UNIT.get());
-      CraftingUnitEntity unit = h.getBlockEntity(UNIT);
+      h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+      CrafterEntity unit = h.getBlockEntity(UNIT);
       unit.patterns().insertItem(0, planksPattern(), false);
     }
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());

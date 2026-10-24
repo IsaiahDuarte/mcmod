@@ -1,8 +1,8 @@
 package dev.izzy.factorycore.clienttesting;
 
 import dev.izzy.factorycore.core.storage.CellTier;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingUnitEntity;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
@@ -120,7 +120,7 @@ final class PresentationScenes {
             NetworkContent.GATEWAY.get().defaultBlockState(),
             InterfaceContent.state(InterfaceKind.STORAGE, Direction.NORTH),
             InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH),
-            CraftingContent.INTERFACE.get().defaultBlockState(),
+            CraftingContent.CRAFTER.get().defaultBlockState(),
             WirelessContent.LINK.get().defaultBlockState(),
             TerminalContent.BLOCK.get().defaultBlockState(),
             FuelGeneratorContent.BLOCK.get().defaultBlockState());
@@ -296,7 +296,7 @@ final class PresentationScenes {
 
   static void jobs(ServerPlayer player) {
     var level = player.serverLevel();
-    level.setBlock(JOB_UNIT, CraftingContent.UNIT.get().defaultBlockState(), 3);
+    level.setBlock(JOB_UNIT, CraftingContent.CRAFTER.get().defaultBlockState(), 3);
     var cells = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
     cells.set(0, new ItemStack(Items.OAK_LOG));
     var pattern = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
@@ -304,7 +304,7 @@ final class PresentationScenes {
         CraftingContent.PATTERN.get(),
         new PatternContents(
             UUID.randomUUID(), 1, 0, cells, new ItemStack(Items.OAK_PLANKS, 4), List.of()));
-    ((CraftingUnitEntity) level.getBlockEntity(JOB_UNIT)).patterns().insertItem(0, pattern, false);
+    ((CrafterEntity) level.getBlockEntity(JOB_UNIT)).patterns().insertItem(0, pattern, false);
   }
 
   /** Stores the 8 oak logs once the rebuilt network has the cell online again. */

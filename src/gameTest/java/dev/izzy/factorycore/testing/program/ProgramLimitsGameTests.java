@@ -10,8 +10,8 @@ import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.NetworkContent;
@@ -410,11 +410,11 @@ public final class ProgramLimitsGameTests {
     var facePos = new BlockPos(3, 1, 2);
     h.setBlock(
         facePos,
-        CraftingContent.INTERFACE
+        CraftingContent.CRAFTER
             .get()
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.NORTH));
-    CraftingInterfaceEntity face = h.getBlockEntity(facePos);
+    CrafterEntity face = h.getBlockEntity(facePos);
     var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
     pattern.set(
         CraftingContent.PROCESSING.get(),

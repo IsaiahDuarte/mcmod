@@ -151,6 +151,6 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
   @Override
   public Vertex wireVertex() {
     return new Vertex(
-        null, "crafting_unit", NetworkTopology.Role.CRAFTER, current() && diagnostic().isEmpty());
+        null, "crafter", NetworkTopology.Role.CRAFTER, current() && diagnostic().isEmpty());
   }
 }

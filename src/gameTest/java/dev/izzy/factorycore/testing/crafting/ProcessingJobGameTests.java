@@ -10,8 +10,8 @@ import dev.izzy.factorycore.core.resource.ResourcePort;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Positions;
+import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
-import dev.izzy.factorycore.platform.crafting.CraftingInterfaceEntity;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.NetworkContent;
@@ -69,7 +69,7 @@ public final class ProcessingJobGameTests {
       NodeRegistry.Position origin,
       DeviceSavedData saved,
       DeviceRegistry.Handle cell,
-      CraftingInterfaceEntity face,
+      CrafterEntity face,
       BlastFurnaceBlockEntity furnace,
       ResourceKey ore,
       ResourceKey ingot) {
@@ -102,11 +102,11 @@ public final class ProcessingJobGameTests {
     furnace.setItem(1, new ItemStack(Items.COAL, 8));
     h.setBlock(
         INTERFACE,
-        CraftingContent.INTERFACE
+        CraftingContent.CRAFTER
             .get()
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.SOUTH));
-    CraftingInterfaceEntity face = h.getBlockEntity(INTERFACE);
+    CrafterEntity face = h.getBlockEntity(INTERFACE);
     face.patterns().insertItem(0, smelting(), false);
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     return new Fixture(
@@ -377,11 +377,11 @@ public final class ProcessingJobGameTests {
     MixerFixture.MixerEntity mixer = h.getBlockEntity(FURNACE);
     h.setBlock(
         INTERFACE,
-        CraftingContent.INTERFACE
+        CraftingContent.CRAFTER
             .get()
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.SOUTH));
-    CraftingInterfaceEntity face = h.getBlockEntity(INTERFACE);
+    CrafterEntity face = h.getBlockEntity(INTERFACE);
     var water = new FluidStack(Fluids.WATER, 1_000);
     var lava = new FluidStack(Fluids.LAVA, 250);
     var pattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
@@ -511,11 +511,11 @@ public final class ProcessingJobGameTests {
     h.setBlock(new BlockPos(0, 1, 2), NetworkContent.CABLE.get());
     h.setBlock(
         secondPos,
-        CraftingContent.INTERFACE
+        CraftingContent.CRAFTER
             .get()
             .defaultBlockState()
             .setValue(BlockStateProperties.FACING, Direction.EAST));
-    CraftingInterfaceEntity second = h.getBlockEntity(secondPos);
+    CrafterEntity second = h.getBlockEntity(secondPos);
     var goldPattern = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
     goldPattern.set(
         CraftingContent.PROCESSING.get(),

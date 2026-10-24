@@ -71,8 +71,7 @@ public final class StorageContent {
                         for (var tier : EnergyBankTier.values())
                           shown.add(EnergyBankContent.item(tier));
                         shown.add(FuelGeneratorContent.ITEM.get());
-                        shown.add(CraftingContent.UNIT_ITEM.get());
-                        shown.add(CraftingContent.INTERFACE_ITEM.get());
+                        shown.add(CraftingContent.CRAFTER_ITEM.get());
                         shown.add(ProgramContent.ITEM.get());
                         shown.add(WirelessContent.ACCESS_POINT_ITEM.get());
                         shown.add(WirelessContent.HANDHELD.get());

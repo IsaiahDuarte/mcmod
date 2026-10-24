@@ -25,7 +25,7 @@ public final class CraftingContent {
                       .persistent(PatternContents.CODEC)
                       .networkSynchronized(PatternContents.STREAM_CODEC));
 
-  /** Exact unsupported Crafting Unit data, carried unchanged by its broken block item. */
+  /** Exact unsupported Crafter data, carried unchanged by its broken block item. */
   public static final DeferredHolder<DataComponentType<?>, DataComponentType<CustomData>> RETAINED =
       FactoryRegistries.COMPONENTS.registerComponentType(
           "unit_retained", builder -> builder.persistent(CustomData.CODEC));
@@ -48,36 +48,24 @@ public final class CraftingContent {
   public static final DeferredItem<ProcessingPatternItem> PROCESSING_PATTERN =
       FactoryRegistries.ITEMS.register("processing_pattern", ProcessingPatternItem::new);
 
-  public static final DeferredBlock<CraftingInterfaceBlock> INTERFACE =
+  /** The Crafter (ADR 0060): crafting-table and processing patterns in one faced block. */
+  public static final DeferredBlock<CrafterBlock> CRAFTER =
       FactoryRegistries.BLOCKS.registerBlock(
-          "crafting_interface", CraftingInterfaceBlock::new, DeviceProperties.machine());
+          "crafter", CrafterBlock::new, DeviceProperties.machine());
 
-  public static final DeferredItem<BlockItem> INTERFACE_ITEM =
-      FactoryRegistries.ITEMS.registerSimpleBlockItem("crafting_interface", INTERFACE);
+  public static final DeferredItem<BlockItem> CRAFTER_ITEM =
+      FactoryRegistries.ITEMS.registerSimpleBlockItem("crafter", CRAFTER);
 
-  public static final DeferredBlock<CraftingUnitBlock> UNIT =
-      FactoryRegistries.BLOCKS.registerBlock(
-          "crafting_unit", CraftingUnitBlock::new, DeviceProperties.machine());
-
-  public static final DeferredItem<BlockItem> UNIT_ITEM =
-      FactoryRegistries.ITEMS.registerSimpleBlockItem("crafting_unit", UNIT);
-
-  public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CraftingUnitEntity>>
-      UNIT_ENTITY = FactoryRegistries.entity("crafting_unit", CraftingUnitEntity::new, UNIT);
-
-  public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CraftingInterfaceEntity>>
-      INTERFACE_ENTITY =
-          FactoryRegistries.entity("crafting_interface", CraftingInterfaceEntity::new, INTERFACE);
+  public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CrafterEntity>>
+      CRAFTER_ENTITY = FactoryRegistries.entity("crafter", CrafterEntity::new, CRAFTER);
 
   private CraftingContent() {}
 
   private static void capabilities(RegisterCapabilitiesEvent event) {
-    event.registerBlockEntity(
-        Capabilities.ItemHandler.BLOCK, UNIT_ENTITY.get(), (unit, face) -> unit.patterns());
     // The faced side belongs to the machine; patterns may be fed from every other side.
     event.registerBlockEntity(
         Capabilities.ItemHandler.BLOCK,
-        INTERFACE_ENTITY.get(),
+        CRAFTER_ENTITY.get(),
         (holder, face) -> face == holder.facing() ? null : holder.patterns());
   }
 

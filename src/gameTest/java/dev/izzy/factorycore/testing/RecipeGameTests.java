@@ -91,8 +91,8 @@ public final class RecipeGameTests {
       unlocked.addAll(advancement.value().rewards().recipes());
     var recipes = modRecipes(h);
     h.assertTrue(
-        recipes.size() == 23,
-        "All 23 Factory Core crafting recipes, including speed upgrades, load");
+        recipes.size() == 22,
+        "All 22 Factory Core crafting recipes, including speed upgrades, load");
     for (var holder : recipes) {
       var input = input(holder.value());
       var found = manager.getRecipeFor(RecipeType.CRAFTING, input, h.getLevel());
@@ -261,13 +261,13 @@ public final class RecipeGameTests {
   @GameTest(template = "empty")
   public static void laterTiersCraftInOrderAndReachAnInfiniteCell(GameTestHelper h) {
     var kit = new LinkedHashMap<Item, Integer>();
-    kit.put(Items.IRON_INGOT, 45);
-    kit.put(Items.GOLD_INGOT, 16);
-    kit.put(Items.REDSTONE, 27);
+    // One Crafter recipe (ADR 0060) replaces the unit and processing-interface recipes.
+    kit.put(Items.IRON_INGOT, 41);
+    kit.put(Items.GOLD_INGOT, 14);
+    kit.put(Items.REDSTONE, 25);
     kit.put(Items.QUARTZ, 3);
     kit.put(Items.ENDER_PEARL, 5);
     kit.put(Items.CRAFTING_TABLE, 1);
-    kit.put(Items.HOPPER, 1);
     kit.put(Items.REPEATER, 1);
     kit.put(Items.GLASS, 3);
     kit.put(Items.COPPER_INGOT, 5);
@@ -282,8 +282,7 @@ public final class RecipeGameTests {
         List.of(
             "starter_item_cell",
             "expansion_module",
-            "crafting_unit",
-            "crafting_interface",
+            "crafter",
             "program_controller",
             "gateway",
             "wireless_access_point",
@@ -302,8 +301,7 @@ public final class RecipeGameTests {
         Map.ofEntries(
             Map.entry("starter_item_cell", 1),
             Map.entry("expansion_module", 1),
-            Map.entry("crafting_unit", 1),
-            Map.entry("crafting_interface", 1),
+            Map.entry("crafter", 1),
             Map.entry("program_controller", 1),
             Map.entry("gateway", 1),
             Map.entry("wireless_access_point", 1),
