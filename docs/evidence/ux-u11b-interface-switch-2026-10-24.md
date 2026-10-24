@@ -35,3 +35,5 @@ Checks:
 
 Limitations: an upgraded Interface cannot change mode, because upgrades cannot be
 removed. Switching does not carry over settings.
+
+Release gate: `python3 scripts/verify.py --full` PASS at U11c (`abbe7d4`, 2026-10-24). This is the first full run since U4. It covers the restart, save-skew, throughput, interruption and wireless-lifecycle suites with the unified Interface.
