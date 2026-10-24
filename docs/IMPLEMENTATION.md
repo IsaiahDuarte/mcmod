@@ -13,6 +13,8 @@ A required SIGKILL/save-skew suite covers processing jobs. A01–A17 stay **part
 gaps in the acceptance table close. A17 needs a human survival playtest. The dated history of
 how this was built is in the [work log archive](archive/IMPLEMENTATION-LOG.md).
 Player-experience simplification work is sequenced in the [UX plan](UX_PLAN.md).
+Feature parity with AE2, Refined Storage and Super Factory Manager is sequenced in the
+[parity plan](PARITY_PLAN.md).
 
 ## How an AI should proceed
 
