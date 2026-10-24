@@ -1,9 +1,11 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.platform.network.AccessPackets;
 import dev.izzy.factorycore.platform.network.NetworkAccessMenu;
+import java.util.EnumSet;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -15,24 +17,31 @@ import net.minecraft.world.entity.player.Inventory;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Network Access screen (ADR 0055): one row per principal with seven permission toggles, a revoke
- * button and an explicit two-step ownership transfer. Toggle text is a letter when granted and a
- * dot when not; a trailing {@code *} marks a grant that a gateway above this point blocks, so
- * meaning never depends on color alone. All state comes from the server's bounded view.
+ * Network Access screen (ADR 0055): one row per principal with a role button (U8: Guest, Member,
+ * Builder, Admin; Advanced shows the seven permission toggles instead), a revoke button and an
+ * explicit two-step ownership transfer. Toggle text is a letter when granted and a dot when not; a
+ * trailing {@code *} marks a grant that a gateway above this point blocks, so meaning never depends
+ * on color alone. All state comes from the server's bounded view.
  */
 public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAccessMenu> {
   private static final int ROWS = AccessPackets.PAGE_ROWS, PERMISSIONS = Permission.values().length;
   private static final int ROW_Y = 66, ROW_HEIGHT = 18, TOGGLE_X = 96, TOGGLE_STEP = 17;
   private static final String LETTERS = "VDWCEPM";
   private final Button[][] toggles = new Button[ROWS][PERMISSIONS];
-  private final Button[] revokes = new Button[ROWS], owners = new Button[ROWS];
-  private Button previous, next, recovery, confirm, cancel;
+  private final Button[] revokes = new Button[ROWS],
+      owners = new Button[ROWS],
+      roles = new Button[ROWS];
+  private Button previous, next, recovery, confirm, cancel, advancedButton;
+
+  /** Advanced shows the per-permission letter toggles instead of the role buttons. */
+  private boolean advanced;
+
   private long shown = -1;
 
   public NetworkAccessScreen(NetworkAccessMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
     imageWidth = 300;
-    imageHeight = 200;
+    imageHeight = 208;
   }
 
   @Override
@@ -50,6 +59,11 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
                     .bounds(leftPos + TOGGLE_X + bit * TOGGLE_STEP, y, 16, 16)
                     .build());
       }
+      roles[row] =
+          addRenderableWidget(
+              Button.builder(Component.empty(), button -> cycleRole(index))
+                  .bounds(leftPos + TOGGLE_X, y, 7 * TOGGLE_STEP - 1, 16)
+                  .build());
       revokes[row] =
           addRenderableWidget(
               Button.builder(
@@ -84,6 +98,18 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
                 .bounds(leftPos + 56, footer, 16, 16)
                 .tooltip(Tooltip.create(Component.translatable("gui.factorycore.access.next")))
                 .build());
+    advancedButton =
+        addRenderableWidget(
+            Button.builder(
+                    Component.empty(),
+                    button -> {
+                      advanced = !advanced;
+                      refresh();
+                    })
+                .bounds(leftPos + 96, footer, 80, 16)
+                .tooltip(
+                    Tooltip.create(Component.translatable("gui.factorycore.access.advanced.help")))
+                .build());
     recovery =
         addRenderableWidget(
             Button.builder(
@@ -117,6 +143,33 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
     var principal = rows.get(row);
     boolean granted = (principal.granted() & 1 << bit) != 0;
     menu.send(granted ? AccessPackets.REVOKE : AccessPackets.GRANT, principal.id(), bit);
+  }
+
+  /** Moves one player to the next role; a custom or empty grant set starts at Guest. */
+  private void cycleRole(int row) {
+    var rows = menu.view().rows();
+    if (row >= rows.size()) return;
+    var principal = rows.get(row);
+    var role = role(principal.granted());
+    var roles = NetworkPermissions.AccessRole.values();
+    var target = role == null ? roles[0] : roles[(role.ordinal() + 1) % roles.length];
+    menu.send(AccessPackets.ROLE, principal.id(), target.ordinal());
+  }
+
+  private static NetworkPermissions.AccessRole role(int mask) {
+    var grants = EnumSet.noneOf(Permission.class);
+    for (int bit = 0; bit < PERMISSIONS; bit++)
+      if ((mask & 1 << bit) != 0) grants.add(Permission.values()[bit]);
+    return NetworkPermissions.AccessRole.matching(grants);
+  }
+
+  private static Component roleName(int mask) {
+    var role = role(mask);
+    return Component.translatable(
+        "gui.factorycore.access.role."
+            + (mask == 0
+                ? "none"
+                : role == null ? "custom" : role.name().toLowerCase(Locale.ROOT)));
   }
 
   private void act(int row, int action) {
@@ -167,9 +220,19 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
     for (int row = 0; row < ROWS; row++) {
       var principal = row < view.rows().size() ? view.rows().get(row) : null;
       boolean visible = view.manage() && principal != null;
+      roles[row].visible = visible && !pending && !advanced;
+      if (visible) {
+        roles[row].setMessage(roleName(principal.granted()));
+        roles[row].setTooltip(
+            Tooltip.create(
+                Component.translatable(
+                    "gui.factorycore.access.role.help",
+                    principal.name(),
+                    names(principal.granted(), (1 << PERMISSIONS) - 1))));
+      }
       for (int bit = 0; bit < PERMISSIONS; bit++) {
         var button = toggles[row][bit];
-        button.visible = visible && !pending;
+        button.visible = visible && !pending && advanced;
         if (!visible) continue;
         boolean granted = (principal.granted() & 1 << bit) != 0;
         boolean blocked = granted && (view.branch() & 1 << bit) == 0;
@@ -190,6 +253,10 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
     previous.active = view.page() > 0;
     next.active = view.page() + 1 < pages(view);
     recovery.visible = !pending;
+    advancedButton.visible = view.manage() && !pending;
+    advancedButton.setMessage(
+        Component.translatable(
+            advanced ? "gui.factorycore.access.roles" : "gui.factorycore.access.advanced"));
     confirm.visible = cancel.visible = pending;
   }
 
@@ -301,13 +368,22 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
           ROW_Y - 9,
           0xe4bc83,
           false);
-      for (int bit = 0; bit < PERMISSIONS; bit++)
+      if (advanced)
+        for (int bit = 0; bit < PERMISSIONS; bit++)
+          graphics.drawString(
+              font,
+              String.valueOf(LETTERS.charAt(bit)),
+              TOGGLE_X + bit * TOGGLE_STEP + 5,
+              ROW_Y - 9,
+              (view.branch() & 1 << bit) == 0 ? 0xbf616a : 0xe4bc83,
+              false);
+      else
         graphics.drawString(
             font,
-            String.valueOf(LETTERS.charAt(bit)),
-            TOGGLE_X + bit * TOGGLE_STEP + 5,
+            Component.translatable("gui.factorycore.access.role"),
+            TOGGLE_X,
             ROW_Y - 9,
-            (view.branch() & 1 << bit) == 0 ? 0xbf616a : 0xe4bc83,
+            0xe4bc83,
             false);
       for (int row = 0; row < view.rows().size(); row++) {
         var principal = view.rows().get(row);
@@ -343,10 +419,11 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
         y += 10;
       }
     }
+    // The footer row holds paging, Advanced and Recovery; the status gets its own line.
     var status =
         font.plainSubstrByWidth(
             Component.translatable("gui.factorycore.access.status." + view.status()).getString(),
-            136);
-    graphics.drawString(font, status, 78, ROW_Y + ROWS * ROW_HEIGHT + 6, 0xd8dee9, false);
+            imageWidth - 16);
+    graphics.drawString(font, status, 8, ROW_Y + ROWS * ROW_HEIGHT + 22, 0xd8dee9, false);
   }
 }

@@ -37,7 +37,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -1242,9 +1241,8 @@ public final class PresentationClientVerification {
                             at(player, base),
                             UUID.nameUUIDFromBytes(
                                 "presentation-guest".getBytes(StandardCharsets.UTF_8)),
-                            EnumSet.of(
-                                NetworkPermissions.Permission.VIEW,
-                                NetworkPermissions.Permission.DEPOSIT))
+                            // U8: a Member role, so the row shows a named role.
+                            NetworkPermissions.AccessRole.MEMBER.grants())
                     == NetworkPermissions.Change.OK,
                 "Owner grants a second principal before opening Network Access"));
     use(base, Direction.SOUTH, true);
@@ -1255,6 +1253,21 @@ public final class PresentationClientVerification {
           return true;
         });
     scales("access", NetworkAccessScreen.class, false);
+    // U8: Advanced swaps the role buttons for the seven permission toggles.
+    use(base, Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof NetworkAccessScreen screen)) return false;
+          for (var child : screen.children())
+            if (child instanceof net.minecraft.client.gui.components.Button button
+                && button.visible
+                && button.getMessage().getString().equals("Advanced")) {
+              button.onPress();
+              return true;
+            }
+          return false;
+        });
+    scales("access-advanced", NetworkAccessScreen.class, false);
     // Transfer Recovery opens through its real player command.
     server(
         player ->

@@ -33,6 +33,8 @@ gateway-custom-scale-1.png
 gateway-custom-scale-4.png
 access-scale-1.png
 access-scale-4.png
+access-advanced-scale-1.png
+access-advanced-scale-4.png
 recovery-scale-1.png
 recovery-scale-4.png
 guide-scale-1.png

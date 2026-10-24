@@ -471,8 +471,12 @@ The compact machine editor fits Minecraft’s minimum240-pixel GUI height. Rules
 
 Use a Network Controller, or press **Access…** on a gateway's policy screen, to manage who can use the network.
 
-- **Rows.** Each player has a row of seven toggles: V view, D deposit, W withdraw, C craft, E edit
-  interfaces/patterns, P deploy programs and M manage.
+- **Roles.** Each player has a role button. Click it to move to the next role: **Guest** (view),
+  **Member** (also deposit, withdraw and craft), **Builder** (also edit interfaces/patterns and
+  deploy programs) and **Admin** (also manage access and gateways). A player whose grants match no
+  role shows **Custom**; an online player without grants shows **No access**.
+- **Advanced.** Shows each player's seven toggles instead: V view, D deposit, W withdraw, C craft,
+  E edit interfaces/patterns, P deploy programs and M manage. **Roles** switches back.
 - **Gateway limits.** The header shows the limits that gateways above this point apply. A toggle
   marked `*` is granted but blocked by a gateway here.
 - **Revoke** removes all of that player's grants.

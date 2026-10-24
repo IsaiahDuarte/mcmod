@@ -60,3 +60,18 @@ commands (ADR 0049 access commands, transfer recovery commands).
   with a granted second principal, and checks fit, no overlap and label fit at GUI scales 1–4
   in the smallest window. That check caught the overflowing Revoke label, which is now fixed.
   [Evidence](../evidence/access-recovery-ui-v1-2026-10-19.md).
+
+
+## Roles extension — 2026-10-24 (U8)
+
+Each row now starts with a role button: Guest (VIEW), Member (plus DEPOSIT, WITHDRAW,
+CRAFT), Builder (plus EDIT, DEPLOY) and Admin (all). The letter toggles moved behind
+an Advanced view. A new `AccessPackets.ROLE` command, value = `AccessRole` ordinal,
+sets the principal's grants to exactly that role's set. It goes through the same
+`AccessAdministration.change` path, with the same Manage check, listing check, rate
+limit and change notification as GRANT/REVOKE. Roles are not stored: recognition is
+exact equality on the grant set, so a hand-tuned set shows as Custom and keeps
+working unchanged. `AccessPresetsTest` pins each role to its set, and
+`NetworkAccessGameTests.roleButtonsSetExactGrantsOnlyWithManage` covers the command
+and its denial.
+

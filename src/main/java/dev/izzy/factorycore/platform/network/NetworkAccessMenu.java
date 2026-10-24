@@ -235,6 +235,23 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
           AccessAdministration.notifyChanged(
               server, sender.getName(), sender, principal, position, result.permissions());
       }
+      case AccessPackets.ROLE -> {
+        var roles = NetworkPermissions.AccessRole.values();
+        if (packet.value() >= roles.length) return;
+        if (!listed(actor, principal)) {
+          status = "unknown";
+          break;
+        }
+        var role = roles[packet.value()];
+        var others = EnumSet.allOf(Permission.class);
+        others.removeAll(role.grants());
+        var result =
+            AccessAdministration.change(server, actor, origin, principal, role.grants(), others);
+        status = key(result.outcome(), "updated");
+        if (result.outcome() == AccessAdministration.Outcome.OK)
+          AccessAdministration.notifyChanged(
+              server, sender.getName(), sender, principal, position, result.permissions());
+      }
       case AccessPackets.PAGE -> page = packet.value();
       case AccessPackets.TRANSFER -> {
         var state = WorldNetworks.get(server).grants(actor, origin);

@@ -25,7 +25,9 @@ public final class AccessPackets {
       TRANSFER = 4,
       CONFIRM = 5,
       CANCEL = 6,
-      RECOVERY = 7;
+      RECOVERY = 7,
+      // U8: value is a NetworkPermissions.AccessRole ordinal; grants become exactly that role.
+      ROLE = 8;
 
   /** Principal rows per page; candidates (online players without grants) follow on each page. */
   public static final int PAGE_ROWS = 6;
@@ -41,7 +43,7 @@ public final class AccessPackets {
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "access_command"));
 
     public Command {
-      if (action < GRANT || action > RECOVERY || value < 0 || value >= MAX_PAGES)
+      if (action < GRANT || action > ROLE || value < 0 || value >= MAX_PAGES)
         throw new IllegalArgumentException("Invalid access command bounds");
       Objects.requireNonNull(session);
       Objects.requireNonNull(principal);

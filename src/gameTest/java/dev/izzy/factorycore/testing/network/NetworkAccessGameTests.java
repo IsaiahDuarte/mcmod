@@ -91,7 +91,9 @@ public final class NetworkAccessGameTests {
         .anyMatch(row -> row.id().equals(principal) && row.granted() == granted);
   }
 
-  @GameTest(template = "empty", timeoutTicks = 400)
+  // Its own batch: online players are offered as candidates only up to MAX_CANDIDATES, so mock
+  // players from concurrently running tests must not crowd out this test's guests.
+  @GameTest(template = "empty", batch = "access_candidates", timeoutTicks = 400)
   public static void ownerAdministersGrantsAndConfirmsOwnershipTransferInTheScreen(
       GameTestHelper h) {
     var owner = player(h);
@@ -344,6 +346,79 @@ public final class NetworkAccessGameTests {
                       && thirdMenu.view().status().equals("manage_revoked"),
                   "Revocation feedback reaches the open session: " + thirdMenu.view());
               for (var player : new ServerPlayer[] {owner, guest, third})
+                player.connection.disconnect(Component.literal("done"));
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void roleButtonsSetExactGrantsOnlyWithManage(GameTestHelper h) {
+    var owner = player(h);
+    var guest = player(h);
+    NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
+    var grants = DeviceSavedData.get(h.getLevel().getServer()).network(root.handle().id());
+    grants.setGrants(
+        new NetworkPermissions.Actor(owner.getUUID(), false),
+        guest.getUUID(),
+        Set.of(Permission.VIEW, Permission.MANAGE, Permission.EDIT));
+    NetworkAccessMenu[] menu = {null};
+    var sequence =
+        h.startSequence()
+            .thenWaitUntil(
+                () ->
+                    h.assertTrue(
+                        WorldNetworks.get(h.getLevel().getServer())
+                                .membership(position(h, ROOT))
+                                .status()
+                            == NetworkTopology.Status.VALID,
+                        "Network ready"))
+            .thenExecute(
+                () -> {
+                  owner.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT).above()));
+                  NetworkAccessMenu.open(owner, root);
+                  menu[0] = (NetworkAccessMenu) owner.containerMenu;
+                });
+    // Commands are rate limited per session, so each role is its own step.
+    for (var role : NetworkPermissions.AccessRole.values())
+      sequence =
+          sequence
+              .thenIdle(3)
+              .thenExecute(
+                  () -> {
+                    send(menu[0], owner, AccessPackets.ROLE, guest.getUUID(), role.ordinal());
+                    var now = grants.snapshot().grants().get(guest.getUUID());
+                    h.assertTrue(
+                        role.grants().equals(now), role + " sets exactly its grants: " + now);
+                  });
+    sequence
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              send(
+                  menu[0],
+                  owner,
+                  AccessPackets.ROLE,
+                  guest.getUUID(),
+                  NetworkPermissions.AccessRole.GUEST.ordinal());
+              owner.closeContainer();
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              // The guest is now only a Guest (View): it cannot promote itself.
+              guest.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT).above()));
+              NetworkAccessMenu.open(guest, root);
+              send(
+                  (NetworkAccessMenu) guest.containerMenu,
+                  guest,
+                  AccessPackets.ROLE,
+                  guest.getUUID(),
+                  NetworkPermissions.AccessRole.ADMIN.ordinal());
+              h.assertTrue(
+                  Set.of(Permission.VIEW).equals(grants.snapshot().grants().get(guest.getUUID())),
+                  "Without Manage a role change is refused");
+              guest.closeContainer();
+              for (var player : new ServerPlayer[] {owner, guest})
                 player.connection.disconnect(Component.literal("done"));
             })
         .thenSucceed();
