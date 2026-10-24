@@ -162,7 +162,7 @@ create a second owner; conflicting references need recovery.
 
 Eight Cables use six iron and three redstone. A Gateway uses four iron, two
 quartz, two redstone and one ender pearl. Its amber cross face is upstream (toward
-the controller) and its blue dot face is downstream (the branch); only those two faces connect. Use it to open
+the controller) and its blue dot face is downstream (the subnetwork); only those two faces connect. Use it to open
 its policy screen. Controllers/cables connect on all six faces. The current textures
 use vanilla assets.
 
@@ -221,7 +221,7 @@ new mode fresh: the old mode's settings, label and presets are not kept.
 
 Place its socket against a container and cable the other faces. Use it with both hands empty to
 open its settings: resource (Items/Fluids/Energy), access, priority (-1000 to
-1000; higher-priority containers are used first), first slot, slot window and
+1000; higher-priority containers are used first), first slot, slot count and
 rate per tick. The screen also shows which side of the container is used, the
 throughput upgrade limit and whether the container is ready, with the reason if
 not. Apply & Close saves everything at once; Cancel discards your changes.
@@ -255,7 +255,7 @@ unfinished. Keep pending operation IDs and backups; never replay/refund uncertai
 work based only on a matching block position.
 
 
-The development save now retains a transfer's accepted network/branch, origin and
+The development save now retains a transfer's accepted network/subnetwork, origin and
 endpoint identities beside its staged resources. Root replacement cannot inherit
 already queued work. Existing saves migrate without changing resource quantities
 or assuming missing endpoint details. This still does not automatically resume
@@ -290,8 +290,8 @@ share the rate, and server scheduling/limits can reduce throughput. Exact item
 components are retained. Full/offline storage backs up the buffer and then the
 hopper; nothing is voided. Normal empty-hand use shows mode, counts and an
 explanation when work is blocked. Revocation stops queued work before mutation;
-reconnection resumes when the accepted network/branch is valid again. Moving a
-buffer or changing its accepted root/branch requires explicit reconfiguration.
+reconnection resumes when the accepted network/subnetwork is valid again. Moving a
+buffer or changing its accepted root/subnetwork requires explicit reconfiguration.
 
 Known partial transfers retain items in owned staging and block another extraction.
 The matching current deployment retries delivery of that staging without extracting
@@ -441,11 +441,11 @@ Place an Interface with its socket against a machine and connect cables to anoth
 face.
 With an empty main hand, use renamed paper/name tag in your offhand to copy a
 local label; sneak-paper clears it. Tools are not consumed. Labels are case-sensitive
-and private to the current segment, even when storage is shared through a gateway.
-Machine stock stays out of the storage terminal. Use with both hands empty to edit label, resource, access, priority, slot/tank window
+and private to the current network, even when storage is shared through a gateway.
+Machine stock stays out of the storage terminal. Use with both hands empty to edit label, resource, access, priority, first slot or tank and slot count
 and per-tick rate. Apply & Close saves the complete form; Reset restores saved
 values; Cancel discards local edits. Enter in a field also saves. Changing resource
-resets the draft window/rate to that resource’s defaults. Slots start at zero;
+resets the unsaved slots/rate to that resource’s defaults. Slots start at zero;
 fluid0/64 selects the whole capability, while other fluid windows require indexed
 tank support from the provider. Energy uses0/64. A stale form reloads current
 server values before retry.
@@ -476,7 +476,7 @@ button tooltip explains the latest runtime reason. Return recovers only
 your known staging to its original source, even after edit/deploy revocation while
 VIEW remains. An unavailable source can block recovery; uncertain provider calls
 never replay or fabricate refunds. Providers with explicit fixed global partitions
-can bind separate interfaces to their exact disjoint slot/tank windows. Ordinary
+can bind separate interfaces to their exact disjoint first slot or tank and slot counts. Ordinary
 providers remain exclusive for each resource kind, and unsupported tank selection
 blocks without moving fluid. Disjoint windows share the physical provider's
 128 item or1000mB per-tick ceiling plus each interface's configured rate.
@@ -688,8 +688,8 @@ use a pattern on it, or feed patterns with a hopper. It holds nine. Use it with 
 empty hand to see how many patterns it has and its network status; sneak-use to take
 the last pattern back. Breaking it drops its patterns. Patterns are offered only to
 the network segment the unit is wired into and, through each gateway that lets its
-branch craft (the default), to the segments above it. The parent can then request
-those recipes; the branch's machines and storage stay private, ingredients come from
+subnetwork craft (the default), to the networks above it. The parent can then request
+those recipes; the subnetwork's machines and storage stay private, ingredients come from
 the requester's storage and results go back there. Autocrafting requests that use these patterns are not available yet.
 
 
@@ -804,12 +804,12 @@ screen closes if you leave range, lose View permission, or the access point runs
 
 ## Wireless links
 
-To connect a distant branch, use a **Wireless Link** on the parent side's gateway and
-another on the child branch's gateway, up to 256 blocks apart in the same dimension.
+To connect a distant subnetwork, use a **Wireless Link** on the parent side's gateway and
+another on the child subnetwork's gateway, up to 256 blocks apart in the same dimension.
 Use it on the gateway's amber cross (upstream) or blue dot (downstream) face; that is
 the side the wireless connection joins. Then, with an empty hand, sneak-use one linked
 gateway and then the other to pair them. Each linked gateway needs its own FE, accepts
-it on any face and uses 32 FE per tick. The branch disconnects if either end loses
+it on any face and uses 32 FE per tick. The subnetwork disconnects if either end loses
 power or is broken, and gateway rules still decide what it can see. Open the gateway
 to see the link's state on its status line. Breaking a linked gateway drops the link.
 
@@ -824,19 +824,19 @@ sent through the link. Wired connections retain their device limits.
 
 Use a gateway to open its policy screen. It opens on four choices:
 
-- **Shared** (the default): the branch sees and uses all parent storage, like the
+- **Shared** (the default): the subnetwork sees and uses all parent storage, like the
   main network.
-- **Read-only**: the branch can see parent stock but cannot deposit into, take from
+- **Read-only**: the subnetwork can see parent stock but cannot deposit into, take from
   or craft with it.
-- **Isolated**: parent storage is hidden from the branch.
+- **Isolated**: parent storage is hidden from the subnetwork.
 - **Custom**: shows every toggle. **This subnetwork can…** limits what anyone may do
-  inside the branch. **…using parent storage** and **Parent storage kinds** decide
+  inside the subnetwork. **…using parent storage** and **Parent storage kinds** decide
   which of those actions reach parent stock, and for which resource kinds.
 
-Every preset lets the branch use its own storage normally. Players still need their
+Every preset lets the subnetwork use its own storage normally. Players still need their
 own access grants. You need Manage to change the choice; others see it read-only.
 Nested gateways can only narrow access. Wait a moment between clicks while the
-branch updates.
+subnetwork updates.
 
 ## Factory Guide
 
@@ -906,7 +906,7 @@ a player with Manage, or an operator can grant specific rights:
 Available rights are `view`, `deposit`, `withdraw`, `craft`, `edit`, `deploy` and
 `manage`; `all` names every right. Grant adds rights, and revoke without rights
 removes every explicit grant. Offline players require their UUID. Manage allows
-administration, so grant it deliberately. Gateway branch policies still apply at
+administration, so grant it deliberately. Gateway subnetwork policies still apply at
 the chosen block. Operators have management access but must receive resource rights
 to use someone else's stock. A grant change invalidates old observations; open
 terminal stock views also refresh after other players or automation move resources.
@@ -917,9 +917,9 @@ terminal stock views also refresh after other players or automation move resourc
 Server owners can set the maximum nested gateways in the world's
 `serverconfig/factorycore-server.toml`: under `[network]`, set `gatewayDepth = 8`
 to an integer from 1 through 32. Reopen the world or restart the server after editing.
-Every gateway on a root-to-branch path counts once, including wireless-linked
+Every gateway on a root-to-subnetwork path counts once, including wireless-linked
 gateways. A network exceeding the setting reports `DEPTH_LIMIT` and pauses access
-without deleting stored resources; shorten the branch path or raise the setting.
+without deleting stored resources; shorten the subnetwork path or raise the setting.
 
 
 Terminal search accepts names or registry IDs, `@minecraft` for a mod ID, and

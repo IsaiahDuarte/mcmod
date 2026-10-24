@@ -212,7 +212,7 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   Optional integration showing device state, label, mode and the blocking reason when looking
   at a block. It stays off mandatory class loading (ArchUnit rule).
 
-- [ ] **U15 — Apply display names (needs UD4).**
+- [x] **U15 — Apply display names (needs UD4).** Done 2026-10-24 (commit subject `U15:`). [Evidence](evidence/ux-u15-display-names-2026-10-24.md). "Crafter" kept despite vanilla's Crafter.
   Lang-only rename plus guide and docs. Registry IDs stay.
 
 - [ ] **U16 — Remove offhand controls (needs UD5, after U2, U5, U6).**

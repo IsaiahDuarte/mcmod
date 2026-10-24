@@ -57,7 +57,7 @@ class LangKeysTest {
   private static final Pattern INTERNAL_WORD =
       Pattern.compile(
           "\\b(stag(?:ing|ed)|principal|segment|budget|draft|canonical|leased?|quarantin\\w*"
-              + "|backing|schema|handler|provider)\\b",
+              + "|backing|schema|handler|provider|branch(?:es)?|endpoints?)\\b",
           Pattern.CASE_INSENSITIVE);
 
   private static final Pattern PLAYER_KEY =
