@@ -67,6 +67,13 @@ public final class MachinePresets {
   private final NavigableMap<UUID, Deployment> deployments = new TreeMap<>();
   private long bytes;
   private final NavigableMap<UUID, Long> configurations = new TreeMap<>();
+
+  /**
+   * Active modes that {@link #invalidate} paused, for a one-click resume. Runtime only: it is not
+   * saved, grants nothing, and a resume is an ordinary authorized deployment by the resuming actor.
+   */
+  private final Map<UUID, Mode> interrupted = new HashMap<>();
+
   private Consumer<UUID> activity = node -> {};
 
   public void activity(Consumer<UUID> listener) {
@@ -211,6 +218,7 @@ public final class MachinePresets {
     long updated = admission(old, next);
     configurations.merge(node.id(), next.configuration(), Math::max);
     deployments.put(node.id(), next);
+    interrupted.remove(node.id());
     bytes = updated;
     changed.run();
     activity.accept(next.node());
@@ -239,6 +247,13 @@ public final class MachinePresets {
   /**
    * Checks overflow before a physical edit; owner-thread mutation cannot interleave a second edit.
    */
+  /** The active mode a configuration change paused, or null; see {@link #interrupted}. */
+  public Mode interrupted(UUID node) {
+    checkThread();
+    var current = deployments.get(node);
+    return current == null || current.mode() != Mode.PAUSED ? null : interrupted.get(node);
+  }
+
   public void prepareInvalidation(UUID node) {
     checkThread();
     var old = deployments.get(node);
@@ -261,6 +276,7 @@ public final class MachinePresets {
             old.filter(),
             old.target());
     deployments.put(node, next);
+    interrupted.put(node, old.mode());
     changed.run();
     activity.accept(node);
   }
@@ -288,6 +304,7 @@ public final class MachinePresets {
   public void remove(NodeRegistry.Handle node) {
     checkThread();
     validate(node);
+    interrupted.remove(node.id());
     var old = deployments.remove(node.id());
     if (old != null) {
       bytes -= old.bytes();

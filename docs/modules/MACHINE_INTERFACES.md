@@ -148,8 +148,11 @@ availability or a resource reservation. Resource mutation must additionally use
 fresh guarded shared transfers. Mode PAUSED never authorizes work. Unrelated grant
 changes conservatively invalidate a saved generation until explicit redeployment;
 regrant does not silently resume old intent. Replacing a deployment advances its
-revision and does not adopt old staged resources. Binding or label edits pause
-canonical intent; old chunk NBT cannot undo that pause. A different provider face is ineligible until the orientation matches the saved
+revision and does not adopt old staged resources. Binding, label and upgrade edits
+pause canonical intent; old chunk NBT cannot undo that pause. Since U6 an edit by the
+preset's own deployer redeploys it through `deployPreset` (upgrades defer until the
+network is VALID); other editors leave it paused with the interrupted mode remembered
+in memory for a one-Apply resume (ADR 0054). A different provider face is ineligible until the orientation matches the saved
 intent or that face is explicitly redeployed, even when the port generation is
 unchanged. Structural movement leaves
 old deployment identity inactive until an explicit redeployment.
@@ -220,8 +223,9 @@ multiplayer, selected tanks and performance remain required release evidence.
 The existing physical menu now has Binding/Presets tabs. The server owns a bounded
 per-opening draft (sixteen terms, existing256KiB filter ceiling); close discards it.
 Mode/filter/goal/registry/tag/exact sample/remove/clear/reset commands change only
-that draft. Deploy writes the existing canonical registry through `deployPreset`.
-The typed deployment goal is validated before publication. Binding still uses its
+that draft. Apply (the DEPLOY action; the button was "Deploy" before U6) writes the
+existing canonical registry through `deployPreset`. The typed goal is validated and
+saved with it, so there is no separate Set step. Binding still uses its
 separate complete-form Apply; unsaved binding changes do not alter preset scope.
 No persistence or ABI schema changes are needed.
 

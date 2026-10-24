@@ -55,7 +55,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
     lease = machine == null ? null : machine.handle();
     facing = machine == null ? null : machine.targetDirection();
     scope = machine == null ? null : runtime().membership(machine.position()).scope();
-    if (machine != null) resetPreset();
+    if (machine != null && resetPreset()) presetStatus = "resumable";
     presetView =
         new MachinePresetPackets.View(
             id,
@@ -163,8 +163,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
     if (view.generation() != 0 && view.generation() != machine.generation()) status = "stale";
     if (!Objects.equals(presetBase, saved().machinePresets().get(lease.id()))
         || presetConfiguration != machine.generation()) {
-      resetPreset();
-      presetStatus = "stale";
+      presetStatus = resetPreset() ? "resumable" : "stale";
     }
     publish();
     publishPreset();
@@ -205,7 +204,12 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
       return;
     }
     sender.closeContainer();
-    sender.displayClientMessage(Component.translatable("gui.factorycore.machine.saved"), true);
+    sender.displayClientMessage(
+        Component.translatable(
+            machine.interruptedMode() == null
+                ? "gui.factorycore.machine.saved"
+                : "gui.factorycore.machine.saved_paused"),
+        true);
   }
 
   @Override
@@ -240,19 +244,24 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
         && packet.revision() >= presetView.revision()) presetView = packet;
   }
 
-  private void resetPreset() {
+  /** Reloads the draft from the saved preset; true when it offers a paused preset to resume. */
+  private boolean resetPreset() {
     presetBase = saved().machinePresets().get(lease.id());
     presetConfiguration = machine.generation();
     boolean compatible =
         presetBase != null && presetBase.filter().kind() == machine.settings().kind();
     presetMode = compatible ? presetBase.mode() : MachinePresets.Mode.PAUSED;
+    // A preset paused by a binding change or upgrade is offered back as a one-click resume.
+    var interrupted = compatible ? saved().machinePresets().interrupted(lease.id()) : null;
+    if (interrupted != null) presetMode = interrupted;
     presetFilter = compatible ? presetBase.filter() : ResourceFilter.all(machine.settings().kind());
     presetGoal =
         compatible
             ? presetBase.target()
             : machine.settings().kind() == ResourceKind.ITEM ? 64 : 1000;
-    presetDirty = false;
+    presetDirty = interrupted != null;
     presetRevision++;
+    return interrupted != null;
   }
 
   private boolean presetEditable() {
@@ -331,8 +340,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
         || !protocol.admitRate()) return;
     if (!Objects.equals(presetBase, saved().machinePresets().get(lease.id()))
         || presetConfiguration != machine.generation()) {
-      resetPreset();
-      presetStatus = "stale";
+      presetStatus = resetPreset() ? "resumable" : "stale";
       publishPreset();
       return;
     }
@@ -452,8 +460,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu {
           filterMode = ResourceFilter.Mode.ALL;
         }
         case MachinePresetPackets.RESET -> {
-          resetPreset();
-          presetStatus = "ready";
+          presetStatus = resetPreset() ? "resumable" : "ready";
           publishPreset();
           return;
         }

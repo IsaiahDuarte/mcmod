@@ -538,8 +538,17 @@ public final class MachinePresetGameTests {
               seed(h, ResourceKind.ITEM, 23);
               f.machine.deployPreset(f.actor, MachinePresets.Mode.IMPORT, exact(f), 64);
               f.runtime.machinePresets().tick();
+              // A non-deployer editor, so the edit pauses the preset (a deployer's edit resumes).
+              var editor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
+              f.saved
+                  .network(f.runtime.membership(f.machine.position()).scope().network())
+                  .setGrants(
+                      f.actor,
+                      editor.id(),
+                      Set.of(
+                          NetworkPermissions.Permission.VIEW, NetworkPermissions.Permission.EDIT));
               f.machine.configure(
-                  f.actor,
+                  editor,
                   new ConnectorSettings(
                       ResourceKind.ITEM, ConnectorSettings.Access.READ_ONLY, 0, 0, 64, 8));
             })

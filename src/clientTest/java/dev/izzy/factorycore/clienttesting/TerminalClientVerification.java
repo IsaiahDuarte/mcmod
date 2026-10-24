@@ -1011,7 +1011,7 @@ public final class TerminalClientVerification {
               + evidence
               + "Tour: gateway policy toggle (actual sneak-use C2S), program editor, Factory Guide pages 1-2 (actual item use), wireless handheld terminal beyond wired reach, terminal Fluids/Energy views; no overlapping controls.\n"
               + "Art: every Factory Core block in a front/top view, connected cable run with a sideways gateway, and every item in a double chest at GUI scales 2 and 4.\n"
-              + "Input: terminal live search, cursor pickup/deposit, wheel and scrollbar drag; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Deploy and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
+              + "Input: terminal live search, cursor pickup/deposit, wheel and scrollbar drag; buffer mode/rate/goal/rules/paging/exact-sample/Apply/Take1/Take64; machine Reset/Cancel/Apply, preset mode/exact sample/goal/Apply and actual Stock, native text and GUI-scale draft retention. Deposits use real C2S payloads; physical Shift remains unverified.\n"
               + "Conservation: named cell6 + machine8 + buffer9 + original sample2 =25. Machine smelter: READ_WRITE, priority-7, first2/count1/rate8; Stock goal8 exact named sample. Restart checkpoint adds1200mB water (400 held),300mB lava and500FE.\n");
     } catch (IOException error) {
       throw new IllegalStateException(error);
@@ -1549,7 +1549,7 @@ public final class TerminalClientVerification {
         captures.grab(client, "machine-preset-scale-3-draft.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
-        click(screen, "Deploy");
+        click(screen, "Apply");
         checked.set(false);
         next();
       }

@@ -426,7 +426,8 @@ server values before retry.
 Open Presets to author Paused, Import (machine → storage), Export (storage →
 machine), or Stock (fill matching resident units to a goal). Binding settings must
 be saved first. The preset draft is kept by the server and changes no automation
-until Deploy. Set goal updates the draft; Deploy also uses the current typed goal.
+until Apply, which saves the draft, including the typed goal, and starts it in one
+step. Enter in the goal field also applies.
 Goals use items, mB or FE according to the saved binding. Zero Stock stops filling.
 
 All matches the resource kind; Allow selected and Block selected apply up to16
@@ -439,7 +440,11 @@ Reset reloads the saved preset; Cancel discards the unsaved draft.
 
 Deployment requires current view, edit and deployment grants; active modes also
 need deposit and withdrawal grants. A changed binding/deployment reloads the draft
-before accepting another edit. Binding edits pause the preset. Review the selected
+before accepting another edit. If you deployed the preset, your own binding edits
+and throughput upgrades keep it running. When someone else edits or upgrades the
+machine, the preset pauses. The Presets page then shows it as paused, already
+filled in, and one Apply by a player with deployment rights resumes it in that
+player's name. After a server restart a paused preset must be set up again. Review the selected
 provider side, access and rate in Binding if work is blocked; the Return
 button tooltip explains the latest runtime reason. Return recovers only
 your known staging to its original source, even after edit/deploy revocation while

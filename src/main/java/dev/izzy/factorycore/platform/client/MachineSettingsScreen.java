@@ -125,8 +125,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
         });
     mode = presetButton("mode", 10, 30, 130, () -> sendPreset(MachinePresetPackets.MODE));
     filter = presetButton("filter", 150, 30, 140, () -> sendPreset(MachinePresetPackets.FILTER));
-    goal = presetBox(64, 54, 120, 19, "goal");
-    presetButton("set", 190, 53, 100, () -> sendPreset(MachinePresetPackets.GOAL));
+    // The typed goal is saved by Apply (U6); there is no separate Set step.
+    goal = presetBox(64, 54, 226, 19, "goal");
     rule = presetBox(10, 78, 170, 256, "rule");
     presetButton("registry", 184, 77, 50, () -> sendPreset(MachinePresetPackets.REGISTRY));
     presetButton("tag", 238, 77, 52, () -> sendPreset(MachinePresetPackets.TAG));
@@ -358,7 +358,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
         && getFocused() instanceof EditBox) {
       if (presets)
         sendPreset(
-            getFocused() == rule ? MachinePresetPackets.REGISTRY : MachinePresetPackets.GOAL);
+            getFocused() == rule ? MachinePresetPackets.REGISTRY : MachinePresetPackets.DEPLOY);
       else apply();
       return true;
     }

@@ -105,3 +105,28 @@ scheduled operations. Rate exhaustion waits one tick, while shortage/fault
 backoff remains 20 ticks. No scheduler quota rises and authorization/configuration
 is rechecked before each operation. A required isolated native workload compares
 all three tiers; whole-ledger discovery can still dominate in large worlds.
+
+
+## Preset continuity extension — 2026-10-24 (U6)
+
+The pause exists to protect authority. An accepted preset runs under its deployer's
+grants, and an upgrade or binding change made by someone else must not silently keep
+automation running in the deployer's name under new settings. Nor may it silently
+move that automation into the editor's name. That reason holds only when the editor
+is not the deployer, so U6 keeps the pause for that case and drops it otherwise:
+
+- When the installing or editing actor is the preset's deployer, the preset is
+  redeployed with the same mode, filter and goal through the ordinary `deployPreset`
+  checks: VIEW, EDIT, DEPLOY, and WITHDRAW/DEPOSIT for active modes. A binding edit
+  redeploys at once. An upgrade rebuilds the network, so its redeploy waits on a
+  transient scheduled block tick (every 5 ticks, at most 20 times) until the network
+  is VALID, then re-checks grants. A failure leaves the preset paused.
+- When anyone else makes the change, the preset pauses as before. `MachinePresets`
+  remembers the interrupted mode in memory only; it is not saved and grants nothing.
+  The machine screen's Presets page then preloads that mode and shows "Apply to
+  resume". Apply is an ordinary deployment in the clicking player's name, so it still
+  needs that player's own grants.
+
+The earlier "Deploy" button is now labelled Apply and the separate "Set goal" step is
+gone: Apply saves the whole draft, including the typed goal, and deploys it.
+

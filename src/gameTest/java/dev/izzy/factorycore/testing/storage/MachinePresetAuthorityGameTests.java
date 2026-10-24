@@ -64,8 +64,17 @@ public final class MachinePresetAuthorityGameTests {
                   f.machine.presetAuthorized(accepted[0]),
                   "Current original principal/scope/configuration authorizes deployment metadata");
               oldChunk[0] = f.machine.saveWithFullMetadata(h.getLevel().registryAccess());
+              // A non-deployer editor: a deployer's own edit keeps the preset running (U6).
+              var editor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
+              f.saved
+                  .network(f.root.handle().id())
+                  .setGrants(
+                      f.owner,
+                      editor.id(),
+                      Set.of(
+                          NetworkPermissions.Permission.VIEW, NetworkPermissions.Permission.EDIT));
               f.machine.configure(
-                  f.owner,
+                  editor,
                   new ConnectorSettings(
                       ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 1, 8));
               h.assertTrue(

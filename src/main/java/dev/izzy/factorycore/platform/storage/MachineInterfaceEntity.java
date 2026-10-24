@@ -96,6 +96,70 @@ public final class MachineInterfaceEntity extends ConnectorEntity implements Men
     return next;
   }
 
+  /** The active mode a configuration change paused, or null when nothing can be resumed. */
+  public MachinePresets.Mode interruptedMode() {
+    validatePlaced();
+    return DeviceSavedData.get(serverLevel().getServer())
+        .machinePresets()
+        .interrupted(handle().id());
+  }
+
+  /**
+   * Resumes a preset that a configuration change paused, in {@code actor}'s name, through the
+   * ordinary {@link #deployPreset} checks. False when nothing is resumable or the resource kind
+   * changed; throws when the actor lacks the deployment or resource grants.
+   */
+  public boolean resumePreset(NetworkPermissions.Actor actor) {
+    var presets = DeviceSavedData.get(serverLevel().getServer()).machinePresets();
+    var mode = presets.interrupted(handle().id());
+    var paused = presets.get(handle().id());
+    if (mode == null || paused.filter().kind() != settings().kind()) return false;
+    deployPreset(actor, mode, paused.filter(), paused.target());
+    return true;
+  }
+
+  /** A deployer's resume waiting for the network to rebuild after an upgrade; not saved. */
+  private NetworkPermissions.Actor pendingResume;
+
+  private int pendingResumeAttempts;
+
+  public static final int RESUME_ATTEMPTS = 20, RESUME_TICKS = 5;
+
+  private static boolean deployedBy(
+      NetworkPermissions.Actor actor, MachinePresets.Deployment before) {
+    return before != null
+        && before.mode() != MachinePresets.Mode.PAUSED
+        && before.authority().principal().equals(actor.id());
+  }
+
+  /** Runs a deferred deployer resume; true while it should retry after the network settles. */
+  public boolean applyPendingResume() {
+    if (pendingResume == null) return false;
+    if (++pendingResumeAttempts > RESUME_ATTEMPTS) {
+      pendingResume = null;
+      return false;
+    }
+    var membership = WorldNetworks.get(serverLevel().getServer()).membership(position());
+    if (membership.status() != NetworkTopology.Status.VALID) return true;
+    var actor = pendingResume;
+    pendingResume = null;
+    resumeIfDeployer(actor);
+    return false;
+  }
+
+  /**
+   * U6: a change by the preset's own deployer keeps it running, since no other player's authority
+   * is involved. Any other editor leaves it paused for an explicit resume (ADR 0054).
+   */
+  private void resumeIfDeployer(NetworkPermissions.Actor actor) {
+    try {
+      resumePreset(actor);
+    } catch (IllegalArgumentException | IllegalStateException denied) {
+      // Revoked grants leave the preset paused, as an explicit resume would be refused.
+      return;
+    }
+  }
+
   /** Freshness plus current permissions, not permission delegated by a saved record. */
   public boolean presetAuthorized(MachinePresets.Deployment expected) {
     if (expected == null) return false;
@@ -143,27 +207,39 @@ public final class MachineInterfaceEntity extends ConnectorEntity implements Men
     validatePlaced();
     var presets = DeviceSavedData.get(serverLevel().getServer()).machinePresets();
     presets.prepareInvalidation(handle().id());
+    var before = presets.get(handle().id());
     long next = presets.nextConfiguration(handle(), generation());
     var result = super.configure(actor, settings, label, next);
     if (result == NetworkAuthority.Decision.ALLOWED) {
       presets.observeConfiguration(handle(), generation());
       presets.invalidate(handle().id());
+      if (deployedBy(actor, before)) resumeIfDeployer(actor);
     }
     return result;
   }
 
-  /** An upgrade is a configuration change: it advances the fence and pauses the preset. */
+  /**
+   * An upgrade is a configuration change: it advances the fence and pauses the preset, which keeps
+   * running only when the installer is its deployer.
+   */
   @Override
   protected NetworkAuthority.Decision configureTier(
       NetworkPermissions.Actor actor, ConnectorSettings settings, ThroughputTier next) {
     validatePlaced();
     var presets = DeviceSavedData.get(serverLevel().getServer()).machinePresets();
     presets.prepareInvalidation(handle().id());
+    var before = presets.get(handle().id());
     long generation = presets.nextConfiguration(handle(), generation());
     var result = commitTier(actor, settings, next, generation);
     if (result == NetworkAuthority.Decision.ALLOWED) {
       presets.observeConfiguration(handle(), generation());
       presets.invalidate(handle().id());
+      // The tier change rebuilds the network, so the resume waits for it (see ConnectorBlock).
+      if (deployedBy(actor, before)) {
+        pendingResume = actor;
+        pendingResumeAttempts = 0;
+        level.scheduleTick(getBlockPos(), getBlockState().getBlock(), RESUME_TICKS);
+      }
     }
     return result;
   }

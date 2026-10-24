@@ -16,7 +16,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -226,6 +228,13 @@ public final class ConnectorBlock extends NetworkedBlock implements EntityBlock 
           true);
       return InteractionResult.FAIL;
     }
+  }
+
+  @Override
+  protected void tick(BlockState state, ServerLevel level, BlockPos position, RandomSource random) {
+    if (level.getBlockEntity(position) instanceof MachineInterfaceEntity machine
+        && machine.applyPendingResume())
+      level.scheduleTick(position, this, MachineInterfaceEntity.RESUME_TICKS);
   }
 
   @Override
