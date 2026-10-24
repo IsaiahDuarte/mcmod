@@ -47,8 +47,7 @@ Names are working names; responsibilities are binding.
 | Fuel Generator | Convert supported vanilla furnace fuels into finite energy so powered progression works without another technology mod. Preserve fuel-container remainders. |
 | Interface | One block with three modes ([ADR 0059](docs/decisions/0059-unified-interface.md); one block with in-screen mode switching). **Storage**: register external inventories, tanks, or energy providers with access policy and priority. **Machine**: bind sides, slots, tanks, and energy ports to local labels; offer import/export/stock presets. **Buffer**: receive/expose real staged items to adjacent automation such as hoppers. |
 | Network Cable | Connect devices within a segment. |
-| Crafting Interface | Bind processing patterns to machine ports and execute their jobs. |
-| Crafting Unit | Execute supported crafting-table patterns, including deterministic remainders. |
+| Crafter | One block ([ADR 0060](docs/decisions/0060-crafter.md)) holding both pattern kinds: execute supported crafting-table patterns, including deterministic remainders, and bind processing patterns to the machine it faces and execute their jobs. |
 | Gateway | Separate parent/child segments and mediate storage access and published jobs. |
 | Program Controller | Run one deployed program in its segment, with a separately editable draft. |
 | Wireless Access Point | Permit authorized handheld terminal access within configured range. |
@@ -123,11 +122,11 @@ Root controller + storage + terminal
     |
     +-- Gateway A -- Branch A cables
     |                    +-- Program Controller
-    |                    +-- Machine/Crafting Interfaces
+    |                    +-- Interfaces/Crafters
     |
     +-- Gateway B -- Branch B cables
                          +-- Program Controller
-                         +-- Machine/Crafting Interfaces
+                         +-- Interfaces/Crafters
 ~~~
 
 Gateways have explicit upstream/downstream ports visible on placement and inspection. Downstream is the child segment up to the next gateway, not every descendant or the nearest blocks.
@@ -162,7 +161,7 @@ Mekanism's generic item/fluid/energy ports may work through normal adapters; thi
 
 ## R06 — Autocrafting and production
 
-Normal autocrafting uses saved recipes, with no script required. Crafting-table patterns bind to Crafting Units; processing patterns bind to machine ports and declare deterministic item/fluid inputs, outputs, and returns/byproducts. Energy is supplied through configured routes; opaque external machines need not report a recipe energy cost.
+Normal autocrafting uses saved recipes, with no script required. Crafting-table patterns bind to Crafters; processing patterns bind to machine ports and declare deterministic item/fluid inputs, outputs, and returns/byproducts. Energy is supplied through configured routes; opaque external machines need not report a recipe energy cost.
 
 - Requests preview dependencies/shortages, then create a job on submission. Reserve against current state; preview is advisory.
 - Plan recursively under a budget. Explain dependency cycles. Pattern priority chooses alternatives; stable pattern IDs break ties. Global optimality is not required.
@@ -220,7 +219,7 @@ The main terminal opens to searchable Items. Additional views are Fluids, Energy
 - Craft-on-click revalidates the recipe and reserves/extracts exactly the current ingredients. Cursor/player inventory receives the output; owned staging retains anything that cannot be returned. Recipe remainders follow the same accounting.
 - Bulk crafting processes a bounded number per request and stops cleanly on missing ingredients or output space. No unlimited shift-click loop on the server thread.
 - Grid inputs are ghost selections, not hidden stacks that can disappear when the screen closes.
-- Manual crafting of available ingredients requires no saved autocrafting pattern or Crafting Unit. Missing intermediate ingredients require an explicit autocraft request using known patterns.
+- Manual crafting of available ingredients requires no saved autocrafting pattern or Crafter. Missing intermediate ingredients require an explicit autocraft request using known patterns.
 - Save supported recipes as patterns through the pattern editor; do not silently register every viewed JEI recipe.
 
 ### Fluids and energy
@@ -434,17 +433,17 @@ outputs and remainders fit. This is partial A11 evidence; patterns, autocrafting
 A portable pattern model and bounded recursive crafting planner now exist: exact
 inputs/outputs/byproducts, priority alternatives with stable-ID ties, cycle and
 shortage explanations, and a stock-only `consumed` set for a single reservation.
-Pattern items, Crafting Units, jobs and the request UI use this planner as described below; A06 remains partial pending complete release verification.
+Pattern items, Crafters, jobs and the request UI use this planner as described below; A06 remains partial pending complete release verification.
 
 
-Blank and Crafting Pattern items and the Crafting Unit are implemented. The terminal
+Blank and Crafting Pattern items and the Crafter are implemented. The terminal
 grid encodes the server-matched recipe (exact cells, output and remainders) onto a
 blank; units hold nine patterns with bounded deduplicated indexing. Local patterns are segment-scoped; permitted gateway publication exposes recipe contracts upward as described below. A06/A07 remain partial.
 
 
 Persisted crafting jobs now reserve a plan's stock once (the job is the ledger
 reservation owner), stage intermediates/outputs/remainders as job-owned units, run
-crafts through the shared scheduler at Crafting Units with exact recipe revalidation,
+crafts through the shared scheduler at Crafters with exact recipe revalidation,
 wait with reasons on missing patterns, revoked CRAFT, offline storage or full
 storage, and on cancellation release reservations and deliver staging without
 replay or refund. World schema 13 stores jobs with the ledger. This is partial
@@ -458,7 +457,7 @@ reserve nothing; the server holds the previewed key. This adds partial A06/A11
 evidence; branch/processing jobs and JEI integration are described below. Full job UI and multiplayer acceptance remains unverified.
 
 
-Processing patterns and the Crafting Interface are implemented for items: declared
+Processing patterns and the Crafter are implemented for items: declared
 inputs/outputs encoded from the terminal grid, a persisted per-job dispatch as the
 machine lease, dispatch only into a machine holding none of the outputs, real
 per-key insertion with staged remainders, completion only from outputs collected from
@@ -529,7 +528,7 @@ compile-only and isolated; a graphical run verifies callback integration with JE
 Wasm guests now have quota-limited persistent state (4,096 bytes per deployment,
 committed per successful callback, restored into fresh instances) per R09.
 
-Processing patterns now support fluid inputs and outputs through the Crafting Interface's
+Processing patterns now support fluid inputs and outputs through the Crafter's
 machine fluid port (R06 fluid evidence; the grid shows fluid amounts as 250 mB units).
 
 Independent-save mismatches of storage cells stay inert and can be adopted by an operator

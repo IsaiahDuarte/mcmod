@@ -5,6 +5,7 @@ import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
+import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.crafting.WorldCrafting;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
@@ -343,6 +344,44 @@ public final class CraftingUnitGameTests {
             .value()
             .getResultItem(h.getLevel().registryAccess());
     h.assertTrue(blank.getCount() == 4, "Four blank patterns per craft");
+    h.succeed();
+  }
+
+  /** U12 (ADR 0060): one Crafter holds both pattern kinds; its faced side is the machine's. */
+  @GameTest(template = "empty")
+  public static void crafterHoldsBothPatternKindsAndKeepsItsMachineFaceFree(GameTestHelper h) {
+    var position = new BlockPos(2, 1, 2);
+    h.setBlock(
+        position,
+        CraftingContent.CRAFTER
+            .get()
+            .defaultBlockState()
+            .setValue(BlockStateProperties.FACING, Direction.EAST));
+    CrafterEntity crafter = h.getBlockEntity(position);
+    var processing = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    processing.set(
+        CraftingContent.PROCESSING.get(),
+        new ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.RAW_IRON)),
+            List.of(new ItemStack(Items.IRON_INGOT))));
+    h.assertTrue(
+        crafter
+                .patterns()
+                .insertItem(0, pattern(Items.OAK_LOG, Items.OAK_PLANKS, 4), false)
+                .isEmpty()
+            && crafter.patterns().insertItem(1, processing, false).isEmpty(),
+        "A crafting-table pattern and a processing pattern both fit in one Crafter");
+    h.assertFalse(
+        crafter.patterns().isItemValid(2, new ItemStack(Items.PAPER)), "Anything else is refused");
+    var absolute = h.absolutePos(position);
+    h.assertTrue(
+        h.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.EAST) == null
+            && h.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.UP)
+                != null,
+        "Hoppers reach the patterns from every face except the faced machine's");
     h.succeed();
   }
 }

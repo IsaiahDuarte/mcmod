@@ -880,7 +880,8 @@ public final class PresentationClientVerification {
         check(lines.contains(I18n.get(legend)), "Lamp legend missing from tooltip of " + id);
       evidence.append("tooltip ").append(id.getPath()).append(": ").append(lines).append('\n');
     }
-    check(described >= 14, "Too few described items: " + described);
+    // Crafter (ADR 0060) replaced two described crafting blocks with one.
+    check(described >= 13, "Too few described items: " + described);
   }
 
   // ------------------------------------------------------------------ script

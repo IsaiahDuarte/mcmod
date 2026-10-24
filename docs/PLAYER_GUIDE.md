@@ -58,8 +58,7 @@ consumes a cell or bank. Patterns are encoded from Blank Patterns in the termina
 | Starter | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
 | Expanded | Expansion Module | 4 gold ingots, 2 redstone dust, 1 Nether quartz |
-| Expanded | Crafting Unit | 4 iron ingots, 2 gold ingots, 2 redstone dust, 1 crafting table |
-| Expanded | Crafting Interface | 4 iron ingots, 2 gold ingots, 2 redstone dust, 1 hopper |
+| Expanded | Crafter | 4 iron ingots, 2 gold ingots, 2 redstone dust, 1 crafting table |
 | Expanded | Program Controller | 4 iron ingots, 1 gold ingot, 3 redstone dust, 1 redstone repeater |
 | Expanded | Gateway | 4 iron ingots, 2 Nether quartz, 2 redstone dust, 1 ender pearl |
 | Expanded | Wireless Access Point | 5 iron ingots, 1 gold ingot, 2 redstone dust, 1 ender pearl |
@@ -172,7 +171,7 @@ network state (Online, Connecting, No controller, Two controllers connected, and
 so on), the device's own reason (for example "Container: Ready" or a program's
 "No FE"), and stored energy for powered devices. Hover a shortened strip to read
 all of it. Devices with a screen open it on empty-hand use and no longer print
-their status in chat; devices without a screen (Crafting Unit, energy devices,
+their status in chat; devices without a screen (Crafter, energy devices,
 access points and links) still report in the action bar.
 
 Connect drives by cables to exactly one commissioned controller. Installed cells
@@ -673,14 +672,18 @@ Port archives use standalone binary schema5 with the same device archive quotas
 and20-tick repair throttle. List visits at most16 structural handles.
 
 
-## Patterns and Crafting Units
+## Patterns and the Crafter
+
+One **Crafter** holds up to nine patterns of either kind. Crafting-table patterns run
+inside it; processing patterns use the machine it faces. Hoppers can feed patterns
+from every face except the machine's.
 
 Craft Blank Patterns (four paper, four redstone and an iron ingot make four). Set up a
 recipe in the terminal crafting grid and press **Encode** with a blank in your
 inventory: one blank becomes a Crafting Pattern that remembers the exact ingredients,
 result and container remainders. Your ingredients are not used.
 
-Place a Crafting Unit (iron, gold, redstone and a crafting table) on your network and
+Place a Crafter (iron, gold, redstone and a crafting table) on your network and
 use a pattern on it, or feed patterns with a hopper. It holds nine. Use it with an
 empty hand to see how many patterns it has and its network status; sneak-use to take
 the last pattern back. Breaking it drops its patterns. Patterns are offered only to
@@ -693,8 +696,8 @@ the requester's storage and results go back there. Autocrafting requests that us
 ### Autocrafting jobs (server side)
 
 Autocrafting jobs now exist on the server: a request plans with the patterns in your
-segment's Crafting Units and reserves exactly the ingredients it will use from your
-network's cells, so other players cannot take them. The Crafting Unit crafts one step
+segment's Crafters and reserves exactly the ingredients it will use from your
+network's cells, so other players cannot take them. The Crafter crafts one step
 at a time; intermediate items stay inside the job and the finished items are put back
 into storage. Cancelling releases unused ingredients and returns any items the job was
 holding; ingredients already crafted are not restored. If a pattern is removed, the
@@ -703,7 +706,7 @@ waits with a reason and continues when the problem is fixed. Jobs survive a norm
 save and restart.
 
 In the terminal, press **Jobs** to switch from stored items to craftable items (the
-outputs of the patterns in your segment's Crafting Units). Select one (click or 1–8)
+outputs of the patterns in your segment's Crafters). Select one (click or 1–8)
 and press **×1**, **×8** or **×64** to preview: the screen shows how many steps and
 crafts are needed, or the first missing ingredient. Nothing is reserved by a preview.
 Press **Start** to begin; you need Craft permission. Your jobs appear in the column on
@@ -712,7 +715,7 @@ results, ✕ cancelling); hover for the reason. Select a job and press **Cancel*
 it. You can run up to eight jobs; a network holds at most 64.
 
 
-### Processing patterns and Crafting Interfaces
+### Processing patterns and Crafters
 
 For machine recipes (smelting and similar), open **Crafting »** and choose **Inputs**.
 Set the machine's ingredient ghosts, then choose **Outputs** and fill up to three
@@ -721,7 +724,7 @@ amount; Shift-scroll changes eight steps. Item amounts are 1–64. Press **Encod
 with a Blank Pattern to get a Processing Pattern. Switching between Inputs and
 Outputs keeps both declarations; **Clear** clears both.
 
-Place a Crafting Interface against the machine (it faces the block you click) and wire
+Place a Crafter against the machine (it faces the block you click) and wire
 it to your network; insert the processing pattern. Autocrafting then puts the inputs
 into that machine and takes only the expected outputs back out of it. Use the machine
 only for this while a job runs, and keep its output slot empty: a job waits while the
@@ -856,7 +859,7 @@ With the crafting panel on **Inputs** or **Outputs**, switch the resource browse
 **Fluids**, select the fluid, highlight a ghost cell and press **Use selected**.
 Fluid ghosts show bucket icons and mB amounts. The selected amount and hover give
 exact mB; **+ / −** changes 250 mB per step, from 250 to 16,000 mB. Patterns may mix
-items and fluids. The Crafting Interface uses the machine's fluid tanks, so the
+items and fluids. The Crafter uses the machine's fluid tanks, so the
 machine must accept fluids from that side. Choosing **Table** removes fluid ghosts.
 
 

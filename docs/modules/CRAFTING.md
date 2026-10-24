@@ -1,9 +1,11 @@
 # Crafting
 
+> Since U12 ([ADR 0060](../decisions/0060-crafter.md)) the Crafting Unit and Crafting Interface are one `factorycore:crafter` block and `CrafterEntity` holding both pattern kinds; references below to either describe the Crafter.
+
 P4 contracts. Portable planning is in [ADR 0029](../decisions/0029-crafting-planner.md);
-pattern items and Crafting Units are in [ADR 0030](../decisions/0030-patterns-and-crafting-units.md).
+pattern items and Crafters are in [ADR 0030](../decisions/0030-patterns-and-crafting-units.md).
 Persisted jobs are in [ADR 0031](../decisions/0031-crafting-jobs.md); processing patterns
-and Crafting Interfaces are in [ADR 0032](../decisions/0032-processing-patterns.md). Manual crafting is
+and Crafters are in [ADR 0032](../decisions/0032-processing-patterns.md). Manual crafting is
 the [terminal grid](STORAGE_TERMINAL.md#manual-crafting-grid).
 
 ## Pattern
@@ -30,7 +32,7 @@ Steps are `(pattern, version, output, crafts)` in dependency order. Instances ar
 single-threaded and not shared; plans are immutable.
 
 
-## Pattern items and Crafting Units
+## Pattern items and Crafters
 
 `platform.crafting.PatternContents` is the immutable `factorycore:pattern` component
 (codec and stream codec reject invalid data). `pattern(codec)` throws
@@ -101,7 +103,7 @@ removeRule/rules` with the bounds in [ADR 0034](../decisions/0034-keep-stock-req
 
 ## Fluid processing
 
-Processing patterns may declare fluid inputs/outputs (mB); the Crafting Interface uses the
+Processing patterns may declare fluid inputs/outputs (mB); the Crafter uses the
 faced machine's fluid handler for them ([ADR0045](../decisions/0045-fluid-processing.md)).
 Requests and keep-stock rules accept item and fluid keys. Wait reasons: `machine_missing`
 also covers a missing fluid port; `output_not_clean` also covers tanks holding the output
