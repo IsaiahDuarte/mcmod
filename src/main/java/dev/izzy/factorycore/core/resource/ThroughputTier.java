@@ -30,7 +30,7 @@ public enum ThroughputTier {
     this.linkScale = linkScale;
   }
 
-  /** Storage Connector / Machine Interface maximum configurable rate for this tier. */
+  /** Storage- and Machine-mode Interface maximum configurable rate for this tier. */
   public int portRate(ResourceKind kind) {
     return switch (kind) {
       case ITEM -> items;
@@ -39,7 +39,9 @@ public enum ThroughputTier {
     };
   }
 
-  /** Buffered Interface maximum items per tick per direction (576 is the whole nine-slot tray). */
+  /**
+   * Buffer-mode Interface maximum items per tick per direction (576 is the whole nine-slot tray).
+   */
   public int bufferRate() {
     return buffer;
   }

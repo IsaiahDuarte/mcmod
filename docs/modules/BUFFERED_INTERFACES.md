@@ -1,4 +1,4 @@
-# Buffered Interfaces
+# Buffer-mode Interfaces
 
 > Since U11 ([ADR 0059](../decisions/0059-unified-interface.md)) this device is the **Buffer** mode of the single `factorycore:interface` block (`InterfaceBlock`, `kind=buffer`); the old standalone block and item ids are gone. The entity, lease kind, persisted schema and recovery tools described below are unchanged.
 
@@ -127,7 +127,7 @@ remain unverified; hopper flow and physical break/drop have headless evidence.
 
 ## Physical holder and hopper path
 
-The Buffered Interface block exposes the same nine owned slots on all six faces
+The Buffer-mode Interface block exposes the same nine owned slots on all six faces
 through the registered IItemHandler capability. Mechanical access requires the
 current loaded block entity, exact lease, owner token and unconflicted state;
 retained capabilities reject while removed, detached, unloaded/replaced or copied.
@@ -494,7 +494,7 @@ fixture is compiled but its launch is [blocked before execution](../evidence/buf
 
 Operator `/factorycore recovery buffer list [after]`, `show <backing>` and
 `repair <backing> <expected-generation>` support only the loaded original canonical
-Buffered Interface with its exact raw/parsed reference. List examines at most16
+Buffer-mode Interface with its exact raw/parsed reference. List examines at most16
 structural handles and filters buffers; follow a nonempty cursor even after zero
 matching rows. Inspection reads only canonical metadata/nine owned slots and no
 providers. Show includes original accepted deployer/mode/revision/lease/rate/target.

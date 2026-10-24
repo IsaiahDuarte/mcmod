@@ -879,12 +879,12 @@ public final class WorldStorageTransfers {
   /**
    * Legacy settlement (ADR 0047): finishes the known staging of a record saved without endpoint
    * context, for its authenticated original owner only. If the source backing is a canonical
-   * Factory Core identity (a cell/bank ledger or a Buffered Interface), staging returns there under
-   * the existing owned-cleanup exemption; otherwise, if the destination backing is a canonical cell
-   * or bank, staging is delivered there only while the owner currently has DEPOSIT access to it.
-   * Foreign/unknown backings are never guessed (UNSUPPORTED). It never extracts; pending or
-   * quarantined records reject UNCERTAIN; steps are bounded by the recovery quantum and scheduled
-   * on the target holder's current network.
+   * Factory Core identity (a cell/bank ledger or a Buffer-mode Interface), staging returns there
+   * under the existing owned-cleanup exemption; otherwise, if the destination backing is a
+   * canonical cell or bank, staging is delivered there only while the owner currently has DEPOSIT
+   * access to it. Foreign/unknown backings are never guessed (UNSUPPORTED). It never extracts;
+   * pending or quarantined records reject UNCERTAIN; steps are bounded by the recovery quantum and
+   * scheduled on the target holder's current network.
    */
   public Submission settleLegacy(
       UUID id, NetworkPermissions.Actor actor, Consumer<Result> completion) {

@@ -300,14 +300,14 @@ access, configuration, stable backing and failure quarantine remain shared.
 ## Audited conflict repair
 
 Operator `/factorycore recovery port list [after]`, `show <id>` and
-`repair <id> <expected-generation>` select connectors/Machine Interfaces only. Pages
+`repair <id> <expected-generation>` select connectors/Machine-mode Interfaces only. Pages
 examine at most16 structural records with an exclusive cursor. Show reads canonical
 metadata and machine deployment/fence only; it calls no provider and loads no chunk.
 
 The trusted server-thread `ConnectorEntity.repairConflict(expected)` requires the
 loaded original holder with exact raw/parsed lease, kind, generation and position,
 an empty persisted fault and no unresolved record naming the node as backing or
-device. A Machine Interface also requires a positive canonical fence equal to its
+device. A Machine-mode Interface also requires a positive canonical fence equal to its
 physical configuration. `WorldConnectors.recoveryRegistration(owner)` returns the
 remembered registration only when connector, configuration, provider token, kind
 and face still match; it is metadata and never authorizes resource access. With it,
@@ -332,7 +332,7 @@ player explicitly redeploys. See [ADR0026](../decisions/0026-foreign-port-repair
 ## Independent-save adoption
 
 Operator `/factorycore recovery port adopt <id> <expected-generation> <x y z>`
-selects a loaded stale connector or Machine Interface in the source dimension.
+selects a loaded stale connector or Machine-mode Interface in the source dimension.
 The canonical lease must be placed at a different loaded position with no holder
 referencing that ID. The target must preserve its world, ID and casing kind with a
 different generation and no persisted provider fault. Unresolved node operations

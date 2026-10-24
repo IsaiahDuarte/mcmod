@@ -13,7 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 /**
- * Storage Connector settings form. Reuses the bounded {@link MachineSettingsPackets.Form}; the
+ * Storage-mode Interface settings form. Reuses the bounded {@link MachineSettingsPackets.Form}; the
  * connector has no label, so the client sends an empty one and the server keeps the stored label.
  */
 public final class ConnectorSettingsPackets {

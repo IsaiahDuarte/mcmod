@@ -1,7 +1,7 @@
 # Scheduled world storage transfers
 
 Implemented server API: `WorldNetworks.get(server).transfers()` returns the shared
-`WorldStorageTransfers` service. Digital cells/banks, explicit [Buffered Interface endpoints](BUFFERED_INTERFACES.md)
+`WorldStorageTransfers` service. Digital cells/banks, explicit [Buffer-mode Interface endpoints](BUFFERED_INTERFACES.md)
 and [registered foreign connector endpoints](CONNECTORS.md) now share
 this path. The physical [item terminal](STORAGE_TERMINAL.md) now provides bounded
 authenticated menu commands; other tabs and general recovery dispatch remain unfinished;
@@ -412,7 +412,7 @@ var admission = routes.roundRobin(UUID.randomUUID(), persistedDeploymentId,
 ## Explicit buffered endpoints
 
 `new Buffered(nodeHandle, configurationGeneration)` describes a server-selected
-physical Buffered Interface. The handle must have BUFFERED_INTERFACE kind and
+physical Buffer-mode Interface. The handle must have BUFFERED_INTERFACE kind and
 positive lease/configuration generations. Client IDs and saved reference
 principals do not grant authorization: frontends must derive actor/origin/endpoint
 from authenticated server-owned interaction or deployment state. Buffers are

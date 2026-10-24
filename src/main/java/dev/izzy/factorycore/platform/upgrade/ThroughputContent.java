@@ -14,8 +14,7 @@ import net.neoforged.neoforge.registries.DeferredItem;
 
 /**
  * Paid throughput upgrades (ADR 0054). The Throughput Upgrade (Advanced) and Overdrive Upgrade
- * (Endgame) are installed in place on a Storage Connector, Machine Interface, Buffered Interface or
- * (Overdrive only) a Wireless Link Endpoint.
+ * (Endgame) are installed in place on a Interface or (Overdrive only) a Wireless Link Endpoint.
  */
 public final class ThroughputContent {
   public static final DeferredItem<ThroughputUpgradeItem> THROUGHPUT =

@@ -19,7 +19,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
-/** Local unsaved form for a Storage Connector; only Apply sends one complete configuration. */
+/** Local unsaved form for a Storage-mode Interface; only Apply sends one complete configuration. */
 public final class ConnectorSettingsScreen extends AbstractContainerScreen<ConnectorSettingsMenu> {
   private EditBox priority, firstSlot, count, rate;
   private Button kindButton, accessButton, apply;

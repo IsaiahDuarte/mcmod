@@ -337,7 +337,7 @@ public final class DeviceSavedData extends SavedData {
 
   /**
    * True when {@code backing} is a Factory Core-owned identity (a cell/bank ledger or a structural
-   * node, including Buffered Interfaces), which can never be a foreign provider's backing.
+   * node, including Buffer-mode Interfaces), which can never be a foreign provider's backing.
    */
   public boolean canonicalIdentity(UUID backing) {
     return registry().containsBacking(backing) || nodes().evidence(backing) != null;

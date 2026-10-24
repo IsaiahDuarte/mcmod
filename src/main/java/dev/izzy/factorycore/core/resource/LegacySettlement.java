@@ -21,7 +21,8 @@ public record LegacySettlement(boolean returning, UUID backing) {
   /**
    * Classifies by identity only; it does not check that the holder is loaded or permitted.
    *
-   * @param returnable canonical holders staging may return to (cells, banks, Buffered Interfaces)
+   * @param returnable canonical holders staging may return to (cells, banks, Buffer-mode
+   *     Interfaces)
    * @param deliverable canonical holders staging may be delivered to (cells and banks)
    */
   public static LegacySettlement of(

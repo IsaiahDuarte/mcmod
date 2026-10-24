@@ -1,4 +1,4 @@
-# Machine Interfaces
+# Machine-mode Interfaces
 
 > Since U11 ([ADR 0059](../decisions/0059-unified-interface.md)) this device is the **Machine** mode of the single `factorycore:interface` block (`InterfaceBlock`, `kind=machine`); the old standalone block and item ids are gone. The entity, lease kind, persisted schema and recovery tools described below are unchanged.
 
@@ -298,7 +298,7 @@ It also covers the finite cable-run trigger for the flat retained-seed fix.
 This does not complete staged-unload, independent-save or release recovery gates.
 
 
-Machine Interface ownership conflicts use the shared
+Machine-mode Interface ownership conflicts use the shared
 [connector repair](CONNECTORS.md#audited-conflict-repair). Repair keeps the accepted
 preset, revision, filter, goal and configuration fence, refuses a mismatched
 physical fence and requires explicit native redeployment under current DEPLOY

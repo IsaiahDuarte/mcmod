@@ -45,7 +45,7 @@ Names are working names; responsibilities are binding.
 | Storage Drive | Host digital item/fluid cells, preserving resource-specific capacities. |
 | Energy Bank | Store finite real energy with configured capacity and input/output rates. |
 | Fuel Generator | Convert supported vanilla furnace fuels into finite energy so powered progression works without another technology mod. Preserve fuel-container remainders. |
-| Interface | One block with three modes ([ADR 0059](docs/decisions/0059-unified-interface.md); one block with in-screen mode switching; U11 docs cleanup remains). **Storage**: register external inventories, tanks, or energy providers with access policy and priority. **Machine**: bind sides, slots, tanks, and energy ports to local labels; offer import/export/stock presets. **Buffer**: receive/expose real staged items to adjacent automation such as hoppers. |
+| Interface | One block with three modes ([ADR 0059](docs/decisions/0059-unified-interface.md); one block with in-screen mode switching). **Storage**: register external inventories, tanks, or energy providers with access policy and priority. **Machine**: bind sides, slots, tanks, and energy ports to local labels; offer import/export/stock presets. **Buffer**: receive/expose real staged items to adjacent automation such as hoppers. |
 | Network Cable | Connect devices within a segment. |
 | Crafting Interface | Bind processing patterns to machine ports and execute their jobs. |
 | Crafting Unit | Execute supported crafting-table patterns, including deterministic remainders. |
@@ -56,7 +56,7 @@ Names are working names; responsibilities are binding.
 
 Gateways and Program Controllers are separate blocks. A branch can have no program or multiple controllers. Root programs may coordinate published jobs without a gateway of their own.
 
-A hopper feeds a Buffered Interface in Import mode; the network drains its buffer into permitted storage. Full storage backs up the buffer/hopper without voiding. This setup requires no program or private branch. D06 specifies buffer sizes, recipes, and rates before implementation.
+A hopper feeds a Buffer-mode Interface in Import mode; the network drains its buffer into permitted storage. Full storage backs up the buffer/hopper without voiding. This setup requires no program or private branch. D06 specifies buffer sizes, recipes, and rates before implementation.
 
 The nine-slot owned item inventory and NeoForge hopper-handler adapter now exist
 as a P3 prerequisite, with exact component/stack limits and backpressure tests.
@@ -64,7 +64,7 @@ Canonical slot ownership/persistence, physical placement and actual hopper-to-bu
 flow now have local evidence; explicit shared buffer transfers and recovery now have local evidence. Automatic
 Import/Paused controls, real hopper-to-cell imports and full-storage backpressure now have headless world evidence. Canonical registry/exact/tag include/exclude selection and shared configurable network rates now have component/world evidence; buffered Export/Stock now has component/world evidence; buffer and machine settings have graphical evidence, while complete adapter/player acceptance remains unfinished.
 The physical item terminal loop now has a server menu implementation; full release/client/restart acceptance remains unfinished and A01 has partial evidence.
-[Buffered Interface contract](docs/modules/BUFFERED_INTERFACES.md) records this scope.
+[Buffer-mode Interface contract](docs/modules/BUFFERED_INTERFACES.md) records this scope.
 
 The implemented connector primitive has a provider-facing socket and five cable
 faces. Empty-hand inspection shows type/access/provider side/priority/rate/state;
@@ -119,7 +119,7 @@ See [routing contract](docs/modules/WORLD_STORAGE_TRANSFERS.md).
 ~~~text
 Root controller + storage + terminal
     |
-    +-- Buffered Interface <- Hopper
+    +-- Buffer-mode Interface <- Hopper
     |
     +-- Gateway A -- Branch A cables
     |                    +-- Program Controller
@@ -380,7 +380,7 @@ stale/unsupported holders and writes full physical/canonical evidence first.
 This extends partial A12/A13 support; independent-save mismatches stay inert.
 
 
-Partial A12/A13 recovery now also supports a conflicted Buffered Interface at its
+Partial A12/A13 recovery now also supports a conflicted Buffer-mode Interface at its
 loaded exact original canonical holder. It audits and preserves slots/components
 and the accepted original deployment before rotating the lease. Old handlers and
 queued work become stale. The retained preset needs explicit reapply by a currently
@@ -398,7 +398,7 @@ accepted transfers. Connector/machine holders, stale independent-save mismatches
 and full release recovery remain unfinished.
 
 
-Connector/Machine Interface conflict recovery now consumes the conflicted lease at
+Storage-/Machine-mode Interface conflict recovery now consumes the conflicted lease at
 its exact loaded original holder while preserving local settings, label, face and
 configuration. Foreign provider contents, identity and holds are never inspected or
 changed; persisted provider faults block repair. A repaired machine keeps its
@@ -414,7 +414,7 @@ Known staging returns to a canonical Factory Core source (cell, bank or Buffered
 Interface). Otherwise it is delivered to a canonical cell/bank destination, only with
 current DEPOSIT access. It is never extracted again and foreign backings are never
 guessed; uncertain records stay frozen. Known legacy staging no longer blocks
-connector/Machine Interface recovery; only uncertain legacy records that name a foreign
+connector/Machine-mode Interface recovery; only uncertain legacy records that name a foreign
 backing do. This is partial A03/A13 evidence.
 
 
@@ -537,7 +537,7 @@ with evidence (A13 partial; two-JVM injection for older SavedData).
 
 
 Processing-port contention implementation now persists an exact physical target
-for new dispatches and fences shared Connector/Machine Interface mutations while
+for new dispatches and fences shared Storage-/Machine-mode Interface mutations while
 that job or its cancellation cleanup owns the machine. Two interfaces facing the
 same physical machine must wait busy; unrelated adjacent machines remain usable.
 A preexisting foreign hold or unresolved provider transfer must block dispatch

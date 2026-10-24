@@ -2,6 +2,18 @@
 
 ## 0.1.0-dev — Development bootstrap
 
+- UX simplification ([plan](docs/UX_PLAN.md)). The Storage Connector, Machine
+  Interface and Buffered Interface are now one **Interface** block, whose
+  Storage/Machine/Buffer mode is picked from what it is placed against and can be
+  switched on its screen when idle. The old block and item ids are removed and old
+  worlds are unsupported (UD7). The Drive and the Storage-mode Interface have
+  screens, and every device screen shows a status strip instead of chat output.
+  Player-placed buffers start in Import, a deployer's preset keeps running through
+  their own edits and upgrades, gateways offer Shared/Read-only/Isolated presets,
+  access uses Guest/Member/Builder/Admin roles, the terminal crafting panel
+  collapses and shows fluids in mB, and the in-game guide shows block and recipe
+  pictures.
+
 - Added device state glyphs, visible drive-bay occupancy, translated purpose/legend
   tooltips and held cable transforms; a 32-capture client fixture checks
   orientations, representative held items, tooltip corners and GUI scales 1–4.

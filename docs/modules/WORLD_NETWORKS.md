@@ -133,7 +133,7 @@ world restart, interrupted independent save boundaries, client/multiplayer,
 representative server measurements and complete A01–A17 release remain unverified.
 
 
-[Storage Connectors](CONNECTORS.md) are leased storage nodes with five cable
+[Storage-mode Interfaces](CONNECTORS.md) are leased storage nodes with five cable
 faces, excluding the provider socket. All six orientations participate in bounded
 world discovery and port eligibility. `authorize(actor, origin, permission)`
 exposes the current shared authority for small server-side configuration actions;

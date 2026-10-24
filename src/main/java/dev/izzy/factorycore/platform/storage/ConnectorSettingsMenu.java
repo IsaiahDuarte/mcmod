@@ -24,7 +24,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Storage Connector settings: the screen equivalent of the offhand controls (resource, access,
+ * Storage-mode Interface settings: the screen equivalent of the offhand controls (resource, access,
  * priority) plus the item window and rate. Apply validates the whole form under current EDIT
  * authority in one configuration change, exactly like {@link ConnectorEntity#configure}. The view
  * polls the container registration so the status line shows why the connector is not ready.

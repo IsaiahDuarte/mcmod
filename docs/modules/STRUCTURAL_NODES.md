@@ -131,7 +131,7 @@ meaning. Rejections do not dirty or change canonical state.
 
 The first inventory-aware adapter is documented in
 [ADR0024](../decisions/0024-buffer-conflict-repair.md). Controllers/gateways now also
-have explicit holder integration below. Connectors/Machine Interfaces use
+have explicit holder integration below. Connectors/Machine-mode Interfaces use
 [ADR0026](../decisions/0026-foreign-port-repair.md) and
 [connector recovery](CONNECTORS.md#audited-conflict-repair). Independent-save
 interruption remains unfinished for every kind.

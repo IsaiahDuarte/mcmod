@@ -104,7 +104,7 @@ literal at the cursor and initially picks its enclosing call's category. Local l
 are VIEW-authorized, case-sensitive, segment-only snapshots, 16 per server page.
 Filtering applies to the current label page; Next fetches further pages. Other
 categories search the public local registry, without exposing stored identities or
-quantities. Ports are configured on Machine Interfaces, selected through labels.
+quantities. Ports are configured on Machine-mode Interfaces, selected through labels.
 
 **Preview next rule** saves then evaluates one saved native rule using your current
 VIEW scope. Saving needs EDIT; a View-only user can preview the existing saved draft.
