@@ -176,12 +176,12 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   buttons per player, with the letter toggles behind an Advanced view.
   Done when: each preset maps to an exact policy in a unit test, and screenshots fit.
 
-- [ ] **U9 — Player and admin guides.**
-  Split `PLAYER_GUIDE.md` into a short player guide (play order, one section per block,
-  no schema or quota detail) and `ADMIN_GUIDE.md` (recovery commands, audits, quotas,
-  server config). Give the in-game guide recipe and block pictures by rendering item stacks
-  in `GuideScreen`. Do this after the U-slices that change controls, so it describes the
-  final controls.
+- [x] **U9a — In-game guide pictures.** Done 2026-10-24: `GuideScreen` renders each page's
+  blocks and the first one's crafting recipe beside the book.
+  [Evidence](evidence/ux-u9a-guide-pictures-2026-10-24.md).
+
+- **U9b — Player and admin guides** moved to the end of Wave B (after U16), because Wave B
+  still changes controls and the guides must describe the final ones.
 
 ## Wave B — needs gates
 
@@ -217,6 +217,11 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
 - [ ] **U16 — Remove offhand controls (needs UD5, after U2, U5, U6).**
   Delete the offhand-item branches in `ConnectorBlock` and `BufferedInterfaceBlock`, their
   lang keys and their tests. Replace that coverage with screen-path tests.
+
+- [ ] **U9b — Player and admin guides (after U16).**
+  Split `PLAYER_GUIDE.md` into a short player guide (play order, one section per block,
+  no schema or quota detail) and `ADMIN_GUIDE.md` (recovery commands, audits, quotas,
+  server config), describing the final post-Wave-B controls.
 
 ## Not in scope
 

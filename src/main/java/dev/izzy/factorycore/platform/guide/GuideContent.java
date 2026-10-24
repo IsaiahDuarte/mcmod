@@ -25,6 +25,33 @@ public final class GuideContent {
   public static final DeferredItem<GuideItem> GUIDE =
       FactoryRegistries.ITEMS.register("factory_guide", GuideItem::new);
 
+  /**
+   * Items pictured beside each page (U9): registry ids, the first of which also shows its crafting
+   * recipe. Index {@code n} belongs to page {@code n}.
+   */
+  public static final List<List<String>> PICTURES =
+      List.of(
+          List.of("factorycore:factory_guide"),
+          List.of("factorycore:network_controller", "factorycore:network_cable"),
+          List.of("factorycore:storage_drive", "factorycore:starter_item_cell"),
+          List.of("factorycore:storage_terminal"),
+          List.of("factorycore:buffered_interface", "minecraft:hopper"),
+          List.of("factorycore:expansion_module", "factorycore:advanced_module"),
+          List.of("factorycore:machine_interface"),
+          List.of("factorycore:fuel_generator", "factorycore:starter_energy_bank"),
+          List.of("factorycore:blank_pattern", "factorycore:crafting_unit"),
+          List.of("factorycore:crafting_interface", "factorycore:processing_pattern"),
+          List.of("factorycore:program_controller"),
+          List.of("factorycore:gateway"),
+          List.of("factorycore:wireless_access_point", "factorycore:wireless_terminal"),
+          List.of("factorycore:wireless_link_endpoint"),
+          List.of(
+              "factorycore:starter_item_cell",
+              "factorycore:expanded_item_cell",
+              "factorycore:advanced_item_cell",
+              "factorycore:infinite_item_cell"),
+          List.of("factorycore:throughput_upgrade", "factorycore:overdrive_upgrade"));
+
   private GuideContent() {}
 
   public static String pageKey(int page) {
