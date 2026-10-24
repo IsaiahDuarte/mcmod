@@ -469,6 +469,7 @@
   "gui.factorycore.terminal.grid.panel.close": "« Crafting",
   "gui.factorycore.terminal.grid.amount.fluid": "%s mB",
   "gui.factorycore.terminal.grid.amount.item": "%s items",
+  "gui.factorycore.terminal.grid.amount.item.one": "%s item",
   "gui.factorycore.terminal.grid.count.down": "Reduce the selected amount (items: 1; fluids: 250 mB).",
   "gui.factorycore.terminal.grid.count.up": "Increase the selected amount (items: 1; fluids: 250 mB).",
   "gui.factorycore.terminal.grid.mode": "Grid",

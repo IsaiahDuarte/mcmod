@@ -1,8 +1,8 @@
-# U4 — Crafting panel — implementation pending graphical verification
+# U4 — Crafting panel
 
 Scope: P4/R08, partial A11/A14. Minecraft 1.21.1, NeoForge 21.1.252,
-Java 21.0.12, macOS 15.3.1 arm64. U4 is **not complete** until the graphical
-and JEI checks below pass and their scale 1/4 captures have been inspected.
+Java 21.0.12, macOS 15.3.1 arm64. Complete on 2026-10-24: graphical, restart and
+JEI runs pass and their captures were inspected (see "Graphical verification" below).
 
 Implemented:
 
@@ -60,9 +60,36 @@ Checks:
 - `git diff --check` passed. The final display inspection still reported asleep;
   no graphical rerun is claimed and the temporary wake assertion has expired.
 
-Resume with the display awake: run `runPresentationClient`, `runTerminalRestartClient`
-and `runJeiClient`, each under the graphical lock and `caffeinate`. Inspect the new
-Table/Inputs/Outputs captures at scales 1 and 4, plus JEI-filled/processing captures.
-Fix failures without weakening assertions, update A11/A14 evidence, commit U4 and
-only then mark its UX-plan checkbox complete. Physical JEI drag/recipe-plus gestures
-and full release acceptance remain separate gaps.
+## Graphical verification (2026-10-24)
+
+Each command ran with the display awake, under `/tmp/factorycore-gui.lock` and
+`caffeinate -d -i -u`.
+
+- `./gradlew runTerminalRestartClient`, which also runs `runTerminalClient`, first **failed**
+  at terminal stage 11, step 3. The test pressed "Use selected" right after opening the
+  panel. Opening the panel narrows the item browser, which requests a new view window and
+  bumps the server view revision, so the server ignored the stale row index. This would
+  also affect a quick player. Fix: `TerminalScreen.windowSettled()` keeps "Use selected"
+  disabled until the server view matches the requested window, and the test waits for
+  it. No assertion was weakened. After the fix, terminal and restart both pass.
+- The JEI processing capture showed "1 items". It now reads "1 item"
+  (`gui.factorycore.terminal.grid.amount.item.one`).
+- Final runs after both fixes: `runPresentationClient` PASS, `runJeiClient` PASS and
+  `runTerminalRestartClient` PASS (terminal and restart reports both PASS).
+- Fit lines: crafting-table, crafting-inputs and crafting-outputs report a 566×376 panel at
+  scale 1 and 407×232 within the 427×240 minimum GUI at scale 4. The presentation
+  report records: "real table craft and both encoders; 1000 mB water input -> 2 Stone +
+  500 mB water output, no declared stock consumed; collapse/reopen and scale changes
+  retain ghosts."
+- JEI report: fill reveals the crafting panel. A real Craft, table Encode and visible
+  Inputs/Outputs processing authoring work at scale 4. Exact stock ends at 12 planks + 1
+  stone, with one crafted table and one pattern of each kind. A second JEI transfer
+  reopens Table from collapsed Outputs.
+- Inspected captures: `crafting-{table,inputs,outputs}-scale-{1,4}.png`,
+  `jei-terminal-filled.png` and `jei-processing-panel-scale-4.png`. Nothing overlaps or
+  is clipped. The vanilla "New Recipes Unlocked" toast overlaps the Name button in two
+  presentation frames; it is a harness artifact, not terminal layout. Three-digit fluid
+  overlays such as "500" reach the slot edge, the same as item counts in the browser.
+- `python3 scripts/verify.py` passed after the fixes (337 native tests).
+
+Remaining gaps: physical JEI drag/recipe-plus gestures and full release acceptance.

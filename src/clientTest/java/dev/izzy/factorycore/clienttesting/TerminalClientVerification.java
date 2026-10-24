@@ -515,7 +515,8 @@ public final class TerminalClientVerification {
         craftStep++;
       }
       case 2 -> {
-        if (!grid.result().equals("minecraft:oak_planks")) return;
+        // Opening the panel narrows the browser; wait for the resized view before using a row.
+        if (!grid.result().equals("minecraft:oak_planks") || !screen.windowSettled()) return;
         check(grid.resultCount() == 4, "Actual server recipe preview for one log");
         checkNoOverlap(screen);
         captures.grab(client, "terminal-grid-scale-4.png");

@@ -51,6 +51,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     return rows;
   }
 
+  /**
+   * True once the server view matches the requested window. Row indices sent before that refer to a
+   * stale view revision, which the server ignores.
+   */
+  public boolean windowSettled() {
+    var view = menu.view();
+    return view.size() == columns * rows && view.offset() == desiredOffset;
+  }
+
   public int gridY() {
     return 78;
   }
@@ -349,6 +358,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 : "gui.factorycore.terminal.grid.panel"));
     useRow.active =
         !view.busy()
+            && windowSettled()
             && selected < view.rows().size()
             && kind != 2
             && view.kind() == kind
@@ -722,7 +732,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     return Component.translatable(
         view.fluid(index)
             ? "gui.factorycore.terminal.grid.amount.fluid"
-            : "gui.factorycore.terminal.grid.amount.item",
+            : view.amount(index) == 1
+                ? "gui.factorycore.terminal.grid.amount.item.one"
+                : "gui.factorycore.terminal.grid.amount.item",
         String.format(java.util.Locale.ROOT, "%,d", view.amount(index)));
   }
 
