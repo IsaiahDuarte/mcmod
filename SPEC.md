@@ -45,10 +45,8 @@ Names are working names; responsibilities are binding.
 | Storage Drive | Host digital item/fluid cells, preserving resource-specific capacities. |
 | Energy Bank | Store finite real energy with configured capacity and input/output rates. |
 | Fuel Generator | Convert supported vanilla furnace fuels into finite energy so powered progression works without another technology mod. Preserve fuel-container remainders. |
-| Storage Connector | Register external inventories, tanks, or energy providers with access policy and priority. |
+| Interface | One block with three modes ([ADR 0059](docs/decisions/0059-unified-interface.md); implementation in progress under U11, the three separate blocks remain until it lands). **Storage**: register external inventories, tanks, or energy providers with access policy and priority. **Machine**: bind sides, slots, tanks, and energy ports to local labels; offer import/export/stock presets. **Buffer**: receive/expose real staged items to adjacent automation such as hoppers. |
 | Network Cable | Connect devices within a segment. |
-| Machine Interface | Bind sides, slots, tanks, and energy ports to local labels; offer import/export/stock presets. |
-| Buffered Interface | Receive/expose real staged items to adjacent automation such as hoppers. |
 | Crafting Interface | Bind processing patterns to machine ports and execute their jobs. |
 | Crafting Unit | Execute supported crafting-table patterns, including deterministic remainders. |
 | Gateway | Separate parent/child segments and mediate storage access and published jobs. |
