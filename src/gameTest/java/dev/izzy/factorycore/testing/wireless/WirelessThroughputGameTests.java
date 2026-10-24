@@ -21,9 +21,9 @@ import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
-import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
+import dev.izzy.factorycore.platform.wireless.LinkPairing;
+import dev.izzy.factorycore.testing.Links;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ public final class WirelessThroughputGameTests {
       ServerPlayer player,
       WorldNetworks networks,
       DeviceSavedData saved,
-      List<LinkEndpointEntity> ends,
+      List<LinkModule> ends,
       DeviceRegistry.Handle[] root,
       DeviceRegistry.Handle[] child,
       DeviceRegistry.Handle[] nested,
@@ -117,43 +117,31 @@ public final class WirelessThroughputGameTests {
     entity.commission(null);
   }
 
+  /** The link now lives in the gateway behind the old endpoint position (ADR 0061). */
   private static void endpoint(
       GameTestHelper h,
       ServerPlayer owner,
       BlockPos position,
       Direction facing,
-      List<LinkEndpointEntity> ends) {
-    h.setBlock(
-        position,
-        WirelessContent.LINK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, facing));
-    WirelessContent.LINK
-        .get()
-        .setPlacedBy(
-            h.getLevel(),
-            h.absolutePos(position),
-            h.getBlockState(position),
-            owner,
-            new ItemStack(WirelessContent.LINK_ITEM.get()));
-    ends.add(h.getBlockEntity(position));
+      List<LinkModule> ends) {
+    ends.add(Links.install(h, position.relative(facing.getOpposite()), facing, owner.getUUID()));
   }
 
   private static Fixture setup(GameTestHelper h) {
     var owner = TestPlayers.mock(h);
     NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
-    var ends = new ArrayList<LinkEndpointEntity>();
+    var ends = new ArrayList<LinkModule>();
+    // Gateways first: each link is installed in the gateway behind its old endpoint position.
     for (int x : new int[] {1, 7}) {
       gate(h, new BlockPos(x, 1, 1), Direction.EAST);
+      gate(h, new BlockPos(x + 4, 1, 1), Direction.EAST);
       endpoint(h, owner, new BlockPos(x + 1, 1, 1), Direction.EAST, ends);
       endpoint(h, owner, new BlockPos(x + 3, 1, 1), Direction.WEST, ends);
-      gate(h, new BlockPos(x + 4, 1, 1), Direction.EAST);
     }
     gate(h, new BlockPos(0, 1, 2), Direction.SOUTH);
+    gate(h, new BlockPos(0, 1, 6), Direction.SOUTH);
     endpoint(h, owner, new BlockPos(0, 1, 3), Direction.SOUTH, ends);
     endpoint(h, owner, new BlockPos(0, 1, 5), Direction.NORTH, ends);
-    gate(h, new BlockPos(0, 1, 6), Direction.SOUTH);
     return new Fixture(
         owner,
         WorldNetworks.get(h.getLevel().getServer()),
@@ -170,8 +158,7 @@ public final class WirelessThroughputGameTests {
   private static void pair(GameTestHelper h, Fixture f) {
     for (int index = 0; index < f.ends.size(); index += 2)
       h.assertTrue(
-          LinkEndpointBlock.pair(
-                  f.player, f.ends.get(index).getBlockPos(), f.ends.get(index + 1).getBlockPos())
+          LinkPairing.pair(f.player, f.ends.get(index).position(), f.ends.get(index + 1).position())
               .equals("paired"),
           "Pair authorized");
     f.power();

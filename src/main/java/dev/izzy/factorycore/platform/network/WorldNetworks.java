@@ -27,7 +27,7 @@ import dev.izzy.factorycore.platform.storage.WorldBufferImports;
 import dev.izzy.factorycore.platform.storage.WorldConnectors;
 import dev.izzy.factorycore.platform.storage.WorldMachinePresets;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -393,15 +393,13 @@ public final class WorldNetworks {
     if (index.isEmpty()) chunks.remove(key);
   }
 
-  /** True when discovery captured this endpoint's wireless port reciprocally at its partner. */
+  /** True when discovery captured this gateway's wireless port reciprocally at its partner. */
   private static boolean bridged(
-      Region region,
-      LinkEndpointEntity link,
-      NodeRegistry.Position position,
-      WiredDiscovery.Wire wire) {
-    long back = BlockPos.of(position.block()).relative(link.back()).asLong();
+      Region region, LinkModule link, NodeRegistry.Position position, WiredDiscovery.Wire wire) {
+    if (link.partner() == null) return false;
+    long partner = link.partner().asLong();
     for (var port : wire.ports()) {
-      if (port.neighbor().block() == back) continue;
+      if (port.neighbor().block() != partner) continue;
       var other = region.discovery.captured(port.neighbor());
       if (other != null && other.ports().stream().anyMatch(p -> p.neighbor().equals(position)))
         return true;
@@ -493,8 +491,11 @@ public final class WorldNetworks {
           && saved.nodes().validate(lease) == NodeRegistry.Failure.OK)
         region.authority.register(saved.network(lease.id()));
     }
-    if (entity instanceof LinkEndpointEntity link) {
-      var member = region.discovery.publishedTopology().membership(wire.nodes().getFirst().id());
+    if (entity instanceof NetworkNodeEntity gateway && gateway.link() != null) {
+      var link = gateway.link();
+      // The linked side's vertex: the gateway's upstream (first) or downstream (second) node.
+      var vertex = wire.nodes().get(link.downstream() ? 1 : 0).id();
+      var member = region.discovery.publishedTopology().membership(vertex);
       // Discovery joins only reciprocal captured ports, so an unpaired, unpowered or one-sided
       // endpoint is a dead-end node with no wireless route to meter.
       if (bridged(region, link, position, wire)

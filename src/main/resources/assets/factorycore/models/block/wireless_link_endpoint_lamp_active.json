@@ -1,6 +1,0 @@
-{
-  "parent": "factorycore:block/status_overlay_up",
-  "textures": {
-    "overlay": "factorycore:block/wireless_link_endpoint_lamp_active"
-  }
-}

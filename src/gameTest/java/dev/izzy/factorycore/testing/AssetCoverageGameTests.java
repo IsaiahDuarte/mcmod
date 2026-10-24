@@ -200,14 +200,11 @@ public final class AssetCoverageGameTests {
         helper.assertTrue(registered.contains(path), "Description for unregistered item " + key);
       }
     for (var key :
-        List.of(
-            "tooltip.factorycore.lamp_legend",
-            "tooltip.factorycore.lamp_legend_program",
-            "tooltip.factorycore.lamp_legend_link"))
+        List.of("tooltip.factorycore.lamp_legend", "tooltip.factorycore.lamp_legend_program"))
       helper.assertTrue(lang.has(key), "Lamp legend " + key);
     // Lower bounds catch an empty registry without pinning the count other slices extend.
     helper.assertTrue(
-        blocks >= 14 && items >= 30 && states > blocks,
+        blocks >= 13 && items >= 30 && states > blocks,
         "Inventory " + blocks + " blocks / " + states + " states / " + items + " items");
     helper.succeed();
   }

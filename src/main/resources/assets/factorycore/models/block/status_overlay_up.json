@@ -2,7 +2,7 @@
   "render_type": "minecraft:cutout",
   "textures": {
     "particle": "#overlay",
-    "overlay": "factorycore:block/wireless_link_endpoint_lamp_active"
+    "overlay": "factorycore:block/wireless_access_point_top_lamp_active"
   },
   "elements": [
     {

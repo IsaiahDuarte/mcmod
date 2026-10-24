@@ -23,7 +23,9 @@ import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
-/** Actual endpoint chunk eviction: cached wireless geometry must never keep storage usable. */
+/**
+ * Actual linked-gateway chunk eviction: cached wireless geometry must never keep storage usable.
+ */
 final class WirelessLifecycleVerification {
   private static final BlockPos ROOT = new BlockPos(1792, 65, 1),
       FIRST_GATE = ROOT.east(),
@@ -34,7 +36,7 @@ final class WirelessLifecycleVerification {
   private static final UUID OWNER = UUID.fromString("0841e8bf-e600-4d1e-bc63-9262b015f10c");
   private final Path report = Path.of(System.getProperty("factorycore.wireless.report"));
   private ServerLevel level;
-  private LinkEndpointEntity first, second;
+  private LinkModule first, second;
   private StorageDriveEntity drive;
   private DeviceRegistry.Handle cell;
   private ResourceKey key;
@@ -72,26 +74,20 @@ final class WirelessLifecycleVerification {
           3);
       ((NetworkNodeEntity) level.getBlockEntity(gate)).commission(null);
     }
-    for (var end : new BlockPos[] {FIRST, SECOND}) {
-      level.setBlock(
-          end,
-          WirelessContent.LINK
-              .get()
-              .defaultBlockState()
-              .setValue(
-                  BlockStateProperties.FACING, end.equals(FIRST) ? Direction.EAST : Direction.WEST),
-          3);
+    // ADR 0061: each link lives in its gateway. Restore normal saved pairing rather than using a
+    // synthetic player session.
+    for (var gate : new BlockPos[] {FIRST_GATE, SECOND_GATE}) {
+      var gateway = (NetworkNodeEntity) level.getBlockEntity(gate);
+      gateway.installLink(gate.equals(FIRST_GATE) ? Direction.EAST : Direction.WEST, OWNER, null);
+      var tag = gateway.saveWithoutMetadata(level.registryAccess());
+      var link = tag.getCompound(LinkModule.FIELD);
+      link.putLong("Partner", (gate.equals(FIRST_GATE) ? SECOND_GATE : FIRST_GATE).asLong());
+      tag.put(LinkModule.FIELD, link);
+      gateway.loadWithComponents(tag, level.registryAccess());
+      gateway.setChanged();
     }
-    first = (LinkEndpointEntity) level.getBlockEntity(FIRST);
-    second = (LinkEndpointEntity) level.getBlockEntity(SECOND);
-    // Restore normal saved pairing rather than using a synthetic player session.
-    for (var end : new LinkEndpointEntity[] {first, second}) {
-      var tag = end.saveWithoutMetadata(level.registryAccess());
-      tag.putUUID("Owner", OWNER);
-      tag.putLong("Partner", (end == first ? SECOND : FIRST).asLong());
-      end.loadWithComponents(tag, level.registryAccess());
-      end.setChanged();
-    }
+    first = ((NetworkNodeEntity) level.getBlockEntity(FIRST_GATE)).link();
+    second = ((NetworkNodeEntity) level.getBlockEntity(SECOND_GATE)).link();
     level.setBlock(DRIVE, StorageContent.DRIVE.get().defaultBlockState(), 3);
     drive = (StorageDriveEntity) level.getBlockEntity(DRIVE);
     drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
@@ -152,17 +148,17 @@ final class WirelessLifecycleVerification {
       if (phase == 1) {
         if (level.getChunkSource().getChunkNow(SECOND.getX() >> 4, 0) != null
             || unloads == 0
-            || !second.isRemoved()) return;
+            || second.current()) return;
         offlineSince = now;
         phase = 2;
       }
       if (phase == 2) {
         require(
             first.current() && !second.current() && drive.isRemoved(),
-            "One wireless endpoint remains physically loaded while its partner is removed");
+            "One linked gateway remains physically loaded while its partner is removed");
         require(
             level.getChunkSource().getChunkNow(SECOND.getX() >> 4, 0) == null,
-            "Production discovery never loads the remote endpoint chunk");
+            "Production discovery never loads the remote gateway chunk");
         var stock = saved.registry().stock(cell, key);
         require(
             !stock.loaded()
@@ -178,7 +174,7 @@ final class WirelessLifecycleVerification {
         if (now - offlineSince < 40) return;
         level.setChunkForced(SECOND.getX() >> 4, 0, true);
         level.getChunk(SECOND);
-        second = (LinkEndpointEntity) level.getBlockEntity(SECOND);
+        second = ((NetworkNodeEntity) level.getBlockEntity(SECOND_GATE)).link();
         phase = 3;
         return;
       }
@@ -188,8 +184,8 @@ final class WirelessLifecycleVerification {
         require(
             reloaded != drive
                 && CellHandleData.read(reloaded.cell(0)).equals(cell)
-                && SECOND.equals(first.partner())
-                && FIRST.equals(second.partner()),
+                && SECOND_GATE.equals(first.partner())
+                && FIRST_GATE.equals(second.partner()),
             "Reload restores the original cell lease and reciprocal pair");
         require(
             saved.registry().extract(cell, key, 4, OWNER).amount() == 4
@@ -203,13 +199,13 @@ final class WirelessLifecycleVerification {
                 + unloads
                 + " ticks="
                 + (now - started)
-                + "\nOne endpoint actually unloaded for 40 ticks; its partner stayed loaded.\n"
+                + "\nOne linked gateway actually unloaded for 40 ticks; its partner stayed loaded.\n"
                 + "No implicit chunk load; stock 24/hold 4 preserved; original pair/lease restored; extract 4 leaves 20.\n");
         phase = 4;
         event.getServer().halt(false);
       }
     } catch (Exception failure) {
-      throw new IllegalStateException("Wireless endpoint lifecycle verification failed", failure);
+      throw new IllegalStateException("Wireless link lifecycle verification failed", failure);
     }
   }
 }

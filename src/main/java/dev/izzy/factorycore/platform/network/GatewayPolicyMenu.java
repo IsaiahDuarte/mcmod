@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
 import java.util.Locale;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -36,7 +37,7 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
     buffer.readBlockPos();
     gateway = null;
     viewer = inventory.player;
-    data = new SimpleContainerData(4);
+    data = new SimpleContainerData(5);
     addDataSlots(data);
   }
 
@@ -53,6 +54,7 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
               case 0 -> mask & 0xffff;
               case 1 -> mask >>> 16;
               case 2 -> viewer instanceof ServerPlayer player && mayManage(player) ? 1 : 0;
+              case 4 -> linkState(gateway.link());
               // Network state ordinal + 1 for the status strip; 0 means not yet synced.
               default ->
                   gateway.handle() == null
@@ -70,7 +72,7 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
 
           @Override
           public int getCount() {
-            return 4;
+            return 5;
           }
         };
     addDataSlots(data);
@@ -92,7 +94,26 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
     return gateway != null || data.get(3) != 0;
   }
 
-  /** The status strip (U7), from the synchronized network state; the gateway has no reason. */
+  /** Link states for data slot 4: 0 is no link; otherwise an index into {@link #LINK_STATES}. */
+  private static final String[] LINK_STATES = {
+    "", "active", "unpaired", "out_of_range", "no_power", "unknown_data"
+  };
+
+  private static int linkState(LinkModule link) {
+    if (link == null) return 0;
+    String diagnostic = link.diagnostic();
+    if (diagnostic.isEmpty()) return 1;
+    for (int i = 2; i < LINK_STATES.length; i++) if (LINK_STATES[i].equals(diagnostic)) return i;
+    return LINK_STATES.length - 1;
+  }
+
+  /** The installed link's state key suffix, or an empty string without a link (ADR 0061). */
+  public String linkState() {
+    int state = data.get(4);
+    return state > 0 && state < LINK_STATES.length ? LINK_STATES[state] : "";
+  }
+
+  /** The status strip (U7), from the synchronized network state; the reason is the link state. */
   public DeviceStatus.View deviceStatus() {
     int state = data.get(3);
     var statuses = NetworkTopology.Status.values();
@@ -102,7 +123,7 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
         state < 1 || state > statuses.length
             ? ""
             : statuses[state - 1].name().toLowerCase(Locale.ROOT),
-        "",
+        linkState().isEmpty() ? "" : "status.factorycore.link." + linkState(),
         "");
   }
 

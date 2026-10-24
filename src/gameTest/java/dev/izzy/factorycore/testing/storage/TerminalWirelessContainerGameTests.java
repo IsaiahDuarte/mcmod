@@ -11,10 +11,10 @@ import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
-import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
+import dev.izzy.factorycore.platform.wireless.LinkPairing;
 import dev.izzy.factorycore.testing.EnergyFixture;
+import dev.izzy.factorycore.testing.Links;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
@@ -91,28 +91,9 @@ public final class TerminalWirelessContainerGameTests {
       NetworkNodeEntity gateway = h.getBlockEntity(pos);
       gateway.commission(null);
     }
-    h.setBlock(
-        A,
-        WirelessContent.LINK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
-    h.setBlock(
-        B,
-        WirelessContent.LINK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.WEST));
-    for (var pos : new BlockPos[] {A, B})
-      WirelessContent.LINK
-          .get()
-          .setPlacedBy(
-              h.getLevel(),
-              h.absolutePos(pos),
-              h.getBlockState(pos),
-              player,
-              new ItemStack(WirelessContent.LINK_ITEM.get()));
-    LinkEndpointEntity a = h.getBlockEntity(A), b = h.getBlockEntity(B);
+    // The links live in the gateways the old endpoints touched (ADR 0061).
+    LinkModule a = Links.install(h, PARENT_GATE, Direction.EAST, player.getUUID());
+    LinkModule b = Links.install(h, CHILD_GATE, Direction.WEST, player.getUUID());
     StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_FLUID);
     var cell = CellHandleData.read(drive.cell(0));
     EnergyBankEntity bank = Net.in(h).bank(BANK, EnergyBankTier.STARTER);
@@ -134,8 +115,7 @@ public final class TerminalWirelessContainerGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  LinkEndpointBlock.pair(player, h.absolutePos(A), h.absolutePos(B))
-                      .equals("paired"),
+                  LinkPairing.pair(player, a.position(), b.position()).equals("paired"),
                   "Actual link pairs");
               a.energyStorage().receiveEnergy(1000, false);
               b.energyStorage().receiveEnergy(1000, false);

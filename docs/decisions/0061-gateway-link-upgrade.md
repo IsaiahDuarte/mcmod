@@ -32,7 +32,12 @@ gateway as an upgrade. UD7 removes the endpoint block with no migration.
   per-pair throughput caps of ADR 0050 are unchanged.
 - **Overdrive and break.** Overdrive installs on a linked gateway as it did on an
   endpoint. Breaking the gateway drops the link item and any installed Overdrive, as
-  breaking an endpoint did, and clears the partner's pairing.
+  breaking an endpoint did. The partner keeps its saved pairing, as with an endpoint,
+  but discovery joins only reciprocal ports, so its edge drops at once; pairing it
+  again replaces the stale partner.
+- **Status.** The gateway screen's status line shows the link's state (paired and
+  powered, unpaired, out of range, no power, or needs recovery), replacing the
+  endpoint's own status.
 - **Removed.** The `wireless_link_endpoint` block, item, block entity, recipe and
   assets (UD7). The link item takes over the endpoint's recipe.
 

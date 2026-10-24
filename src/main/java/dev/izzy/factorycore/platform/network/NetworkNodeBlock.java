@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.wireless.LinkPairing;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.core.BlockPos;
@@ -72,6 +73,8 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
       Level level, BlockState state, BlockEntityType<T> type) {
     if (level.isClientSide() || type != NetworkContent.NODE_ENTITY.get()) return null;
     return (tickLevel, position, tickState, entity) -> {
+      var link = ((NetworkNodeEntity) entity).link();
+      if (link != null) link.serverTick();
       if (!DeviceLamp.due(tickLevel, position) || !(tickLevel instanceof ServerLevel server))
         return;
       var status =
@@ -126,6 +129,14 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
                   routingText)
               : Component.translatable(
                   "message.factorycore.node_status", node.handle().id().toString(), routingText);
+      // Sneak-use on a gateway with a wireless link selects or pairs it (ADR 0061).
+      if (kind == NodeRegistry.Kind.GATEWAY
+          && player.isShiftKeyDown()
+          && node.link() != null
+          && player instanceof ServerPlayer server) {
+        LinkPairing.use(server, position);
+        return InteractionResult.CONSUME;
+      }
       // Use opens the gateway policy editor (U7: status shows on screen, not in chat); it shows
       // read-only toggles without Manage.
       if (kind == NodeRegistry.Kind.GATEWAY && player instanceof ServerPlayer server) {
@@ -158,8 +169,10 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
 
   @Override
   protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
-    return blockEntity instanceof NetworkNodeEntity node
-        ? List.of(node.portableForBreak())
-        : List.of();
+    if (!(blockEntity instanceof NetworkNodeEntity node)) return List.of();
+    // A gateway hands back its link upgrade (and Overdrive) separately from its casing.
+    var drops = new java.util.ArrayList<ItemStack>(node.removeLinkForBreak());
+    drops.add(node.portableForBreak());
+    return drops;
   }
 }

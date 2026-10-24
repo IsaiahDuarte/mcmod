@@ -78,7 +78,6 @@ final class ArtGallery {
             CraftingContent.CRAFTER.get().defaultBlockState(),
             ProgramContent.BLOCK.get().defaultBlockState(),
             WirelessContent.ACCESS_POINT.get().defaultBlockState(),
-            facing(WirelessContent.LINK.get().defaultBlockState(), Direction.NORTH),
             NetworkContent.CABLE.get().defaultBlockState());
     int placed = 0;
     for (int i = 0; i < front.size(); i++) {

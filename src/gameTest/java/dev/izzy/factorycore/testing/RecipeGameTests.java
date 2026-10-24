@@ -291,8 +291,8 @@ public final class RecipeGameTests {
             "storage_terminal",
             "wireless_terminal",
             "advanced_module",
-            "wireless_link_endpoint",
-            "wireless_link_endpoint",
+            "wireless_link",
+            "wireless_link",
             "infinite_module")) craft(h, player, menu, id);
     menu.removed(player);
     assertOnly(
@@ -307,7 +307,7 @@ public final class RecipeGameTests {
             Map.entry("wireless_access_point", 1),
             Map.entry("wireless_terminal", 1),
             Map.entry("advanced_module", 1),
-            Map.entry("wireless_link_endpoint", 2),
+            Map.entry("wireless_link", 2),
             Map.entry("infinite_module", 1)));
     var inventory = player.getInventory();
     var cell =

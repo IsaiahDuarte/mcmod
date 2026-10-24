@@ -19,7 +19,7 @@ import dev.izzy.factorycore.core.storage.ItemBuffer;
 import dev.izzy.factorycore.platform.crafting.PatternHolderEntity;
 import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
 import dev.izzy.factorycore.platform.wireless.WirelessTerminalItem;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -119,7 +119,7 @@ class RecipeProgressionTest {
           entry("advanced_item_cell", Stage.ADVANCED),
           entry("advanced_fluid_cell", Stage.ADVANCED),
           entry("advanced_energy_bank", Stage.ADVANCED),
-          entry("wireless_link_endpoint", Stage.ADVANCED),
+          entry("wireless_link", Stage.ADVANCED),
           entry("throughput_upgrade", Stage.ADVANCED),
           entry("infinite_module", Stage.ENDGAME),
           entry("overdrive_upgrade", Stage.ENDGAME),
@@ -308,13 +308,13 @@ class RecipeProgressionTest {
         "The handheld consumes the wired terminal it extends");
     assertTrue(
         recipes
-            .get("factorycore:wireless_link_endpoint")
+            .get("factorycore:wireless_link")
             .inputs()
             .contains("factorycore:wireless_access_point"),
         "Paired links consume the earlier access point");
     assertTrue(
         stages.get("factorycore:network_cable").compareTo(Stage.STARTER) == 0
-            && stages.get("factorycore:wireless_link_endpoint").compareTo(Stage.ADVANCED) == 0,
+            && stages.get("factorycore:wireless_link").compareTo(Stage.ADVANCED) == 0,
         "R11: wired connections are cheaper than equivalent wireless pairs");
   }
 
@@ -424,10 +424,10 @@ class RecipeProgressionTest {
     assertEquals(
         List.of(256L, 20_000L, 1_000L, 32L),
         List.of(
-            (long) LinkEndpointEntity.RANGE,
-            LinkEndpointEntity.CAPACITY,
-            LinkEndpointEntity.INPUT_RATE,
-            LinkEndpointEntity.TICK_COST),
+            (long) LinkModule.RANGE,
+            LinkModule.CAPACITY,
+            LinkModule.INPUT_RATE,
+            LinkModule.TICK_COST),
         "Link endpoint range/buffer/input/upkeep");
     assertEquals(
         List.of(10_000L, 1_000L),
@@ -444,7 +444,7 @@ class RecipeProgressionTest {
   void powerCurveSupportsTheDocumentedSetups() {
     long sustained = FuelGenerator.PER_BURN_TICK;
     long accessPoint = AccessPointEntity.TICK_COST;
-    long endpoint = LinkEndpointEntity.TICK_COST;
+    long endpoint = LinkModule.TICK_COST;
     assertTrue(sustained >= accessPoint, "One generator sustains an open access point");
     assertTrue(
         sustained < endpoint && 2 * sustained >= endpoint,

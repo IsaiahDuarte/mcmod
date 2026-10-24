@@ -8,7 +8,6 @@ import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageDriveBlock;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,11 +73,20 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
             valid
                 ? saved.nodes().definition(node.handle()).policy()
                 : new GatewayPolicy(Set.of(), Set.of(), Set.of());
+        var ports = new ArrayList<WiredDiscovery.Port>(3);
+        ports.add(port(block, facing.getOpposite(), upstream));
+        ports.add(port(block, facing, downstream));
+        // An active wireless link (ADR 0061) adds one reciprocal port from its side's vertex.
+        var link = node == null ? null : node.link();
+        if (link != null && link.active())
+          ports.add(
+              new WiredDiscovery.Port(
+                  Positions.of(level, link.partner()), link.downstream() ? downstream : upstream));
         return new WiredDiscovery.Wire(
             List.of(
                 new NetworkTopology.Node(upstream, NetworkTopology.Role.CABLE, "", true),
                 new NetworkTopology.Node(downstream, NetworkTopology.Role.CABLE, "", true)),
-            List.of(port(block, facing.getOpposite(), upstream), port(block, facing, downstream)),
+            ports,
             new NetworkTopology.Gateway(canonical, upstream, downstream, policy, valid));
       }
       return ordinary(block, state, canonical, NetworkTopology.Role.ROOT, valid);
@@ -86,18 +94,6 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
     if (state.is(NetworkContent.CABLE.get()))
       return ordinary(block, state, id(position, "wire"), NetworkTopology.Role.CABLE, true);
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
-    if (entity instanceof LinkEndpointEntity link) {
-      // A wired back face plus, while the pair is active, one reciprocal port to the partner.
-      var id = id(position, "link");
-      var ports = new ArrayList<WiredDiscovery.Port>(2);
-      ports.add(port(block, link.back(), id));
-      if (link.active())
-        ports.add(new WiredDiscovery.Port(Positions.of(level, link.partner()), id));
-      return new WiredDiscovery.Wire(
-          List.of(new NetworkTopology.Node(id, NetworkTopology.Role.CABLE, "", link.current())),
-          ports,
-          null);
-    }
     if (entity instanceof WiredMember member) {
       var vertex = member.wireVertex();
       return ordinary(

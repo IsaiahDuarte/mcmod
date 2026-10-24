@@ -44,7 +44,7 @@ public final class GuideContent {
           List.of("factorycore:program_controller"),
           List.of("factorycore:gateway"),
           List.of("factorycore:wireless_access_point", "factorycore:wireless_terminal"),
-          List.of("factorycore:wireless_link_endpoint"),
+          List.of("factorycore:wireless_link", "factorycore:gateway"),
           List.of(
               "factorycore:starter_item_cell",
               "factorycore:expanded_item_cell",

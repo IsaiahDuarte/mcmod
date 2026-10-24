@@ -6,7 +6,6 @@
     "factorycore:program_controller",
     "factorycore:network_cable",
     "factorycore:gateway",
-    "factorycore:wireless_link_endpoint",
     "factorycore:crafter",
     "factorycore:wireless_access_point",
     "factorycore:storage_terminal",

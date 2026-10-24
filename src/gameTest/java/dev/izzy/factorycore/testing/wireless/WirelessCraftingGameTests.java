@@ -21,9 +21,9 @@ import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
-import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
+import dev.izzy.factorycore.platform.wireless.LinkPairing;
+import dev.izzy.factorycore.testing.Links;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
@@ -62,8 +62,8 @@ public final class WirelessCraftingGameTests {
       DeviceSavedData saved,
       DeviceRegistry.Handle rootCell,
       DeviceRegistry.Handle childCell,
-      LinkEndpointEntity first,
-      LinkEndpointEntity second,
+      LinkModule first,
+      LinkModule second,
       ResourceKey cobble,
       ResourceKey log,
       ResourceKey planks,
@@ -94,22 +94,10 @@ public final class WirelessCraftingGameTests {
     return CellHandleData.read(drive.cell(0));
   }
 
-  private static void endpoint(
+  /** The link now lives in the gateway behind the old endpoint position (ADR 0061). */
+  private static LinkModule endpoint(
       GameTestHelper h, ServerPlayer owner, BlockPos position, Direction facing) {
-    h.setBlock(
-        position,
-        WirelessContent.LINK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, facing));
-    WirelessContent.LINK
-        .get()
-        .setPlacedBy(
-            h.getLevel(),
-            h.absolutePos(position),
-            h.getBlockState(position),
-            owner,
-            new ItemStack(WirelessContent.LINK_ITEM.get()));
+    return Links.install(h, position.relative(facing.getOpposite()), facing, owner.getUUID());
   }
 
   private static ItemStack planksPattern() {
@@ -136,8 +124,8 @@ public final class WirelessCraftingGameTests {
       NetworkNodeEntity entity = h.getBlockEntity(gate);
       entity.commission(null);
     }
-    endpoint(h, owner, A, Direction.EAST);
-    endpoint(h, owner, B, Direction.WEST);
+    var first = endpoint(h, owner, A, Direction.EAST);
+    var second = endpoint(h, owner, B, Direction.WEST);
     if (processing) {
       h.setBlock(FURNACE, Blocks.BLAST_FURNACE);
       BlastFurnaceBlockEntity furnace = h.getBlockEntity(FURNACE);
@@ -171,8 +159,8 @@ public final class WirelessCraftingGameTests {
         DeviceSavedData.get(h.getLevel().getServer()),
         cell(h, ROOT_DRIVE),
         cell(h, CHILD_DRIVE),
-        h.getBlockEntity(A),
-        h.getBlockEntity(B),
+        first,
+        second,
         codec.itemKey(new ItemStack(Items.COBBLESTONE)),
         codec.itemKey(new ItemStack(Items.OAK_LOG)),
         codec.itemKey(new ItemStack(Items.OAK_PLANKS)),
@@ -234,7 +222,7 @@ public final class WirelessCraftingGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  LinkEndpointBlock.pair(f.owner, h.absolutePos(A), h.absolutePos(B))
+                  LinkPairing.pair(f.owner, f.first.position(), f.second.position())
                       .equals("paired"),
                   "Pair owned");
               f.power();
@@ -304,7 +292,7 @@ public final class WirelessCraftingGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  LinkEndpointBlock.pair(f.owner, h.absolutePos(A), h.absolutePos(B))
+                  LinkPairing.pair(f.owner, f.first.position(), f.second.position())
                       .equals("paired"),
                   "Pair owned");
               f.power();

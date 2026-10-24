@@ -32,7 +32,6 @@ public final class PresentationStateGameTests {
   private static final BlockPos DRIVE = new BlockPos(3, 1, 1);
   private static final BlockPos PROGRAM = new BlockPos(2, 1, 2);
   private static final BlockPos LONE_GATEWAY = new BlockPos(1, 1, 4);
-  private static final BlockPos LINK = new BlockPos(4, 1, 4);
   private static final BlockPos LONE_ACCESS_POINT = new BlockPos(6, 1, 4);
 
   private PresentationStateGameTests() {}
@@ -60,7 +59,6 @@ public final class PresentationStateGameTests {
     helper.setBlock(PROGRAM, ProgramContent.BLOCK.get());
     helper.setBlock(LONE_GATEWAY, NetworkContent.GATEWAY.get());
     ((NetworkNodeEntity) helper.getBlockEntity(LONE_GATEWAY)).commission(null);
-    helper.setBlock(LINK, WirelessContent.LINK.get());
     helper.setBlock(LONE_ACCESS_POINT, WirelessContent.ACCESS_POINT.get());
     StorageDriveEntity drive = helper.getBlockEntity(DRIVE);
     helper.assertTrue(
@@ -87,7 +85,6 @@ public final class PresentationStateGameTests {
             () -> {
               helper.assertTrue(
                   lamp(helper, PROGRAM) == DeviceLamp.OFF, "Undeployed program stays dark");
-              helper.assertTrue(lamp(helper, LINK) == DeviceLamp.OFF, "Unpaired link stays dark");
               // A cosmetic lamp change must not schedule a rebuild of the valid network.
               DeviceLamp.show(
                   helper.getLevel(),

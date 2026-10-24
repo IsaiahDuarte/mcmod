@@ -377,7 +377,7 @@ public final class FactoryCoreData {
       shaped(
           out,
           misc,
-          "wireless_link_endpoint",
+          "wireless_link",
           1,
           item("wireless_access_point"),
           "DED/GAG/III",

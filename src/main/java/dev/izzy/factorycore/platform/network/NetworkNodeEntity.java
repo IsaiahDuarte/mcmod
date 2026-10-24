@@ -1,33 +1,48 @@
 package dev.izzy.factorycore.platform.network;
 
+import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
+import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.storage.DeviceRecoveryAudit;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.LeaseRecovery;
+import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
+import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.LevelResource;
 
 /**
  * Chunk/item references; ownership and gateway policies live exclusively in canonical SavedData.
  */
-public final class NetworkNodeEntity extends BlockEntity {
+public final class NetworkNodeEntity extends BlockEntity implements ThroughputUpgradeable {
   private Tag data;
+
+  /** A gateway's installed wireless link (ADR 0061), or null. */
+  private LinkModule link;
+
   private NodeRegistry.Handle handle;
   private String diagnostic = "";
 
@@ -41,6 +56,63 @@ public final class NetworkNodeEntity extends BlockEntity {
 
   public String diagnostic() {
     return diagnostic;
+  }
+
+  public LinkModule link() {
+    return link;
+  }
+
+  /**
+   * Installs a wireless link on {@code side}, which must be this gateway's upstream or downstream
+   * face; {@code carried} is an item's recovery data, re-read strictly, or null for a fresh link.
+   */
+  public void installLink(Direction side, UUID owner, CompoundTag carried) {
+    if (kind() != NodeRegistry.Kind.GATEWAY) throw new IllegalStateException("link_needs_gateway");
+    if (link != null) throw new IllegalStateException("link_installed_already");
+    var facing = getBlockState().getValue(BlockStateProperties.FACING);
+    if (side != facing && side != facing.getOpposite())
+      throw new IllegalStateException("link_wrong_face");
+    link = carried == null ? new LinkModule(this, side, owner) : LinkModule.load(this, carried);
+    setChanged();
+    link.refresh();
+  }
+
+  /** Removes the link for a break, returning the items it hands back. */
+  public List<ItemStack> removeLinkForBreak() {
+    if (link == null) return List.of();
+    var drops = link.drops();
+    var old = link;
+    link = null;
+    setChanged();
+    old.refresh();
+    return drops;
+  }
+
+  /** True while this exact entity is the loaded one at its position. */
+  public boolean current() {
+    if (isRemoved() || !(level instanceof ServerLevel server)) return false;
+    var chunk = Loaded.chunk(server, worldPosition);
+    return chunk != null
+        && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
+  }
+
+  @Override
+  public ThroughputTier tier() {
+    return link == null ? ThroughputTier.BASE : link.tier();
+  }
+
+  /** Overdrive goes into an installed link; a gateway without one takes no upgrade. */
+  @Override
+  public boolean upgrade(NetworkPermissions.Actor actor, ThroughputTier item) {
+    if (link == null) throw new IllegalStateException("upgrade_not_applicable");
+    if (!link.mayConfigure(actor)) return false;
+    link.install(item);
+    return true;
+  }
+
+  @Override
+  public Component throughputStatus(MinecraftServer server) {
+    return ThroughputStatus.link(server, link);
   }
 
   /**
@@ -273,12 +345,17 @@ public final class NetworkNodeEntity extends BlockEntity {
   protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.saveAdditional(tag, registries);
     if (data != null) tag.put(NodeHandleData.FIELD, data.copy());
+    if (link != null) tag.put(LinkModule.FIELD, link.save());
   }
 
   @Override
   protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.loadAdditional(tag, registries);
     data = tag.contains(NodeHandleData.FIELD) ? tag.get(NodeHandleData.FIELD).copy() : null;
+    link =
+        tag.contains(LinkModule.FIELD, Tag.TAG_COMPOUND)
+            ? LinkModule.load(this, tag.getCompound(LinkModule.FIELD))
+            : null;
     parse();
   }
 }

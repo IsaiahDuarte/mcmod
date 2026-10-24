@@ -394,16 +394,6 @@ def block_textures():
     out["wireless_access_point_top"] = access_point_top("off")
     out["wireless_access_point_side"] = access_point_side("off")
 
-    # Wireless Link Endpoint: emitter dish (top), arrow toward partner, wired back.
-    out["wireless_link_endpoint_top"] = link_top("off")
-    ls = casing("wireless_link_endpoint_side")
-    inset(ls, 4, 2, 10, 12)
-    ls.glyph(4, 3, GLYPHS["arrow_up"], AMBER)
-    ls.hline(5, 9, 11, COPPER)
-    out["wireless_link_endpoint_side"] = ls
-    lb = casing("wireless_link_endpoint_back")
-    port(lb, 5, 5)
-    out["wireless_link_endpoint_back"] = lb
     out.update(status_overlays())
     return out
 
@@ -501,19 +491,6 @@ def access_point_side(lamp):
     return c
 
 
-def link_top(lamp):
-    c = casing("wireless_link_endpoint_top")
-    inset(c, 2, 2, 12, 12)
-    lit = lamp == "active"
-    dish = [".#####.", "#.....#", "#.###.#", "#.#.#.#", "#.###.#", "#.....#", ".#####."]
-    c.glyph(4, 4, dish, AMBER if lit else AMBER_DARK)
-    c.px(7, 7, AMBER_HI if lit else AMBER)
-    if lamp == "fault":
-        c.rect(6, 4, 8, 10, PANEL_SHADOW)
-        c.glyph(6, 5, GLYPHS["bang"], FAULT)
-    return c
-
-
 DRIVE_BAYS = (2, 5, 8, 11)
 
 
@@ -551,7 +528,6 @@ LAMP_FACES = (
     ("program_controller_lamp", program_side, PROGRAM_LAMPS[1:]),
     ("wireless_access_point_lamp", access_point_side, LAMPS[1:]),
     ("wireless_access_point_top_lamp", access_point_top, LAMPS[1:]),
-    ("wireless_link_endpoint_lamp", link_top, LAMPS[1:]),
 )
 
 
@@ -582,16 +558,6 @@ NODE_ROTATION = {
     "down": {"x": 90},
 }
 # Rotations of an up-facing model for each FACING value (link endpoints).
-LINK_ROTATION = {
-    "down": {"x": 180},
-    "up": {},
-    "north": {"x": 90},
-    "south": {"x": 90, "y": 180},
-    "west": {"x": 90, "y": 270},
-    "east": {"x": 90, "y": 90},
-}
-
-
 def overlay_template(faces, emissive, fallback):
     """A full-cube cutout overlay drawn coplanar over the base model on ``faces``."""
     element = {
@@ -624,7 +590,7 @@ def status_json():
     models = {
         "status_overlay_north": overlay_template(("north",), True, "network_controller_lamp_active"),
         "status_overlay_sides": overlay_template(("north", "south", "east", "west"), True, "program_controller_lamp_active"),
-        "status_overlay_up": overlay_template(("up",), True, "wireless_link_endpoint_lamp_active"),
+        "status_overlay_up": overlay_template(("up",), True, "wireless_access_point_top_lamp_active"),
         "status_overlay_front_back": overlay_template(("north", "south"), False, "storage_drive_bay_1"),
     }
     states = {}
@@ -642,7 +608,6 @@ def status_json():
 
     facing_device("network_controller", "network_controller", "network_controller_lamp", NODE_ROTATION, "status_overlay_north")
     facing_device("gateway", "gateway", "gateway_lamp", NODE_ROTATION, "status_overlay_north")
-    facing_device("wireless_link_endpoint", "wireless_link_endpoint", "wireless_link_endpoint_lamp", LINK_ROTATION, "status_overlay_up")
 
     parts = [part("program_controller")]
     for lamp in PROGRAM_LAMPS[1:]:
@@ -793,6 +758,20 @@ def throughput_upgrade(kind):
     return c
 
 
+def wireless_link():
+    """Gateway link upgrade (ADR 0061): the upgrade card with the emitter dish of the old endpoint."""
+    c = Canvas("wireless_link")
+    c.rect(2, 2, 13, 13, OUTLINE)
+    c.rect(3, 3, 12, 12, CASE, grain=3)
+    c.rect(4, 4, 11, 11, PANEL)
+    dish = [".#####.", "#.....#", "#.###.#", "#.#.#.#", "#.###.#", "#.....#", ".#####."]
+    c.glyph(4, 4, dish, AMBER)
+    c.px(7, 7, AMBER_HI)
+    for x in range(4, 12, 2):
+        c.px(x, 14, COPPER)
+    return c
+
+
 def pattern(kind):
     c = Canvas(f"{kind}_pattern")
     # Encoded card with a folded corner; corner tab marks the kind by shape.
@@ -884,6 +863,7 @@ def item_textures():
     out["infinite_module"] = module("infinite")
     out["throughput_upgrade"] = throughput_upgrade("throughput")
     out["overdrive_upgrade"] = throughput_upgrade("overdrive")
+    out["wireless_link"] = wireless_link()
     for kind in ("blank", "crafting", "processing"):
         out[f"{kind}_pattern"] = pattern(kind)
     out["wireless_terminal"] = wireless_terminal()

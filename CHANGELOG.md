@@ -12,7 +12,9 @@
   their own edits and upgrades, gateways offer Shared/Read-only/Isolated presets,
   access uses Guest/Member/Builder/Admin roles, the terminal crafting panel
   collapses and shows fluids in mB, and the in-game guide shows block and recipe
-  pictures.
+  pictures. The Crafting Unit and Crafting Interface are one **Crafter**, and the
+  Wireless Link Endpoint block is replaced by a **Wireless Link** upgrade installed
+  in a gateway, whose screen shows the link's state.
 
 - Added device state glyphs, visible drive-bay occupancy, translated purpose/legend
   tooltips and held cable transforms; a 32-capture client fixture checks

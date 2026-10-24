@@ -48,3 +48,8 @@ unchanged. Reload restores the original pair and cell lease before claimed extra
 resumes. [Local evidence](../evidence/wireless-lifecycle-v1-2026-10-18.md) records the
 command and observations. This does not establish resource rate caps or interrupted
 external-write recovery.
+
+## Amendment — ADR 0061 (2026-10-24)
+
+The endpoint block is removed. A link is now an upgrade installed in a gateway and
+keeps every rule above; see [ADR 0061](0061-gateway-link-upgrade.md).

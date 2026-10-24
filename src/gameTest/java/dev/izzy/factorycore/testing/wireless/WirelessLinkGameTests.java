@@ -6,9 +6,9 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.StorageContent;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
-import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
+import dev.izzy.factorycore.platform.wireless.LinkPairing;
+import dev.izzy.factorycore.testing.Links;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
@@ -16,7 +16,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -55,31 +54,11 @@ public final class WirelessLinkGameTests {
       entity.commission(null);
     }
     // A's back faces west (G1 downstream); B's back faces east (G2 upstream).
-    h.setBlock(
-        A,
-        WirelessContent.LINK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.EAST));
-    h.setBlock(
-        B,
-        WirelessContent.LINK
-            .get()
-            .defaultBlockState()
-            .setValue(BlockStateProperties.FACING, Direction.WEST));
+    // The links live in the gateways the old endpoints touched (ADR 0061).
+    LinkModule a = Links.install(h, PARENT_GATE, Direction.EAST, owner.getUUID());
+    LinkModule b = Links.install(h, CHILD_GATE, Direction.WEST, owner.getUUID());
     h.setBlock(DRIVE, StorageContent.DRIVE.get());
-    for (var end : new BlockPos[] {A, B})
-      WirelessContent.LINK
-          .get()
-          .setPlacedBy(
-              h.getLevel(),
-              h.absolutePos(end),
-              h.getBlockState(end),
-              owner,
-              new ItemStack(WirelessContent.LINK_ITEM.get()));
-    LinkEndpointEntity a = h.getBlockEntity(A);
-    LinkEndpointEntity b = h.getBlockEntity(B);
-    var far = h.absolutePos(A).offset(300, 0, 0);
+    var far = a.position().offset(300, 0, 0);
     h.startSequence()
         .thenWaitUntil(
             () ->
@@ -90,14 +69,13 @@ public final class WirelessLinkGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  LinkEndpointBlock.pair(owner, h.absolutePos(A), far).equals("out_of_range"),
+                  LinkPairing.pair(owner, a.position(), far).equals("out_of_range"),
                   "Pairing beyond 256 blocks is refused");
               h.assertTrue(
-                  LinkEndpointBlock.pair(stranger, h.absolutePos(A), h.absolutePos(B))
-                      .equals("denied"),
+                  LinkPairing.pair(stranger, a.position(), b.position()).equals("denied"),
                   "Pairing needs Manage at the parent endpoint");
               h.assertTrue(
-                  LinkEndpointBlock.pair(owner, h.absolutePos(A), h.absolutePos(B)).equals("paired")
+                  LinkPairing.pair(owner, a.position(), b.position()).equals("paired")
                       && a.diagnostic().equals("no_power"),
                   "Owner pairs; endpoints without FE stay inactive: " + a.diagnostic());
             })

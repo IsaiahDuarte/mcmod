@@ -51,7 +51,7 @@ Names are working names; responsibilities are binding.
 | Gateway | Separate parent/child segments and mediate storage access and published jobs. |
 | Program Controller | Run one deployed program in its segment, with a separately editable draft. |
 | Wireless Access Point | Permit authorized handheld terminal access within configured range. |
-| Wireless Link Endpoint | Form one explicit paired connection between parent and child gateways under R11. |
+| Wireless Link (gateway upgrade) | Form one explicit paired connection between parent and child gateways under R11 ([ADR 0061](docs/decisions/0061-gateway-link-upgrade.md)). |
 
 Gateways and Program Controllers are separate blocks. A branch can have no program or multiple controllers. Root programs may coordinate published jobs without a gateway of their own.
 

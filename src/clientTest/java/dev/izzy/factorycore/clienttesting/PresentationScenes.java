@@ -23,8 +23,8 @@ import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointBlock;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
+import dev.izzy.factorycore.platform.wireless.LinkPairing;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -110,8 +110,8 @@ final class PresentationScenes {
 
   /**
    * Floating grid: one row per directional device, one column per facing. Rows: controller,
-   * gateway, connector, machine interface, crafting interface, link endpoint, terminal, generator
-   * (the last two are horizontal-only and skip up/down). Returns the number of blocks placed.
+   * gateway, connector, machine interface, crafting interface, terminal, generator (the last two
+   * are horizontal-only and skip up/down). Returns the number of blocks placed.
    */
   static int orientations(ServerLevel level) {
     List<BlockState> rows =
@@ -121,7 +121,6 @@ final class PresentationScenes {
             InterfaceContent.state(InterfaceKind.STORAGE, Direction.NORTH),
             InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH),
             CraftingContent.CRAFTER.get().defaultBlockState(),
-            WirelessContent.LINK.get().defaultBlockState(),
             TerminalContent.BLOCK.get().defaultBlockState(),
             FuelGeneratorContent.BLOCK.get().defaultBlockState());
     int placed = 0;
@@ -167,11 +166,13 @@ final class PresentationScenes {
     return controller;
   }
 
-  private static LinkEndpointEntity link(ServerLevel level, BlockPos position, boolean powered) {
+  /** A gateway with a link on its north (downstream) face (ADR 0061). */
+  private static LinkModule link(ServerLevel level, BlockPos position, boolean powered) {
     level.setBlock(
-        position.south(), facing(NetworkContent.GATEWAY.get(), Direction.NORTH), Block.UPDATE_ALL);
-    level.setBlock(position, facing(WirelessContent.LINK.get(), Direction.NORTH), 3);
-    var link = (LinkEndpointEntity) level.getBlockEntity(position);
+        position, facing(NetworkContent.GATEWAY.get(), Direction.NORTH), Block.UPDATE_ALL);
+    var gateway = (NetworkNodeEntity) level.getBlockEntity(position);
+    gateway.installLink(Direction.NORTH, null, null);
+    var link = gateway.link();
     if (powered) link.energyStorage().receiveEnergy(1_000, false);
     return link;
   }
@@ -236,9 +237,9 @@ final class PresentationScenes {
     link(level, new BlockPos(56, 65, lamps), false);
     link(level, new BlockPos(58, 65, lamps), false);
     String powered =
-        LinkEndpointBlock.pair(player, new BlockPos(50, 65, lamps), new BlockPos(52, 65, lamps));
+        LinkPairing.pair(player, new BlockPos(50, 65, lamps), new BlockPos(52, 65, lamps));
     String unpowered =
-        LinkEndpointBlock.pair(player, new BlockPos(54, 65, lamps), new BlockPos(56, 65, lamps));
+        LinkPairing.pair(player, new BlockPos(54, 65, lamps), new BlockPos(56, 65, lamps));
     if (!"paired".equals(powered) || !"paired".equals(unpowered))
       throw new IllegalStateException("Gallery link pairing: " + powered + "/" + unpowered);
 
@@ -283,7 +284,7 @@ final class PresentationScenes {
       level.setBlock(position, cable.connected(level, position), 3);
     return "row z=40: root(active) roots(fault) gateway(fault) gateway(active) drives(0,1+3,4)"
         + " generators(unlit,lit); row z=43: programs(stopped,running,paused,trapped)"
-        + " access points(active,fault) links(active pair, fault pair, off); arms z=47";
+        + " access points(active,fault) linked gateways(powered pair, unpowered pair, unpaired); arms z=47";
   }
 
   /**
@@ -337,6 +338,9 @@ final class PresentationScenes {
     level.setBlock(base.east(6), NetworkContent.CABLE.get().defaultBlockState(), 3);
     level.setBlock(base.east(7), facing(NetworkContent.GATEWAY.get(), Direction.EAST), 3);
     ((NetworkNodeEntity) level.getBlockEntity(base.east(7))).commission(null);
+    // A link on the downstream face puts its state on the gateway screen's status line.
+    ((NetworkNodeEntity) level.getBlockEntity(base.east(7)))
+        .installLink(Direction.EAST, player.getUUID(), null);
     level.setBlock(base.east(8), NetworkContent.CABLE.get().defaultBlockState(), 3);
     // Storage Connector off the cable, socket north into its own chest (U5 screen).
     level.setBlock(base.east(6).north(2), Blocks.CHEST.defaultBlockState(), 3);

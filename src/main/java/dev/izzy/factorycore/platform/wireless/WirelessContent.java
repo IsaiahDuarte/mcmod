@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryRegistries;
+import dev.izzy.factorycore.platform.network.NetworkContent;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -68,17 +69,9 @@ public final class WirelessContent {
       ACCESS_POINT_ENTITY =
           FactoryRegistries.entity("wireless_access_point", AccessPointEntity::new, ACCESS_POINT);
 
-  public static final DeferredBlock<LinkEndpointBlock> LINK =
-      FactoryRegistries.BLOCKS.registerBlock(
-          "wireless_link_endpoint", LinkEndpointBlock::new, DeviceProperties.machine());
-
-  public static final DeferredItem<BlockItem> LINK_ITEM =
-      FactoryRegistries.ITEMS.register(
-          "wireless_link_endpoint", () -> new BlockItem(LINK.get(), new Item.Properties()));
-
-  public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<LinkEndpointEntity>>
-      LINK_ENTITY =
-          FactoryRegistries.entity("wireless_link_endpoint", LinkEndpointEntity::new, LINK);
+  /** The Wireless Link gateway upgrade (ADR 0061). */
+  public static final DeferredItem<LinkItem> LINK_ITEM =
+      FactoryRegistries.ITEMS.register("wireless_link", LinkItem::new);
 
   private WirelessContent() {}
 
@@ -87,8 +80,11 @@ public final class WirelessContent {
         Capabilities.EnergyStorage.BLOCK,
         ACCESS_POINT_ENTITY.get(),
         (point, face) -> point.energyStorage());
+    // A gateway accepts FE from any face only while it carries a wireless link.
     event.registerBlockEntity(
-        Capabilities.EnergyStorage.BLOCK, LINK_ENTITY.get(), (link, face) -> link.energyStorage());
+        Capabilities.EnergyStorage.BLOCK,
+        NetworkContent.NODE_ENTITY.get(),
+        (node, face) -> node.link() == null ? null : node.link().energyStorage());
     event.registerItem(
         Capabilities.EnergyStorage.ITEM,
         (stack, context) ->

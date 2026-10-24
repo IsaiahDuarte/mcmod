@@ -203,8 +203,7 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   pushed into the machine it faces. Same leases and output attribution as today. Delete the
   Crafting Unit and Crafting Interface outright (UD7).
 
-- [ ] **U13 — Link as a Gateway upgrade (needs UD2).**
-  Progress: design accepted in [ADR 0061](decisions/0061-gateway-link-upgrade.md). Next: U13a `LinkModule` in the gateway + item + discovery edge; U13b migrate tests/fixtures and delete the endpoint block.
+- [x] **U13 — Link as a Gateway upgrade (needs UD2).** Done 2026-10-24: design `13ceda3` ([ADR 0061](decisions/0061-gateway-link-upgrade.md)) plus implementation commit. [Evidence](evidence/ux-u13-gateway-link-2026-10-24.md). The gateway screen shows link state; there is no link lamp.
   Replace the Wireless Link Endpoint block with an upgrade installed in a Gateway, keeping
   pairing, power, range and shared throughput rules. Delete the endpoint block outright;
   placed endpoints are not converted (UD7).

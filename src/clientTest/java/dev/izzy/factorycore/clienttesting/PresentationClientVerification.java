@@ -21,6 +21,7 @@ import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
+import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
@@ -31,7 +32,7 @@ import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
-import dev.izzy.factorycore.platform.wireless.LinkEndpointEntity;
+import dev.izzy.factorycore.platform.wireless.LinkModule;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -134,8 +135,8 @@ public final class PresentationClientVerification {
     var level = event.getServer().overworld();
     for (var position : List.copyOf(fed)) {
       var entity = level.getBlockEntity(position);
-      if (entity instanceof LinkEndpointEntity link)
-        link.energyStorage().receiveEnergy(1_000, false);
+      if (entity instanceof NetworkNodeEntity node && node.link() != null)
+        node.link().energyStorage().receiveEnergy(1_000, false);
       if (entity instanceof AccessPointEntity point)
         point.energyStorage().receiveEnergy(1_000, false);
     }
@@ -980,10 +981,11 @@ public final class PresentationClientVerification {
                   && lamp(level, 43, z + 3) == DeviceLamp.FAULT
                   && lamp(level, 46, z + 3) == DeviceLamp.ACTIVE
                   && lamp(level, 48, z + 3) == DeviceLamp.FAULT
-                  && lamp(level, 50, z + 3) == DeviceLamp.ACTIVE
-                  && lamp(level, 52, z + 3) == DeviceLamp.ACTIVE
-                  && lamp(level, 54, z + 3) == DeviceLamp.FAULT
-                  && lamp(level, 58, z + 3) == DeviceLamp.OFF;
+                  // Links have no lamp since ADR 0061; their gateways report the link state.
+                  && link(level, 50, z + 3).equals("")
+                  && link(level, 52, z + 3).equals("")
+                  && link(level, 54, z + 3).equals("no_power")
+                  && link(level, 58, z + 3).equals("unpaired");
           if (!ready && level.getGameTime() % 100 == 0) {
             for (var position :
                 List.of(
@@ -1000,7 +1002,10 @@ public final class PresentationClientVerification {
                       + " lamp="
                       + level.getBlockState(position).getValue(DeviceLamp.PROPERTY)
                       + " membership="
-                      + WorldNetworks.get(player.server).membership(at(player, position)).status());
+                      + WorldNetworks.get(player.server).membership(at(player, position)).status()
+                      + (LinkModule.loaded(level, position) == null
+                          ? ""
+                          : " link=" + LinkModule.loaded(level, position).diagnostic()));
             }
           }
           return ready;
@@ -1009,8 +1014,8 @@ public final class PresentationClientVerification {
         client -> {
           evidence.append(
               "lamps: root active, joined roots fault, rootless gateway fault, rooted gateway active;"
-                  + " programs off/active/paused/fault; access points active/fault; links"
-                  + " active/active/fault/off\n");
+                  + " programs off/active/paused/fault; access points active/fault; linked"
+                  + " gateways active/active/no_power/unpaired\n");
           return true;
         });
     view(PresentationScenes.STATES, "states-day.png", 40);
@@ -1076,7 +1081,7 @@ public final class PresentationClientVerification {
                   new TooltipBoard(
                       List.of(
                           stack("network_controller"), stack("program_controller"),
-                          stack("starter_energy_bank"), stack("wireless_link_endpoint")),
+                          stack("starter_energy_bank"), stack("wireless_link")),
                       targetCorner));
               setScale(client, targetScale);
               return true;
@@ -1208,13 +1213,12 @@ public final class PresentationClientVerification {
     upgrade(base.east(3), ThroughputTier.ENDGAME, true);
     use(base.east(5), Direction.SOUTH, false);
     scales("program", ProgramScreen.class, false);
-    use(base.east(7), Direction.SOUTH, true);
+    // Plain use opens the gateway; sneak-use would pair its link (ADR 0061).
+    use(base.east(7), Direction.SOUTH, false);
     step(
-        client -> {
-          if (!(client.screen instanceof GatewayPolicyScreen)) return false;
-          shift(client, false);
-          return true;
-        });
+        client ->
+            client.screen instanceof GatewayPolicyScreen screen
+                && screen.getMenu().linkState().equals("unpaired"));
     scales("gateway-policy", GatewayPolicyScreen.class, false);
     // U8: the Custom choice reveals the three columns of toggles.
     use(base.east(7), Direction.SOUTH, false);
@@ -1330,6 +1334,12 @@ public final class PresentationClientVerification {
 
   private static DeviceLamp lamp(ServerLevel level, int x, int z) {
     return level.getBlockState(new BlockPos(x, 65, z)).getValue(DeviceLamp.PROPERTY);
+  }
+
+  /** The diagnostic of the link installed in the gateway at (x, 65, z), or "none". */
+  private static String link(ServerLevel level, int x, int z) {
+    var link = LinkModule.loaded(level, new BlockPos(x, 65, z));
+    return link == null ? "none" : link.diagnostic();
   }
 
   private static ItemStack stack(String path) {

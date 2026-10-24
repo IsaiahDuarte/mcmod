@@ -85,7 +85,7 @@ sound or animated renderer is required for these status contracts.
 | Blank/Crafting/Processing Patterns | Distinct original icons; invalid/exclusive-use tooltips | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
 | Program Controller | Program symbol, original texture, deployment status | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
 | Fuel Generator | Facing and lit variants with original textures; FE/fuel feedback | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
-| Wireless Access Point and Link Endpoint | Original antenna/link textures and power/pair status | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Wireless Access Point and Wireless Link | Original antenna textures with power status; link upgrade item icon (ADR 0061) | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
 | Wireless Terminal | Original handheld icon, binding and charge tooltip | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
 | Factory Guide | Original guide icon, translated progression/help pages | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
 

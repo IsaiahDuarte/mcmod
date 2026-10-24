@@ -64,7 +64,7 @@ consumes a cell or bank. Patterns are encoded from Blank Patterns in the termina
 | Expanded | Wireless Access Point | 5 iron ingots, 1 gold ingot, 2 redstone dust, 1 ender pearl |
 | Expanded | Wireless Terminal | 1 Storage Terminal, 5 copper ingots, 2 redstone dust, 1 ender pearl |
 | Advanced | Advanced Module | 4 diamonds, 2 redstone dust, 1 netherite ingot |
-| Advanced | Wireless Link Endpoint | 1 Wireless Access Point, 2 diamonds, 1 eye of ender, 2 gold ingots, 3 iron ingots |
+| Advanced | Wireless Link | 1 Wireless Access Point, 2 diamonds, 1 eye of ender, 2 gold ingots, 3 iron ingots |
 | Infinite | Infinite Module | 8 netherite ingots, 1 Nether star |
 
 Open the drive and click the cell's bay with the module on your cursor, or
@@ -804,12 +804,14 @@ screen closes if you leave range, lose View permission, or the access point runs
 
 ## Wireless links
 
-To connect a distant branch, place a **Wireless Link Endpoint** against the parent
-side's gateway and another against the child branch's gateway, up to 256 blocks
-apart in the same dimension. Sneak-use one endpoint and then the other to pair them.
-Each endpoint needs its own FE and uses 32 FE per tick. The branch disconnects if either
-end loses power or is broken, and gateway rules still decide what it can see. Use an
-endpoint without sneaking to see its state.
+To connect a distant branch, use a **Wireless Link** on the parent side's gateway and
+another on the child branch's gateway, up to 256 blocks apart in the same dimension.
+Use it on the gateway's amber cross (upstream) or blue dot (downstream) face; that is
+the side the wireless connection joins. Then, with an empty hand, sneak-use one linked
+gateway and then the other to pair them. Each linked gateway needs its own FE, accepts
+it on any face and uses 32 FE per tick. The branch disconnects if either end loses
+power or is broken, and gateway rules still decide what it can see. Open the gateway
+to see the link's state on its status line. Breaking a linked gateway drops the link.
 
 Each pair shares 256 items, 4,000 mB and 8,000 FE per tick across both directions,
 players, presets, programs and crafting. Crossing several pairs uses each one's
@@ -971,7 +973,7 @@ Automatic machine item presets now schedule successive stacks through that same
 budget instead of waiting for a fresh preset sweep after every successful stack.
 Large storage catalogs can still limit achieved speed before the hardware cap.
 
-Ports and buffers retain upgrades when moved. Link endpoints take Overdrive
+Ports and buffers retain upgrades when moved. Linked gateways take Overdrive
 directly; both ends need it to raise their shared bidirectional caps from
 256/4,000/8,000 to 1,024/16,000/32,000 items/mB/FE per tick. Breaking a known
 upgraded link drops its Overdrive separately for reinstallation. Unsupported
