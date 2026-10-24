@@ -45,12 +45,13 @@ and acceptance evidence; each slice here updates it when acceptance evidence cha
 
 | Gate | Question | Recommendation | Status |
 | --- | --- | --- | --- |
-| UD1 | Merge Storage Connector + Machine Interface + Buffered Interface into one **Interface**, and Crafting Unit + Crafting Interface into one **Crafter**? Amends SPEC R02's role table (responsibilities stay) and needs a save migration. | Yes | **Resolved 2026-10-20: merge both** |
+| UD1 | Merge Storage Connector + Machine Interface + Buffered Interface into one **Interface**, and Crafting Unit + Crafting Interface into one **Crafter**? Amends SPEC R02's role table (responsibilities stay). No save migration (see UD7). | Yes | **Resolved 2026-10-20: merge both** |
 | UD2 | Fold Wireless Link Endpoint into a Gateway upgrade and Wireless Access Point into a Controller upgrade? | Yes for the link; keep the Access Point as a block for now | **Resolved 2026-10-20: link becomes a Gateway upgrade; Access Point stays a block** |
 | UD3 | Energy: keep Fuel Generator + three Energy Bank tiers, or give the Controller a small internal buffer and make the Bank optional? | Keep as-is; revisit after a playtest | Open |
 | UD4 | Player-facing display names (registry IDs never change). See the names table below. | Adopt the table | **Resolved 2026-10-20: adopt the table** |
 | UD5 | Remove the offhand-item controls entirely once screens cover them, or keep them as hidden shortcuts? | Remove | **Resolved 2026-10-20: remove** |
 | UD6 | Add optional Jade/WTHIT look-at status (new optional dependency, ADR required)? | Yes, Jade only | **Resolved 2026-10-20: no** |
+| UD7 | Migrate old worlds and keep legacy support for the blocks that Wave B merges or removes? | No | **Resolved 2026-10-24: no.** No save migrations, registry aliases, data converters or legacy fallbacks. Wave B deletes the old blocks, items and block entities outright, and worlds made before a merge are unsupported. This is an explicit exception to ENGINEERING.md's "never reset incompatible player data silently" for these merges only. |
 
 Proposed display names for UD4:
 
@@ -129,12 +130,10 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   the graphical client shows the grid at scales 1–4; the wireless terminal uses the same
   screen.
 
-- [ ] **U4 — Terminal crafting panel layout (F3).** Implementation in progress;
-  collapsible panel, visible tabs, mB projection and regression fixtures are authored.
-  Fast/full headless verification passes (387 JVM, 337 native tests).
-  The first graphical launch failed because macOS reported its display asleep;
-  actual fit, crafting/encoding and JEI runs remain required before completion.
-  [Current evidence and resume steps](evidence/ux-u4-crafting-panel-2026-10-20.md).
+- [x] **U4 — Terminal crafting panel layout (F3).** Done 2026-10-24 (commits `48ee40a` and `c9009fa`).
+  Presentation, terminal, restart and JEI clients pass. The scale 1/4
+  Table/Inputs/Outputs and JEI captures were inspected.
+  [Evidence](evidence/ux-u4-crafting-panel-2026-10-20.md).
   Move the crafting grid into a collapsible side panel or its own tab. Make Table / Inputs /
   Outputs visible as three labelled tabs, and show fluid amounts in mB instead of quarter
   buckets. Keep ghost semantics and JEI transfer.
@@ -181,28 +180,27 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
 
 ## Wave B — needs gates
 
-- [ ] **U10 — Migration spike (needs UD1).**
-  Prove that an old world with every merged block and item loads into the new IDs, using
-  registry aliases plus a block-entity data converter, with contents, ownership, leases,
-  presets and staged transfers preserved. Record the approach in an ADR before U11.
-  Done when: a fixture world from the current build loads in the spike build with exact
-  conservation, under the existing restart/interruption harness.
+- [x] **U10 — Migration spike.** Dropped: UD7 resolved as no migrations or legacy support.
 
-- [ ] **U11 — Unified Interface (needs UD1, U10).**
+- [ ] **U11 — Unified Interface (needs UD1).**
   One block faces a container. Modes: Storage (registers the container as network storage,
   today's Connector), Machine (labelled for presets/programs, today's Machine Interface), and
   Import/Export/Stock. With no container attached it uses its own 9-slot buffer, so the
   hopper path (today's Buffered Interface) keeps working. One screen, one upgrade path.
-  Amend SPEC R02, the three module docs and the relevant ADRs.
+  Delete the Connector, Machine Interface and Buffered Interface blocks, items and block
+  entities, with no aliases or converters (UD7). Replace any test or restart fixture that
+  places them; don't keep legacy fixtures. Amend SPEC R02, the three module docs and the
+  relevant ADRs.
 
-- [ ] **U12 — Crafter (needs UD1, U10).**
+- [ ] **U12 — Crafter (needs UD1).**
   One block holds patterns. Crafting-table patterns run inside it; processing patterns are
-  pushed into the machine it faces. Same leases and output attribution as today.
+  pushed into the machine it faces. Same leases and output attribution as today. Delete the
+  Crafting Unit and Crafting Interface outright (UD7).
 
 - [ ] **U13 — Link as a Gateway upgrade (needs UD2).**
   Replace the Wireless Link Endpoint block with an upgrade installed in a Gateway, keeping
-  pairing, power, range and shared throughput rules. Migrate placed endpoints into their
-  gateway's upgrade slot.
+  pairing, power, range and shared throughput rules. Delete the endpoint block outright;
+  placed endpoints are not converted (UD7).
 
 - [x] **U14 — Jade status (needs UD6).** Dropped: UD6 resolved as no; U7's on-screen status covers this.
   Optional integration showing device state, label, mode and the blocking reason when looking
@@ -220,3 +218,4 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
 - Changing storage, crafting, program or permission semantics beyond the defaults in U6.
 - New gameplay features.
 - Removing the recovery commands: they move to the admin guide but stay.
+- Save migrations, registry aliases or legacy-data fallbacks for Wave B changes (UD7).
