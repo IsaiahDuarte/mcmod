@@ -17,21 +17,29 @@ other five faces. The queried provider side is the face opposite the socket's
 facing. Native JSON geometry and collision/selection shapes cover all six
 orientations. The connector holds no foreign item, fluid or energy copy.
 
-Use with an empty main hand to inspect type, access, selected provider side,
-priority, configured rate and registration state in chat. Chat wraps the complete
-inspection rather than putting the long status in the action bar. With both
-hands empty, crouch-use cycles Items -> Fluids -> Energy, resetting to that type's
-defaults. Normal empty-main-hand use with redstone in the offhand cycles access;
-with iron/gold sets positive/negative priority to the stack count. Nothing is
-consumed. Item tooltips explain these controls. Every configuration change
-requires current EDIT authority at the connector; current gateway branch policy
-still applies. Permission revocation rejects later changes.
+Use with both hands empty to open the settings screen (`ConnectorSettingsMenu`,
+U5). It edits resource, access, priority (a number from -1,000 to 1,000), first
+slot, slot window and rate, and shows the container side, throughput tier and
+the live container registration (`reason.factorycore.*`, polled every 10 ticks).
+Opening needs current VIEW within 8 blocks; the form is read-only without EDIT.
+Apply validates the whole form, rejects a rate above the installed tier and a
+stale configuration generation, then publishes one configuration change and
+closes. Session nonces, range loss and VIEW revocation behave as on the Machine
+Interface screen. `ConnectorSettingsGameTests` cover edits, stale/over-limit
+forms and permission denial.
+
+The older offhand shortcuts still work until U16 removes them: crouch-use with
+both hands empty cycles Items -> Fluids -> Energy, resetting to that type's
+defaults; empty-main-hand use with redstone in the offhand cycles access; with
+iron/gold it sets positive/negative priority to the stack count and prints the
+status in chat. Nothing is consumed. Every configuration change requires current
+EDIT authority at the connector; current gateway branch policy still applies.
+Permission revocation rejects later changes.
 
 READ_WRITE allows both directions, READ_ONLY withdraws from the provider, and
 WRITE_ONLY deposits into it. Default rate is 64 items or 1,000 mB/FE per tick in
-each direction. Advanced item-window/rate settings are currently a trusted server
-API; a player settings screen and automatic priority distribution are unfinished.
-Priority is retained and displayed; explicit endpoint moves do not select by it.
+each direction. Higher priority containers are used first by priority routes;
+explicit endpoint moves do not select by it.
 There is no hidden default import/export rule.
 
 A leased casing retains policy during movement. Its old placed/portable generations

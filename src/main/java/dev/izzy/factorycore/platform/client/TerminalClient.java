@@ -4,6 +4,7 @@ import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
+import dev.izzy.factorycore.platform.storage.ConnectorContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
 import dev.izzy.factorycore.platform.storage.RecoveryContent;
 import dev.izzy.factorycore.platform.storage.StorageContent;
@@ -22,6 +23,7 @@ public final class TerminalClient {
     event.register(TerminalContent.MENU.get(), TerminalScreen::new);
     event.register(StorageContent.DRIVE_MENU.get(), DriveScreen::new);
     event.register(MachineInterfaceContent.MENU.get(), MachineSettingsScreen::new);
+    event.register(ConnectorContent.MENU.get(), ConnectorSettingsScreen::new);
     event.register(BufferedInterfaceContent.MENU.get(), BufferSettingsScreen::new);
     event.register(ProgramContent.MENU.get(), ProgramScreen::new);
     event.register(NetworkContent.POLICY_MENU.get(), GatewayPolicyScreen::new);

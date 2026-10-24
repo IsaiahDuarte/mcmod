@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.upgrade.ThroughputStatus;
 import java.util.List;
 import java.util.Locale;
@@ -148,6 +149,17 @@ public final class ConnectorBlock extends NetworkedBlock implements EntityBlock 
       entity.validatePlaced();
       var settings = entity.settings();
       var offhand = player.getOffhandItem();
+      if (!(entity instanceof MachineInterfaceEntity)
+          && offhand.isEmpty()
+          && !player.isShiftKeyDown()
+          && player instanceof ServerPlayer viewer) {
+        if (!entity.canUse(viewer)) return InteractionResult.FAIL;
+        MenuSession.open(
+            viewer,
+            Component.translatable("block.factorycore.storage_connector"),
+            (id, inventory, session) -> new ConnectorSettingsMenu(id, inventory, entity, session));
+        return InteractionResult.CONSUME;
+      }
       boolean materialControl =
           offhand.is(Items.REDSTONE)
               || offhand.is(Items.IRON_INGOT)

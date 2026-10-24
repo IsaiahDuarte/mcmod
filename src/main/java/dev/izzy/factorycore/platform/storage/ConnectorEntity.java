@@ -7,6 +7,7 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -26,6 +27,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -34,6 +36,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 
@@ -287,6 +290,21 @@ public class ConnectorEntity extends BlockEntity
         || state.lease().kind() != leaseKind()
         || !position().equals(authority().nodes().definition(state.lease()).position()))
       throw new IllegalStateException("Connector has no current placed lease");
+  }
+
+  /** A live, nearby player with current VIEW at this placed port may open its settings. */
+  public boolean canUse(ServerPlayer player) {
+    try {
+      validatePlaced();
+    } catch (IllegalArgumentException | IllegalStateException invalid) {
+      return false;
+    }
+    return player.isAlive()
+        && player.serverLevel() == getLevel()
+        && player.server.getPlayerList().getPlayer(player.getUUID()) == player
+        && player.distanceToSqr(Vec3.atCenterOf(getBlockPos())) <= 64
+        && WorldNetworks.get(player.server)
+            .allows(Actors.of(player), position(), NetworkPermissions.Permission.VIEW);
   }
 
   public NetworkAuthority.Decision configure(

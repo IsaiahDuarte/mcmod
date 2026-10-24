@@ -193,12 +193,16 @@ unavailable rather than being discarded.
 ## Storage Connector (partial development feature)
 
 Craft with four copper, four redstone and one hopper. Place its copper socket
-against a container and cable the other faces. Empty-hand use prints type,
-access, provider side, priority, configured rate and readiness in chat. With both
-hands empty, crouch-use cycles Items/Fluids/Energy. Normal empty-main-hand use
-with offhand redstone cycles access; iron/gold selects positive/negative
-stack-size priority. Materials are not consumed. Changing settings needs your
-network's current interface-edit grant; gateway restrictions still apply.
+against a container and cable the other faces. Use it with both hands empty to
+open its settings: resource (Items/Fluids/Energy), access, priority (-1000 to
+1000; higher-priority containers are used first), first slot, slot window and
+rate per tick. The screen also shows which side of the container is used, the
+throughput upgrade limit and whether the container is ready, with the reason if
+not. Apply & Close saves everything at once; Cancel discards your changes.
+Saving needs your network's current interface-edit grant; without it the screen
+is read-only. Gateway restrictions still apply. The older offhand shortcuts
+(crouch-use to change resource, offhand redstone for access, iron/gold for
+priority) still work for now.
 
 A backing inventory is registered only once: another face or double-chest half
 reports overlap. Vanilla item containers are supported when the wrapper identifies
@@ -208,8 +212,8 @@ write-only deposits into it. Default rates are 64 items or 1,000 mB/FE per tick
 per direction. No stock is generated or copied into the connector.
 
 This development slice exposes server transfer primitives, not an automatic
-preset or terminal catalog. Priority is stored/displayed; automatic distribution,
-advanced settings screens and external stock reservations are not implemented.
+preset or terminal catalog. Automatic distribution and external stock
+reservations are not implemented.
 Runtime endpoint handles expire on changes/reload. Keep incomplete/uncertain
 operation IDs and recovery casings; no automatic replay, refund or administrative
 reconciliation tool is available yet. Persisted endpoint context and full world

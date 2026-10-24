@@ -9,6 +9,7 @@ import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
+import dev.izzy.factorycore.platform.client.ConnectorSettingsScreen;
 import dev.izzy.factorycore.platform.client.DriveScreen;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.ItemDescriptions;
@@ -1194,6 +1195,13 @@ public final class PresentationClientVerification {
     scales("buffer", BufferSettingsScreen.class, false);
     use(base.east(4), Direction.SOUTH, false);
     scales("machine", MachineSettingsScreen.class, false);
+    use(base.east(6).north(), Direction.SOUTH, false);
+    step(
+        client ->
+            client.screen instanceof ConnectorSettingsScreen screen
+                && screen.getMenu().view().generation() > 0
+                && screen.getMenu().view().binding().equals("ok"));
+    scales("connector", ConnectorSettingsScreen.class, false);
     upgrade(base.east(4), ThroughputTier.ADVANCED, false);
     upgrade(base.east(4), ThroughputTier.ENDGAME, false);
     upgrade(base.east(3), ThroughputTier.ADVANCED, true);
@@ -1308,7 +1316,7 @@ public final class PresentationClientVerification {
               + evidence
               + "Orientation: every FACING device in all six facings, horizontal devices in four;"
               + " two opposite corner views show every front.\n"
-              + "Screens: terminal, drive, buffer settings, machine settings, program editor, gateway"
+              + "Screens: terminal, drive, buffer settings, machine settings, connector settings, program editor, gateway"
               + " policy, network access, transfer recovery and guide at GUI scales 1-4 in a "
               + MIN_WIDTH
               + "x"

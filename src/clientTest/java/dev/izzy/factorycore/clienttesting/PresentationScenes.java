@@ -284,7 +284,8 @@ final class PresentationScenes {
 
   /**
    * Functional screen network along x at z=0: root, drive, terminal, buffer, machine interface
-   * (socket north into a chest), program controller, cable, gateway (downstream east) and branch.
+   * (socket north into a chest), program controller, cable (with a Storage Connector north into a
+   * chest), gateway (downstream east) and branch.
    */
   /** Planks from one oak log on a Crafting Unit beside the screens drive; 8 logs stored. */
   static final BlockPos JOB_UNIT = SCREENS.east().north();
@@ -333,6 +334,11 @@ final class PresentationScenes {
     level.setBlock(base.east(7), facing(NetworkContent.GATEWAY.get(), Direction.EAST), 3);
     ((NetworkNodeEntity) level.getBlockEntity(base.east(7))).commission(null);
     level.setBlock(base.east(8), NetworkContent.CABLE.get().defaultBlockState(), 3);
+    // Storage Connector off the cable, socket north into its own chest (U5 screen).
+    level.setBlock(base.east(6).north(2), Blocks.CHEST.defaultBlockState(), 3);
+    level.setBlock(base.east(6).north(), facing(ConnectorContent.BLOCK.get(), Direction.NORTH), 3);
+    ((ConnectorEntity) level.getBlockEntity(base.east(6).north()))
+        .place(new ItemStack(ConnectorContent.ITEM.get()));
   }
 
   static void teleport(ServerPlayer player, View view) {

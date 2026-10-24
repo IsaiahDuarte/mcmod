@@ -5,7 +5,6 @@ import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.MachinePresets;
-import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
 import java.util.UUID;
@@ -20,7 +19,6 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * Local machine port; canonical leases and foreign adapter ownership are shared with connectors.
@@ -195,20 +193,6 @@ public final class MachineInterfaceEntity extends ConnectorEntity implements Men
 
   public NetworkAuthority.Decision relabel(NetworkPermissions.Actor actor, String label) {
     return configure(actor, settings(), label);
-  }
-
-  public boolean canUse(ServerPlayer player) {
-    try {
-      validatePlaced();
-    } catch (IllegalArgumentException | IllegalStateException invalid) {
-      return false;
-    }
-    return player.isAlive()
-        && player.serverLevel() == getLevel()
-        && player.server.getPlayerList().getPlayer(player.getUUID()) == player
-        && player.distanceToSqr(Vec3.atCenterOf(getBlockPos())) <= 64
-        && WorldNetworks.get(player.server)
-            .allows(Actors.of(player), position(), NetworkPermissions.Permission.VIEW);
   }
 
   @Override

@@ -140,7 +140,9 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   Done when: crafting, encoding and processing-pattern authoring work in the graphical
   client and through JEI.
 
-- [ ] **U5 — Storage Connector screen (F2, F9).**
+- [x] **U5 — Storage Connector screen (F2, F9).** Done 2026-10-24.
+  Screen, 3 GameTests and scale 1–4 fit pass.
+  [Evidence](evidence/ux-u5-connector-screen-2026-10-24.md).
   Empty-hand use opens a screen in the style of the Machine Interface Binding screen:
   resource, access, priority (a number field, not a stack size), rate, status line.
   Files: `ConnectorBlock.java`, new menu/screen, `CONNECTORS.md`.

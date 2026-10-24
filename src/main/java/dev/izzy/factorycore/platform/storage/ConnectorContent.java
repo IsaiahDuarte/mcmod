@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryRegistries;
 import dev.izzy.factorycore.platform.LeasedBlockItem;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -31,9 +32,12 @@ public final class ConnectorContent {
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ConnectorEntity>> ENTITY =
       FactoryRegistries.entity("storage_connector", ConnectorEntity::new, BLOCK);
 
+  public static final DeferredHolder<MenuType<?>, MenuType<ConnectorSettingsMenu>> MENU =
+      FactoryRegistries.menu("connector_settings", ConnectorSettingsMenu::new);
+
   private ConnectorContent() {}
 
   public static void register(IEventBus bus) {
-    // Loading this class adds its entries to FactoryRegistries before registration.
+    bus.addListener(ConnectorSettingsPackets::register);
   }
 }
