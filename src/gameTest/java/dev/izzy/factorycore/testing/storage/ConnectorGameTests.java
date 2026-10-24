@@ -25,8 +25,10 @@ import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.ConnectorSettingsMenu;
 import dev.izzy.factorycore.testing.ConnectorFixture;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -48,7 +50,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
@@ -560,46 +561,52 @@ public final class ConnectorGameTests {
         .thenSucceed();
   }
 
+  /** U16: held items and sneaking no longer change settings; use opens the screen. */
   @GameTest(template = "empty", timeoutTicks = 200)
-  public static void physicalControlsRequireEditAndDoNotConsumeMaterials(GameTestHelper helper) {
+  public static void heldItemsAndSneakOnlyOpenTheSettingsScreen(GameTestHelper helper) {
     var setup = setup(helper);
     helper.setBlock(PROVIDER, Blocks.CHEST);
-    var player = helper.makeMockPlayer(GameType.SURVIVAL);
+    var player = TestPlayers.mock(helper);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(helper.absolutePos(CONNECTOR).above()));
     helper
         .startSequence()
         .thenWaitUntil(() -> ready(helper, setup.runtime(), CONNECTOR))
         .thenExecute(
+            () ->
+                setup
+                    .saved()
+                    .network(setup.root().handle().id())
+                    .setGrants(
+                        setup.actor(),
+                        player.getUUID(),
+                        Set.of(
+                            NetworkPermissions.Permission.VIEW,
+                            NetworkPermissions.Permission.EDIT)))
+        .thenWaitUntil(
+            () -> helper.assertTrue(setup.connector().canUse(player), "Granted player ready"))
+        .thenExecute(
             () -> {
-              setup
-                  .saved()
-                  .network(setup.root().handle().id())
-                  .setGrants(
-                      setup.actor(), player.getUUID(), Set.of(NetworkPermissions.Permission.EDIT));
-              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.REDSTONE, 1));
-              helper.useBlock(CONNECTOR, player);
-              helper.assertTrue(
-                  setup.connector().settings().access() == ConnectorSettings.Access.READ_ONLY
-                      && player.getOffhandItem().getCount() == 1,
-                  "Offhand redstone configures access without consumption");
-              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.GOLD_INGOT, 7));
-              helper.useBlock(CONNECTOR, player);
-              helper.assertTrue(
-                  setup.connector().settings().priority() == -7,
-                  "Offhand gold selects negative stack-size priority");
-              player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
-              player.setShiftKeyDown(true);
-              helper.useBlock(CONNECTOR, player);
-              helper.assertTrue(
-                  setup.connector().settings().kind() == ResourceKind.FLUID,
-                  "Empty-hand crouch action changes resource type");
-              setup
-                  .saved()
-                  .network(setup.root().handle().id())
-                  .setGrants(setup.actor(), player.getUUID(), Set.of());
-              helper.useBlock(CONNECTOR, player);
-              helper.assertTrue(
-                  setup.connector().settings().kind() == ResourceKind.FLUID,
-                  "Revocation prevents physical policy mutation");
+              var before = setup.connector().settings();
+              for (var held :
+                  new ItemStack[] {
+                    new ItemStack(Items.REDSTONE),
+                    new ItemStack(Items.GOLD_INGOT, 7),
+                    ItemStack.EMPTY
+                  })
+                for (boolean sneak : new boolean[] {false, true}) {
+                  player.closeContainer();
+                  player.setItemInHand(InteractionHand.OFF_HAND, held.copy());
+                  player.setShiftKeyDown(sneak);
+                  helper.useBlock(CONNECTOR, player);
+                  helper.assertTrue(
+                      setup.connector().settings().equals(before)
+                          && player.containerMenu instanceof ConnectorSettingsMenu
+                          && player.getOffhandItem().getCount() == held.getCount(),
+                      "Use with " + held + " sneak=" + sneak + " only opens the screen");
+                }
+              player.closeContainer();
+              player.connection.disconnect(Component.literal("done"));
             })
         .thenSucceed();
   }

@@ -30,12 +30,10 @@ closes. Session nonces, range loss and VIEW revocation behave as on the Machine
 Interface screen. `ConnectorSettingsGameTests` cover edits, stale/over-limit
 forms and permission denial.
 
-The older offhand shortcuts still work until U16 removes them: crouch-use with
-both hands empty cycles Items -> Fluids -> Energy, resetting to that type's
-defaults; empty-main-hand use with redstone in the offhand cycles access; with
-iron/gold it sets positive/negative priority to the stack count and prints the
-status in chat. Nothing is consumed. Every configuration change requires current
-EDIT authority at the connector; current gateway branch policy still applies.
+U16 removed the older offhand and crouch-use shortcuts: use with an empty main
+hand only opens the screen, whatever is held or whether the player sneaks
+(`heldItemsAndSneakOnlyOpenTheSettingsScreen`). Every configuration change requires
+current EDIT authority at the connector; current gateway subnetwork policy still applies.
 Permission revocation rejects later changes.
 
 READ_WRITE allows both directions, READ_ONLY withdraws from the provider, and

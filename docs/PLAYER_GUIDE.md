@@ -226,9 +226,8 @@ rate per tick. The screen also shows which side of the container is used, the
 throughput upgrade limit and whether the container is ready, with the reason if
 not. Apply & Close saves everything at once; Cancel discards your changes.
 Saving needs your network's current interface-edit grant; without it the screen
-is read-only. Gateway restrictions still apply. The older offhand shortcuts
-(crouch-use to change resource, offhand redstone for access, iron/gold for
-priority) still work for now.
+is read-only. Gateway restrictions still apply. Held items and sneaking do not
+change settings; every setting is on the screen.
 
 A backing inventory is registered only once: another face or double-chest half
 reports overlap. Vanilla item containers are supported when the wrapper identifies
@@ -277,8 +276,8 @@ Connect the device to cables/controller and use it with an empty hand to inspect
 item and occupied-slot counts; network VIEW permission is required for inspection.
 Local hopper access works while the network is disconnected, until the physical
 buffer fills. These buffered items are not automatically published as shared
-network stock. Crouch-use with **both hands empty** to enable Import. Repeat to
-pause. This needs current interface-edit/program-deployment rights and enabling
+network stock. To start or pause it, press **Mode** on its screen until it shows
+Import (or Paused), then **Apply**. This needs current interface-edit/program-deployment rights and enabling
 Import additionally needs view/deposit/withdraw rights. The controller owner has
 these rights by default. A buffer you place starts in Import, in your name, once
 its network is ready, if you hold all of those rights; otherwise it starts paused.
@@ -288,16 +287,15 @@ In Import mode the network moves up to 64 items per buffer/tick into permitted
 storage, using storage priority and backing-identity order. Faces and requests
 share the rate, and server scheduling/limits can reduce throughput. Exact item
 components are retained. Full/offline storage backs up the buffer and then the
-hopper; nothing is voided. Normal empty-hand use shows mode, counts and an
-explanation when work is blocked. Revocation stops queued work before mutation;
+hopper; nothing is voided. Its screen shows mode, counts and an explanation when
+work is blocked. Revocation stops queued work before mutation;
 reconnection resumes when the accepted network/subnetwork is valid again. Moving a
 buffer or changing its accepted root/subnetwork requires explicit reconfiguration.
 
 Known partial transfers retain items in owned staging and block another extraction.
 The matching current deployment retries delivery of that staging without extracting
-refills. Pause before cleanup, then crouch-use with redstone in your **offhand**
-and an empty main hand to return your known staging to the same buffer. Redstone
-is not consumed. Only the operation's original principal can return it, including
+refills. Pause before cleanup, then press **Return** on the buffer's Inventory tab
+to send your items in transit back to the same buffer. Only the operation's original principal can return it, including
 after grant revocation/preset replacement; the physical lease and accepted network
 scope must still match. Full buffers retain remaining staging, so make room and
 repeat if needed. Unknown pending calls stay quarantined and never replay or
@@ -375,43 +373,36 @@ survival walkthrough remain unverified.
 
 ## Buffered import filters and rates
 
-Keep your main hand empty and use the buffer with an item sample in your offhand
-to allow that item type. Sneak-use a sample to allow its exact components. The
-sample is not consumed, and changing selection keeps the current Import/Paused
-mode. Empty-offhand sneak-use still toggles Import/Paused.
-
-For an ID/tag rule, rename a name tag in an anvil to `minecraft:iron_ingot` or
-`#minecraft:logs`, hold it in the offhand and use the buffer. Sneak-use that name
-tag to exclude the ID/tag. Missing tags match nothing; invalid names leave the
-old configuration intact. Only matching items drain automatically; other hopper
+Open the buffer with an empty main hand. On the Settings tab, type an item ID such
+as `minecraft:iron_ingot` and press **Item ID**, or a tag such as `#minecraft:logs`
+and press **Tag**, to add a rule. **Sample** then clicking one of your items adds an
+exact rule for its components without consuming it. **Filter** cycles All items,
+allow the rules, or block the rules; **Clear** returns to All items. Press **Apply**
+to save; changing rules keeps the current mode. Missing tags match nothing; invalid
+names leave the old configuration intact. Only matching items drain automatically; other hopper
 items stay buffered and may back up the input. Registry/tag matching does not
 merge component variants in storage.
 
-Sneak-use with an offhand clock to cycle the shared network rate through64,32,16,
-8,4,1 items/tick. Sneak-use with paper to clear selection while keeping rate.
-Clock/paper/redstone sneak controls take precedence over exact sample selection;
-redstone remains known-staging cleanup. Rates apply to network moves and returns,
+Type a rate in items/tick and press **Set** beside **Rate**; the installed upgrade
+sets the maximum. Rates apply to network moves and returns,
 independently each way; ordinary hopper access remains physical inventory access.
-Inspect with an empty offhand to see rate/filter mode/rule count. You need Edit/
-Deploy and the relevant active Import grants. New controls have headless native
-evidence, with actual client help/interaction checks pending. Multiple rules,
-export/stock and the complete settings screen remain unfinished.
+The screen shows the rate, filter mode and rules. You need Edit/Deploy and the
+relevant active Import grants to apply changes.
 
 ## Export and Stock buffers
 
-Use an empty main hand and sneak-use a buffer with a compass in the offhand to
-cycle Paused, Import, Export, Stock. Export withdraws permitted matching storage
+Press **Mode** on the buffer's screen to cycle Paused, Import, Export, Stock, then
+**Apply**. Export withdraws permitted matching storage
 into the real buffer so a hopper below can pull it out. Stock withdraws only the
 missing amount toward its physical goal, counting all currently matching buffer
 items; another job's reserved source supply is unavailable. Targets are best
 effort and can remain short when capacity, permissions, holds or rates block work.
 
-Sneak-use with an offhand chest cycles the stock goal through0,8,16,32,64,128,256,
-512,576. Initial goal64; zero stops stock withdrawal. Selection/rate edits retain
-the goal, and mode/goal tools are not consumed. Items fed physically beyond a goal
+Type the stock goal (0–576) and press **Set** beside **Goal**. Initial goal 64; zero
+stops stock withdrawal. Selection/rate edits retain the goal. Items fed physically beyond a goal
 remain owned; Stock does not remove or void them. Rate limits and partial staging
 still apply. Old staged operations remain under their original owner after edits;
-redstone cleanup returns known resources to the recorded source when valid.
+**Return** sends known resources back to the recorded source when valid.
 A full settings screen and actual client verification of these controls remain
 pending; the current native controls have headless behavior evidence.
 
@@ -439,8 +430,7 @@ The screen is implemented, but actual client verification is still pending.
 
 Place an Interface with its socket against a machine and connect cables to another
 face.
-With an empty main hand, use renamed paper/name tag in your offhand to copy a
-local label; sneak-paper clears it. Tools are not consumed. Labels are case-sensitive
+Type its local label on its screen; an empty label clears it. Labels are case-sensitive
 and private to the current network, even when storage is shared through a gateway.
 Machine stock stays out of the storage terminal. Use with both hands empty to edit label, resource, access, priority, first slot or tank and slot count
 and per-tick rate. Apply & Close saves the complete form; Reset restores saved

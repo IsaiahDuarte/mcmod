@@ -12,6 +12,8 @@ import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.BufferSettingsMenu;
+import dev.izzy.factorycore.platform.storage.BufferSettingsPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
@@ -27,11 +29,10 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.InteractionHand;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.entity.HopperBlockEntity;
@@ -835,55 +836,135 @@ public final class BufferImportGameTests {
         .thenSucceed();
   }
 
+  /** A connected player beside the buffer, as the settings screen requires. */
+  private static ServerPlayer viewer(GameTestHelper helper) {
+    var player = TestPlayers.mock(helper);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(helper.absolutePos(BUFFER).above()));
+    return player;
+  }
+
+  /** Sends one settings-screen command at the open menu's current revision. */
+  private static void command(GameTestHelper helper, ServerPlayer player, int action) {
+    if (!(player.containerMenu instanceof BufferSettingsMenu menu)) {
+      helper.fail(
+          "The buffer screen is not open for " + action + ": " + player.containerMenu.getClass());
+      return;
+    }
+    menu.command(
+        player,
+        new BufferSettingsPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.view().revision(),
+            action,
+            0,
+            0,
+            "",
+            new byte[32]));
+  }
+
+  private static BufferRegistry.Mode mode(Fixture fixture) {
+    var deployment = fixture.saved().buffers().deployment(fixture.buffer().handle().id());
+    return deployment == null ? BufferRegistry.Mode.PAUSED : deployment.mode();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 500)
-  public static void playerControlsToggleOnlyWithCurrentEditDeploymentAndResourceGrants(
+  public static void screenControlsToggleOnlyWithCurrentEditDeploymentAndResourceGrants(
       GameTestHelper helper) {
     var fixture = setup(helper);
-    var player = helper.makeMockPlayer(GameType.SURVIVAL);
-    player.setShiftKeyDown(true);
-    helper
-        .startSequence()
-        .thenWaitUntil(() -> ready(helper, fixture))
+    var player = viewer(helper);
+    var grants =
+        Set.of(
+            NetworkPermissions.Permission.EDIT,
+            NetworkPermissions.Permission.DEPLOY,
+            NetworkPermissions.Permission.VIEW,
+            NetworkPermissions.Permission.DEPOSIT,
+            NetworkPermissions.Permission.WITHDRAW);
+    var sequence =
+        helper
+            .startSequence()
+            .thenWaitUntil(() -> ready(helper, fixture))
+            .thenExecute(
+                () -> {
+                  helper.useBlock(BUFFER, player);
+                  helper.assertTrue(
+                      !(player.containerMenu instanceof BufferSettingsMenu)
+                          && fixture.saved().buffers().deployment(fixture.buffer().handle().id())
+                              == null,
+                      "Without grants the screen does not open and nothing changes");
+                  fixture
+                      .saved()
+                      .network(fixture.root().handle().id())
+                      .setGrants(fixture.actor(), player.getUUID(), grants);
+                })
+            .thenWaitUntil(
+                () -> helper.assertTrue(fixture.buffer().canUse(player), "Granted player ready"))
+            .thenExecute(
+                () -> {
+                  helper.useBlock(BUFFER, player);
+                  helper.assertTrue(
+                      player.containerMenu instanceof BufferSettingsMenu,
+                      "Empty-hand use opens the screen");
+                  command(helper, player, BufferSettingsPackets.MODE);
+                })
+            .thenIdle(2)
+            .thenExecute(() -> command(helper, player, BufferSettingsPackets.APPLY))
+            .thenExecute(
+                () -> {
+                  var enabled =
+                      fixture.saved().buffers().deployment(fixture.buffer().handle().id());
+                  helper.assertTrue(
+                      enabled.mode() == BufferRegistry.Mode.IMPORT
+                          && enabled.principal().equals(player.getUUID()),
+                      "Apply authenticates the player and enables Import");
+                  player.closeContainer();
+                })
+            // Applying a deployment can rebuild the network, which closes screens opened before it
+            // settles; reopen once the scope is valid again.
+            .thenIdle(10)
+            .thenWaitUntil(() -> ready(helper, fixture))
+            .thenExecute(
+                () -> {
+                  var enabled =
+                      fixture.saved().buffers().deployment(fixture.buffer().handle().id());
+                  helper.useBlock(BUFFER, player);
+                  helper.assertTrue(
+                      player.containerMenu instanceof BufferSettingsMenu
+                          && enabled.equals(
+                              fixture.saved().buffers().deployment(fixture.buffer().handle().id())),
+                      "Opening the screen changes neither mode nor revision");
+                });
+    // Import -> Export -> Stock -> Paused, one command per rate window, then Apply.
+    for (int step = 0; step < 3; step++)
+      sequence =
+          sequence
+              .thenIdle(2)
+              .thenExecute(() -> command(helper, player, BufferSettingsPackets.MODE));
+    sequence
+        .thenIdle(2)
         .thenExecute(
             () -> {
+              command(helper, player, BufferSettingsPackets.APPLY);
+              helper.assertTrue(
+                  mode(fixture) == BufferRegistry.Mode.PAUSED, "The mode cycle pauses Import");
+              fixture
+                  .saved()
+                  .network(fixture.root().handle().id())
+                  .setGrants(fixture.actor(), player.getUUID(), Set.of());
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              helper.assertFalse(
+                  player.containerMenu instanceof BufferSettingsMenu,
+                  "Revoking View closes the open screen");
               helper.useBlock(BUFFER, player);
               helper.assertTrue(
-                  fixture.saved().buffers().deployment(fixture.buffer().handle().id()) == null,
-                  "Ungrantable player input cannot enable automation");
-              var permissions = fixture.saved().network(fixture.root().handle().id());
-              permissions.setGrants(
-                  fixture.actor(),
-                  player.getUUID(),
-                  Set.of(
-                      NetworkPermissions.Permission.EDIT,
-                      NetworkPermissions.Permission.DEPLOY,
-                      NetworkPermissions.Permission.VIEW,
-                      NetworkPermissions.Permission.DEPOSIT,
-                      NetworkPermissions.Permission.WITHDRAW));
-              helper.useBlock(BUFFER, player);
-              var enabled = fixture.saved().buffers().deployment(fixture.buffer().handle().id());
-              helper.assertTrue(
-                  enabled.mode() == BufferRegistry.Mode.IMPORT
-                      && enabled.principal().equals(player.getUUID()),
-                  "Native crouch-use authenticates the player and enables Import");
-              player.setShiftKeyDown(false);
-              helper.useBlock(BUFFER, player);
-              helper.assertTrue(
-                  enabled.equals(
-                      fixture.saved().buffers().deployment(fixture.buffer().handle().id())),
-                  "Normal empty-hand use inspects without changing mode or revision");
-              player.setShiftKeyDown(true);
-              helper.useBlock(BUFFER, player);
-              helper.assertTrue(
-                  fixture.saved().buffers().deployment(fixture.buffer().handle().id()).mode()
-                      == BufferRegistry.Mode.PAUSED,
-                  "Second native crouch-use pauses Import");
-              permissions.setGrants(fixture.actor(), player.getUUID(), Set.of());
-              helper.useBlock(BUFFER, player);
-              helper.assertTrue(
-                  fixture.saved().buffers().deployment(fixture.buffer().handle().id()).mode()
-                      == BufferRegistry.Mode.PAUSED,
-                  "Revoked physical controls cannot enable a new rule");
+                  !(player.containerMenu instanceof BufferSettingsMenu)
+                      && mode(fixture) == BufferRegistry.Mode.PAUSED,
+                  "Revoked grants cannot reopen the screen or enable a new rule");
+              player.connection.disconnect(Component.literal("Buffer controls fixture complete"));
             })
         .thenSucceed();
   }
@@ -961,7 +1042,7 @@ public final class BufferImportGameTests {
   public static void originalOwnerReturnsKnownStagingAfterPauseWithoutCurrentResourceGrants(
       GameTestHelper helper) {
     var original = setup(helper);
-    var player = helper.makeMockPlayer(GameType.SURVIVAL);
+    var player = viewer(helper);
     var actor = new NetworkPermissions.Actor(player.getUUID(), false);
     var fixture =
         new Fixture(
@@ -995,10 +1076,12 @@ public final class BufferImportGameTests {
               record[0] = staged(fixture, false, new int[1]);
               fixture.buffer().capability().insertItem(0, named(17), false);
               fixture.buffer().configure(actor, BufferRegistry.Mode.PAUSED);
+              // View only: no edit, deployment or resource grants remain.
               fixture
                   .saved()
                   .network(fixture.root().handle().id())
-                  .setGrants(original.actor(), actor.id(), Set.of());
+                  .setGrants(
+                      original.actor(), actor.id(), Set.of(NetworkPermissions.Permission.VIEW));
               var denied =
                   fixture
                       .buffer()
@@ -1011,9 +1094,16 @@ public final class BufferImportGameTests {
                   denied.rejection() == OperationResult.Reason.DENIED
                       && fixture.saved().transfers().get(record[0]).staged() == 64,
                   "Operator flag does not spend another principal's staging");
-              player.setShiftKeyDown(true);
-              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.REDSTONE));
               helper.useBlock(BUFFER, player);
+              helper.assertTrue(
+                  player.containerMenu instanceof BufferSettingsMenu,
+                  "The owner opens the buffer screen with View only");
+              player.containerMenu.broadcastChanges();
+              helper.assertTrue(
+                  ((BufferSettingsMenu) player.containerMenu).view().staged() == 64,
+                  "The owner's screen shows the items in transit: "
+                      + ((BufferSettingsMenu) player.containerMenu).view().staged());
+              command(helper, player, BufferSettingsPackets.RETURN);
             })
         .thenWaitUntil(
             () -> {
@@ -1024,8 +1114,7 @@ public final class BufferImportGameTests {
             })
         .thenExecute(
             () -> {
-              helper.assertTrue(
-                  player.getOffhandItem().getCount() == 1, "Cleanup redstone is not consumed");
+              player.closeContainer();
               fixture
                   .saved()
                   .network(fixture.root().handle().id())

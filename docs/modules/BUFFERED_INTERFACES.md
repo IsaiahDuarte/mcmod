@@ -269,11 +269,11 @@ revisions or incompatible accepted contexts require explicit recovery. Known
 completed callbacks retire records and reclaim admission; indexed lookup neither
 loads chunks nor enumerates native inventories.
 
-Normal empty-main-hand use requires VIEW and reports counts/mode/typed status.
-Crouch-use with both hands empty toggles Import/Paused through authenticated
-configuration. Crouch-use with offhand redstone requests return of the original
-actor's known buffered-source staging; the control consumes no material and exposes
-no other principal's stock. `returnStaging(actor, completion)` returns scheduler
+Empty-main-hand use requires VIEW and opens the settings screen; held items and
+sneaking change nothing (U16). The screen's Mode/Apply path configures Import/Paused
+through authenticated configuration, and its **Return** action
+(`BufferSettingsPackets.RETURN`) requests return of the original actor's known
+buffered-source staging, exposing no other principal's stock. `returnStaging(actor, completion)` returns scheduler
 admission/rejection immediately and, when admitted, later supplies actual snapshot
 status. No owned unresolved operation or a different owner rejects DENIED;
 uncertainty rejects UNCERTAIN. Full/offline/stale scope retains staging.
@@ -343,25 +343,15 @@ IItemHandler admission remains ordinary physical access and is not filtered/rate
 limited by this network policy. Independently authorized explicit moves do not
 inherit automatic selection filters, but do share the network rate.
 
-Basic controls use an empty main hand and authenticated native ServerPlayer:
-
-| Offhand / action | Result |
-| --- | --- |
-| Item sample / use | Allow that registry type, ignoring components. |
-| Item sample / sneak-use | Allow exact components; clock/paper/redstone special controls take precedence. |
-| Renamed name tag `minecraft:iron_ingot` or `#minecraft:logs` / use | Allow that ID or current tag. |
-| Renamed name tag / sneak-use | Exclude that ID/tag. |
-| Clock / sneak-use | Cycle64→32→16→8→4→1→64 items/tick. |
-| Paper / sneak-use | Clear to ALL, retaining rate. |
-| Empty offhand / sneak-use | Existing Import/Paused toggle, retaining policy. |
-| Redstone / sneak-use | Existing original-owner known-staging cleanup. |
-
-Tools/samples are not consumed. Edits retain mode and need current EDIT/DEPLOY;
-active Import additionally needs VIEW/WITHDRAW/DEPOSIT. Inspection reports policy
-mode/rule count/rate; a full multi-rule editor and richer rule inspection remain
-pending. Tag/ID syntax is validated, missing tags match nothing, and malformed
-samples leave configuration unchanged. Physical client interaction/tooltip wrapping
-has not yet been verified for these new controls.
+Controls are on the settings screen (`BufferSettingsPackets`), sent by an
+authenticated native ServerPlayer: **Item ID** (registry rule), **Tag**, **Sample**
+(exact components, nothing consumed), **Filter** (All / allow / block), **Clear**
+(All, retaining rate), **Rate**, **Goal**, **Mode** and **Apply**. U16 removed the
+older offhand-item shortcuts. Edits retain mode and need current EDIT/DEPLOY;
+active Import additionally needs VIEW/WITHDRAW/DEPOSIT. Tag/ID syntax is
+validated, missing tags match nothing, and malformed samples leave configuration
+unchanged. `BufferPolicyGameTests` and `BufferImportGameTests` drive these screen
+commands.
 
 Evidence: two BufferRegistryTest cases verify shared policy quota, pause/restore/
 reclamation and failure without authority/revision/dirty mutation. Two policy-codec
@@ -420,28 +410,26 @@ the goal but still share rate/capacity, so configuring Stock cannot prevent know
 cleanup solely because a goal is full. Original export-source cleanup returns known
 staging to its saved digital/foreign source, never re-extracts it.
 
-Sneak-use with an offhand compass cycles Paused→Import→Export→Stock→Paused, retaining
-selection/rate/goal. Sneak-use with a chest cycles0→8→16→32→64→128→256→512→576→0.
-The initial goal is64. Tools are not consumed; all active modes require current
-EDIT/DEPLOY/VIEW/WITHDRAW/DEPOSIT. Existing empty-offhand sneak remains the simple
-Import/Paused toggle. Clock/paper/redstone/compass/chest special controls take
-precedence over exact sample selection. Rate/filter edits retain the goal.
+The screen's **Mode** button cycles Paused→Import→Export→Stock→Paused, retaining
+selection/rate/goal, and **Goal** sets 0–576. The initial goal is 64. All active
+modes require current EDIT/DEPLOY/VIEW/WITHDRAW/DEPOSIT. Rate/filter edits retain
+the goal.
 
 Seven BufferExportGameTests add real hopper export, selected/excluded source
 conservation, exact Stock stop/replenish, full-target preflight/vacancy wake,
 live deficit caps, saved known inbound without re-extracting refill, queued pause/
 zero-goal behavior and competing goals with reserved supply. Policy codec and
 canonical persistence tests add policy-v2/table-v4 compressed round trips and
-strict old/new unions/future raw preservation. Native compass/chest tests extend
-the real authenticated control case. Actual multi-rule settings/client interactions, external provider/version restart/chunks,
+strict old/new unions/future raw preservation. Screen-command tests
+(`BufferPolicyGameTests`) cover the mode cycle and goal. Actual multi-rule settings/client interactions, external provider/version restart/chunks,
 independent saves, multiplayer and representative performance remain required.
 
 
 ## Authenticated settings and inventory menu
 
-Normal empty-hand use with an empty offhand opens a two-tab native menu for an
-actual authenticated nearby player with VIEW permission. Existing offhand tools
-remain shortcuts. Each opening captures an opaque nonce, structural lease and
+Empty-main-hand use opens a two-tab native menu for an actual authenticated nearby
+player with VIEW permission, whatever is in the offhand (U16 removed the offhand
+shortcuts). Each opening captures an opaque nonce, structural lease and
 full segment scope. Closing, moving out of range, losing VIEW or changing that
 scope invalidates the menu; passive native initialization never closes the prior
 inventory menu.

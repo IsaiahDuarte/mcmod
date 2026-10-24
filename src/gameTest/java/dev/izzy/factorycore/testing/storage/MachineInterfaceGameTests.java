@@ -352,8 +352,9 @@ public final class MachineInterfaceGameTests {
   }
 
   @GameTest(template = "empty", timeoutTicks = 400)
-  public static void authenticatedPaperLabelAndRecipeHaveNoImplicitStock(GameTestHelper h) {
+  public static void heldPaperOnlyOpensTheScreenAndRecipeHasNoImplicitStock(GameTestHelper h) {
     var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
@@ -367,20 +368,16 @@ public final class MachineInterfaceGameTests {
             () -> h.assertTrue(machine.canUse(player), "Authenticated nearby machine owner ready"))
         .thenExecute(
             () -> {
+              // U16: the label is edited on the screen (MachineSettingsGameTests), not by paper.
               player.setItemInHand(InteractionHand.OFF_HAND, paper);
-              h.useBlock(MACHINE, player);
-              h.assertTrue(
-                  machine.label().equals("Mixer") && player.getOffhandItem().getCount() == 1,
-                  "Native renamed paper copies case-sensitive label without consumption");
-            })
-        .thenWaitUntil(() -> h.assertTrue(machine.canUse(player), "Label rebuild ready"))
-        .thenExecute(
-            () -> {
               player.setShiftKeyDown(true);
               h.useBlock(MACHINE, player);
               h.assertTrue(
-                  machine.label().isEmpty() && player.getOffhandItem().getCount() == 1,
-                  "Sneak paper clears local label without consuming tool");
+                  machine.label().isEmpty()
+                      && player.getOffhandItem().getCount() == 1
+                      && player.containerMenu != player.inventoryMenu,
+                  "Held renamed paper changes nothing; empty-hand use opens the screen");
+              player.closeContainer();
               var recipe =
                   h.getLevel()
                       .getRecipeManager()

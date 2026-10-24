@@ -6,6 +6,9 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.BufferSettingsMenu;
+import dev.izzy.factorycore.platform.storage.BufferSettingsPackets;
+import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.PolicyFixture;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -21,7 +24,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.*;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
@@ -242,82 +244,143 @@ public final class BufferPolicyGameTests {
         .thenSucceed();
   }
 
+  /** Sends one settings-screen command at the menu's current revision (U16: no shortcuts). */
+  private static void command(
+      GameTestHelper helper, ServerPlayer player, int action, int value, String text, byte[] hash) {
+    if (!(player.containerMenu instanceof BufferSettingsMenu menu)) {
+      helper.fail("The buffer screen is not open for " + action);
+      return;
+    }
+    // EXACT samples inventory slot 1; the selected slot 0 is the main hand.
+    int selection = action == BufferSettingsPackets.EXACT ? 1 : 0;
+    menu.command(
+        player,
+        new BufferSettingsPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.view().revision(),
+            action,
+            selection,
+            value,
+            text,
+            hash));
+  }
+
+  private static BufferPolicy applied(Fixture f) {
+    return f.saved.buffers().deployment(f.buffer.handle().id()).policy();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 400)
-  public static void physicalSamplesRateClearAndTagExclusionDoNotConsumeHeldItems(
+  public static void screenSamplesRateClearAndTagExclusionDoNotConsumeHeldItems(
       GameTestHelper helper) {
     ServerPlayer player = TestPlayers.mock(helper);
+    TestPlayers.connect(player);
     player.moveTo(Vec3.atCenterOf(helper.absolutePos(ROOT)));
     player.getInventory().clearContent();
+    // Slot 1: the selected slot 0 is the main hand, which must stay empty to open the screen.
+    player.getInventory().setItem(1, named(3));
     var f = setup(helper, player.getUUID());
-    helper
-        .startSequence()
-        .thenWaitUntil(() -> ready(helper, f))
+    var none = new byte[32];
+    var sample = TerminalPackets.fingerprint(f.named);
+    // Each step is one command; the menu admits at most one command per rate window.
+    int[][] steps = {
+      {BufferSettingsPackets.EXACT, 0},
+      {BufferSettingsPackets.APPLY, 0},
+      {BufferSettingsPackets.CLEAR, 0},
+      {BufferSettingsPackets.REGISTRY, 0},
+      {BufferSettingsPackets.RATE, 32},
+      {BufferSettingsPackets.APPLY, 0},
+      {BufferSettingsPackets.CLEAR, 0},
+      {BufferSettingsPackets.TAG, 0},
+      {BufferSettingsPackets.FILTER, 0},
+      {BufferSettingsPackets.TARGET, 128},
+      {BufferSettingsPackets.APPLY, 0},
+      {BufferSettingsPackets.MODE, 0},
+      {BufferSettingsPackets.MODE, 0},
+      {BufferSettingsPackets.MODE, 0},
+      {BufferSettingsPackets.APPLY, 0}
+    };
+    var sequence =
+        helper
+            .startSequence()
+            .thenWaitUntil(() -> ready(helper, f))
+            .thenWaitUntil(() -> helper.assertTrue(f.buffer.canUse(player), "Owner can use"))
+            .thenExecute(
+                () -> {
+                  helper.useBlock(BUFFER, player);
+                  helper.assertTrue(
+                      player.containerMenu instanceof BufferSettingsMenu,
+                      "Empty-hand use opens the buffer screen");
+                });
+    for (int index = 0; index < steps.length; index++) {
+      int step = index;
+      sequence =
+          sequence
+              .thenIdle(2)
+              .thenExecute(
+                  () -> {
+                    int action = steps[step][0];
+                    String text =
+                        action == BufferSettingsPackets.REGISTRY
+                            ? f.plain.registryId()
+                            : action == BufferSettingsPackets.TAG ? "#minecraft:logs" : "";
+                    command(
+                        helper,
+                        player,
+                        action,
+                        steps[step][1],
+                        text,
+                        action == BufferSettingsPackets.EXACT ? sample : none);
+                    switch (step) {
+                      case 1 ->
+                          helper.assertTrue(
+                              applied(f)
+                                      .filter()
+                                      .terms()
+                                      .getFirst()
+                                      .equals(new ResourceFilter.Exact(f.named))
+                                  && player.getInventory().getItem(1).getCount() == 3,
+                              "An inventory sample selects exact components without consuming it");
+                      case 5 ->
+                          helper.assertTrue(
+                              applied(f).filter().terms().getFirst()
+                                      instanceof ResourceFilter.Registry
+                                  && applied(f).rate() == 32,
+                              "Registry selection and a lower rate apply together");
+                      case 10 -> {
+                        var filter = applied(f).filter();
+                        helper.assertTrue(
+                            filter.mode() == ResourceFilter.Mode.EXCLUDE
+                                && filter
+                                    .terms()
+                                    .getFirst()
+                                    .equals(new ResourceFilter.Tag("minecraft:logs"))
+                                && applied(f).target() == 128
+                                && applied(f).rate() == 32,
+                            "Clear, a tag and the filter cycle choose tag exclusion: " + filter);
+                        helper.assertTrue(
+                            f.saved.buffers().deployment(f.buffer.handle().id()).mode()
+                                == BufferRegistry.Mode.PAUSED,
+                            "Editing does not start a paused buffer");
+                      }
+                      case 14 -> {
+                        var configured = f.saved.buffers().deployment(f.buffer.handle().id());
+                        helper.assertTrue(
+                            configured.mode() == BufferRegistry.Mode.STOCK
+                                && configured.policy().target() == 128
+                                && configured.policy().rate() == 32
+                                && configured.policy().filter().mode()
+                                    == ResourceFilter.Mode.EXCLUDE,
+                            "The mode cycle reaches Stock and keeps the typed policy");
+                      }
+                      default -> {}
+                    }
+                  });
+    }
+    sequence
         .thenExecute(
             () -> {
-              player.setItemInHand(InteractionHand.OFF_HAND, named(3));
-              helper.useBlock(BUFFER, player);
-              helper.assertTrue(
-                  f.saved
-                          .buffers()
-                          .deployment(f.buffer.handle().id())
-                          .policy()
-                          .filter()
-                          .terms()
-                          .getFirst()
-                      instanceof ResourceFilter.Registry,
-                  "Normal sample selects registry identity");
-              player.setShiftKeyDown(true);
-              helper.useBlock(BUFFER, player);
-              helper.assertTrue(
-                  f.saved
-                      .buffers()
-                      .deployment(f.buffer.handle().id())
-                      .policy()
-                      .filter()
-                      .terms()
-                      .getFirst()
-                      .equals(new ResourceFilter.Exact(f.named)),
-                  "Sneak sample selects actual exact components");
-              helper.assertTrue(
-                  player.getOffhandItem().getCount() == 3, "Filter sample is not consumed");
-              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.CLOCK));
-              helper.useBlock(BUFFER, player);
-              helper.assertTrue(
-                  f.saved.buffers().deployment(f.buffer.handle().id()).policy().rate() == 32,
-                  "Native clock control lowers network rate");
-              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.PAPER));
-              helper.useBlock(BUFFER, player);
-              helper.assertTrue(
-                  f.saved.buffers().deployment(f.buffer.handle().id()).policy().filter().mode()
-                      == ResourceFilter.Mode.ALL,
-                  "Native clear preserves rate and removes selector");
-              var tag = new ItemStack(Items.NAME_TAG);
-              tag.set(DataComponents.CUSTOM_NAME, Component.literal("#minecraft:logs"));
-              player.setItemInHand(InteractionHand.OFF_HAND, tag);
-              helper.useBlock(BUFFER, player);
-              var filter = f.saved.buffers().deployment(f.buffer.handle().id()).policy().filter();
-              helper.assertTrue(
-                  filter.mode() == ResourceFilter.Mode.EXCLUDE
-                      && filter.terms().getFirst().equals(new ResourceFilter.Tag("minecraft:logs")),
-                  "Actual named tag and sneak choose tag exclusion");
-              helper.assertTrue(
-                  f.saved.buffers().deployment(f.buffer.handle().id()).mode()
-                      == BufferRegistry.Mode.PAUSED,
-                  "Editing does not deploy a paused preset");
-              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.CHEST));
-              helper.useBlock(BUFFER, player);
-              helper.assertTrue(
-                  f.saved.buffers().deployment(f.buffer.handle().id()).policy().target() == 128,
-                  "Chest cycles physical goal without changing selection/rate");
-              player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.COMPASS));
-              for (int step = 0; step < 3; step++) helper.useBlock(BUFFER, player);
-              var configured = f.saved.buffers().deployment(f.buffer.handle().id());
-              helper.assertTrue(
-                  configured.mode() == BufferRegistry.Mode.STOCK
-                      && configured.policy().target() == 128
-                      && configured.policy().rate() == 32
-                      && configured.policy().filter().mode() == ResourceFilter.Mode.EXCLUDE,
-                  "Compass reaches Stock and preserves typed policy");
+              player.closeContainer();
               player.connection.disconnect(Component.literal("Policy controls fixture complete"));
             })
         .thenSucceed();

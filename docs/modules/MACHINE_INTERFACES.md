@@ -20,8 +20,8 @@ in [TESTING.md](../TESTING.md).
 
 Craft ICI / CRC / ICI using iron I, copper C and redstone R. Place against the
 provider; the socket queries its opposite face and the remaining faces connect
-wires. With an empty main hand, use offhand renamed paper or a name tag to copy
-a case-sensitive label. Sneak with paper clears it. Neither consumes the tool.
+wires. Use it with an empty main hand to open its screen and type a case-sensitive
+label; an empty label clears it. Held items no longer relabel it (U16).
 Actual authenticated nearby VIEW access and current EDIT permission are required.
 Empty labels select no group. Multiple local interfaces can share a label.
 

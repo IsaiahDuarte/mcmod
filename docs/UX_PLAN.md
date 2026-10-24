@@ -215,7 +215,7 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
 - [x] **U15 — Apply display names (needs UD4).** Done 2026-10-24 (commit subject `U15:`). [Evidence](evidence/ux-u15-display-names-2026-10-24.md). "Crafter" kept despite vanilla's Crafter.
   Lang-only rename plus guide and docs. Registry IDs stay.
 
-- [ ] **U16 — Remove offhand controls (needs UD5, after U2, U5, U6).**
+- [x] **U16 — Remove offhand controls (needs UD5, after U2, U5, U6).** Done 2026-10-24 (commit subject `U16:`). [Evidence](evidence/ux-u16-offhand-removal-2026-10-24.md).
   Delete the offhand-item branches in `ConnectorBlock` and `BufferedInterfaceBlock`, their
   lang keys and their tests. Replace that coverage with screen-path tests.
 
