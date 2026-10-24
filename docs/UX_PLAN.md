@@ -169,6 +169,7 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   Depends on U2 and U5.
 
 - [ ] **U8 — Gateway and access presets (F8).**
+  Progress: gateway presets done 2026-10-24 (U8a commit); access roles open.
   The gateway screen opens on four choices: Shared (default), Read-only, Isolated, Custom.
   Custom shows the current toggles, with clearer column titles ("This subnetwork can…" and
   "…using parent storage"). The access screen gets Guest / Member / Builder / Admin role

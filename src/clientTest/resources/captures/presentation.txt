@@ -29,6 +29,8 @@ program-scale-1.png
 program-scale-4.png
 gateway-policy-scale-1.png
 gateway-policy-scale-4.png
+gateway-custom-scale-1.png
+gateway-custom-scale-4.png
 access-scale-1.png
 access-scale-4.png
 recovery-scale-1.png

@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.core.network;
 
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -22,6 +23,44 @@ public final class NetworkPermissions {
     EDIT,
     DEPLOY,
     MANAGE
+  }
+
+  /**
+   * One-click access roles (U8), each a fixed grant set; any other set is shown as Custom. Roles
+   * are a screen shortcut only: storage, checks and persistence still use the permission set.
+   */
+  public enum AccessRole {
+    /** Can look at stock and devices. */
+    GUEST(EnumSet.of(Permission.VIEW)),
+    /** Can also move items and run crafting jobs. */
+    MEMBER(EnumSet.of(Permission.VIEW, Permission.DEPOSIT, Permission.WITHDRAW, Permission.CRAFT)),
+    /** Can also change device settings and deploy presets and programs. */
+    BUILDER(
+        EnumSet.of(
+            Permission.VIEW,
+            Permission.DEPOSIT,
+            Permission.WITHDRAW,
+            Permission.CRAFT,
+            Permission.EDIT,
+            Permission.DEPLOY)),
+    /** Every permission, including managing access and gateways. */
+    ADMIN(EnumSet.allOf(Permission.class));
+
+    private final Set<Permission> grants;
+
+    AccessRole(Set<Permission> grants) {
+      this.grants = Set.copyOf(grants);
+    }
+
+    public Set<Permission> grants() {
+      return grants;
+    }
+
+    /** The role whose grants equal {@code grants} exactly, or null for a custom set. */
+    public static AccessRole matching(Set<Permission> grants) {
+      for (var role : values()) if (role.grants.equals(Set.copyOf(grants))) return role;
+      return null;
+    }
   }
 
   /** Created by trusted server authentication, never from a client-supplied operator flag. */

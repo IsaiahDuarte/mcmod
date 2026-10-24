@@ -244,6 +244,8 @@ public final class MultiplayerClientVerification {
         if (!(client.screen instanceof GatewayPolicyScreen screen) || !screen.getMenu().editable())
           return false;
         shift(client, false);
+        // U8: the screen opens on its presets; Custom reveals the individual toggles.
+        click(screen, "Custom");
         policyMask = screen.getMenu().policy().mask();
         mark = ticks;
         sub++;
@@ -661,10 +663,12 @@ public final class MultiplayerClientVerification {
     screen.keyPressed(GLFW.GLFW_KEY_1 + index, 0, 0);
   }
 
+  /** The first policy toggle (branch View), whether or not the Custom view shows it. */
   private static Button firstButton(Screen screen) {
     return screen.children().stream()
         .filter(child -> child instanceof Button)
         .map(child -> (Button) child)
+        .filter(button -> button.getMessage().getString().startsWith("View: "))
         .findFirst()
         .orElseThrow();
   }

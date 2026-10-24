@@ -173,6 +173,12 @@ and server performance remain required P2/P3/P7 evidence. Full A05/A12 is not pr
 ## Gateway policy editor
 
 `platform/network/GatewayPolicyMenu` + `platform/client/GatewayPolicyScreen`
-([ADR0041](../decisions/0041-gateway-policy-editor.md)): sneak-use a gateway; button
-`n < GatewayPolicy.BITS` toggles bit `n` after a server-side Manage check, writes
-`NodeRegistry.setPolicy` and calls `WorldNetworks.changed` at the gateway. Server thread only.
+([ADR0041](../decisions/0041-gateway-policy-editor.md)): use a gateway (U7). Button
+`n < GatewayPolicy.BITS` toggles bit `n`; buttons `PRESET_BUTTON + ordinal` (32–34) write
+one exact `GatewayPolicy.Preset` (U8: SHARED = `open()`, READ_ONLY = all branch grants plus
+inherited VIEW for all kinds, ISOLATED = all branch grants with nothing inherited). Both
+paths run a server-side Manage check, write `NodeRegistry.setPolicy` and call
+`WorldNetworks.changed` at the gateway; Manage is checked again only after the branch
+rebuilds. The screen shows the preset row first and its toggles only in the Custom view,
+which opens automatically for a policy that matches no preset. `AccessPresetsTest` pins
+each preset to its policy. Server thread only.

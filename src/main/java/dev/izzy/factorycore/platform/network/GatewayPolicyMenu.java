@@ -87,6 +87,11 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
     return data.get(2) == 1;
   }
 
+  /** True once the server's data slots have arrived (the network state slot is never 0 then). */
+  public boolean synced() {
+    return gateway != null || data.get(3) != 0;
+  }
+
   /** The status strip (U7), from the synchronized network state; the gateway has no reason. */
   public DeviceStatus.View deviceStatus() {
     int state = data.get(3);
@@ -110,6 +115,9 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
   /** Button id that reopens this gateway as a Network Access session (ADR 0055). */
   public static final int ACCESS_BUTTON = 64;
 
+  /** Button {@code PRESET_BUTTON + ordinal} applies one {@link GatewayPolicy.Preset} (U8). */
+  public static final int PRESET_BUTTON = 32;
+
   @Override
   public boolean clickMenuButton(Player player, int button) {
     if (button == ACCESS_BUTTON
@@ -119,14 +127,20 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
       NetworkAccessMenu.open(server, gateway);
       return true;
     }
+    int presets = GatewayPolicy.Preset.values().length;
+    boolean preset = button >= PRESET_BUTTON && button < PRESET_BUTTON + presets;
     if (gateway == null
         || !(player instanceof ServerPlayer server)
         || button < 0
-        || button >= GatewayPolicy.BITS
+        || button >= GatewayPolicy.BITS && !preset
         || !stillValid(player)
         || !mayManage(server)) return false;
     var saved = DeviceSavedData.get(server.server);
-    var next = policy().toggled(button);
+    var next =
+        preset
+            ? GatewayPolicy.Preset.values()[button - PRESET_BUTTON].policy()
+            : policy().toggled(button);
+    if (next.equals(policy())) return true;
     if (saved.nodes().setPolicy(gateway.handle(), next) != NodeRegistry.Failure.OK) return false;
     WorldNetworks.changed(gateway.getLevel(), gateway.getBlockPos());
     broadcastChanges();

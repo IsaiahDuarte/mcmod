@@ -26,3 +26,16 @@ against stale topology.
 
 Child policies still intersect with all ancestors (R04/A07). Labels and per-player grant
 editing for controllers are separate work.
+
+
+## Presets extension — 2026-10-24 (U8)
+
+Three exact presets (Shared, Read-only, Isolated) plus Custom replace a first screen
+of 17 toggles. The presets are ordinary policies: there is no new storage, no
+encoding change, and recognition is exact equality, so any other mask is Custom.
+Every preset keeps all branch grants, because removing a branch grant disables that
+action inside the branch itself, which is rarely what a player choosing "Read-only"
+expects. The presets differ only in what reaches parent storage. An alternative that
+stored a preset name was rejected: it would drift from the actual mask that
+`NetworkAuthority` enforces.
+

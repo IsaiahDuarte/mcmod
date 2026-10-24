@@ -55,6 +55,41 @@ public record GatewayPolicy(
     return fromMask(mask() ^ 1 << bit);
   }
 
+  /**
+   * One-click gateway choices (U8). Every preset keeps all branch grants, so a branch always works
+   * on its own segment; they differ only in what reaches parent storage. Anything else is Custom.
+   */
+  public enum Preset {
+    /** The branch sees and uses parent storage like the main network (the default). */
+    SHARED,
+    /** The branch can see parent stock but cannot deposit, withdraw or craft with it. */
+    READ_ONLY,
+    /** Parent storage is hidden from the branch. */
+    ISOLATED;
+
+    public GatewayPolicy policy() {
+      return switch (this) {
+        case SHARED -> open();
+        case READ_ONLY ->
+            new GatewayPolicy(
+                EnumSet.allOf(Permission.class),
+                EnumSet.of(Permission.VIEW),
+                EnumSet.allOf(ResourceKind.class));
+        case ISOLATED ->
+            new GatewayPolicy(
+                EnumSet.allOf(Permission.class),
+                EnumSet.noneOf(Permission.class),
+                EnumSet.noneOf(ResourceKind.class));
+      };
+    }
+
+    /** The preset whose policy equals {@code policy} exactly, or null for a custom policy. */
+    public static Preset matching(GatewayPolicy policy) {
+      for (var preset : values()) if (preset.policy().equals(policy)) return preset;
+      return null;
+    }
+  }
+
   public static GatewayPolicy open() {
     return new GatewayPolicy(
         EnumSet.allOf(Permission.class),

@@ -794,12 +794,21 @@ sent through the link. Wired connections retain their device limits.
 
 ## Gateway rules
 
-Use a gateway to open its policy editor. The left column (**Branch grants**) chooses what the branch
-may do in the parent network, for example letting the parent craft its patterns. The middle
-column (**Inherited access**) chooses what the branch may do with parent stock, and the right column (**Resource kinds**) chooses
-which resource kinds (items, fluids, energy) the branch can see. You need Manage to change
-them; others see them read-only. Wait a moment between clicks while the branch updates.
+Use a gateway to open its policy screen. It opens on four choices:
 
+- **Shared** (the default): the branch sees and uses all parent storage, like the
+  main network.
+- **Read-only**: the branch can see parent stock but cannot deposit into, take from
+  or craft with it.
+- **Isolated**: parent storage is hidden from the branch.
+- **Custom**: shows every toggle. **This subnetwork can…** limits what anyone may do
+  inside the branch. **…using parent storage** and **Parent storage kinds** decide
+  which of those actions reach parent stock, and for which resource kinds.
+
+Every preset lets the branch use its own storage normally. Players still need their
+own access grants. You need Manage to change the choice; others see it read-only.
+Nested gateways can only narrow access. Wait a moment between clicks while the
+branch updates.
 
 ## Factory Guide
 

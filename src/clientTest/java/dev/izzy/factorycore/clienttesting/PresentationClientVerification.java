@@ -1216,6 +1216,22 @@ public final class PresentationClientVerification {
           return true;
         });
     scales("gateway-policy", GatewayPolicyScreen.class, false);
+    // U8: the Custom choice reveals the three columns of toggles.
+    use(base.east(7), Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof GatewayPolicyScreen screen)) return false;
+          for (var child : screen.children())
+            if (child instanceof net.minecraft.client.gui.components.Button button
+                && button.visible
+                && button.active
+                && button.getMessage().getString().equals("Custom")) {
+              button.onPress();
+              return true;
+            }
+          throw new IllegalStateException("Gateway Custom choice missing");
+        });
+    scales("gateway-custom", GatewayPolicyScreen.class, false);
     // Network Access (ADR 0055): a second principal row so grant toggles are on screen.
     server(
         player ->
