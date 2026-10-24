@@ -254,8 +254,9 @@ buffer fills. These buffered items are not automatically published as shared
 network stock. Crouch-use with **both hands empty** to enable Import. Repeat to
 pause. This needs current interface-edit/program-deployment rights and enabling
 Import additionally needs view/deposit/withdraw rights. The controller owner has
-these rights by default. Legacy and newly placed buffers start paused; connecting
-storage alone does not enable a rule.
+these rights by default. A buffer you place starts in Import, in your name, once
+its network is ready, if you hold all of those rights; otherwise it starts paused.
+A buffer that already has a saved rule keeps it when moved.
 
 In Import mode the network moves up to 64 items per buffer/tick into permitted
 storage, using storage priority and backing-identity order. Faces and requests

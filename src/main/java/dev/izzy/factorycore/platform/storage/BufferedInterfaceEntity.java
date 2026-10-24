@@ -122,6 +122,46 @@ public final class BufferedInterfaceEntity extends BlockEntity
         && chunk.getBlockEntity(worldPosition, LevelChunk.EntityCreationType.CHECK) == this;
   }
 
+  /** Placement default (U6): the live placer whose Import deployment is still pending. */
+  private UUID pendingImport;
+
+  private int pendingAttempts;
+
+  /** Polls at most this many times (every {@link #DEFAULT_IMPORT_TICKS}) for the network. */
+  public static final int DEFAULT_IMPORT_ATTEMPTS = 20, DEFAULT_IMPORT_TICKS = 5;
+
+  /**
+   * A buffer with no deployment starts in Import under the authenticated live player who placed it,
+   * once its network is valid. The placer needs the same EDIT/DEPLOY/VIEW/WITHDRAW/DEPOSIT grants
+   * as an explicit Import; otherwise, or if the placer leaves, it stays Paused.
+   */
+  void requestDefaultImport(UUID placer) {
+    if (authority().buffers().deployment(state.lease().id()) != null) return;
+    pendingImport = placer;
+    pendingAttempts = 0;
+  }
+
+  /** Applies the pending default; true while it should be retried after the network settles. */
+  boolean applyDefaultImport() {
+    if (pendingImport == null || state == null) return false;
+    var player = serverLevel().getServer().getPlayerList().getPlayer(pendingImport);
+    if (player == null || ++pendingAttempts > DEFAULT_IMPORT_ATTEMPTS) {
+      pendingImport = null;
+      return false;
+    }
+    var membership = WorldNetworks.get(serverLevel().getServer()).membership(position());
+    if (membership.status() != NetworkTopology.Status.VALID) return true;
+    pendingImport = null;
+    if (authority().buffers().deployment(state.lease().id()) != null) return false;
+    try {
+      configure(Actors.of(player), BufferRegistry.Mode.IMPORT);
+    } catch (IllegalArgumentException | IllegalStateException denied) {
+      // Missing grants or an unavailable network leave the buffer Paused, as before U6.
+      return false;
+    }
+    return false;
+  }
+
   public void place(ItemStack stack, UUID placer) {
     if (state != null) unbind();
     var custom = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();

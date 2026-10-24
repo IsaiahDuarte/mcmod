@@ -16,7 +16,9 @@ import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -47,12 +49,23 @@ public final class BufferedInterfaceBlock extends NetworkedBlock implements Enti
         && level.getBlockEntity(position) instanceof BufferedInterfaceEntity buffer)
       try {
         buffer.place(stack, placer.getUUID());
+        if (placer instanceof ServerPlayer) {
+          buffer.requestDefaultImport(placer.getUUID());
+          level.scheduleTick(position, this, BufferedInterfaceEntity.DEFAULT_IMPORT_TICKS);
+        }
       } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {
         if (placer instanceof Player player)
           player.displayClientMessage(
               Component.translatable("message.factorycore.buffer_fault", failure.getMessage()),
               true);
       }
+  }
+
+  @Override
+  protected void tick(BlockState state, ServerLevel level, BlockPos position, RandomSource random) {
+    if (level.getBlockEntity(position) instanceof BufferedInterfaceEntity buffer
+        && buffer.applyDefaultImport())
+      level.scheduleTick(position, this, BufferedInterfaceEntity.DEFAULT_IMPORT_TICKS);
   }
 
   @Override

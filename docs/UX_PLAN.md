@@ -150,6 +150,7 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   and permission denial.
 
 - [ ] **U6 — Better defaults (F7).**
+  Progress: (a) done 2026-10-24 (U6a commit; `BufferDefaultImportGameTests`); (b), (c) open.
   (a) A Buffered Interface placed by a player who holds the needed grants starts in Import,
   deployed under that player; others still start Paused. Amend ADR 0014/0018 with the
   authority reasoning.

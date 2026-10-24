@@ -139,3 +139,18 @@ Normal delivery still requires the old accepted configuration/current grants.
 Unknown pending calls and moved leases remain unavailable for automatic refund;
 manual reconciliation is still required. No owned persistence schema change is
 needed: slot/deployment/context/journal ownership already shares canonical saves.
+
+
+## Placement default extension — 2026-10-24 (U6)
+
+A buffer placed by a player starts in Import under that player instead of Paused,
+when the player holds EDIT, DEPLOY, VIEW, WITHDRAW and DEPOSIT at the buffer.
+Authority still comes only from an authenticated live player. The deployment is
+created through the same `configure` path a crouch-use toggle uses, with
+`Actors.of(placer)`, after the network becomes VALID. It is never created from
+saved reference provenance or the item's principal metadata, so the impersonation
+risk above does not reopen. A placer without those grants, a placer who logs out
+before the network settles, a server restart, or an existing deployment all leave
+the earlier behavior: Paused until someone explicitly deploys. The alternative of
+deploying under the root owner was rejected because it would grant automation in
+someone else's name.

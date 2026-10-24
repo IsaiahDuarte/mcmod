@@ -87,3 +87,8 @@ retains active-mode grants. Strict bounded display projections do not expose
 canonical components or topology. No new persistence schema is needed because
 only Apply writes the existing policy. Actual graphical interaction remains
 unverified; this extension does not finish A01 or P3.
+
+## Placement default note — 2026-10-24 (U6)
+
+The placement Import default ([ADR 0014](0014-buffered-inventory.md)) uses the
+default ALL/64 policy, so it needs no buffers-v3 record and changes no encoding.

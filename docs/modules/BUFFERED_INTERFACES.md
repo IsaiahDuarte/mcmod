@@ -228,7 +228,12 @@ authority, as described below.
 
 WorldBufferImports is server-owned and registers only currently bound holders,
 with 256 maximum runtime entries. Canonical deployments remain the sole authority.
-Fresh/legacy references without a deployment stay paused. Positive actual buffer
+References without a deployment stay paused, except the U6 placement default:
+`BufferedInterfaceBlock.setPlacedBy` asks the entity to deploy IMPORT under the
+live placing ServerPlayer. A scheduled block tick retries every 5 ticks (at most
+20 times) until the network is VALID, then calls the normal `configure` path with
+`Actors.of(player)`. Missing grants, a placer who logged out, or an existing
+deployment leave it paused. The pending placer is transient and is not saved. Positive actual buffer
 mutations and configuration changes wake the matching entry; simulations/no-ops
 never wake it. Empty inventories leave the active queue. Teardown unregisters only
 the same physical owner; old queued closures cannot mutate a replacement.
