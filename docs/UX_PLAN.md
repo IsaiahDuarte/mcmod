@@ -219,7 +219,7 @@ Wave A keeps the current blocks and names; U15 applies the new names after the m
   Delete the offhand-item branches in `ConnectorBlock` and `BufferedInterfaceBlock`, their
   lang keys and their tests. Replace that coverage with screen-path tests.
 
-- [ ] **U9b — Player and admin guides (after U16).**
+- [x] **U9b — Player and admin guides (after U16).** Done 2026-10-24 (commit subject `U9b:`): [player guide](PLAYER_GUIDE.md) rewritten in play order (988 → 378 lines), [admin guide](ADMIN_GUIDE.md) holds commands, configuration, saved data and recovery.
   Split `PLAYER_GUIDE.md` into a short player guide (play order, one section per block,
   no schema or quota detail) and `ADMIN_GUIDE.md` (recovery commands, audits, quotas,
   server config), describing the final post-Wave-B controls.

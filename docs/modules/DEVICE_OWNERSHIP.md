@@ -150,7 +150,7 @@ The platform adapter `StorageDriveEntity.repairCellConflict(expected)` implement
 those preconditions and evidence preservation for item/fluid cells only. It updates
 only the exact canonical slot, then requests normal network revalidation. Other
 slot diagnostics are rechecked. The operator command is documented in the
-[player guide](../PLAYER_GUIDE.md); format/limits and interrupted independent-save
+[admin guide](../ADMIN_GUIDE.md#device-repair); format/limits and interrupted independent-save
 behavior are in [ADR0023](../decisions/0023-canonical-cell-repair.md). Unknown external
 outcomes and ownership conflicts involving unresolved transfers remain blocked.
 This is partial recovery support, not full A13 completion.

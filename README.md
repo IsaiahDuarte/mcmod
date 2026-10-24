@@ -13,7 +13,8 @@ Infinite cells.
 **Status:** V1 is feature-complete and in cleanup and iteration. Every system has automated
 world-level and real-client evidence; release acceptance (A01–A17) and the human survival
 playtest are tracked in [IMPLEMENTATION.md](docs/IMPLEMENTATION.md). Players start with the
-[player guide](docs/PLAYER_GUIDE.md).
+[player guide](docs/PLAYER_GUIDE.md); server owners and operators use the
+[admin guide](docs/ADMIN_GUIDE.md).
 
 ## Develop
 

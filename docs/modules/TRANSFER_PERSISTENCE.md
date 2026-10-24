@@ -246,7 +246,7 @@ record remains until an operator explicitly archives/retires it. Uncertain or
 live records cannot retire. IO/quota/corruption failure blocks mutation. World12,
 transfer-entry2 and context3 do not change; only the standalone audit envelope is
 new schema1. Audit ownership/quotas/latency limits are documented in the ADR and
-[player workflow](../PLAYER_GUIDE.md#recovery-commands).
+[admin guide](../ADMIN_GUIDE.md#recovery).
 
 This is not full ownership-conflict reconciliation or an independent-save/crash
 transaction guarantee. No uncertain evidence is deleted or refunded.
