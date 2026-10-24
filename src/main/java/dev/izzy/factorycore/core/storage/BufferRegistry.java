@@ -146,6 +146,23 @@ public final class BufferRegistry {
     changed.run();
   }
 
+  /**
+   * Drops an empty, unbound buffer and its deployment so its lease can be retired (U11). False,
+   * changing nothing, while any slot holds items or a physical owner is still bound.
+   */
+  public boolean retire(UUID backing) {
+    checkThread();
+    var buffer = buffers.get(Objects.requireNonNull(backing));
+    if (buffer == null || bindings.containsKey(backing)) return false;
+    if (buffer.snapshot().slots().stream().anyMatch(slot -> slot.key() != null)) return false;
+    buffers.remove(backing);
+    bytes -= charges.remove(backing);
+    var deployment = deployments.remove(backing);
+    if (deployment != null) bytes -= deployment.policy().bytes();
+    changed.run();
+    return true;
+  }
+
   public boolean bind(NodeRegistry.Handle handle, NodeRegistry.Position position, Object owner) {
     checkThread();
     Objects.requireNonNull(position);

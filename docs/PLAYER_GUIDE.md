@@ -211,6 +211,13 @@ Storage and Machine have a socket that faces the container; cable the other face
 A Buffer accepts cables on every face. Breaking an Interface keeps its mode, its
 settings and anything it owns, so placing it again restores it.
 
+To change mode, use the **Mode** buttons: at the bottom of the Storage screen and of
+the Machine screen's Binding tab, or on the Buffer screen's Inventory tab. A switch
+needs your interface-edit permission, nothing in transit and an empty buffer, and
+the screen tells you which of these is missing. Interfaces with a Throughput or
+Overdrive upgrade keep their mode so the upgrade is not lost. Switching starts the
+new mode fresh: the old mode's settings, label and presets are not kept.
+
 ### Storage mode
 
 Place its socket against a container and cable the other faces. Use it with both hands empty to

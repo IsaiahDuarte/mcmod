@@ -12,6 +12,7 @@ import java.security.MessageDigest;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.*;
 import net.minecraft.world.inventory.*;
@@ -156,6 +157,36 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
       if (!WorldNetworks.get(player().server).allows(actor(), holder.position(), permission))
         return false;
     return true;
+  }
+
+  /**
+   * Interface mode row (U11, ADR 0059): button {@link InterfaceSwitch#BUTTON} + kind asks to
+   * switch. On success the screen closes and the player is told to reopen it; a refusal shows its
+   * reason.
+   */
+  @Override
+  public boolean clickMenuButton(Player player, int button) {
+    var target = InterfaceSwitch.requested(button);
+    if (target == null
+        || holder == null
+        || !current()
+        || busy
+        || !(player instanceof ServerPlayer sender)
+        || sender != viewer) return false;
+    var outcome = InterfaceSwitch.request(sender, position, target);
+    if (outcome == InterfaceSwitch.Outcome.SWITCHED) {
+      sender.closeContainer();
+      sender.displayClientMessage(
+          Component.translatable(
+              "message.factorycore.interface_switched",
+              Component.translatable(
+                  "gui.factorycore.interface.mode." + target.getSerializedName())),
+          true);
+      return true;
+    }
+    status = outcome.key();
+    publish();
+    return false;
   }
 
   @Override

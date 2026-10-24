@@ -241,6 +241,36 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
         true);
   }
 
+  /**
+   * Interface mode row (U11, ADR 0059): button {@link InterfaceSwitch#BUTTON} + kind asks to
+   * switch. On success the screen closes and the player is told to reopen it; a refusal shows its
+   * reason.
+   */
+  @Override
+  public boolean clickMenuButton(Player player, int button) {
+    var target = InterfaceSwitch.requested(button);
+    if (target == null
+        || machine == null
+        || !current()
+        || presetBusy
+        || !(player instanceof ServerPlayer sender)
+        || sender != viewer) return false;
+    var outcome = InterfaceSwitch.request(sender, machine.getBlockPos(), target);
+    if (outcome == InterfaceSwitch.Outcome.SWITCHED) {
+      sender.closeContainer();
+      sender.displayClientMessage(
+          Component.translatable(
+              "message.factorycore.interface_switched",
+              Component.translatable(
+                  "gui.factorycore.interface.mode." + target.getSerializedName())),
+          true);
+      return true;
+    }
+    status = outcome.key();
+    publish();
+    return false;
+  }
+
   @Override
   public boolean stillValid(Player player) {
     return player == viewer && (machine == null || current());

@@ -249,6 +249,23 @@ public final class NodeRegistry {
     return new Result(Failure.OK, handle(portable));
   }
 
+  /**
+   * Permanently removes a detached foreign-port lease (U11 Interface mode switch, ADR 0059). Only
+   * connector, machine-interface and buffer leases qualify, and only while unplaced and conflict
+   * free. Callers first retire every table keyed by the node (buffer inventory, presets).
+   */
+  public Failure retire(Handle handle) {
+    Failure failure = validate(handle);
+    if (failure != Failure.OK) return failure;
+    var node = nodes.get(handle.id());
+    if (node.kind() == Kind.CONTROLLER || node.kind() == Kind.GATEWAY)
+      throw new IllegalArgumentException("Structural roots are never retired");
+    if (node.position() != null) return Failure.OCCUPIED;
+    nodes.remove(handle.id());
+    changed.run();
+    return Failure.OK;
+  }
+
   public record HandlePage(List<Handle> handles, UUID next) {
     public HandlePage {
       handles = List.copyOf(handles);

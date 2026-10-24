@@ -307,4 +307,22 @@ class NodeRegistryTest {
         registry.adopt(portable, FIRST).failure(),
         "A portable lease cannot prove its item is gone");
   }
+
+  /** U11: only a detached, current foreign-port lease is retired; roots never are. */
+  @Test
+  void retireRemovesOnlyDetachedPortLeasesAndFreesTheirSlot() {
+    var registry = new NodeRegistry(WORLD, List.of(), () -> {});
+    var placed = registry.create(ID, NodeRegistry.Kind.CONNECTOR, FIRST).handle();
+    assertEquals(NodeRegistry.Failure.OCCUPIED, registry.retire(placed));
+    var portable = registry.detach(placed, FIRST).handle();
+    assertEquals(NodeRegistry.Failure.STALE, registry.retire(placed));
+    assertEquals(NodeRegistry.Failure.OK, registry.retire(portable));
+    assertFalse(registry.contains(ID));
+    assertEquals(NodeRegistry.Failure.UNKNOWN, registry.retire(portable));
+    assertEquals(NodeRegistry.Failure.OK, registry.admission(FIRST));
+    assertTrue(new NodeRegistry(WORLD, registry.snapshot(), () -> {}).snapshot().isEmpty());
+    var root = registry.create(new UUID(0, 2), NodeRegistry.Kind.CONTROLLER, SECOND).handle();
+    var detachedRoot = registry.detach(root, SECOND).handle();
+    assertThrows(IllegalArgumentException.class, () -> registry.retire(detachedRoot));
+  }
 }

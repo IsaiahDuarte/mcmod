@@ -22,6 +22,8 @@ import org.lwjgl.glfw.GLFW;
  * Two compact native tabs; ghost samples never become container stacks or mutate held inventory.
  */
 public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSettingsMenu> {
+  private List<Button> modeRow = List.of();
+
   private EditBox id, rate, target;
   private Button mode,
       filter,
@@ -184,6 +186,17 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
             186,
             72,
             () -> send(BufferSettingsPackets.RETURN, 0, 0, "", new byte[32]));
+    modeRow =
+        InterfaceModeRow.add(
+            this::addRenderableWidget,
+            menu.containerId,
+            InterfaceKind.BUFFER,
+            leftPos + 236,
+            topPos + 57,
+            0,
+            16,
+            74,
+            14);
     shown = -1;
     sync();
     if (rateDraft != null) rate.setValue(rateDraft);
@@ -264,6 +277,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     next.active = !inventory && (rulePage + 1) * 6 < view.rules().size();
     remove.active =
         !inventory && view.editable() && !view.busy() && selectedRule < view.rules().size();
+    for (var button : modeRow) button.visible = inventory;
     takeOne.visible = inventory;
     takeStack.visible = inventory;
     returning.visible = inventory;
@@ -358,6 +372,8 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     if (menu.inventoryTab()) {
       graphics.drawString(
           font, Component.translatable("gui.factorycore.buffer.contents"), 10, 47, 0xffffff, false);
+      graphics.drawString(
+          font, Component.translatable("gui.factorycore.interface.mode"), 236, 47, 0xffffff, false);
       graphics.drawString(font, playerInventoryTitle, 79, 91, 0xffffff, false);
       graphics.drawString(
           font,

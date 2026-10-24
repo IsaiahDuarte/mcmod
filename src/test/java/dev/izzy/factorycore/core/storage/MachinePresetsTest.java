@@ -273,4 +273,30 @@ class MachinePresetsTest {
     assertThrows(ArithmeticException.class, () -> restored.nextConfiguration(node, 1));
     assertEquals(Long.MAX_VALUE, restored.configuration(node.id()));
   }
+
+  /** U11: forgetting a port removes its deployment and fence so the retired lease reloads. */
+  @Test
+  void forgetRemovesDeploymentAndFenceForARetiredPort() {
+    var nodes = nodes();
+    var node = node(nodes, 4);
+    var presets = new MachinePresets(nodes, List.of(), () -> {});
+    presets.deploy(
+        node,
+        1,
+        MachinePresets.Face.NORTH,
+        AUTH,
+        MachinePresets.Mode.IMPORT,
+        ResourceFilter.all(ResourceKind.ITEM),
+        64);
+    long before = presets.bytes();
+    presets.forget(node.id());
+    assertNull(presets.get(node.id()));
+    assertTrue(presets.configurations().isEmpty());
+    assertTrue(presets.bytes() < before);
+    var portable = nodes.detach(node, new NodeRegistry.Position("minecraft:overworld", 4)).handle();
+    assertEquals(NodeRegistry.Failure.OK, nodes.retire(portable));
+    var reloaded =
+        new MachinePresets(nodes, presets.snapshot(), presets.configurations(), () -> {});
+    assertNull(reloaded.get(node.id()));
+  }
 }

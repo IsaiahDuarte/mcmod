@@ -45,9 +45,8 @@ it:
   player's current EDIT authority. Nothing is copied between kinds. The refusal names
   the reason, for example "Empty the buffer first".
 - **Upgrades.** Throughput and Overdrive installation stays per kind, which already
-  share one tier ladder (ADR 0054). A switch keeps the item-level tier only when the
-  new kind can carry it; otherwise the switch is refused until the upgrades are
-  removed. In practice all three kinds accept the same tiers.
+  share one tier ladder (ADR 0054). Upgrades cannot be removed, so an upgraded
+  Interface refuses to switch rather than lose its upgrade (implemented in U11b).
 - **Removed.** The `storage_connector`, `machine_interface` and `buffered_interface`
   blocks and items are deleted, along with their recipes and loot tables, with no
   aliases or converters (UD7). Worlds containing them are unsupported. The three
@@ -76,3 +75,22 @@ it:
 - Mode switching is new behavior. Its idle check is the safety boundary: a refused
   switch changes nothing, and an accepted one is exactly a break followed by a fresh
   placement.
+
+## Implementation notes — U11b (2026-10-24)
+
+Switching needs a lease retirement path that did not exist before, because canonical
+node records were never deleted. Without one, every switch would leak a record
+against the node limit (4096) and the buffer limit (256). The new operations are:
+
+- `NodeRegistry.retire`: removes only a detached, current connector,
+  machine-interface or buffer lease. Controllers and gateways throw.
+- `BufferRegistry.retire`: removes only an unbound, empty buffer and its deployment.
+- `MachinePresets.forget`: removes the deployment and the configuration fence. A
+  stale fence would otherwise fail the load-time cross-check.
+
+`InterfaceSwitch` runs every check (permission, idle, empty, no upgrade) before
+detaching anything. It then calls `portableForBreak`, retires the records, replaces
+the block entity, and places the new kind with a fresh item. GameTests cover each
+refusal, six consecutive switches leaving exactly one lease with all old ids
+retired, and the screen button path.
+

@@ -105,6 +105,16 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     apply = button("apply", 10, 174, 88, this::apply);
     button("reset", 106, 174, 88, () -> load(menu.view().form()));
     button("cancel", 202, 174, 88, this::onClose);
+    InterfaceModeRow.add(
+        this::addRenderableWidget,
+        menu.containerId,
+        InterfaceKind.MACHINE,
+        leftPos + 60,
+        topPos + 214,
+        78,
+        0,
+        74,
+        18);
     for (var child : children())
       if (child instanceof AbstractWidget widget) bindingWidgets.add(widget);
     presetButton(
@@ -383,6 +393,8 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
       return;
     }
     text(g, "label", 10, 30);
+    g.drawString(
+        font, Component.translatable("gui.factorycore.interface.mode"), 10, 219, 0xffffff, false);
     text(g, "priority", 10, 100);
     text(g, "window_first", 160, 100);
     text(g, "window_count", 10, 127);

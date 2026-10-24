@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.storage.ConnectorSettingsMenu;
 import dev.izzy.factorycore.platform.storage.ConnectorSettingsPackets;
+import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineSettingsPackets;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
 import java.util.Locale;
@@ -31,7 +32,7 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
   public ConnectorSettingsScreen(ConnectorSettingsMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
     imageWidth = 300;
-    imageHeight = 190;
+    imageHeight = 212;
   }
 
   @Override
@@ -82,6 +83,16 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
     apply = button("apply", 10, 164, 88, this::apply);
     button("reset", 106, 164, 88, () -> load(menu.view().form()));
     button("cancel", 202, 164, 88, this::onClose);
+    InterfaceModeRow.add(
+        this::addRenderableWidget,
+        menu.containerId,
+        InterfaceKind.STORAGE,
+        leftPos + 60,
+        topPos + 188,
+        78,
+        0,
+        74,
+        18);
     if (draft == null) load(menu.view().form());
     else {
       priority.setValue(draft[0]);
@@ -201,6 +212,8 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
   @Override
   protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
     g.drawString(font, title, 10, 10, 0xffffff, false);
+    g.drawString(
+        font, Component.translatable("gui.factorycore.interface.mode"), 10, 193, 0xffffff, false);
     int strip = 10 + font.width(title) + 10;
     StatusStrip.draw(g, font, menu.deviceStatus(), strip, 10, imageWidth - 10 - strip);
     text(g, "priority", 10, 58);

@@ -421,4 +421,28 @@ class BufferRegistryTest {
             () -> {});
     assertEquals(buffers.bytes(), restored.bytes());
   }
+
+  /** U11: a buffer retires only when empty and unbound, then reloads without its lease. */
+  @Test
+  void retireDropsOnlyEmptyUnboundBuffersAndTheirDeployment() {
+    var nodes = new NodeRegistry(WORLD, List.of(), () -> {});
+    var buffers = new BufferRegistry(nodes, List.of(), () -> {});
+    buffers.stackLimit(key -> 64);
+    var placed = create(nodes, buffers, 1);
+    var owner = new Object();
+    assertTrue(buffers.bind(placed, position(1), owner));
+    assertEquals(5, buffers.inventory(placed, owner).insertSlot(0, KEY, 5, false));
+    assertFalse(buffers.retire(placed.id()), "A bound buffer is kept");
+    buffers.unbind(placed, owner);
+    assertFalse(buffers.retire(placed.id()), "Items are never discarded");
+    assertTrue(buffers.bind(placed, position(1), owner));
+    assertEquals(5, buffers.inventory(placed, owner).extractSlot(0, 5, false).count());
+    buffers.unbind(placed, owner);
+    assertTrue(buffers.retire(placed.id()));
+    assertEquals(0, buffers.bytes(), "The buffer's charge is released");
+    var portable = nodes.detach(placed, position(1)).handle();
+    assertEquals(NodeRegistry.Failure.OK, nodes.retire(portable));
+    var nodeCopy = new NodeRegistry(WORLD, nodes.snapshot(), () -> {});
+    assertTrue(new BufferRegistry(nodeCopy, buffers.snapshot(), () -> {}).snapshot().isEmpty());
+  }
 }

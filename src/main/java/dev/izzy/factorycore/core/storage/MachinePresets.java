@@ -301,6 +301,20 @@ public final class MachinePresets {
         && nodes.definition(node).position() != null;
   }
 
+  /**
+   * Forgets a machine port entirely, deployment and configuration fence, before its detached lease
+   * is retired (U11). Unlike {@link #remove} it needs no placed lease.
+   */
+  public void forget(UUID node) {
+    checkThread();
+    interrupted.remove(node);
+    configurations.remove(node);
+    var old = deployments.remove(Objects.requireNonNull(node));
+    if (old != null) bytes -= old.bytes();
+    changed.run();
+    activity.accept(node);
+  }
+
   public void remove(NodeRegistry.Handle node) {
     checkThread();
     validate(node);
