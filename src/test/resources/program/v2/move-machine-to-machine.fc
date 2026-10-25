@@ -1,0 +1,5 @@
+# slice: D2
+# form: move between two machines
+every 20 ticks as "smelt" {
+    move item("minecraft:iron_ingot") from machines("furnace") to machines("chest") limit 64
+}

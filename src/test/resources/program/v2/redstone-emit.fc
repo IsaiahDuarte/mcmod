@@ -1,0 +1,6 @@
+# slice: D6
+# form: emit redstone INT on target
+every 20 ticks as "alarm" {
+    if stock(item("minecraft:coal")) < 64 { emit redstone 15 on machines("alarm") }
+    else { emit redstone 0 on machines("alarm") }
+}

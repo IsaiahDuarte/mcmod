@@ -1,0 +1,7 @@
+# slice: D4
+# form: else and else if
+every 20 ticks as "branch" {
+    if stock(item("coal")) < 8 { craft 8 of item("minecraft:charcoal") }
+    else if stock(item("coal")) < 64 { log "some coal" }
+    else { log "plenty" }
+}

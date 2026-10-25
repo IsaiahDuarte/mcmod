@@ -364,7 +364,7 @@ Every statement still compiles to bounded native rules, runs under the deployer'
 grants and uses the shared transfer path. Existing v1 programs and templates must compile
 to identical IR (a fixture test pins this).
 
-- [ ] **D1 — ADR 0062: language v2.** Size M.
+- [x] **D1 — ADR 0062: language v2.** Size M.
   Freeze the v2 grammar, limits and diagnostics before code. Draft:
 
   ```text
@@ -379,6 +379,12 @@ to identical IR (a fixture test pins this).
   Record glob bounds (one `*` class, matched against registry IDs only, never component
   data), statement limits, and the decision on SFM-style round robin (`each` over a label).
   Done when: ADR accepted, grammar fixtures for every new form, v1 fixtures unchanged.
+  Evidence (2026-10-25): [ADR 0062](decisions/0062-friendly-language-v2.md) accepted
+  (grammar, precedence, glob and `except` bounds, side/slot rules, emit lifetime, limits,
+  diagnostic keys; SFM `each` rejected with reasons). Nine v2 fixtures, one per form, each
+  naming its slice; `FriendlyV1PinTest` pins the IR of an every-v1-form fixture and all 7
+  templates (`program/v1-ir.txt`) and fails if a v2 fixture compiles before its slice is
+  marked done. No compiler change.
 
 - [ ] **D2 — Machine-to-machine moves (G9).** Size M.
   Lift the "one side is storage" rule. The transfer layer already moves between two

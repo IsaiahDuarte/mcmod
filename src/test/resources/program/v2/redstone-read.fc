@@ -1,0 +1,5 @@
+# slice: D6
+# form: redstone(target)
+every 20 ticks as "on-signal" {
+    if redstone(machines("button")) { move item("minecraft:cobblestone") from storage to machines("out") limit 64 }
+}

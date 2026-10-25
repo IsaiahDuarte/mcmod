@@ -1,0 +1,5 @@
+# slice: D5
+# form: one * in an item ID path
+every 20 ticks as "ingots" {
+    move item("*_ingot") from machines("out") to storage
+}

@@ -1,0 +1,9 @@
+# slice: D4
+# form: target has CMP INT of filter
+every 20 ticks as "refuel" {
+    for f in machines("furnace") {
+        if f has < 8 of item("minecraft:coal") {
+            move item("minecraft:coal") from storage to f side north limit 8
+        }
+    }
+}

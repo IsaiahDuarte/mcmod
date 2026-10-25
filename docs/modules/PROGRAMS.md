@@ -127,3 +127,13 @@ session requests disclose nothing. The payloads do not alter saved schema or ABI
 ## Limits and overload (ADR 0056)
 
 Each rule invocation has a 256-unit host-work budget: one unit per storage catalog page, and 1 + found/16 per label query. Exceeding it traps the invocation. Friendly rules allow at most 512 host calls, the same as Wasm. The program log keeps 16 lines of up to 160 characters, collapses immediate repeats, and keeps at most 8 guest lines per invocation. A refused scheduler admission sets status `throttled`, and an invocation 20 or more ticks late sets `delayed`; each is logged once. See [ADR 0056](../decisions/0056-program-limits-and-overload.md).
+
+## Language version 2 (proposed, ADR 0062)
+
+[ADR 0062](../decisions/0062-friendly-language-v2.md) freezes a strict superset of the v1
+language: moves between two machines, `side`/`slots` per endpoint, `else`/`and`/`or`/`not`,
+`has` conditions, one-`*` globs with `except`, and redstone `redstone(...)`/`emit`. **None of
+it is implemented yet.** `src/test/resources/program/v2/` holds one fixture per form and
+names the slice (D2–D6) that must make it compile. `FriendlyV1PinTest` fails if one
+compiles early, or if any v1 program's IR changes.
+

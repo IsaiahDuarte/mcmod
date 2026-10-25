@@ -1,0 +1,7 @@
+# slice: D3
+# form: side and slots on an endpoint
+every 20 ticks as "furnace" {
+    move item("minecraft:raw_iron") from storage to machines("furnace") side up limit 16
+    move item("minecraft:coal") from storage to machines("furnace") side north slots 1 limit 8
+    move item("minecraft:iron_ingot") from machines("furnace") side down slots 2..2 to storage
+}

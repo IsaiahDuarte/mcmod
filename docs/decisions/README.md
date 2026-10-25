@@ -146,3 +146,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0060 — Crafter block](0060-crafter.md)
 
 - [0061 — Wireless link as a Gateway upgrade](0061-gateway-link-upgrade.md)
+
+- [0062 — Friendly language version 2](0062-friendly-language-v2.md)

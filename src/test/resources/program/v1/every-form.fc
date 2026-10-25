@@ -1,0 +1,21 @@
+# Every v1 form once; its IR is pinned by FriendlyV1PinTest (ADR 0062).
+every 10 ticks {
+    log "unnamed rule gets rule-1 \"quoted\" \\ slash"
+}
+every 2 seconds as "all" {
+    for m in machines("cells") {
+        keep m stocked with 32 of tag("minecraft:logs")
+        keep m stocked with 8 of item("coal") from storage
+        move fluid("minecraft:lava") from m to storage
+    }
+    keep machines("hoppers") stocked with 1 of item("minecraft:torch")
+    move energy from storage to machines("power") limit 4096
+    craft 3 of item("minecraft:stick")
+    if stock(item("minecraft:stone")) < 1 { log "lt" }
+    if stock(item("minecraft:stone")) <= 2 { log "le" }
+    if stock(item("minecraft:stone")) > 3 { log "gt" }
+    if stock(item("minecraft:stone")) >= 4 { log "ge" }
+    if stock(item("minecraft:stone")) == 5 {
+        if stock(fluid("water")) > 0 { log "nested" }
+    }
+}

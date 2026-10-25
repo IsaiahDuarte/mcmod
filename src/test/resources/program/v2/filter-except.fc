@@ -1,0 +1,5 @@
+# slice: D5
+# form: filter except filter
+every 20 ticks as "not-iron" {
+    move item("*_ingot") except item("minecraft:iron_ingot") from machines("out") to storage
+}
