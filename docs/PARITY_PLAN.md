@@ -176,7 +176,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
   decode); presentation `jobs-typed-37-scale-2.png` and `jobs-typed-37-started-scale-2.png`
   (typed into the real box, Enter, Start). P5: 5b9548b.
 
-- [ ] **A2 — Full plan breakdown (G3).** Size M.
+- [x] **A2 — Full plan breakdown (G3).** Size M.
   Send a bounded plan summary with the preview: one row per resource with **stored**,
   **to craft** and **missing**, plus cycle explanations. Bound it (for example 64 rows)
   and say "and N more" past the bound. Missing rows are highlighted; Start is disabled
@@ -185,6 +185,18 @@ view cells, portable cells and cross-dimension links. See Wave G.
   `TerminalJobs.java`, `TerminalJobPackets.java` (new bounded `PlanRow` list), `TerminalScreen.java`.
   Done when: native tests cover a two-level recipe, a shortage, a cycle and the row bound;
   client screenshots of each at scale 4.
+  Evidence: `PlanRowsTest` (two-level stored/crafted units, shortage first, cycle, 4-row
+  bound with remainder), `TerminalJobPacketsTest` (round trip, 65 rows refused),
+  `TerminalJobGameTests.previewSendsFullPlanBreakdown` (8 sticks: 2 planks stored + 4
+  crafted from 1 log; 64 sticks: log row first, 7 missing; coal/charcoal loop named, nothing
+  reserved); presentation `jobs-plan-two-level-shortage-scale-4.png` (200 sticks: 48 planks
+  stored, 52 crafted, 13 logs missing), `jobs-plan-cycle-scale-4.png`,
+  `jobs-plan-bound-scale-4.png` and `-end-` (64 rows, "…and 27 more" of a 91-resource plan).
+  Found and fixed on the way: the new button key duplicated `job.plan` and silently replaced
+  the plan summary line (`LangKeysTest.everyKeyIsDefinedOnce` now guards this), and a
+  rate-gated WINDOW request could freeze the craftable strip's pending offset (it now expires
+  after 20 ticks). Start remains disabled whenever the preview has a reason (missing or limit).
+  A1: 6974803.
 
 - [ ] **A3 — Craftables in the Items grid (G4).** Size M.
   Mark catalog rows that a visible pattern can produce. Show craftable-but-absent items

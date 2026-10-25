@@ -132,6 +132,10 @@ eight at a time) or click its scrollbar to see more.
 - **Preview:** select an item and press **×1**, **×8** or **×64**, or type an amount
   (1–4,096) in the box beside them and press Enter. This shows the steps needed or the
   first missing ingredient. For more than 4,096, start several jobs.
+- **Plan:** after a preview, **Plan** lists every item the job touches: how many come
+  from storage, how many are crafted and how many are missing (red, listed first). A
+  **Loop** line means two recipes make each other; keep some of one in storage to break
+  it. **Back** returns to the craftable list.
 - **Start:** press **Start** to run the job; you need Craft. Its ingredients are
   reserved so no one else takes them.
 - **Your jobs:** they appear on the right with progress and a state symbol (▶

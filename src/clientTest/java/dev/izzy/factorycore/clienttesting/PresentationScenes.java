@@ -358,12 +358,61 @@ final class PresentationScenes {
     }
   }
 
+  /** The 91-resource plan's top item: 9 crafted parts, each from 9 different missing leaves. */
+  static Item planTop;
+
+  private static ItemStack craftingPattern(List<Item> inputs, Item output, int count) {
+    var cells = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
+    for (int cell = 0; cell < inputs.size(); cell++)
+      cells.set(cell, new ItemStack(inputs.get(cell)));
+    var pattern = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
+    pattern.set(
+        CraftingContent.PATTERN.get(),
+        new PatternContents(
+            UUID.randomUUID(), 1, 0, cells, new ItemStack(output, count), List.of()));
+    return pattern;
+  }
+
+  /**
+   * A2 plan breakdown fixture: sticks from planks (two levels with the planks pattern), a
+   * coal/charcoal loop, and a tree of 91 distinct resources (more than the 64 rows sent).
+   */
+  static void planJobs(ServerPlayer player) {
+    var level = player.serverLevel();
+    var used =
+        java.util.Set.of(
+            Items.AIR, Items.OAK_LOG, Items.OAK_PLANKS, Items.STICK, Items.COAL, Items.CHARCOAL);
+    var pool =
+        net.minecraft.core.registries.BuiltInRegistries.ITEM.stream()
+            .filter(item -> !used.contains(item))
+            .limit(91)
+            .toList();
+    planTop = pool.get(0);
+    var parts = pool.subList(1, 10);
+    var job = (CrafterEntity) level.getBlockEntity(JOB_UNIT);
+    job.patterns()
+        .insertItem(
+            1, craftingPattern(List.of(Items.OAK_PLANKS, Items.OAK_PLANKS), Items.STICK, 4), false);
+    job.patterns().insertItem(2, craftingPattern(List.of(Items.CHARCOAL), Items.COAL, 1), false);
+    job.patterns().insertItem(3, craftingPattern(List.of(Items.COAL), Items.CHARCOAL, 1), false);
+    level.setBlock(EXTRA_UNITS[0], CraftingContent.CRAFTER.get().defaultBlockState(), 3);
+    var extra = (CrafterEntity) level.getBlockEntity(EXTRA_UNITS[0]);
+    for (int part = 0; part < 9; part++) {
+      var leaves = pool.subList(10 + 9 * part, 19 + 9 * part);
+      var target = part < 5 ? job : extra;
+      int slot = part < 5 ? 4 + part : part - 5;
+      target.patterns().insertItem(slot, craftingPattern(leaves, parts.get(part), 1), false);
+    }
+    extra.patterns().insertItem(4, craftingPattern(parts, planTop, 1), false);
+  }
+
   /** Removes the extra Crafters and patterns so later scenes see the original Jobs fixture. */
   static void fewJobs(ServerPlayer player) {
     var level = player.serverLevel();
     var unit = (CrafterEntity) level.getBlockEntity(JOB_UNIT);
     for (int slot = 1; slot < 9; slot++) unit.patterns().setStackInSlot(slot, ItemStack.EMPTY);
     for (var extra : EXTRA_UNITS) {
+      if (!(level.getBlockEntity(extra) instanceof CrafterEntity)) continue;
       for (int slot = 0; slot < 9; slot++)
         ((CrafterEntity) level.getBlockEntity(extra))
             .patterns()

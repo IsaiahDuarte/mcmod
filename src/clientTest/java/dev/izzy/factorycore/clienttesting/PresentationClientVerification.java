@@ -939,6 +939,149 @@ public final class PresentationClientVerification {
     server(PresentationScenes::fewJobs);
     serverUntil(
         player -> valid(player, base.east(2)) && valid(player, PresentationScenes.JOB_UNIT));
+    planTour(base);
+  }
+
+  /**
+   * A2: the Plan panel for a two-level plan with a shortage (200 sticks from 48 stored planks and
+   * no logs), a coal/charcoal loop, and a 91-resource plan past the 64-row bound.
+   */
+  private void planTour(BlockPos base) {
+    server(PresentationScenes::planJobs);
+    serverUntil(
+        player -> valid(player, PresentationScenes.EXTRA_UNITS[0]) && valid(player, base.east(2)));
+    use(base.east(2), Direction.SOUTH, false);
+    step(
+        client -> client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Jobs"));
+    step(
+        client -> {
+          if (jobView(client).total() < 13 || waited() < 6) return false;
+          setScale(client, 4);
+          return true;
+        });
+    planCapture("minecraft:stick", "200", "jobs-plan-two-level-shortage-scale-4.png", false);
+    planCapture("minecraft:coal", "1", "jobs-plan-cycle-scale-4.png", false);
+    planCapture(null, "1", "jobs-plan-bound-scale-4.png", true);
+    step(
+        client -> {
+          setScale(client, 2);
+          if (hasButton(client, "Back")) press(client, "Back");
+          press(client, "Items");
+          client.screen.onClose();
+          return true;
+        });
+    step(client -> client.screen == null && waited() > 4);
+    server(PresentationScenes::fewJobs);
+    serverUntil(
+        player -> valid(player, base.east(2)) && valid(player, PresentationScenes.JOB_UNIT));
+  }
+
+  /**
+   * Selects craftable {@code id} (null: the plan tree's top item), previews {@code amount} through
+   * the typed box, opens the Plan panel and captures it; {@code toEnd} also scrolls the breakdown
+   * to its last line ("…and N more") and captures that.
+   */
+  private static String planTarget(String id) {
+    return id != null
+        ? id
+        : net.minecraft.core.registries.BuiltInRegistries.ITEM
+            .getKey(PresentationScenes.planTop)
+            .toString();
+  }
+
+  private void planCapture(String id, String amount, String capture, boolean toEnd) {
+    step(
+        client -> {
+          var target = planTarget(id);
+          var screen = terminal(client);
+          var view = jobView(client);
+          if (hasButton(client, "Back")) press(client, "Back");
+          // Number keys select craftables only while no text box has focus.
+          for (var child : screen.children())
+            if (child instanceof net.minecraft.client.gui.components.EditBox box)
+              box.setFocused(false);
+          screen.setFocused(null);
+          for (int index = 0; index < view.craftables().size(); index++)
+            if (view.craftables().get(index).icon().equals(target)) {
+              screen.keyPressed(GLFW.GLFW_KEY_1 + index, 0, 0);
+              for (var child : screen.children())
+                if (child instanceof net.minecraft.client.gui.components.EditBox box
+                    && box.visible
+                    && box.getMessage().getString().equals("Qty")) {
+                  screen.setFocused(box);
+                  box.setFocused(true);
+                  box.setValue("");
+                  for (char c : amount.toCharArray()) screen.charTyped(c, 0);
+                  screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+                  box.setFocused(false);
+                  screen.setFocused(null);
+                  return true;
+                }
+              throw new IllegalStateException("Jobs amount box shown");
+            }
+          // Not in this window: the strip is in key order, so scroll one notch toward the target.
+          if (waited() % 4 == 3 && !view.craftables().isEmpty()) {
+            boolean before = target.compareTo(view.craftables().getFirst().icon()) < 0;
+            screen.mouseScrolled(
+                screen.getGuiLeft() + 60, screen.getGuiTop() + 60, 0, before ? 1 : -1);
+          }
+          return false;
+        });
+    step(
+        client -> {
+          var view = jobView(client);
+          if (view.preview().icon().equals(planTarget(id))
+              && view.preview().amount().equals(amount)
+              && !view.plan().isEmpty()
+              && waited() >= 6) return press(client, "Plan");
+          // The session's command rate gate can drop a preview sent right after scrolling.
+          if (waited() % 20 == 19) {
+            var screen = terminal(client);
+            for (var child : screen.children())
+              if (child instanceof net.minecraft.client.gui.components.EditBox box
+                  && box.visible
+                  && box.getMessage().getString().equals("Qty")) {
+                screen.setFocused(box);
+                box.setFocused(true);
+                screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+                box.setFocused(false);
+                screen.setFocused(null);
+              }
+          }
+          return false;
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          var view = jobView(client);
+          evidence
+              .append(capture)
+              .append(": rows=")
+              .append(view.plan().size())
+              .append(" more=")
+              .append(view.planMore())
+              .append(" cycles=")
+              .append(view.cycles())
+              .append(" first=")
+              .append(view.plan().getFirst())
+              .append('\n');
+          captures.grab(client, capture);
+          return true;
+        });
+    if (!toEnd) return;
+    step(
+        client -> {
+          var screen = terminal(client);
+          for (int notch = 0; notch < 100; notch++)
+            screen.mouseScrolled(screen.getGuiLeft() + 60, screen.getGuiTop() + 60, 0, -1);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 4) return false;
+          captures.grab(client, capture.replace("-scale-4", "-end-scale-4"));
+          return true;
+        });
   }
 
   private static long planks(ServerPlayer player) {

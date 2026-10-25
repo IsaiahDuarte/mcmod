@@ -113,6 +113,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private int target, craftSelected, jobSelected;
 
+  /** A2: the previewed plan's breakdown replaces the craftable strip while shown. */
+  private Button planButton;
+
+  private boolean showPlan;
+  private int planOffset;
+  private static final int PLAN_VISIBLE = 6;
+
   /** A1: the typed craft amount, and why it was last refused ("" when it parses). */
   private EditBox amountBox;
 
@@ -122,6 +129,12 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
    * The craftable offset last requested, so fast wheel notches add up before the server replies.
    */
   private int pendingCraftOffset = -1;
+
+  /**
+   * Ticks left before an unconfirmed pending offset is dropped: the session's command rate gate may
+   * discard a WINDOW request, and the strip must then scroll from what the server shows.
+   */
+  private int pendingCraftTicks;
 
   public static final int JOBS_X = 276;
   private static final int STRIP_X = 336;
@@ -458,6 +471,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             Component.translatable(
                 "gui.factorycore.terminal.job.amount.help", TerminalJobPackets.MAX_AMOUNT)));
     amountBox.setResponder(value -> amountError = "");
+    planButton =
+        jobButton(
+            "plan_view",
+            244,
+            28,
+            () -> {
+              showPlan = !showPlan;
+              planOffset = 0;
+            });
     keepJob =
         jobButton("keep", 162, 38, () -> job(TerminalJobPackets.KEEP, craftSelected, keepAmount()));
     cancelJob =
@@ -654,7 +676,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
     updateCraftingControls();
     var jobs = menu.jobView();
-    if (jobs.offset() == pendingCraftOffset) pendingCraftOffset = -1;
+    if (jobs.offset() == pendingCraftOffset || --pendingCraftTicks <= 0) pendingCraftOffset = -1;
     craftSelected = Math.min(craftSelected, Math.max(0, jobs.craftables().size() - 1));
     jobSelected = Math.min(jobSelected, Math.max(0, jobs.jobs().size() - 1));
     one.visible = !jobsMode && kind != 0;
@@ -664,6 +686,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       item.visible = jobsMode;
     keepJob.active = craftSelected < jobs.craftables().size();
     amountBox.visible = jobsMode;
+    if (jobs.preview().icon().isEmpty()) showPlan = false;
+    planButton.visible = jobsMode;
+    planButton.active = !jobs.preview().icon().isEmpty();
+    String planKey = "gui.factorycore.terminal.job." + (showPlan ? "plan_back" : "plan_view");
+    planButton.setMessage(Component.translatable(planKey));
+    planButton.setTooltip(Tooltip.create(Component.translatable(planKey + ".help")));
+    planOffset = Math.max(0, Math.min(planOffset, Math.max(0, planLines() - PLAN_VISIBLE)));
     amountBox.setEditable(jobsMode);
     previewOne.active = craftSelected < jobs.craftables().size();
     previewEight.active = previewOne.active;
@@ -727,6 +756,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             row.reason().isEmpty() ? 0xc9dbed : 0xe4bc83,
             false);
       }
+    }
+    if (jobsMode && planShown()) {
+      renderPlan(graphics);
+      return;
     }
     if (jobsMode) {
       var craftables = menu.jobView().craftables();
@@ -1010,6 +1043,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private void renderJobLabels(GuiGraphics graphics) {
     var jobs = menu.jobView();
+    if (planShown()) return;
     Component first;
     if (!jobs.preview().icon().isEmpty())
       first =
@@ -1068,6 +1102,24 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         imageWidth - 8 - STRIP_X,
         mouseX,
         mouseY);
+    if (jobsMode && planShown() && overCraftables(mouseX, mouseY)) {
+      int index = planOffset + (mouseY - topPos - 45 - 12) / 9;
+      var plan = menu.jobView().plan();
+      if (mouseY >= topPos + 57 && index >= 0 && index < plan.size()) {
+        var value = plan.get(index);
+        graphics.renderTooltip(
+            font,
+            Component.translatable(
+                "gui.factorycore.terminal.job.plan.row",
+                value.item().name(),
+                value.stored(),
+                value.crafted(),
+                value.missing()),
+            mouseX,
+            mouseY);
+      }
+      return;
+    }
     int row = jobsMode ? (mouseX - leftPos - 12) / 32 : rowAt(mouseX, mouseY);
     boolean over =
         mouseX >= leftPos + 12
@@ -1221,6 +1273,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       return true;
     }
 
+    // The plan breakdown covers the craftable strip; clicks there do nothing.
+    if (jobsMode && planShown() && overCraftables(mouseX, mouseY)) return true;
     if (jobsMode
         && button == 0
         && mouseY >= topPos + 75
@@ -1331,12 +1385,106 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     if (to == from) return;
     craftSelected = Math.max(0, Math.min(TerminalJobPackets.ROWS - 1, craftSelected - (to - from)));
     pendingCraftOffset = Math.min(to, TerminalJobPackets.MAX_OFFSET);
+    pendingCraftTicks = 20;
     job(TerminalJobPackets.WINDOW, pendingCraftOffset, 1);
   }
 
   private int craftOffset() {
     return pendingCraftOffset >= 0 ? pendingCraftOffset : menu.jobView().offset();
   }
+
+  private boolean planShown() {
+    return showPlan && !menu.jobView().preview().icon().isEmpty();
+  }
+
+  /** Breakdown lines: one per row, "and N more" if any, then one per cycle explanation. */
+  private int planLines() {
+    var jobs = menu.jobView();
+    return jobs.plan().size() + (jobs.planMore() > 0 ? 1 : 0) + jobs.cycles().size();
+  }
+
+  /**
+   * A2: per resource, units taken from stock, crafted and missing. Missing rows are red and come
+   * first; Start stays disabled only while something is missing. Exact counts are in the tooltip.
+   */
+  private void renderPlan(GuiGraphics graphics) {
+    var jobs = menu.jobView();
+    int x = leftPos + 12, y = topPos + 45;
+    graphics.fill(x, y, x + 256, y + 70, 0xff151b20);
+    graphics.drawString(
+        font,
+        Component.translatable(
+            "gui.factorycore.terminal.job.preview", jobs.preview().amount(), jobs.preview().name()),
+        x + 3,
+        y + 2,
+        0xffffff,
+        false);
+    for (var column : new int[] {0, 1, 2})
+      graphics.drawString(
+          font,
+          Component.translatable("gui.factorycore.terminal.job.plan.column." + column),
+          x
+              + PLAN_COLUMNS[column]
+              - font.width(
+                  Component.translatable("gui.factorycore.terminal.job.plan.column." + column)),
+          y + 2,
+          0xa5b5c5,
+          false);
+    for (int line = 0; line < PLAN_VISIBLE; line++) {
+      int index = planOffset + line, rowY = y + 13 + 9 * line;
+      if (index < jobs.plan().size()) {
+        var row = jobs.plan().get(index);
+        boolean short_ = row.missing() > 0;
+        if (short_) graphics.fill(x + 1, rowY - 1, x + 255, rowY + 8, 0xff4a2426);
+        graphics.drawString(
+            font,
+            font.plainSubstrByWidth(row.item().name(), PLAN_COLUMNS[0] - 40),
+            x + 3,
+            rowY,
+            short_ ? 0xff9a9a : 0xd3e5ed,
+            false);
+        long[] values = {row.stored(), row.crafted(), row.missing()};
+        for (int column = 0; column < 3; column++) {
+          String text = values[column] == 0 ? "·" : compact(Long.toString(values[column]));
+          graphics.drawString(
+              font,
+              text,
+              x + PLAN_COLUMNS[column] - font.width(text),
+              rowY,
+              column == 2 && short_ ? 0xff8080 : 0xd3e5ed,
+              false);
+        }
+        continue;
+      }
+      int extra = index - jobs.plan().size();
+      if (jobs.planMore() > 0 && extra == 0) {
+        graphics.drawString(
+            font,
+            Component.translatable("gui.factorycore.terminal.job.plan.more", jobs.planMore()),
+            x + 3,
+            rowY,
+            0xa5b5c5,
+            false);
+        continue;
+      }
+      int cycle = extra - (jobs.planMore() > 0 ? 1 : 0);
+      if (cycle >= 0 && cycle < jobs.cycles().size())
+        graphics.drawString(
+            font,
+            font.plainSubstrByWidth(
+                Component.translatable(
+                        "gui.factorycore.terminal.job.plan.cycle", jobs.cycles().get(cycle))
+                    .getString(),
+                250),
+            x + 3,
+            rowY,
+            0xe4bc83,
+            false);
+    }
+  }
+
+  /** Right edges of the Stored, Craft and Missing columns, from the panel's left. */
+  private static final int[] PLAN_COLUMNS = {160, 205, 252};
 
   private boolean overCraftables(double mouseX, double mouseY) {
     return mouseX >= leftPos + 12
@@ -1351,6 +1499,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
    */
   @Override
   public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    if (jobsMode && planShown() && overCraftables(mouseX, mouseY) && scrollY != 0) {
+      planOffset =
+          Math.max(
+              0,
+              Math.min(
+                  Math.max(0, planLines() - PLAN_VISIBLE), planOffset + (scrollY > 0 ? -1 : 1)));
+      return true;
+    }
     if (jobsMode && overCraftables(mouseX, mouseY) && scrollY != 0) {
       int step = hasShiftDown() ? TerminalJobPackets.ROWS : 1;
       scrollCraftables(craftOffset() + (scrollY > 0 ? -step : step));

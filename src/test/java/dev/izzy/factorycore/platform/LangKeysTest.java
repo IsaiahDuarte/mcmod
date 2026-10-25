@@ -51,6 +51,25 @@ class LangKeysTest {
   }
 
   /**
+   * A key written twice silently keeps only one text (Gson takes the last), so a new button can
+   * overwrite an unrelated message, as the A2 Plan button once replaced the plan summary line.
+   */
+  @Test
+  void everyKeyIsDefinedOnce() throws Exception {
+    String text;
+    try (var stream = getClass().getResourceAsStream("/assets/factorycore/lang/en_us.json")) {
+      assertNotNull(stream, "lang on the test classpath");
+      text = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+    }
+    var seen = new TreeSet<String>();
+    var duplicates = new TreeSet<String>();
+    var key = Pattern.compile("(?m)^\\s*\"([^\"]+)\"\\s*:").matcher(text);
+    while (key.find()) if (!seen.add(key.group(1))) duplicates.add(key.group(1));
+    assertTrue(seen.size() > 100, "Keys must be inspected: " + seen.size());
+    assertEquals(Set.of(), duplicates);
+  }
+
+  /**
    * Implementation words that mean nothing to a player (docs/UX_PLAN.md U1). "Draft" is allowed
    * only in the program editor, where a saved draft is a real, separately deployed program.
    */

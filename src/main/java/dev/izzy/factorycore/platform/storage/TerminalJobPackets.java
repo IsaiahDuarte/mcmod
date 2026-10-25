@@ -23,6 +23,10 @@ public final class TerminalJobPackets {
   public static final int WINDOW = 0, PREVIEW = 1, START = 2, CANCEL = 3, KEEP = 4;
 
   public static final int ROWS = 8, JOBS = 4, MISSING = 3, MAX_OFFSET = 65_536;
+
+  /** A2: preview breakdown rows sent at most, and cycle explanations (each ≤ 256 chars). */
+  public static final int PLAN_ROWS = 64, CYCLES = 3;
+
   public static final int MAX_AMOUNT = 4_096;
 
   public record Command(
@@ -93,6 +97,17 @@ public final class TerminalJobPackets {
     }
   }
 
+  /**
+   * One resource of the previewed plan (A2): units taken from stock, crafted by the plan and
+   * missing. The entry's amount is empty; the three counts are exact.
+   */
+  public record PlanRow(Entry item, long stored, long crafted, long missing) {
+    public PlanRow {
+      if (stored < 0 || crafted < 0 || missing < 0)
+        throw new IllegalArgumentException("Invalid plan row bounds");
+    }
+  }
+
   /** One of the requester's jobs: output, exact crafts done/total, state and reason keys. */
   public record Job(Entry output, long done, long total, String state, String reason) {
     public Job {
@@ -113,6 +128,9 @@ public final class TerminalJobPackets {
       int previewSteps,
       long previewCrafts,
       List<Entry> missing,
+      List<PlanRow> plan,
+      int planMore,
+      List<String> cycles,
       List<Job> jobs,
       String status)
       implements CustomPacketPayload {
@@ -123,11 +141,17 @@ public final class TerminalJobPackets {
     public View {
       craftables = List.copyOf(craftables);
       missing = List.copyOf(missing);
+      plan = List.copyOf(plan);
+      cycles = List.copyOf(cycles);
       jobs = List.copyOf(jobs);
       if (craftables.size() > ROWS
           || offset < 0
           || total < offset + craftables.size()
           || missing.size() > MISSING
+          || plan.size() > PLAN_ROWS
+          || planMore < 0
+          || cycles.size() > CYCLES
+          || cycles.stream().anyMatch(cycle -> cycle.length() > 256)
           || jobs.size() > JOBS
           || previewReason.length() > 64
           || previewSteps < 0
@@ -167,6 +191,16 @@ public final class TerminalJobPackets {
               buffer.writeVarInt(value.previewSteps);
               buffer.writeVarLong(value.previewCrafts);
               entries(buffer, value.missing);
+              buffer.writeVarInt(value.plan.size());
+              for (var row : value.plan) {
+                Entry.write(buffer, row.item());
+                buffer.writeVarLong(row.stored());
+                buffer.writeVarLong(row.crafted());
+                buffer.writeVarLong(row.missing());
+              }
+              buffer.writeVarInt(value.planMore);
+              buffer.writeVarInt(value.cycles.size());
+              for (var cycle : value.cycles) buffer.writeUtf(cycle, 256);
               buffer.writeVarInt(value.jobs.size());
               for (var job : value.jobs) {
                 Entry.write(buffer, job.output());
@@ -189,6 +223,22 @@ public final class TerminalJobPackets {
               int steps = buffer.readVarInt();
               long crafts = buffer.readVarLong();
               var missing = entries(buffer, MISSING);
+              int rows = buffer.readVarInt();
+              if (rows < 0 || rows > PLAN_ROWS) throw new IllegalArgumentException("Plan rows");
+              var plan = new ArrayList<PlanRow>(rows);
+              for (int index = 0; index < rows; index++)
+                plan.add(
+                    new PlanRow(
+                        Entry.read(buffer),
+                        buffer.readVarLong(),
+                        buffer.readVarLong(),
+                        buffer.readVarLong()));
+              int planMore = buffer.readVarInt();
+              int cycleCount = buffer.readVarInt();
+              if (cycleCount < 0 || cycleCount > CYCLES)
+                throw new IllegalArgumentException("Cycle count");
+              var cycles = new ArrayList<String>(cycleCount);
+              for (int index = 0; index < cycleCount; index++) cycles.add(buffer.readUtf(256));
               int size = buffer.readVarInt();
               if (size < 0 || size > JOBS) throw new IllegalArgumentException("Job row count");
               var jobs = new ArrayList<Job>(size);
@@ -212,6 +262,9 @@ public final class TerminalJobPackets {
                   steps,
                   crafts,
                   missing,
+                  plan,
+                  planMore,
+                  cycles,
                   jobs,
                   buffer.readUtf(64));
             });

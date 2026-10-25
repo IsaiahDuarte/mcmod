@@ -155,7 +155,10 @@ on the client with a reason,
 1–4,096, current `revision`), START (the server-held preview under the current
 revision), CANCEL (job row 0–3). Stale revisions are ignored; commands share the
 menu's two-tick throttle. `View` carries up to eight craftable entries with their window
-`offset` and the `total` craftable count, the preview
+`offset` and the `total` craftable count, the bounded plan breakdown (up to 64
+`PlanRow`s of stored/crafted/missing units from `core.crafting.PlanRows`, missing rows
+first, `planMore` for the rest, up to three cycle explanations by display name, built once
+per preview change), the preview
 entry/reason/steps/crafts, up to three missing entries with exact amounts, up to four
 of the viewer's jobs (output, done, total, state, reason) and a status key. Craftables
 are the sorted output keys of `WorldCrafting.index` for the terminal's segment,

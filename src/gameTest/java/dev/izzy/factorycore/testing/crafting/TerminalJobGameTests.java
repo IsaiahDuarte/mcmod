@@ -213,6 +213,105 @@ public final class TerminalJobGameTests {
         .thenSucceed();
   }
 
+  private static TerminalJobPackets.PlanRow planRow(TerminalMenu m, String id) {
+    for (var row : m.jobView().plan()) if (row.item().icon().equals(id)) return row;
+    return null;
+  }
+
+  /**
+   * A2: the preview carries the whole plan per resource (stored, crafted, missing), shortages
+   * first, plus a cycle explanation; nothing is reserved by previewing.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void previewSendsFullPlanBreakdown(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(UNIT);
+    unit.patterns()
+        .insertItem(0, pattern(new int[] {0}, Items.OAK_LOG, Items.OAK_PLANKS, 4), false);
+    unit.patterns()
+        .insertItem(1, pattern(new int[] {0, 3}, Items.OAK_PLANKS, Items.STICK, 4), false);
+    // A loop: coal from charcoal and charcoal from coal.
+    unit.patterns().insertItem(2, pattern(new int[] {0}, Items.CHARCOAL, Items.COAL, 1), false);
+    unit.patterns().insertItem(3, pattern(new int[] {0}, Items.COAL, Items.CHARCOAL, 1), false);
+    h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
+    TerminalEntity terminal = h.getBlockEntity(TERMINAL);
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    DeviceRegistry.Handle cell = CellHandleData.read(drive.cell(0));
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    ResourceKey log = codec.itemKey(new ItemStack(Items.OAK_LOG));
+    ResourceKey planks = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenExecute(
+            () -> {
+              saved.registry().insert(cell, log, 1);
+              saved.registry().insert(cell, planks, 2);
+              h.useBlock(TERMINAL, player);
+              menu(h, player).broadcastChanges();
+            })
+        .thenWaitUntil(
+            () -> {
+              var m = menu(h, player);
+              m.broadcastChanges();
+              h.assertTrue(row(m, "minecraft:stick") >= 0, "Sticks are craftable");
+            })
+        .thenExecute(
+            () -> {
+              var m = menu(h, player);
+              // 8 sticks: 4 planks, 2 stored and 4 crafted from the stored log.
+              command(h, player, TerminalJobPackets.PREVIEW, row(m, "minecraft:stick"), 8);
+              var planksRow = planRow(m, "minecraft:oak_planks");
+              var logRow = planRow(m, "minecraft:oak_log");
+              var stickRow = planRow(m, "minecraft:stick");
+              h.assertTrue(
+                  planksRow != null
+                      && planksRow.stored() == 2
+                      && planksRow.crafted() == 4
+                      && logRow != null
+                      && logRow.stored() == 1
+                      && stickRow != null
+                      && stickRow.crafted() == 8
+                      && m.jobView().plan().stream().allMatch(r -> r.missing() == 0)
+                      && m.jobView().planMore() == 0
+                      && saved.registry().stock(cell, log).reserved() == 0,
+                  "A two-level plan lists stored and crafted units: " + m.jobView().plan());
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () -> {
+              var m = menu(h, player);
+              // 64 sticks need 32 planks: 2 stored, 4 from the one log, 7 more logs missing.
+              command(h, player, TerminalJobPackets.PREVIEW, row(m, "minecraft:stick"), 64);
+              var first = m.jobView().plan().getFirst();
+              h.assertTrue(
+                  m.jobView().status().equals("missing")
+                      && first.item().icon().equals("minecraft:oak_log")
+                      && first.stored() == 1
+                      && first.missing() == 7,
+                  "The shortage is the first row: " + m.jobView().plan());
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () -> {
+              var m = menu(h, player);
+              command(h, player, TerminalJobPackets.PREVIEW, row(m, "minecraft:coal"), 1);
+              var cycles = m.jobView().cycles();
+              h.assertTrue(
+                  cycles.size() == 1 && cycles.getFirst().equals("Coal → Charcoal → Coal"),
+                  "The loop is explained by name: " + cycles);
+              h.assertTrue(
+                  planRow(m, "minecraft:coal") != null
+                      && planRow(m, "minecraft:coal").missing() == 1,
+                  "The looped item is missing: " + m.jobView().plan());
+            })
+        .thenSucceed();
+  }
+
   /** A1: a typed 37 previews and starts exactly; the bound stays 1–4,096 at decode. */
   @GameTest(template = "empty", timeoutTicks = 900)
   public static void typedAmountPreviewsAndStartsExactly(GameTestHelper h) {

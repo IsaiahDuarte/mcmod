@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.crafting.PlanRows;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.*;
@@ -34,6 +35,9 @@ final class TerminalJobs {
   private ResourceKey previewKey;
   private int previewAmount;
   private WorldCraftingJobs.Preview preview;
+  private List<TerminalJobPackets.PlanRow> planRows = List.of();
+  private int planMore;
+  private List<String> planCycles = List.of();
   private String jobStatus = "ready";
   private List<UUID> jobIds = List.of();
 
@@ -100,6 +104,7 @@ final class TerminalJobs {
         previewKey = craftables.get(command.selection());
         previewAmount = command.amount();
         preview = jobs.preview(actor(), terminal.origin(), previewKey, previewAmount);
+        summarize();
         jobStatus = preview.reason().isEmpty() ? "previewed" : preview.reason();
       }
       case TerminalJobPackets.START -> {
@@ -115,10 +120,12 @@ final class TerminalJobs {
           jobStatus = "started";
           previewKey = null;
           preview = null;
+          summarize();
         } else {
           jobStatus = submission.reason();
           if (submission.plan() != null)
             preview = new WorldCraftingJobs.Preview(submission.plan(), submission.reason());
+          summarize();
         }
       }
       case TerminalJobPackets.KEEP -> {
@@ -162,6 +169,41 @@ final class TerminalJobs {
     }
     if (name.length() > 96) name = name.substring(0, 96);
     return new TerminalJobPackets.Entry(key.registryId(), name, amount);
+  }
+
+  /**
+   * Rebuilds the bounded preview breakdown (A2) once per preview change rather than per publish:
+   * per resource stored, crafted and missing units, plus cycle explanations by display name.
+   */
+  private void summarize() {
+    if (preview == null || preview.plan() == null) {
+      planRows = List.of();
+      planMore = 0;
+      planCycles = List.of();
+      return;
+    }
+    var units = new HashMap<UUID, Long>();
+    var member = WorldNetworks.get(viewer.server).membership(terminal.origin());
+    if (member.status() == NetworkTopology.Status.VALID)
+      for (var offers : WorldCrafting.get(viewer.server).index(member.scope()).byOutput().values())
+        for (var offer : offers) units.put(offer.pattern().id(), offer.pattern().outputAmount());
+    var summary =
+        PlanRows.of(preview.plan(), id -> units.getOrDefault(id, 1L), TerminalJobPackets.PLAN_ROWS);
+    var rows = new ArrayList<TerminalJobPackets.PlanRow>(summary.rows().size());
+    for (var row : summary.rows())
+      rows.add(
+          new TerminalJobPackets.PlanRow(
+              entry(row.key(), ""), row.stored(), row.crafted(), row.missing()));
+    planRows = List.copyOf(rows);
+    planMore = summary.more();
+    var cycles = new ArrayList<String>();
+    for (var cycle : PlanRows.cycles(preview.plan(), TerminalJobPackets.CYCLES)) {
+      var names = new ArrayList<String>();
+      for (var key : cycle) names.add(entry(key, "").name());
+      String text = String.join(" → ", names);
+      cycles.add(text.length() > 256 ? text.substring(0, 255) + "…" : text);
+    }
+    planCycles = List.copyOf(cycles);
   }
 
   /** Sends the Jobs view when it differs from the last one sent. */
@@ -222,6 +264,9 @@ final class TerminalJobs {
             steps,
             crafts,
             missing,
+            planRows,
+            planMore,
+            planCycles,
             jobRows,
             jobStatus);
     if (!packet.equals(sent)) {
