@@ -90,7 +90,41 @@ public final class ProgramIr {
     EQUAL
   }
 
-  public sealed interface Statement permits For, Keep, Move, Craft, If, Log {}
+  public sealed interface Statement permits For, Keep, Move, Craft, If, Branch, Log {}
+
+  /** Most operators ({@code and}, {@code or}, {@code not}) one condition may hold (ADR 0062). */
+  public static final int MAX_OPERATORS = 16;
+
+  /** D4 (ADR 0062): a condition tree, evaluated left to right with short-circuiting. */
+  public sealed interface Condition permits StockCondition, HasCondition, Not, And, Or {}
+
+  /** Available storage stock compared with an amount (v1's only condition). */
+  public record StockCondition(ResourceFilter filter, Comparison comparison, long amount)
+      implements Condition {}
+
+  /** Matching contents summed over every selected machine, compared with an amount. */
+  public record HasCondition(
+      Target target, Comparison comparison, long amount, ResourceFilter filter)
+      implements Condition {}
+
+  public record Not(Condition inner) implements Condition {}
+
+  public record And(Condition left, Condition right) implements Condition {}
+
+  public record Or(Condition left, Condition right) implements Condition {}
+
+  /**
+   * D4 (ADR 0062): {@code if} with a condition tree and an {@code else} branch (possibly empty).
+   * Plain v1 {@code if stock(...)} without {@code else} still compiles to {@link If}.
+   */
+  public record Branch(Condition condition, List<Statement> then, List<Statement> otherwise)
+      implements Statement {
+    public Branch {
+      Objects.requireNonNull(condition);
+      then = List.copyOf(then);
+      otherwise = List.copyOf(otherwise);
+    }
+  }
 
   public record For(String variable, String label, List<Statement> body) implements Statement {
     public For {

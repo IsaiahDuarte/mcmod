@@ -3,7 +3,7 @@
 Status: accepted 2026-10-25 (PD2: v2 is a strict superset of v1; Wasm gains additive
 `factory_v1` imports). Grammar, limits and diagnostics are frozen here before parser work.
 Slices D2–D6 implement it, and each one is complete only when its fixtures in
-`src/test/resources/program/v2/` compile and run. Implemented so far: D2, D3.
+`src/test/resources/program/v2/` compile and run. Implemented so far: D2, D3, D4.
 
 ## Context
 
@@ -83,7 +83,8 @@ allowed. v1's `if stock(f) CMP INT { … }` is the `atom` form and produces the 
   cost is one host query per machine plus one per extra observation page, and it counts
   against the existing 512-query budget. `redstone(target)` is true when any selected
   Interface is powered (one query per machine). An empty selection makes `has` sum to 0
-  and `redstone` false.
+  and `redstone` false. `has` reads what the machine holds now, not moves still in
+  flight, so a rule that refills on `has` may overshoot by one move.
 - **Filters (D5).** An `item`, `fluid` or `tag` string may contain **one** `*`, anywhere in
   the ID *path*. It matches zero or more of `[a-z0-9_./-]`, and the namespace (if given)
   must be exact. Globs match registry IDs only, never component data or display names, and

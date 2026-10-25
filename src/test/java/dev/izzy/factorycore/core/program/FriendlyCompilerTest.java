@@ -200,4 +200,27 @@ class FriendlyCompilerTest {
             .message()
             .contains("'up' is a reserved word"));
   }
+
+  @Test
+  void conditionsBindNotThenAndThenOrAndAPlainStockIfStaysV1() {
+    var plain =
+        FriendlyCompiler.compile("every 10 ticks { if stock(item(\"a\")) < 3 { log \"x\" } }");
+    assertInstanceOf(ProgramIr.If.class, plain.program().rules().getFirst().body().getFirst());
+    var mixed =
+        FriendlyCompiler.compile(
+            "every 10 ticks { if not stock(item(\"a\")) < 1 or stock(item(\"b\")) < 2 and stock(item(\"c\")) < 3 { log \"x\" } }");
+    assertTrue(mixed.ok(), mixed.diagnostics()::toString);
+    var branch = (ProgramIr.Branch) mixed.program().rules().getFirst().body().getFirst();
+    var or = (ProgramIr.Or) branch.condition();
+    assertInstanceOf(ProgramIr.Not.class, or.left());
+    assertInstanceOf(ProgramIr.And.class, or.right());
+    var many = new StringBuilder("stock(item(\"a\")) < 1");
+    for (int i = 0; i < 17; i++) many.append(" or stock(item(\"a\")) < 1");
+    assertTrue(
+        error("every 10 ticks { if " + many + " { log \"x\" } }").message().contains("at most 16"));
+    assertTrue(
+        error("every 10 ticks { if storage { log \"x\" } }")
+            .message()
+            .contains("Expected a condition"));
+  }
 }

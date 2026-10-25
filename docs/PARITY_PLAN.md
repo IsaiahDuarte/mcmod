@@ -421,11 +421,25 @@ to identical IR (a fixture test pins this).
   offline" and crashes the run), `BufferTransferGameTests` (NPE on a missing transfer),
   `DrivePartitionGameTests.partitionLimitsInserts…`.
 
-- [ ] **D4 — Conditions (G11).** Size M.
+- [x] **D4 — Conditions (G11).** Size M.
   `else`, `and`, `or`, `not`, and `NAME has … of filter` reading machine contents through
   bounded observations (counted against the existing host-call budget).
   Done when: evaluator tests for each operator and short-circuit cost; a GameTest that
   refuels a furnace only when it has under 8 coal.
+  Evidence (2026-10-25): `ProgramEvaluatorTest`: each operator; a false `and` and a true
+  `or` skip the right side's host reads; `has` sums machines (one read each); `else if`
+  picks the first true branch; a host without machine reads traps. `FriendlyCompilerTest`:
+  `not` > `and` > `or`, a plain v1 `if stock` stays `ProgramIr.If`, the 16-operator limit,
+  a bad atom. `SideAndSlotsGameTests.refuelsAFurnaceOnlyWhileItHasUnderEightCoal`: two
+  moves of 4 bring the fuel slot to 8 (at most one in-flight move over, ≤ 12, as ADR 0062
+  states), then it stops, coal is conserved, and the `else` branch logs. `FriendlyV1PinTest` marks D4 with v1 IR unchanged.
+  Also fixed: a program never resumed its own unresolved (staged) move and then refused
+  every later move on that machine. It now continues it first, as presets do (regression
+  `SideAndSlotsGameTests.aProgramResumesItsOwnStagedMoveBeforeMovingMore`: 5 staged plus 3
+  left all reach storage). Finding, not changed: each invocation drops its rule's
+  still-queued commands and a program runs one request at a time, so a rule whose early
+  statements outlast its interval starves its later ones. The D3 furnace test now gives
+  output its own rule; D9 templates should do the same until this is revisited.
 
 - [ ] **D5 — Wildcards and `except` (G11).** Size S.
   Done when: compiler tests for the glob limits; a GameTest moving every `*_ingot` except iron.

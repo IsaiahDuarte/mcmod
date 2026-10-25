@@ -149,6 +149,8 @@ public final class SideAndSlotsGameTests {
                     every 10 ticks as "furnace" {
                       move item("raw_iron") from storage to machines("furnace") side up limit 4
                       move item("coal") from storage to machines("furnace") side north limit 2
+                    }
+                    every 10 ticks as "output" {
                       move item("iron_ingot") from machines("furnace") side down slots 0 to storage
                     }
                     """))
@@ -177,10 +179,28 @@ public final class SideAndSlotsGameTests {
                   f.stored(Items.IRON_INGOT) >= 5 && countOf(h, 2, Items.IRON_INGOT) == 0,
                   "Output emptied from the bottom: "
                       + f.stored(Items.IRON_INGOT)
+                      + " slots "
+                      + slot(h, 0)
+                      + "/"
+                      + slot(h, 1)
+                      + "/"
+                      + slot(h, 2)
                       + " "
-                      + f.controller.logs());
+                      + f.controller.logs()
+                      + " transfers "
+                      + transfers(h, f));
             })
         .thenSucceed();
+  }
+
+  /** Iron-ingot transfers started from this fixture's Interface, for failure messages. */
+  private static List<String> transfers(GameTestHelper h, Fixture f) {
+    var origin = Positions.of(h.getLevel(), h.absolutePos(PORT));
+    return f.saved.transfers().snapshot().stream()
+        .filter(t -> t.transfer().key().registryId().equals("minecraft:iron_ingot"))
+        .filter(t -> t.context() != null && t.context().origin().equals(origin))
+        .map(t -> t.transfer().toString())
+        .toList();
   }
 
   private static int countOf(GameTestHelper h, int index, Item item) {
@@ -233,6 +253,162 @@ public final class SideAndSlotsGameTests {
                   h.assertTrue(
                       slot(h, index).isEmpty(), "Nothing went anywhere but slot 2: " + index);
             })
+        .thenSucceed();
+  }
+
+  /** D4: a `has` condition reads the furnace's fuel through the binding (its west face). */
+  @GameTest(template = "empty", timeoutTicks = 800)
+  public static void refuelsAFurnaceOnlyWhileItHasUnderEightCoal(GameTestHelper h) {
+    var f = setup(h, Blocks.FURNACE);
+    int[] fuel = {0};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(() -> label(h, f, "furnace", 0, 3))
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(() -> h.assertTrue(f.store(Items.COAL, 64), "Storage stocked"))
+        .thenExecute(
+            () ->
+                deploy(
+                    h,
+                    f,
+                    """
+                    every 10 ticks as "refuel" {
+                      for f in machines("furnace") {
+                        if f has < 8 of item("coal") {
+                          move item("coal") from storage to f side north limit 4
+                        } else {
+                          log "fuel ok"
+                        }
+                      }
+                    }
+                    """))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    countOf(h, 1, Items.COAL) >= 8,
+                    "Refuelled to 8: slot " + slot(h, 1) + ", stored " + f.stored(Items.COAL)))
+        .thenIdle(40)
+        .thenExecute(() -> fuel[0] = countOf(h, 1, Items.COAL))
+        .thenIdle(60)
+        .thenExecute(
+            () -> {
+              // A has read cannot see a move still in flight, so one move of 4 may overshoot.
+              h.assertTrue(
+                  fuel[0] >= 8 && fuel[0] <= 12 && countOf(h, 1, Items.COAL) == fuel[0],
+                  "At 8 or more it stops: " + fuel[0] + " then " + slot(h, 1));
+              h.assertTrue(
+                  f.stored(Items.COAL) + fuel[0] == 64, "Coal conserved: " + f.stored(Items.COAL));
+              h.assertTrue(
+                  f.controller.logs().stream().anyMatch(l -> l.contains("fuel ok")),
+                  "The else branch runs once full");
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Regression: a program whose own move was refused mid-way (items staged under its deployer)
+   * never resumed it and then refused every later move on that machine. It now continues it.
+   */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void aProgramResumesItsOwnStagedMoveBeforeMovingMore(GameTestHelper h) {
+    var f = setup(h, Blocks.CHEST);
+    var chest = (BaseContainerBlockEntity) h.getBlockEntity(MACHINE);
+    chest.setItem(0, new ItemStack(Items.IRON_INGOT, 8));
+    var ingot = f.codec.itemKey(new ItemStack(Items.IRON_INGOT));
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(() -> label(h, f, "out", 0, 27))
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var networks = WorldNetworks.get(h.getLevel().getServer());
+              var handle = networks.connectors().bind(f.port).handle();
+              var cell = CellHandleData.read(f.drive.cell(0));
+              var source =
+                  new dev.izzy.factorycore.core.resource.ResourcePort() {
+                    public UUID backingId() {
+                      return handle.backing();
+                    }
+
+                    public long simulateInsert(
+                        dev.izzy.factorycore.core.resource.ResourceKey key, long amount) {
+                      return amount;
+                    }
+
+                    public long insert(
+                        dev.izzy.factorycore.core.resource.ResourceKey key, long amount) {
+                      throw new AssertionError("Not a return");
+                    }
+
+                    public long extract(
+                        dev.izzy.factorycore.core.resource.ResourceKey key, long amount) {
+                      return chest.removeItem(0, (int) amount).getCount();
+                    }
+                  };
+              var refusing =
+                  new dev.izzy.factorycore.core.resource.ResourcePort() {
+                    public UUID backingId() {
+                      return cell.backing();
+                    }
+
+                    public long simulateInsert(
+                        dev.izzy.factorycore.core.resource.ResourceKey key, long amount) {
+                      return amount;
+                    }
+
+                    public long insert(
+                        dev.izzy.factorycore.core.resource.ResourceKey key, long amount) {
+                      return 0;
+                    }
+
+                    public long extract(
+                        dev.izzy.factorycore.core.resource.ResourceKey key, long amount) {
+                      throw new AssertionError("Never re-extracts the target");
+                    }
+                  };
+              var origin = Positions.of(h.getLevel(), h.absolutePos(PORT));
+              var scope = networks.membership(origin).scope();
+              var context =
+                  new dev.izzy.factorycore.core.resource.TransferContext(
+                      f.saved.registry().world(),
+                      scope.network(),
+                      scope.segment(),
+                      origin,
+                      new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
+                          dev.izzy.factorycore.core.resource.TransferContext.Type.EXTERNAL,
+                          handle.connector().id(),
+                          handle.backing(),
+                          handle.connector().generation(),
+                          handle.generation()),
+                      new dev.izzy.factorycore.core.resource.TransferContext.Endpoint(
+                          dev.izzy.factorycore.core.resource.TransferContext.Type.DIGITAL,
+                          cell.backing(),
+                          cell.backing(),
+                          cell.generation(),
+                          0));
+              var id = UUID.randomUUID();
+              f.saved
+                  .transfers()
+                  .start(id, f.owner.id(), ingot, source, refusing, 5, 5, () -> true, context);
+              f.saved.transfers().unbind(id);
+              h.assertTrue(
+                  f.saved.transfers().get(id).staged() == 5 && countOf(h, 0, Items.IRON_INGOT) == 3,
+                  "Five ingots are staged under the deployer, three stay in the chest");
+            })
+        .thenExecute(
+            () ->
+                deploy(
+                    h,
+                    f,
+                    "every 10 ticks as \"out\" { move item(\"iron_ingot\") from machines(\"out\") to storage }"))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.stored(Items.IRON_INGOT) == 8 && countOf(h, 0, Items.IRON_INGOT) == 0,
+                    "The staged five finish, then the last three move: stored "
+                        + f.stored(Items.IRON_INGOT)
+                        + " "
+                        + f.controller.logs()))
         .thenSucceed();
   }
 }

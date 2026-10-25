@@ -404,8 +404,44 @@ public final class WorldPrograms {
           throw new IllegalStateException("reading storage needs View permission");
         return storageStock(controller, actor, filter, budget);
       }
+
+      /** D4: one loaded machine of this segment, through its binding, at most 16 pages. */
+      @Override
+      public ProgramEvaluator.Contents contents(UUID node, ResourceFilter filter) {
+        var owner = machine(node, controller);
+        if (owner == null)
+          throw new IllegalStateException("a machine is unloaded or outside this segment");
+        var registration = networks().connectors().bind(owner);
+        if (registration.handle() == null)
+          throw new IllegalStateException(owner.label() + ": " + unbound(registration));
+        if (registration.handle().kind() != filter.kind())
+          return new ProgramEvaluator.Contents(0, 1);
+        long total = 0;
+        int pages = 0, cursor = 0;
+        do {
+          budget.charge(1, "has on " + owner.label());
+          var observation =
+              networks()
+                  .connectors()
+                  .observe(actor, owner.position(), registration.handle(), cursor);
+          if (observation.reason() != OperationResult.Reason.OK)
+            throw new IllegalStateException(owner.label() + ": " + name(observation.reason()));
+          for (var entry : observation.page().entries())
+            if (filter.matches(entry.key(), WorldPrograms.this::tagged))
+              total = Math.min(Long.MAX_VALUE - entry.stored(), total) + entry.stored();
+          cursor = observation.page().next();
+          pages++;
+        } while (cursor >= 0 && pages < MAX_CONTENT_PAGES);
+        if (cursor >= 0)
+          throw new IllegalStateException(
+              owner.label() + " has more than " + MAX_CONTENT_PAGES + " pages to count");
+        return new ProgramEvaluator.Contents(total, pages);
+      }
     };
   }
+
+  /** Observation pages one {@code has} read may take from a single machine. */
+  private static final int MAX_CONTENT_PAGES = 16;
 
   /** Available matching units in digital cells of the controller's VIEW storage, bounded. */
   private long storageStock(
@@ -511,6 +547,7 @@ public final class WorldPrograms {
     }
     long missing = Math.min(keep.amount() - stock.amount(), owner.settings().rate());
     if (missing <= 0) return;
+    if (resume(controller, runtime, actor, owner, registration.handle())) return;
     fromStorage(
         controller,
         runtime,
@@ -560,6 +597,7 @@ public final class WorldPrograms {
       return;
     }
     var handle = registration.handle();
+    if (resume(controller, runtime, actor, owner, handle)) return;
     var view =
         view(controller, owner, handle, move.to() != null ? move.toAccess() : move.fromAccess());
     if (view == REFUSED) return;
@@ -621,6 +659,8 @@ public final class WorldPrograms {
         return;
       }
     }
+    if (resume(controller, runtime, actor, source, from.handle())
+        || resume(controller, runtime, actor, target, to.handle())) return;
     var fromView = view(controller, source, from.handle(), move.fromAccess());
     var toView = view(controller, target, to.handle(), move.toAccess());
     if (fromView == REFUSED || toView == REFUSED) return;
@@ -733,6 +773,60 @@ public final class WorldPrograms {
   /** Sentinel for a refused view (never reaches a transfer). */
   private static final WorldConnectors.View REFUSED =
       new WorldConnectors.View(net.minecraft.core.Direction.DOWN, 0, 1);
+
+  /**
+   * Continues this deployer's own unresolved transfer on {@code handle} before any new move there,
+   * as presets do; another owner's or an uncertain one is logged and waited on (Transfer Recovery).
+   * True when the machine is busy with it.
+   */
+  private boolean resume(
+      ProgramControllerEntity controller,
+      Runtime runtime,
+      NetworkPermissions.Actor actor,
+      MachineInterfaceEntity owner,
+      WorldConnectors.Handle handle) {
+    var unresolved = saved().transfers().unresolved(handle.backing());
+    if (unresolved == null) return false;
+    var transfer = unresolved.transfer();
+    if (transfer.pending() != StagedTransfer.PendingCall.NONE
+        || transfer.state() == StagedTransfer.State.QUARANTINED) {
+      controller.log(
+          "move " + owner.label() + ": a staged move is uncertain; see Transfer Recovery");
+      return true;
+    }
+    if (!transfer.owner().equals(actor.id())) {
+      controller.log("move " + owner.label() + ": " + name(OperationResult.Reason.RESERVED));
+      return true;
+    }
+    var id = unresolved.id();
+    runtime.request = id;
+    var submission =
+        networks()
+            .transfers()
+            .progressGuarded(
+                id,
+                actor,
+                false,
+                result -> {
+                  var after = result.transfer();
+                  if (after != null
+                      && after.state() == StagedTransfer.State.COMPLETE
+                      && after.pending() == StagedTransfer.PendingCall.NONE
+                      && after.staged() == 0
+                      && saved().transfers().contains(result.id()))
+                    saved().transfers().retire(result.id());
+                  if (id.equals(runtime.request)) runtime.request = null;
+                  if (result.reason() != OperationResult.Reason.OK)
+                    controller.log(
+                        "move " + owner.label() + ": staged move " + name(result.reason()));
+                },
+                () -> true);
+    if (submission.rejection() != OperationResult.Reason.OK) {
+      runtime.request = null;
+      controller.log("move " + owner.label() + ": staged move " + name(submission.rejection()));
+    }
+    return true;
+  }
 
   /** Finds the first matching stored key over a bounded number of catalog pages, then routes. */
   private void fromStorage(

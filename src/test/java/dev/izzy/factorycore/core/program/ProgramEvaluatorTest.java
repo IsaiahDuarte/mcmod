@@ -133,4 +133,83 @@ class ProgramEvaluatorTest {
     assertThrows(
         IllegalArgumentException.class, () -> new ProgramCommand.Move(filter, null, null, 1));
   }
+
+  /** Counts host reads; stock is 5 for every filter, each machine holds 3 matching. */
+  private static final class Counting implements ProgramEvaluator.Host {
+    int stockReads, contentReads;
+
+    @Override
+    public List<UUID> machines(String label) {
+      return label.equals("two") ? List.of(A, B) : List.of(OUT);
+    }
+
+    @Override
+    public long stock(ResourceFilter filter) {
+      stockReads++;
+      return 5;
+    }
+
+    @Override
+    public ProgramEvaluator.Contents contents(UUID machine, ResourceFilter filter) {
+      contentReads++;
+      return new ProgramEvaluator.Contents(3, 1);
+    }
+  }
+
+  private static List<ProgramCommand> logs(String condition, Counting host) {
+    return ProgramEvaluator.invoke(
+        rule("every 10 ticks { if " + condition + " { log \"yes\" } else { log \"no\" } }"), host);
+  }
+
+  @Test
+  void eachOperatorShortCircuitsAndHasSumsEverySelectedMachine() {
+    var yes = List.<ProgramCommand>of(new ProgramCommand.Log("yes"));
+    var no = List.<ProgramCommand>of(new ProgramCommand.Log("no"));
+    var host = new Counting();
+    assertEquals(yes, logs("stock(item(\"a\")) == 5", host));
+    assertEquals(no, logs("not stock(item(\"a\")) == 5", host));
+    assertEquals(yes, logs("machines(\"two\") has == 6 of item(\"a\")", host), "3 + 3");
+    assertEquals(2, host.contentReads, "One contents read per machine");
+
+    host = new Counting();
+    assertEquals(
+        no, logs("stock(item(\"a\")) < 1 and machines(\"two\") has > 0 of item(\"a\")", host));
+    assertEquals(1, host.stockReads);
+    assertEquals(0, host.contentReads, "A false left side skips the right of and");
+
+    host = new Counting();
+    assertEquals(
+        yes, logs("stock(item(\"a\")) > 1 or machines(\"two\") has > 0 of item(\"a\")", host));
+    assertEquals(0, host.contentReads, "A true left side skips the right of or");
+
+    host = new Counting();
+    assertEquals(
+        yes,
+        logs(
+            "not (stock(item(\"a\")) < 1 or stock(item(\"b\")) < 1) and stock(item(\"c\")) >= 5",
+            host),
+        "not binds tighter than and; parentheses group");
+    assertEquals(3, host.stockReads);
+  }
+
+  @Test
+  void elseIfChainsPickTheFirstTrueBranchAndHasNeedsAMachineHost() {
+    var rule =
+        rule(
+            """
+            every 10 ticks {
+              for m in machines("one") {
+                if m has < 1 of item("coal") { log "empty" }
+                else if m has < 8 of item("coal") { log "low" }
+                else { log "full" }
+              }
+            }
+            """);
+    assertEquals(
+        List.of(new ProgramCommand.Log("low")), ProgramEvaluator.invoke(rule, new Counting()));
+    assertThrows(
+        ProgramEvaluator.Trap.class,
+        () -> ProgramEvaluator.invoke(rule, host(Map.of("one", List.of(A)), 0)),
+        "A host that cannot read machines traps the invocation");
+  }
 }

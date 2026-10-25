@@ -83,6 +83,12 @@ public final class FriendlyCompiler {
           "fluid",
           "tag",
           "energy",
+          // ADR 0062 (D4)
+          "else",
+          "and",
+          "or",
+          "not",
+          "has",
           // ADR 0062 (D3)
           "side",
           "slots",
@@ -419,15 +425,7 @@ public final class FriendlyCompiler {
         return new ProgramIr.Craft(id, amount);
       }
       case "if" -> {
-        next();
-        expect("stock");
-        expect("(");
-        var filter = filter();
-        expect(")");
-        var comparison = comparison();
-        long amount =
-            peek().kind == Kind.INT && peek().value == 0 ? zero() : amount("the comparison");
-        return new ProgramIr.If(filter, comparison, amount, block(variables, depth + 1));
+        return conditional(variables, depth);
       }
       case "log" -> {
         next();
@@ -435,6 +433,98 @@ public final class FriendlyCompiler {
       }
       default -> throw new SyntaxError(token, "Unknown statement '" + token.text + "'");
     }
+  }
+
+  /**
+   * D4 (ADR 0062): {@code if condition block [else (block | if ...)]}. A lone stock comparison
+   * without {@code else} stays the v1 {@link ProgramIr.If}, so v1 IR is unchanged.
+   */
+  private ProgramIr.Statement conditional(Set<String> variables, int depth) {
+    expect("if");
+    operators = 0;
+    var condition = condition(variables);
+    var then = block(variables, depth + 1);
+    if (!at("else")) {
+      if (condition instanceof ProgramIr.StockCondition stock)
+        return new ProgramIr.If(stock.filter(), stock.comparison(), stock.amount(), then);
+      return new ProgramIr.Branch(condition, then, List.of());
+    }
+    next();
+    List<ProgramIr.Statement> otherwise;
+    if (at("if")) {
+      if (depth + 1 > MAX_DEPTH) throw new SyntaxError(peek(), "Blocks nest at most 8 deep");
+      statements++;
+      if (statements > MAX_STATEMENTS)
+        throw new SyntaxError(peek(), "A program has at most 512 statements");
+      otherwise = List.of(conditional(variables, depth + 1));
+    } else otherwise = block(variables, depth + 1);
+    return new ProgramIr.Branch(condition, then, otherwise);
+  }
+
+  private int operators;
+
+  private void operator(Token at) {
+    if (++operators > ProgramIr.MAX_OPERATORS)
+      throw new SyntaxError(at, "A condition has at most 16 and/or/not operators");
+  }
+
+  private ProgramIr.Condition condition(Set<String> variables) {
+    var left = conjunction(variables);
+    while (at("or")) {
+      operator(next());
+      left = new ProgramIr.Or(left, conjunction(variables));
+    }
+    return left;
+  }
+
+  private ProgramIr.Condition conjunction(Set<String> variables) {
+    var left = negation(variables);
+    while (at("and")) {
+      operator(next());
+      left = new ProgramIr.And(left, negation(variables));
+    }
+    return left;
+  }
+
+  private ProgramIr.Condition negation(Set<String> variables) {
+    if (at("not")) {
+      operator(next());
+      return new ProgramIr.Not(negation(variables));
+    }
+    return atom(variables);
+  }
+
+  private ProgramIr.Condition atom(Set<String> variables) {
+    if (at("(")) {
+      next();
+      var inner = condition(variables);
+      expect(")");
+      return inner;
+    }
+    if (at("stock")) {
+      next();
+      expect("(");
+      var filter = filter();
+      expect(")");
+      var comparison = comparison();
+      return new ProgramIr.StockCondition(filter, comparison, threshold());
+    }
+    var token = peek();
+    if (!at("machines") && (token.kind != Kind.WORD || KEYWORDS.contains(token.text)))
+      throw new SyntaxError(
+          token,
+          "Expected a condition: stock(...), a machine 'has' check, not, or '(' but found "
+              + describe(token));
+    var target = target(variables);
+    expect("has");
+    var comparison = comparison();
+    long amount = threshold();
+    expect("of");
+    return new ProgramIr.HasCondition(target, comparison, amount, filter());
+  }
+
+  private long threshold() {
+    return peek().kind == Kind.INT && peek().value == 0 ? zero() : amount("the comparison");
   }
 
   private long zero() {

@@ -31,6 +31,21 @@ public final class ProgramEvaluator {
 
     /** Available matching units in the program's storage view. */
     long stock(ResourceFilter filter);
+
+    /**
+     * D4: matching units inside one machine's bound window and the observation pages that cost.
+     * Hosts without machine access refuse, which traps the invocation.
+     */
+    default Contents contents(UUID machine, ResourceFilter filter) {
+      throw new UnsupportedOperationException("This host cannot read machine contents");
+    }
+  }
+
+  /** A machine read: matching {@code amount} and the {@code pages} (≥ 1) it observed. */
+  public record Contents(long amount, int pages) {
+    public Contents {
+      if (amount < 0 || pages < 1) throw new IllegalArgumentException("Invalid contents read");
+    }
   }
 
   /** Thrown for a bounded-work or host failure; no commands from the invocation are published. */
@@ -117,6 +132,51 @@ public final class ProgramEvaluator {
         : null;
   }
 
+  private static boolean compare(long value, ProgramIr.Comparison comparison, long amount) {
+    return switch (comparison) {
+      case LESS -> value < amount;
+      case LESS_EQUAL -> value <= amount;
+      case GREATER -> value > amount;
+      case GREATER_EQUAL -> value >= amount;
+      case EQUAL -> value == amount;
+    };
+  }
+
+  /** Short-circuit evaluation; every atom is a step, and each host read is a host query. */
+  private boolean holds(ProgramIr.Condition condition, Map<String, UUID> scope) {
+    step();
+    return switch (condition) {
+      case ProgramIr.Not not -> !holds(not.inner(), scope);
+      case ProgramIr.And and -> holds(and.left(), scope) && holds(and.right(), scope);
+      case ProgramIr.Or or -> holds(or.left(), scope) || holds(or.right(), scope);
+      case ProgramIr.StockCondition stock -> {
+        hostCall();
+        long value;
+        try {
+          value = host.stock(stock.filter());
+        } catch (RuntimeException failure) {
+          throw new Trap("Stock query failed: " + failure.getMessage());
+        }
+        yield compare(value, stock.comparison(), stock.amount());
+      }
+      case ProgramIr.HasCondition has -> {
+        long total = 0;
+        for (var machine : resolve(has.target(), scope)) {
+          hostCall();
+          Contents read;
+          try {
+            read = host.contents(machine, has.filter());
+          } catch (RuntimeException failure) {
+            throw new Trap("Machine contents query failed: " + failure.getMessage());
+          }
+          for (int page = 1; page < read.pages(); page++) hostCall();
+          total = total > Long.MAX_VALUE - read.amount() ? Long.MAX_VALUE : total + read.amount();
+        }
+        yield compare(total, has.comparison(), has.amount());
+      }
+    };
+  }
+
   private void run(List<ProgramIr.Statement> body, Map<String, UUID> scope) {
     for (var statement : body) {
       step();
@@ -167,6 +227,8 @@ public final class ProgramEvaluator {
               };
           if (holds) run(condition.body(), scope);
         }
+        case ProgramIr.Branch branch ->
+            run(holds(branch.condition(), scope) ? branch.then() : branch.otherwise(), scope);
         case ProgramIr.Log log -> emit(new ProgramCommand.Log(log.text()));
       }
     }

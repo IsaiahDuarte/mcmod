@@ -359,6 +359,13 @@ every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage
   `side up` for the input, `side north` for fuel and `side down slots 0` for the output.
   Slot numbers count the slots that face shows. Using another face needs the Interface
   set to all slots. A range outside what the Interface allows is refused with a log line.
+- **Conditions:** `if` takes `else` and `else if`, and combines checks with `and`, `or`,
+  `not` and parentheses. `machine has < 8 of item("coal")` counts what a machine (or a
+  whole label) holds. For example:
+  `if f has < 8 of item("coal") { move item("coal") from storage to f side north limit 4 }`.
+- **Long rules:** a rule's moves run one after another, and the next run of the rule
+  replaces any it did not reach. Give slow or important moves their own `every … as "…"`
+  rule rather than putting many in one.
 - **When a rule can't act:** its log line says why, for example a machine busy with
   a crafting job, stock reserved by jobs, or the rate limit. It retries at its next
   interval without losing items.
