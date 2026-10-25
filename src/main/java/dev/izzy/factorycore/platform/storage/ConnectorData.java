@@ -15,7 +15,10 @@ import net.minecraft.nbt.Tag;
  * Connector schema one (machine interface: two) owns policy/reference data, never a foreign
  * inventory copy. Schemas three/four add the installed {@link ThroughputTier} (ADR 0054) and are
  * written only for an upgraded port, so every base port keeps its exact earlier bytes and older
- * builds reject upgraded data into recovery instead of silently dropping the paid tier.
+ * builds reject upgraded data into recovery instead of silently dropping the paid tier. Schemas
+ * five/six (connector only, base/upgraded) add a Storage-mode insert filter (B2) in {@link
+ * FilterCodec} form; a port without one keeps its earlier bytes, and an older build rejects a
+ * filtered port into recovery rather than widening what it accepts.
  */
 final class ConnectorData {
   static final String FIELD = "FactoryCoreConnector";
@@ -58,7 +61,7 @@ final class ConnectorData {
     if (!(raw instanceof CompoundTag tag)
         || !tag.contains("Schema", Tag.TAG_INT)
         || tag.getInt("Schema") < 1
-        || tag.getInt("Schema") > 4
+        || tag.getInt("Schema") > 6
         || !fields(tag.getInt("Schema")).equals(tag.getAllKeys()))
       throw new IllegalArgumentException("Unsupported connector data; preserve for recovery");
     for (var name : new String[] {"Kind", "Access", "Fault"})
@@ -81,7 +84,7 @@ final class ConnectorData {
     if (machine && !tag.contains("Label", Tag.TAG_STRING))
       throw new IllegalArgumentException("Missing machine label");
     var tier = ThroughputTier.BASE;
-    if (schema >= 3) {
+    if (schema == 3 || schema == 4 || schema == 6) {
       if (!tag.contains("Throughput", Tag.TAG_STRING))
         throw new IllegalArgumentException("Missing throughput tier");
       tier = ThroughputTier.parse(tag.getString("Throughput"));
@@ -96,7 +99,8 @@ final class ConnectorData {
             tag.getInt("Priority"),
             tag.getInt("FirstSlot"),
             tag.getInt("SlotCount"),
-            tag.getInt("Rate")),
+            tag.getInt("Rate"),
+            schema >= 5 ? FilterCodec.decode(tag.getCompound("Insert"), "connector") : null),
         tag.getLong("Generation"),
         tag.getString("Fault"),
         machine ? tag.getString("Label") : "",
@@ -118,7 +122,8 @@ final class ConnectorData {
                 "Generation",
                 "Fault"));
     if (schema == 2 || schema == 4) fields.add("Label");
-    if (schema >= 3) fields.add("Throughput");
+    if (schema == 3 || schema == 4 || schema == 6) fields.add("Throughput");
+    if (schema >= 5) fields.add("Insert");
     return Set.copyOf(fields);
   }
 
@@ -126,7 +131,10 @@ final class ConnectorData {
     var tag = new CompoundTag();
     boolean machine = state.lease().kind() == NodeRegistry.Kind.MACHINE_INTERFACE;
     boolean upgraded = state.tier() != ThroughputTier.BASE;
-    tag.putInt("Schema", (machine ? 2 : 1) + (upgraded ? 2 : 0));
+    // Schemas 5/6 (B2) add a Storage-mode insert filter; without one the earlier bytes stay.
+    boolean filtered = !machine && state.settings().insert() != null;
+    tag.putInt("Schema", filtered ? (upgraded ? 6 : 5) : (machine ? 2 : 1) + (upgraded ? 2 : 0));
+    if (filtered) tag.put("Insert", FilterCodec.encode(state.settings().insert()));
     if (machine) tag.putString("Label", state.label());
     if (upgraded) tag.putString("Throughput", state.tier().name());
     tag.put("Node", NodeHandleData.write(state.lease()));

@@ -27,27 +27,7 @@ final class MachinePresetCodec {
       tag.putLong("Permissions", value.authority().permissionGeneration());
       tag.putString("Mode", value.mode().name());
       tag.putLong("Target", value.target());
-      var filter = new CompoundTag();
-      filter.putString("Kind", value.filter().kind().name());
-      filter.putString("Mode", value.filter().mode().name());
-      var terms = new ListTag();
-      for (var term : value.filter().terms()) {
-        var entry = new CompoundTag();
-        if (term instanceof ResourceFilter.Exact exact) {
-          entry.putString("Type", "EXACT");
-          entry.putString("Id", exact.key().registryId());
-          entry.putByteArray("Components", exact.key().components());
-        } else if (term instanceof ResourceFilter.Registry registry) {
-          entry.putString("Type", "REGISTRY");
-          entry.putString("Id", registry.id());
-        } else {
-          entry.putString("Type", "TAG");
-          entry.putString("Id", ((ResourceFilter.Tag) term).id());
-        }
-        terms.add(entry);
-      }
-      filter.put("Terms", terms);
-      tag.put("Filter", filter);
+      tag.put("Filter", FilterCodec.encode(value.filter()));
       list.add(tag);
     }
     root.put("Deployments", list);
@@ -132,36 +112,7 @@ final class MachinePresetCodec {
       Nbt.require(tag, "Mode", Tag.TAG_STRING, "machine");
       Nbt.require(tag, "Face", Tag.TAG_STRING, "machine");
       Nbt.require(tag, "Filter", Tag.TAG_COMPOUND, "machine");
-      var filter = tag.getCompound("Filter");
-      Nbt.fields(filter, Set.of("Kind", "Mode", "Terms"));
-      Nbt.require(filter, "Kind", Tag.TAG_STRING, "machine");
-      Nbt.require(filter, "Mode", Tag.TAG_STRING, "machine");
-      Nbt.require(filter, "Terms", Tag.TAG_LIST, "machine");
-      var kind = ResourceKind.valueOf(filter.getString("Kind"));
-      var terms = filter.getList("Terms", Tag.TAG_COMPOUND);
-      if (terms.size() != ((ListTag) filter.get("Terms")).size()
-          || terms.size() > ResourceFilter.MAX_TERMS)
-        throw new IllegalArgumentException("Machine filter count");
-      var selections = new ArrayList<ResourceFilter.Term>();
-      for (int j = 0; j < terms.size(); j++) {
-        var term = terms.getCompound(j);
-        Nbt.require(term, "Type", Tag.TAG_STRING, "machine");
-        Nbt.require(term, "Id", Tag.TAG_STRING, "machine");
-        String type = term.getString("Type");
-        Nbt.fields(
-            term, type.equals("EXACT") ? Set.of("Type", "Id", "Components") : Set.of("Type", "Id"));
-        switch (type) {
-          case "EXACT" -> {
-            Nbt.require(term, "Components", Tag.TAG_BYTE_ARRAY, "machine");
-            selections.add(
-                new ResourceFilter.Exact(
-                    new ResourceKey(kind, term.getString("Id"), term.getByteArray("Components"))));
-          }
-          case "REGISTRY" -> selections.add(new ResourceFilter.Registry(term.getString("Id")));
-          case "TAG" -> selections.add(new ResourceFilter.Tag(term.getString("Id")));
-          default -> throw new IllegalArgumentException("Unknown machine selector");
-        }
-      }
+      var filter = FilterCodec.decode(tag.getCompound("Filter"), "machine");
       var value =
           new MachinePresets.Deployment(
               tag.getUUID("Node"),
@@ -175,8 +126,7 @@ final class MachinePresetCodec {
                   tag.getUUID("Segment"),
                   tag.getLong("Permissions")),
               MachinePresets.Mode.valueOf(tag.getString("Mode")),
-              new ResourceFilter(
-                  kind, ResourceFilter.Mode.valueOf(filter.getString("Mode")), selections),
+              filter,
               tag.getLong("Target"));
       bytes = Math.addExact(bytes, value.bytes());
       if (bytes > MachinePresets.MAX_BYTES)

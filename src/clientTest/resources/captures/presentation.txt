@@ -92,3 +92,5 @@ jobs-monitor-waiting-scale-4.png
 jobs-finished-toast-scale-2.png
 machine-presets-filter-scale-4.png
 machine-presets-filter-scale-1.png
+connector-filter-scale-4.png
+connector-filter-scale-1.png

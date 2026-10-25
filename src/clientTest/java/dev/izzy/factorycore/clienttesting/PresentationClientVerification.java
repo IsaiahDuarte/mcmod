@@ -1801,6 +1801,28 @@ public final class PresentationClientVerification {
         client -> {
           if (waited() < 4) return false;
           captures.grab(client, "connector-picked-scale-4.png");
+          // B2: the Filter tab, with cobblestone dropped as a recipe viewer would.
+          return press(client, "Filter…");
+        });
+    step(
+        client -> {
+          var screen = (ConnectorSettingsScreen) client.screen;
+          if (!screen.getMenu().view().insertRules().isEmpty()) return waited() > 4;
+          if (waited() % 10 == 5)
+            screen.addFilterId(
+                dev.izzy.factorycore.core.resource.ResourceKind.ITEM, "minecraft:cobblestone");
+          return false;
+        });
+    step(
+        client -> {
+          captures.grab(client, "connector-filter-scale-4.png");
+          setScale(client, 1);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          captures.grab(client, "connector-filter-scale-1.png");
           setScale(client, 2);
           client.screen.onClose();
           return true;

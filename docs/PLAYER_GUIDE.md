@@ -185,6 +185,10 @@ The screen sets the following:
 - **Resource:** Items, Fluids or Energy.
 - **Access:** deposit and withdraw, read-only or write-only.
 - **Priority:** −1000 to 1000. Higher-priority containers are used first.
+- **Filter…:** limits what the network puts into this container (only the listed
+  items, or all but them), using the same filter slots as a Buffer. Items that do
+  not match go to the next container by priority. What is already inside stays
+  visible and can still be taken out.
 - **Slots and rate per tick.** For a container with up to 64 slots (or tanks) the screen
   shows a strip of them: click a slot to use only it, Shift-click to use a range. Larger
   containers show First slot and Slot count fields instead.

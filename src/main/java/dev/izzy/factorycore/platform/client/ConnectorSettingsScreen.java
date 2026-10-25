@@ -20,8 +20,17 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 /** Local unsaved form for a Storage-mode Interface; only Apply sends one complete configuration. */
-public final class ConnectorSettingsScreen extends AbstractContainerScreen<ConnectorSettingsMenu> {
+public final class ConnectorSettingsScreen extends AbstractContainerScreen<ConnectorSettingsMenu>
+    implements FilterDropTarget {
   private EditBox priority, firstSlot, count, rate;
+
+  /** B2: the insert filter, shown in place of the settings while {@code filterTab}. */
+  private boolean filterTab, typing;
+
+  private int selectedRule;
+  private FilterSlots filterSlots;
+  private EditBox filterId;
+  private Button filterToggle, filterMode, addById, addId, addTag, removeRule, clearRules;
   private SlotPicker picker;
   private boolean picking;
   private Button kindButton, accessButton, apply;
@@ -93,6 +102,95 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
                   firstSlot.setValue(Integer.toString(first));
                   count.setValue(Integer.toString(slots));
                 }));
+    filterToggle =
+        button(
+            "filter_tab",
+            202,
+            126,
+            88,
+            () -> {
+              filterTab = !filterTab;
+              sync();
+            });
+    filterMode =
+        addRenderableWidget(
+            Button.builder(
+                    Component.empty(),
+                    b -> filter(ConnectorSettingsPackets.FilterCommand.MODE, 0, ""))
+                .bounds(leftPos + 10, topPos + 28, 280, 18)
+                .tooltip(
+                    Tooltip.create(Component.translatable("gui.factorycore.connector.insert.help")))
+                .build());
+    addById =
+        button(
+            "add_by_id",
+            10,
+            52,
+            96,
+            () -> {
+              typing = true;
+              sync();
+            });
+    filterId =
+        addRenderableWidget(
+            new EditBox(
+                font,
+                leftPos + 10,
+                topPos + 53,
+                170,
+                16,
+                Component.translatable("gui.factorycore.buffer.id")));
+    filterId.setMaxLength(256);
+    addId =
+        button(
+            "add_id",
+            184,
+            52,
+            50,
+            () -> filter(ConnectorSettingsPackets.FilterCommand.REGISTRY, 0, filterId.getValue()));
+    addTag =
+        button(
+            "add_tag",
+            238,
+            52,
+            52,
+            () -> filter(ConnectorSettingsPackets.FilterCommand.TAG, 0, filterId.getValue()));
+    filterSlots =
+        addRenderableWidget(
+            new FilterSlots(
+                leftPos + 10,
+                topPos + 76,
+                new FilterSlots.Actions() {
+                  @Override
+                  public void addCarried() {
+                    filter(ConnectorSettingsPackets.FilterCommand.CARRIED, 0, "");
+                  }
+
+                  @Override
+                  public void cycle(int index, String shown) {
+                    filter(ConnectorSettingsPackets.FilterCommand.CYCLE, index, shown);
+                  }
+
+                  @Override
+                  public void remove(int index) {
+                    filter(ConnectorSettingsPackets.FilterCommand.REMOVE, index, "");
+                  }
+                },
+                index -> selectedRule = index));
+    removeRule =
+        button(
+            "remove_rule",
+            10,
+            114,
+            68,
+            () -> filter(ConnectorSettingsPackets.FilterCommand.REMOVE, selectedRule, ""));
+    clearRules =
+        button(
+            "clear_rules",
+            82,
+            114,
+            68,
+            () -> filter(ConnectorSettingsPackets.FilterCommand.CLEAR, 0, ""));
     apply = button("apply", 10, 164, 88, this::apply);
     button("reset", 106, 164, 88, () -> load(menu.view().form()));
     button("cancel", 202, 164, 88, this::onClose);
@@ -191,6 +289,59 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
         SlotPicker.number(count, 64));
     firstSlot.visible = !picking;
     count.visible = !picking;
+    // B2: the filter tab replaces the settings controls in the same space.
+    boolean energy = view.form().kind() == ResourceKind.ENERGY;
+    if (energy) filterTab = false;
+    for (var widget :
+        java.util.List.<net.minecraft.client.gui.components.AbstractWidget>of(
+            kindButton, accessButton, priority, rate)) widget.visible = !filterTab;
+    if (filterTab) {
+      picker.visible = false;
+      firstSlot.visible = false;
+      count.visible = false;
+    }
+    filterToggle.visible = !energy;
+    filterToggle.active = view.editable();
+    filterToggle.setMessage(
+        Component.translatable(
+            "gui.factorycore.machine." + (filterTab ? "settings_tab" : "filter_tab")));
+    filterMode.visible = filterTab;
+    filterMode.active = view.editable();
+    filterMode.setMessage(
+        Component.translatable(
+            "gui.factorycore.connector.insert." + view.insertMode().toLowerCase(Locale.ROOT)));
+    filterSlots.visible = filterTab;
+    filterSlots.active = view.editable();
+    selectedRule = Math.max(0, Math.min(selectedRule, view.insertRules().size() - 1));
+    filterSlots.show(view.insertRules(), view.form().kind(), selectedRule);
+    addById.visible = filterTab && !typing;
+    filterId.visible = addId.visible = addTag.visible = filterTab && typing;
+    removeRule.visible = clearRules.visible = filterTab;
+    removeRule.active = view.editable() && !view.insertRules().isEmpty();
+    clearRules.active = removeRule.active;
+  }
+
+  private void filter(int action, int selection, String text) {
+    PacketDistributor.sendToServer(
+        new ConnectorSettingsPackets.FilterCommand(
+            menu.containerId, menu.session(), action, Math.max(0, selection), text));
+  }
+
+  @Override
+  public net.minecraft.client.renderer.Rect2i filterArea() {
+    return filterSlots == null || !filterSlots.visible
+        ? null
+        : new net.minecraft.client.renderer.Rect2i(
+            filterSlots.getX(),
+            filterSlots.getY(),
+            filterSlots.getWidth(),
+            filterSlots.getHeight());
+  }
+
+  @Override
+  public void addFilterId(ResourceKind dropped, String id) {
+    if (dropped == menu.view().form().kind())
+      filter(ConnectorSettingsPackets.FilterCommand.REGISTRY, 0, id);
   }
 
   private void apply() {
@@ -246,6 +397,23 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
         font, Component.translatable("gui.factorycore.interface.mode"), 10, 193, 0xffffff, false);
     int strip = 10 + font.width(title) + 10;
     StatusStrip.draw(g, font, menu.deviceStatus(), strip, 10, imageWidth - 10 - strip);
+    var view = menu.view();
+    if (filterTab) {
+      if (selectedRule < view.insertRules().size())
+        FilterSlots.describe(g, font, view.insertRules().get(selectedRule), 162, 76, 128);
+      // Left of the Settings button, which shares this row.
+      g.drawString(
+          font,
+          font.plainSubstrByWidth(
+              Component.translatable("gui.factorycore.connector.insert.note").getString(), 186),
+          10,
+          136,
+          0xa5b5c5,
+          false);
+      String state = invalid ? "invalid" : view.editable() ? view.status() : "denied";
+      line(g, Component.translatable("gui.factorycore.machine.status." + state), 146, 0xe4bc83);
+      return;
+    }
     text(g, "priority", 10, 58);
     text(g, "rate", 160, 58);
     if (picking)
@@ -255,7 +423,6 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
       text(g, "window_first", 10, 82);
       text(g, "window_count", 160, 82);
     }
-    var view = menu.view();
     line(
         g,
         Component.translatable(

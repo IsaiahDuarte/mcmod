@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -78,7 +79,9 @@ public final class ConnectorSettingsPackets {
       int maxRate,
       boolean throttled,
       int itemSlots,
-      int tanks)
+      int tanks,
+      String insertMode,
+      List<FilterEdits.Rule> insertRules)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
@@ -91,6 +94,8 @@ public final class ConnectorSettingsPackets {
           || status.length() > 32
           || tier.length() > 16
           || maxRate < 1
+          || insertMode.length() > 16
+          || insertRules.size() > dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS
           || maxRate > ThroughputTier.maxQuantum(form.kind())
           || itemSlots < 0
           || itemSlots > ConnectorEntity.MAX_REPORTED_SLOTS
@@ -120,6 +125,9 @@ public final class ConnectorSettingsPackets {
               b.writeBoolean(v.throttled());
               b.writeVarInt(v.itemSlots());
               b.writeVarInt(v.tanks());
+              b.writeUtf(v.insertMode(), 16);
+              b.writeVarInt(v.insertRules().size());
+              for (var rule : v.insertRules()) FilterEdits.Rule.write(b, rule);
             },
             b ->
                 new View(
@@ -135,13 +143,76 @@ public final class ConnectorSettingsPackets {
                     b.readVarInt(),
                     b.readBoolean(),
                     b.readVarInt(),
-                    b.readVarInt()));
+                    b.readVarInt(),
+                    b.readUtf(16),
+                    rules(b)));
+  }
+
+  private static List<FilterEdits.Rule> rules(RegistryFriendlyByteBuf b) {
+    int size = b.readVarInt();
+    if (size < 0 || size > dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS)
+      throw new IllegalArgumentException("Insert rule count");
+    var rules = new java.util.ArrayList<FilterEdits.Rule>(size);
+    for (int i = 0; i < size; i++) rules.add(FilterEdits.Rule.read(b));
+    return rules;
+  }
+
+  /**
+   * B2 insert-filter draft edits on the server-held draft; Apply saves it with the form. MODE
+   * cycles all → allow listed → block listed; the others mirror the Buffer's ghost-slot actions.
+   */
+  public record FilterCommand(int menu, UUID session, int action, int selection, String text)
+      implements CustomPacketPayload {
+    public static final int CARRIED = 0,
+        CYCLE = 1,
+        REMOVE = 2,
+        CLEAR = 3,
+        REGISTRY = 4,
+        TAG = 5,
+        MODE = 6;
+
+    public static final Type<FilterCommand> TYPE =
+        new Type<>(
+            ResourceLocation.fromNamespaceAndPath(
+                FactoryCoreMod.MOD_ID, "connector_filter_command"));
+
+    public FilterCommand {
+      if (action < CARRIED
+          || action > MODE
+          || selection < 0
+          || selection >= dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS
+          || text.length() > 256) throw new IllegalArgumentException("Invalid filter command");
+    }
+
+    @Override
+    public Type<FilterCommand> type() {
+      return TYPE;
+    }
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, FilterCommand> CODEC =
+        StreamCodec.of(
+            (b, v) -> {
+              b.writeVarInt(v.menu);
+              b.writeUUID(v.session);
+              b.writeVarInt(v.action);
+              b.writeVarInt(v.selection);
+              b.writeUtf(v.text, 256);
+            },
+            b ->
+                new FilterCommand(
+                    b.readVarInt(), b.readUUID(), b.readVarInt(), b.readVarInt(), b.readUtf(256)));
   }
 
   private ConnectorSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("2");
+    var registrar = event.registrar("3");
+    MenuPayloads.toServer(
+        registrar,
+        FilterCommand.TYPE,
+        FilterCommand.CODEC,
+        ConnectorSettingsMenu.class,
+        ConnectorSettingsMenu::filter);
     MenuPayloads.toServer(
         registrar,
         Apply.TYPE,

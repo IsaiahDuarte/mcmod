@@ -44,6 +44,11 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
   private String status = "ready";
   private DeviceStatus.View deviceStatus;
 
+  /** B2: the insert-filter draft, saved by Apply; reloaded when the saved settings change. */
+  private dev.izzy.factorycore.core.resource.ResourceFilter insertDraft;
+
+  private long insertLoaded = -1;
+
   public ConnectorSettingsMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
     this(id, inventory, null, MenuSession.read(buffer));
   }
@@ -72,7 +77,9 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
             ThroughputTier.BASE.portRate(ResourceKind.ITEM),
             false,
             0,
-            0);
+            0,
+            "ALL",
+            java.util.List.of());
   }
 
   public UUID session() {
@@ -164,7 +171,12 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
                 ThroughputStatus.throttled(
                     connector.serverLevel().getServer(), connector.position()),
                 size[0],
-                size[1]));
+                size[1],
+                draft().mode().name(),
+                FilterEdits.rules(
+                    draft(),
+                    new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                        player().registryAccess()))));
   }
 
   @Override
@@ -173,6 +185,94 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
     // Native initMenu broadcasts before assigning the new container to the player.
     if (!protocol.due(this::current)) return;
     if (view.generation() != 0 && view.generation() != connector.generation()) status = "stale";
+    publish();
+  }
+
+  private dev.izzy.factorycore.core.resource.ResourceFilter draft() {
+    if (insertLoaded != connector.generation()) {
+      var saved = connector.settings();
+      insertDraft =
+          saved.insert() != null
+              ? saved.insert()
+              : dev.izzy.factorycore.core.resource.ResourceFilter.all(saved.kind());
+      insertLoaded = connector.generation();
+    }
+    return insertDraft;
+  }
+
+  /** B2 insert-filter edits; each needs EDIT, like Apply, and changes only this screen's draft. */
+  public void filter(ServerPlayer sender, ConnectorSettingsPackets.FilterCommand packet) {
+    if (!protocol.fromViewer(sender, packet.menu(), packet.session())
+        || !current()
+        || !protocol.admitRate()) return;
+    if (!editable()) {
+      status = "denied";
+      publish();
+      return;
+    }
+    var filter = draft();
+    var kind = filter.kind();
+    var terms = new java.util.ArrayList<>(filter.terms());
+    var mode = filter.mode();
+    try {
+      switch (packet.action()) {
+        case ConnectorSettingsPackets.FilterCommand.CARRIED -> {
+          var term = FilterEdits.carried(kind, getCarried());
+          if (term == null) return;
+          terms.add(term);
+        }
+        case ConnectorSettingsPackets.FilterCommand.CYCLE -> {
+          if (packet.selection() >= terms.size()) return;
+          var next =
+              FilterEdits.cycle(
+                  kind,
+                  terms.get(packet.selection()),
+                  packet.text(),
+                  new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                      sender.registryAccess()));
+          if (next == null) {
+            status = "stale";
+            publish();
+            return;
+          }
+          terms.set(packet.selection(), next);
+        }
+        case ConnectorSettingsPackets.FilterCommand.REMOVE -> {
+          if (packet.selection() >= terms.size()) return;
+          terms.remove(packet.selection());
+        }
+        case ConnectorSettingsPackets.FilterCommand.CLEAR -> terms.clear();
+        case ConnectorSettingsPackets.FilterCommand.REGISTRY ->
+            terms.add(
+                new dev.izzy.factorycore.core.resource.ResourceFilter.Registry(packet.text()));
+        case ConnectorSettingsPackets.FilterCommand.TAG -> {
+          String text = packet.text();
+          terms.add(
+              new dev.izzy.factorycore.core.resource.ResourceFilter.Tag(
+                  text.startsWith("#") ? text.substring(1) : text));
+        }
+        case ConnectorSettingsPackets.FilterCommand.MODE ->
+            mode =
+                switch (mode) {
+                  case ALL -> dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE;
+                  case INCLUDE -> dev.izzy.factorycore.core.resource.ResourceFilter.Mode.EXCLUDE;
+                  case EXCLUDE -> dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL;
+                };
+        default -> {
+          return;
+        }
+      }
+      // Adding a slot to "everything" starts an allow list; an empty list means everything again.
+      if (packet.action() != ConnectorSettingsPackets.FilterCommand.MODE) {
+        if (terms.isEmpty()) mode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL;
+        else if (mode == dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL)
+          mode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE;
+      } else if (mode == dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL) terms.clear();
+      insertDraft = new dev.izzy.factorycore.core.resource.ResourceFilter(kind, mode, terms);
+      status = "draft";
+    } catch (IllegalArgumentException invalid) {
+      status = "invalid";
+    }
     publish();
   }
 
@@ -189,7 +289,10 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
       return;
     }
     try {
-      var settings = packet.form().settings();
+      // A changed resource kind discards an insert filter written for the old kind.
+      var form = packet.form().settings();
+      var settings =
+          form.withInsert(draft() != null && draft().kind() == form.kind() ? draft() : null);
       if (!settings.fits(connector.tier())) {
         status = "upgrade";
         publish();

@@ -176,3 +176,23 @@ checks current VIEW/segment before provider probing, and publication rechecks
 scope after callbacks. Server-only cursors bind actor/root/segment/key. Per-page
 priority sorting does not implement global distribution or persisted round-robin;
 those need bounded collected query state. No disk format changes in this slice.
+
+## Storage-mode insert filter — 2026-10-25 (parity slice B2)
+
+A Storage-mode Interface may carry an optional insert filter
+(`ConnectorSettings.insert`, a bounded `ResourceFilter` of the port's kind: at most 16
+terms, 256 KiB). It is checked in `WorldConnectors.allowed` for DEPOSIT only, beside the
+existing read-only access check, so every insertion path (terminal deposits, imports and
+program moves routed to storage) skips a container that refuses the key and the route
+tries the next priority. VIEW and WITHDRAW ignore it: the terminal keeps listing and
+taking everything the container holds, so nothing becomes invisible. A route still makes
+one transfer per request; a partial fill ends it and the rest stays with the source, as
+before.
+
+Alternatives: a separate filter block (more blocks, against UD1), or filtering at
+catalog time only (stale between catalog and move; the deposit check is re-run when the
+move is admitted). Persistence: connector schemas 5 (base tier) and 6 (upgraded) add an
+`Insert` compound in the machine-preset filter form (`FilterCodec`); ports without a
+filter keep schemas 1/3 and their exact earlier bytes. Older builds reject schemas 5/6
+into recovery instead of widening what a container accepts. Changing a port's resource
+kind clears its filter. Machine-mode ports never carry one.

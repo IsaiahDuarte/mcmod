@@ -362,7 +362,8 @@ public class ConnectorEntity extends BlockEntity
             current.priority(),
             current.firstSlot(),
             current.slotCount(),
-            next.portRate(current.kind()));
+            next.portRate(current.kind()),
+            current.insert());
     return configureTier(actor, settings, next);
   }
 

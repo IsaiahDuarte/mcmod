@@ -50,6 +50,54 @@ class ConnectorDataTest {
     }
   }
 
+  /** B2: schemas 5/6 carry a Storage-mode insert filter; without one the old schema is kept. */
+  @Test
+  void insertFilterUsesSchemasFiveAndSixAndDropsNothing() {
+    var lease =
+        new NodeRegistry.Handle(
+            UUID.randomUUID(), UUID.randomUUID(), 3, NodeRegistry.Kind.CONNECTOR);
+    var filter =
+        new dev.izzy.factorycore.core.resource.ResourceFilter(
+            ResourceKind.ITEM,
+            dev.izzy.factorycore.core.resource.ResourceFilter.Mode.EXCLUDE,
+            List.of(
+                new dev.izzy.factorycore.core.resource.ResourceFilter.Registry("minecraft:dirt"),
+                new dev.izzy.factorycore.core.resource.ResourceFilter.Tag("minecraft:logs"),
+                new dev.izzy.factorycore.core.resource.ResourceFilter.Exact(
+                    new dev.izzy.factorycore.core.resource.ResourceKey(
+                        ResourceKind.ITEM, "minecraft:stone", new byte[] {1, 2}))));
+    for (var tier : List.of(ThroughputTier.BASE, ThroughputTier.ADVANCED)) {
+      var settings =
+          new ConnectorSettings(
+                  ResourceKind.ITEM,
+                  ConnectorSettings.Access.READ_WRITE,
+                  4,
+                  0,
+                  64,
+                  tier.portRate(ResourceKind.ITEM))
+              .withInsert(filter);
+      var state = new ConnectorData.State(lease, settings, 9, "", "", tier);
+      var tag = ConnectorData.write(state);
+      assertEquals(tier == ThroughputTier.BASE ? 5 : 6, tag.getInt("Schema"));
+      assertEquals(state, ConnectorData.read(tag));
+      var plain =
+          ConnectorData.write(
+              new ConnectorData.State(lease, settings.withInsert(null), 9, "", "", tier));
+      assertEquals(tier == ThroughputTier.BASE ? 1 : 3, plain.getInt("Schema"));
+      var missing = tag.copy();
+      missing.remove("Insert");
+      assertThrows(IllegalArgumentException.class, () -> ConnectorData.read(missing));
+      var future = tag.copy();
+      future.putInt("Schema", 7);
+      assertThrows(IllegalArgumentException.class, () -> ConnectorData.read(future));
+    }
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ConnectorSettings(
+                ResourceKind.FLUID, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 1000, filter));
+  }
+
   @Test
   void committedLocalFixtureFreezesFieldTypesAndPolicies() throws Exception {
     try (var input = getClass().getResourceAsStream("/persistence/connector-v1.snbt")) {

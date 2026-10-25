@@ -272,7 +272,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
   ≥ TAKE to inventory handling, so new filter actions were ignored; it now bounds the
   range. The Storage-mode screen gets the same widget with B2. A5: fe4546b.
 
-- [ ] **B2 — Storage-mode filter (G6).** Size M.
+- [x] **B2 — Storage-mode filter (G6).** Size M.
   Add an optional `ResourceFilter` to `ConnectorSettings` (bounded by the existing 16-term,
   256 KiB rules). It limits what priority routes **insert** into that container; the
   terminal still lists and withdraws everything the container holds, so nothing becomes
@@ -282,6 +282,17 @@ view cells, portable cells and cross-dimension links. See Wave G.
   Done when: GameTests prove a cobblestone-only chest receives only cobblestone, overflow
   goes to the next priority, a rejected deposit returns to the player, and saved filters
   reload; seeded conservation test still passes.
+  Evidence: `ConnectorFilterGameTests` (a cobblestone-only chest at priority 10 takes the 4
+  it has room for; the next 6 go to the priority-0 chest once it is full; logs skip it;
+  dirt already inside stays listed and is withdrawn; with no other storage a log deposit
+  is refused and stays with the player; the reopened screen shows the saved rule),
+  `ConnectorDataTest.insertFilterUsesSchemasFiveAndSixAndDropsNothing` (round trip,
+  unfiltered ports keep schemas 1/3, missing/future fields rejected), fast verify
+  including the seeded conservation suites. ADR 0013 amended. One route still makes one
+  transfer: a partial fill leaves the rest with the player (existing behaviour, now stated
+  in the ADR), so overflow is shown on the next deposit. The upgrade path now keeps the
+  filter. Screen: a **Filter…** tab (the screen cannot grow past 240 units at scale 4),
+  `connector-filter-scale-{1,4}.png`. B1: 5b00a9d.
 
 - [ ] **B3 — Cell partitions (G6).** Size M.
   A cell carries an optional filter component, edited from its Drive bay (B1 widget).

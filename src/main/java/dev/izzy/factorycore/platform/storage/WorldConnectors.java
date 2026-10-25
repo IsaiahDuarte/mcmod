@@ -534,10 +534,15 @@ public final class WorldConnectors {
     var binding = current(handle);
     if (binding == null) return false;
     var access = binding.owner.settings().access();
-    return !(operation == NetworkPermissions.Permission.WITHDRAW
+    if (operation == NetworkPermissions.Permission.WITHDRAW
             && access == ConnectorSettings.Access.WRITE_ONLY
         || operation == NetworkPermissions.Permission.DEPOSIT
-            && access == ConnectorSettings.Access.READ_ONLY);
+            && access == ConnectorSettings.Access.READ_ONLY) return false;
+    // B2: a Storage-mode insert filter narrows what is put in; viewing and taking stay open.
+    var insert = binding.owner.settings().insert();
+    return operation != NetworkPermissions.Permission.DEPOSIT
+        || insert == null
+        || insert.matches(key, new PlatformFilterTags(server));
   }
 
   public ResourcePort port(Handle handle) {

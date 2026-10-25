@@ -35,5 +35,8 @@ public final class FactoryCoreJeiPlugin implements IModPlugin {
     registration.addGhostIngredientHandler(
         dev.izzy.factorycore.platform.client.MachineSettingsScreen.class,
         new FilterGhostHandler<>());
+    registration.addGhostIngredientHandler(
+        dev.izzy.factorycore.platform.client.ConnectorSettingsScreen.class,
+        new FilterGhostHandler<>());
   }
 }
