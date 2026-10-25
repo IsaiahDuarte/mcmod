@@ -99,3 +99,4 @@ drive-partition-scale-1.png
 signal-scale-4.png
 signal-scale-1.png
 signal-lamp-lit.png
+program-v2-scale-4.png

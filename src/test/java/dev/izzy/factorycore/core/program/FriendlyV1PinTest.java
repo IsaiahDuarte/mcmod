@@ -32,6 +32,8 @@ class FriendlyV1PinTest {
     }
   }
 
+  private static final int V1_TEMPLATES = 7;
+
   /** Slices D2–D6 add themselves here when their fixtures compile. */
   private static final Set<String> IMPLEMENTED = Set.of("D2", "D3", "D4", "D5", "D6");
 
@@ -51,7 +53,8 @@ class FriendlyV1PinTest {
     var lines = new ArrayList<String>();
     for (var fixture : sources("v1").entrySet())
       lines.add(entry(fixture.getKey(), fixture.getValue()));
-    for (var template : ProgramTemplates.ALL)
+    // The seven v1 templates; later (v2, D9) templates are not v1 programs and are not pinned.
+    for (var template : ProgramTemplates.ALL.subList(0, V1_TEMPLATES))
       lines.add(entry("template " + template.name(), template.source()));
     return String.join("\n", lines) + "\n";
   }

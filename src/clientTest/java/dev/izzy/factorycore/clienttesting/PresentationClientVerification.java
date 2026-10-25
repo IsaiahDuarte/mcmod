@@ -1976,6 +1976,36 @@ public final class PresentationClientVerification {
     upgrade(base.east(3), ThroughputTier.ENDGAME, true);
     use(base.east(5), Direction.SOUTH, false);
     scales("program", ProgramScreen.class, false);
+    // D9: the editor highlights language-v2 keywords (else, has, side, emit, redstone, ...).
+    step(
+        client -> {
+          if (client.screen != null) client.screen.onClose();
+          return client.screen == null && waited() > 4;
+        });
+    server(
+        player ->
+            ((dev.izzy.factorycore.platform.program.ProgramControllerEntity)
+                    player.serverLevel().getBlockEntity(base.east(5)))
+                .draft(dev.izzy.factorycore.core.program.ProgramTemplates.ALL.get(9).source()));
+    use(base.east(5), Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof ProgramScreen) || waited() < 10) return false;
+          setScale(client, 4);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 8) return false;
+          evidence
+              .append("fit program-v2 scale=4: ")
+              .append(checkFits(client, client.screen))
+              .append('\n');
+          captures.grab(client, "program-v2-scale-4.png");
+          setScale(client, 2);
+          client.screen.onClose();
+          return true;
+        });
     // Plain use opens the gateway; sneak-use would pair its link (ADR 0061).
     use(base.east(7), Direction.SOUTH, false);
     step(

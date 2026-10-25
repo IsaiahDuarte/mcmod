@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 class ProgramTemplatesTest {
   @Test
   void everyTemplateCompilesWithAStableNamedRule() {
-    assertEquals(7, ProgramTemplates.ALL.size());
+    assertEquals(10, ProgramTemplates.ALL.size(), "Seven v1 templates and three v2 (D9)");
     for (var template : ProgramTemplates.ALL) {
       var result = FriendlyCompiler.compile(template.source());
       assertTrue(result.ok(), () -> template.name() + ": " + result.diagnostics());

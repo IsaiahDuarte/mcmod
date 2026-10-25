@@ -58,4 +58,18 @@ class ProgramSyntaxTest {
     assertEquals("minecraft:wat", ProgramCompletion.at("fluid(\"minecraft:wat", 20).prefix());
     assertThrows(IllegalArgumentException.class, () -> ProgramCompletion.at("", 1));
   }
+
+  @org.junit.jupiter.api.Test
+  void languageV2KeywordsAreHighlighted() {
+    var source =
+        "if f has < 8 of item(\"coal\") and not redstone(m) { emit redstone 1 on machines(\"a\") } else { move energy from f side up slots 0..1 to storage }";
+    var keywords = new java.util.HashSet<String>();
+    for (var span : ProgramSyntax.spans(source))
+      if (span.kind() == ProgramSyntax.Kind.KEYWORD)
+        keywords.add(source.substring(span.start(), span.end()));
+    for (var word :
+        java.util.List.of(
+            "if", "has", "and", "not", "redstone", "emit", "on", "else", "side", "up", "slots"))
+      org.junit.jupiter.api.Assertions.assertTrue(keywords.contains(word), word);
+  }
 }

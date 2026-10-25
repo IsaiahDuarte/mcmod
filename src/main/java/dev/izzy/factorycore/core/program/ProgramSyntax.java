@@ -6,12 +6,53 @@ import java.util.Set;
 
 /** Display-only lexer. Invalid and unfinished source stays editable; compilation owns validity. */
 public final class ProgramSyntax {
-  private static final Set<String> KEYWORDS =
-      Set.of(
-          "every", "ticks", "seconds", "as", "for", "in", "keep", "stocked", "with", "of", "from",
-          "to", "storage", "move", "limit", "craft", "if", "log");
-  private static final Set<String> CALLS =
-      Set.of("item", "fluid", "energy", "tag", "stock", "machines");
+  /**
+   * Highlighted and offered by the editor's keyword picker, v1 then language v2 (ADR 0062). The
+   * compiler owns which words are reserved; this list is display-only.
+   */
+  public static final java.util.List<String> KEYWORD_WORDS =
+      java.util.List.of(
+          "every",
+          "ticks",
+          "seconds",
+          "as",
+          "for",
+          "in",
+          "keep",
+          "stocked",
+          "with",
+          "of",
+          "from",
+          "to",
+          "storage",
+          "move",
+          "limit",
+          "craft",
+          "if",
+          "log",
+          "else",
+          "and",
+          "or",
+          "not",
+          "has",
+          "side",
+          "slots",
+          "down",
+          "up",
+          "north",
+          "south",
+          "west",
+          "east",
+          "emit",
+          "redstone",
+          "on",
+          "except");
+
+  public static final java.util.List<String> CALL_WORDS =
+      java.util.List.of("item", "fluid", "energy", "tag", "stock", "machines");
+
+  private static final Set<String> KEYWORDS = Set.copyOf(KEYWORD_WORDS);
+  private static final Set<String> CALLS = Set.copyOf(CALL_WORDS);
 
   public enum Kind {
     TEXT,

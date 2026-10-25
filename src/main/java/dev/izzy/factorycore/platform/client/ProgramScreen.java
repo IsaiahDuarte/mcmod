@@ -219,32 +219,9 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
           case 2 ->
               menu.authorView() == null ? Stream.empty() : menu.authorView().labels().stream();
           default ->
-              List.of(
-                  "every",
-                  "ticks",
-                  "seconds",
-                  "as",
-                  "for",
-                  "in",
-                  "machines",
-                  "keep",
-                  "stocked",
-                  "with",
-                  "of",
-                  "from",
-                  "storage",
-                  "move",
-                  "to",
-                  "limit",
-                  "craft",
-                  "if",
-                  "stock",
-                  "item",
-                  "fluid",
-                  "tag",
-                  "energy",
-                  "log")
-                  .stream();
+              Stream.concat(
+                  dev.izzy.factorycore.core.program.ProgramSyntax.KEYWORD_WORDS.stream(),
+                  dev.izzy.factorycore.core.program.ProgramSyntax.CALL_WORDS.stream());
         };
     options =
         values.filter(value -> value.toLowerCase(Locale.ROOT).contains(needle)).sorted().toList();
