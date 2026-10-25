@@ -638,7 +638,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         if (item != null) graphics.renderItem(item.getDefaultInstance(), leftPos + JOBS_X, y);
         graphics.drawString(
             font,
-            font.plainSubstrByWidth(row.done() + "/" + row.total() + " " + glyph(row.state()), 44),
+            font.plainSubstrByWidth(
+                compact(Long.toString(row.done()))
+                    + "/"
+                    + compact(Long.toString(row.total()))
+                    + " "
+                    + glyph(row.state()),
+                44),
             leftPos + JOBS_X + 18,
             y + 4,
             row.reason().isEmpty() ? 0xc9dbed : 0xe4bc83,
@@ -783,13 +789,19 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /**
-   * Vanilla's overlay depth prevents 3D icons from hiding the count; its shadow stays in the cell.
+   * Draws the count in the slot's bottom-right corner above the icon (vanilla's overlay depth keeps
+   * 3D block icons from hiding it). From GUI scale 2 the text is half size, as in AE2/RS, so it
+   * covers only the corner; at scale 1 half-size glyphs would be under one pixel, so it stays full
+   * size and shrinks only to fit the cell.
    */
   private void renderCount(
       GuiGraphics graphics, net.minecraft.world.item.ItemStack shown, int x, int y, String count) {
-    float countScale = Math.min(1f, 17f / (font.width(count) + 1));
+    double guiScale = minecraft == null ? 1 : minecraft.getWindow().getGuiScale();
+    float fit = 16f / Math.max(1, font.width(count));
+    float countScale = Math.min(guiScale >= 2 ? 0.5f : 1f, fit);
     graphics.pose().pushPose();
-    graphics.pose().translate(x + 17 - 17 * countScale, y + 8 - 9 * countScale, 0);
+    // renderItemDecorations draws the text ending at (17, 17); pin that corner to the cell's.
+    graphics.pose().translate(x + 17 - 17 * countScale, y + 17 - 17 * countScale, 0);
     graphics.pose().scale(countScale, countScale, 1);
     graphics.renderItemDecorations(font, shown, 0, 0, count);
     graphics.pose().popPose();
@@ -830,14 +842,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   private static String compact(String decimal) {
-    BigInteger number = new BigInteger(decimal);
-    String[] suffix = {"", "k", "M", "G", "T", "P", "E", "Z", "Y"};
-    int step = 0;
-    while (number.compareTo(BigInteger.valueOf(1000)) >= 0 && step < suffix.length - 1) {
-      number = number.divide(BigInteger.valueOf(1000));
-      step++;
-    }
-    return number + suffix[step];
+    return CountText.compact(decimal);
   }
 
   @Override

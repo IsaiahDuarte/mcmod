@@ -89,7 +89,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
 
 ## Wave 0 — quick wins (no gate)
 
-- [ ] **P1 — Readable counts (G1).** Size S. Lane T.
+- [x] **P1 — Readable counts (G1).** Size S. Lane T.
   Draw counts in a half-scale font, right-aligned in the slot's bottom-right corner, with
   a shadow, as AE2/RS do. Same for fluid mB and job chips. Keep the exact count in the
   tooltip.
@@ -97,6 +97,10 @@ view cells, portable cells and cross-dimension links. See Wave G.
   Done when: the presentation tour shows legible 1k/989k/1.0M at scales 1–4 with no
   overlap on 3D block icons; a client-side unit test covers `compact` boundaries
   (999, 1,000, 999,999, 1,000,000, Long.MAX).
+  Evidence: `CountTextTest`; `build/reports/client-presentation/screenshots/terminal-scale-4.png`
+  shows 1.2k/999k/64 in the corner clear of the icons. From GUI scale 2 counts are half size;
+  at scale 1 they stay full size (half-size glyphs would be under one pixel) and shrink to fit.
+  Counts are truncated, never rounded up (`1.0k`, `989k`, `9.2E`).
 
 - [ ] **P2 — Sort and fluid icons (G15).** Size S. Lane T.
   Add **Mod** sort and an ascending/descending toggle, saved with the existing per-player
