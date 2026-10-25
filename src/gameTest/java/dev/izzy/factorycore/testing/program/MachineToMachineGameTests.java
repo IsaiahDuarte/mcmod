@@ -291,4 +291,38 @@ public final class MachineToMachineGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Regression: a run that came due while the network was rebuilding (a nearby chunk load, any
+   * edit) paused the program for good as "Deployer lost Deploy permission". It now skips the run.
+   */
+  @GameTest(template = "empty", timeoutTicks = 800)
+  public static void rebuildsWhileRunningNeverPauseTheProgram(GameTestHelper h) {
+    var f = setup(h, 20);
+    var controllerAt = h.absolutePos(CONTROLLER);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h))
+        .thenExecute(() -> label(h, f, f.source, "furnace", 3))
+        .thenWaitUntil(() -> ready(h))
+        .thenExecute(() -> label(h, f, f.target, "chest", 27))
+        .thenWaitUntil(() -> ready(h))
+        .thenExecute(() -> deploy(h, f))
+        .thenExecuteFor(
+            60,
+            () ->
+                dev.izzy.factorycore.platform.network.WorldNetworks.changed(
+                    h.getLevel(), controllerAt))
+        .thenWaitUntil(
+            () -> {
+              h.assertTrue(
+                  f.controller.state() == ProgramControllerEntity.State.RUNNING,
+                  "Still running after rebuilds: "
+                      + f.controller.state()
+                      + " "
+                      + f.controller.logs());
+              conserved(h, f, 20);
+              h.assertTrue(f.ingots(f.chest) == 20, "And it keeps moving");
+            })
+        .thenSucceed();
+  }
 }

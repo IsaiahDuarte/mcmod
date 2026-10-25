@@ -308,6 +308,13 @@ public final class WorldPrograms {
     Long dueAt = runtime.scheduled.remove(rule.key());
     long lag = dueAt == null ? 0 : Math.max(0, server.getTickCount() - dueAt);
     var actor = deployer(controller);
+    // A network that is offline or rebuilding (for example after a nearby chunk loads) says
+    // nothing about the deployer's grants: skip this run and retry at the next interval.
+    if (!controller.current()
+        || networks().membership(controller.origin()).status() != NetworkTopology.Status.VALID) {
+      runtime.status = "offline";
+      return;
+    }
     if (!allowed(actor, controller)) {
       controller.state(ProgramControllerEntity.State.PAUSED, "Deployer lost Deploy permission");
       releaseSignals(controller);
