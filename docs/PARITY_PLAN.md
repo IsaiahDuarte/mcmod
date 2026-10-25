@@ -80,12 +80,12 @@ view cells, portable cells and cross-dimension links. See Wave G.
 
 | Gate | Question | Recommendation | Status |
 | --- | --- | --- | --- |
-| PD1 | How does redstone enter the mod? (a) a new **Signal** mode on the Interface (no container needed: emits redstone by a stock/crafting condition), plus a redstone setting on Machine/Buffer presets; or (b) a separate Level Emitter-style block. Amends SPEC R02. | (a): keeps the block count down after UD1 | Open |
-| PD2 | Unfreeze the friendly language for a **version 2** that is a superset of version 1 (every v1 program compiles unchanged), with additive `factory_v1` Wasm imports rather than a new ABI? Amends ADR 0035/0037 and SPEC R07's examples. | Yes, superset + additive imports | Open |
-| PD3 | Labelling model. (a) Keep one Interface per machine, and add a **Label Tool** that applies a label, and optionally copies Interface settings, to many Interfaces quickly; or (b) SFM-style: a labelled machine needs only to touch a cable, no Interface. (b) changes SPEC R02/R04 discovery and authority rules. | (a) now; revisit (b) after the playtest | Open |
-| PD4 | Allow opt-in tag **substitution** in crafting-table patterns (inputs chosen from current stock at reservation time; the recipe is revalidated before crafting)? Processing patterns stay exact. Amends SPEC R06 and ADR 0029/0030. | Yes, crafting patterns only, per-pattern toggle | Open |
-| PD5 | How do crafting workers scale (R11)? (a) Throughput/Overdrive upgrades installed in a Crafter raise its crafts per dispatch and concurrent jobs; or (b) a new Crafting Core block shared by the network. | (a): reuses existing items and ADR 0054 rules | Open |
-| PD6 | Add world-interaction blocks (place, break, pick up, drop) in this release? | No; keep as Later | Open |
+| PD1 | How does redstone enter the mod? (a) a new **Signal** mode on the Interface (no container needed: emits redstone by a stock/crafting condition), plus a redstone setting on Machine/Buffer presets; or (b) a separate Level Emitter-style block. Amends SPEC R02. | (a): keeps the block count down after UD1 | Resolved 2026-10-25: (a) Signal mode |
+| PD2 | Unfreeze the friendly language for a **version 2** that is a superset of version 1 (every v1 program compiles unchanged), with additive `factory_v1` Wasm imports rather than a new ABI? Amends ADR 0035/0037 and SPEC R07's examples. | Yes, superset + additive imports | Resolved 2026-10-25: yes, superset + additive imports |
+| PD3 | Labelling model. (a) Keep one Interface per machine, and add a **Label Tool** that applies a label, and optionally copies Interface settings, to many Interfaces quickly; or (b) SFM-style: a labelled machine needs only to touch a cable, no Interface. (b) changes SPEC R02/R04 discovery and authority rules. | (a) now; revisit (b) after the playtest | Resolved 2026-10-25: (a) Label Tool |
+| PD4 | Allow opt-in tag **substitution** in crafting-table patterns (inputs chosen from current stock at reservation time; the recipe is revalidated before crafting)? Processing patterns stay exact. Amends SPEC R06 and ADR 0029/0030. | Yes, crafting patterns only, per-pattern toggle | Resolved 2026-10-25: yes, crafting patterns, per-pattern toggle |
+| PD5 | How do crafting workers scale (R11)? (a) Throughput/Overdrive upgrades installed in a Crafter raise its crafts per dispatch and concurrent jobs; or (b) a new Crafting Core block shared by the network. | (a): reuses existing items and ADR 0054 rules | Resolved 2026-10-25: (a) Crafter upgrades |
+| PD6 | Add world-interaction blocks (place, break, pick up, drop) in this release? | No; keep as Later | Resolved 2026-10-25: yes; each Wave G feature still gets its own gate and ADR |
 
 ## Wave 0 — quick wins (no gate)
 
@@ -451,7 +451,7 @@ to identical IR (a fixture test pins this).
   and SHA256SUMS. G1–G7, G15 and G16 are closed. G8–G14 wait on PD1–PD5, and G17 waits on V1.
   B4: 2ce3929.
 
-## Wave G — Later (only if PD6 says yes)
+## Wave G — world interaction (PD6: yes)
 
 World-interaction modes (place, break, pick up, drop items), view cells, portable cells
 and cross-dimension links. Each needs its own gate and ADR.
