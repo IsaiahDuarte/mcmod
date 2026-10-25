@@ -95,8 +95,12 @@ public final class ProgramPreview {
               + filter(move.filter())
               + " "
               + (move.from() == null
-                  ? "storage -> " + names.getOrDefault(move.to(), String.valueOf(move.to()))
-                  : names.getOrDefault(move.from(), String.valueOf(move.from())) + " -> storage");
+                  ? "storage"
+                  : names.getOrDefault(move.from(), String.valueOf(move.from())))
+              + " -> "
+              + (move.to() == null
+                  ? "storage"
+                  : names.getOrDefault(move.to(), String.valueOf(move.to())));
       case ProgramCommand.Craft craft -> "Craft " + craft.amount() + " " + craft.item();
       case ProgramCommand.Log log -> "Log: " + log.text();
     };

@@ -3,7 +3,7 @@
 Status: accepted 2026-10-25 (PD2: v2 is a strict superset of v1; Wasm gains additive
 `factory_v1` imports). Grammar, limits and diagnostics are frozen here before parser work.
 Slices D2–D6 implement it, and each one is complete only when its fixtures in
-`src/test/resources/program/v2/` compile and run. Implemented so far: D2.
+`src/test/resources/program/v2/` compile and run. Implemented so far: D2, D3.
 
 ## Context
 
@@ -64,13 +64,20 @@ allowed. v1's `if stock(f) CMP INT { … }` is the `atom` form and produces the 
   evaluator emits one move per (source, target) pair in stable order. A label × label
   product above 64 pairs is a trap.
 - **Side and slots (D3).** `side` names the face of the *machine* that the access uses. The
-  Interface must still touch that machine; `side` replaces only the capability face. If a
-  binding is face-locked by its settings, a different face is refused, never guessed.
-  `slots A..B` (inclusive, zero-based, `slots A` means one slot) must lie inside the
-  Interface's bound slot window. It narrows that window and never widens it. A range
-  outside the window, or one that overlaps an ADR 0053 fixed partition held by a job, is
-  refused at run time with a visible reason. The compiler checks only that 0 ≤ A ≤ B <
-  1,024.
+  Interface must still touch that machine; `side` replaces only the capability face.
+  `slots A..B` (inclusive, zero-based, `slots A` means one slot) are positions in the slot
+  list of the face actually used. Sided containers re-index their slots per face (a vanilla
+  furnace's top shows one slot, its input). On the Interface's own face, the range must lie
+  inside its bound window: it narrows the window and never widens it. A *different* face
+  is allowed only when the Interface is bound to every slot of its own face, meaning the
+  player allowed the whole container. A narrowed binding cannot be mapped onto another
+  face's numbering, so it is refused, never guessed. A provider with ADR 0053 fixed
+  partitions refuses both, because its backing identity depends on the window. Every
+  refusal is a visible log reason at run time. The compiler checks only that 0 ≤ A ≤ B <
+  1,024. A view shares the binding's backing, rate budget, access mode and processing
+  lease. A transfer that has to resume from its saved context after an interruption uses
+  the Interface's own face and window, and an item that cannot go back there stays staged
+  and visible.
 - **Conditions (D4).** Evaluation short-circuits left to right. `stock` is one host query.
   `target has CMP N of filter` sums the matching contents of every selected machine. Its
   cost is one host query per machine plus one per extra observation page, and it counts

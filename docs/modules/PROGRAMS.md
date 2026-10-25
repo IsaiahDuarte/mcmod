@@ -136,7 +136,10 @@ language: moves between two machines, `side`/`slots` per endpoint, `else`/`and`/
 D2, moves between two machines (`WorldPrograms.between`: one guarded External→External
 transfer per pair, at most one stack, the lower of the two Interface rates, a processing
 lease on either end refuses as busy, and neither end may hold an unresolved transfer).
-The rest is not implemented yet. `src/test/resources/program/v2/` holds one fixture per form and
+D3, `side`/`slots` per endpoint (`ProgramIr.MachineAt`,
+`ProgramCommand.Access`, `WorldConnectors.View`: same backing, rate, access and lease as the
+binding; refused with a logged reason outside the window, on another face of a narrowed
+binding, or on a partitioned provider). The rest is not implemented yet. `src/test/resources/program/v2/` holds one fixture per form and
 names the slice (D2–D6) that must make it compile. `FriendlyV1PinTest` fails if one
 compiles early, or if any v1 program's IR changes.
 

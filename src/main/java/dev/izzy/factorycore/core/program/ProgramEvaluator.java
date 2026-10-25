@@ -102,6 +102,21 @@ public final class ProgramEvaluator {
     return machines(((ProgramIr.Label) target).label());
   }
 
+  /** Storage is one null endpoint; a machine place resolves its target. */
+  private List<UUID> endpoint(ProgramIr.Place place, Map<String, UUID> scope) {
+    return switch (place) {
+      case ProgramIr.Storage storage -> java.util.Collections.singletonList(null);
+      case ProgramIr.Machine machine -> resolve(machine.target(), scope);
+      case ProgramIr.MachineAt machine -> resolve(machine.target(), scope);
+    };
+  }
+
+  private static ProgramCommand.Access access(ProgramIr.Place place) {
+    return place instanceof ProgramIr.MachineAt at
+        ? new ProgramCommand.Access(at.side(), at.first(), at.last())
+        : null;
+  }
+
   private void run(List<ProgramIr.Statement> body, Map<String, UUID> scope) {
     for (var statement : body) {
       step();
@@ -119,23 +134,19 @@ public final class ProgramEvaluator {
             emit(new ProgramCommand.Keep(machine, keep.filter(), keep.amount()));
         }
         case ProgramIr.Move move -> {
-          if (move.from() instanceof ProgramIr.Machine from
-              && move.to() instanceof ProgramIr.Machine to) {
-            var sources = resolve(from.target(), scope);
-            var targets = resolve(to.target(), scope);
-            if ((long) sources.size() * targets.size() > MAX_MOVE_PAIRS)
-              throw new Trap(
-                  "A machine-to-machine move pairs more than " + MAX_MOVE_PAIRS + " machines");
-            for (var source : sources)
-              for (var target : targets)
-                if (!source.equals(target))
-                  emit(new ProgramCommand.Move(move.filter(), source, target, move.limit()));
-          } else if (move.from() instanceof ProgramIr.Machine from)
-            for (var machine : resolve(from.target(), scope))
-              emit(new ProgramCommand.Move(move.filter(), machine, null, move.limit()));
-          else
-            for (var machine : resolve(((ProgramIr.Machine) move.to()).target(), scope))
-              emit(new ProgramCommand.Move(move.filter(), null, machine, move.limit()));
+          var sources = endpoint(move.from(), scope);
+          var targets = endpoint(move.to(), scope);
+          var fromAccess = access(move.from());
+          var toAccess = access(move.to());
+          if ((long) sources.size() * targets.size() > MAX_MOVE_PAIRS)
+            throw new Trap(
+                "A machine-to-machine move pairs more than " + MAX_MOVE_PAIRS + " machines");
+          for (var source : sources)
+            for (var target : targets)
+              if (source == null || !source.equals(target))
+                emit(
+                    new ProgramCommand.Move(
+                        move.filter(), source, target, move.limit(), fromAccess, toAccess));
         }
         case ProgramIr.Craft craft -> emit(new ProgramCommand.Craft(craft.item(), craft.amount()));
         case ProgramIr.If condition -> {

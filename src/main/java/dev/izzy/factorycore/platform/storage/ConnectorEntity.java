@@ -460,6 +460,21 @@ public class ConnectorEntity extends BlockEntity
     return cache.getCapability();
   }
 
+  /**
+   * D3 (ADR 0062): the same target block's capability seen from {@code face} of that block, looked
+   * up afresh (uncached) for one statement. Null when it exposes none there.
+   */
+  public Object capabilityAt(Direction face) {
+    validatePlaced();
+    var target = worldPosition.relative(targetDirection());
+    var server = serverLevel();
+    return switch (settings().kind()) {
+      case ITEM -> server.getCapability(Capabilities.ItemHandler.BLOCK, target, face);
+      case FLUID -> server.getCapability(Capabilities.FluidHandler.BLOCK, target, face);
+      case ENERGY -> server.getCapability(Capabilities.EnergyStorage.BLOCK, target, face);
+    };
+  }
+
   private void invalidated() {
     providerToken = UUID.randomUUID();
     WorldNetworks.connectorInvalidated(level, this);

@@ -234,7 +234,9 @@ final class TransferEndpoints {
       delegate =
           endpoint instanceof Digital digital
               ? new Port(digital.handle())
-              : networks.connectors().port(((External) endpoint).handle());
+              : networks
+                  .connectors()
+                  .port(((External) endpoint).handle(), ((External) endpoint).view());
     return routedPort(endpoint, origin, delegate);
   }
 

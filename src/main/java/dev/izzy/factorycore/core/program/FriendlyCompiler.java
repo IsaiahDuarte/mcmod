@@ -82,7 +82,16 @@ public final class FriendlyCompiler {
           "item",
           "fluid",
           "tag",
-          "energy");
+          "energy",
+          // ADR 0062 (D3)
+          "side",
+          "slots",
+          "down",
+          "up",
+          "north",
+          "south",
+          "west",
+          "east");
 
   private final List<Token> tokens = new ArrayList<>();
   private final List<Diagnostic> diagnostics = new ArrayList<>();
@@ -185,7 +194,7 @@ public final class FriendlyCompiler {
         tokens.add(new Token(Kind.STRING, text.toString(), 0, line, startColumn));
       } else {
         String symbol = null;
-        for (var candidate : List.of("<=", ">=", "==", "{", "}", "(", ")", "<", ">"))
+        for (var candidate : List.of("..", "<=", ">=", "==", "{", "}", "(", ")", "<", ">"))
           if (source.startsWith(candidate, index)) {
             symbol = candidate;
             break;
@@ -348,7 +357,11 @@ public final class FriendlyCompiler {
       case "for" -> {
         next();
         var name = peek();
-        if (name.kind != Kind.WORD || KEYWORDS.contains(name.text))
+        if (name.kind == Kind.WORD && KEYWORDS.contains(name.text))
+          throw new SyntaxError(
+              name,
+              "'" + name.text + "' is a reserved word; name the machine variable something else");
+        if (name.kind != Kind.WORD)
           throw new SyntaxError(name, "Expected a machine variable name after 'for'");
         next();
         if (variables.contains(name.text))
@@ -467,9 +480,57 @@ public final class FriendlyCompiler {
   private ProgramIr.Place place(Set<String> variables) {
     if (at("storage")) {
       next();
+      var after = peek();
+      if (at("side") || at("slots"))
+        throw new SyntaxError(after, "Storage has no side or slots; only a machine does");
       return new ProgramIr.Storage();
     }
-    return new ProgramIr.Machine(target(variables));
+    var target = target(variables);
+    ProgramIr.Side side = null;
+    int first = -1, last = -1;
+    // D3 (ADR 0062): an endpoint may name the machine block's face and a slot range.
+    if (at("side")) {
+      next();
+      var token = next();
+      side =
+          switch (token.text) {
+            case "down" -> ProgramIr.Side.DOWN;
+            case "up" -> ProgramIr.Side.UP;
+            case "north" -> ProgramIr.Side.NORTH;
+            case "south" -> ProgramIr.Side.SOUTH;
+            case "west" -> ProgramIr.Side.WEST;
+            case "east" -> ProgramIr.Side.EAST;
+            default ->
+                throw new SyntaxError(
+                    token,
+                    "A side is down, up, north, south, west or east, not " + describe(token));
+          };
+    }
+    if (at("slots")) {
+      next();
+      first = slot();
+      last = first;
+      if (at("..")) {
+        next();
+        var token = peek();
+        last = slot();
+        if (last < first)
+          throw new SyntaxError(token, "A slot range runs from the lower slot to the higher one");
+      }
+    }
+    return side == null && first < 0
+        ? new ProgramIr.Machine(target)
+        : new ProgramIr.MachineAt(target, side, first, last);
+  }
+
+  private int slot() {
+    var token = peek();
+    if (token.kind != Kind.INT)
+      throw new SyntaxError(token, "Expected a slot number (0 is the first slot)");
+    next();
+    if (token.value > ProgramIr.MAX_SLOT)
+      throw new SyntaxError(token, "A slot number is at most " + ProgramIr.MAX_SLOT);
+    return (int) token.value;
   }
 
   private static String registry(String id, Token at) {

@@ -65,6 +65,175 @@ public final class WorldConnectors {
 
   public record Registration(OperationResult.Reason reason, Handle handle) {}
 
+  /**
+   * D3 (ADR 0062): one statement's access to a bound machine through {@code face} of the target
+   * block and slots (or tanks) {@code first}..{@code first + count - 1}, which must lie inside the
+   * Interface's bound window. It shares the binding's backing identity, rate budgets, access mode
+   * and processing lease, so staging and recovery are unchanged; it is refused for a partitioned
+   * (ADR 0053) provider, whose backing depends on its window.
+   */
+  public record View(Direction face, int first, int count) {
+    public View {
+      Objects.requireNonNull(face);
+      if (first < 0 || count <= 0 || count > 1024)
+        throw new IllegalArgumentException("Invalid machine view");
+    }
+  }
+
+  /** Why {@code view} cannot be used on {@code handle} right now, or OK. */
+  public OperationResult.Reason viewable(Handle handle, View view) {
+    checkThread();
+    var binding = current(handle);
+    if (binding == null) return OperationResult.Reason.OFFLINE;
+    var settings = binding.owner.settings();
+    if (binding.indexed || settings.wholeFluidHandler() && view.count() != settings.slotCount())
+      return OperationResult.Reason.UNSUPPORTED;
+    if (handle.kind() == ResourceKind.ENERGY)
+      return viewDelegate(binding, view) == null
+          ? OperationResult.Reason.UNSUPPORTED
+          : OperationResult.Reason.OK;
+    if (view.face() == binding.face.getOpposite())
+      // The Interface's own face: slots narrow its bound window and never widen it.
+      return (long) view.first() < settings.firstSlot()
+              || (long) view.first() + view.count()
+                  > (long) settings.firstSlot() + settings.slotCount()
+          ? OperationResult.Reason.WRONG_RESOURCE
+          : OperationResult.Reason.OK;
+    // Another face re-indexes a sided container's slots, so a narrowed binding cannot be mapped
+    // onto it: only an Interface bound to every slot of its own face may use another side.
+    if (settings.firstSlot() != 0 || settings.slotCount() < slots(binding.handler, handle.kind()))
+      return OperationResult.Reason.RESERVED;
+    Object other;
+    try {
+      other = binding.owner.capabilityAt(view.face());
+    } catch (RuntimeException fault) {
+      return OperationResult.Reason.UNSUPPORTED;
+    }
+    if (other == null) return OperationResult.Reason.UNSUPPORTED;
+    return (long) view.first() + view.count() > slots(other, handle.kind())
+        ? OperationResult.Reason.WRONG_RESOURCE
+        : OperationResult.Reason.OK;
+  }
+
+  /** Slots (or tanks) {@code handle}'s machine shows on {@code face}; 0 when none or offline. */
+  public int faceSlots(Handle handle, Direction face) {
+    checkThread();
+    var binding = current(handle);
+    if (binding == null || handle.kind() == ResourceKind.ENERGY) return 0;
+    try {
+      var handler = binding.owner.capabilityAt(face);
+      return handler == null ? 0 : Math.min(1024, slots(handler, handle.kind()));
+    } catch (RuntimeException fault) {
+      return 0;
+    }
+  }
+
+  private static int slots(Object handler, ResourceKind kind) {
+    return kind == ResourceKind.ITEM
+        ? ((IItemHandler) handler).getSlots()
+        : ((IFluidHandler) handler).getTanks();
+  }
+
+  private ResourcePort viewDelegate(Binding binding, View view) {
+    if (view.face() == binding.face.getOpposite()
+        && view.first() == binding.owner.settings().firstSlot()
+        && view.count() == binding.owner.settings().slotCount()) return binding.delegate;
+    Object handler;
+    try {
+      handler = binding.owner.capabilityAt(view.face());
+    } catch (RuntimeException fault) {
+      return null;
+    }
+    if (handler == null) return null;
+    var codec = new PlatformResourceCodec(binding.owner.serverLevel().registryAccess());
+    var backing = binding.handle.backing();
+    return switch (binding.handle.kind()) {
+      case ITEM -> {
+        var items = (IItemHandler) handler;
+        int count = Math.min(view.count(), items.getSlots() - view.first());
+        yield count <= 0 ? null : new ItemHandlerPort(backing, items, codec, view.first(), count);
+      }
+      case FLUID ->
+          new FluidHandlerPort(backing, (IFluidHandler) handler, codec, view.first(), view.count());
+      case ENERGY -> new EnergyHandlerPort(backing, (IEnergyStorage) handler);
+    };
+  }
+
+  /** A port through {@code view}, with every check of the binding's own port (see {@link View}). */
+  public ResourcePort port(Handle handle, View view) {
+    if (view == null) return port(handle);
+    checkThread();
+    var binding = current(handle);
+    if (binding == null || viewable(handle, view) != OperationResult.Reason.OK)
+      throw new IllegalStateException("Unavailable machine view");
+    var delegate = viewDelegate(binding, view);
+    return new ResourcePort() {
+      @Override
+      public UUID backingId() {
+        return handle.backing();
+      }
+
+      @Override
+      public long simulateInsert(ResourceKey key, long amount) {
+        return change(binding, delegate, key, amount, true, true, null, false);
+      }
+
+      @Override
+      public long insert(ResourceKey key, long amount) {
+        return change(binding, delegate, key, amount, true, false, null, false);
+      }
+
+      @Override
+      public long extract(ResourceKey key, long amount) {
+        return change(binding, delegate, key, amount, false, false, null, false);
+      }
+    };
+  }
+
+  /**
+   * As {@link #observe(NetworkPermissions.Actor, NodeRegistry.Position, Handle, int)} through a
+   * view.
+   */
+  public Observation observe(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      Handle handle,
+      View view,
+      int cursor) {
+    if (view == null) return observe(actor, origin, handle, cursor);
+    checkThread();
+    var reason = viewable(handle, view);
+    if (reason != OperationResult.Reason.OK) return new Observation(reason, null);
+    var identity = catalogIdentity(handle.kind());
+    if (!allowed(actor, origin, handle, identity, NetworkPermissions.Permission.VIEW))
+      return new Observation(OperationResult.Reason.DENIED, null);
+    var binding = current(handle);
+    if (calling || probing) return new Observation(OperationResult.Reason.DENIED, null);
+    Object handler;
+    try {
+      handler = binding.owner.capabilityAt(view.face());
+    } catch (RuntimeException fault) {
+      return new Observation(OperationResult.Reason.HANDLER_FAULT, null);
+    }
+    if (handler == null) return new Observation(OperationResult.Reason.UNSUPPORTED, null);
+    calling = true;
+    try {
+      var page =
+          ExternalStockPage.read(
+              handle.kind(),
+              handler,
+              new PlatformResourceCodec(binding.owner.serverLevel().registryAccess()),
+              view.first(),
+              Math.min(view.count(), 64),
+              cursor);
+      return new Observation(OperationResult.Reason.OK, page);
+    } catch (RuntimeException fault) {
+      return new Observation(OperationResult.Reason.HANDLER_FAULT, null);
+    } finally {
+      calling = false;
+    }
+  }
+
   /** Discover only a currently authorized loaded canonical connector; never loads chunks. */
   public Registration discover(
       NetworkPermissions.Actor actor,
@@ -868,6 +1037,20 @@ public final class WorldConnectors {
       boolean simulate,
       UUID claimOwner,
       boolean ownedReturn) {
+    return change(
+        binding, binding.delegate, key, requested, insertion, simulate, claimOwner, ownedReturn);
+  }
+
+  /** {@code port} is the binding's own delegate, or a D3 view's over the same backing. */
+  private long change(
+      Binding binding,
+      ResourcePort port,
+      ResourceKey key,
+      long requested,
+      boolean insertion,
+      boolean simulate,
+      UUID claimOwner,
+      boolean ownedReturn) {
     checkThread();
     if (calling)
       throw new IllegalStateException("Foreign ports cannot reenter mutation or simulation");
@@ -900,18 +1083,16 @@ public final class WorldConnectors {
     LongSupplier call =
         () ->
             insertion
-                ? simulate
-                    ? binding.delegate.simulateInsert(key, offered)
-                    : binding.delegate.insert(key, offered)
+                ? simulate ? port.simulateInsert(key, offered) : port.insert(key, offered)
                 : claimOwner != null
                         || saved.externalClaims().reserved(binding.handle.backing(), key) > 0
                     ? new ExternalClaimPort(
-                            binding.delegate,
+                            port,
                             saved.externalClaims(),
                             claimOwner,
                             resource -> freshTotal(binding, resource))
                         .extract(key, offered)
-                    : binding.delegate.extract(key, offered);
+                    : port.extract(key, offered);
     if (!simulate) {
       budget[direction] += amount;
       local[direction] += amount;

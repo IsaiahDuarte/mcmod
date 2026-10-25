@@ -512,7 +512,16 @@ public final class WorldPrograms {
     long missing = Math.min(keep.amount() - stock.amount(), owner.settings().rate());
     if (missing <= 0) return;
     fromStorage(
-        controller, runtime, actor, owner, registration.handle(), keep.filter(), missing, null, 0);
+        controller,
+        runtime,
+        actor,
+        owner,
+        registration.handle(),
+        null,
+        keep.filter(),
+        missing,
+        null,
+        0);
   }
 
   /** Log text for a refused operation; contention reasons say what holds the resource (A08). */
@@ -551,12 +560,15 @@ public final class WorldPrograms {
       return;
     }
     var handle = registration.handle();
+    var view =
+        view(controller, owner, handle, move.to() != null ? move.toAccess() : move.fromAccess());
+    if (view == REFUSED) return;
     long limit = Math.min(move.limit(), owner.settings().rate());
     if (move.to() != null) {
-      fromStorage(controller, runtime, actor, owner, handle, move.filter(), limit, null, 0);
+      fromStorage(controller, runtime, actor, owner, handle, view, move.filter(), limit, null, 0);
       return;
     }
-    var observation = networks().connectors().observe(actor, owner.position(), handle, 0);
+    var observation = networks().connectors().observe(actor, owner.position(), handle, view, 0);
     if (observation.reason() != OperationResult.Reason.OK) {
       controller.log("move " + owner.label() + ": " + name(observation.reason()));
       return;
@@ -569,6 +581,7 @@ public final class WorldPrograms {
             actor,
             owner,
             handle,
+            view,
             entry.key(),
             Math.min(limit, entry.stored()),
             WorldStorageRoutes.Direction.TO_STORAGE);
@@ -608,7 +621,11 @@ public final class WorldPrograms {
         return;
       }
     }
-    var observation = networks().connectors().observe(actor, source.position(), from.handle(), 0);
+    var fromView = view(controller, source, from.handle(), move.fromAccess());
+    var toView = view(controller, target, to.handle(), move.toAccess());
+    if (fromView == REFUSED || toView == REFUSED) return;
+    var observation =
+        networks().connectors().observe(actor, source.position(), from.handle(), fromView, 0);
     if (observation.reason() != OperationResult.Reason.OK) {
       controller.log("move " + source.label() + ": " + name(observation.reason()));
       return;
@@ -637,8 +654,8 @@ public final class WorldPrograms {
                   id,
                   actor,
                   source.position(),
-                  new WorldStorageTransfers.External(from.handle()),
-                  new WorldStorageTransfers.External(to.handle()),
+                  new WorldStorageTransfers.External(from.handle(), fromView),
+                  new WorldStorageTransfers.External(to.handle(), toView),
                   key,
                   amount,
                   result -> {
@@ -671,6 +688,52 @@ public final class WorldPrograms {
     }
   }
 
+  /**
+   * D3 (ADR 0062): the statement's face/slots on {@code owner}, or null for its own binding. Logs
+   * and returns {@link #REFUSED} when the view cannot be used, rather than guessing another.
+   */
+  private WorldConnectors.View view(
+      ProgramControllerEntity controller,
+      MachineInterfaceEntity owner,
+      WorldConnectors.Handle handle,
+      ProgramCommand.Access access) {
+    if (access == null) return null;
+    var settings = owner.settings();
+    var face =
+        access.side() == null
+            ? owner.targetDirection().getOpposite()
+            : net.minecraft.core.Direction.valueOf(access.side().name());
+    boolean own = face == owner.targetDirection().getOpposite();
+    // Without slots: the bound window on the Interface's own face, or all of another face.
+    int first = access.first() < 0 ? (own ? settings.firstSlot() : 0) : access.first();
+    int count =
+        access.first() >= 0
+            ? access.last() - access.first() + 1
+            : own || handle.kind() == ResourceKind.ENERGY
+                ? settings.slotCount()
+                : networks().connectors().faceSlots(handle, face);
+    var view = new WorldConnectors.View(face, first, Math.max(1, count));
+    var reason = networks().connectors().viewable(handle, view);
+    if (reason == OperationResult.Reason.OK) return view;
+    controller.log(
+        "move "
+            + owner.label()
+            + ": "
+            + switch (reason) {
+              case WRONG_RESOURCE -> "those slots are outside what this Interface may reach";
+              case RESERVED ->
+                  "another side needs the Interface bound to every slot (its window is narrowed)";
+              case UNSUPPORTED ->
+                  "side or slots not available on this machine (none there, or it is partitioned)";
+              default -> name(reason);
+            });
+    return REFUSED;
+  }
+
+  /** Sentinel for a refused view (never reaches a transfer). */
+  private static final WorldConnectors.View REFUSED =
+      new WorldConnectors.View(net.minecraft.core.Direction.DOWN, 0, 1);
+
   /** Finds the first matching stored key over a bounded number of catalog pages, then routes. */
   private void fromStorage(
       ProgramControllerEntity controller,
@@ -678,6 +741,7 @@ public final class WorldPrograms {
       NetworkPermissions.Actor actor,
       MachineInterfaceEntity owner,
       WorldConnectors.Handle handle,
+      WorldConnectors.View view,
       ResourceFilter filter,
       long amount,
       WorldStorageCatalog.Cursor cursor,
@@ -718,6 +782,7 @@ public final class WorldPrograms {
                           actor,
                           owner,
                           handle,
+                          view,
                           row.key(),
                           Math.min(amount, row.total() - row.reserved()),
                           WorldStorageRoutes.Direction.FROM_STORAGE);
@@ -731,6 +796,7 @@ public final class WorldPrograms {
                         actor,
                         owner,
                         handle,
+                        view,
                         filter,
                         amount,
                         page.next(),
@@ -753,6 +819,7 @@ public final class WorldPrograms {
       NetworkPermissions.Actor actor,
       MachineInterfaceEntity owner,
       WorldConnectors.Handle handle,
+      WorldConnectors.View view,
       ResourceKey key,
       long amount,
       WorldStorageRoutes.Direction direction) {
@@ -767,7 +834,7 @@ public final class WorldPrograms {
                 id,
                 actor,
                 owner.position(),
-                new WorldStorageTransfers.External(handle),
+                new WorldStorageTransfers.External(handle, view),
                 key,
                 amount,
                 direction,

@@ -47,11 +47,40 @@ public final class ProgramIr {
   public record Label(String label) implements Target {}
 
   /** A move endpoint: authorized network storage, or a machine target. */
-  public sealed interface Place permits Storage, Machine {}
+  public sealed interface Place permits Storage, Machine, MachineAt {}
 
   public record Storage() implements Place {}
 
   public record Machine(Target target) implements Place {}
+
+  /** Highest zero-based slot or tank index a statement may name (ADR 0062). */
+  public static final int MAX_SLOT = 1_023;
+
+  /** A face of the machine block (not of the Interface), as named after {@code side}. */
+  public enum Side {
+    DOWN,
+    UP,
+    NORTH,
+    SOUTH,
+    WEST,
+    EAST
+  }
+
+  /**
+   * D3 (ADR 0062): a machine endpoint with a statement-level face and/or slot range. {@code side}
+   * null keeps the Interface's own face; {@code first} -1 keeps its whole bound window. Only
+   * programs that use {@code side} or {@code slots} produce it, so v1 IR is unchanged.
+   */
+  public record MachineAt(Target target, Side side, int first, int last) implements Place {
+    public MachineAt {
+      Objects.requireNonNull(target);
+      if (side == null && first < 0
+          || first < -1
+          || first > MAX_SLOT
+          || (first < 0 ? last != -1 : last < first || last > MAX_SLOT))
+        throw new IllegalArgumentException("Invalid machine endpoint");
+    }
+  }
 
   public enum Comparison {
     LESS,

@@ -85,6 +85,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
 | PD3 | Labelling model. (a) Keep one Interface per machine, and add a **Label Tool** that applies a label, and optionally copies Interface settings, to many Interfaces quickly; or (b) SFM-style: a labelled machine needs only to touch a cable, no Interface. (b) changes SPEC R02/R04 discovery and authority rules. | (a) now; revisit (b) after the playtest | Resolved 2026-10-25: (a) Label Tool |
 | PD4 | Allow opt-in tag **substitution** in crafting-table patterns (inputs chosen from current stock at reservation time; the recipe is revalidated before crafting)? Processing patterns stay exact. Amends SPEC R06 and ADR 0029/0030. | Yes, crafting patterns only, per-pattern toggle | Resolved 2026-10-25: yes, crafting patterns, per-pattern toggle |
 | PD5 | How do crafting workers scale (R11)? (a) Throughput/Overdrive upgrades installed in a Crafter raise its crafts per dispatch and concurrent jobs; or (b) a new Crafting Core block shared by the network. | (a): reuses existing items and ADR 0054 rules | Resolved 2026-10-25: (a) Crafter upgrades |
+| PD7 | Chunk loads next to a network rebuild it. ADR 0011 invalidates every region in the four neighbouring chunk indexes whenever a chunk loads, so a player walking near a base briefly takes its networks offline (moves and programs refuse with "offline" for the rebuild). Narrow this to regions with a position on the shared chunk edge (bounded: 16 × build height lookups per side)? That amends ADR 0011 and its `firstNeighborChunkLoadInvalidatesExistingBoundaryPublication` test. | Yes; measure the callback cost first (ADR 0011 asks for P7 evidence) | Open (found 2026-10-25 during D2/D3: the same rebuilds made 4 older GameTests fail now and then) |
 | PD6 | Add world-interaction blocks (place, break, pick up, drop) in this release? | No; keep as Later | Resolved 2026-10-25: yes; each Wave G feature still gets its own gate and ADR |
 
 ## Wave 0 — quick wins (no gate)
@@ -400,12 +401,25 @@ to identical IR (a fixture test pins this).
   `FriendlyV1PinTest` marks D2 (its fixture compiles; v1 IR unchanged). The storage-to-
   storage compiler message changed with the requirement, and its test was updated.
 
-- [ ] **D3 — Side and slots per statement (G10).** Size L.
+- [x] **D3 — Side and slots per statement (G10).** Size L.
   `side` overrides the Interface's bound side for that statement (the Interface still
   must touch the machine). `slots` narrows inside the bound window and never widens it.
   Check overlap against ADR 0053 fixed partitions; refuse rather than guess.
   Done when: GameTests on a vanilla furnace (top input, bottom output, side fuel) and a
   refusal for a range outside the binding.
+  Evidence (2026-10-25): `SideAndSlotsGameTests`. One Interface on a furnace's west side
+  moves raw iron in through the top, coal through the north (fuel) and five ingots out
+  through the bottom slot 0. A chest Interface narrowed to slots 0–3 logs "those slots are
+  outside what this Interface may reach" for `slots 10` and "another side needs the
+  Interface bound to every slot" for `side up`; `slots 2` fills slot 2 and nothing else.
+  `FriendlyCompilerTest` covers parsing and errors (storage has no side, bad side name,
+  reversed range, 1,024, reserved word); `FriendlyV1PinTest` marks D3 with v1 IR
+  unchanged. Rule refined in ADR 0062: slot numbers follow the face actually used, and
+  another face needs a whole-container binding, because sided containers re-index slots
+  per face. 4 consecutive full GameTest runs passed afterwards. Flaky older tests seen
+  in other runs, all caused by PD7 rebuilds: `BufferImportGameTests` (throws "network is
+  offline" and crashes the run), `BufferTransferGameTests` (NPE on a missing transfer),
+  `DrivePartitionGameTests.partitionLimitsInserts…`.
 
 - [ ] **D4 — Conditions (G11).** Size M.
   `else`, `and`, `or`, `not`, and `NAME has … of filter` reading machine contents through

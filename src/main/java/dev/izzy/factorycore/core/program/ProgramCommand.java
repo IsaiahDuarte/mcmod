@@ -17,9 +17,26 @@ public sealed interface ProgramCommand {
     }
   }
 
-  /** A null {@code from} or {@code to} is storage; both set is a machine-to-machine move. */
-  record Move(ResourceFilter filter, UUID from, UUID to, long limit) implements ProgramCommand {
+  /**
+   * D3 (ADR 0062): a statement's face of the machine block ({@code side} null keeps the Interface's
+   * own) and slot range ({@code first} -1 keeps its whole bound window).
+   */
+  record Access(ProgramIr.Side side, int first, int last) {}
+
+  /**
+   * A null {@code from} or {@code to} is storage; both set is a machine-to-machine move. A null
+   * access keeps that machine's binding as it is.
+   */
+  record Move(
+      ResourceFilter filter, UUID from, UUID to, long limit, Access fromAccess, Access toAccess)
+      implements ProgramCommand {
+    public Move(ResourceFilter filter, UUID from, UUID to, long limit) {
+      this(filter, from, to, limit, null, null);
+    }
+
     public Move {
+      if (from == null && fromAccess != null || to == null && toAccess != null)
+        throw new IllegalArgumentException("Storage has no face or slots");
       Objects.requireNonNull(filter);
       // ADR 0062: machine to machine is allowed; storage to storage is not a move.
       if (from == null && to == null)

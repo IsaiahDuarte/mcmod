@@ -151,4 +151,53 @@ class FriendlyCompilerTest {
     if (wide.length() <= FriendlyCompiler.MAX_SOURCE)
       assertTrue(result.diagnostics().getFirst().message().contains("512"));
   }
+
+  @Test
+  void sideAndSlotsParseOnMachineEndpointsOnlyAndKeepPlainEndpointsV1() {
+    var result =
+        FriendlyCompiler.compile(
+            """
+            every 20 ticks as "f" {
+              move item("coal") from storage to machines("f") side north slots 1 limit 8
+              move item("iron_ingot") from machines("f") side down slots 2..3 to storage
+              move item("stone") from machines("a") slots 4 to machines("b")
+              move item("stone") from machines("a") to machines("b")
+            }
+            """);
+    assertTrue(result.ok(), result.diagnostics()::toString);
+    var body = result.program().rules().getFirst().body();
+    assertEquals(
+        new ProgramIr.MachineAt(new ProgramIr.Label("f"), ProgramIr.Side.NORTH, 1, 1),
+        ((ProgramIr.Move) body.get(0)).to());
+    assertEquals(
+        new ProgramIr.MachineAt(new ProgramIr.Label("f"), ProgramIr.Side.DOWN, 2, 3),
+        ((ProgramIr.Move) body.get(1)).from());
+    assertEquals(
+        new ProgramIr.MachineAt(new ProgramIr.Label("a"), null, 4, 4),
+        ((ProgramIr.Move) body.get(2)).from());
+    assertEquals(
+        new ProgramIr.Machine(new ProgramIr.Label("a")),
+        ((ProgramIr.Move) body.get(3)).from(),
+        "No side or slots keeps the v1 place");
+    assertTrue(
+        error("every 10 ticks { move item(\"a\") from storage side up to machines(\"m\") }")
+            .message()
+            .contains("Storage has no side"));
+    assertTrue(
+        error("every 10 ticks { move item(\"a\") from storage to machines(\"m\") side left }")
+            .message()
+            .contains("down, up, north"));
+    assertTrue(
+        error("every 10 ticks { move item(\"a\") from storage to machines(\"m\") slots 3..1 }")
+            .message()
+            .contains("lower slot"));
+    assertTrue(
+        error("every 10 ticks { move item(\"a\") from storage to machines(\"m\") slots 1024 }")
+            .message()
+            .contains("at most 1023"));
+    assertTrue(
+        error("every 10 ticks { for up in machines(\"m\") { log \"x\" } }")
+            .message()
+            .contains("'up' is a reserved word"));
+  }
 }

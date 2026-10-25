@@ -353,6 +353,12 @@ every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage
   straight across without passing through storage. With several machines on each side,
   every source gives to every target (up to 64 pairs per line). Storage to storage is
   not a move.
+- **Sides and slots:** after a machine in `move`, `side up` (or down, north, south,
+  west, east) uses that face of the machine, and `slots 2` or `slots 0..3` uses only those
+  slots. For example, one Interface can run a furnace:
+  `side up` for the input, `side north` for fuel and `side down slots 0` for the output.
+  Slot numbers count the slots that face shows. Using another face needs the Interface
+  set to all slots. A range outside what the Interface allows is refused with a log line.
 - **When a rule can't act:** its log line says why, for example a machine busy with
   a crafting job, stock reserved by jobs, or the rate limit. It retries at its next
   interval without losing items.

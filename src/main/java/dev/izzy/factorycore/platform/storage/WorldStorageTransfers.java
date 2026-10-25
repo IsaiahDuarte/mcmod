@@ -391,7 +391,16 @@ public final class WorldStorageTransfers {
     }
   }
 
-  public record External(WorldConnectors.Handle handle) implements Endpoint {
+  /**
+   * A bound machine; {@code view} (D3, ADR 0062) optionally narrows the face and slots for this
+   * transfer. A transfer resumed from its saved context uses the Interface's own binding.
+   */
+  public record External(WorldConnectors.Handle handle, WorldConnectors.View view)
+      implements Endpoint {
+    public External(WorldConnectors.Handle handle) {
+      this(handle, null);
+    }
+
     public External {
       Objects.requireNonNull(handle);
     }
