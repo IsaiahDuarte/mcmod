@@ -632,6 +632,8 @@ public final class TerminalClientVerification {
           "#minecraft:logs"
         };
         if (rule < rules.length) {
+          // B1: typed IDs are behind "Add by ID…" (ghost slots are the default).
+          if (rule == 0) click(screen, "Add by ID…");
           edit(screen, 2, rules[rule], false);
           click(screen, rule == 6 ? "Tag" : "Item ID");
           rule++;
@@ -641,12 +643,10 @@ public final class TerminalClientVerification {
         check(
             view.dirty() && view.filter().equals("INCLUDE"),
             "Native registry/tag edits remain separate draft");
-        captures.grab(client, "buffer-scale-2-rules-page-1.png");
-        click(screen, "Next");
+        captures.grab(client, "buffer-scale-2-filter-slots.png");
         next();
       }
       case 18 -> {
-        captures.grab(client, "buffer-scale-2-rules-page-2.png");
         if (!sampleSeeded) {
           var server = client.getSingleplayerServer();
           var principal = client.player.getUUID();
@@ -693,7 +693,7 @@ public final class TerminalClientVerification {
       case 24 -> {
         if (view.rules().size() != 1) return;
         check(
-            view.rules().getFirst().contains("Client hopper variant"),
+            view.rules().getFirst().label().contains("Client hopper variant"),
             "Exact native sample rule includes component name");
         click(screen, "Apply");
         next();

@@ -117,6 +117,80 @@ public final class BufferSettingsGameTests {
         .thenSucceed();
   }
 
+  /**
+   * B1 ghost slots: a click with the cursor item adds an Item term; clicking the slot cycles it to
+   * Exact, then through the item's tags, then back to Item; a stale shown ID changes nothing; Apply
+   * saves whichever term is showing.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void ghostSlotTermsCycleAndApply(GameTestHelper helper) {
+    var f = setup(helper);
+    var seen = new java.util.ArrayList<ResourceFilter.Term>();
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> helper.assertTrue(f.buffer.canUse(f.player), "Wired owner ready"))
+        .thenExecute(() -> open(helper, f))
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              menu(f).setCarried(new net.minecraft.world.item.ItemStack(Items.OAK_PLANKS, 5));
+              command(f, BufferSettingsPackets.CARRIED, 0, 0, "", new byte[32]);
+              helper.assertTrue(menu(f).view().rules().size() == 1, "One slot added");
+              var rule = menu(f).view().rules().getFirst();
+              helper.assertTrue(
+                  rule.type() == FilterEdits.ITEM
+                      && rule.icon().equals("minecraft:oak_planks")
+                      && menu(f).view().filter().equals("INCLUDE")
+                      && menu(f).getCarried().getCount() == 5,
+                  "The cursor item becomes an Item term and stays on the cursor: " + rule);
+              menu(f).setCarried(net.minecraft.world.item.ItemStack.EMPTY);
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              command(f, BufferSettingsPackets.CYCLE, 0, 0, "minecraft:stone", new byte[32]);
+              helper.assertTrue(
+                  menu(f).view().status().equals("stale")
+                      && menu(f).view().rules().getFirst().type() == FilterEdits.ITEM,
+                  "A shown ID that does not match the slot changes nothing");
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              command(f, BufferSettingsPackets.CYCLE, 0, 0, "minecraft:oak_planks", new byte[32]);
+              helper.assertTrue(
+                  menu(f).view().rules().getFirst().type() == FilterEdits.EXACT,
+                  "Item cycles to Exact");
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              command(f, BufferSettingsPackets.CYCLE, 0, 0, "minecraft:oak_planks", new byte[32]);
+              var rule = menu(f).view().rules().getFirst();
+              helper.assertTrue(
+                  rule.type() == FilterEdits.TAG && rule.label().startsWith("#"),
+                  "Exact cycles to the item's first tag: " + rule);
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              command(f, BufferSettingsPackets.APPLY, 0, 0, "", new byte[32]);
+              var saved =
+                  DeviceSavedData.get(f.player.server)
+                      .buffers()
+                      .deployment(f.buffer.handle().id())
+                      .policy()
+                      .filter();
+              helper.assertTrue(
+                  saved.mode() == ResourceFilter.Mode.INCLUDE
+                      && saved.terms().size() == 1
+                      && saved.terms().getFirst() instanceof ResourceFilter.Tag,
+                  "Apply saves the tag term: " + saved);
+              end(f);
+            })
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void exactSampleNonceAndStaleInventorySelection(GameTestHelper helper) {
     var f = setup(helper);

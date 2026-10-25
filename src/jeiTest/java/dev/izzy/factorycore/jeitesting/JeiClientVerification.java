@@ -74,7 +74,8 @@ final class JeiClientVerification {
       DRIVE = new BlockPos(2, 65, 1),
       TERMINAL = new BlockPos(1, 65, 2),
       PROGRAM = new BlockPos(1, 65, 0),
-      CRAFTER = new BlockPos(0, 65, 1);
+      CRAFTER = new BlockPos(0, 65, 1),
+      BUFFER = new BlockPos(1, 66, 1);
   private static final ResourceLocation CRAFTING_TABLE =
       ResourceLocation.withDefaultNamespace("crafting_table");
   private final Path report = Path.of(System.getProperty("factorycore.client.report"));
@@ -275,6 +276,59 @@ final class JeiClientVerification {
         next();
       }
       case 9 -> {
+        client.player.closeContainer();
+        // Use the Buffer with an empty hand: the hotbar now holds the patterns made above.
+        client.player.getInventory().selected = 8;
+        client.player.connection.send(
+            new net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket(8));
+        next();
+      }
+      case 10 -> {
+        if (client.screen != null || ticks - entered < 5) return;
+        client.gameMode.useItemOn(
+            client.player,
+            InteractionHand.MAIN_HAND,
+            new BlockHitResult(Vec3.atCenterOf(BUFFER), Direction.UP, BUFFER, false));
+        next();
+      }
+      case 11 -> {
+        if (!(client.screen
+                instanceof dev.izzy.factorycore.platform.client.BufferSettingsScreen screen)
+            || !screen.getMenu().view().editable()
+            || ticks - entered < 10) return;
+        var runtime = RuntimeCapture.runtime;
+        var handlers = runtime.getScreenHelper().getGhostIngredientHandlers(screen);
+        IGhostIngredientHandler<dev.izzy.factorycore.platform.client.BufferSettingsScreen> handler =
+            handlers.stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("JEI resolves the filter handler"));
+        var ingredient =
+            runtime
+                .getIngredientManager()
+                .createTypedIngredient(
+                    VanillaTypes.ITEM_STACK, new ItemStack(Items.IRON_INGOT), false)
+                .orElseThrow();
+        var targets = handler.getTargetsTyped(screen, ingredient, false);
+        check(targets.size() == 1, "One filter drop target");
+        targets.getFirst().accept(ingredient.getIngredient());
+        handler.onComplete();
+        next();
+      }
+      case 12 -> {
+        if (!(client.screen
+                instanceof dev.izzy.factorycore.platform.client.BufferSettingsScreen screen)
+            || screen.getMenu().view().rules().isEmpty()
+            || ticks - entered < 5) return;
+        var rule = screen.getMenu().view().rules().getFirst();
+        check(rule.icon().equals("minecraft:iron_ingot"), "JEI drop added iron: " + rule);
+        capture(client, "jei-buffer-ghost.png");
+        evidence
+            .append("jei: drag onto Buffer ghost slots adds ")
+            .append(rule.label())
+            .append('\n');
+        next();
+      }
+      case 13 -> {
         if (ticks - entered < 5) return;
         try {
           Files.writeString(
@@ -524,6 +578,16 @@ final class JeiClientVerification {
     level.setBlock(PROGRAM, ProgramContent.BLOCK.get().defaultBlockState(), 3);
     // A5: the network can craft the JEI recipe's output, so Ctrl-click can request it.
     level.setBlock(CRAFTER, CraftingContent.CRAFTER.get().defaultBlockState(), 3);
+    // B1: a Buffer whose ghost filter slots take a JEI drop.
+    level.setBlock(
+        BUFFER,
+        dev.izzy.factorycore.platform.storage.InterfaceContent.state(
+            dev.izzy.factorycore.platform.storage.InterfaceKind.BUFFER, Direction.NORTH),
+        3);
+    ((dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity) level.getBlockEntity(BUFFER))
+        .place(
+            new ItemStack(dev.izzy.factorycore.platform.storage.InterfaceContent.ITEM.get()),
+            player.getUUID());
     var cells =
         new java.util.ArrayList<ItemStack>(java.util.Collections.nCopies(9, ItemStack.EMPTY));
     for (int cell : new int[] {0, 1, 3, 4}) cells.set(cell, new ItemStack(Items.OAK_PLANKS));

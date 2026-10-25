@@ -16,7 +16,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 /** Local draft form; only explicit Apply sends one complete validated configuration. */
-public final class MachineSettingsScreen extends AbstractContainerScreen<MachineSettingsMenu> {
+public final class MachineSettingsScreen extends AbstractContainerScreen<MachineSettingsMenu>
+    implements FilterDropTarget {
   private EditBox label, priority, firstSlot, count, rate;
   private SlotPicker picker;
   private boolean picking;
@@ -40,6 +41,12 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
       presetCancel;
   private long presetShown = -1;
   private int selectedRule, selectedSlot;
+
+  /** B1 ghost filter slots; typed IDs are behind "Add by ID". */
+  private FilterSlots filterSlots;
+
+  private Button addById, ruleRegistry, ruleTag;
+  private boolean typing;
   private MachineSettingsPackets.Form lastForm;
 
   private static final int STRIP_WIDTH = 144;
@@ -153,26 +160,44 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     // The typed goal is saved by Apply (U6); there is no separate Set step.
     goal = presetBox(64, 54, 226, 19, "goal");
     rule = presetBox(10, 78, 170, 256, "rule");
-    presetButton("registry", 184, 77, 50, () -> sendPreset(MachinePresetPackets.REGISTRY));
-    presetButton("tag", 238, 77, 52, () -> sendPreset(MachinePresetPackets.TAG));
-    presetButton(
-        "previous",
-        10,
-        147,
-        48,
-        () -> {
-          selectedRule = Math.max(0, selectedRule - 1);
-          sync();
-        });
-    presetButton(
-        "next",
-        62,
-        147,
-        48,
-        () -> {
-          selectedRule = Math.min(menu.presetView().rules().size() - 1, selectedRule + 1);
-          sync();
-        });
+    ruleRegistry =
+        presetButton("registry", 184, 77, 50, () -> sendPreset(MachinePresetPackets.REGISTRY));
+    ruleTag = presetButton("tag", 238, 77, 52, () -> sendPreset(MachinePresetPackets.TAG));
+    addById =
+        presetButton(
+            "add_by_id",
+            10,
+            77,
+            96,
+            () -> {
+              typing = true;
+              sync();
+            });
+    filterSlots =
+        addRenderableWidget(
+            new FilterSlots(
+                leftPos + 10,
+                topPos + 104,
+                new FilterSlots.Actions() {
+                  @Override
+                  public void addCarried() {
+                    sendPreset(MachinePresetPackets.CARRIED);
+                  }
+
+                  @Override
+                  public void cycle(int index, String shown) {
+                    selectedRule = index;
+                    sendPreset(MachinePresetPackets.CYCLE, index, shown);
+                  }
+
+                  @Override
+                  public void remove(int index) {
+                    selectedRule = index;
+                    sendPreset(MachinePresetPackets.REMOVE);
+                  }
+                },
+                index -> selectedRule = index));
+    presetWidgets.add(filterSlots);
     remove = presetButton("remove", 177, 147, 55, () -> sendPreset(MachinePresetPackets.REMOVE));
     clear = presetButton("clear", 236, 147, 54, () -> sendPreset(MachinePresetPackets.CLEAR));
     sample =
@@ -287,6 +312,10 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
       widget.visible = presets;
       widget.active = preset.editable() && !preset.busy();
     }
+    rule.visible = ruleRegistry.visible = ruleTag.visible = presets && typing;
+    addById.visible = presets && !typing;
+    selectedRule = Math.max(0, Math.min(selectedRule, preset.rules().size() - 1));
+    filterSlots.show(preset.rules(), preset.kind(), selectedRule);
     if (presetShown != preset.revision()) {
       goal.setValue(Long.toString(preset.goal()));
       presetShown = preset.revision();
@@ -346,6 +375,34 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
                 .build());
     if (!key.equals("binding") && !key.equals("presets")) presetWidgets.add(widget);
     return widget;
+  }
+
+  @Override
+  public net.minecraft.client.renderer.Rect2i filterArea() {
+    return filterSlots == null || !filterSlots.visible
+        ? null
+        : new net.minecraft.client.renderer.Rect2i(
+            filterSlots.getX(),
+            filterSlots.getY(),
+            filterSlots.getWidth(),
+            filterSlots.getHeight());
+  }
+
+  @Override
+  public void addFilterId(ResourceKind kind, String id) {
+    if (kind == menu.presetView().kind()) sendPreset(MachinePresetPackets.REGISTRY, 0, id);
+  }
+
+  private void sendPreset(int action, int selection, String text) {
+    PacketDistributor.sendToServer(
+        new MachinePresetPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.presetView().revision(),
+            action,
+            selection,
+            text,
+            new byte[32]));
   }
 
   private void sendPreset(int action) {
@@ -481,20 +538,9 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     var view = menu.presetView();
     g.drawString(
         font, Component.translatable("gui.factorycore.preset.goal"), 10, 58, 0xffffff, false);
-    int start = selectedRule / 4 * 4;
-    g.fill(10, 99, 290, 144, 0xff282c30);
-    for (int i = start; i < Math.min(start + 4, view.rules().size()); i++) {
-      int y = 101 + (i - start) * 11;
-      if (i == selectedRule) g.fill(11, y - 1, 289, y + 9, 0xff535e68);
-      g.drawString(font, font.plainSubstrByWidth(view.rules().get(i), 274), 13, y, 0xffffff, false);
-    }
-    g.drawString(
-        font,
-        (view.rules().isEmpty() ? 0 : selectedRule + 1) + "/" + view.rules().size(),
-        120,
-        152,
-        0xffffff,
-        false);
+    // B1: the selected slot's rule, beside the ghost slots.
+    if (selectedRule < view.rules().size())
+      FilterSlots.describe(g, font, view.rules().get(selectedRule), 162, 106, 128);
     g.drawString(
         font,
         font.plainSubstrByWidth(
@@ -531,15 +577,5 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     super.render(g, x, y, partial);
     renderTooltip(g, x, y);
     StatusStrip.tooltip(g, font, menu.deviceStatus(), leftPos + 10, topPos + 20, STRIP_WIDTH, x, y);
-    if (presets
-        && x >= leftPos + 10
-        && x < leftPos + 290
-        && y >= topPos + 101
-        && y < topPos + 144) {
-      int index = selectedRule / 4 * 4 + (y - topPos - 101) / 11;
-      if (index < menu.presetView().rules().size())
-        g.renderTooltip(
-            font, font.split(Component.literal(menu.presetView().rules().get(index)), 280), x, y);
-    }
   }
 }

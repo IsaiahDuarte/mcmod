@@ -257,7 +257,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
       publish();
       return;
     }
-    if (packet.action() >= BufferSettingsPackets.TAKE) {
+    if (packet.action() >= BufferSettingsPackets.TAKE
+        && packet.action() <= BufferSettingsPackets.RETURN) {
       inventory(packet);
       return;
     }
@@ -320,6 +321,27 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
         case BufferSettingsPackets.REMOVE -> {
           if (packet.selection() >= terms.size()) return;
           terms.remove(packet.selection());
+        }
+        case BufferSettingsPackets.CARRIED -> {
+          var term = FilterEdits.carried(ResourceKind.ITEM, getCarried());
+          if (term == null) return;
+          terms.add(term);
+          if (filterMode == ResourceFilter.Mode.ALL) filterMode = ResourceFilter.Mode.INCLUDE;
+        }
+        case BufferSettingsPackets.CYCLE -> {
+          if (packet.selection() >= terms.size()) return;
+          var next =
+              FilterEdits.cycle(
+                  ResourceKind.ITEM,
+                  terms.get(packet.selection()),
+                  packet.text(),
+                  new PlatformResourceCodec(sender.registryAccess()));
+          if (next == null) {
+            status = "stale";
+            publish();
+            return;
+          }
+          terms.set(packet.selection(), next);
         }
         case BufferSettingsPackets.CLEAR -> {
           terms.clear();
@@ -484,19 +506,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
 
   private void publish() {
     var codec = new PlatformResourceCodec(player().registryAccess());
-    var rules = new ArrayList<String>();
-    for (var term : draft.filter().terms()) {
-      String label =
-          term instanceof ResourceFilter.Registry registry
-              ? "ID " + registry.id()
-              : term instanceof ResourceFilter.Tag tag
-                  ? "#" + tag.id()
-                  : "= "
-                      + ((ResourceFilter.Exact) term).key().registryId()
-                      + " · "
-                      + name(codec, ((ResourceFilter.Exact) term).key());
-      rules.add(label.length() > 128 ? label.substring(0, 128) : label);
-    }
+    var rules = FilterEdits.rules(draft.filter(), codec);
     var rows = new ArrayList<BufferSettingsPackets.Row>();
     for (int i = 0; i < selections.size(); i++) {
       var slot = selections.get(i);

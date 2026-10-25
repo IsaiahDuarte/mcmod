@@ -56,7 +56,11 @@ class MachinePresetPacketsTest {
               MachinePresets.Mode.STOCK,
               ResourceFilter.Mode.INCLUDE,
               Long.MAX_VALUE,
-              List.of("= minecraft:iron_ingot · Named iron"),
+              List.of(
+                  new FilterEdits.Rule(
+                      FilterEdits.EXACT,
+                      "minecraft:iron_ingot",
+                      "= minecraft:iron_ingot · Named iron")),
               "draft",
               MachinePresets.Mode.PAUSED,
               "ok",
@@ -78,7 +82,9 @@ class MachinePresetPacketsTest {
     var id = UUID.randomUUID();
     assertThrows(
         IllegalArgumentException.class,
-        () -> new MachinePresetPackets.Command(1, id, 1, 11, 0, "", new byte[32]));
+        () ->
+            new MachinePresetPackets.Command(
+                1, id, 1, MachinePresetPackets.CYCLE + 1, 0, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new MachinePresetPackets.Command(1, id, 1, 0, 36, "", new byte[32]));

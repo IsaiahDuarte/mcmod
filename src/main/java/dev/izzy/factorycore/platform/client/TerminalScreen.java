@@ -20,13 +20,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
@@ -910,7 +905,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       if (index >= entries.size()) continue;
       var value = entries.get(index);
       var shown = rowIcon(value.icon()).getDefaultInstance();
-      if (kind != 1 || !renderFluid(graphics, value.icon(), x + 1, y + 1))
+      if (kind != 1 || !ResourceIcons.renderFluid(graphics, value.icon(), x + 1, y + 1))
         graphics.renderItem(shown, x + 1, y + 1);
       if (value.craftable() && value.total().equals("0")) {
         // A ghost: nothing stored, but a pattern can make it.
@@ -1068,38 +1063,6 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     return BuiltInRegistries.ITEM.containsKey(location)
         ? BuiltInRegistries.ITEM.get(location)
         : Items.BARRIER;
-  }
-
-  /**
-   * Draws a registered fluid's still texture with its client tint, as AE2/RS do; returns false
-   * (caller falls back to the bucket item) for an unknown fluid or a missing sprite.
-   */
-  private static boolean renderFluid(GuiGraphics graphics, String id, int x, int y) {
-    var location = ResourceLocation.tryParse(id);
-    if (location == null || !BuiltInRegistries.FLUID.containsKey(location)) return false;
-    var fluid = BuiltInRegistries.FLUID.get(location);
-    if (fluid == Fluids.EMPTY) return false;
-    var stack = new FluidStack(fluid, FluidType.BUCKET_VOLUME);
-    var extensions = IClientFluidTypeExtensions.of(fluid);
-    var texture = extensions.getStillTexture(stack);
-    if (texture == null) return false;
-    var sprite =
-        net.minecraft.client.Minecraft.getInstance()
-            .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-            .apply(texture);
-    int tint = extensions.getTintColor(stack);
-    graphics.blit(
-        x,
-        y,
-        0,
-        16,
-        16,
-        sprite,
-        ((tint >> 16) & 0xff) / 255f,
-        ((tint >> 8) & 0xff) / 255f,
-        (tint & 0xff) / 255f,
-        1f);
-    return true;
   }
 
   private static Item icon(String id) {

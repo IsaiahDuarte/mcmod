@@ -204,8 +204,9 @@ strip as Storage mode) and rate. Labels are private to your network and let prog
 - **Stock:** fill the machine to a goal.
 - **Paused.**
 
-Add rules by ID, tag or by copying a sample from your inventory; nothing is
-consumed. Up to 16 rules are allowed. **Apply** saves and starts the preset in your
+Add rules in the filter slots, the same way as on a Buffer (a JEI drag, a sample
+copied from your inventory, or **Add by ID…**), and click a slot to change how it
+matches; nothing is consumed. Up to 16 rules are allowed. **Apply** saves and starts the preset in your
 name; it needs Edit and Deploy, and moving items also needs Deposit and Withdraw. If
 you applied the preset, your own edits and upgrades keep it running. Someone else's
 edits pause it until a player with rights applies it again. **Return** sends items
@@ -222,8 +223,12 @@ The **Settings** tab controls what the network does with the buffer:
   - Import moves buffered items into storage.
   - Export pulls matching items from storage into the buffer.
   - Stock keeps the buffer filled to the **Goal**.
-- **Item ID**, **Tag** and **Sample** add rules. **Filter** chooses all items,
-  allow the rules, or block the rules. **Clear** resets to all items.
+- **Filter slots:** click a slot while holding an item to add it, drag an item
+  from JEI, or use **Sample**. Click a filled slot to change how it matches:
+  the item (any components), **=** that exact item, or **#** each of its tags.
+  Right-click removes it. **Add by ID…** lets you type an ID or #tag instead.
+  **Filter** chooses all items, allow the slots, or block the slots. **Clear**
+  resets to all items.
 - **Rate** and **Goal** take a number and **Set**. **Apply** saves your changes;
   **Reset** discards them.
 

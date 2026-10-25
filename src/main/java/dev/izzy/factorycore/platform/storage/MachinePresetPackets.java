@@ -24,7 +24,10 @@ public final class MachinePresetPackets {
       CLEAR = 7,
       DEPLOY = 8,
       RESET = 9,
-      RETURN = 10;
+      RETURN = 10,
+      // B1 ghost slots: add the cursor item; cycle rule {@code selection}'s match (text: shown ID).
+      CARRIED = 11,
+      CYCLE = 12;
 
   public record Command(
       int menu,
@@ -42,7 +45,7 @@ public final class MachinePresetPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > RETURN
+          || action > CYCLE
           || selection < 0
           || selection > 35
           || text.length() > 256
@@ -90,7 +93,7 @@ public final class MachinePresetPackets {
       MachinePresets.Mode mode,
       ResourceFilter.Mode filter,
       long goal,
-      List<String> rules,
+      List<FilterEdits.Rule> rules,
       String status,
       MachinePresets.Mode running,
       String reason,
@@ -108,7 +111,6 @@ public final class MachinePresetPackets {
       rules = List.copyOf(rules);
       if (goal < 0
           || rules.size() > 16
-          || rules.stream().anyMatch(s -> s.length() > 256)
           || status.length() > 32
           || reason.length() > 32
           || staged < 0) throw new IllegalArgumentException("Machine preset view bounds");
@@ -130,7 +132,7 @@ public final class MachinePresetPackets {
               b.writeEnum(v.filter());
               b.writeLong(v.goal());
               b.writeVarInt(v.rules().size());
-              for (var rule : v.rules()) b.writeUtf(rule, 256);
+              for (var rule : v.rules()) FilterEdits.Rule.write(b, rule);
               b.writeUtf(v.status(), 32);
               b.writeEnum(v.running());
               b.writeUtf(v.reason(), 32);
@@ -150,8 +152,8 @@ public final class MachinePresetPackets {
               long goal = b.readLong();
               int size = b.readVarInt();
               if (size < 0 || size > 16) throw new IllegalArgumentException("Machine rule count");
-              var rules = new ArrayList<String>();
-              for (int i = 0; i < size; i++) rules.add(b.readUtf(256));
+              var rules = new ArrayList<FilterEdits.Rule>();
+              for (int i = 0; i < size; i++) rules.add(FilterEdits.Rule.read(b));
               return new View(
                   id,
                   session,
@@ -175,7 +177,7 @@ public final class MachinePresetPackets {
   private MachinePresetPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var r = event.registrar("1");
+    var r = event.registrar("2");
     MenuPayloads.toServer(
         r,
         Command.TYPE,

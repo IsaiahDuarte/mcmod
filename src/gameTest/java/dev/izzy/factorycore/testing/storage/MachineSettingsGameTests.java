@@ -321,6 +321,77 @@ public final class MachineSettingsGameTests {
         .thenSucceed();
   }
 
+  private static void cycle(Fixture f, MachineSettingsMenu m, String shown) {
+    m.presetCommand(
+        f.player,
+        new MachinePresetPackets.Command(
+            m.containerId,
+            m.session(),
+            m.presetView().revision(),
+            MachinePresetPackets.CYCLE,
+            0,
+            shown,
+            new byte[32]));
+  }
+
+  /**
+   * B1 on a fluid preset: a held water bucket adds water as an Item term (the bucket stays); the
+   * slot then cycles Item → Exact → the fluid's tag(s) → Item.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void fluidGhostSlotCyclesEveryMatch(GameTestHelper h) {
+    var f = setup(h);
+    MachineSettingsMenu[] menu = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.machine.canUse(f.player), "Wired owner ready"))
+        .thenExecute(
+            () -> {
+              f.machine.configure(
+                  new NetworkPermissions.Actor(f.player.getUUID(), false),
+                  new ConnectorSettings(
+                      ResourceKind.FLUID, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 1000));
+              menu[0] = open(h, f);
+              menu[0].setCarried(new ItemStack(Items.WATER_BUCKET));
+              preset(f, menu[0], MachinePresetPackets.CARRIED, "");
+              var rule = menu[0].presetView().rules().getFirst();
+              h.assertTrue(
+                  rule.type() == FilterEdits.ITEM
+                      && rule.icon().equals("minecraft:water")
+                      && menu[0].getCarried().is(Items.WATER_BUCKET),
+                  "A held bucket adds its fluid: " + rule);
+              menu[0].setCarried(ItemStack.EMPTY);
+            })
+        .thenIdle(3)
+        .thenExecute(() -> cycle(f, menu[0], "minecraft:water"))
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  menu[0].presetView().rules().getFirst().type() == FilterEdits.EXACT,
+                  "Item cycles to Exact");
+              cycle(f, menu[0], "minecraft:water");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              var rule = menu[0].presetView().rules().getFirst();
+              h.assertTrue(
+                  rule.type() == FilterEdits.TAG && rule.label().contains("water"),
+                  "Exact cycles to the fluid tag: " + rule);
+            })
+        .thenWaitUntil(
+            () -> {
+              // One cycle every few ticks (the session's command rate gate) until it is Item again.
+              var rule = menu[0].presetView().rules().getFirst();
+              if (rule.type() != FilterEdits.ITEM) {
+                if (h.getTick() % 4 == 0) cycle(f, menu[0], rule.icon());
+                h.fail("Still on " + rule);
+              }
+            })
+        .thenExecute(() -> end(f))
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void presetUtilitySamplesUseCopiedContainerAndCanonicalEnergy(GameTestHelper h) {
     var f = setup(h);
@@ -337,7 +408,7 @@ public final class MachineSettingsGameTests {
               menu[0] = open(h, f);
               preset(f, menu[0], MachinePresetPackets.SAMPLE, "");
               h.assertTrue(
-                  menu[0].presetView().rules().getFirst().contains("minecraft:water")
+                  menu[0].presetView().rules().getFirst().label().contains("minecraft:water")
                       && f.player.getInventory().getItem(9).is(Items.WATER_BUCKET),
                   "Fluid sample copies contained water without draining original bucket");
             })
@@ -364,6 +435,7 @@ public final class MachineSettingsGameTests {
                           .presetView()
                           .rules()
                           .getFirst()
+                          .label()
                           .contains(ResourceKey.ENERGY.registryId()),
                   "FE sample uses canonical energy identity without an inventory item");
             })

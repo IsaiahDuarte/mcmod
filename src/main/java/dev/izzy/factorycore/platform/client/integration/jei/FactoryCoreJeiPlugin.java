@@ -29,5 +29,11 @@ public final class FactoryCoreJeiPlugin implements IModPlugin {
   @Override
   public void registerGuiHandlers(IGuiHandlerRegistration registration) {
     registration.addGhostIngredientHandler(ProgramScreen.class, new ProgramGhostHandler());
+    registration.addGhostIngredientHandler(
+        dev.izzy.factorycore.platform.client.BufferSettingsScreen.class,
+        new FilterGhostHandler<>());
+    registration.addGhostIngredientHandler(
+        dev.izzy.factorycore.platform.client.MachineSettingsScreen.class,
+        new FilterGhostHandler<>());
   }
 }

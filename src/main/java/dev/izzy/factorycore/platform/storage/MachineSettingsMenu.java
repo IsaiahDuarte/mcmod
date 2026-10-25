@@ -346,27 +346,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
 
   private void publishPreset() {
     var codec = new PlatformResourceCodec(player().registryAccess());
-    var rules = new ArrayList<String>();
-    for (var term : presetFilter.terms()) {
-      String text;
-      if (term instanceof ResourceFilter.Registry registry) text = "ID " + registry.id();
-      else if (term instanceof ResourceFilter.Tag tag) text = "#" + tag.id();
-      else {
-        var key = ((ResourceFilter.Exact) term).key();
-        String name = key.registryId();
-        try {
-          if (key.kind() == ResourceKind.ITEM)
-            name = codec.itemStack(key, 1).getHoverName().getString();
-          else if (key.kind() == ResourceKind.FLUID)
-            name = codec.fluidStack(key, 1).getHoverName().getString();
-        } catch (IllegalArgumentException unsupported) {
-          name = key.registryId();
-        }
-        text = "= " + key.registryId() + " · " + name;
-      }
-      text = text.replaceAll("[\\p{Cntrl}§]", "");
-      rules.add(text.length() > 256 ? text.substring(0, 256) : text);
-    }
+    var rules = FilterEdits.rules(presetFilter, codec);
     var runtimeStatus = runtime().machinePresets().status(machine);
     var staged = ownedStaging();
     boolean uncertain =
@@ -518,6 +498,31 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
         case MachinePresetPackets.REMOVE -> {
           if (packet.selection() >= terms.size()) return;
           terms.remove(packet.selection());
+        }
+        case MachinePresetPackets.CARRIED -> {
+          var term = FilterEdits.carried(presetFilter.kind(), getCarried());
+          if (term == null) {
+            presetStatus = "sample_empty";
+            publishPreset();
+            return;
+          }
+          terms.add(term);
+          if (filterMode == ResourceFilter.Mode.ALL) filterMode = ResourceFilter.Mode.INCLUDE;
+        }
+        case MachinePresetPackets.CYCLE -> {
+          if (packet.selection() >= terms.size()) return;
+          var next =
+              FilterEdits.cycle(
+                  presetFilter.kind(),
+                  terms.get(packet.selection()),
+                  packet.text(),
+                  new PlatformResourceCodec(sender.registryAccess()));
+          if (next == null) {
+            presetStatus = "stale";
+            publishPreset();
+            return;
+          }
+          terms.set(packet.selection(), next);
         }
         case MachinePresetPackets.CLEAR -> {
           terms.clear();

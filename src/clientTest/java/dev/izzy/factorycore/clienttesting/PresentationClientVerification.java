@@ -768,6 +768,70 @@ public final class PresentationClientVerification {
 
   private final java.util.Set<String> seenNotices = new java.util.HashSet<>();
 
+  /**
+   * B1: Machine Presets ghost slots through real input. Three IDs are dropped through the screen's
+   * recipe-viewer entry point (what a JEI drag calls); real clicks then cycle the planks slot Item
+   * → Exact → Tag and the diamond slot to Exact. The draft is discarded afterwards.
+   */
+  private void filterTour(BlockPos base) {
+    use(base.east(4), Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof MachineSettingsScreen) || waited() < 4) return false;
+          setScale(client, 4);
+          return press(client, "Presets");
+        });
+    String[] ids = {"minecraft:iron_ingot", "minecraft:oak_planks", "minecraft:diamond"};
+    for (int index = 0; index < ids.length; index++) {
+      int count = index + 1;
+      String id = ids[index];
+      step(
+          client -> {
+            var screen = (MachineSettingsScreen) client.screen;
+            int rules = screen.getMenu().presetView().rules().size();
+            if (rules >= count) return true;
+            if (waited() % 10 == 5)
+              screen.addFilterId(dev.izzy.factorycore.core.resource.ResourceKind.ITEM, id);
+            return false;
+          });
+    }
+    int[][] clicks = {{1, 1}, {1, 2}, {2, 1}};
+    for (var click : clicks) {
+      int slot = click[0], type = click[1];
+      step(
+          client -> {
+            var screen = (MachineSettingsScreen) client.screen;
+            var rules = screen.getMenu().presetView().rules();
+            if (rules.get(slot).type() == type) return true;
+            if (waited() % 10 == 5) {
+              var area = screen.filterArea();
+              screen.mouseClicked(area.getX() + 18 * slot + 9, area.getY() + 9, 0);
+            }
+            return false;
+          });
+    }
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          evidence
+              .append("machine preset ghost slots: ")
+              .append(((MachineSettingsScreen) client.screen).getMenu().presetView().rules())
+              .append('\n');
+          captures.grab(client, "machine-presets-filter-scale-4.png");
+          setScale(client, 1);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          captures.grab(client, "machine-presets-filter-scale-1.png");
+          setScale(client, 2);
+          client.screen.onClose();
+          return true;
+        });
+    step(client -> client.screen == null && waited() > 4);
+  }
+
   private static boolean hasButton(Minecraft client, String label) {
     for (var child : client.screen.children())
       if (child instanceof Button button
@@ -1675,10 +1739,35 @@ public final class PresentationClientVerification {
         });
     step(client -> client.player.containerMenu.getCarried().isEmpty() && waited() > 4);
     scales("drive", DriveScreen.class, false);
+    // B1: one ghost slot per match kind (Item, Exact, Tag) in the Buffer's saved filter.
+    server(
+        player -> {
+          var buffer =
+              (dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity)
+                  player.serverLevel().getBlockEntity(base.east(3));
+          var codec = new PlatformResourceCodec(player.registryAccess());
+          var filter =
+              new dev.izzy.factorycore.core.resource.ResourceFilter(
+                  dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+                  dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE,
+                  List.of(
+                      new dev.izzy.factorycore.core.resource.ResourceFilter.Registry(
+                          "minecraft:iron_ingot"),
+                      new dev.izzy.factorycore.core.resource.ResourceFilter.Exact(
+                          codec.itemKey(new ItemStack(Items.DIAMOND))),
+                      new dev.izzy.factorycore.core.resource.ResourceFilter.Tag(
+                          "minecraft:planks")));
+          buffer.configure(
+              new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                  player.getUUID(), false),
+              dev.izzy.factorycore.core.storage.BufferRegistry.Mode.PAUSED,
+              new dev.izzy.factorycore.core.storage.BufferPolicy(filter, 64, 64));
+        });
     use(base.east(3), Direction.SOUTH, false);
     scales("buffer", BufferSettingsScreen.class, false);
     use(base.east(4), Direction.SOUTH, false);
     scales("machine", MachineSettingsScreen.class, false);
+    filterTour(base);
     use(base.east(6).north(), Direction.SOUTH, false);
     step(
         client ->

@@ -251,7 +251,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
 
 ## Wave B — filters (no gate; lane F)
 
-- [ ] **B1 — Ghost-slot filter widget (G7).** Size M.
+- [x] **B1 — Ghost-slot filter widget (G7).** Size M.
   One shared widget for Buffer, Machine and Storage screens: up to 16 ghost slots; click
   with an item, drag from JEI, or Sample from inventory. Each slot has a match toggle:
   **Item** (`Registry`), **Exact** (`Exact`, components included) or **Tag** (pick from the
@@ -261,6 +261,16 @@ view cells, portable cells and cross-dimension links. See Wave G.
   JEI ghost-ingredient handler in `client/integration`.
   Done when: native tests round-trip each term type through both menus; client shows JEI
   drag and the three match modes at scales 1 and 4.
+  Evidence: `BufferSettingsGameTests.ghostSlotTermsCycleAndApply` (cursor item → Item, a
+  stale shown ID changes nothing, → Exact → first tag, Apply saves the tag term) and
+  `MachineSettingsGameTests.fluidGhostSlotCyclesEveryMatch` (held water bucket → water,
+  Item → Exact → tag(s) → Item); packet tests for the new rule rows and actions;
+  presentation `buffer-scale-{1..4}.png` (saved Item/Exact/Tag slots) and
+  `machine-presets-filter-scale-{1,4}.png` (three drops, then real clicks cycle planks to
+  Tag and diamond to Exact); `runJeiClient` `jei-buffer-ghost.png` (JEI's ghost handler
+  drops iron onto the Buffer slots). Found on the way: the Buffer menu sent every action
+  ≥ TAKE to inventory handling, so new filter actions were ignored; it now bounds the
+  range. The Storage-mode screen gets the same widget with B2. A5: fe4546b.
 
 - [ ] **B2 — Storage-mode filter (G6).** Size M.
   Add an optional `ResourceFilter` to `ConnectorSettings` (bounded by the existing 16-term,

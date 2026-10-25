@@ -77,7 +77,12 @@ class BufferSettingsPacketsTest {
             "INCLUDE",
             8,
             16,
-            List.of("#minecraft:logs", "= minecraft:iron_ingot · Exact sample"),
+            List.of(
+                new FilterEdits.Rule(FilterEdits.TAG, "minecraft:oak_log", "#minecraft:logs"),
+                new FilterEdits.Rule(
+                    FilterEdits.EXACT,
+                    "minecraft:iron_ingot",
+                    "= minecraft:iron_ingot · Exact sample")),
             List.of(new BufferSettingsPackets.Row(0, "minecraft:iron_ingot", "Exact sample", 64)),
             "draft",
             true,
@@ -102,7 +107,9 @@ class BufferSettingsPacketsTest {
     UUID session = UUID.randomUUID();
     assertThrows(
         IllegalArgumentException.class,
-        () -> new BufferSettingsPackets.Command(1, session, 1, 14, 0, 1, "", new byte[32]));
+        () ->
+            new BufferSettingsPackets.Command(
+                1, session, 1, BufferSettingsPackets.CYCLE + 1, 0, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new BufferSettingsPackets.Command(1, session, 1, 4, 36, 1, "", new byte[32]));
@@ -125,7 +132,7 @@ class BufferSettingsPacketsTest {
                 "ALL",
                 64,
                 64,
-                Collections.nCopies(17, "rule"),
+                Collections.nCopies(17, new FilterEdits.Rule(FilterEdits.ITEM, "a", "rule")),
                 List.of(),
                 "ready",
                 true,

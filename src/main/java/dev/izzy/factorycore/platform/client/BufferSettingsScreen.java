@@ -21,7 +21,8 @@ import org.lwjgl.glfw.GLFW;
 /**
  * Two compact native tabs; ghost samples never become container stacks or mutate held inventory.
  */
-public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSettingsMenu> {
+public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSettingsMenu>
+    implements FilterDropTarget {
   private List<Button> modeRow = List.of();
 
   private EditBox id, rate, target;
@@ -33,15 +34,19 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
       addTag,
       setRate,
       setTarget,
-      previous,
-      next,
       remove,
       clear,
       takeOne,
       takeStack,
       returning,
       exact;
-  private int rulePage, selectedRule, selectedSlot;
+  private int selectedRule, selectedSlot;
+
+  /** B1 ghost filter slots; typed IDs are behind "Add by ID". */
+  private FilterSlots filterSlots;
+
+  private Button addById;
+  private boolean typing;
   private boolean sample;
   private long shown;
 
@@ -124,24 +129,36 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
             72,
             48,
             () -> send(BufferSettingsPackets.TAG, 0, 0, id.getValue(), new byte[32]));
-    previous =
+    filterSlots =
+        addRenderableWidget(
+            new FilterSlots(
+                leftPos + 10,
+                topPos + 97,
+                new FilterSlots.Actions() {
+                  @Override
+                  public void addCarried() {
+                    send(BufferSettingsPackets.CARRIED, 0, 0, "", new byte[32]);
+                  }
+
+                  @Override
+                  public void cycle(int index, String shown) {
+                    send(BufferSettingsPackets.CYCLE, index, 0, shown, new byte[32]);
+                  }
+
+                  @Override
+                  public void remove(int index) {
+                    send(BufferSettingsPackets.REMOVE, index, 0, "", new byte[32]);
+                  }
+                },
+                index -> selectedRule = index));
+    addById =
         button(
-            "previous",
+            "add_by_id",
             10,
-            170,
-            52,
+            72,
+            96,
             () -> {
-              rulePage = Math.max(0, rulePage - 1);
-              sync();
-            });
-    next =
-        button(
-            "next",
-            66,
-            170,
-            52,
-            () -> {
-              rulePage++;
+              typing = true;
               sync();
             });
     remove =
@@ -268,13 +285,25 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     reset.active = mode.active && view.dirty();
     for (var widget :
         List.of(
-            rate, target, id, setRate, setTarget, addId, addTag, previous, next, remove, clear)) {
+            rate,
+            target,
+            id,
+            setRate,
+            setTarget,
+            addId,
+            addTag,
+            remove,
+            clear,
+            addById,
+            filterSlots)) {
       widget.visible = !inventory;
       widget.active = view.editable() && !view.busy();
     }
-    rulePage = Math.min(rulePage, Math.max(0, (view.rules().size() - 1) / 6));
-    previous.active = !inventory && rulePage > 0;
-    next.active = !inventory && (rulePage + 1) * 6 < view.rules().size();
+    id.visible = addId.visible = addTag.visible = !inventory && typing;
+    addById.visible = !inventory && !typing;
+    selectedRule = Math.min(selectedRule, Math.max(0, view.rules().size() - 1));
+    filterSlots.show(
+        view.rules(), dev.izzy.factorycore.core.resource.ResourceKind.ITEM, selectedRule);
     remove.active =
         !inventory && view.editable() && !view.busy() && selectedRule < view.rules().size();
     for (var button : modeRow) button.visible = inventory;
@@ -340,23 +369,24 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
               font, item.getDefaultInstance(), x, topPos + 53, Integer.toString(row.count()));
         }
       }
-    } else {
-      graphics.fill(leftPos + 10, topPos + 96, leftPos + 310, topPos + 167, 0xff171d22);
-      for (int i = 0; i < 6; i++) {
-        int index = rulePage * 6 + i;
-        if (index >= menu.view().rules().size()) break;
-        if (index == selectedRule)
-          graphics.fill(
-              leftPos + 10, topPos + 97 + i * 11, leftPos + 310, topPos + 108 + i * 11, 0xff77583b);
-        graphics.drawString(
-            font,
-            font.plainSubstrByWidth(menu.view().rules().get(index), 294),
-            leftPos + 13,
-            topPos + 98 + i * 11,
-            0xffffff,
-            false);
-      }
     }
+  }
+
+  @Override
+  public net.minecraft.client.renderer.Rect2i filterArea() {
+    return filterSlots == null || !filterSlots.visible
+        ? null
+        : new net.minecraft.client.renderer.Rect2i(
+            filterSlots.getX(),
+            filterSlots.getY(),
+            filterSlots.getWidth(),
+            filterSlots.getHeight());
+  }
+
+  @Override
+  public void addFilterId(dev.izzy.factorycore.core.resource.ResourceKind kind, String id) {
+    if (kind == dev.izzy.factorycore.core.resource.ResourceKind.ITEM)
+      send(BufferSettingsPackets.REGISTRY, 0, 0, id, new byte[32]);
   }
 
   /** The strip shares the title row with the tabs (from x=174); hover shows it in full. */
@@ -390,16 +420,9 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
           font, Component.translatable("gui.factorycore.buffer.rate"), 10, 52, 0xffffff, false);
       graphics.drawString(
           font, Component.translatable("gui.factorycore.buffer.target"), 118, 52, 0xffffff, false);
-      graphics.drawString(
-          font,
-          Component.translatable(
-              "gui.factorycore.buffer.page",
-              rulePage + 1,
-              Math.max(1, (view.rules().size() + 5) / 6)),
-          124,
-          175,
-          0xffffff,
-          false);
+      // B1: the selected slot's rule, beside the ghost slots.
+      if (selectedRule < view.rules().size())
+        FilterSlots.describe(graphics, font, view.rules().get(selectedRule), 162, 99, 148);
       graphics.drawString(
           font,
           Component.translatable(
@@ -440,16 +463,6 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
         170 - stripX(),
         mouseX,
         mouseY);
-    if (!menu.inventoryTab()
-        && mouseX >= leftPos + 10
-        && mouseX < leftPos + 310
-        && mouseY >= topPos + 97
-        && mouseY < topPos + 163) {
-      int index = rulePage * 6 + (mouseY - topPos - 97) / 11;
-      if (index < menu.view().rules().size())
-        graphics.renderTooltip(
-            font, Component.literal(menu.view().rules().get(index)), mouseX, mouseY);
-    }
   }
 
   @Override
@@ -461,15 +474,6 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
         && y >= topPos + 52
         && y < topPos + 72) {
       selectedSlot = ((int) x - leftPos - 79) / 18;
-      return true;
-    }
-    if (button == 0
-        && !menu.inventoryTab()
-        && x >= leftPos + 10
-        && x < leftPos + 310
-        && y >= topPos + 97
-        && y < topPos + 163) {
-      selectedRule = rulePage * 6 + ((int) y - topPos - 97) / 11;
       return true;
     }
     var slot = getSlotUnderMouse();

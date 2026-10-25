@@ -7,3 +7,4 @@ jei-program-ghost.png
 jei-crafting-panel-scale-4.png
 jei-processing-panel-scale-4.png
 jei-request-jobs.png
+jei-buffer-ghost.png

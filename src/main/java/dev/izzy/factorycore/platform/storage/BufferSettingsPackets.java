@@ -25,7 +25,10 @@ public final class BufferSettingsPackets {
       RESET = 10,
       TAKE = 11,
       DEPOSIT = 12,
-      RETURN = 13;
+      RETURN = 13,
+      // B1 ghost slots: add the cursor item; cycle rule {@code selection}'s match (text: shown ID).
+      CARRIED = 14,
+      CYCLE = 15;
 
   public record Command(
       int menu,
@@ -45,7 +48,7 @@ public final class BufferSettingsPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > RETURN
+          || action > CYCLE
           || selection < 0
           || selection > 35
           || value < 0
@@ -108,7 +111,7 @@ public final class BufferSettingsPackets {
       String filter,
       int rate,
       int target,
-      List<String> rules,
+      List<FilterEdits.Rule> rules,
       List<Row> slots,
       String status,
       boolean editable,
@@ -132,7 +135,6 @@ public final class BufferSettingsPackets {
           || target < 0
           || target > BufferPolicy.MAX_TARGET
           || rules.size() > 16
-          || rules.stream().anyMatch(r -> r.length() > 128)
           || slots.size() > 9
           || status.length() > 64
           || staged < 0
@@ -157,7 +159,7 @@ public final class BufferSettingsPackets {
               b.writeVarInt(v.rate);
               b.writeVarInt(v.target);
               b.writeVarInt(v.rules.size());
-              for (var rule : v.rules) b.writeUtf(rule, 128);
+              for (var rule : v.rules) FilterEdits.Rule.write(b, rule);
               b.writeVarInt(v.slots.size());
               for (var row : v.slots) {
                 b.writeVarInt(row.slot);
@@ -180,8 +182,8 @@ public final class BufferSettingsPackets {
               String mode = b.readUtf(16), filter = b.readUtf(16);
               int rate = b.readVarInt(), target = b.readVarInt(), size = b.readVarInt();
               if (size < 0 || size > 16) throw new IllegalArgumentException("Rule count");
-              var rules = new ArrayList<String>();
-              for (int i = 0; i < size; i++) rules.add(b.readUtf(128));
+              var rules = new ArrayList<FilterEdits.Rule>();
+              for (int i = 0; i < size; i++) rules.add(FilterEdits.Rule.read(b));
               size = b.readVarInt();
               if (size < 0 || size > 9) throw new IllegalArgumentException("Slot count");
               var rows = new ArrayList<Row>();
@@ -210,7 +212,7 @@ public final class BufferSettingsPackets {
   private BufferSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var r = event.registrar("3");
+    var r = event.registrar("4");
     MenuPayloads.toServer(
         r, Command.TYPE, Command.CODEC, BufferSettingsMenu.class, BufferSettingsMenu::command);
     MenuPayloads.toClient(
