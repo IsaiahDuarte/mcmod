@@ -213,6 +213,154 @@ public final class TerminalJobGameTests {
         .thenSucceed();
   }
 
+  /**
+   * A4 crafting monitor: each player lists their own jobs; Manage also lists others' (named) but
+   * may cancel only its own; the detail view shows the waiting processing step with its reason,
+   * cancels from there, and closes once the job is gone.
+   */
+  @GameTest(template = "empty", timeoutTicks = 900)
+  public static void monitorShowsStepsAndManageSeesAllJobs(GameTestHelper h) {
+    var owner = TestPlayers.mock(h);
+    var member = TestPlayers.mock(h);
+    for (var player : List.of(owner, member)) {
+      TestPlayers.connect(player);
+      player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    }
+    Net.in(h, owner.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(UNIT);
+    var processing = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    processing.set(
+        CraftingContent.PROCESSING.get(),
+        new dev.izzy.factorycore.platform.crafting.ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.RAW_IRON)),
+            List.of(new ItemStack(Items.IRON_INGOT))));
+    unit.patterns().insertItem(0, processing, false);
+    h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
+    TerminalEntity terminal = h.getBlockEntity(TERMINAL);
+    var server = h.getLevel().getServer();
+    var saved = DeviceSavedData.get(server);
+    DeviceRegistry.Handle cell = CellHandleData.read(drive.cell(0));
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    ResourceKey raw = codec.itemKey(new ItemStack(Items.RAW_IRON));
+    ResourceKey ingot = codec.itemKey(new ItemStack(Items.IRON_INGOT));
+    var origin = dev.izzy.factorycore.platform.Positions.of(h.getLevel(), h.absolutePos(TERMINAL));
+    UUID[] ids = {null, null};
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(owner), "Terminal ready"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  dev.izzy.factorycore.platform.network.WorldNetworks.get(server)
+                          .setGrants(
+                              new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                                  owner.getUUID(), false),
+                              origin,
+                              member.getUUID(),
+                              dev.izzy.factorycore.core.network.NetworkPermissions.AccessRole.MEMBER
+                                  .grants())
+                      == dev.izzy.factorycore.core.network.NetworkPermissions.Change.OK,
+                  "Member granted");
+              saved.registry().insert(cell, raw, 2);
+              var jobs = WorldCraftingJobs.get(server);
+              ids[0] =
+                  jobs.submit(
+                          new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                              owner.getUUID(), false),
+                          origin,
+                          ingot,
+                          1)
+                      .job();
+              ids[1] =
+                  jobs.submit(
+                          new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                              member.getUUID(), false),
+                          origin,
+                          ingot,
+                          1)
+                      .job();
+              h.assertTrue(ids[0] != null && ids[1] != null, "Both players started a job");
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    saved.craftingJobs().get(ids[0]).reason().equals("machine_missing")
+                        && saved.craftingJobs().get(ids[1]).reason().equals("machine_missing"),
+                    "Both jobs wait: no machine faces the Crafter"))
+        .thenExecute(
+            () -> {
+              h.useBlock(TERMINAL, member);
+              var m = menu(h, member);
+              m.broadcastChanges();
+              h.assertTrue(
+                  m.jobView().jobs().size() == 1 && m.jobView().jobs().getFirst().owner().isEmpty(),
+                  "Without Manage a player lists only their own job: " + m.jobView().jobs());
+              member.closeContainer();
+              h.useBlock(TERMINAL, owner);
+              m = menu(h, owner);
+              m.broadcastChanges();
+              var listed = m.jobView().jobs();
+              h.assertTrue(
+                  listed.size() == 2
+                      && listed.get(0).owner().isEmpty()
+                      && listed.get(1).owner().equals(member.getGameProfile().getName()),
+                  "Manage lists its own job first, then the member's, named: " + listed);
+              command(h, owner, TerminalJobPackets.DETAIL, 1, 1);
+              var detail = m.jobView().detail();
+              h.assertTrue(
+                  !detail.cancellable()
+                      && detail.job().owner().equals(member.getGameProfile().getName())
+                      && detail.steps().size() == 1
+                      && detail.steps().getFirst().status().equals("waiting")
+                      && detail.job().reason().equals("machine_missing"),
+                  "The member's waiting step is shown, read-only: " + detail);
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () -> {
+              command(h, owner, TerminalJobPackets.CANCEL, 1, 1);
+              h.assertTrue(
+                  menu(h, owner).jobView().status().equals("refused")
+                      && saved.craftingJobs().get(ids[1]).state()
+                          != dev.izzy.factorycore.core.crafting.CraftingJob.State.CANCELLING,
+                  "Manage cannot cancel another player's job");
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(() -> command(h, owner, TerminalJobPackets.DETAIL, 0, 1))
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () -> {
+              var m = menu(h, owner);
+              h.assertTrue(
+                  m.jobView().detail().cancellable()
+                      && m.jobView().detail().job().owner().isEmpty(),
+                  "The owner's own job can be cancelled from its detail view");
+              command(h, owner, TerminalJobPackets.CANCEL, 0, 1);
+              h.assertTrue(
+                  m.jobView().status().equals("cancelling"), "Cancel from the detail view");
+            })
+        .thenWaitUntil(
+            () -> {
+              var m = menu(h, owner);
+              m.broadcastChanges();
+              h.assertTrue(
+                  saved.craftingJobs().get(ids[0]) == null
+                      && m.jobView().detail() == TerminalJobPackets.NO_DETAIL
+                      && m.jobView().jobs().size() == 1,
+                  "A finished job leaves the list and closes its detail view");
+              WorldCraftingJobs.get(server)
+                  .cancel(
+                      new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                          member.getUUID(), false),
+                      ids[1]);
+            })
+        .thenSucceed();
+  }
+
   private static TerminalJobPackets.PlanRow planRow(TerminalMenu m, String id) {
     for (var row : m.jobView().plan()) if (row.item().icon().equals(id)) return row;
     return null;

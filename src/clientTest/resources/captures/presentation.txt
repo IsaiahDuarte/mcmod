@@ -86,3 +86,6 @@ jobs-plan-bound-scale-4.png
 jobs-plan-bound-end-scale-4.png
 items-craftable-scale-4.png
 items-request-scale-4.png
+jobs-monitor-running-scale-2.png
+jobs-plan-iron-scale-4.png
+jobs-monitor-waiting-scale-4.png

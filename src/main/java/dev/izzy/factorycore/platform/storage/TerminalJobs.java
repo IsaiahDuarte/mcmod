@@ -41,6 +41,9 @@ final class TerminalJobs {
   private String jobStatus = "ready";
   private List<UUID> jobIds = List.of();
 
+  /** A4: the job opened in the detail view, or null. */
+  private UUID detailJob;
+
   /** {@code initial} is the view the client already holds, so an unchanged view is not resent. */
   TerminalJobs(
       ServerPlayer viewer,
@@ -174,6 +177,11 @@ final class TerminalJobs {
           jobStatus = reason.isEmpty() ? "kept" : reason;
         }
       }
+      case TerminalJobPackets.DETAIL -> {
+        if (command.amount() == 2) detailJob = null;
+        else if (command.selection() < jobIds.size()) detailJob = jobIds.get(command.selection());
+        else return false;
+      }
       case TerminalJobPackets.CANCEL -> {
         if (command.selection() >= jobIds.size()) return false;
         jobStatus =
@@ -238,6 +246,66 @@ final class TerminalJobs {
     planCycles = List.copyOf(cycles);
   }
 
+  /**
+   * The viewer's own jobs, then (A4) every other job on this network when the viewer has Manage at
+   * the terminal. Manage shows other players' jobs; only their requester or an operator may cancel
+   * them ({@link WorldCraftingJobs#cancel}).
+   */
+  private List<dev.izzy.factorycore.core.crafting.CraftingJob> listed() {
+    var runtime = WorldCraftingJobs.get(viewer.server);
+    var own = runtime.jobs(viewer.getUUID());
+    var networks = WorldNetworks.get(viewer.server);
+    var member = networks.membership(terminal.origin());
+    if (member.status() != NetworkTopology.Status.VALID
+        || !networks.allows(actor(), terminal.origin(), NetworkPermissions.Permission.MANAGE))
+      return own;
+    var all = new ArrayList<>(own);
+    for (var job : DeviceSavedData.get(viewer.server).craftingJobs().all())
+      if (!job.principal().equals(viewer.getUUID())
+          && job.network().equals(member.scope().network())) all.add(job);
+    return all;
+  }
+
+  private TerminalJobPackets.Job row(dev.izzy.factorycore.core.crafting.CraftingJob job) {
+    String owner = "";
+    if (!job.principal().equals(viewer.getUUID())) {
+      owner =
+          dev.izzy.factorycore.platform.network.AccessAdministration.name(
+                  viewer.server, job.principal())
+              .getString();
+      if (owner.length() > 48) owner = owner.substring(0, 48);
+    }
+    return new TerminalJobPackets.Job(
+        entry(job.request(), Long.toString(job.amount())),
+        job.craftsDone(),
+        job.craftsTotal(),
+        job.state().name().toLowerCase(Locale.ROOT),
+        job.reason(),
+        owner);
+  }
+
+  /** Steps of the opened job: done, the current one running or waiting, the rest queued. */
+  private TerminalJobPackets.Detail detail(
+      dev.izzy.factorycore.core.crafting.CraftingJob job, TerminalJobPackets.Job row) {
+    var steps = new ArrayList<TerminalJobPackets.StepRow>();
+    int current = job.current();
+    boolean waiting = job.state() == dev.izzy.factorycore.core.crafting.CraftingJob.State.WAITING;
+    for (int index = 0; index < job.steps().size(); index++) {
+      if (steps.size() == TerminalJobPackets.DETAIL_STEPS) break;
+      var step = job.steps().get(index);
+      String status =
+          step.done() >= step.crafts()
+              ? "done"
+              : index == current ? waiting ? "waiting" : "running" : "queued";
+      steps.add(
+          new TerminalJobPackets.StepRow(
+              entry(step.output(), ""), step.done(), step.crafts(), status));
+    }
+    boolean cancellable = job.principal().equals(viewer.getUUID()) || actor().operator();
+    return new TerminalJobPackets.Detail(
+        row, cancellable, steps, job.steps().size() - steps.size());
+  }
+
   /** Sends the Jobs view when it differs from the last one sent. */
   void publish() {
     var rows = new ArrayList<TerminalJobPackets.Entry>();
@@ -269,17 +337,16 @@ final class TerminalJobs {
     } else if (preview != null) reason = preview.reason();
     var ids = new ArrayList<UUID>();
     var jobRows = new ArrayList<TerminalJobPackets.Job>();
-    for (var job : WorldCraftingJobs.get(viewer.server).jobs(viewer.getUUID())) {
+    TerminalJobPackets.Detail detail = TerminalJobPackets.NO_DETAIL;
+    for (var job : listed()) {
       if (jobRows.size() == TerminalJobPackets.JOBS) break;
       ids.add(job.id());
-      jobRows.add(
-          new TerminalJobPackets.Job(
-              entry(job.request(), Long.toString(job.amount())),
-              job.craftsDone(),
-              job.craftsTotal(),
-              job.state().name().toLowerCase(Locale.ROOT),
-              job.reason()));
+      var row = row(job);
+      jobRows.add(row);
+      if (job.id().equals(detailJob)) detail = detail(job, row);
     }
+    // A job that finished, or is no longer listed, closes its detail view.
+    if (detail == TerminalJobPackets.NO_DETAIL) detailJob = null;
     jobIds = List.copyOf(ids);
     var packet =
         new TerminalJobPackets.View(
@@ -300,6 +367,7 @@ final class TerminalJobs {
             planMore,
             planCycles,
             jobRows,
+            detail,
             jobStatus);
     if (!packet.equals(sent)) {
       sent = packet;

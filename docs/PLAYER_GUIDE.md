@@ -142,8 +142,12 @@ eight at a time) or click its scrollbar to see more.
 - **Start:** press **Start** to run the job; you need Craft. Its ingredients are
   reserved so no one else takes them.
 - **Your jobs:** they appear on the right with progress and a state symbol (▶
-  running, ⏸ waiting, ⇩ storing, ✕ cancelling); hover for the reason. **Cancel**
-  stops a job and returns unused ingredients.
+  running, ⏸ waiting, ⇩ storing, ✕ cancelling); hover for the reason, scroll for more.
+  Click a job to see each step: done, crafting, waiting (and why) or next. **Cancel**
+  stops a job and returns unused ingredients; **Back** closes the steps.
+- **Everyone's jobs:** with Manage access you also see other players' jobs on the
+  network, with who asked for them. Only the player who started a job (or an operator)
+  can cancel it.
 - **Limits:** you can run 8 jobs at once, and a network can hold 64.
 
 **Keep-stock:** select an item in Jobs, preview an amount and press **Keep**. The

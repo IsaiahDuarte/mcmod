@@ -216,7 +216,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
   with Stick selected and the amount box focused). Terminal payload protocol 5 → 6.
   A2: 95d3b5c.
 
-- [ ] **A4 — Crafting monitor (G5).** Size M.
+- [x] **A4 — Crafting monitor (G5).** Size M.
   A job detail view: each step with crafts done/total, the item it waits on and why
   (missing, busy machine, storage full), and Cancel. Players see their own jobs; Manage
   sees all jobs on the network.
@@ -224,6 +224,15 @@ view cells, portable cells and cross-dimension links. See Wave G.
   `TerminalJobPackets.java`, `TerminalScreen.java`.
   Done when: native tests cover visibility (own vs Manage), a waiting processing step and
   cancel from the detail view; client screenshots of a running and a waiting job.
+  Decision: Manage shows other players' jobs read-only. SPEC R07 lets Manage administer
+  grants, not cancel others' work, so cancel stays with the requester or an operator.
+  Evidence: `TerminalJobGameTests.monitorShowsStepsAndManageSeesAllJobs` (a member lists
+  only their job; the owner with Manage lists both, the member's named; the member's
+  waiting step shows `machine_missing` and is not cancellable, and Cancel is refused; the
+  owner cancels its own from the detail view, which closes when the job is gone),
+  `TerminalJobPacketsTest`; presentation `jobs-monitor-running-scale-2.png` (37 planks,
+  3/10 crafting) and `jobs-monitor-waiting-scale-4.png` (smelting with no machine, reason
+  on its own line), each opened with a real click on the job row. A3: 2eba58f.
 
 - [ ] **A5 — Crafting done notification and request from JEI.** Size S.
   A toast instead of chat for "job finished" (chat stays when the screen is closed). With

@@ -118,6 +118,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private int target, craftSelected, jobSelected;
 
+  /** A4: first listed job shown in the four-row column, and the opened job's step scroll. */
+  private int jobScroll, detailOffset;
+
+  private boolean showDetail;
+
   /** A2: the previewed plan's breakdown replaces the craftable strip while shown. */
   private Button planButton;
 
@@ -521,6 +526,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             244,
             28,
             () -> {
+              if (detailShown()) {
+                showDetail = false;
+                job(TerminalJobPackets.DETAIL, 0, 2);
+                return;
+              }
               showPlan = !showPlan;
               planOffset = 0;
             });
@@ -742,9 +752,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     keepJob.active = craftSelected < jobs.craftables().size();
     amountBox.visible = jobsMode;
     if (jobs.preview().icon().isEmpty()) showPlan = false;
+    if (jobs.detail().job().output().icon().isEmpty()) showDetail = false;
+    jobScroll = Math.max(0, Math.min(jobScroll, jobs.jobs().size() - 4));
+    detailOffset = Math.max(0, Math.min(detailOffset, Math.max(0, detailLines() - PLAN_VISIBLE)));
     planButton.visible = jobsMode;
-    planButton.active = !jobs.preview().icon().isEmpty();
-    String planKey = "gui.factorycore.terminal.job." + (showPlan ? "plan_back" : "plan_view");
+    planButton.active = detailShown() || !jobs.preview().icon().isEmpty();
+    String planKey =
+        "gui.factorycore.terminal.job." + (showPlan || detailShown() ? "plan_back" : "plan_view");
     planButton.setMessage(Component.translatable(planKey));
     planButton.setTooltip(Tooltip.create(Component.translatable(planKey + ".help")));
     planOffset = Math.max(0, Math.min(planOffset, Math.max(0, planLines() - PLAN_VISIBLE)));
@@ -755,8 +769,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     startJob.active = !jobs.preview().icon().isEmpty() && jobs.previewReason().isEmpty();
     cancelJob.visible = jobsMode;
     cancelJob.active =
-        jobSelected < jobs.jobs().size()
-            && !jobs.jobs().get(jobSelected).state().equals("cancelling");
+        detailShown()
+            ? jobs.detail().cancellable() && !jobs.detail().job().state().equals("cancelling")
+            : jobSelected < jobs.jobs().size()
+                && jobs.jobs().get(jobSelected).owner().isEmpty()
+                && !jobs.jobs().get(jobSelected).state().equals("cancelling");
   }
 
   @Override
@@ -790,8 +807,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     if (jobsMode) {
       var jobRows = menu.jobView().jobs();
       graphics.fill(leftPos + JOBS_X - 2, topPos + 42, leftPos + 340, topPos + 115, 0xff171d22);
-      for (int index = 0; index < jobRows.size(); index++) {
-        int y = topPos + 43 + 18 * index;
+      for (int line = 0; line < 4 && jobScroll + line < jobRows.size(); line++) {
+        int index = jobScroll + line;
+        int y = topPos + 43 + 18 * line;
         var row = jobRows.get(index);
         if (index == jobSelected)
           graphics.fill(leftPos + JOBS_X - 1, y - 1, leftPos + 339, y + 17, 0xffbb8659);
@@ -808,9 +826,18 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 44),
             leftPos + JOBS_X + 18,
             y + 4,
-            row.reason().isEmpty() ? 0xc9dbed : 0xe4bc83,
+            !row.owner().isEmpty() ? 0x8f9ba6 : row.reason().isEmpty() ? 0xc9dbed : 0xe4bc83,
             false);
       }
+      if (jobRows.size() > 4) {
+        int track = 72, thumb = Math.max(8, track * 4 / jobRows.size());
+        int thumbY = topPos + 43 + (track - thumb) * jobScroll / Math.max(1, jobRows.size() - 4);
+        graphics.fill(leftPos + 337, thumbY, leftPos + 339, thumbY + thumb, 0xffa5b5c5);
+      }
+    }
+    if (jobsMode && detailShown()) {
+      renderDetail(graphics);
+      return;
     }
     if (jobsMode && planShown()) {
       renderPlan(graphics);
@@ -1105,7 +1132,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private void renderJobLabels(GuiGraphics graphics) {
     var jobs = menu.jobView();
-    if (planShown()) return;
+    if (planShown() || detailShown()) return;
     Component first;
     if (!jobs.preview().icon().isEmpty())
       first =
@@ -1189,7 +1216,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             && mouseY >= topPos + 45
             && mouseY < topPos + 75;
     if (!jobsMode) over = row >= 0;
-    int jobRow = (mouseY - topPos - 43) / 18;
+    int jobRow = jobScroll + (mouseY - topPos - 43) / 18;
     if (jobsMode
         && mouseX >= leftPos + JOBS_X
         && mouseX < leftPos + 340
@@ -1208,8 +1235,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
               Component.translatable("gui.factorycore.terminal.job.state." + value.state()),
               value.reason().isEmpty()
                   ? Component.empty()
+                  : Component.translatable("gui.factorycore.terminal.job.reason." + value.reason()),
+              value.owner().isEmpty()
+                  ? Component.translatable("gui.factorycore.terminal.job.detail.help")
                   : Component.translatable(
-                      "gui.factorycore.terminal.job.reason." + value.reason())),
+                      "gui.factorycore.terminal.job.detail.owner", value.owner())),
           Optional.empty(),
           mouseX,
           mouseY);
@@ -1378,8 +1408,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         && mouseX < leftPos + 340
         && mouseY >= topPos + 43
         && mouseY < topPos + 115) {
-      int index = ((int) mouseY - topPos - 43) / 18;
-      if (index < menu.jobView().jobs().size()) jobSelected = index;
+      int index = jobScroll + ((int) mouseY - topPos - 43) / 18;
+      if (index < menu.jobView().jobs().size()) {
+        jobSelected = index;
+        // A4: clicking a job opens its steps; the server keeps it open while it is listed.
+        showDetail = true;
+        showPlan = false;
+        detailOffset = 0;
+        job(TerminalJobPackets.DETAIL, index, 1);
+      }
       return true;
     }
     int cell = cellAt(mouseX, mouseY);
@@ -1469,7 +1506,88 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   private boolean planShown() {
-    return showPlan && !menu.jobView().preview().icon().isEmpty();
+    return showPlan && !detailShown() && !menu.jobView().preview().icon().isEmpty();
+  }
+
+  private boolean detailShown() {
+    return showDetail && !menu.jobView().detail().job().output().icon().isEmpty();
+  }
+
+  private int detailLines() {
+    var detail = menu.jobView().detail();
+    return detail.steps().size() + (detail.moreSteps() > 0 ? 1 : 0);
+  }
+
+  /**
+   * A4 crafting monitor: the opened job's steps with crafts done/total and whether each is done,
+   * running, waiting (with the job's reason) or queued. Cancel acts on this job when allowed.
+   */
+  private void renderDetail(GuiGraphics graphics) {
+    var detail = menu.jobView().detail();
+    var job = detail.job();
+    int x = leftPos + 12, y = topPos + 45;
+    graphics.fill(x, y, x + 256, y + 70, 0xff151b20);
+    String header =
+        Component.translatable(
+                    "gui.factorycore.terminal.job.preview",
+                    job.output().amount(),
+                    job.output().name())
+                .getString()
+            + " · "
+            + Component.translatable("gui.factorycore.terminal.job.state." + job.state())
+                .getString()
+            + (job.owner().isEmpty()
+                ? ""
+                : " · "
+                    + Component.translatable(
+                            "gui.factorycore.terminal.job.detail.owner", job.owner())
+                        .getString());
+    graphics.drawString(font, font.plainSubstrByWidth(header, 250), x + 3, y + 2, 0xffffff, false);
+    // Why the job waits gets a full line; the waiting step's row then just says "Waiting".
+    int top = 13;
+    if (!job.reason().isEmpty()) {
+      graphics.drawString(
+          font,
+          font.plainSubstrByWidth(
+              Component.translatable("gui.factorycore.terminal.job.reason." + job.reason())
+                  .getString(),
+              250),
+          x + 3,
+          y + 13,
+          0xe4bc83,
+          false);
+      top = 23;
+    }
+    for (int line = 0; line < PLAN_VISIBLE - (top - 13) / 10; line++) {
+      int index = detailOffset + line, rowY = y + top + 9 * line;
+      if (index < detail.steps().size()) {
+        var step = detail.steps().get(index);
+        int color =
+            switch (step.status()) {
+              case "done" -> 0x9fd49b;
+              case "waiting" -> 0xe4bc83;
+              case "running" -> 0xffffff;
+              default -> 0x8f9ba6;
+            };
+        String status =
+            Component.translatable("gui.factorycore.terminal.job.step." + step.status())
+                .getString();
+        graphics.drawString(
+            font, font.plainSubstrByWidth(step.output().name(), 90), x + 3, rowY, color, false);
+        String progress =
+            compact(Long.toString(step.done())) + "/" + compact(Long.toString(step.total()));
+        graphics.drawString(font, progress, x + 130 - font.width(progress), rowY, color, false);
+        graphics.drawString(
+            font, font.plainSubstrByWidth(status, 118), x + 136, rowY, color, false);
+      } else if (index == detail.steps().size() && detail.moreSteps() > 0)
+        graphics.drawString(
+            font,
+            Component.translatable("gui.factorycore.terminal.job.detail.more", detail.moreSteps()),
+            x + 3,
+            rowY,
+            0xa5b5c5,
+            false);
+    }
   }
 
   /** Breakdown lines: one per row, "and N more" if any, then one per cycle explanation. */
@@ -1574,6 +1692,26 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
    */
   @Override
   public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    if (jobsMode
+        && scrollY != 0
+        && mouseX >= leftPos + JOBS_X
+        && mouseX < leftPos + 340
+        && mouseY >= topPos + 43
+        && mouseY < topPos + 115) {
+      jobScroll =
+          Math.max(
+              0, Math.min(menu.jobView().jobs().size() - 4, jobScroll + (scrollY > 0 ? -1 : 1)));
+      return true;
+    }
+    if (jobsMode && detailShown() && overCraftables(mouseX, mouseY) && scrollY != 0) {
+      detailOffset =
+          Math.max(
+              0,
+              Math.min(
+                  Math.max(0, detailLines() - PLAN_VISIBLE),
+                  detailOffset + (scrollY > 0 ? -1 : 1)));
+      return true;
+    }
     if (jobsMode && planShown() && overCraftables(mouseX, mouseY) && scrollY != 0) {
       planOffset =
           Math.max(

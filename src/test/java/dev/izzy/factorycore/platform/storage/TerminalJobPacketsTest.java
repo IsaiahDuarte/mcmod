@@ -54,7 +54,16 @@ class TerminalJobPacketsTest {
                 new TerminalJobPackets.PlanRow(stick, 2, 8, 0)),
             3,
             List.of("Coal → Charcoal → Coal"),
-            List.of(new TerminalJobPackets.Job(stick, 1, 3, "running", "")),
+            List.of(
+                new TerminalJobPackets.Job(stick, 1, 3, "running", ""),
+                new TerminalJobPackets.Job(stick, 0, 2, "waiting", "busy", "Alex")),
+            new TerminalJobPackets.Detail(
+                new TerminalJobPackets.Job(stick, 0, 2, "waiting", "busy", "Alex"),
+                false,
+                List.of(
+                    new TerminalJobPackets.StepRow(stick, 1, 1, "done"),
+                    new TerminalJobPackets.StepRow(stick, 0, 1, "waiting")),
+                3),
             "previewed");
     var output = buffer();
     try {
@@ -74,7 +83,7 @@ class TerminalJobPacketsTest {
     for (int[] bad :
         new int[][] {
           {-1, 0, 1},
-          {TerminalJobPackets.KEEP + 1, 0, 1},
+          {TerminalJobPackets.DETAIL + 1, 0, 1},
           {TerminalJobPackets.PREVIEW, TerminalJobPackets.ROWS, 1},
           {TerminalJobPackets.PREVIEW, -1, 1},
           {TerminalJobPackets.PREVIEW, 0, 0},
@@ -104,6 +113,7 @@ class TerminalJobPacketsTest {
                 0,
                 List.of(),
                 List.of(),
+                TerminalJobPackets.NO_DETAIL,
                 "ready"));
     assertThrows(
         IllegalArgumentException.class,
@@ -124,6 +134,7 @@ class TerminalJobPacketsTest {
                 0,
                 List.of(),
                 List.of(),
+                TerminalJobPackets.NO_DETAIL,
                 "ready"));
     assertThrows(
         IllegalArgumentException.class,
@@ -146,9 +157,28 @@ class TerminalJobPacketsTest {
                 0,
                 List.of(),
                 List.of(),
+                TerminalJobPackets.NO_DETAIL,
                 "ready"));
     assertThrows(
         IllegalArgumentException.class, () -> new TerminalJobPackets.PlanRow(entry, -1, 0, 0));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalJobPackets.Detail(
+                new TerminalJobPackets.Job(entry, 0, 0, "running", ""),
+                true,
+                Collections.nCopies(
+                    TerminalJobPackets.DETAIL_STEPS + 1,
+                    new TerminalJobPackets.StepRow(entry, 0, 1, "queued")),
+                0));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new TerminalJobPackets.Job(entry, 0, 1, "running", "", "x".repeat(49)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalJobPackets.Command(
+                1, id, 1, TerminalJobPackets.DETAIL, TerminalJobPackets.JOBS, 1));
     assertEquals(
         TerminalJobPackets.MAX_OFFSET,
         new TerminalJobPackets.Command(

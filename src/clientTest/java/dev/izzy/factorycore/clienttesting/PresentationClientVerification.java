@@ -832,7 +832,18 @@ public final class PresentationClientVerification {
           if (jobs.isEmpty() || waited() < 4) return false;
           check(jobs.getFirst().output().amount().equals("37"), "Started job is for 37: " + jobs);
           captures.grab(client, "jobs-typed-37-started-scale-2.png");
-          return true;
+          // A4: open the running job's steps with a real click on its row.
+          var screen = terminal(client);
+          return screen.mouseClicked(
+              screen.getGuiLeft() + TerminalScreen.JOBS_X + 20, screen.getGuiTop() + 50, 0);
+        });
+    step(
+        client -> {
+          var detail = jobView(client).detail();
+          if (detail.steps().isEmpty() || waited() < 2) return false;
+          evidence.append("jobs monitor running: ").append(detail).append('\n');
+          captures.grab(client, "jobs-monitor-running-scale-2.png");
+          return press(client, "Back");
         });
     step(
         client ->
@@ -951,6 +962,18 @@ public final class PresentationClientVerification {
     server(PresentationScenes::planJobs);
     serverUntil(
         player -> valid(player, PresentationScenes.EXTRA_UNITS[0]) && valid(player, base.east(2)));
+    serverUntil(
+        player -> {
+          var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(base.east());
+          return DeviceSavedData.get(player.server)
+              .registry()
+              .stock(
+                  CellHandleData.read(drive.cell(0)),
+                  new PlatformResourceCodec(player.registryAccess())
+                      .itemKey(new ItemStack(Items.RAW_IRON)))
+              .loaded();
+        });
+    server(PresentationScenes::stockIron);
     use(base.east(2), Direction.SOUTH, false);
     // A3: Show craftable lists absent craftables (+) in the Items grid; clicking one requests it.
     step(
@@ -1003,6 +1026,31 @@ public final class PresentationClientVerification {
     planCapture("minecraft:stick", "200", "jobs-plan-two-level-shortage-scale-4.png", false);
     planCapture("minecraft:coal", "1", "jobs-plan-cycle-scale-4.png", false);
     planCapture(null, "1", "jobs-plan-bound-scale-4.png", true);
+    // A4: a waiting processing job's steps and reason in the monitor.
+    planCapture("minecraft:iron_ingot", "1", "jobs-plan-iron-scale-4.png", false);
+    step(client -> waited() > 2 && press(client, "Back"));
+    step(
+        client -> {
+          var jobs = jobView(client).jobs();
+          // The session's command rate gate may drop a Start sent right after other commands.
+          if (jobs.isEmpty()) {
+            if (waited() % 20 == 10) press(client, "Start");
+            return false;
+          }
+          if (!jobs.getFirst().reason().equals("machine_missing")) return false;
+          var screen = terminal(client);
+          return screen.mouseClicked(
+              screen.getGuiLeft() + TerminalScreen.JOBS_X + 20, screen.getGuiTop() + 50, 0);
+        });
+    step(
+        client -> {
+          var detail = jobView(client).detail();
+          if (detail.steps().isEmpty() || waited() < 6) return false;
+          evidence.append("jobs monitor waiting: ").append(detail).append('\n');
+          captures.grab(client, "jobs-monitor-waiting-scale-4.png");
+          return press(client, "Cancel");
+        });
+    step(client -> jobView(client).jobs().isEmpty() && waited() > 4);
     step(
         client -> {
           setScale(client, 2);

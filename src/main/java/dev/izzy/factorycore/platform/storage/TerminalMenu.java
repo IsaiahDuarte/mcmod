@@ -125,6 +125,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             0,
             List.of(),
             List.of(),
+            TerminalJobPackets.NO_DETAIL,
             "ready");
     if (terminal != null)
       jobs = new TerminalJobs((ServerPlayer) viewer, terminal, id, protocol.id(), jobView);

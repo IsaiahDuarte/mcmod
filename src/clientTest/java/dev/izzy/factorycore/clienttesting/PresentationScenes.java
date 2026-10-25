@@ -404,6 +404,30 @@ final class PresentationScenes {
       target.patterns().insertItem(slot, craftingPattern(leaves, parts.get(part), 1), false);
     }
     extra.patterns().insertItem(4, craftingPattern(parts, planTop, 1), false);
+    // A4: a processing pattern with no machine facing this Crafter, so its job waits.
+    var smelt = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    smelt.set(
+        CraftingContent.PROCESSING.get(),
+        new dev.izzy.factorycore.platform.crafting.ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.RAW_IRON)),
+            List.of(new ItemStack(Items.IRON_INGOT))));
+    extra.patterns().insertItem(5, smelt, false);
+  }
+
+  /** Stores the raw iron for the waiting smelting job once the rebuilt network is online. */
+  static void stockIron(ServerPlayer player) {
+    var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(SCREENS.east());
+    var key =
+        new PlatformResourceCodec(player.registryAccess()).itemKey(new ItemStack(Items.RAW_IRON));
+    var stored =
+        DeviceSavedData.get(player.server)
+            .registry()
+            .insert(CellHandleData.read(drive.cell(0)), key, 1);
+    if (stored.amount() != 1)
+      throw new IllegalStateException("Plan scene stores one raw iron: " + stored);
   }
 
   /** Removes the extra Crafters and patterns so later scenes see the original Jobs fixture. */

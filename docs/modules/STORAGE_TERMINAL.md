@@ -175,7 +175,12 @@ per preview change), the preview
 entry/reason/steps/crafts, up to three missing entries with exact amounts, up to four
 of the viewer's jobs (output, done, total, state, reason) and a status key. Craftables
 are the sorted output keys of `WorldCrafting.index` for the terminal's segment,
-refreshed on open and scrolling. The client accumulates wheel notches into a pending offset
+refreshed on open and scrolling. The job list holds up to 16 rows: the viewer's own jobs,
+then (A4) other players' jobs on the network when the viewer has Manage at the terminal,
+each with the requester's name. DETAIL opens one listed job: up to 32 step rows (done,
+running, waiting with the job's reason, queued) and whether this viewer may cancel it,
+which is only its requester or an operator; Manage alone is read-only. A finished job
+closes its detail view. The client accumulates wheel notches into a pending offset
 so quick scrolling is not lost before the server replies. Protocol 5 (parity slice P4)
 replaced the HOME/NEXT commands and the `next` flag with WINDOW and `offset`/`total`. Preview/start/cancel delegate to
 [`WorldCraftingJobs`](CRAFTING.md#jobs); the client never names a resource key.

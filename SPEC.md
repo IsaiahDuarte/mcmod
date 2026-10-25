@@ -452,7 +452,8 @@ A06/A08/A13 evidence; the request UI, processing patterns, branch publication an
 
 The terminal now has a Jobs mode: craftable outputs of the segment's patterns, ×1/×8/
 ×64 previews showing steps/crafts or the first missing ingredient, Start under CRAFT
-permission, a four-job progress column with text state symbols, and Cancel. Previews
+permission, a job progress column with text state symbols (four rows, scrolling to 16 with a
+per-step detail view since parity slice A4), and Cancel. Previews
 reserve nothing; the server holds the previewed key. This adds partial A06/A11
 evidence; branch/processing jobs and JEI integration are described below. Full job UI and multiplayer acceptance remains unverified.
 
