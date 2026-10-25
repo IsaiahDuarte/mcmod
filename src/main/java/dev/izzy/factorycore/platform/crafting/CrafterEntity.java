@@ -17,7 +17,76 @@ import net.neoforged.neoforge.items.IItemHandler;
  * A job's persisted dispatch is the only lease on the machine port; the Crafter itself stores no
  * job state and owns no resources.
  */
-public final class CrafterEntity extends PatternHolderEntity {
+public final class CrafterEntity extends PatternHolderEntity
+    implements dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable {
+  /** Saved tier tag (E2); absent means BASE, so older Crafters keep their bytes. */
+  static final String THROUGHPUT = "FactoryCoreThroughput";
+
+  private dev.izzy.factorycore.core.resource.ThroughputTier tier =
+      dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+
+  /**
+   * E2 (PD5 option a): crafting-table crafts one scheduled run may make: 1, 8 or 32 by tier. Each
+   * run is charged {@code batch × TASK_COST} on the shared scheduler, so speed never buys fairness
+   * (R11); 32 × 16 credits is the scheduler's per-task cap (512).
+   */
+  public static int batch(dev.izzy.factorycore.core.resource.ThroughputTier tier) {
+    return switch (tier) {
+      case BASE -> 1;
+      case ADVANCED -> 8;
+      case ENDGAME -> 32;
+    };
+  }
+
+  @Override
+  public dev.izzy.factorycore.core.resource.ThroughputTier tier() {
+    return tier;
+  }
+
+  /** One tier step under EDIT where the Crafter is; the item is consumed by the caller. */
+  @Override
+  public boolean upgrade(
+      dev.izzy.factorycore.core.network.NetworkPermissions.Actor actor,
+      dev.izzy.factorycore.core.resource.ThroughputTier item) {
+    var next = tier.upgradeWith(item, false);
+    if (next == null) throw new IllegalStateException("upgrade_not_applicable");
+    if (!(level instanceof ServerLevel server)
+        || !dev.izzy.factorycore.platform.network.WorldNetworks.get(server.getServer())
+            .allows(
+                actor,
+                origin(),
+                dev.izzy.factorycore.core.network.NetworkPermissions.Permission.EDIT)) return false;
+    tier = next;
+    setChanged();
+    return true;
+  }
+
+  @Override
+  public net.minecraft.network.chat.Component throughputStatus(
+      net.minecraft.server.MinecraftServer server) {
+    return net.minecraft.network.chat.Component.translatable(
+        "message.factorycore.crafter_throughput", batch(tier));
+  }
+
+  @Override
+  protected void saveAdditional(
+      net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    super.saveAdditional(tag, registries);
+    if (tier != dev.izzy.factorycore.core.resource.ThroughputTier.BASE)
+      tag.putString(THROUGHPUT, tier.name());
+  }
+
+  @Override
+  protected void loadAdditional(
+      net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    super.loadAdditional(tag, registries);
+    // An unknown tier name keeps BASE; the drop table then returns nothing extra.
+    var saved = tag.getString(THROUGHPUT);
+    tier = dev.izzy.factorycore.core.resource.ThroughputTier.BASE;
+    for (var known : dev.izzy.factorycore.core.resource.ThroughputTier.values())
+      if (known.name().equals(saved)) tier = known;
+  }
+
   private BlockCapabilityCache<IItemHandler, Direction> machine, sided;
   private BlockCapabilityCache<IFluidHandler, Direction> tanks, sidedTanks;
   private Direction tankFacing;

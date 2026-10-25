@@ -63,5 +63,23 @@ border inside the framebuffer. Final rerun status follows below.
 - Retained: the 12 throughput captures, `result.txt` and `SHA256SUMS` in
   [throughput-v1-2026-10-19/](throughput-v1-2026-10-19/).
 
+## Crafting row (parity E2, added 2026-10-25)
+
+`CrafterSpeedGameTests` (native GameTest server, same environment) runs a 64-craft stick job
+(128 planks → 256 sticks) on one Crafter per tier and records each scheduled run's crafts
+(`WorldCraftingJobs.lastRunCrafts`).
+
+| Crafter | Crafts per run (measured max) | Credits per run | Runs for 64 crafts |
+| --- | --- | --- | --- |
+| Base | 1 | 16 | 64 |
+| Throughput | 8 | 128 | 9 (1 + 8 × 8) |
+| Overdrive | 32 | 512 | 3 (1 + 32 + 31) |
+
+The first run after an upgrade is paid at the previous batch, so it makes one craft. 32 is
+the cap because 32 × 16 credits equals the scheduler's per-task maximum (512), so
+crafting speed is bought only with credits, never with fairness (R11). Processing patterns
+still make one craft per dispatch. Not measured: wall-clock time under load and many
+Crafters on one network.
+
 Still open: nominal caps under load, multi-factory fairness, large-catalog discovery cost,
 client packet cost and repeated controlled A15/A16 measurements.

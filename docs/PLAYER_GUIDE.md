@@ -437,6 +437,9 @@ denied consume nothing, and upgrades stay when the Interface moves.
 
 - **Machine presets:** your own upgrade keeps a preset running; an upgrade by
   someone else pauses it.
+- **Crafter:** Throughput, then Overdrive, makes it do 8, then 32, crafting-table
+  crafts each time a job runs instead of 1. Processing patterns are unchanged. Breaking
+  the Crafter gives the upgrades back.
 - **Links:** linked gateways take Overdrive directly. Both ends need it to raise the
   pair's limit to 1,024 items, 16,000 mB and 32,000 FE per tick.
 - **Busy servers:** a busy server can still slow transfers below these numbers.

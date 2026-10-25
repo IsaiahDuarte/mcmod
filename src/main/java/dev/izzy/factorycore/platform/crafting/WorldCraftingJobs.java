@@ -418,7 +418,14 @@ public final class WorldCraftingJobs {
       if (scheduler.isQueued(job.network(), job.principal(), key)) continue;
       if (retryAt.getOrDefault(job.id(), Long.MIN_VALUE) > now) continue;
       var id = job.id();
-      scheduler.submit(job.network(), job.principal(), key, TASK_COST, () -> run(id));
+      // E2: a run may make as many crafts as the Crafter's batch it last saw, and pays for them.
+      int paid = batches.getOrDefault(id, 1);
+      var admission =
+          scheduler.submit(
+              job.network(), job.principal(), key, TASK_COST * paid, () -> run(id, paid));
+      if (admission != dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.ACCEPTED
+          && admission != dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.REPLACED
+          && paid > 1) batches.put(id, 1);
     }
     for (var rule : saved().craftingJobs().rules()) {
       var key = "keep:" + rule.id();
@@ -430,8 +437,26 @@ public final class WorldCraftingJobs {
     }
   }
 
-  /** Runs one unit of work for a job; reason changes keep it waiting until the next retry. */
+  /** Last Crafter batch seen per job (runtime only); the next submission pays for it. */
+  private final Map<UUID, Integer> batches = new HashMap<>();
+
+  /** Crafts each job's latest run made (runtime diagnostics for E2 measurements). */
+  private final Map<UUID, Integer> lastRun = new HashMap<>();
+
+  /** How many crafts {@code job}'s latest scheduled run made, or 0 before its first. */
+  public int lastRunCrafts(UUID job) {
+    checkThread();
+    return lastRun.getOrDefault(job, 0);
+  }
+
   void run(UUID id) {
+    run(id, 1);
+  }
+
+  /**
+   * Runs up to {@code paid} crafts for a job; reason changes keep it waiting until the next retry.
+   */
+  void run(UUID id, int paid) {
     checkThread();
     var jobs = saved().craftingJobs();
     var job = jobs.get(id);
@@ -447,6 +472,8 @@ public final class WorldCraftingJobs {
       if (job.finished()) {
         jobs.retire(id);
         retryAt.remove(id);
+        batches.remove(id);
+        lastRun.remove(id);
         recipes.remove(id);
         notice(job, cancelling);
       }
@@ -454,7 +481,15 @@ public final class WorldCraftingJobs {
       return;
     }
     job.resume();
+    int batch = batch(job);
+    batches.put(id, batch);
+    long before = job.craftsDone();
     String why = craft(job);
+    // E2: a faster Crafter makes more crafting-table crafts in the same run, never more than paid.
+    for (int extra = 1;
+        why == null && extra < Math.min(batch, paid) && job.state() == CraftingJob.State.RUNNING;
+        extra++) why = craft(job);
+    lastRun.put(id, (int) (job.craftsDone() - before));
     if (why == null) job.resume();
     else {
       job.waiting(why);
@@ -606,6 +641,23 @@ public final class WorldCraftingJobs {
           && member.scope().segment().equals(job.segment())) return position;
     }
     return null;
+  }
+
+  /** The current step's Crafter batch: 1 for processing steps or when it cannot be resolved. */
+  private int batch(CraftingJob job) {
+    int index = job.current();
+    if (index < 0) return 1;
+    var anchor = anchor(job, null);
+    if (anchor == null) return 1;
+    var offer =
+        WorldCrafting.get(server)
+            .index(networks().membership(anchor).scope())
+            .offer(job.steps().get(index).pattern());
+    return offer == null
+            || offer.processing() != null
+            || !(offer.unit() instanceof CrafterEntity crafter)
+        ? 1
+        : CrafterEntity.batch(crafter.tier());
   }
 
   private String craft(CraftingJob job) {

@@ -528,12 +528,18 @@ to identical IR (a fixture test pins this).
   only with Subst. on. `crafting-table-scale-4.png` shows the toggle (inspected).
   [ADR 0063](decisions/0063-pattern-substitution.md).
 
-- [ ] **E2 — Crafter speed (G14, needs PD5).** Size M.
+- [x] **E2 — Crafter speed (G14, needs PD5).** Size M.
   Option (a): Throughput and Overdrive in a Crafter raise crafts per dispatch (for example
   1 → 8 → 64) and concurrent processing jobs, under the same fair server budget (R11:
   paid speed never alters fairness).
   Done when: GameTests measure crafts per dispatch per tier; the throughput evidence file
   gets a crafting row.
+  Evidence (2026-10-25): `CrafterSpeedGameTests` measures 1 / 8 / 32 crafts per run (256
+  sticks from 128 planks each), refuses an upgrade without Edit, saves the tier, and drops
+  both upgrades when broken. The crafting row is in
+  [throughput-v1-2026-10-19.md](evidence/throughput-v1-2026-10-19.md). Deviation: the top
+  tier is 32, not the example 64, because 32 × 16 credits is the scheduler's per-task cap,
+  and processing stays one craft per dispatch (ADR 0054 amendment).
 
 - [ ] **E3 — Parallel Crafters.** Size M.
   First measure whether two Crafters holding the same pattern already split one job. If

@@ -57,6 +57,7 @@
   "reason.factorycore.overlap": "Container already connected; remove the other Interface",
   "reason.factorycore.redstone": "Waiting for redstone",
   "item.factorycore.label_tool": "Label Tool",
+  "message.factorycore.crafter_throughput": "Crafter upgraded: up to %s crafts per run",
   "gui.factorycore.terminal.grid.substitutes": "Subst.: off",
   "gui.factorycore.terminal.grid.substitutes.on": "Subst.: on",
   "gui.factorycore.terminal.grid.substitutes.off": "Subst.: off",

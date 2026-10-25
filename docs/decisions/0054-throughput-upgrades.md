@@ -130,3 +130,14 @@ is not the deployer, so U6 keeps the pause for that case and drops it otherwise:
 The earlier "Deploy" button is now labelled Apply and the separate "Set goal" step is
 gone: Apply saves the whole draft, including the typed goal, and deploys it.
 
+## Amendment — Crafter speed (parity E2, PD5 option a, 2026-10-25)
+
+The Crafter accepts the same items through `ThroughputUpgradeable`: Throughput, then
+Overdrive, one step each under EDIT. They raise crafting-table crafts per scheduled job run
+from 1 to 8 to 32. A run is charged `TASK_COST × batch` (16 × 1 / 8 / 32 credits), and the
+batch is fixed when the run is submitted, so a run never makes more crafts than it paid
+for. 32 is the most that fits the per-task credit cap (512). The tier is saved in the
+Crafter (`FactoryCoreThroughput`; absent means Base), and breaking the Crafter drops the
+installed items. Processing patterns are unchanged (one craft per dispatch, one machine
+lease); parallel Crafters are E3.
+

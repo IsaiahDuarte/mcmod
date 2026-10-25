@@ -141,6 +141,23 @@ public final class CrafterBlock extends NetworkedBlock implements EntityBlock, C
     var drops = new java.util.ArrayList<ItemStack>();
     for (int slot = 0; slot < PatternHolderEntity.SLOTS; slot++)
       drops.add(unit.patterns().getStackInSlot(slot).copy());
+    // E2: installed speed upgrades come back with the Crafter.
+    if (unit instanceof CrafterEntity crafter)
+      switch (crafter.tier()) {
+        case BASE -> {}
+        case ADVANCED ->
+            drops.add(
+                new ItemStack(
+                    dev.izzy.factorycore.platform.upgrade.ThroughputContent.THROUGHPUT.get()));
+        case ENDGAME -> {
+          drops.add(
+              new ItemStack(
+                  dev.izzy.factorycore.platform.upgrade.ThroughputContent.THROUGHPUT.get()));
+          drops.add(
+              new ItemStack(
+                  dev.izzy.factorycore.platform.upgrade.ThroughputContent.OVERDRIVE.get()));
+        }
+      }
     return drops;
   }
 
