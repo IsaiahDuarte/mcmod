@@ -106,6 +106,7 @@ class RecipeProgressionTest {
           entry("blank_pattern", Stage.STARTER),
           entry("crafting_pattern", Stage.STARTER),
           entry("processing_pattern", Stage.STARTER),
+          entry("label_tool", Stage.STARTER),
           entry("expansion_module", Stage.EXPANDED),
           entry("expanded_item_cell", Stage.EXPANDED),
           entry("expanded_fluid_cell", Stage.EXPANDED),

@@ -374,6 +374,20 @@ public final class FactoryCoreData {
           Items.NETHERITE_INGOT,
           'R',
           Items.REDSTONE);
+      // D8: the Label Tool (starter stage: vanilla parts only).
+      shaped(
+          out,
+          misc,
+          "label_tool",
+          1,
+          Items.PAPER,
+          " C / P / S ",
+          'C',
+          Items.COPPER_INGOT,
+          'P',
+          Items.PAPER,
+          'S',
+          Items.IRON_INGOT);
       shaped(
           out,
           misc,

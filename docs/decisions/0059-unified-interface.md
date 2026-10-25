@@ -140,3 +140,25 @@ Alternative: storing the control in `MachinePresets.Deployment` and `BufferPolic
 needs schema migrations in two saved registries for a setting about the block's
 surroundings, which the entity already owns.
 
+## Amendment — Label Tool (parity D8, PD3 option a, 2026-10-25)
+
+PD3 kept one Interface per machine and added a handheld tool rather than SFM-style
+cable-only labelling. `LabelToolItem` holds a label and an optional copy (data component
+`label_tool`; the copy is a schema-1 tag of the connector settings fields and the label;
+the Buffer and Signal modes are not copied).
+
+- **Authority.** Copying needs VIEW where the source is. Labelling and pasting go through
+  the target's own `configure` / `applySettings` (EDIT on its network) or, for a Signal
+  Interface, an explicit EDIT check. Nothing is pasted on a network the player cannot edit.
+- **Confirmation and staleness.** The first paste records the target and its configuration
+  generation and asks for a second use within 10 seconds. If the generation changed, that
+  use is refused as stale and re-arms. A confirmed paste opens a 30-second batch window in
+  which other targets paste directly, each still EDIT-checked. This state is runtime only,
+  kept per player on the server.
+- **Fit.** The copied rate is lowered to the target's throughput tier. A copy whose slot
+  window or filter does not fit the target is refused with a message.
+
+Alternative: a configurator that edits many Interfaces from one screen. Rejected because it
+needs remote access to unloaded or distant Interfaces, which the reach and loading rules
+forbid.
+

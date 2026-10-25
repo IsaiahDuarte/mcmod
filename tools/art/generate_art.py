@@ -774,6 +774,20 @@ def wireless_link():
     return c
 
 
+def label_tool():
+    """D8 Label Tool: a paper tag on a copper-tipped handle."""
+    c = Canvas("label_tool")
+    for i in range(6):
+        c.px(2 + i, 13 - i, OUTLINE)
+        c.px(3 + i, 13 - i, COPPER if i > 2 else CASE_LIGHT)
+    c.rect(7, 2, 13, 8, OUTLINE)
+    c.rect(8, 3, 12, 7, PAPER, grain=2)
+    c.hline(9, 11, 4, PAPER_DARK)
+    c.hline(9, 11, 6, PAPER_DARK)
+    c.px(8, 3, COPPER_HI)
+    return c
+
+
 def pattern(kind):
     c = Canvas(f"{kind}_pattern")
     # Encoded card with a folded corner; corner tab marks the kind by shape.
@@ -866,6 +880,7 @@ def item_textures():
     out["throughput_upgrade"] = throughput_upgrade("throughput")
     out["overdrive_upgrade"] = throughput_upgrade("overdrive")
     out["wireless_link"] = wireless_link()
+    out["label_tool"] = label_tool()
     for kind in ("blank", "crafting", "processing"):
         out[f"{kind}_pattern"] = pattern(kind)
     out["wireless_terminal"] = wireless_terminal()

@@ -461,6 +461,23 @@ With JEI installed, the **+** button on a crafting recipe fills the terminal's T
 grid with ghosts. Dragging an item or fluid onto the program editor types its
 expression. Everything also works without JEI.
 
+## Label Tool
+
+Crafted from a copper ingot over paper over an iron ingot. Use it in the air to type the label it
+applies.
+
+- **Label:** use it on a Machine or Signal Interface to give that Interface the label, so
+  programs can find it with `machines("label")`.
+- **Copy:** sneak and use it on a Machine or Storage Interface to copy its settings
+  (resource kind, access, priority, slots, rate and, for Storage, its insert filter) and
+  label.
+- **Paste:** use it on another Interface of the same mode. The first use asks you to use
+  it again to confirm. After that, other Interfaces paste straight away for 30 seconds.
+  If someone changed the Interface between the prompt and your confirming use, nothing is
+  pasted and it asks again. A rate higher than the target's upgrade allows is lowered to
+  fit, and the message says so. You need Edit access on each Interface's network.
+- **Forget copy** in its screen makes it label again.
+
 ## Lamps and status
 
 - **Controllers and gateways** show a lit symbol when connected and an exclamation
