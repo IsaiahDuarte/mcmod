@@ -30,6 +30,9 @@ public final class WorldStorageSearch {
   public static final long MAX_BYTES = 16L * 1024 * 1024;
   public static final int IDLE_TICKS = 200;
 
+  /** Craftable keys one search may mark or add as zero-count rows (A3). */
+  public static final int MAX_CRAFTABLE = 4096;
+
   public record Result(
       OperationResult.Reason reason,
       boolean complete,
@@ -49,6 +52,7 @@ public final class WorldStorageSearch {
       boolean complete,
       List<CatalogCounts.Row> rows,
       List<String> names,
+      List<Boolean> craftable,
       int offset,
       int total,
       BigInteger used,
@@ -58,6 +62,7 @@ public final class WorldStorageSearch {
     public Window {
       rows = List.copyOf(rows);
       names = List.copyOf(names);
+      craftable = List.copyOf(craftable);
     }
   }
 
@@ -71,6 +76,9 @@ public final class WorldStorageSearch {
     final TreeSet<CatalogCounts.Row> ordered;
     final NetworkTopology.Scope scope;
     final long grantsGeneration;
+    final java.util.Set<ResourceKey> craftable;
+    final boolean ghosts;
+    final Map<ResourceKey, CatalogCounts.Row> ghostRows = new HashMap<>();
     CatalogCounts counts = new CatalogCounts();
     final Map<UUID, WorldStorageTransfers.Endpoint> sources = new HashMap<>();
     final List<CatalogCounts.Row> index = new ArrayList<>();
@@ -93,6 +101,8 @@ public final class WorldStorageSearch {
         int sort,
         NetworkTopology.Scope scope,
         long grantsGeneration,
+        java.util.Set<ResourceKey> craftable,
+        boolean ghosts,
         int tick) {
       this.id = id;
       this.actor = actor;
@@ -102,6 +112,8 @@ public final class WorldStorageSearch {
       ordered = new TreeSet<>(TerminalSearchSupport.order(sort, names::get));
       this.scope = scope;
       this.grantsGeneration = grantsGeneration;
+      this.craftable = craftable;
+      this.ghosts = ghosts;
       touched = tick;
     }
   }
@@ -137,6 +149,26 @@ public final class WorldStorageSearch {
       ResourceKind kind,
       String text,
       int sort) {
+    return start(id, actor, origin, kind, text, sort, java.util.Set.of(), false);
+  }
+
+  /**
+   * Starts a search whose rows carry a craftable flag for keys in {@code craftable} (A3). With
+   * {@code ghosts}, craftable keys of this kind that match the text but have no stock become
+   * zero-count rows, so they can be requested from the grid. The caller supplies only keys that
+   * patterns visible to this segment produce (gateway CRAFT publishing already applied).
+   */
+  public WorldStorageTransfers.Submission start(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      ResourceKind kind,
+      String text,
+      int sort,
+      java.util.Set<ResourceKey> craftable,
+      boolean ghosts) {
+    if (craftable.size() > MAX_CRAFTABLE)
+      throw new IllegalArgumentException("Too many craftable keys");
     if (!TerminalSearchSupport.validSort(sort))
       throw new IllegalArgumentException("Invalid terminal sort");
     checkThread();
@@ -161,6 +193,8 @@ public final class WorldStorageSearch {
             sort,
             member.scope(),
             saved.network(member.scope().network()).generation(),
+            java.util.Set.copyOf(craftable),
+            ghosts,
             server.getTickCount());
     if (!valid(search, actor)) return rejected(OperationResult.Reason.DENIED);
     if (searches.containsKey(id)
@@ -192,7 +226,10 @@ public final class WorldStorageSearch {
     if (!search.complete)
       return new Result(OperationResult.Reason.OK, false, search.pages, List.of(), null);
     if (after != null && after.kind() != search.kind) return failed(OperationResult.Reason.DENIED);
-    var anchor = after == null ? null : search.counts.row(after);
+    var anchor =
+        after == null
+            ? null
+            : Objects.requireNonNullElse(search.counts.row(after), search.ghostRows.get(after));
     if (after != null && anchor == null) return failed(OperationResult.Reason.DENIED);
     var iterator =
         (anchor == null ? search.ordered : search.ordered.tailSet(anchor, false)).iterator();
@@ -225,6 +262,7 @@ public final class WorldStorageSearch {
           true,
           List.of(),
           List.of(),
+          List.of(),
           0,
           0,
           BigInteger.ZERO,
@@ -241,6 +279,11 @@ public final class WorldStorageSearch {
         state.complete()
             ? search.index.subList(start, Math.min(search.index.size(), start + limit)).stream()
                 .map(row -> search.names.get(row.key()))
+                .toList()
+            : List.of(),
+        state.complete()
+            ? search.index.subList(start, Math.min(search.index.size(), start + limit)).stream()
+                .map(row -> search.craftable.contains(row.key()))
                 .toList()
             : List.of(),
         start,
@@ -350,6 +393,7 @@ public final class WorldStorageSearch {
                 }
               }
               if (page.next() == null) {
+                if (!addGhosts(search)) return;
                 search.indexing = search.ordered.iterator();
                 index(search);
               } else {
@@ -358,6 +402,37 @@ public final class WorldStorageSearch {
                   fail(search, admission.rejection());
               }
             });
+  }
+
+  /**
+   * Adds a zero-count row for each craftable key of this kind with no stock that matches the text.
+   * Bounded by {@link #MAX_CRAFTABLE}, charged like a stocked row; false when it failed.
+   */
+  private boolean addGhosts(Search search) {
+    if (!search.ghosts) return true;
+    var codec = new PlatformResourceCodec(server.registryAccess());
+    for (var key : search.craftable) {
+      if (key.kind() != search.kind || search.counts.row(key) != null) continue;
+      String name;
+      try {
+        if (!TerminalSearchSupport.matches(codec, key, search.text)) continue;
+        name = TerminalSearchSupport.name(codec, key);
+      } catch (IllegalArgumentException unsupported) {
+        continue;
+      }
+      long charge = 1024L + key.registryId().length() + key.componentByteCount();
+      if (bytes > MAX_BYTES - charge) {
+        fail(search, OperationResult.Reason.TECHNICAL_LIMIT);
+        return false;
+      }
+      var row = new CatalogCounts.Row(key, BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO, null);
+      search.names.put(key, name.substring(0, Math.min(256, name.length())));
+      search.ghostRows.put(key, row);
+      search.ordered.add(row);
+      bytes += charge;
+      search.charge += charge;
+    }
+    return true;
   }
 
   /** Materialize at most 32 sorted row references per shared scheduler turn for O(1) scrolling. */
@@ -405,6 +480,7 @@ public final class WorldStorageSearch {
     search.sources.clear();
     search.ordered.clear();
     search.names.clear();
+    search.ghostRows.clear();
     search.ticket = null;
     search.reason = reason;
     search.complete = true;
@@ -423,6 +499,7 @@ public final class WorldStorageSearch {
         search.sources.clear();
         search.ordered.clear();
         search.names.clear();
+        search.ghostRows.clear();
         iterator.remove();
       } else if (!search.complete
           && search.ticket != null
@@ -434,6 +511,7 @@ public final class WorldStorageSearch {
         search.sources.clear();
         search.ordered.clear();
         search.names.clear();
+        search.ghostRows.clear();
         iterator.remove();
       }
     }
@@ -448,6 +526,7 @@ public final class WorldStorageSearch {
       search.sources.clear();
       search.ordered.clear();
       search.names.clear();
+      search.ghostRows.clear();
     }
   }
 

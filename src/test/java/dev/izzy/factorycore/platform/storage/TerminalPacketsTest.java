@@ -31,6 +31,69 @@ class TerminalPacketsTest {
     registries = RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY);
   }
 
+  @Test
+  void craftableRowsAndTheShowCraftablePreferenceRoundTrip() {
+    var view =
+        new TerminalPackets.View(
+            3,
+            UUID.randomUUID(),
+            7,
+            "ready",
+            List.of(
+                new TerminalPackets.Row(0, "minecraft:stick", "Stick", "0", "0", "0", true),
+                new TerminalPackets.Row(1, "minecraft:stone", "Stone", "5", "0", "5", false)),
+            false,
+            false,
+            "0",
+            "",
+            TerminalSearchSupport.NAME,
+            0,
+            2,
+            8,
+            0,
+            "5",
+            "0",
+            false,
+            false,
+            true);
+    var output = buffer();
+    try {
+      TerminalPackets.View.CODEC.encode(output, view);
+      var decoded = TerminalPackets.View.CODEC.decode(output);
+      assertEquals(view, decoded);
+      assertTrue(decoded.craftables() && decoded.rows().getFirst().craftable());
+      assertFalse(decoded.rows().get(1).craftable());
+    } finally {
+      output.release();
+    }
+    var session = UUID.randomUUID();
+    new TerminalPackets.Command(1, session, 1, TerminalPackets.CRAFTABLES, 1, 1, "", new byte[32]);
+    new TerminalPackets.Command(
+        1, session, 1, TerminalPackets.REQUEST, TerminalPackets.MAX_ROWS - 1, 1, "", new byte[32]);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.Command(
+                1, session, 1, TerminalPackets.CRAFTABLES, 2, 1, "", new byte[32]));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.Command(
+                1,
+                session,
+                1,
+                TerminalPackets.REQUEST,
+                TerminalPackets.MAX_ROWS,
+                1,
+                "",
+                new byte[32]));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.Command(
+                1, session, 1, TerminalPackets.REQUEST + 1, 0, 1, "", new byte[32]));
+  }
+
   private static RegistryFriendlyByteBuf buffer() {
     return new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
   }
@@ -132,7 +195,8 @@ class TerminalPacketsTest {
             "9223372036854775907",
             "9223372036854792191",
             true,
-            false);
+            false,
+            true);
     var output = buffer();
     try {
       TerminalPackets.View.CODEC.encode(output, view);
@@ -187,7 +251,7 @@ class TerminalPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.DEPOSIT_CURSOR + 1, 0, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.REQUEST + 1, 0, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalPackets.Command(1, session, 1, 4, 36, 1, "", new byte[32]));

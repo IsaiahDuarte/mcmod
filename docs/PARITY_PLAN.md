@@ -198,7 +198,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
   after 20 ticks). Start remains disabled whenever the preview has a reason (missing or limit).
   A1: 6974803.
 
-- [ ] **A3 — Craftables in the Items grid (G4).** Size M.
+- [x] **A3 — Craftables in the Items grid (G4).** Size M.
   Mark catalog rows that a visible pattern can produce. Show craftable-but-absent items
   as zero-count ghost entries when a **Show craftable** toggle is on (saved preference).
   Middle-click, or clicking a zero-count entry, opens the request with the amount box.
@@ -206,6 +206,15 @@ view cells, portable cells and cross-dimension links. See Wave G.
   Files: `WorldStorageSearch.java`, `TerminalMenu.java`, `TerminalScreen.java`, `WorldCrafting` index.
   Done when: native tests prove craftable flags respect gateway CRAFT policy and page
   bounds; client shows the toggle and opens a request from the grid.
+  Evidence: `CraftableGridGameTests` (published branch planks/sticks appear as zero rows
+  with the toggle, a REQUEST scrolls Jobs to the stick, a non-craftable row requests
+  nothing, the toggle persists across reopen and hides zero rows when off; a gateway
+  without branch CRAFT flags nothing; 4,097 keys refused; a one-row window at offset 2
+  shows the flagged last row), `TerminalPacketsTest` (flag/toggle round trip, action
+  bounds); presentation `items-craftable-scale-4.png` (+ ghosts, orange corners on stocked
+  craftables) and `items-request-scale-4.png` (real click on the ghost Stick opens Jobs
+  with Stick selected and the amount box focused). Terminal payload protocol 5 → 6.
+  A2: 95d3b5c.
 
 - [ ] **A4 — Crafting monitor (G5).** Size M.
   A job detail view: each step with crafts done/total, the item it waits on and why

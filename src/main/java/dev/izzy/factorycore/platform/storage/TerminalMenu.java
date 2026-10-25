@@ -39,6 +39,13 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   private ResourceKey after, next;
   private List<CatalogCounts.Row> selections = List.of();
   private List<String> selectionNames = List.of();
+
+  /** Per visible row, whether a visible pattern can craft it (A3). */
+  private List<Boolean> selectionCraftable = List.of();
+
+  /** A3 "Show craftable" preference: zero-count rows for craftables that have no stock. */
+  private boolean showCraftable;
+
   private String text = "", status = "loading";
   private ResourceKind kind = ResourceKind.ITEM;
   private int sort = TerminalSearchSupport.NAME;
@@ -90,6 +97,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         if (stored.length() <= 128) text = stored;
         int storedSort = preferences.getInt("Sort");
         if (TerminalSearchSupport.validSort(storedSort)) sort = storedSort;
+        showCraftable = preferences.getBoolean("Craftable");
       }
     }
     for (int row = 0; row < 3; row++)
@@ -288,6 +296,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         after = null;
         selections = List.of();
         selectionNames = List.of();
+        selectionCraftable = List.of();
         next = null;
         totalRows = 0;
         offset = 0;
@@ -303,11 +312,13 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       if (result == null) {
         selections = List.of();
         selectionNames = List.of();
+        selectionCraftable = List.of();
         next = null;
         revision++;
       } else if (result.reason() != OperationResult.Reason.OK) {
         selections = List.of();
         selectionNames = List.of();
+        selectionCraftable = List.of();
         next = null;
         status = result.reason().name().toLowerCase(Locale.ROOT);
         closeSearch();
@@ -322,6 +333,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                   || external != result.external())) {
         selections = result.rows();
         selectionNames = result.names();
+        selectionCraftable = result.craftable();
         offset = result.offset();
         totalRows = result.total();
         used = result.used().toString();
@@ -359,11 +371,22 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     scanned = tick;
     query = UUID.randomUUID();
     var submission =
-        transfers().search().start(query, actor(), terminal.origin(), kind, text, sort);
+        transfers()
+            .search()
+            .start(
+                query,
+                actor(),
+                terminal.origin(),
+                kind,
+                text,
+                sort,
+                TerminalJobs.craftableKeys(player().server, terminal.origin()),
+                showCraftable);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
       selections = List.of();
       selectionNames = List.of();
+      selectionCraftable = List.of();
       next = null;
       revision++;
       status = submission.rejection().name().toLowerCase(Locale.ROOT);
@@ -377,6 +400,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     preferences.putInt("Schema", 1);
     preferences.putString("Search", text);
     preferences.putInt("Sort", sort);
+    preferences.putBoolean("Craftable", showCraftable);
     kept.put("FactoryCoreTerminal", preferences);
     persistent.put(Player.PERSISTED_NBT_TAG, kept);
   }
@@ -394,12 +418,23 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     next = null;
     selections = List.of();
     selectionNames = List.of();
+    selectionCraftable = List.of();
     revision++;
     status = "loading";
     scanned = player().server.getTickCount();
     query = UUID.randomUUID();
     var submission =
-        transfers().search().start(query, actor(), terminal.origin(), kind, text, sort);
+        transfers()
+            .search()
+            .start(
+                query,
+                actor(),
+                terminal.origin(),
+                kind,
+                text,
+                sort,
+                TerminalJobs.craftableKeys(player().server, terminal.origin()),
+                showCraftable);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
       status = submission.rejection().name().toLowerCase(Locale.ROOT);
@@ -434,6 +469,24 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       publish();
       return;
     }
+    if (command.action() == TerminalPackets.CRAFTABLES) {
+      offset = 0;
+      showCraftable = command.selection() == 1;
+      savePreferences();
+      refresh();
+      publish();
+      return;
+    }
+    if (command.action() == TerminalPackets.REQUEST) {
+      // Selecting a craftable for a request reads only rows this session already shows.
+      int index = command.selection();
+      if (command.revision() == revision
+          && index < selections.size()
+          && index < selectionCraftable.size()
+          && selectionCraftable.get(index)
+          && jobs.focus(selections.get(index).key())) jobs.publish();
+      return;
+    }
     if (command.action() == TerminalPackets.SORT) {
       if (!TerminalSearchSupport.validSort(command.selection())) return;
       offset = 0;
@@ -448,6 +501,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       pageSize = command.amount();
       selections = List.of();
       selectionNames = List.of();
+      selectionCraftable = List.of();
       status = "loading";
       revision++;
       protocol.pollNow();
@@ -459,6 +513,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       after = null;
       selections = List.of();
       selectionNames = List.of();
+      selectionCraftable = List.of();
       status = "loading";
       revision++;
       protocol.pollNow();
@@ -471,6 +526,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         after = next;
         selections = List.of();
         selectionNames = List.of();
+        selectionCraftable = List.of();
         next = null;
         status = "loading";
         revision++;
@@ -838,7 +894,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
               name,
               row.total().toString(),
               row.reserved().toString(),
-              row.available().toString()));
+              row.available().toString(),
+              index < selectionCraftable.size() && selectionCraftable.get(index)));
     }
     UUID operation = unresolved();
     String staged =
@@ -867,7 +924,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             used,
             capacity,
             infinite,
-            external);
+            external,
+            showCraftable);
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);
@@ -915,6 +973,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       closeSearch();
       selections = List.of();
       selectionNames = List.of();
+      selectionCraftable = List.of();
       if (route != null && !transfers().inExecution()) transfers().routes().cancel(route, actor());
     }
     super.removed(player);

@@ -45,6 +45,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private Button sortButton;
   private Button directionButton;
+
+  /** A3: the "Show craftable" toggle, and a craftable asked for from the grid until it is shown. */
+  private Button craftablesButton;
+
+  private String pendingRequest;
   private final List<AbstractButton> cells = new ArrayList<>();
   private final List<Button> tabs = new ArrayList<>();
   private int columns = 20, rows = 4, extra, desiredOffset, clock, lastCommand = -20, searchDelay;
@@ -167,7 +172,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 font,
                 leftPos + 110,
                 topPos + 3,
-                imageWidth - 168,
+                imageWidth - 184,
                 18,
                 Component.translatable("gui.factorycore.terminal.search")));
     search.setMaxLength(128);
@@ -180,6 +185,21 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             searchDirty = true;
           }
         });
+    craftablesButton =
+        addRenderableWidget(
+            Button.builder(
+                    craftablesLabel(),
+                    button ->
+                        send(
+                            TerminalPackets.CRAFTABLES,
+                            menu.view().craftables() ? 0 : 1,
+                            1,
+                            new byte[32]))
+                .bounds(leftPos + imageWidth - 68, topPos + 3, 14, 18)
+                .tooltip(
+                    Tooltip.create(
+                        Component.translatable("gui.factorycore.terminal.craftables.help")))
+                .build());
     sortButton =
         addRenderableWidget(
             Button.builder(
@@ -371,6 +391,30 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private Component sortLabel() {
     return Component.translatable(
         "gui.factorycore.terminal.sort." + TerminalSearchSupport.mode(menu.view().sort()));
+  }
+
+  /** Gold while craftable items without stock are shown in the grid. */
+  private Component craftablesLabel() {
+    return Component.literal("⚒")
+        .withStyle(
+            menu.view().craftables()
+                ? net.minecraft.ChatFormatting.GOLD
+                : net.minecraft.ChatFormatting.GRAY);
+  }
+
+  /**
+   * Requests visible row {@code index} (a craftable): the server scrolls the Jobs list to it, then
+   * this screen switches to Jobs, selects it and focuses the amount box.
+   */
+  private void request(int index) {
+    var rows = menu.view().rows();
+    if (index >= rows.size() || !rows.get(index).craftable()) return;
+    pendingRequest = rows.get(index).icon();
+    send(TerminalPackets.REQUEST, index, 1, new byte[32]);
+    boolean previousJobs = jobsMode;
+    jobsMode = true;
+    showPlan = false;
+    if (!previousJobs && craftingOpen) rebuildWidgets();
   }
 
   /** The arrow shows the visible order: down is the mode's natural order, up is reversed. */
@@ -634,6 +678,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     sortButton.setMessage(sortLabel());
     sortButton.active = !view.busy();
     directionButton.setMessage(directionLabel());
+    craftablesButton.setMessage(craftablesLabel());
+    craftablesButton.visible = kind == 0 && !jobsMode;
     directionButton.active = !view.busy();
     if (shownRevision != view.revision()) {
       selected = Math.min(selected, Math.max(0, view.rows().size() - 1));
@@ -677,6 +723,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     updateCraftingControls();
     var jobs = menu.jobView();
     if (jobs.offset() == pendingCraftOffset || --pendingCraftTicks <= 0) pendingCraftOffset = -1;
+    if (pendingRequest != null && jobsMode)
+      for (int index = 0; index < jobs.craftables().size(); index++)
+        if (jobs.craftables().get(index).icon().equals(pendingRequest)) {
+          craftSelected = index;
+          pendingRequest = null;
+          setFocused(amountBox);
+          amountBox.setFocused(true);
+          break;
+        }
     craftSelected = Math.min(craftSelected, Math.max(0, jobs.craftables().size() - 1));
     jobSelected = Math.min(jobSelected, Math.max(0, jobs.jobs().size() - 1));
     one.visible = !jobsMode && kind != 0;
@@ -802,6 +857,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       var shown = rowIcon(value.icon()).getDefaultInstance();
       if (kind != 1 || !renderFluid(graphics, value.icon(), x + 1, y + 1))
         graphics.renderItem(shown, x + 1, y + 1);
+      if (value.craftable() && value.total().equals("0")) {
+        // A ghost: nothing stored, but a pattern can make it.
+        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x9930373e);
+        renderCount(graphics, shown, x, y, "+");
+        continue;
+      }
+      if (value.craftable()) graphics.fill(x + 1, y + 1, x + 4, y + 4, 0xffe4a050);
       var count = compact(value.available());
       renderCount(graphics, shown, x, y, count);
     }
@@ -1179,7 +1241,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                   value.reserved(),
                   value.available()),
               Component.translatable(
-                  "gui.factorycore.terminal.select.help" + (kind == 0 ? "" : "." + kind))),
+                  value.craftable()
+                      ? value.total().equals("0")
+                          ? "gui.factorycore.terminal.craftable.ghost"
+                          : "gui.factorycore.terminal.craftable.stocked"
+                      : "gui.factorycore.terminal.select.help" + (kind == 0 ? "" : "." + kind))),
           Optional.empty(),
           mouseX,
           mouseY);
@@ -1268,6 +1334,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       return true;
     }
     int row = jobsMode ? -1 : rowAt(mouseX, mouseY);
+    // A3: middle-click any craftable, or click a zero-count craftable, to request it.
+    if (row >= 0 && kind == 0 && row < menu.view().rows().size()) {
+      var value = menu.view().rows().get(row);
+      boolean ghost = value.craftable() && value.total().equals("0");
+      if (value.craftable() && (button == 2 || ghost && menu.getCarried().isEmpty())) {
+        request(row);
+        return true;
+      }
+    }
     if (row >= 0 && (button == 0 || button == 1)) {
       clickRow(row, button);
       return true;

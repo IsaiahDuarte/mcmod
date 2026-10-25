@@ -145,6 +145,19 @@ atomic per-request commit over a copied inventory that proves output/remainder f
 per craft. Only `RecipeType.CRAFTING` recipes are used; the grid holds no items.
 
 
+## Craftable rows in the Items grid (A3)
+
+Each search is started with the craftable output keys of the terminal segment's visible
+patterns (`TerminalJobs.craftableKeys`: own Crafters plus branches whose gateways publish
+CRAFT, at most `WorldStorageSearch.MAX_CRAFTABLE` = 4,096; more is refused). Rows carry a
+`craftable` flag. With the per-player `Craftable` preference (saved beside `Sort`,
+schema 1 unchanged; missing reads as off), matching craftable keys of the view's kind with
+no stock are added once at completion as zero-count rows, charged like stocked rows and
+cleared with the session; paging after one works because anchors also resolve ghosts.
+`CRAFTABLES` sets the preference; `REQUEST` (visible row, current revision) asks
+`TerminalJobs.focus` to scroll the Jobs list to that key, and the client selects it and
+focuses the amount box. A request names a visible row, never a resource key. Protocol 6.
+
 ## Autocrafting jobs view
 
 `TerminalJobPackets.Command(menu, session, revision, action, selection, amount)`

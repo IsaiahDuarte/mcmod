@@ -64,6 +64,25 @@ final class TerminalJobs {
   }
 
   /**
+   * Outputs of patterns visible to {@code origin}'s segment (its own Crafters plus branches whose
+   * gateways publish CRAFT), in key order, at most {@link WorldStorageSearch#MAX_CRAFTABLE}. Empty
+   * while the segment is not VALID.
+   */
+  static Set<ResourceKey> craftableKeys(
+      net.minecraft.server.MinecraftServer server,
+      dev.izzy.factorycore.core.network.NodeRegistry.Position origin) {
+    var member = WorldNetworks.get(server).membership(origin);
+    if (member.status() != NetworkTopology.Status.VALID) return Set.of();
+    var keys = new TreeSet<>(WorldCrafting.get(server).index(member.scope()).byOutput().keySet());
+    var bounded = new LinkedHashSet<ResourceKey>();
+    for (var key : keys) {
+      if (bounded.size() == WorldStorageSearch.MAX_CRAFTABLE) break;
+      bounded.add(key);
+    }
+    return bounded;
+  }
+
+  /**
    * Lists a window of up to {@link TerminalJobPackets#ROWS} craftable outputs of this segment's
    * Crafters in key order, starting at the scrolled offset (clamped so the last window is full).
    */
@@ -84,6 +103,19 @@ final class TerminalJobs {
     craftables =
         List.copyOf(
             keys.subList(craftableOffset, Math.min(craftableTotal, craftableOffset + rows)));
+  }
+
+  /**
+   * A3: scrolls the craftable list so {@code key} is visible (first unless the last window is
+   * clamped) for a request started from the Items grid. False when no visible pattern makes it.
+   */
+  boolean focus(ResourceKey key) {
+    int index = new ArrayList<>(craftableKeys(viewer.server, terminal.origin())).indexOf(key);
+    if (index < 0) return false;
+    craftableOffset = index;
+    refreshCraftables();
+    jobRevision++;
+    return true;
   }
 
   /**

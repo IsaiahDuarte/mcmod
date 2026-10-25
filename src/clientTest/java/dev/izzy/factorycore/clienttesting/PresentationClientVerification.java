@@ -31,6 +31,7 @@ import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
+import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.LinkModule;
 import java.io.IOException;
@@ -951,6 +952,46 @@ public final class PresentationClientVerification {
     serverUntil(
         player -> valid(player, PresentationScenes.EXTRA_UNITS[0]) && valid(player, base.east(2)));
     use(base.east(2), Direction.SOUTH, false);
+    // A3: Show craftable lists absent craftables (+) in the Items grid; clicking one requests it.
+    step(
+        client -> {
+          if (!(client.screen instanceof TerminalScreen) || waited() < 6) return false;
+          setScale(client, 4);
+          return press(client, "⚒");
+        });
+    step(
+        client -> {
+          var view = terminal(client).getMenu().view();
+          if (!view.craftables()
+              || view.busy()
+              || view.rows().stream().noneMatch(row -> row.craftable() && row.total().equals("0"))
+              || waited() < 8) return false;
+          evidence
+              .append("items craftable: ")
+              .append(
+                  view.rows().stream()
+                      .filter(TerminalPackets.Row::craftable)
+                      .map(row -> row.icon() + "=" + row.total())
+                      .toList())
+              .append('\n');
+          captures.grab(client, "items-craftable-scale-4.png");
+          var screen = terminal(client);
+          for (int index = 0; index < view.rows().size(); index++)
+            if (view.rows().get(index).icon().equals("minecraft:stick"))
+              return screen.mouseClicked(screen.itemX(index) + 9, screen.itemY(index) + 9, 0);
+          throw new IllegalStateException("Stick is a zero-count craftable row");
+        });
+    step(
+        client -> {
+          var jobs = jobView(client);
+          if (jobs.craftables().stream().noneMatch(e -> e.icon().equals("minecraft:stick"))
+              || waited() < 6) return false;
+          captures.grab(client, "items-request-scale-4.png");
+          return true;
+        });
+    step(client -> press(client, "Items"));
+    step(client -> waited() > 4 && press(client, "⚒"));
+    step(client -> !terminal(client).getMenu().view().craftables() && waited() > 4);
     step(
         client -> client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Jobs"));
     step(

@@ -104,6 +104,9 @@ Deposit and withdrawing needs Withdraw.
   `#minecraft:planks` matches a tag.
 - **Sort:** the sort button cycles Name, Qty and Mod; the arrow beside it reverses the
   order. Your search and sort are remembered.
+- **Craftable items:** items your Crafters can make have an orange corner. **⚒** also
+  lists craftable items you have none of, marked **+**. Click one (or middle-click any
+  craftable item) to open it in Jobs, ready to type an amount. The setting is remembered.
 - **Taking items:** left-click takes a stack and right-click takes half. Shift-click
   sends the stack to your inventory.
 - **Depositing:** click the grid with items on your cursor, or Shift-click an

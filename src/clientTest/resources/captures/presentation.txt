@@ -84,3 +84,5 @@ jobs-plan-two-level-shortage-scale-4.png
 jobs-plan-cycle-scale-4.png
 jobs-plan-bound-scale-4.png
 jobs-plan-bound-end-scale-4.png
+items-craftable-scale-4.png
+items-request-scale-4.png

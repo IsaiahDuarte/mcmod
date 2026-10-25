@@ -26,6 +26,13 @@ public final class TerminalPackets {
   public static final int KIND = 6, FILL = 7, EMPTY = 8, CHARGE = 9, DISCHARGE = 10, SORT = 11;
 
   public static final int WINDOW = 12, TAKE_CURSOR = 13, HALF_CURSOR = 14, DEPOSIT_CURSOR = 15;
+
+  /**
+   * A3: CRAFTABLES sets the "Show craftable" preference ({@code selection} 0 off, 1 on); REQUEST
+   * asks for craftable row {@code selection} to be selected in the Jobs list for a request.
+   */
+  public static final int CRAFTABLES = 16, REQUEST = 17;
+
   public static final int MAX_ROWS = 256, MAX_OFFSET = 65536;
 
   public record Command(
@@ -45,7 +52,7 @@ public final class TerminalPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > DEPOSIT_CURSOR
+          || action > REQUEST
           || selection < 0
           || selection
               >= (action == WINDOW
@@ -54,8 +61,9 @@ public final class TerminalPackets {
                           || action == TAKE_CURSOR
                           || action == HALF_CURSOR
                           || action == FILL
+                          || action == REQUEST
                       ? MAX_ROWS
-                      : 36)
+                      : action == CRAFTABLES ? 2 : 36)
           || (action == SORT && !TerminalSearchSupport.validSort(selection))
           || amount < 1
           || amount > (action == WINDOW ? MAX_ROWS : 64)
@@ -98,8 +106,22 @@ public final class TerminalPackets {
                     buffer.readByteArray(32)));
   }
 
+  /**
+   * {@code craftable}: a visible pattern makes this resource; with zero total it is a ghost row.
+   */
   public record Row(
-      int token, String icon, String name, String total, String reserved, String available) {
+      int token,
+      String icon,
+      String name,
+      String total,
+      String reserved,
+      String available,
+      boolean craftable) {
+    public Row(
+        int token, String icon, String name, String total, String reserved, String available) {
+      this(token, icon, name, total, reserved, available, false);
+    }
+
     public Row {
       if (token < 0
           || token >= MAX_ROWS
@@ -130,7 +152,8 @@ public final class TerminalPackets {
       String used,
       String capacity,
       boolean infinite,
-      boolean external)
+      boolean external,
+      boolean craftables)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_view"));
@@ -186,6 +209,7 @@ public final class TerminalPackets {
           "0",
           "0",
           false,
+          false,
           false);
     }
 
@@ -227,6 +251,7 @@ public final class TerminalPackets {
                 buffer.writeUtf(row.total, 32);
                 buffer.writeUtf(row.reserved, 32);
                 buffer.writeUtf(row.available, 32);
+                buffer.writeBoolean(row.craftable);
               }
               buffer.writeBoolean(value.next);
               buffer.writeBoolean(value.busy);
@@ -241,6 +266,7 @@ public final class TerminalPackets {
               buffer.writeUtf(value.capacity, 32);
               buffer.writeBoolean(value.infinite);
               buffer.writeBoolean(value.external);
+              buffer.writeBoolean(value.craftables);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -259,7 +285,8 @@ public final class TerminalPackets {
                         buffer.readUtf(96),
                         buffer.readUtf(32),
                         buffer.readUtf(32),
-                        buffer.readUtf(32)));
+                        buffer.readUtf(32),
+                        buffer.readBoolean()));
               return new View(
                   menu,
                   session,
@@ -277,6 +304,7 @@ public final class TerminalPackets {
                   buffer.readVarInt(),
                   buffer.readUtf(32),
                   buffer.readUtf(32),
+                  buffer.readBoolean(),
                   buffer.readBoolean(),
                   buffer.readBoolean());
             });
@@ -296,7 +324,7 @@ public final class TerminalPackets {
   }
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("5");
+    var registrar = event.registrar("6");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, TerminalMenu.class, TerminalMenu::command);
     MenuPayloads.toServer(
