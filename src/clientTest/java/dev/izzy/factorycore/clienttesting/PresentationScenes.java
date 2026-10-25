@@ -384,6 +384,25 @@ final class PresentationScenes {
       throw new IllegalStateException("Jobs scene stores 8 oak logs: " + stored);
   }
 
+  /** Takes the logs left after the typed job so the later Keep-64 rule still waits (A1). */
+  static void drainLogs(ServerPlayer player) {
+    var level = player.serverLevel();
+    var drive = (StorageDriveEntity) level.getBlockEntity(SCREENS.east());
+    var key =
+        new PlatformResourceCodec(level.registryAccess()).itemKey(new ItemStack(Items.OAK_LOG));
+    var registry = DeviceSavedData.get(player.server).registry();
+    for (int slot = 0; slot < 4; slot++) {
+      if (drive.cell(slot).isEmpty()) continue;
+      var cell = CellHandleData.read(drive.cell(slot));
+      var stock = registry.stock(cell, key);
+      long free = stock.total() - stock.reserved();
+      if (free <= 0) continue;
+      var taken = registry.extract(cell, key, free, null);
+      if (taken.amount() != free)
+        throw new IllegalStateException("Jobs scene drains " + free + " logs: " + taken);
+    }
+  }
+
   static void screens(ServerPlayer player) {
     var level = player.serverLevel();
     floor(level, -2, -3, 12, 5, 64);

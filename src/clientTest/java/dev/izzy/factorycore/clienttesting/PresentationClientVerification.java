@@ -159,6 +159,10 @@ public final class PresentationClientVerification {
                       + screen.getMenu().jobView().offset()
                       + " total="
                       + screen.getMenu().jobView().total()
+                      + " status="
+                      + screen.getMenu().jobView().status()
+                      + " rows="
+                      + screen.getMenu().jobView().craftables()
                   : ""));
     if (steps.get(index).tick(client)) {
       index++;
@@ -794,11 +798,48 @@ public final class PresentationClientVerification {
         player ->
             DeviceSavedData.get(player.server).craftingJobs().all().isEmpty()
                 && planks(player) == 8);
+    // A1: type 37 into the amount box, preview with Enter and start it.
+    server(PresentationScenes::stockJobs);
     step(
         client -> {
           if (!chat.contains("Crafting job finished: 8 × Oak Planks")) return false;
-          return waited() > 10 && jobView(client).jobs().isEmpty() && press(client, "×64");
+          if (waited() < 10 || !jobView(client).jobs().isEmpty()) return false;
+          var screen = terminal(client);
+          for (var child : screen.children())
+            if (child instanceof net.minecraft.client.gui.components.EditBox box
+                && box.visible
+                && box.getMessage().getString().equals("Qty")) {
+              screen.setFocused(box);
+              box.setFocused(true);
+              box.setValue("");
+              for (char c : "37".toCharArray()) screen.charTyped(c, 0);
+              return screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+            }
+          throw new IllegalStateException("Jobs amount box shown");
         });
+    step(
+        client -> {
+          var view = jobView(client);
+          if (!view.preview().amount().equals("37") || waited() < 6) return false;
+          check(view.previewReason().isEmpty(), "37 planks are craftable: " + view.missing());
+          captures.grab(client, "jobs-typed-37-scale-2.png");
+          return press(client, "Start");
+        });
+    step(
+        client -> {
+          var jobs = jobView(client).jobs();
+          if (jobs.isEmpty() || waited() < 4) return false;
+          check(jobs.getFirst().output().amount().equals("37"), "Started job is for 37: " + jobs);
+          captures.grab(client, "jobs-typed-37-started-scale-2.png");
+          return true;
+        });
+    step(
+        client ->
+            chat.contains("Crafting job finished: 37 × Oak Planks")
+                && waited() > 10
+                && jobView(client).jobs().isEmpty());
+    server(PresentationScenes::drainLogs);
+    step(client -> waited() > 4 && press(client, "×64"));
     step(
         client -> {
           var view = jobView(client);

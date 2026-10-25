@@ -78,3 +78,5 @@ jobs-scroll-top-scale-4.png
 jobs-scrolled-end-scale-4.png
 jobs-scrolled-end-scale-1.png
 connector-picked-scale-4.png
+jobs-typed-37-scale-2.png
+jobs-typed-37-started-scale-2.png

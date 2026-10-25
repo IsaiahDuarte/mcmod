@@ -160,13 +160,21 @@ view cells, portable cells and cross-dimension links. See Wave G.
 
 ## Wave A — crafting UX (no gate; lane T)
 
-- [ ] **A1 — Typed craft amount (G2).** Size S.
+- [x] **A1 — Typed craft amount (G2).** Size S.
   Add an amount box beside ×1/×8/×64 (Enter previews). Decide in the slice whether to
   raise `MAX_AMOUNT` above 4,096; if raised, prove the planner's `LIMIT` result is shown
   as a readable message, not a silent cap, and add a large-amount planner test.
   Files: `TerminalScreen.java`, `TerminalJobPackets.java`, `TerminalJobs.java`.
   Done when: native tests cover typed, zero, over-limit and non-numeric input; the client
   previews and starts a typed 37.
+  Decision: `MAX_AMOUNT` stays 4,096. Raising it would let one job reserve far more than a
+  drive tier holds and lengthen planner work per request for no everyday need; over-limit
+  input says "At most 4096 per job. Start several jobs for more." rather than capping.
+  Evidence: `CraftAmountTest` (typed, padded, comma, zero, over-limit, overflow, negative,
+  decimal, words), `TerminalJobGameTests.typedAmountPreviewsAndStartsExactly` (37 previews 15
+  crafts, the job is for 37 and reserves 5 logs, delivers 40 sticks; 0 and 4,097 refused at
+  decode); presentation `jobs-typed-37-scale-2.png` and `jobs-typed-37-started-scale-2.png`
+  (typed into the real box, Enter, Start). P5: 5b9548b.
 
 - [ ] **A2 — Full plan breakdown (G3).** Size M.
   Send a bounded plan summary with the preview: one row per resource with **stored**,

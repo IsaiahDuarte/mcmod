@@ -113,6 +113,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private int target, craftSelected, jobSelected;
 
+  /** A1: the typed craft amount, and why it was last refused ("" when it parses). */
+  private EditBox amountBox;
+
+  private String amountError = "";
+
   /**
    * The craftable offset last requested, so fast wheel notches add up before the server replies.
    */
@@ -435,6 +440,24 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     previewMany =
         jobButton("preview_many", 82, 36, () -> job(TerminalJobPackets.PREVIEW, craftSelected, 64));
     startJob = jobButton("start", 120, 40, () -> job(TerminalJobPackets.START, 0, 1));
+    String typed = amountBox == null ? "" : amountBox.getValue();
+    amountBox =
+        addRenderableWidget(
+            new EditBox(
+                font,
+                leftPos + 202,
+                topPos + 119 + extra,
+                38,
+                16,
+                Component.translatable("gui.factorycore.terminal.job.amount")));
+    amountBox.setMaxLength(8);
+    amountBox.setValue(typed);
+    amountBox.setHint(Component.translatable("gui.factorycore.terminal.job.amount"));
+    amountBox.setTooltip(
+        Tooltip.create(
+            Component.translatable(
+                "gui.factorycore.terminal.job.amount.help", TerminalJobPackets.MAX_AMOUNT)));
+    amountBox.setResponder(value -> amountError = "");
     keepJob =
         jobButton("keep", 162, 38, () -> job(TerminalJobPackets.KEEP, craftSelected, keepAmount()));
     cancelJob =
@@ -447,6 +470,18 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                     Tooltip.create(
                         Component.translatable("gui.factorycore.terminal.job.cancel.help")))
                 .build());
+  }
+
+  /**
+   * Previews the typed amount; an empty, zero, non-numeric or over-limit entry is refused here with
+   * a reason instead of being capped (the server bound is the same {@code MAX_AMOUNT}).
+   */
+  private void previewTyped() {
+    var parsed = CraftAmount.parse(amountBox.getValue(), TerminalJobPackets.MAX_AMOUNT);
+    amountError = parsed.error();
+    amountBox.setTextColor(parsed.valid() ? 0xe0e0e0 : 0xff8080);
+    if (parsed.valid() && craftSelected < menu.jobView().craftables().size())
+      job(TerminalJobPackets.PREVIEW, craftSelected, parsed.amount());
   }
 
   /** Keep-stock threshold: the previewed amount, or 64 when nothing is previewed. */
@@ -628,6 +663,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     for (var item : List.of(previewOne, previewEight, previewMany, startJob, keepJob))
       item.visible = jobsMode;
     keepJob.active = craftSelected < jobs.craftables().size();
+    amountBox.visible = jobsMode;
+    amountBox.setEditable(jobsMode);
     previewOne.active = craftSelected < jobs.craftables().size();
     previewEight.active = previewOne.active;
     previewMany.active = previewOne.active;
@@ -1005,12 +1042,16 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     graphics.drawString(
         font,
         font.plainSubstrByWidth(
-            Component.translatable("gui.factorycore.terminal.job.status." + jobs.status())
+            (amountError.isEmpty()
+                    ? Component.translatable("gui.factorycore.terminal.job.status." + jobs.status())
+                    : Component.translatable(
+                        "gui.factorycore.terminal.job.amount." + amountError,
+                        TerminalJobPackets.MAX_AMOUNT))
                 .getString(),
             254),
         12,
         103,
-        0xe4bc83,
+        amountError.isEmpty() ? 0xe4bc83 : 0xff8080,
         false);
   }
 
@@ -1397,6 +1438,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       searchDelay = 0;
       return true;
     }
+    if (amountBox.isFocused() && (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER)) {
+      previewTyped();
+      return true;
+    }
+    // Digits and C are typed into the amount box, not taken as shortcuts.
+    if (amountBox.isFocused() && key != GLFW.GLFW_KEY_ESCAPE)
+      return amountBox.keyPressed(key, scan, modifiers) || amountBox.canConsumeInput();
     if (!search.isFocused() && key == GLFW.GLFW_KEY_C && craftOne.active) {
       grid(TerminalCraftingPackets.CRAFT, -1, 0, hasShiftDown() ? 64 : 1, new byte[32]);
       return true;

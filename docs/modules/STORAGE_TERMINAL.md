@@ -149,7 +149,9 @@ per craft. Only `RecipeType.CRAFTING` recipes are used; the grid holds no items.
 
 `TerminalJobPackets.Command(menu, session, revision, action, selection, amount)`
 actions: WINDOW (scroll so craftable `selection`, 0–65,536, is first; the server clamps
-to the last full window), PREVIEW (visible craftable row 0–7, amount
+to the last full window), PREVIEW (visible craftable row 0–7, amount from the ×1/×8/×64
+buttons or the typed amount box, which refuses empty, zero, non-numeric and over-limit text
+on the client with a reason,
 1–4,096, current `revision`), START (the server-held preview under the current
 revision), CANCEL (job row 0–3). Stale revisions are ignored; commands share the
 menu's two-tick throttle. `View` carries up to eight craftable entries with their window

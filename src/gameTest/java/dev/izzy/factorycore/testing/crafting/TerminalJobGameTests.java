@@ -213,6 +213,85 @@ public final class TerminalJobGameTests {
         .thenSucceed();
   }
 
+  /** A1: a typed 37 previews and starts exactly; the bound stays 1–4,096 at decode. */
+  @GameTest(template = "empty", timeoutTicks = 900)
+  public static void typedAmountPreviewsAndStartsExactly(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(UNIT);
+    unit.patterns()
+        .insertItem(0, pattern(new int[] {0}, Items.OAK_LOG, Items.OAK_PLANKS, 4), false);
+    unit.patterns()
+        .insertItem(1, pattern(new int[] {0, 3}, Items.OAK_PLANKS, Items.STICK, 4), false);
+    h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
+    TerminalEntity terminal = h.getBlockEntity(TERMINAL);
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    DeviceRegistry.Handle cell = CellHandleData.read(drive.cell(0));
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    ResourceKey log = codec.itemKey(new ItemStack(Items.OAK_LOG));
+    ResourceKey stick = codec.itemKey(new ItemStack(Items.STICK));
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenExecute(
+            () -> {
+              saved.registry().insert(cell, log, 5);
+              h.useBlock(TERMINAL, player);
+              menu(h, player).broadcastChanges();
+            })
+        .thenWaitUntil(
+            () -> {
+              var m = menu(h, player);
+              m.broadcastChanges();
+              h.assertTrue(row(m, "minecraft:stick") >= 0, "Sticks are craftable");
+            })
+        .thenExecute(
+            () -> {
+              var m = menu(h, player);
+              command(h, player, TerminalJobPackets.PREVIEW, row(m, "minecraft:stick"), 37);
+              var view = m.jobView();
+              // 37 sticks: 10 stick crafts (40) from 20 planks, i.e. 5 log crafts.
+              h.assertTrue(
+                  view.status().equals("previewed")
+                      && view.preview().amount().equals("37")
+                      && view.previewCrafts() == 15,
+                  "A typed 37 previews 10 stick and 5 plank crafts: " + view);
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () -> {
+              command(h, player, TerminalJobPackets.START, 0, 1);
+              var jobs = WorldCraftingJobs.get(h.getLevel().getServer()).jobs(player.getUUID());
+              h.assertTrue(
+                  jobs.size() == 1
+                      && jobs.getFirst().amount() == 37
+                      && saved.registry().stock(cell, log).reserved() == 5,
+                  "The started job is for exactly 37 and reserves all five logs");
+              for (int amount : new int[] {0, TerminalJobPackets.MAX_AMOUNT + 1}) {
+                boolean refused = false;
+                try {
+                  new TerminalJobPackets.Command(
+                      1, UUID.randomUUID(), 1, TerminalJobPackets.PREVIEW, 0, amount);
+                } catch (IllegalArgumentException expected) {
+                  refused = true;
+                }
+                h.assertTrue(refused, "Amount " + amount + " is refused at decode");
+              }
+            })
+        .thenWaitUntil(
+            () -> {
+              menu(h, player).broadcastChanges();
+              h.assertTrue(
+                  saved.registry().stock(cell, stick).total() == 40
+                      && saved.registry().stock(cell, log).total() == 0,
+                  "The job delivers 40 sticks (37 asked, whole crafts) from five logs");
+            })
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 900)
   public static void terminalPreviewsStartsTracksAndCancelsJobs(GameTestHelper h) {
     var player = TestPlayers.mock(h);
