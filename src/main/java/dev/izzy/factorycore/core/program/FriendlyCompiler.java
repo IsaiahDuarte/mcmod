@@ -83,6 +83,8 @@ public final class FriendlyCompiler {
           "fluid",
           "tag",
           "energy",
+          // ADR 0062 (D5)
+          "except",
           // ADR 0062 (D4)
           "else",
           "and",
@@ -633,15 +635,45 @@ public final class FriendlyCompiler {
     return id;
   }
 
+  private record Term(ResourceKind kind, ResourceFilter.Term term) {}
+
+  /**
+   * {@code term { except term }} (ADR 0062 D5). A single plain term is the v1 filter; {@code
+   * except} wraps it in {@link ResourceFilter.Except}. Every term must share the resource kind.
+   */
   private ResourceFilter filter() {
     var token = peek();
     if (at("energy")) {
       next();
+      if (at("except")) throw new SyntaxError(peek(), "energy cannot take except");
       return new ResourceFilter(
           ResourceKind.ENERGY,
           ResourceFilter.Mode.INCLUDE,
           List.of(new ResourceFilter.Registry(ResourceKey.ENERGY.registryId())));
     }
+    var first = term(token);
+    if (!at("except"))
+      return new ResourceFilter(first.kind(), ResourceFilter.Mode.INCLUDE, List.of(first.term()));
+    var excluded = new ArrayList<ResourceFilter.Term>();
+    while (at("except")) {
+      var keyword = next();
+      if (excluded.size() == ResourceFilter.Except.MAX_EXCLUDED)
+        throw new SyntaxError(keyword, "A filter has at most 8 terms");
+      var start = peek();
+      if (at("energy")) throw new SyntaxError(start, "energy cannot take except");
+      var next = term(start);
+      if (next.kind() != first.kind())
+        throw new SyntaxError(
+            start, "Every term after except must be the same kind (item or fluid)");
+      excluded.add(next.term());
+    }
+    return new ResourceFilter(
+        first.kind(),
+        ResourceFilter.Mode.INCLUDE,
+        List.of(new ResourceFilter.Except(first.term(), excluded)));
+  }
+
+  private Term term(Token token) {
     ResourceKind kind;
     boolean tag = false;
     if (at("item")) kind = ResourceKind.ITEM;
@@ -653,11 +685,24 @@ public final class FriendlyCompiler {
       throw new SyntaxError(token, "Expected item(\"id\"), fluid(\"id\"), tag(\"id\") or energy");
     next();
     expect("(");
-    var id = registry(string("the resource ID"), token);
+    var textToken = peek();
+    var text = string("the resource ID");
     expect(")");
-    return new ResourceFilter(
-        kind,
-        ResourceFilter.Mode.INCLUDE,
-        List.of(tag ? new ResourceFilter.Tag(id) : new ResourceFilter.Registry(id)));
+    if (text.indexOf('*') >= 0) {
+      // D5: one '*' in the ID path, matched against registry IDs only.
+      if (tag) throw new SyntaxError(textToken, "A tag name cannot use '*'; use item(\"...*...\")");
+      if (text.chars().filter(c -> c == '*').count() > 1)
+        throw new SyntaxError(textToken, "An ID may use at most one '*'");
+      int colon = text.indexOf(':');
+      if (colon >= 0 && text.substring(0, colon).indexOf('*') >= 0)
+        throw new SyntaxError(textToken, "'*' goes in the ID path; the namespace must be exact");
+      try {
+        return new Term(kind, new ResourceFilter.Glob(text));
+      } catch (IllegalArgumentException invalid) {
+        throw new SyntaxError(textToken, "\"" + text + "\" is not a valid ID pattern");
+      }
+    }
+    var id = registry(text, token);
+    return new Term(kind, tag ? new ResourceFilter.Tag(id) : new ResourceFilter.Registry(id));
   }
 }

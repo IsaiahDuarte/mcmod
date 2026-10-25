@@ -411,4 +411,40 @@ public final class SideAndSlotsGameTests {
                         + f.controller.logs()))
         .thenSucceed();
   }
+
+  /** D5: every ingot but iron leaves; iron and cobblestone stay. */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void movesEveryIngotExceptIron(GameTestHelper h) {
+    var f = setup(h, Blocks.CHEST);
+    var chest = (BaseContainerBlockEntity) h.getBlockEntity(MACHINE);
+    chest.setItem(0, new ItemStack(Items.IRON_INGOT, 4));
+    chest.setItem(1, new ItemStack(Items.GOLD_INGOT, 4));
+    chest.setItem(2, new ItemStack(Items.COPPER_INGOT, 4));
+    chest.setItem(3, new ItemStack(Items.COBBLESTONE, 4));
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(() -> label(h, f, "out", 0, 27))
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () ->
+                deploy(
+                    h,
+                    f,
+                    "every 10 ticks as \"ingots\" { move item(\"*_ingot\") except item(\"iron_ingot\") from machines(\"out\") to storage }"))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.stored(Items.GOLD_INGOT) == 4 && f.stored(Items.COPPER_INGOT) == 4,
+                    "Gold and copper leave: " + f.controller.logs()))
+        .thenIdle(40)
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    countOf(h, 0, Items.IRON_INGOT) == 4
+                        && countOf(h, 3, Items.COBBLESTONE) == 4
+                        && f.stored(Items.IRON_INGOT) == 0
+                        && f.stored(Items.COBBLESTONE) == 0,
+                    "Iron (excepted) and cobblestone (not an ingot) stay"))
+        .thenSucceed();
+  }
 }

@@ -159,4 +159,46 @@ class ResourceFilterTest {
       assertArrayEquals(before, key.components());
     }
   }
+
+  private static ResourceKey item(String id) {
+    return new ResourceKey(ResourceKind.ITEM, id, new byte[0]);
+  }
+
+  @org.junit.jupiter.api.Test
+  void globsMatchOneStarInTheIdPathAndExceptRemovesTerms() {
+    var ingots = new ResourceFilter.Glob("*_ingot");
+    var filter =
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.INCLUDE,
+            java.util.List.of(
+                new ResourceFilter.Except(
+                    ingots,
+                    java.util.List.of(new ResourceFilter.Registry("minecraft:iron_ingot")))));
+    ResourceFilter.Tags none = (kind, tag, candidate) -> false;
+    org.junit.jupiter.api.Assertions.assertTrue(filter.matches(item("minecraft:gold_ingot"), none));
+    org.junit.jupiter.api.Assertions.assertTrue(
+        filter.matches(item("othermod:tin_ingot"), none), "No namespace: any");
+    org.junit.jupiter.api.Assertions.assertFalse(
+        filter.matches(item("minecraft:iron_ingot"), none));
+    org.junit.jupiter.api.Assertions.assertFalse(
+        filter.matches(item("minecraft:gold_nugget"), none));
+    var vanilla = new ResourceFilter.Glob("minecraft:raw_*");
+    org.junit.jupiter.api.Assertions.assertTrue(vanilla.matches("minecraft:raw_iron"));
+    org.junit.jupiter.api.Assertions.assertFalse(
+        vanilla.matches("othermod:raw_tin"), "Namespace exact");
+    org.junit.jupiter.api.Assertions.assertTrue(
+        new ResourceFilter.Glob("*").matches("minecraft:stone"));
+    org.junit.jupiter.api.Assertions.assertFalse(
+        new ResourceFilter.Glob("ab*ba").matches("minecraft:aba"),
+        "Prefix and suffix may not overlap");
+    for (var bad : java.util.List.of("no_star", "*a*", "mine*craft:stone", "Upper*", "a:b:*"))
+      org.junit.jupiter.api.Assertions.assertThrows(
+          IllegalArgumentException.class, () -> new ResourceFilter.Glob(bad), bad);
+    org.junit.jupiter.api.Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> new ResourceFilter.Except(ingots, java.util.List.of()),
+        "Except needs something to remove");
+    org.junit.jupiter.api.Assertions.assertTrue(ResourceFilter.programOnly(ingots));
+  }
 }

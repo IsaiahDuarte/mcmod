@@ -14,7 +14,74 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
     EXCLUDE
   }
 
-  public sealed interface Term permits Registry, Exact, Tag {}
+  public sealed interface Term permits Registry, Exact, Tag, Glob, Except {}
+
+  /**
+   * D5 (ADR 0062): a registry ID with exactly one {@code *} in its path, matching zero or more of
+   * {@code [a-z0-9_./-]}. Without a namespace it matches any; with one, that namespace exactly.
+   * Registry IDs only, never components. Program filters only: never saved by a preset codec.
+   */
+  public record Glob(String pattern) implements Term {
+    public Glob {
+      Objects.requireNonNull(pattern);
+      int colon = pattern.indexOf(':');
+      var path = colon < 0 ? pattern : pattern.substring(colon + 1);
+      if (pattern.length() > 128
+          || pattern.chars().filter(c -> c == '*').count() != 1
+          || path.indexOf('*') < 0
+          || pattern.indexOf(':', colon + 1) >= 0
+          || !pattern
+              .chars()
+              .allMatch(
+                  c ->
+                      c == '*'
+                          || c == ':'
+                          || c == '_'
+                          || c == '.'
+                          || c == '/'
+                          || c == '-'
+                          || (c >= 'a' && c <= 'z')
+                          || (c >= '0' && c <= '9')))
+        throw new IllegalArgumentException("A glob has one '*' in its ID path");
+    }
+
+    boolean matches(String id) {
+      int colon = pattern.indexOf(':');
+      int idColon = id.indexOf(':');
+      var path = idColon < 0 ? id : id.substring(idColon + 1);
+      if (colon >= 0
+          && !pattern
+              .substring(0, colon)
+              .equals(idColon < 0 ? "minecraft" : id.substring(0, idColon))) return false;
+      var glob = colon < 0 ? pattern : pattern.substring(colon + 1);
+      int star = glob.indexOf('*');
+      var prefix = glob.substring(0, star);
+      var suffix = glob.substring(star + 1);
+      return path.length() >= prefix.length() + suffix.length()
+          && path.startsWith(prefix)
+          && path.endsWith(suffix);
+    }
+  }
+
+  /** D5 (ADR 0062): what {@code include} matches minus anything one of {@code excluded} does. */
+  public record Except(Term include, List<Term> excluded) implements Term {
+    public static final int MAX_EXCLUDED = 7;
+
+    public Except {
+      Objects.requireNonNull(include);
+      excluded = List.copyOf(excluded);
+      if (include instanceof Except
+          || excluded.isEmpty()
+          || excluded.size() > MAX_EXCLUDED
+          || excluded.stream().anyMatch(term -> term instanceof Except))
+        throw new IllegalArgumentException("Except takes one term and 1–7 others");
+    }
+  }
+
+  /** True for program-only terms ({@link Glob}, {@link Except}) that no preset codec can save. */
+  public static boolean programOnly(Term term) {
+    return term instanceof Glob || term instanceof Except;
+  }
 
   public record Registry(String id) implements Term {
     public Registry {
@@ -57,10 +124,18 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
         if (kind == ResourceKind.ENERGY && !registry.id().equals(ResourceKey.ENERGY.registryId()))
           throw new IllegalArgumentException("Energy has one canonical registry identity");
         bytes += 256L + 3L * registry.id().length();
-      } else {
+      } else if (term instanceof Tag tag) {
         if (kind == ResourceKind.ENERGY)
           throw new IllegalArgumentException("Energy has no tag model");
-        bytes += 256L + 3L * ((Tag) term).id().length();
+        bytes += 256L + 3L * tag.id().length();
+      } else {
+        if (kind == ResourceKind.ENERGY)
+          throw new IllegalArgumentException("Energy has no glob or except model");
+        if (term instanceof Except except)
+          for (var part : except.excluded())
+            if (part instanceof Exact exact && exact.key().kind() != kind)
+              throw new IllegalArgumentException("Filter exact kind mismatch");
+        bytes += termBytes(term);
       }
       if (bytes > MAX_BYTES) throw new IllegalArgumentException("Filter metadata exceeds 256 KiB");
     }
@@ -72,15 +147,37 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
 
   public long bytes() {
     long bytes = 256;
-    for (var term : terms)
-      bytes +=
-          term instanceof Exact exact
-              ? 256L + 3L * exact.key().registryId().length() + exact.key().componentByteCount()
-              : 256L
-                  + 3L
-                      * (term instanceof Registry registry ? registry.id() : ((Tag) term).id())
-                          .length();
+    for (var term : terms) bytes += termBytes(term);
     return bytes;
+  }
+
+  private static long termBytes(Term term) {
+    return switch (term) {
+      case Exact exact ->
+          256L + 3L * exact.key().registryId().length() + exact.key().componentByteCount();
+      case Registry registry -> 256L + 3L * registry.id().length();
+      case Tag tag -> 256L + 3L * tag.id().length();
+      case Glob glob -> 256L + 3L * glob.pattern().length();
+      case Except except -> {
+        long bytes = termBytes(except.include());
+        for (var part : except.excluded()) bytes += termBytes(part);
+        yield bytes;
+      }
+    };
+  }
+
+  private boolean term(Term term, ResourceKey candidate, Tags tags) {
+    return switch (term) {
+      case Exact exact -> exact.key().equals(candidate);
+      case Registry registry -> registry.id().equals(candidate.registryId());
+      case Tag tag -> tags.contains(kind, tag.id(), candidate);
+      case Glob glob -> glob.matches(candidate.registryId());
+      case Except except -> {
+        if (!term(except.include(), candidate, tags)) yield false;
+        for (var part : except.excluded()) if (term(part, candidate, tags)) yield false;
+        yield true;
+      }
+    };
   }
 
   /**
@@ -93,12 +190,7 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
     if (mode == Mode.ALL) return true;
     boolean matched = false;
     for (var term : terms) {
-      matched =
-          term instanceof Exact exact
-              ? exact.key().equals(candidate)
-              : term instanceof Registry registry
-                  ? registry.id().equals(candidate.registryId())
-                  : tags.contains(kind, ((Tag) term).id(), candidate);
+      matched = term(term, candidate, tags);
       if (matched) break;
     }
     return mode == Mode.INCLUDE ? matched : !matched;

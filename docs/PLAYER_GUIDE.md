@@ -363,6 +363,9 @@ every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage
   `not` and parentheses. `machine has < 8 of item("coal")` counts what a machine (or a
   whole label) holds. For example:
   `if f has < 8 of item("coal") { move item("coal") from storage to f side north limit 4 }`.
+- **Patterns:** one `*` matches any part of an ID: `item("*_ingot")` is every mod's
+  ingots, `item("minecraft:raw_*")` only vanilla raw ores. `except` removes items:
+  `item("*_ingot") except item("iron_ingot")`.
 - **Long rules:** a rule's moves run one after another, and the next run of the rule
   replaces any it did not reach. Give slow or important moves their own `every … as "…"`
   rule rather than putting many in one.

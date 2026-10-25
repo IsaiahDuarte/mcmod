@@ -71,12 +71,23 @@ public final class ProgramPreview {
   }
 
   private static String filter(ResourceFilter filter) {
-    var term = filter.terms().isEmpty() ? "all" : filter.terms().getFirst();
     return filter.kind().name().toLowerCase(Locale.ROOT)
         + " "
-        + (term instanceof ResourceFilter.Registry registry
-            ? registry.id()
-            : term instanceof ResourceFilter.Tag tag ? "#" + tag.id() : term.toString());
+        + (filter.terms().isEmpty() ? "all" : term(filter.terms().getFirst()));
+  }
+
+  private static String term(ResourceFilter.Term term) {
+    return switch (term) {
+      case ResourceFilter.Registry registry -> registry.id();
+      case ResourceFilter.Tag tag -> "#" + tag.id();
+      case ResourceFilter.Exact exact -> exact.key().registryId();
+      case ResourceFilter.Glob glob -> glob.pattern();
+      case ResourceFilter.Except except -> {
+        var text = new StringBuilder(term(except.include()));
+        for (var part : except.excluded()) text.append(" except ").append(term(part));
+        yield text.toString();
+      }
+    };
   }
 
   private static String describe(ProgramCommand command, Map<UUID, String> names) {

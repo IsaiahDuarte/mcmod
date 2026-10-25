@@ -31,10 +31,10 @@ final class FilterCodec {
       } else if (term instanceof ResourceFilter.Registry registry) {
         entry.putString("Type", "REGISTRY");
         entry.putString("Id", registry.id());
-      } else {
+      } else if (term instanceof ResourceFilter.Tag tag) {
         entry.putString("Type", "TAG");
-        entry.putString("Id", ((ResourceFilter.Tag) term).id());
-      }
+        entry.putString("Id", tag.id());
+      } else throw new IllegalArgumentException("Program-only filter terms are never saved");
       terms.add(entry);
     }
     filter.put("Terms", terms);

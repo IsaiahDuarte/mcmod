@@ -141,6 +141,7 @@ D3, `side`/`slots` per endpoint (`ProgramIr.MachineAt`,
 binding; refused with a logged reason outside the window, on another face of a narrowed
 binding, or on a partitioned provider). D4, conditions (`ProgramIr.Branch` with a `Condition`
 tree; `Host.contents` reads at most 16 pages per machine, each charged to the host budget).
+D5, globs and `except` (program-only filter terms).
 The rest is not implemented yet. `src/test/resources/program/v2/` holds one fixture per form and
 names the slice (D2–D6) that must make it compile. `FriendlyV1PinTest` fails if one
 compiles early, or if any v1 program's IR changes.

@@ -441,8 +441,14 @@ to identical IR (a fixture test pins this).
   statements outlast its interval starves its later ones. The D3 furnace test now gives
   output its own rule; D9 templates should do the same until this is revisited.
 
-- [ ] **D5 — Wildcards and `except` (G11).** Size S.
+- [x] **D5 — Wildcards and `except` (G11).** Size S.
   Done when: compiler tests for the glob limits; a GameTest moving every `*_ingot` except iron.
+  Evidence (2026-10-25): `ResourceFilterTest` (any-namespace and exact-namespace globs,
+  no prefix/suffix overlap, invalid patterns, `except` bounds); `FriendlyCompilerTest`
+  (two stars, a starred namespace, a tag glob, mixed kinds, energy, the 8-term limit);
+  `SideAndSlotsGameTests.movesEveryIngotExceptIron` (gold and copper leave; iron and
+  cobblestone stay). Preset codecs and `FilterEdits` refuse program-only terms.
+  `FriendlyV1PinTest` marks D5 with v1 IR unchanged.
 
 - [ ] **D6 — Redstone in programs (G8, needs PD1).** Size M.
   `redstone(NAME)` reads the signal at a labelled Interface; `emit` sets a Signal-mode

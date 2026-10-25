@@ -3,7 +3,7 @@
 Status: accepted 2026-10-25 (PD2: v2 is a strict superset of v1; Wasm gains additive
 `factory_v1` imports). Grammar, limits and diagnostics are frozen here before parser work.
 Slices D2–D6 implement it, and each one is complete only when its fixtures in
-`src/test/resources/program/v2/` compile and run. Implemented so far: D2, D3, D4.
+`src/test/resources/program/v2/` compile and run. Implemented so far: D2, D3, D4, D5.
 
 ## Context
 
@@ -85,12 +85,15 @@ allowed. v1's `if stock(f) CMP INT { … }` is the `atom` form and produces the 
   Interface is powered (one query per machine). An empty selection makes `has` sum to 0
   and `redstone` false. `has` reads what the machine holds now, not moves still in
   flight, so a rule that refills on `has` may overshoot by one move.
-- **Filters (D5).** An `item`, `fluid` or `tag` string may contain **one** `*`, anywhere in
-  the ID *path*. It matches zero or more of `[a-z0-9_./-]`, and the namespace (if given)
-  must be exact. Globs match registry IDs only, never component data or display names, and
-  are compiled to a bounded matcher (no regex). `a except b except c` keeps `a` minus `b`
-  minus `c`. Every term must be the same resource kind, at most 8 terms per filter.
-  `energy` cannot take `except`.
+- **Filters (D5).** An `item` or `fluid` string may contain **one** `*`, anywhere in the ID
+  *path*. It matches zero or more of `[a-z0-9_./-]`. Without a namespace it matches every
+  mod (`item("*_ingot")`); with one, that namespace exactly (`item("minecraft:raw_*")`).
+  Tag names cannot use `*`, because matching a pattern against a candidate's tags would
+  need its whole tag list. Globs match registry IDs only, never component data or display
+  names, and compile to a prefix/suffix test (no regex). `a except b except c` keeps `a`
+  minus `b` and `c`, with at most 8 terms, all the same resource kind. `energy` cannot take
+  `except`. These terms (`ResourceFilter.Glob`, `ResourceFilter.Except`) exist only in
+  programs; preset filter codecs and slot editors refuse them rather than save them.
 - **Redstone out (D6).** `emit redstone N on target` (0 ≤ N ≤ 15) sets the output of each
   selected **Signal-mode** Interface (ADR 0059 C1) while this program is deployed. While a
   program drives it, the Interface ignores its own rule and shows "Set by program".

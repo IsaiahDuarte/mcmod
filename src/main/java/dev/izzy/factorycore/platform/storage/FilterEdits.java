@@ -51,6 +51,8 @@ public final class FilterEdits {
   public static List<Rule> rules(ResourceFilter filter, PlatformResourceCodec codec) {
     var rules = new ArrayList<Rule>(filter.terms().size());
     for (var term : filter.terms()) {
+      if (ResourceFilter.programOnly(term))
+        throw new IllegalArgumentException("Program-only filter terms have no slot rows");
       Rule rule;
       if (term instanceof ResourceFilter.Registry registry)
         rule = new Rule(ITEM, registry.id(), "ID " + registry.id());
@@ -140,7 +142,8 @@ public final class FilterEdits {
           ? new ResourceFilter.Registry(shown)
           : new ResourceFilter.Tag(tags.get(0));
     }
-    var tag = ((ResourceFilter.Tag) term).id();
+    if (!(term instanceof ResourceFilter.Tag tagTerm)) return null;
+    var tag = tagTerm.id();
     int index = tags.indexOf(tag);
     if (index < 0) return null;
     return index + 1 < tags.size()

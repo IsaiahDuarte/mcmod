@@ -223,4 +223,45 @@ class FriendlyCompilerTest {
             .message()
             .contains("Expected a condition"));
   }
+
+  @Test
+  void globsAndExceptCompileWithinTheirBounds() {
+    var ok =
+        FriendlyCompiler.compile(
+            "every 10 ticks { move item(\"*_ingot\") except item(\"iron_ingot\") except tag(\"c:ingots/gold\") from machines(\"m\") to storage }");
+    assertTrue(ok.ok(), ok.diagnostics()::toString);
+    var filter = ((ProgramIr.Move) ok.program().rules().getFirst().body().getFirst()).filter();
+    var except =
+        (dev.izzy.factorycore.core.resource.ResourceFilter.Except) filter.terms().getFirst();
+    assertEquals(
+        new dev.izzy.factorycore.core.resource.ResourceFilter.Glob("*_ingot"), except.include());
+    assertEquals(2, except.excluded().size());
+    assertTrue(
+        error("every 10 ticks { move item(\"*a*\") from machines(\"m\") to storage }")
+            .message()
+            .contains("at most one '*'"));
+    assertTrue(
+        error("every 10 ticks { move item(\"mod*:x\") from machines(\"m\") to storage }")
+            .message()
+            .contains("namespace must be exact"));
+    assertTrue(
+        error("every 10 ticks { move tag(\"c:*\") from machines(\"m\") to storage }")
+            .message()
+            .contains("tag name cannot"));
+    assertTrue(
+        error(
+                "every 10 ticks { move item(\"a\") except fluid(\"water\") from machines(\"m\") to storage }")
+            .message()
+            .contains("same kind"));
+    assertTrue(
+        error("every 10 ticks { move energy except item(\"a\") from machines(\"m\") to storage }")
+            .message()
+            .contains("energy cannot"));
+    var many = new StringBuilder("item(\"a\")");
+    for (int i = 0; i < 8; i++) many.append(" except item(\"b").append(i).append("\")");
+    assertTrue(
+        error("every 10 ticks { move " + many + " from machines(\"m\") to storage }")
+            .message()
+            .contains("at most 8 terms"));
+  }
 }
