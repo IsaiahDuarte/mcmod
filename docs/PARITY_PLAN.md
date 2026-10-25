@@ -507,7 +507,7 @@ to identical IR (a fixture test pins this).
 
 ## Wave E — crafting depth (needs PD4, PD5; lane X)
 
-- [ ] **E1 — Pattern substitution (G13, needs PD4).** Size L.
+- [x] **E1 — Pattern substitution (G13, needs PD4).** Size L.
   A per-pattern **Allow substitutes** toggle when encoding a crafting-table pattern. Each
   input stores the recipe's ingredient (tag or alternatives). The planner picks concrete
   inputs from available stock at reservation time (stable order: most available, then
@@ -516,6 +516,17 @@ to identical IR (a fixture test pins this).
   Files: `Pattern.java`, `PatternContents.java`, `CraftingPlanner.java`, `TerminalCrafting.java`, `CrafterEntity.java`.
   Done when: planner tests mix oak and birch planks into one sticks job; GameTest crafts
   chests from mixed planks; a non-substitute pattern still rejects birch.
+  Evidence (2026-10-25): `CraftingPlannerTest`: oak and birch mixed into one sticks plan,
+  most available first; an exact pattern reports birch as missing; ties by registry ID; a
+  remainder crafted as the primary; alternatives may not overlap inputs.
+  `CraftingJobTest`: allocation spent per craft and cannot be overspent.
+  `CraftingJobPersistenceTest`: schema 6 round trip, and the unknown-schema case moved
+  from 6 to 7 because 6 is now defined. `PatternContentsTest`: substitute codecs, and
+  shared cells keep only common alternatives. `SubstituteCraftingGameTests`: two chests
+  from 4 oak + 12 birch, the second craft on a mixed grid revalidated by the vanilla
+  recipe; an exact chest pattern refuses 16 birch; the real terminal encodes alternatives
+  only with Subst. on. `crafting-table-scale-4.png` shows the toggle (inspected).
+  [ADR 0063](decisions/0063-pattern-substitution.md).
 
 - [ ] **E2 — Crafter speed (G14, needs PD5).** Size M.
   Option (a): Throughput and Overdrive in a Crafter raise crafts per dispatch (for example

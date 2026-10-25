@@ -31,6 +31,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private int selected;
   private long shownRevision;
   private Button one, stack, returning, useRow, craftOne, craftMany, clearGrid, encode;
+  private Button substitutesButton;
+  private boolean substitutes;
   private Button previewOne, previewEight, previewMany, startJob, keepJob;
   private Button cancelJob;
   private boolean jobsMode;
@@ -374,7 +376,19 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             panelX() + 74,
             128,
             80,
-            () -> grid(TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]));
+            () -> grid(TerminalCraftingPackets.ENCODE, -1, substitutes ? 1 : 0, 1, new byte[32]));
+    // E1: whether the next encoded crafting pattern may use substitutes (client-side choice).
+    substitutesButton =
+        gridButton(
+            "substitutes",
+            panelX() + 74,
+            172,
+            80,
+            () -> {
+              substitutes = !substitutes;
+              refreshSubstitutes();
+            });
+    refreshSubstitutes();
     for (int page = 0; page < 3; page++) {
       int choice = page;
       gridTabs.add(
@@ -498,6 +512,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                     && ghost.cells().subList(9, 12).stream().anyMatch(cell -> !cell.isEmpty())
                 : !ghost.result().isEmpty());
     countDown.visible = countUp.visible = open && gridPage != 0;
+    substitutesButton.visible = open && !ghost.processing();
+    substitutesButton.active = !view.busy();
     boolean selected = !ghost.cells().get(target).isEmpty() && ghost.processing() && !view.busy();
     countDown.active = selected && ghost.counts().get(target) > 1;
     countUp.active = selected && ghost.counts().get(target) < 64;
@@ -606,6 +622,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             action,
             selection,
             amount));
+  }
+
+  private void refreshSubstitutes() {
+    substitutesButton.setMessage(
+        Component.translatable(
+            substitutes
+                ? "gui.factorycore.terminal.grid.substitutes.on"
+                : "gui.factorycore.terminal.grid.substitutes.off"));
   }
 
   private Button gridButton(String key, int x, int y, int width, Runnable action) {

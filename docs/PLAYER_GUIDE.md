@@ -294,7 +294,10 @@ are not kept.
 
 Craft Blank Patterns.
 - **Crafting Pattern:** set up a recipe in the terminal's Table grid and press
-  **Encode** with a blank in your inventory. Your ingredients are not used.
+  **Encode** with a blank in your inventory. Your ingredients are not used. Turn
+  **Subst.** on first if any item the recipe accepts may be used, for example any
+  planks for sticks or chests. Jobs then take whichever is most plentiful, and can mix
+  them. With it off, the pattern uses exactly the items you placed.
 - **Processing Pattern** (for machines): choose **Inputs** and set the ingredients,
   then **Outputs** (up to three), then **Encode**.
 - **Amounts:** use **+ / −** or scroll to change them; Shift-scroll changes them

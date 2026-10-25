@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -33,6 +34,12 @@ public final class PatternContents {
   private final ItemStack output;
   private final List<ItemStack> remainders;
 
+  /**
+   * E1 (PD4): per cell, the item IDs that may stand in for it when the player allowed substitutes
+   * at encode time (from the recipe's ingredient); all empty for an exact pattern.
+   */
+  private final List<List<String>> alternatives;
+
   public PatternContents(
       UUID id,
       long version,
@@ -40,7 +47,32 @@ public final class PatternContents {
       List<ItemStack> cells,
       ItemStack output,
       List<ItemStack> remainders) {
+    this(id, version, priority, cells, output, remainders, NONE);
+  }
+
+  private static final List<List<String>> NONE = java.util.Collections.nCopies(CELLS, List.of());
+
+  public PatternContents(
+      UUID id,
+      long version,
+      int priority,
+      List<ItemStack> cells,
+      ItemStack output,
+      List<ItemStack> remainders,
+      List<List<String>> alternatives) {
     this.id = Objects.requireNonNull(id);
+    if (alternatives.size() != CELLS)
+      throw new IllegalArgumentException("Pattern needs nine alternative lists");
+    var lists = new ArrayList<List<String>>(CELLS);
+    for (int index = 0; index < CELLS; index++) {
+      var list = List.copyOf(alternatives.get(index));
+      if (list.size() > Pattern.MAX_ALTERNATIVES || !list.isEmpty() && cells.get(index).isEmpty())
+        throw new IllegalArgumentException("Invalid substitutes for a pattern cell");
+      for (var item : list)
+        new ResourceKey(dev.izzy.factorycore.core.resource.ResourceKind.ITEM, item, new byte[0]);
+      lists.add(list);
+    }
+    this.alternatives = List.copyOf(lists);
     if (version < 1) throw new IllegalArgumentException("Pattern version must be positive");
     if (priority < Pattern.MIN_PRIORITY || priority > Pattern.MAX_PRIORITY)
       throw new IllegalArgumentException("Pattern priority out of range");
@@ -94,6 +126,15 @@ public final class PatternContents {
     return remainders.stream().map(ItemStack::copy).toList();
   }
 
+  /** Per-cell alternative item IDs (E1); every list empty for an exact pattern. */
+  public List<List<String>> alternatives() {
+    return alternatives;
+  }
+
+  public boolean substitutes() {
+    return alternatives.stream().anyMatch(list -> !list.isEmpty());
+  }
+
   /** Exact portable contract; throws IllegalArgumentException for unrepresentable stacks. */
   public Pattern pattern(PlatformResourceCodec codec) {
     var inputs = new LinkedHashMap<ResourceKey, Long>();
@@ -101,15 +142,57 @@ public final class PatternContents {
     var byproducts = new LinkedHashMap<ResourceKey, Long>();
     for (var remainder : remainders)
       byproducts.merge(codec.itemKey(remainder), (long) remainder.getCount(), Long::sum);
+    var outputKey = codec.itemKey(output);
     return new Pattern(
         id,
         version,
         Pattern.Type.CRAFTING,
         priority,
         inputs,
-        codec.itemKey(output),
+        outputKey,
         output.getCount(),
-        byproducts);
+        byproducts,
+        substitutes(codec, inputs.keySet(), outputKey));
+  }
+
+  /**
+   * E1: each input key's alternatives. Cells sharing an input keep only alternatives every one of
+   * them allows; an alternative that is the output, an input or already another input's is dropped
+   * (first input in cell order keeps it), so every concrete key belongs to one input.
+   */
+  private Map<ResourceKey, List<ResourceKey>> substitutes(
+      PlatformResourceCodec codec, java.util.Set<ResourceKey> inputs, ResourceKey output) {
+    var merged = new LinkedHashMap<ResourceKey, java.util.LinkedHashSet<ResourceKey>>();
+    var exact = new java.util.HashSet<ResourceKey>();
+    for (int index = 0; index < CELLS; index++) {
+      var cell = cells.get(index);
+      if (cell.isEmpty()) continue;
+      var key = codec.itemKey(cell);
+      var allowed = new java.util.LinkedHashSet<ResourceKey>();
+      for (var id : alternatives.get(index)) {
+        var item =
+            net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(
+                net.minecraft.resources.ResourceLocation.parse(id));
+        if (item.isPresent()) allowed.add(codec.itemKey(new ItemStack(item.get())));
+      }
+      allowed.remove(key);
+      if (allowed.isEmpty()) exact.add(key);
+      else if (merged.containsKey(key)) merged.get(key).retainAll(allowed);
+      else merged.put(key, allowed);
+    }
+    var claimed = new java.util.HashSet<ResourceKey>(inputs);
+    claimed.add(output);
+    var result = new LinkedHashMap<ResourceKey, List<ResourceKey>>();
+    for (var entry : merged.entrySet()) {
+      // A cell of this input that allows nothing makes the whole input exact.
+      if (exact.contains(entry.getKey())) continue;
+      var kept = new ArrayList<ResourceKey>();
+      for (var alternative : entry.getValue()) if (claimed.add(alternative)) kept.add(alternative);
+      if (!kept.isEmpty())
+        result.put(
+            entry.getKey(), kept.subList(0, Math.min(kept.size(), Pattern.MAX_ALTERNATIVES)));
+    }
+    return result;
   }
 
   private static boolean same(List<ItemStack> left, List<ItemStack> right) {
@@ -127,7 +210,8 @@ public final class PatternContents {
         && priority == that.priority
         && ItemStack.matches(output, that.output)
         && same(cells, that.cells)
-        && same(remainders, that.remainders);
+        && same(remainders, that.remainders)
+        && alternatives.equals(that.alternatives);
   }
 
   @Override
@@ -149,7 +233,8 @@ public final class PatternContents {
       int priority,
       List<ItemStack> cells,
       ItemStack output,
-      List<ItemStack> remainders) {}
+      List<ItemStack> remainders,
+      List<List<String>> alternatives) {}
 
   public static final Codec<PatternContents> CODEC =
       RecordCodecBuilder.<Raw>create(
@@ -161,7 +246,13 @@ public final class PatternContents {
                           Codec.INT.fieldOf("priority").forGetter(Raw::priority),
                           ItemStack.OPTIONAL_CODEC.listOf().fieldOf("cells").forGetter(Raw::cells),
                           ItemStack.CODEC.fieldOf("output").forGetter(Raw::output),
-                          ItemStack.CODEC.listOf().fieldOf("remainders").forGetter(Raw::remainders))
+                          ItemStack.CODEC.listOf().fieldOf("remainders").forGetter(Raw::remainders),
+                          // E1: absent on exact (and every older) pattern.
+                          Codec.STRING
+                              .listOf()
+                              .listOf()
+                              .optionalFieldOf("substitutes", NONE)
+                              .forGetter(Raw::alternatives))
                       .apply(instance, Raw::new))
           .comapFlatMap(
               raw ->
@@ -173,7 +264,8 @@ public final class PatternContents {
                               raw.priority(),
                               raw.cells(),
                               raw.output(),
-                              raw.remainders())),
+                              raw.remainders(),
+                              raw.alternatives())),
               value ->
                   new Raw(
                       value.id,
@@ -181,7 +273,8 @@ public final class PatternContents {
                       value.priority,
                       value.cells,
                       value.output,
-                      value.remainders));
+                      value.remainders,
+                      value.alternatives));
 
   public static final StreamCodec<RegistryFriendlyByteBuf, PatternContents> STREAM_CODEC =
       StreamCodec.of(
@@ -193,6 +286,10 @@ public final class PatternContents {
             ItemStack.STREAM_CODEC.encode(buffer, value.output);
             ByteBufCodecs.VAR_INT.encode(buffer, value.remainders.size());
             for (var remainder : value.remainders) ItemStack.STREAM_CODEC.encode(buffer, remainder);
+            for (var list : value.alternatives) {
+              ByteBufCodecs.VAR_INT.encode(buffer, list.size());
+              for (var item : list) buffer.writeUtf(item, 256);
+            }
           },
           buffer -> {
             var id = UUIDUtil.STREAM_CODEC.decode(buffer);
@@ -208,6 +305,16 @@ public final class PatternContents {
             var remainders = new ArrayList<ItemStack>(count);
             for (int index = 0; index < count; index++)
               remainders.add(ItemStack.STREAM_CODEC.decode(buffer));
-            return new PatternContents(id, version, priority, cells, output, remainders);
+            var alternatives = new ArrayList<List<String>>(CELLS);
+            for (int index = 0; index < CELLS; index++) {
+              int size = ByteBufCodecs.VAR_INT.decode(buffer);
+              if (size < 0 || size > Pattern.MAX_ALTERNATIVES)
+                throw new IllegalArgumentException("Substitute count");
+              var list = new ArrayList<String>(size);
+              for (int item = 0; item < size; item++) list.add(buffer.readUtf(256));
+              alternatives.add(list);
+            }
+            return new PatternContents(
+                id, version, priority, cells, output, remainders, alternatives);
           });
 }

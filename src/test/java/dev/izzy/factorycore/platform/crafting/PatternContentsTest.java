@@ -120,4 +120,41 @@ class PatternContentsTest {
     json.addProperty("version", 0);
     assertTrue(PatternContents.CODEC.parse(ops, json).isError(), "Invalid saved data fails decode");
   }
+
+  @Test
+  void substitutesRoundTripAndBecomeDisjointAlternatives() {
+    var cells = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
+    var alternatives = new ArrayList<List<String>>(Collections.nCopies(9, List.<String>of()));
+    cells.set(0, new ItemStack(Items.OAK_PLANKS));
+    cells.set(3, new ItemStack(Items.OAK_PLANKS));
+    alternatives.set(0, List.of("minecraft:birch_planks", "minecraft:spruce_planks"));
+    alternatives.set(3, List.of("minecraft:birch_planks"));
+    var value =
+        new PatternContents(
+            new UUID(0, 3), 1, 0, cells, new ItemStack(Items.STICK, 4), List.of(), alternatives);
+    var ops = registries.createSerializationContext(JsonOps.INSTANCE);
+    assertEquals(
+        value,
+        PatternContents.CODEC
+            .parse(ops, PatternContents.CODEC.encodeStart(ops, value).getOrThrow())
+            .getOrThrow());
+    var buffer =
+        new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
+    try {
+      PatternContents.STREAM_CODEC.encode(buffer, value);
+      assertEquals(value, PatternContents.STREAM_CODEC.decode(buffer));
+    } finally {
+      buffer.release();
+    }
+    var codec = new PlatformResourceCodec(registries);
+    var pattern = value.pattern(codec);
+    assertEquals(
+        Map.of(
+            codec.itemKey(new ItemStack(Items.OAK_PLANKS)),
+            List.of(codec.itemKey(new ItemStack(Items.BIRCH_PLANKS)))),
+        pattern.substitutes(),
+        "Cells sharing oak keep only what both allow");
+    assertTrue(
+        contents(new UUID(0, 4)).pattern(codec).substitutes().isEmpty(), "Exact stays exact");
+  }
 }

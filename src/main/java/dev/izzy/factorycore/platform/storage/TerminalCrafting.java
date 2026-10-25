@@ -245,6 +245,14 @@ final class TerminalCrafting {
    * and remainders come from the server recipe; nothing else is consumed.
    */
   Outcome encode(ServerPlayer player) {
+    return encode(player, false);
+  }
+
+  /**
+   * As {@link #encode(ServerPlayer)}; {@code substitutes} (E1, PD4) records, per cell, the other
+   * items its recipe ingredient accepts, so jobs may use them. Processing patterns stay exact.
+   */
+  Outcome encode(ServerPlayer player, boolean substitutes) {
     if (processing) return encodeProcessing(player);
     var holder = recipe(player);
     if (holder.isEmpty()) return new Outcome(0, "no_recipe", null);
@@ -258,7 +266,28 @@ final class TerminalCrafting {
       if (!remainder.isEmpty()) remainders.add(remainder);
     ItemStack encoded;
     try {
-      var contents = new PatternContents(UUID.randomUUID(), 1, 0, ghosts, output, remainders);
+      var alternatives = new ArrayList<List<String>>();
+      for (var ghost : ghosts) {
+        List<String> ids = List.of();
+        if (substitutes && !ghost.isEmpty())
+          for (var ingredient : recipe.getIngredients()) {
+            if (ingredient.isEmpty() || !ingredient.test(ghost)) continue;
+            var found = new java.util.LinkedHashSet<String>();
+            for (var option : ingredient.getItems())
+              if (!option.is(ghost.getItem()))
+                found.add(
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM
+                        .getKey(option.getItem())
+                        .toString());
+            // A huge ingredient (more than a vanilla tag) stays exact rather than truncated.
+            if (found.size() <= dev.izzy.factorycore.core.crafting.Pattern.MAX_ALTERNATIVES)
+              ids = List.copyOf(found);
+            break;
+          }
+        alternatives.add(ids);
+      }
+      var contents =
+          new PatternContents(UUID.randomUUID(), 1, 0, ghosts, output, remainders, alternatives);
       contents.pattern(codec);
       encoded = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
       encoded.set(CraftingContent.PATTERN.get(), contents);

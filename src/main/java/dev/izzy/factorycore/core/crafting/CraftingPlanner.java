@@ -43,8 +43,28 @@ public final class CraftingPlanner {
     LIMIT
   }
 
-  /** One crafting step in dependency order: children always precede their consumers. */
-  public record Step(UUID pattern, long version, ResourceKey output, long crafts) {}
+  /**
+   * One crafting step in dependency order: children always precede their consumers. {@code uses}
+   * (E1) maps each substituting input to the concrete keys this step's crafts will use in total.
+   */
+  public record Step(
+      UUID pattern,
+      long version,
+      ResourceKey output,
+      long crafts,
+      Map<ResourceKey, Map<ResourceKey, Long>> uses) {
+    public Step(UUID pattern, long version, ResourceKey output, long crafts) {
+      this(pattern, version, output, crafts, Map.of());
+    }
+
+    public Step {
+      var copy = new LinkedHashMap<ResourceKey, Map<ResourceKey, Long>>();
+      for (var entry : uses.entrySet())
+        copy.put(
+            entry.getKey(), Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue())));
+      uses = Collections.unmodifiableMap(copy);
+    }
+  }
 
   public record Plan(
       Status status,
@@ -215,19 +235,72 @@ public final class CraftingPlanner {
         Math.addExact(
             amount / pattern.outputAmount(), amount % pattern.outputAmount() == 0 ? 0 : 1);
     path.add(pattern.output());
+    var uses = new LinkedHashMap<ResourceKey, Map<ResourceKey, Long>>();
     try {
-      for (var input : pattern.inputs().entrySet())
-        need(state, input.getKey(), Math.multiplyExact(input.getValue(), crafts), path, false);
+      for (var input : pattern.inputs().entrySet()) {
+        long units = Math.multiplyExact(input.getValue(), crafts);
+        var alternatives = pattern.substitutes().get(input.getKey());
+        if (alternatives == null) need(state, input.getKey(), units, path, false);
+        else uses.put(input.getKey(), needAny(state, input.getKey(), alternatives, units, path));
+      }
     } finally {
       path.remove(path.size() - 1);
     }
     if (state.steps.size() >= MAX_STEPS) throw new LimitReached();
-    state.steps.add(new Step(pattern.id(), pattern.version(), pattern.output(), crafts));
+    state.steps.add(new Step(pattern.id(), pattern.version(), pattern.output(), crafts, uses));
     long surplus = Math.multiplyExact(crafts, pattern.outputAmount()) - amount;
     if (surplus > 0) state.produced.merge(pattern.output(), surplus, Math::addExact);
     for (var byproduct : pattern.byproducts().entrySet())
       state.produced.merge(
           byproduct.getKey(), Math.multiplyExact(byproduct.getValue(), crafts), Math::addExact);
+  }
+
+  /**
+   * E1: serves {@code amount} of a substituting input. This plan's own surplus of the primary key
+   * is used first, then stock across the primary and its alternatives (most available first, then
+   * registry ID), then crafts of the primary. Returns the concrete keys the step will use.
+   */
+  private Map<ResourceKey, Long> needAny(
+      State state,
+      ResourceKey primary,
+      List<ResourceKey> alternatives,
+      long amount,
+      List<ResourceKey> path) {
+    if (++nodes > MAX_NODES) throw new LimitReached();
+    var uses =
+        new java.util.TreeMap<ResourceKey, Long>(Comparator.comparing(ResourceKey::registryId));
+    long remaining = amount;
+    long made = state.produced.getOrDefault(primary, 0L);
+    long reuse = Math.min(made, remaining);
+    if (reuse > 0) {
+      state.produced.put(primary, made - reuse);
+      uses.merge(primary, reuse, Math::addExact);
+      remaining -= reuse;
+    }
+    var candidates = new ArrayList<ResourceKey>();
+    candidates.add(primary);
+    candidates.addAll(alternatives);
+    for (var candidate : candidates) state.available.computeIfAbsent(candidate, this::lookup);
+    candidates.sort(
+        Comparator.<ResourceKey>comparingLong(key -> state.available.get(key))
+            .reversed()
+            .thenComparing(ResourceKey::registryId));
+    for (var candidate : candidates) {
+      if (remaining == 0) break;
+      long have = state.available.get(candidate);
+      long take = Math.min(have, remaining);
+      if (take == 0) continue;
+      state.available.put(candidate, have - take);
+      state.consumed.merge(candidate, take, Math::addExact);
+      uses.merge(candidate, take, Math::addExact);
+      remaining -= take;
+    }
+    if (remaining > 0) {
+      // Stock is spent, so this crafts (or reports missing) the primary key only.
+      need(state, primary, remaining, path, false);
+      uses.merge(primary, remaining, Math::addExact);
+    }
+    return new LinkedHashMap<>(uses);
   }
 
   private static void copy(State from, State to) {

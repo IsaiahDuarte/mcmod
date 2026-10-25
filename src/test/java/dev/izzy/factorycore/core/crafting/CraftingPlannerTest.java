@@ -193,4 +193,67 @@ class CraftingPlannerTest {
         IllegalArgumentException.class,
         () -> new Pattern(id, 1, Pattern.Type.CRAFTING, 0, Map.of(LOG, 0L), PLANKS, 4, Map.of()));
   }
+
+  @Test
+  void substitutingPatternMixesPlanksAndAnExactOneDoesNot() {
+    var birch = item("birch_planks");
+    var spruce = item("spruce_planks");
+    var stick =
+        new Pattern(
+            new UUID(0, 50),
+            1,
+            Pattern.Type.CRAFTING,
+            0,
+            Map.of(PLANKS, 2L),
+            STICK,
+            4,
+            Map.of(),
+            Map.of(PLANKS, List.of(birch, spruce)));
+    var plan = planner(stick).plan(STICK, 16, Map.of(PLANKS, 3L, birch, 5L));
+    assertEquals(CraftingPlanner.Status.OK, plan.status(), plan.missing()::toString);
+    assertEquals(Map.of(birch, 5L, PLANKS, 3L), plan.consumed(), "Most available first");
+    var uses = plan.steps().getFirst().uses().get(PLANKS);
+    assertEquals(Map.of(birch, 5L, PLANKS, 3L), uses);
+    assertEquals(List.of(birch, PLANKS), List.copyOf(uses.keySet()), "Allocation in ID order");
+    var exact = pattern(51, 0, STICK, 4, Map.of(PLANKS, 2L));
+    var refused = planner(exact).plan(STICK, 16, Map.of(PLANKS, 3L, birch, 5L));
+    assertEquals(CraftingPlanner.Status.MISSING, refused.status());
+    assertEquals(Map.of(PLANKS, 5L), refused.missing(), "An exact pattern never takes birch");
+    assertTrue(refused.steps().getFirst().uses().isEmpty());
+  }
+
+  @Test
+  void substituteTiesBreakByRegistryIdAndShortfallsCraftThePrimary() {
+    var birch = item("birch_planks");
+    var planks = pattern(60, 0, PLANKS, 4, Map.of(LOG, 1L));
+    var stick =
+        new Pattern(
+            new UUID(0, 61),
+            1,
+            Pattern.Type.CRAFTING,
+            0,
+            Map.of(PLANKS, 2L),
+            STICK,
+            4,
+            Map.of(),
+            Map.of(PLANKS, List.of(birch)));
+    var plan = planner(planks, stick).plan(STICK, 12, Map.of(PLANKS, 1L, birch, 1L, LOG, 1L));
+    assertEquals(CraftingPlanner.Status.OK, plan.status(), plan.missing()::toString);
+    var uses = plan.steps().getLast().uses().get(PLANKS);
+    assertEquals(Map.of(birch, 1L, PLANKS, 5L), uses, "1 birch, 1 oak from stock, 4 oak crafted");
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new Pattern(
+                new UUID(0, 62),
+                1,
+                Pattern.Type.CRAFTING,
+                0,
+                Map.of(PLANKS, 1L, birch, 1L),
+                STICK,
+                4,
+                Map.of(),
+                Map.of(PLANKS, List.of(birch))),
+        "An alternative may not also be an input");
+  }
 }

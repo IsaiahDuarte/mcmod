@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.CraftingJobs;
 import dev.izzy.factorycore.core.crafting.KeepStockRule;
+import dev.izzy.factorycore.core.crafting.Pattern;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
@@ -92,7 +93,12 @@ public final class CraftingJobCodec {
 
   public static CompoundTag encode(List<CraftingJob.Snapshot> jobs, List<KeepStockRule> rules) {
     var root = new CompoundTag();
-    root.putInt("Schema", 5);
+    // Schema 6 (E1) adds each step's substitute allocation ("Uses"); without one the schema-5
+    // bytes are unchanged.
+    boolean substituted =
+        jobs.stream()
+            .anyMatch(job -> job.steps().stream().anyMatch(step -> !step.uses().isEmpty()));
+    root.putInt("Schema", substituted ? 6 : 5);
     var ruleList = new ListTag();
     for (var rule : rules) {
       var entry = new CompoundTag();
@@ -127,6 +133,16 @@ public final class CraftingJobCodec {
         tag.put("Output", key(step.output()));
         tag.putLong("Crafts", step.crafts());
         tag.putLong("Done", step.done());
+        if (!step.uses().isEmpty()) {
+          var uses = new ListTag();
+          for (var use : step.uses().entrySet()) {
+            var group = new CompoundTag();
+            group.put("Input", key(use.getKey()));
+            group.put("Keys", amounts(use.getValue()));
+            uses.add(group);
+          }
+          tag.put("Uses", uses);
+        }
         steps.add(tag);
       }
       entry.put("Steps", steps);
@@ -170,7 +186,7 @@ public final class CraftingJobCodec {
   public static Decoded decodeAll(CompoundTag root) {
     if (!root.contains("Schema", Tag.TAG_INT)
         || root.getInt("Schema") < 1
-        || root.getInt("Schema") > 5)
+        || root.getInt("Schema") > 6)
       throw new IllegalArgumentException("Unsupported crafting job schema");
     int schema = root.getInt("Schema");
     Nbt.fields(root, schema >= 3 ? Set.of("Schema", "Jobs", "Rules") : Set.of("Schema", "Jobs"));
@@ -298,20 +314,39 @@ public final class CraftingJobCodec {
         throw new IllegalArgumentException("Job step limit");
       for (int s = 0; s < stepList.size(); s++) {
         var step = stepList.getCompound(s);
-        Nbt.fields(step, Set.of("Pattern", "Version", "Output", "Crafts", "Done"));
+        Nbt.fields(
+            step,
+            schema >= 6
+                ? Set.of("Pattern", "Version", "Output", "Crafts", "Done", "Uses")
+                : Set.of("Pattern", "Version", "Output", "Crafts", "Done"));
         if (!step.hasUUID("Pattern")
             || !step.contains("Version", Tag.TAG_LONG)
             || !step.contains("Output", Tag.TAG_COMPOUND)
             || !step.contains("Crafts", Tag.TAG_LONG)
             || !step.contains("Done", Tag.TAG_LONG))
           throw new IllegalArgumentException("Malformed job step");
+        var uses = new LinkedHashMap<ResourceKey, Map<ResourceKey, Long>>();
+        if (step.contains("Uses")) {
+          var groups = list(step, "Uses");
+          if (groups.size() > Pattern.MAX_INPUT_KEYS)
+            throw new IllegalArgumentException("Too many substitute groups");
+          for (int g = 0; g < groups.size(); g++) {
+            var group = groups.getCompound(g);
+            Nbt.fields(group, Set.of("Input", "Keys"));
+            if (!group.contains("Input", Tag.TAG_COMPOUND))
+              throw new IllegalArgumentException("Malformed substitute group");
+            if (uses.put(key(group.getCompound("Input")), amounts(list(group, "Keys"))) != null)
+              throw new IllegalArgumentException("Duplicate substitute group");
+          }
+        }
         steps.add(
             new CraftingJob.Step(
                 step.getUUID("Pattern"),
                 step.getLong("Version"),
                 key(step.getCompound("Output")),
                 step.getLong("Crafts"),
-                step.getLong("Done")));
+                step.getLong("Done"),
+                uses));
       }
       var reserved = new LinkedHashMap<UUID, Map<ResourceKey, Long>>();
       var cells = list(entry, "Reserved");

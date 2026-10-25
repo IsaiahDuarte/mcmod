@@ -255,4 +255,36 @@ class CraftingJobTest {
     job.delivered(ingot, 2);
     assertTrue(job.finished());
   }
+
+  @org.junit.jupiter.api.Test
+  void stepAllocationIsSpentPerCraftAndCannotBeOverspent() {
+    var planks =
+        new dev.izzy.factorycore.core.resource.ResourceKey(
+            dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+            "minecraft:oak_planks",
+            new byte[0]);
+    var birch =
+        new dev.izzy.factorycore.core.resource.ResourceKey(
+            dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+            "minecraft:birch_planks",
+            new byte[0]);
+    var stick =
+        new dev.izzy.factorycore.core.resource.ResourceKey(
+            dev.izzy.factorycore.core.resource.ResourceKind.ITEM, "minecraft:stick", new byte[0]);
+    var step =
+        new CraftingJob.Step(
+            new java.util.UUID(0, 1),
+            1,
+            stick,
+            2,
+            0,
+            java.util.Map.of(planks, java.util.Map.of(birch, 3L, planks, 1L)));
+    var once = step.advanced(java.util.Map.of(birch, 2L));
+    org.junit.jupiter.api.Assertions.assertEquals(
+        java.util.Map.of(planks, java.util.Map.of(birch, 1L, planks, 1L)), once.uses());
+    var twice = once.advanced(java.util.Map.of(birch, 1L, planks, 1L));
+    org.junit.jupiter.api.Assertions.assertTrue(twice.uses().isEmpty() && twice.done() == 2);
+    org.junit.jupiter.api.Assertions.assertThrows(
+        IllegalArgumentException.class, () -> step.advanced(java.util.Map.of(birch, 4L)));
+  }
 }

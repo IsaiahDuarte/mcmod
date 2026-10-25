@@ -620,14 +620,47 @@ public final class WorldCraftingJobs {
     var crafting = WorldCrafting.get(server).index(networks().membership(scopeAnchor).scope());
     var offer = crafting.offer(step.pattern());
     if (offer == null || offer.pattern().version() != step.version()) return "pattern_missing";
-    var inputs = offer.pattern().inputs();
     if (offer.processing() != null) return process(job, offer);
+    // E1: a substituting input draws this craft's units from the step's own remaining allocation,
+    // in its (registry ID) order, never from units planned for another step.
+    var inputs = new LinkedHashMap<ResourceKey, Long>();
+    var chosen = new HashMap<ResourceKey, ArrayDeque<ResourceKey>>();
+    for (var input : offer.pattern().inputs().entrySet()) {
+      var uses = step.uses().get(input.getKey());
+      if (uses == null) {
+        inputs.merge(input.getKey(), input.getValue(), Math::addExact);
+        continue;
+      }
+      long need = input.getValue();
+      var units = new ArrayDeque<ResourceKey>();
+      for (var use : uses.entrySet()) {
+        long take = Math.min(need, use.getValue());
+        for (long unit = 0; unit < take; unit++) units.add(use.getKey());
+        if (take > 0) inputs.merge(use.getKey(), take, Math::addExact);
+        need -= take;
+        if (need == 0) break;
+      }
+      if (need > 0) return "substitutes_short";
+      chosen.put(input.getKey(), units);
+    }
     for (var input : inputs.entrySet()) {
       long missing = input.getValue() - job.stagedAmount(input.getKey());
       if (missing > 0) pull(job, input.getKey(), missing);
       if (job.stagedAmount(input.getKey()) < input.getValue()) return "offline";
     }
-    var outputs = assemble(job.id(), offer);
+    var cells = offer.contents().cells();
+    if (!chosen.isEmpty()) {
+      var level = offer.unit().getLevel();
+      if (level == null) return "offline";
+      var codec = new PlatformResourceCodec(level.registryAccess());
+      var grid = new ArrayList<ItemStack>(cells.size());
+      for (var cell : cells) {
+        var units = cell.isEmpty() ? null : chosen.get(codec.itemKey(cell));
+        grid.add(units == null ? cell : codec.itemStack(units.poll(), 1));
+      }
+      cells = grid;
+    }
+    var outputs = assemble(job.id(), offer, cells);
     if (outputs == null) return "recipe_changed";
     var permits = new ArrayList<WirelessBudget.Permit>();
     for (var changes : List.of(inputs, outputs))
@@ -829,14 +862,16 @@ public final class WorldCraftingJobs {
   }
 
   /**
-   * Revalidates the server recipe at the offering unit and returns exact outputs plus remainders,
-   * or null when the unit or recipe no longer reproduces the encoded pattern.
+   * Revalidates the server recipe at the offering unit on {@code cells} and returns exact outputs
+   * plus remainders, or null when the unit or recipe no longer reproduces the encoded pattern.
    */
-  private Map<ResourceKey, Long> assemble(UUID job, WorldCrafting.Offer offer) {
+  private Map<ResourceKey, Long> assemble(
+      UUID job, WorldCrafting.Offer offer, List<ItemStack> cells) {
     if (!offer.unit().current()) return null;
     var level = offer.unit().getLevel();
     if (level == null) return null;
-    var input = CraftingInput.of(3, 3, offer.contents().cells());
+    // The real recipe is revalidated with the concrete (possibly substituted) items every craft.
+    var input = CraftingInput.of(3, 3, cells);
     var holder = recipes.get(job);
     if (holder == null || !holder.value().matches(input, level)) {
       holder =

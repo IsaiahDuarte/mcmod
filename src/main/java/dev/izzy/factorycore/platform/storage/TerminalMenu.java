@@ -771,7 +771,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
           publish();
           return;
         }
-        finishCraft(crafting.encode(sender));
+        // source 1 (E1): allow substitutes from the recipe's ingredients.
+        finishCraft(crafting.encode(sender, command.source() == 1));
         return;
       }
       case TerminalCraftingPackets.CRAFT -> {

@@ -36,6 +36,11 @@ class CraftingJobPersistenceTest {
   }
 
   private static CompoundTag world(boolean reserve, long recorded) {
+    return world(reserve, recorded, Map.of());
+  }
+
+  private static CompoundTag world(
+      boolean reserve, long recorded, Map<ResourceKey, Map<ResourceKey, Long>> uses) {
     var saved = DeviceSavedData.load(emptyWorld(), registries);
     var registry = saved.registry();
     var location = new DeviceRegistry.Location("minecraft:overworld", 42, 0);
@@ -56,7 +61,7 @@ class CraftingJobPersistenceTest {
             new NodeRegistry.Position("minecraft:overworld", 7),
             STICK,
             8,
-            List.of(new CraftingJob.Step(new UUID(0, 5), 2, STICK, 2, 1)),
+            List.of(new CraftingJob.Step(new UUID(0, 5), 2, STICK, 2, 1, uses)),
             Map.of(handle.backing(), Map.of(LOG, recorded)),
             Map.of(STICK, 4L),
             CraftingJob.State.WAITING,
@@ -121,7 +126,8 @@ class CraftingJobPersistenceTest {
       var tag = world(true, 3);
       var entry = tag.getCompound("CraftingJobs").getList("Jobs", Tag.TAG_COMPOUND).getCompound(0);
       switch (i) {
-        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 6);
+        // Schema 6 is now defined (E1 allocations); the first unknown one is 7.
+        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 7);
         case 1 -> entry.putString("State", "FUTURE");
         case 2 -> entry.putString("Unknown", "x");
         case 3 -> entry.getList("Steps", Tag.TAG_COMPOUND).getCompound(0).putLong("Done", 9);
@@ -316,5 +322,16 @@ class CraftingJobPersistenceTest {
       assertFalse(rejected.diagnostic().isEmpty(), "Fault " + fault);
       assertEquals(malformed, rejected.save(new CompoundTag(), registries));
     }
+  }
+
+  @Test
+  void substituteAllocationsRoundTripInSchemaSix() {
+    var tag = world(true, 3, Map.of(LOG, Map.of(LOG, 2L)));
+    assertEquals(6, tag.getCompound("CraftingJobs").getInt("Schema"), "Allocations need schema 6");
+    var loaded = DeviceSavedData.load(tag, registries);
+    assertEquals("", loaded.diagnostic());
+    assertEquals(
+        Map.of(LOG, Map.of(LOG, 2L)),
+        loaded.craftingJobs().all().getFirst().steps().getFirst().uses());
   }
 }

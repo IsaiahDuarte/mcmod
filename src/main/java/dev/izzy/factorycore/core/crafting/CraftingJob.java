@@ -41,13 +41,56 @@ public final class CraftingJob {
     CANCELLING
   }
 
-  /** One aggregated plan step with exact progress. */
-  public record Step(UUID pattern, long version, ResourceKey output, long crafts, long done) {
+  /**
+   * One aggregated plan step with exact progress. {@code uses} (E1) is what the remaining crafts
+   * may still use for each substituting input: concrete key to units, spent as crafts consume them.
+   */
+  public record Step(
+      UUID pattern,
+      long version,
+      ResourceKey output,
+      long crafts,
+      long done,
+      Map<ResourceKey, Map<ResourceKey, Long>> uses) {
+    public Step(UUID pattern, long version, ResourceKey output, long crafts, long done) {
+      this(pattern, version, output, crafts, done, Map.of());
+    }
+
     public Step {
       Objects.requireNonNull(pattern);
       Objects.requireNonNull(output);
       if (version < 1 || crafts < 1 || done < 0 || done > crafts)
         throw new IllegalArgumentException("Invalid job step");
+      var copy = new LinkedHashMap<ResourceKey, Map<ResourceKey, Long>>();
+      var seen = new HashSet<ResourceKey>();
+      for (var entry : uses.entrySet()) {
+        var amounts = new LinkedHashMap<ResourceKey, Long>();
+        for (var use : entry.getValue().entrySet()) {
+          if (use.getValue() == null || use.getValue() < 1 || !seen.add(use.getKey()))
+            throw new IllegalArgumentException("Invalid substitute allocation");
+          amounts.put(use.getKey(), use.getValue());
+        }
+        copy.put(Objects.requireNonNull(entry.getKey()), Collections.unmodifiableMap(amounts));
+      }
+      uses = Collections.unmodifiableMap(copy);
+    }
+
+    /** This step with one more craft done and {@code spent} concrete units removed from uses. */
+    Step advanced(Map<ResourceKey, Long> spent) {
+      var next = new LinkedHashMap<ResourceKey, Map<ResourceKey, Long>>();
+      for (var entry : uses.entrySet()) {
+        var left = new LinkedHashMap<>(entry.getValue());
+        for (var use : spent.entrySet()) {
+          var held = left.get(use.getKey());
+          if (held == null) continue;
+          if (use.getValue() > held)
+            throw new IllegalArgumentException("Craft uses more than its allocation");
+          if (held.equals(use.getValue())) left.remove(use.getKey());
+          else left.put(use.getKey(), held - use.getValue());
+        }
+        if (!left.isEmpty()) next.put(entry.getKey(), left);
+      }
+      return new Step(pattern, version, output, crafts, done + 1, next);
     }
   }
 
@@ -221,7 +264,8 @@ public final class CraftingJob {
       throw new IllegalArgumentException("Only complete plans become jobs");
     var steps = new ArrayList<Step>();
     for (var step : plan.steps())
-      steps.add(new Step(step.pattern(), step.version(), step.output(), step.crafts(), 0));
+      steps.add(
+          new Step(step.pattern(), step.version(), step.output(), step.crafts(), 0, step.uses()));
     var totals = new LinkedHashMap<ResourceKey, Long>();
     for (var cell : reserved.values())
       for (var entry : cell.entrySet())
@@ -373,10 +417,7 @@ public final class CraftingJob {
     if (keys.size() > MAX_STAGED_KEYS) throw new IllegalStateException("Too many staged keys");
     for (var input : inputs.entrySet()) unstage(input.getKey(), input.getValue());
     for (var output : outputs.entrySet()) stage(output.getKey(), output.getValue());
-    var step = steps.get(index);
-    steps.set(
-        index,
-        new Step(step.pattern(), step.version(), step.output(), step.crafts(), step.done() + 1));
+    steps.set(index, steps.get(index).advanced(inputs));
     if (current() < 0) {
       state = State.DELIVERING;
       reason = "";
@@ -439,10 +480,7 @@ public final class CraftingJob {
         throw new IllegalArgumentException("Outputs not collected");
     dispatch = null;
     int index = current();
-    var step = steps.get(index);
-    steps.set(
-        index,
-        new Step(step.pattern(), step.version(), step.output(), step.crafts(), step.done() + 1));
+    steps.set(index, steps.get(index).advanced(Map.of()));
     if (current() < 0) {
       state = State.DELIVERING;
       reason = "";
