@@ -255,6 +255,21 @@ The **Inventory** tab shows the nine slots.
 
 Full storage backs items up into the buffer and then the hopper; nothing is voided.
 
+### Redstone control
+
+Machine presets (Presets tab) and Buffer settings have a **Redstone** button. Each click
+selects the next setting:
+
+- **ignored**: the preset runs whatever the input (the default).
+- **run when on** / **run when off**: it runs only while this Interface is powered, or
+  only while it is not.
+- **once per pulse**: each time the input turns on, it makes one move. Holding the signal
+  on does not repeat; several quick pulses while it is busy count as one.
+
+While it waits, its status says *Waiting for redstone*. A move already in flight always
+finishes. Changing the setting needs Edit access. The setting stays with the placed
+Interface; breaking it resets it to *ignored*.
+
 ### Signal mode
 
 A Signal-mode Interface is a redstone output for the network. Choose it from the Mode row

@@ -23,6 +23,7 @@ import org.lwjgl.glfw.GLFW;
  */
 public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSettingsMenu>
     implements FilterDropTarget {
+  private Button redstone;
   private List<Button> modeRow = List.of();
 
   private EditBox id, rate, target;
@@ -171,6 +172,10 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     clear =
         button(
             "clear", 258, 170, 52, () -> send(BufferSettingsPackets.CLEAR, 0, 0, "", new byte[32]));
+    redstone =
+        addRenderableWidget(
+            RedstoneButton.create(
+                menu.containerId, menu::redstoneState, leftPos + 10, topPos + 170, 180));
     exact =
         button(
             "sample",
@@ -273,6 +278,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
   private void sync() {
     var view = menu.view();
     boolean inventory = menu.inventoryTab();
+    RedstoneButton.refresh(redstone, menu.redstoneState());
     mode.setMessage(
         Component.translatable(
             "status.factorycore.buffer_mode." + view.mode().toLowerCase(Locale.ROOT)));
@@ -295,6 +301,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
             remove,
             clear,
             addById,
+            redstone,
             filterSlots)) {
       widget.visible = !inventory;
       widget.active = view.editable() && !view.busy();

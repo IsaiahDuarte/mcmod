@@ -87,6 +87,14 @@ public final class WorldBufferImports {
     wake(entry.backing);
   }
 
+  /** C2: the owner's redstone input or control changed; a held deployment may now run. */
+  public void wake(BufferedInterfaceEntity owner) {
+    checkThread();
+    if (owner.handle() == null) return;
+    var entry = entries.get(owner.handle().id());
+    if (entry != null && entry.owner == owner) wake(entry.backing);
+  }
+
   /** Matching holders only; queued guards reject after unregister, and owned staging survives. */
   public void unregister(BufferedInterfaceEntity owner) {
     checkThread();
@@ -174,6 +182,11 @@ public final class WorldBufferImports {
         cursor(entry, null);
         entry.pages = 0;
         entry.reason = OperationResult.Reason.OK;
+        continue;
+      }
+      // C2: a held deployment rests until its owner's redstone input wakes it.
+      if (!ready(entry)) {
+        entry.reason = OperationResult.Reason.REDSTONE;
         continue;
       }
       entry.scheduledNetwork = deployment.network();
@@ -274,6 +287,11 @@ public final class WorldBufferImports {
       admitted(entry, admission);
       return;
     }
+    // Finishing an in-flight transfer above never waits for redstone; a new move does.
+    if (!ready(entry)) {
+      entry.reason = OperationResult.Reason.REDSTONE;
+      return;
+    }
     if (deployment.mode() != BufferRegistry.Mode.IMPORT) {
       export(entry, deployment, actor);
       return;
@@ -284,6 +302,7 @@ public final class WorldBufferImports {
       var slot = inventory.slot(index);
       if (slot.key() == null || !matches(deployment, slot.key())) continue;
       entry.slot = (index + 1) % ItemBuffer.SLOTS;
+      if (!spend(entry)) return;
       var id = UUID.randomUUID();
       entry.request = id;
       entry.progress = false;
@@ -417,6 +436,7 @@ public final class WorldBufferImports {
                       retry(entry, OperationResult.Reason.OK);
                       return;
                     }
+                    if (!spend(entry)) return;
                     entry.request = request;
                     entry.progress = false;
                     var move =
@@ -471,6 +491,20 @@ public final class WorldBufferImports {
     if (transfer != null && transfer.delivered() > deliveredBefore) wake(entry.backing);
     else retry(entry, result.reason());
     entry.reason = result.reason();
+  }
+
+  private static boolean ready(Entry entry) {
+    var gate = entry.owner.redstone();
+    return gate.control() == dev.izzy.factorycore.core.storage.RedstoneGate.Control.PULSE
+        ? gate.pulsePending()
+        : gate.chain();
+  }
+
+  /** C2: a pulse is spent only on a submitted move, not on a page that found nothing. */
+  private static boolean spend(Entry entry) {
+    if (entry.owner.redstone().admit()) return true;
+    entry.reason = OperationResult.Reason.REDSTONE;
+    return false;
   }
 
   private void retry(Entry entry, OperationResult.Reason reason) {

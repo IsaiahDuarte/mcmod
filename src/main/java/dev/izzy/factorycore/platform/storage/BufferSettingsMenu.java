@@ -29,6 +29,13 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
   private final Player viewer;
   private final BufferedInterfaceEntity holder;
   private final BlockPos position;
+  private final net.minecraft.world.inventory.DataSlot redstone;
+
+  /** C2: the redstone control and input, decoded with {@link RedstoneMenu}. */
+  public int redstoneState() {
+    return redstone.get();
+  }
+
   private final NodeRegistry.Handle lease;
   private final NetworkTopology.Scope scope;
   private BufferPolicy draft = BufferPolicy.DEFAULT;
@@ -63,6 +70,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
         holder == null
             ? null
             : WorldNetworks.get(player().server).membership(holder.position()).scope();
+    redstone = addDataSlot(RedstoneMenu.slot(holder));
     for (int row = 0; row < 3; row++)
       for (int column = 0; column < 9; column++)
         addSlot(
@@ -166,6 +174,16 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
    */
   @Override
   public boolean clickMenuButton(Player player, int button) {
+    if (RedstoneMenu.requested(button)) {
+      if (holder == null
+          || !current()
+          || !(player instanceof ServerPlayer sender)
+          || sender != viewer) return false;
+      status = RedstoneMenu.click(sender, holder, button);
+      revision++;
+      publish();
+      return true;
+    }
     var target = InterfaceSwitch.requested(button);
     if (target == null
         || holder == null

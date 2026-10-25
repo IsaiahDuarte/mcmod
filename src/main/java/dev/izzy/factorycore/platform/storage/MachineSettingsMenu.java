@@ -41,6 +41,13 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   private MachinePresets.Mode presetMode = MachinePresets.Mode.PAUSED;
   private ResourceFilter presetFilter = ResourceFilter.all(ResourceKind.ITEM);
   private String presetStatus = "ready";
+  private final net.minecraft.world.inventory.DataSlot redstone;
+
+  /** C2: the redstone control and input, decoded with {@link RedstoneMenu}. */
+  public int redstoneState() {
+    return redstone.get();
+  }
+
   private boolean presetDirty, presetBusy;
   private UUID cleanupRequest;
   private MachinePresetPackets.View presetView;
@@ -60,6 +67,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
     scope = machine == null ? null : runtime().membership(machine.position()).scope();
     if (machine != null && resetPreset()) presetStatus = "resumable";
     deviceStatus = DeviceStatus.View.pending(id, protocol.id());
+    redstone = addDataSlot(RedstoneMenu.slot(machine));
     presetView =
         new MachinePresetPackets.View(
             id,
@@ -253,6 +261,16 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
    */
   @Override
   public boolean clickMenuButton(Player player, int button) {
+    if (RedstoneMenu.requested(button)) {
+      if (machine == null
+          || !current()
+          || !(player instanceof ServerPlayer sender)
+          || sender != viewer) return false;
+      presetStatus = RedstoneMenu.click(sender, machine, button);
+      presetRevision++;
+      publishPreset();
+      return true;
+    }
     var target = InterfaceSwitch.requested(button);
     if (target == null
         || machine == null

@@ -48,8 +48,26 @@ import net.neoforged.neoforge.items.IItemHandler;
 
 /** Loaded physical holder of one canonical inventory; no stock is saved into chunk/item NBT. */
 public final class BufferedInterfaceEntity extends BlockEntity
-    implements MenuProvider, WiredMember, CanonicalStorage, ThroughputUpgradeable {
+    implements RedstoneControlled,
+        MenuProvider,
+        WiredMember,
+        CanonicalStorage,
+        ThroughputUpgradeable {
   private UUID opening;
+  private final dev.izzy.factorycore.core.storage.RedstoneGate redstone =
+      new dev.izzy.factorycore.core.storage.RedstoneGate();
+
+  @Override
+  public dev.izzy.factorycore.core.storage.RedstoneGate redstone() {
+    return redstone;
+  }
+
+  @Override
+  public void redstoneWake() {
+    setChanged();
+    if (level instanceof ServerLevel server)
+      WorldNetworks.get(server.getServer()).imports().wake(this);
+  }
 
   public boolean canUse(ServerPlayer player) {
     try {
@@ -534,6 +552,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
   protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.saveAdditional(tag, registries);
     if (data != null) tag.put(BufferData.FIELD, data.copy());
+    RedstoneControlled.save(redstone, tag);
   }
 
   @Override
@@ -542,6 +561,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
     if (level instanceof ServerLevel && state != null) unbind();
     handler = null;
     data = tag.contains(BufferData.FIELD) ? tag.get(BufferData.FIELD).copy() : null;
+    RedstoneControlled.load(redstone, tag);
     parse();
     if (level instanceof ServerLevel) WorldNetworks.changed(level, worldPosition);
   }

@@ -79,6 +79,14 @@ public final class WorldMachinePresets {
     wake(entry);
   }
 
+  /** C2: the owner's redstone input or control changed; a held preset may now run. */
+  public void wake(MachineInterfaceEntity owner) {
+    checkThread();
+    if (owner.handle() == null) return;
+    var entry = entries.get(owner.handle().id());
+    if (entry != null && entry.owner == owner) wake(entry);
+  }
+
   public void unregister(MachineInterfaceEntity owner) {
     checkThread();
     if (owner.handle() == null) return;
@@ -177,6 +185,11 @@ public final class WorldMachinePresets {
         activate(e);
         continue;
       }
+      // C2: a held preset rests until its owner's redstone input wakes it.
+      if (!ready(e)) {
+        e.reason = OperationResult.Reason.REDSTONE;
+        continue;
+      }
       schedule(e, d);
     }
   }
@@ -263,8 +276,20 @@ public final class WorldMachinePresets {
       admitted(e, submission);
       return;
     }
+    // Finishing an in-flight transfer above never waits for redstone; a new move does.
+    if (!ready(e)) {
+      e.reason = OperationResult.Reason.REDSTONE;
+      return;
+    }
     if (d.mode() == MachinePresets.Mode.IMPORT) importPage(e, d);
     else exportPage(e, d);
+  }
+
+  private static boolean ready(Entry e) {
+    var gate = e.owner.redstone();
+    return gate.control() == dev.izzy.factorycore.core.storage.RedstoneGate.Control.PULSE
+        ? gate.pulsePending()
+        : gate.chain();
   }
 
   private static boolean owns(
@@ -427,6 +452,11 @@ public final class WorldMachinePresets {
                     .itemStack(key, 1)
                     .getMaxStackSize())
             : amount;
+    // C2: a pulse is spent only here, on a submitted move, not on a page that found nothing.
+    if (!e.owner.redstone().admit()) {
+      e.reason = OperationResult.Reason.REDSTONE;
+      return;
+    }
     var id = UUID.randomUUID();
     e.request = id;
     e.route = true;
@@ -473,7 +503,8 @@ public final class WorldMachinePresets {
       var deployment = saved.machinePresets().get(e.node);
       if (deployment != null
           && deployment.mode() != MachinePresets.Mode.PAUSED
-          && valid(e, deployment)) schedule(e, deployment);
+          && valid(e, deployment)
+          && e.owner.redstone().chain()) schedule(e, deployment);
     } else retry(e, result.reason());
   }
 }

@@ -18,7 +18,9 @@ public record OperationResult(long amount, Reason reason) {
     RATE_LIMIT,
     OVERLAP,
     UNSUPPORTED,
-    BUSY
+    BUSY,
+    /** C2: the preset waits for its redstone condition. */
+    REDSTONE
   }
 
   public OperationResult {

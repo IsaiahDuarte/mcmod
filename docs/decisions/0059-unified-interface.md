@@ -117,3 +117,26 @@ starts unset.
 Alternatives: a separate Level Emitter block (rejected by PD1: another item and recipe for
 one behavior); evaluating every tick (unbounded on large networks).
 
+## Amendment — redstone control on presets (parity C2, 2026-10-25)
+
+Machine and Buffer Interfaces carry a `RedstoneGate` (Ignore, Powered, Unpowered, Pulse).
+The block feeds every neighbor change (`hasNeighborSignal`) to the gate, so a pulse is
+caught on its rising edge even between preset visits; a held preset rests out of the
+active queue until that input wakes it, so waiting costs no tick work.
+
+- **Spending a pulse.** One pulse admits one submitted move. A step that only reads a page
+  or retries (for example during the rebuild a neighbor update causes) keeps the pulse.
+  A move refused at submission still spends it. Pulses while busy collapse to one.
+- **Chaining.** Powered/Unpowered continue straight into the next move only while the
+  condition holds; Pulse never chains. In-flight transfers always finish.
+- **Persistence.** The gate is saved in the entity as `FactoryCoreRedstone` (Schema 1:
+  Control, Powered, Pulse); absent or malformed data is Ignore, so older worlds keep their
+  behavior. It is not part of the preset deployment, the portable item or the deployment
+  codecs, so breaking the Interface resets it.
+- **Authority and sync.** Changing it is menu button 300 + ordinal and needs EDIT; the
+  client reads it from a vanilla data slot, with no view-protocol change.
+
+Alternative: storing the control in `MachinePresets.Deployment` and `BufferPolicy`. That
+needs schema migrations in two saved registries for a setting about the block's
+surroundings, which the entity already owns.
+

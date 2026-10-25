@@ -28,6 +28,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
   private boolean invalid, presets;
   private final List<AbstractWidget> bindingWidgets = new ArrayList<>(),
       presetWidgets = new ArrayList<>();
+  private Button redstone;
   private EditBox goal, rule;
   private Button mode,
       filter,
@@ -199,6 +200,11 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
                 index -> selectedRule = index));
     presetWidgets.add(filterSlots);
     remove = presetButton("remove", 177, 147, 55, () -> sendPreset(MachinePresetPackets.REMOVE));
+    redstone =
+        addRenderableWidget(
+            RedstoneButton.create(
+                menu.containerId, menu::redstoneState, leftPos + 10, topPos + 147, 160));
+    presetWidgets.add(redstone);
     clear = presetButton("clear", 236, 147, 54, () -> sendPreset(MachinePresetPackets.CLEAR));
     sample =
         presetButton(
@@ -312,6 +318,7 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
       widget.visible = presets;
       widget.active = preset.editable() && !preset.busy();
     }
+    RedstoneButton.refresh(redstone, menu.redstoneState());
     rule.visible = ruleRegistry.visible = ruleTag.visible = presets && typing;
     addById.visible = presets && !typing;
     selectedRule = Math.max(0, Math.min(selectedRule, preset.rules().size() - 1));

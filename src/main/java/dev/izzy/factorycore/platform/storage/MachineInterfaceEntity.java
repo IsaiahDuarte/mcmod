@@ -23,8 +23,37 @@ import net.minecraft.world.level.block.state.BlockState;
 /**
  * Local machine port; canonical leases and foreign adapter ownership are shared with connectors.
  */
-public final class MachineInterfaceEntity extends ConnectorEntity implements MenuProvider {
+public final class MachineInterfaceEntity extends ConnectorEntity
+    implements MenuProvider, RedstoneControlled {
   private UUID opening;
+  private final dev.izzy.factorycore.core.storage.RedstoneGate redstone =
+      new dev.izzy.factorycore.core.storage.RedstoneGate();
+
+  @Override
+  public dev.izzy.factorycore.core.storage.RedstoneGate redstone() {
+    return redstone;
+  }
+
+  @Override
+  public void redstoneWake() {
+    setChanged();
+    if (level instanceof net.minecraft.server.level.ServerLevel server)
+      WorldNetworks.get(server.getServer()).machinePresets().wake(this);
+  }
+
+  @Override
+  protected void saveAdditional(
+      net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    super.saveAdditional(tag, registries);
+    RedstoneControlled.save(redstone, tag);
+  }
+
+  @Override
+  protected void loadAdditional(
+      net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    super.loadAdditional(tag, registries);
+    RedstoneControlled.load(redstone, tag);
+  }
 
   UUID sessionForOpen() {
     return opening;

@@ -132,6 +132,22 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
     };
   }
 
+  /** C2: Machine and Buffer presets read the Interface's redstone input. */
+  @Override
+  protected void neighborChanged(
+      BlockState state,
+      Level level,
+      BlockPos position,
+      net.minecraft.world.level.block.Block neighbor,
+      BlockPos from,
+      boolean moved) {
+    super.neighborChanged(state, level, position, neighbor, from, moved);
+    if (!level.isClientSide()
+        && level.getBlockEntity(position) instanceof RedstoneControlled controlled
+        && controlled.redstone().observe(level.hasNeighborSignal(position)))
+      controlled.redstoneWake();
+  }
+
   /** C1: only Signal mode emits redstone, the same strength on every side. */
   @Override
   protected boolean isSignalSource(BlockState state) {

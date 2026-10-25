@@ -341,12 +341,20 @@ view cells, portable cells and cross-dimension links. See Wave G.
   `signal-lamp-lit.png` (inspected). Deviation: one watched resource rather than a filter,
   and grants are those of whoever last applied (ADR 0059 amendment).
 
-- [ ] **C2 — Redstone control on presets.** Size S.
+- [x] **C2 — Redstone control on presets.** Size S.
   Machine and Buffer presets get a redstone setting: Ignore, Active when powered, Active
   when unpowered, One run per pulse.
   Files: `MachinePresets.java`, `BufferPolicy.java`, `WorldMachinePresets.java`,
   `WorldBufferImports.java`, both settings screens, codecs.
   Done when: GameTests for each setting, including a pulse not repeating while held.
+  Evidence (2026-10-25): `RedstoneGateTest` (each control, edges, collapse, restore);
+  `RedstoneControlGameTests` — Powered machine import stops/starts with the input and
+  reports "Waiting for redstone"; Pulse moves exactly one item per rising edge and none
+  while held, and saves its state; Unpowered buffer holds while powered and imports when
+  off; a player without EDIT is refused. Ignore is the unchanged default (all earlier
+  preset GameTests). `runPresentationClient` PASS; `machine-presets-filter-scale-4.png`
+  and `buffer-scale-4.png` show the Redstone button (inspected). Deviation: stored on the
+  Interface entity rather than in the deployment codecs (ADR 0059 amendment).
 
 - [ ] **C3 — Redstone in programs.** Delivered by D6.
 
