@@ -311,10 +311,16 @@ view cells, portable cells and cross-dimension links. See Wave G.
   `cell_partition` item component (documented in PERSISTENCE). The check sits in the
   digital endpoint's DEPOSIT permission, so every insertion path respects it. B2: 7fd1780.
 
-- [ ] **B4 — Drive and cell priority.** Size S.
+- [x] **B4 — Drive and cell priority.** Size S.
   Add a per-drive priority (Storage-mode containers already have one) so partitioned cells
   win over general storage.
   Done when: GameTest shows a priority-10 partitioned cell filled before a priority-0 chest.
+  Evidence: `DrivePartitionGameTests.drivePriorityFillsThePartitionedCellBeforeAChest`
+  (priority set through the Drive screen's command; saved as `CellSchema` 2 and reloaded;
+  12 cobblestone go to the priority-10 partitioned cell with the chest empty; logs skip it
+  and go to the chest); presentation `drive-scale-{1,4}.png` (Priority field). Digital
+  catalog rows now carry their drive's priority, so drives and Storage-mode Interfaces
+  share one order. B3: 288f1c7.
 
 ## Wave C — redstone (needs PD1; lane R)
 

@@ -61,7 +61,10 @@ public final class DrivePackets {
         CLEAR = 3,
         REGISTRY = 4,
         TAG = 5,
-        MODE = 6;
+        MODE = 6,
+        // B4: sets the whole drive's priority to the integer in {@code text}; {@code bay} is
+        // unused.
+        PRIORITY = 7;
 
     public static final Type<FilterCommand> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "drive_filter"));
@@ -70,7 +73,7 @@ public final class DrivePackets {
       if (bay < 0
           || bay >= BAYS
           || action < CARRIED
-          || action > MODE
+          || action > PRIORITY
           || selection < 0
           || selection >= dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS
           || text.length() > 256)
@@ -106,7 +109,13 @@ public final class DrivePackets {
    * {@code status} names a {@code gui.factorycore.drive.status.*} key; {@code detail} is a refusal.
    */
   public record View(
-      int menu, UUID session, long revision, List<Bay> bays, String status, String detail)
+      int menu,
+      UUID session,
+      long revision,
+      List<Bay> bays,
+      String status,
+      String detail,
+      int priority)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "drive_view"));
@@ -142,6 +151,7 @@ public final class DrivePackets {
               }
               b.writeUtf(v.status, 16);
               b.writeUtf(v.detail, 128);
+              b.writeVarInt(v.priority);
             },
             b -> {
               int menu = b.readVarInt();
@@ -162,14 +172,15 @@ public final class DrivePackets {
                 for (int r = 0; r < size; r++) rules.add(FilterEdits.Rule.read(b));
                 bays.add(new Bay(item, fluid, total, capacity, infinite, types, mode, rules));
               }
-              return new View(menu, session, revision, bays, b.readUtf(16), b.readUtf(128));
+              return new View(
+                  menu, session, revision, bays, b.readUtf(16), b.readUtf(128), b.readVarInt());
             });
   }
 
   private DrivePackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("2");
+    var registrar = event.registrar("3");
     MenuPayloads.toClient(registrar, View.TYPE, View.CODEC, DriveMenu.class, DriveMenu::accept);
     MenuPayloads.toServer(
         registrar, FilterCommand.TYPE, FilterCommand.CODEC, DriveMenu.class, DriveMenu::filter);

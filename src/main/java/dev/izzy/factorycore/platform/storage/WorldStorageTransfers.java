@@ -125,7 +125,7 @@ public final class WorldStorageTransfers {
                         stock.total(),
                         stock.reserved(),
                         stock.available(),
-                        0,
+                        endpoints.priority(handle),
                         endpoints.allowed(
                             actor, origin, handle, key, NetworkPermissions.Permission.WITHDRAW),
                         endpoints.allowed(

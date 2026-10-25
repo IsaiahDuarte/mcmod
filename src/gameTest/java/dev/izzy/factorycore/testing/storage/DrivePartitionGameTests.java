@@ -23,6 +23,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -226,6 +227,102 @@ public final class DrivePartitionGameTests {
                   stored(h, f, 0, Items.COBBLESTONE) == 7, "Contents survive the upgrade too");
               end(f);
             })
+        .thenSucceed();
+  }
+
+  /**
+   * B4: a priority-10 drive with a cobblestone partition is filled before a priority-0 chest; other
+   * items skip it. The priority is set through the Drive screen and saved with the drive.
+   */
+  @GameTest(template = "empty", timeoutTicks = 800)
+  public static void drivePriorityFillsThePartitionedCellBeforeAChest(GameTestHelper h) {
+    var f = setup(h);
+    var chestPort = new BlockPos(0, 1, 1);
+    var chest = new BlockPos(0, 1, 0);
+    h.setBlock(
+        chestPort,
+        dev.izzy.factorycore.platform.storage.InterfaceContent.state(
+            dev.izzy.factorycore.platform.storage.InterfaceKind.STORAGE,
+            net.minecraft.core.Direction.NORTH));
+    dev.izzy.factorycore.platform.storage.ConnectorEntity port = h.getBlockEntity(chestPort);
+    port.place(new ItemStack(dev.izzy.factorycore.platform.storage.InterfaceContent.ITEM.get()));
+    h.setBlock(chest, net.minecraft.world.level.block.Blocks.CHEST);
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.terminal.canUse(f.player)
+                        && port.canUse(f.player)
+                        && DeviceSavedData.get(h.getLevel().getServer())
+                            .registry()
+                            .stock(CellHandleData.read(f.drive.cell(0)), key(h, Items.DIRT))
+                            .loaded(),
+                    "Drive, chest and terminal ready"))
+        .thenExecute(
+            () -> {
+              h.useBlock(DRIVE, f.player);
+              var menu = (DriveMenu) f.player.containerMenu;
+              menu.broadcastChanges();
+              menu.filter(
+                  f.player,
+                  new DrivePackets.FilterCommand(
+                      menu.containerId,
+                      menu.view().session(),
+                      0,
+                      DrivePackets.FilterCommand.REGISTRY,
+                      0,
+                      "minecraft:cobblestone"));
+            })
+        .thenIdle(GAP)
+        .thenExecute(
+            () -> {
+              var menu = (DriveMenu) f.player.containerMenu;
+              menu.filter(
+                  f.player,
+                  new DrivePackets.FilterCommand(
+                      menu.containerId,
+                      menu.view().session(),
+                      0,
+                      DrivePackets.FilterCommand.PRIORITY,
+                      0,
+                      "10"));
+              h.assertTrue(f.drive.priority() == 10, "The screen sets the drive priority");
+              var saved = f.drive.saveWithoutMetadata(h.getLevel().registryAccess());
+              h.assertTrue(
+                  saved.getInt("CellSchema") == 2 && saved.getInt("Priority") == 10,
+                  "A nonzero priority is saved with the drive: " + saved);
+              f.drive.loadWithComponents(saved, h.getLevel().registryAccess());
+              h.assertTrue(
+                  f.drive.priority() == 10
+                      && f.drive.diagnostic().isEmpty()
+                      && f.drive.cell(0).get(StorageContent.PARTITION.get()) != null,
+                  "Reloading restores the priority and the partitioned cell");
+              f.player.closeContainer();
+            })
+        .thenIdle(GAP)
+        .thenExecute(() -> h.useBlock(TERMINAL, f.player))
+        .thenIdle(GAP)
+        .thenExecute(() -> deposit(h, f, Items.COBBLESTONE, 12))
+        .thenWaitUntil(
+            () -> {
+              Container box = h.getBlockEntity(chest);
+              h.assertTrue(
+                  stored(h, f, 0, Items.COBBLESTONE) == 12 && box.isEmpty(),
+                  "Priority 10 puts cobblestone in the partitioned cell, not the chest");
+            })
+        .thenIdle(GAP)
+        .thenExecute(() -> deposit(h, f, Items.OAK_LOG, 5))
+        .thenWaitUntil(
+            () -> {
+              Container box = h.getBlockEntity(chest);
+              int logs = 0;
+              for (int slot = 0; slot < box.getContainerSize(); slot++)
+                if (box.getItem(slot).is(Items.OAK_LOG)) logs += box.getItem(slot).getCount();
+              h.assertTrue(
+                  logs == 5 && stored(h, f, 0, Items.OAK_LOG) == 0,
+                  "Logs skip the partitioned cell and go to the chest");
+            })
+        .thenExecute(() -> end(f))
         .thenSucceed();
   }
 

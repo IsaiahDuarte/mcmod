@@ -301,3 +301,11 @@ so no world or drive schema changes. A malformed value fails to decode, so the s
 drive holding it) goes to the existing data-recovery path instead of loading as an
 unpartitioned cell; an older build without the component type also rejects the stack.
 Removing a partition removes the component, restoring the earlier bytes.
+
+## Drive priority — parity slice B4 (2026-10-25)
+
+A Storage Drive with a nonzero priority writes `CellSchema` 2: schema 1 plus an int
+`Priority` (-1000…1000, never 0 in schema 2). A priority-0 drive keeps writing schema 1
+with its earlier bytes. Any other combination (schema 2 without `Priority`, a zero or
+out-of-range value, an unknown schema) is rejected into the existing drive data-recovery
+path; an older build rejects schema 2 the same way rather than dropping the priority.

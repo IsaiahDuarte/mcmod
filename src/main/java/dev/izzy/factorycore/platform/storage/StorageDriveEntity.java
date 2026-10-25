@@ -74,6 +74,23 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     return cells[slot].copy();
   }
 
+  /** B4: routes try higher-priority storage first; the bounds match Storage-mode Interfaces. */
+  public static final int MIN_PRIORITY = -1000, MAX_PRIORITY = 1000;
+
+  private int priority;
+
+  public int priority() {
+    return priority;
+  }
+
+  public void setPriority(int value) {
+    requireUsable();
+    if (value < MIN_PRIORITY || value > MAX_PRIORITY)
+      throw new IllegalArgumentException("Drive priority must be from -1000 to 1000");
+    priority = value;
+    setChanged();
+  }
+
   /**
    * B3: sets or clears (null, or an ALL filter) the partition of the cell in {@code slot} where it
    * sits. Contents, identity and reservations are untouched; only what may be put in changes.
@@ -387,7 +404,9 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
       tag.put(REJECTED, rejected.copy());
       return;
     }
-    tag.putInt("CellSchema", 1);
+    // Schema 2 (B4) adds a nonzero priority; a priority-0 drive keeps its schema-1 bytes.
+    tag.putInt("CellSchema", priority == 0 ? 1 : 2);
+    if (priority != 0) tag.putInt("Priority", priority);
     var records = new ListTag();
     for (int slot = 0; slot < cells.length; slot++) {
       if (!cells[slot].isEmpty()) {
@@ -406,6 +425,7 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     rejected = null;
     diagnostic = "";
     Arrays.fill(cells, ItemStack.EMPTY);
+    priority = 0;
     if (tag.contains(REJECTED)) {
       rejected =
           tag.contains(REJECTED, Tag.TAG_COMPOUND) ? tag.getCompound(REJECTED).copy() : tag.copy();
@@ -414,10 +434,19 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     }
     if (!tag.contains("CellSchema") && !tag.contains("CellSlots")) return;
     try {
+      int schema = tag.getInt("CellSchema");
       if (!tag.contains("CellSchema", Tag.TAG_INT)
-          || tag.getInt("CellSchema") != 1
-          || !tag.contains("CellSlots", Tag.TAG_LIST)) {
+          || schema < 1
+          || schema > 2
+          || !tag.contains("CellSlots", Tag.TAG_LIST)
+          || (schema == 2) != tag.contains("Priority", Tag.TAG_INT)) {
         throw new IllegalArgumentException("Unsupported drive cell schema");
+      }
+      if (schema == 2) {
+        int saved = tag.getInt("Priority");
+        if (saved == 0 || saved < MIN_PRIORITY || saved > MAX_PRIORITY)
+          throw new IllegalArgumentException("Invalid drive priority");
+        priority = saved;
       }
       var records = tag.getList("CellSlots", Tag.TAG_COMPOUND);
       if (records.size() != ((ListTag) tag.get("CellSlots")).size() || records.size() > 4)

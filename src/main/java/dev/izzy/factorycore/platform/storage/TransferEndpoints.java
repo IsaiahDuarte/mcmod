@@ -519,6 +519,11 @@ final class TransferEndpoints {
     }
   }
 
+  /** B4: a drive's priority applies to its cells; other digital storage counts as 0. */
+  int priority(DeviceRegistry.Handle handle) {
+    return physical(handle) instanceof StorageDriveEntity drive ? drive.priority() : 0;
+  }
+
   /** B3: a partitioned cell refuses deposits outside its filter; other operations are open. */
   private boolean admits(
       DeviceRegistry.Handle handle, ResourceKey key, NetworkPermissions.Permission operation) {

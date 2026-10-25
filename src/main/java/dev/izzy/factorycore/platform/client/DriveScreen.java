@@ -30,6 +30,11 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
   private net.minecraft.client.gui.components.EditBox filterId;
   private Button back, mode, addById, addId, addTag, clear;
 
+  /** B4: the drive's priority; Enter saves it. */
+  private net.minecraft.client.gui.components.EditBox priority;
+
+  private int priorityShown = Integer.MIN_VALUE;
+
   public DriveScreen(DriveMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
     imageWidth = 230;
@@ -136,6 +141,20 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
                     b -> filter(DrivePackets.FilterCommand.CLEAR, 0, ""))
                 .bounds(leftPos + 156, topPos + top + 54, 66, 16)
                 .build());
+    priority =
+        addRenderableWidget(
+            new net.minecraft.client.gui.components.EditBox(
+                font,
+                leftPos + 182,
+                topPos + bayTop(DrivePackets.BAYS) + 1,
+                40,
+                14,
+                Component.translatable("gui.factorycore.drive.priority")));
+    priority.setMaxLength(5);
+    priority.setTooltip(
+        net.minecraft.client.gui.components.Tooltip.create(
+            Component.translatable("gui.factorycore.drive.priority.help")));
+    priorityShown = Integer.MIN_VALUE;
     for (int bay = 0; bay < DrivePackets.BAYS; bay++) {
       int selected = bay;
       bayButtons.add(
@@ -157,6 +176,30 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
               }));
     }
     sync();
+  }
+
+  @Override
+  public boolean keyPressed(int key, int scan, int modifiers) {
+    if (priority.isFocused()
+        && (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
+            || key == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER)) {
+      net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+          new DrivePackets.FilterCommand(
+              menu.containerId,
+              menu.view().session(),
+              0,
+              DrivePackets.FilterCommand.PRIORITY,
+              0,
+              priority.getValue()));
+      priorityShown = Integer.MIN_VALUE;
+      return true;
+    }
+    // Typing into a box must not close the screen on the inventory key.
+    if (getFocused() instanceof net.minecraft.client.gui.components.EditBox box
+        && box.isFocused()
+        && key != org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE)
+      return box.keyPressed(key, scan, modifiers) || box.canConsumeInput();
+    return super.keyPressed(key, scan, modifiers);
   }
 
   private void filter(int action, int selection, String text) {
@@ -205,6 +248,11 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
       filterButtons.get(bay).visible = !panel && !menu.view().bays().get(bay).item().isEmpty();
     }
     back.visible = mode.visible = filterSlots.visible = clear.visible = panel;
+    priority.visible = !panel;
+    if (priorityShown != menu.view().priority() && !priority.isFocused()) {
+      priorityShown = menu.view().priority();
+      priority.setValue(Integer.toString(priorityShown));
+    }
     addById.visible = panel && !typing;
     filterId.visible = addId.visible = addTag.visible = panel && typing;
     if (!panel) return;
@@ -341,7 +389,16 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
         view.detail().isEmpty()
             ? Component.translatable("gui.factorycore.drive.status." + view.status())
             : Component.literal(view.detail());
-    var lines = font.split(status, ROW_WIDTH);
+    if (filterBay < 0)
+      graphics.drawString(
+          font,
+          Component.translatable("gui.factorycore.drive.priority"),
+          182 - 4 - font.width(Component.translatable("gui.factorycore.drive.priority")),
+          bayTop(DrivePackets.BAYS) + 4,
+          0xffffff,
+          false);
+    // Narrower while the priority field shares the row.
+    var lines = font.split(status, filterBay < 0 ? 120 : ROW_WIDTH);
     for (int line = 0; line < Math.min(2, lines.size()); line++)
       graphics.drawString(
           font, lines.get(line), 8, bayTop(DrivePackets.BAYS) + 2 + line * 10, 0xe4bc83, false);

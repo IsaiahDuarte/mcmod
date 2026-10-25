@@ -48,7 +48,7 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
       addSlot(new Slot(inventory, column, 8 + 18 * column, INVENTORY_Y + 58));
     var empty = new ArrayList<DrivePackets.Bay>();
     for (int bay = 0; bay < DrivePackets.BAYS; bay++) empty.add(DrivePackets.Bay.EMPTY);
-    view = new DrivePackets.View(id, session, 0, empty, "loading", "");
+    view = new DrivePackets.View(id, session, 0, empty, "loading", "", 0);
     deviceStatus = DeviceStatus.View.pending(id, session);
   }
 
@@ -131,6 +131,18 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
         Positions.of(sender.serverLevel(), drive.getBlockPos()),
         dev.izzy.factorycore.core.network.NetworkPermissions.Permission.EDIT)) {
       status = "denied";
+      session.pollNow();
+      return;
+    }
+    if (packet.action() == DrivePackets.FilterCommand.PRIORITY) {
+      try {
+        drive.setPriority(Integer.parseInt(packet.text().strip()));
+        status = "priority";
+        detail = "";
+      } catch (IllegalArgumentException | IllegalStateException refused) {
+        status = "refused";
+        detail = "Priority must be a whole number from -1000 to 1000";
+      }
       session.pollNow();
       return;
     }
@@ -314,7 +326,8 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
         revision,
         bays,
         faulted ? "refused" : status,
-        faulted ? truncate(drive.diagnostic()) : truncate(detail));
+        faulted ? truncate(drive.diagnostic()) : truncate(detail),
+        drive.priority());
   }
 
   private static String truncate(String text) {

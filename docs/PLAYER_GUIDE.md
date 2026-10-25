@@ -80,6 +80,11 @@ install it. Click a filled bay to pick its cell up, or Shift-click it to send th
 cell to your inventory. Sneak-use with an empty hand takes out the first cell.
 Breaking the drive drops its cells with their contents.
 
+**Drive priority:** type a number from -1000 to 1000 in **Priority** and press Enter.
+The network fills higher-priority storage first, counting drives and Storage-mode
+Interfaces together. With a partition, a high priority makes a cell collect its items
+before they reach general storage.
+
 **Partitioning a cell:** the **⚙** button on a bay opens that cell's partition. It
 works like the other filter slots: click a slot holding an item, drag from JEI, or
 **Add by ID…**, then choose whether the network may put in only the listed items or
