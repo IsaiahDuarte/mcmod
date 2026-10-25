@@ -51,6 +51,16 @@ public final class ProgramPreview {
           public long stock(ResourceFilter filter) {
             return host.stock(filter);
           }
+
+          @Override
+          public ProgramEvaluator.Contents contents(UUID machine, ResourceFilter filter) {
+            return host.contents(machine, filter);
+          }
+
+          @Override
+          public boolean powered(UUID machine) {
+            return host.powered(machine);
+          }
         };
     try {
       var commands = ProgramEvaluator.invoke(rule, naming);
@@ -114,6 +124,8 @@ public final class ProgramPreview {
                   : names.getOrDefault(move.to(), String.valueOf(move.to())));
       case ProgramCommand.Craft craft -> "Craft " + craft.amount() + " " + craft.item();
       case ProgramCommand.Log log -> "Log: " + log.text();
+      case ProgramCommand.Emit emit ->
+          "Emit redstone " + emit.strength() + " on \"" + emit.label() + "\"";
     };
   }
 }

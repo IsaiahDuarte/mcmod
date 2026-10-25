@@ -357,7 +357,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
   and `buffer-scale-4.png` show the Redstone button (inspected). Deviation: stored on the
   Interface entity rather than in the deployment codecs (ADR 0059 amendment).
 
-- [ ] **C3 — Redstone in programs.** Delivered by D6.
+- [x] **C3 — Redstone in programs.** Delivered by D6 (see its evidence).
 
 ## Wave D — friendly language version 2 (needs PD2, PD3; lane L)
 
@@ -450,10 +450,19 @@ to identical IR (a fixture test pins this).
   cobblestone stay). Preset codecs and `FilterEdits` refuse program-only terms.
   `FriendlyV1PinTest` marks D5 with v1 IR unchanged.
 
-- [ ] **D6 — Redstone in programs (G8, needs PD1).** Size M.
+- [x] **D6 — Redstone in programs (G8, needs PD1).** Size M.
   `redstone(NAME)` reads the signal at a labelled Interface; `emit` sets a Signal-mode
   Interface's output while the program is deployed (cleared on pause/stop).
   Done when: GameTests for read, emit, and clearing on Stop.
+  Evidence (2026-10-25): `ProgramRedstoneGameTests`. A relay program holds a labelled
+  Signal Interface at 0 ("set by a program") while its Machine Interface input is
+  unpowered and lights the lamp at 15 when a redstone block powers that input. Stop hands
+  the Interface back to its own (unset) rule. `ProgramEvaluatorTest` (any-powered,
+  stopping at the first), `FriendlyCompilerTest` (strength 0–15, emit needs a label),
+  `ProgramPreviewTest` (regression: the preview wrapper now forwards `has` and `redstone`
+  reads; D4 previews with `has` used to trap). The Signal screen gained a Label row
+  (`signal-scale-4.png`, inspected; the tour now captures a few frames after the
+  evaluated view arrives). `FriendlyV1PinTest` marks D6; every v2 fixture now compiles.
 
 - [ ] **D7 — Rust SDK parity.** Size M.
   Additive `factory_v1` imports for every v2 operation; SDK wrappers, docs and an example.

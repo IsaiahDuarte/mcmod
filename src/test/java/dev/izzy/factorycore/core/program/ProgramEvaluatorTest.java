@@ -212,4 +212,32 @@ class ProgramEvaluatorTest {
         () -> ProgramEvaluator.invoke(rule, host(Map.of("one", List.of(A)), 0)),
         "A host that cannot read machines traps the invocation");
   }
+
+  @Test
+  void redstoneIsTrueWhenAnySelectedMachineIsPoweredAndStopsReading() {
+    var reads = new int[1];
+    var host =
+        new ProgramEvaluator.Host() {
+          @Override
+          public List<UUID> machines(String label) {
+            return List.of(A, B, OUT);
+          }
+
+          @Override
+          public long stock(ResourceFilter filter) {
+            return 0;
+          }
+
+          @Override
+          public boolean powered(UUID machine) {
+            reads[0]++;
+            return machine.equals(B);
+          }
+        };
+    var rule =
+        rule(
+            "every 10 ticks { if redstone(machines(\"b\")) { emit redstone 15 on machines(\"lamp\") } else { emit redstone 0 on machines(\"lamp\") } }");
+    assertEquals(List.of(new ProgramCommand.Emit("lamp", 15)), ProgramEvaluator.invoke(rule, host));
+    assertEquals(2, reads[0], "Stops at the first powered machine");
+  }
 }

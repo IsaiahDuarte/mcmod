@@ -3,7 +3,7 @@
 Status: accepted 2026-10-25 (PD2: v2 is a strict superset of v1; Wasm gains additive
 `factory_v1` imports). Grammar, limits and diagnostics are frozen here before parser work.
 Slices D2–D6 implement it, and each one is complete only when its fixtures in
-`src/test/resources/program/v2/` compile and run. Implemented so far: D2, D3, D4, D5.
+`src/test/resources/program/v2/` compile and run. Implemented so far: D2, D3, D4, D5, D6.
 
 ## Context
 
@@ -94,13 +94,19 @@ allowed. v1's `if stock(f) CMP INT { … }` is the `atom` form and produces the 
   minus `b` and `c`, with at most 8 terms, all the same resource kind. `energy` cannot take
   `except`. These terms (`ResourceFilter.Glob`, `ResourceFilter.Except`) exist only in
   programs; preset filter codecs and slot editors refuse them rather than save them.
-- **Redstone out (D6).** `emit redstone N on target` (0 ≤ N ≤ 15) sets the output of each
-  selected **Signal-mode** Interface (ADR 0059 C1) while this program is deployed. While a
-  program drives it, the Interface ignores its own rule and shows "Set by program".
-  Pausing, stopping, undeploying or a trap that ends the deployment returns it to its own
-  rule within one evaluation interval. When two deployed programs emit to the same
-  Interface, the highest strength wins. Emitting to anything that is not a Signal
-  Interface does nothing, with a visible reason.
+- **Redstone (D6).** `redstone(target)` is true when any selected Machine Interface
+  receives redstone power (one host query per machine, stopping at the first powered one).
+  `emit redstone N on machines("label")` (0 ≤ N ≤ 15) drives every loaded Signal-mode
+  Interface (ADR 0059 C1) with that label in the program's segment, at most 64. Signal
+  Interfaces get a label in their screen for this. The target must be a label, because loop
+  variables name Machine Interfaces. While a program drives one, the Interface ignores its
+  own rule and shows "set by a program". Each write lasts two rule intervals plus one
+  second past the run that made it, so a program that stops running for any reason (an
+  unload, an exhausted budget, a crash) lets go on its own. Stop, Pause, a lost Deploy
+  grant, a trap or a redeploy let go at once. When two deployed programs drive the same
+  Interface, the highest strength wins. Naming a label that no Signal Interface has is
+  logged. The override is runtime only; after a restart the program sets it again on its
+  next run.
 
 ### Limits (unchanged unless listed)
 

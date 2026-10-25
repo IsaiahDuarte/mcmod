@@ -66,4 +66,40 @@ class ProgramPreviewTest {
     assertTrue(failed.lines().getLast().contains("Preview refused"));
     assertFalse(failed.lines().stream().anyMatch(line -> line.equals("Log: before")));
   }
+
+  /** Regression: the preview's naming wrapper dropped machine reads, so `has` previews trapped. */
+  @Test
+  void previewForwardsMachineContentsAndRedstoneReads() {
+    var machine = UUID.randomUUID();
+    var program =
+        FriendlyCompiler.compile(
+                "every 10 ticks { if machines(\"f\") has < 8 of item(\"coal\") and redstone(machines(\"f\")) { emit redstone 15 on machines(\"alarm\") } }")
+            .program();
+    var host =
+        new ProgramEvaluator.Host() {
+          @Override
+          public List<UUID> machines(String label) {
+            return List.of(machine);
+          }
+
+          @Override
+          public long stock(ResourceFilter filter) {
+            return 0;
+          }
+
+          @Override
+          public ProgramEvaluator.Contents contents(UUID id, ResourceFilter filter) {
+            return new ProgramEvaluator.Contents(2, 1);
+          }
+
+          @Override
+          public boolean powered(UUID id) {
+            return true;
+          }
+        };
+    var lines = ProgramPreview.evaluate(program, 0, host).lines();
+    assertTrue(
+        lines.stream().anyMatch(line -> line.contains("Emit redstone 15 on \"alarm\"")),
+        lines.toString());
+  }
 }

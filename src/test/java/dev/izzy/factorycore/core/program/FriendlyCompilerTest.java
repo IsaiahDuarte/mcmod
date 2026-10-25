@@ -264,4 +264,24 @@ class FriendlyCompilerTest {
             .message()
             .contains("at most 8 terms"));
   }
+
+  @Test
+  void emitAndRedstoneParseAndRefuseBadForms() {
+    var ok =
+        FriendlyCompiler.compile(
+            "every 10 ticks { for m in machines(\"b\") { if redstone(m) { emit redstone 7 on machines(\"lamp\") } } }");
+    assertTrue(ok.ok(), ok.diagnostics()::toString);
+    var loop = (ProgramIr.For) ok.program().rules().getFirst().body().getFirst();
+    var branch = (ProgramIr.Branch) loop.body().getFirst();
+    assertEquals(new ProgramIr.RedstoneCondition(new ProgramIr.Variable("m")), branch.condition());
+    assertEquals(new ProgramIr.Emit("lamp", 7), branch.then().getFirst());
+    assertTrue(
+        error("every 10 ticks { emit redstone 16 on machines(\"x\") }")
+            .message()
+            .contains("0 to 15"));
+    assertTrue(
+        error("every 10 ticks { for m in machines(\"x\") { emit redstone 1 on m } }")
+            .message()
+            .contains("emit needs machines"));
+  }
 }

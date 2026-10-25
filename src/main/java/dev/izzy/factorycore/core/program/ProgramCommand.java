@@ -47,4 +47,7 @@ public sealed interface ProgramCommand {
   record Craft(String item, long amount) implements ProgramCommand {}
 
   record Log(String text) implements ProgramCommand {}
+
+  /** D6: drive Signal-mode Interfaces with this label at {@code strength} (ADR 0062). */
+  record Emit(String label, int strength) implements ProgramCommand {}
 }

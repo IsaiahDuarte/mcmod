@@ -33,7 +33,7 @@ class FriendlyV1PinTest {
   }
 
   /** Slices D2–D6 add themselves here when their fixtures compile. */
-  private static final Set<String> IMPLEMENTED = Set.of("D2", "D3", "D4", "D5");
+  private static final Set<String> IMPLEMENTED = Set.of("D2", "D3", "D4", "D5", "D6");
 
   private static final Pattern SLICE = Pattern.compile("(?m)^# slice: (D[2-6])$");
   private static final Pattern FORM = Pattern.compile("(?m)^# form: (.+)$");

@@ -39,6 +39,11 @@ public final class ProgramEvaluator {
     default Contents contents(UUID machine, ResourceFilter filter) {
       throw new UnsupportedOperationException("This host cannot read machine contents");
     }
+
+    /** D6: whether one machine's Interface receives redstone power. */
+    default boolean powered(UUID machine) {
+      throw new UnsupportedOperationException("This host cannot read redstone");
+    }
   }
 
   /** A machine read: matching {@code amount} and the {@code pages} (≥ 1) it observed. */
@@ -159,6 +164,19 @@ public final class ProgramEvaluator {
         }
         yield compare(value, stock.comparison(), stock.amount());
       }
+      case ProgramIr.RedstoneCondition redstone -> {
+        boolean any = false;
+        for (var machine : resolve(redstone.target(), scope)) {
+          hostCall();
+          try {
+            any = host.powered(machine);
+          } catch (RuntimeException failure) {
+            throw new Trap("Redstone query failed: " + failure.getMessage());
+          }
+          if (any) break;
+        }
+        yield any;
+      }
       case ProgramIr.HasCondition has -> {
         long total = 0;
         for (var machine : resolve(has.target(), scope)) {
@@ -229,6 +247,8 @@ public final class ProgramEvaluator {
         }
         case ProgramIr.Branch branch ->
             run(holds(branch.condition(), scope) ? branch.then() : branch.otherwise(), scope);
+        case ProgramIr.Emit signal ->
+            emit(new ProgramCommand.Emit(signal.label(), signal.strength()));
         case ProgramIr.Log log -> emit(new ProgramCommand.Log(log.text()));
       }
     }

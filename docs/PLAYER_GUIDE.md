@@ -284,7 +284,9 @@ of any Interface screen. In its screen:
 - **Apply** saves it. The signal then reads storage with your access, so you need Edit
   access to apply. It updates about once a second.
 
-It turns off and shows why when nothing is chosen, the network is offline, or whoever
+Give it a **Label** if a program should drive it (`emit redstone …`). While a program
+does, it shows "set by a program" and ignores its own setting. It turns off and shows why
+when nothing is chosen, the network is offline, or whoever
 applied it can no longer view storage. Breaking it drops a plain Interface; its settings
 are not kept.
 
@@ -366,6 +368,10 @@ every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage
 - **Patterns:** one `*` matches any part of an ID: `item("*_ingot")` is every mod's
   ingots, `item("minecraft:raw_*")` only vanilla raw ores. `except` removes items:
   `item("*_ingot") except item("iron_ingot")`.
+- **Redstone:** `redstone(machines("button"))` is true while that Machine Interface is
+  powered. `emit redstone 15 on machines("alarm")` sets every Signal-mode Interface
+  labelled "alarm" (set the label in its screen) while the program runs. Stopping or
+  pausing the program hands those Interfaces back to their own settings.
 - **Long rules:** a rule's moves run one after another, and the next run of the rule
   replaces any it did not reach. Give slow or important moves their own `every … as "…"`
   rule rather than putting many in one.

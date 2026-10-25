@@ -51,7 +51,7 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
     this.signal = signal;
     view =
         new SignalPackets.View(
-            id, nonce, 0, SignalRule.DEFAULT, "", "", false, 0, "unset", false, "loading");
+            id, nonce, 0, SignalRule.DEFAULT, "", "", false, 0, "unset", false, "loading", "");
     deviceStatus = DeviceStatus.View.pending(id, nonce);
   }
 
@@ -137,6 +137,10 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
           drafted = true;
           status = "draft";
         }
+        case SignalPackets.Command.LABEL -> {
+          signal.label(packet.text());
+          status = "labeled";
+        }
         case SignalPackets.Command.APPLY -> {
           signal.configure(sender.getUUID(), packet.rule(), watched());
           drafted = false;
@@ -189,7 +193,8 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
                 signal.power(),
                 signal.reason(),
                 allowed(session.player(), NetworkPermissions.Permission.EDIT),
-                status));
+                status,
+                signal.label()));
   }
 
   @Override

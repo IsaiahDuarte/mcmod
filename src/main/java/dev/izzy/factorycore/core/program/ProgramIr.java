@@ -90,13 +90,28 @@ public final class ProgramIr {
     EQUAL
   }
 
-  public sealed interface Statement permits For, Keep, Move, Craft, If, Branch, Log {}
+  public sealed interface Statement permits For, Keep, Move, Craft, If, Branch, Emit, Log {}
+
+  /**
+   * D6 (ADR 0062): set every Signal-mode Interface labelled {@code label} to {@code strength}
+   * (0–15) while the program stays deployed.
+   */
+  public record Emit(String label, int strength) implements Statement {
+    public Emit {
+      Objects.requireNonNull(label);
+      if (strength < 0 || strength > 15) throw new IllegalArgumentException("Redstone strength");
+    }
+  }
 
   /** Most operators ({@code and}, {@code or}, {@code not}) one condition may hold (ADR 0062). */
   public static final int MAX_OPERATORS = 16;
 
   /** D4 (ADR 0062): a condition tree, evaluated left to right with short-circuiting. */
-  public sealed interface Condition permits StockCondition, HasCondition, Not, And, Or {}
+  public sealed interface Condition
+      permits StockCondition, HasCondition, RedstoneCondition, Not, And, Or {}
+
+  /** D6: true when any selected Machine Interface receives redstone power. */
+  public record RedstoneCondition(Target target) implements Condition {}
 
   /** Available storage stock compared with an amount (v1's only condition). */
   public record StockCondition(ResourceFilter filter, Comparison comparison, long amount)

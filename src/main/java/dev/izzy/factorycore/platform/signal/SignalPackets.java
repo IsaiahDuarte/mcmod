@@ -29,7 +29,8 @@ public final class SignalPackets {
       int power,
       String reason,
       boolean editable,
-      String status)
+      String status,
+      String label)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "signal_view"));
@@ -41,7 +42,9 @@ public final class SignalPackets {
           || power < 0
           || power > SignalRule.MAX
           || reason.length() > 32
-          || status.length() > 32) throw new IllegalArgumentException("Invalid signal view");
+          || status.length() > 32
+          || label.length() > SignalInterfaceEntity.MAX_LABEL)
+        throw new IllegalArgumentException("Invalid signal view");
     }
 
     @Override
@@ -63,6 +66,7 @@ public final class SignalPackets {
               b.writeUtf(v.reason, 32);
               b.writeBoolean(v.editable);
               b.writeUtf(v.status, 32);
+              b.writeUtf(v.label, SignalInterfaceEntity.MAX_LABEL);
             },
             b ->
                 new View(
@@ -76,25 +80,27 @@ public final class SignalPackets {
                     b.readVarInt(),
                     b.readUtf(32),
                     b.readBoolean(),
-                    b.readUtf(32)));
+                    b.readUtf(32),
+                    b.readUtf(SignalInterfaceEntity.MAX_LABEL)));
   }
 
   /**
    * RESOURCE sets the watched resource to the plain ID in {@code text} ({@code fluid} picks the
    * kind); CARRIED takes it from the cursor item; APPLY saves {@code rule} with that resource under
-   * the sender's EDIT. All of them are refused without EDIT.
+   * the sender's EDIT; LABEL sets the label programs name (D6) to {@code text}. All of them are
+   * refused without EDIT.
    */
   public record Command(
       int menu, UUID session, int action, boolean fluid, String text, SignalRule rule)
       implements CustomPacketPayload {
-    public static final int RESOURCE = 0, CARRIED = 1, APPLY = 2;
+    public static final int RESOURCE = 0, CARRIED = 1, APPLY = 2, LABEL = 3;
 
     public static final Type<Command> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "signal_command"));
 
     public Command {
       Objects.requireNonNull(rule);
-      if (action < RESOURCE || action > APPLY || text.length() > 256)
+      if (action < RESOURCE || action > LABEL || text.length() > 256)
         throw new IllegalArgumentException("Invalid signal command");
     }
 

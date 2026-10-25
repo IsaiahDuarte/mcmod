@@ -75,6 +75,41 @@ public final class WorldSignals {
     due.put(signal, Long.MIN_VALUE);
   }
 
+  /** Signal Interfaces one {@code emit} may drive (ADR 0062 D6), as for a machine label. */
+  public static final int MAX_LABELED = 64;
+
+  /**
+   * D6: drives every loaded Signal Interface labelled {@code label} in the segment of {@code
+   * origin} at {@code strength} for {@code deployment} until tick {@code until}, then re-evaluates
+   * it. Returns how many it drove; the caller has authorized the program at {@code origin}.
+   */
+  public int emit(
+      UUID deployment,
+      dev.izzy.factorycore.core.network.NodeRegistry.Position origin,
+      String label,
+      int strength,
+      long until) {
+    var networks = WorldNetworks.get(server);
+    var from = networks.membership(origin);
+    if (from.status() != NetworkTopology.Status.VALID || label.isEmpty()) return 0;
+    int count = 0;
+    for (var signal : signals) {
+      if (!signal.label().equals(label) || !signal.current()) continue;
+      var member = networks.membership(signal.origin());
+      if (member.status() != NetworkTopology.Status.VALID
+          || !member.scope().segment().equals(from.scope().segment())) continue;
+      if (++count > MAX_LABELED) break;
+      signal.drive(deployment, strength, until);
+      dueNow(signal);
+    }
+    return Math.min(count, MAX_LABELED);
+  }
+
+  /** D6: a stopped, paused or replaced deployment stops driving every Signal Interface now. */
+  public void release(UUID deployment) {
+    for (var signal : signals) if (signal.release(deployment)) dueNow(signal);
+  }
+
   /** Number of Signal Interfaces being evaluated (for tests and diagnostics). */
   public int tracked() {
     return signals.size();
@@ -94,6 +129,13 @@ public final class WorldSignals {
   }
 
   private void evaluate(SignalInterfaceEntity signal) {
+    int programmed = signal.driven(server.getTickCount());
+    if (programmed >= 0) {
+      if (WorldNetworks.get(server).membership(signal.origin()).status()
+          != NetworkTopology.Status.VALID) signal.output(0, "offline");
+      else signal.output(programmed, "program");
+      return;
+    }
     var owner = signal.owner();
     var resource = signal.resource();
     if (owner == null || resource == null) {

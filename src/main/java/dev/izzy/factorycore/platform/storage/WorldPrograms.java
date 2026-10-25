@@ -162,6 +162,7 @@ public final class WorldPrograms {
       return List.of(new FriendlyCompiler.Diagnostic(1, 1, "You need Deploy permission here"));
     var result = FriendlyCompiler.compile(controller.draft());
     if (!result.ok()) return result.diagnostics();
+    releaseSignals(controller);
     controller.deploy(controller.draft(), result.program(), actor.id());
     var runtime = controllers.computeIfAbsent(controller, c -> new Runtime());
     runtime.due.clear();
@@ -187,6 +188,7 @@ public final class WorldPrograms {
           failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
       return List.of(new FriendlyCompiler.Diagnostic(1, 1, "Wasm rejected: " + message));
     }
+    releaseSignals(controller);
     controller.deployWasm(artifact, instance, actor.id());
     var runtime = controllers.computeIfAbsent(controller, c -> new Runtime());
     runtime.due.clear();
@@ -204,6 +206,7 @@ public final class WorldPrograms {
     if (!allowed(actor, controller) || !controller.deployed()) return false;
     var runtime = controllers.computeIfAbsent(controller, c -> new Runtime());
     runtime.queue.clear();
+    if (next != ProgramControllerEntity.State.RUNNING) releaseSignals(controller);
     if (next == ProgramControllerEntity.State.STOPPED) controller.undeploy();
     else if (next == ProgramControllerEntity.State.RUNNING
         && controller.wasmDeployment()
@@ -307,6 +310,7 @@ public final class WorldPrograms {
     var actor = deployer(controller);
     if (!allowed(actor, controller)) {
       controller.state(ProgramControllerEntity.State.PAUSED, "Deployer lost Deploy permission");
+      releaseSignals(controller);
       runtime.queue.clear();
       return;
     }
@@ -340,6 +344,7 @@ public final class WorldPrograms {
       controller.state(
           ProgramControllerEntity.State.TRAPPED, "Rule " + rule.key() + ": " + trap.getMessage());
       controller.log("trap " + rule.key() + ": " + trap.getMessage());
+      releaseSignals(controller);
       runtime.queue.clear();
       return;
     }
@@ -403,6 +408,16 @@ public final class WorldPrograms {
         if (!networks().allows(actor, controller.origin(), NetworkPermissions.Permission.VIEW))
           throw new IllegalStateException("reading storage needs View permission");
         return storageStock(controller, actor, filter, budget);
+      }
+
+      /** D6: whether a loaded Machine Interface of this segment receives redstone power. */
+      @Override
+      public boolean powered(UUID node) {
+        var owner = machine(node, controller);
+        if (owner == null)
+          throw new IllegalStateException("a machine is unloaded or outside this segment");
+        budget.charge(1, "redstone on " + owner.label());
+        return owner.serverLevel().hasNeighborSignal(owner.getBlockPos());
       }
 
       /** D4: one loaded machine of this segment, through its binding, at most 16 pages. */
@@ -519,7 +534,36 @@ public final class WorldPrograms {
       case ProgramCommand.Move move -> move(controller, runtime, actor, move);
       case ProgramCommand.Craft craft -> craft(controller, runtime, actor, pending.rule(), craft);
       case ProgramCommand.Log log -> controller.log(pending.rule() + ": " + log.text());
+      case ProgramCommand.Emit emit -> emit(controller, pending.rule(), emit);
     }
+  }
+
+  /**
+   * D6 (ADR 0062): drives Signal-mode Interfaces labelled {@code emit.label()} in the controller's
+   * segment. The output lasts two rule intervals (plus a second) past each run, so a program that
+   * stops running for any reason lets go; stopping, pausing or a trap lets go at once.
+   */
+  private void emit(ProgramControllerEntity controller, String rule, ProgramCommand.Emit emit) {
+    int interval = 40;
+    var program = controller.program();
+    if (program != null)
+      for (var each : program.rules()) if (each.key().equals(rule)) interval = each.interval();
+    int driven =
+        dev.izzy.factorycore.platform.signal.WorldSignals.get(server)
+            .emit(
+                controller.deployment(),
+                controller.origin(),
+                emit.label(),
+                emit.strength(),
+                server.getTickCount() + 2L * interval + 20);
+    if (driven == 0)
+      controller.log(rule + ": no Signal-mode Interface labeled " + emit.label() + " here");
+  }
+
+  private void releaseSignals(ProgramControllerEntity controller) {
+    if (controller.deployment() != null)
+      dev.izzy.factorycore.platform.signal.WorldSignals.get(server)
+          .release(controller.deployment());
   }
 
   private void keep(

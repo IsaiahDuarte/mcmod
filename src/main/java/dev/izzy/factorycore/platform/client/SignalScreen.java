@@ -33,13 +33,16 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
   private SignalRule.Output output;
   private EditBox threshold, id;
   private Button conditionButton, compareButton, outputButton, apply, addById, setItem, setFluid;
+  private Button setLabel;
+  private EditBox labelBox;
+  private String shownLabel;
   private boolean typing, invalid;
   private long shown = -1;
 
   public SignalScreen(SignalMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
     imageWidth = 300;
-    imageHeight = 196;
+    imageHeight = 220;
   }
 
   @Override
@@ -110,15 +113,36 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
               output = SignalRule.Output.values()[(output.ordinal() + 1) % 2];
               sync();
             });
-    apply = button("apply", 10, 146, 88, this::apply);
-    button("reset", 106, 146, 88, () -> load(menu.view().rule()));
-    button("cancel", 202, 146, 88, this::onClose);
+    // D6: the label programs name in `emit redstone N on machines("label")`.
+    labelBox =
+        addRenderableWidget(
+            new EditBox(
+                font,
+                leftPos + 64,
+                topPos + 147,
+                160,
+                16,
+                Component.translatable("gui.factorycore.signal.label")));
+    labelBox.setMaxLength(64);
+    labelBox.setTooltip(
+        Tooltip.create(Component.translatable("gui.factorycore.signal.label.help")));
+    setLabel =
+        button(
+            "set_label",
+            228,
+            146,
+            62,
+            () ->
+                send(SignalPackets.Command.LABEL, false, labelBox.getValue(), menu.view().rule()));
+    apply = button("apply", 10, 170, 88, this::apply);
+    button("reset", 106, 170, 88, () -> load(menu.view().rule()));
+    button("cancel", 202, 170, 88, this::onClose);
     InterfaceModeRow.add(
         this::addRenderableWidget,
         menu.containerId,
         InterfaceKind.SIGNAL,
         leftPos + 60,
-        topPos + 170,
+        topPos + 194,
         58,
         0,
         56,
@@ -176,6 +200,10 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
     var view = menu.view();
     if (shown != view.revision() && view.status().equals("applied")) load(view.rule());
     if (shown != view.revision()) shown = view.revision();
+    if (!view.label().equals(shownLabel) && !labelBox.isFocused()) {
+      labelBox.setValue(view.label());
+      shownLabel = view.label();
+    }
     boolean editable = view.editable();
     conditionButton.setMessage(
         Component.translatable(
@@ -193,6 +221,8 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
             conditionButton, compareButton, outputButton, apply, addById, setItem, setFluid))
       widget.active = editable;
     threshold.setEditable(editable);
+    labelBox.setEditable(editable);
+    setLabel.active = editable;
     addById.visible = !typing;
     id.visible = setItem.visible = setFluid.visible = typing;
   }
@@ -304,7 +334,9 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
         0xe4bc83,
         false);
     g.drawString(
-        font, Component.translatable("gui.factorycore.interface.mode"), 10, 175, 0xffffff, false);
+        font, Component.translatable("gui.factorycore.interface.mode"), 10, 199, 0xffffff, false);
+    g.drawString(
+        font, Component.translatable("gui.factorycore.signal.label"), 10, 151, 0xffffff, false);
   }
 
   @Override

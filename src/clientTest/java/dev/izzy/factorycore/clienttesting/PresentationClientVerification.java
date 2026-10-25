@@ -813,6 +813,12 @@ public final class PresentationClientVerification {
               ((dev.izzy.factorycore.platform.client.SignalScreen) client.screen).getMenu().view();
           if (view.power() != 15 || waited() < 6) return false;
           evidence.append("signal: watching stone >= 1 emits ").append(view.power()).append('\n');
+          return true;
+        });
+    // Capture a few frames after the evaluated view arrives, not the frame it arrived in.
+    step(
+        client -> {
+          if (waited() < 10) return false;
           captures.grab(client, "signal-scale-4.png");
           setScale(client, 1);
           return true;

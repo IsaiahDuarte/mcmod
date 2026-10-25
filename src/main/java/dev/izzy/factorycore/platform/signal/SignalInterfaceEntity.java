@@ -36,6 +36,15 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
   private ResourceKey resource;
   private int power;
   private String reason = "unset";
+  private String label = "";
+
+  /** Longest label (D6), matching Machine Interface labels. */
+  public static final int MAX_LABEL = 64;
+
+  /** D6 (ADR 0062): a deployed program's strength and the tick it expires. Runtime only. */
+  record Driven(int strength, long until) {}
+
+  private final java.util.Map<UUID, Driven> driven = new java.util.HashMap<>();
 
   public SignalInterfaceEntity(BlockPos position, BlockState state) {
     super(SignalContent.ENTITY.get(), position, state);
@@ -85,6 +94,38 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
   /** Why the output is what it is: "" when evaluated, else a reason key suffix. */
   public String reason() {
     return reason;
+  }
+
+  /** The label programs name in {@code emit redstone N on machines("label")}; "" for none. */
+  public String label() {
+    return label;
+  }
+
+  /** Sets the label (EDIT checked by the caller); control characters are removed. */
+  public void label(String value) {
+    var clean = value.replaceAll("[\\p{Cntrl}§]", "").strip();
+    if (clean.length() > MAX_LABEL) throw new IllegalArgumentException("Label longer than 64");
+    label = clean;
+    setChanged();
+  }
+
+  /** D6: {@code deployment} drives this Interface at {@code strength} until tick {@code until}. */
+  void drive(UUID deployment, int strength, long until) {
+    if (strength < 0 || strength > SignalRule.MAX) throw new IllegalArgumentException("Strength");
+    driven.put(deployment, new Driven(strength, until));
+  }
+
+  /** Forgets {@code deployment}'s output; true when it was driving this Interface. */
+  boolean release(UUID deployment) {
+    return driven.remove(deployment) != null;
+  }
+
+  /** The highest unexpired program strength, or -1 when no program drives this Interface. */
+  int driven(long now) {
+    driven.values().removeIf(value -> value.until() < now);
+    int best = -1;
+    for (var value : driven.values()) best = Math.max(best, value.strength());
+    return best;
   }
 
   /** A fresh Signal Interface owned by {@code owner}; it stays off until a resource is set. */
@@ -164,6 +205,7 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
       data.put("Resource", key);
     }
     data.putInt("Power", power);
+    if (!label.isEmpty()) data.putString("Label", label);
     tag.put(FIELD, data);
   }
 
@@ -179,6 +221,7 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
     resource = null;
     power = 0;
     reason = "unset";
+    label = "";
     if (!tag.contains(FIELD, Tag.TAG_COMPOUND)) return;
     var data = tag.getCompound(FIELD);
     try {
@@ -202,7 +245,10 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
       }
       int saved = data.getInt("Power");
       if (saved < 0 || saved > SignalRule.MAX) throw new IllegalArgumentException("Power");
+      var savedLabel = data.getString("Label");
+      if (savedLabel.length() > MAX_LABEL) throw new IllegalArgumentException("Label");
       owner = data.hasUUID("Owner") ? data.getUUID("Owner") : null;
+      label = savedLabel;
       rule = loadedRule;
       resource = loadedResource;
       // The last strength is kept until the first evaluation, so a reload does not flicker.

@@ -83,6 +83,10 @@ public final class FriendlyCompiler {
           "fluid",
           "tag",
           "energy",
+          // ADR 0062 (D6)
+          "emit",
+          "redstone",
+          "on",
           // ADR 0062 (D5)
           "except",
           // ADR 0062 (D4)
@@ -429,6 +433,20 @@ public final class FriendlyCompiler {
       case "if" -> {
         return conditional(variables, depth);
       }
+      case "emit" -> {
+        // D6 (ADR 0062): emit redstone INT on machines("label") (Signal-mode Interfaces).
+        next();
+        expect("redstone");
+        var strength = peek();
+        if (strength.kind != Kind.INT || strength.value > 15)
+          throw new SyntaxError(strength, "A redstone strength is a whole number from 0 to 15");
+        next();
+        expect("on");
+        if (!at("machines"))
+          throw new SyntaxError(
+              peek(), "emit needs machines(\"label\") naming Signal-mode Interfaces");
+        return new ProgramIr.Emit(machines(), (int) strength.value);
+      }
       case "log" -> {
         next();
         return new ProgramIr.Log(string("the log message"));
@@ -502,6 +520,13 @@ public final class FriendlyCompiler {
       var inner = condition(variables);
       expect(")");
       return inner;
+    }
+    if (at("redstone")) {
+      next();
+      expect("(");
+      var target = target(variables);
+      expect(")");
+      return new ProgramIr.RedstoneCondition(target);
     }
     if (at("stock")) {
       next();
