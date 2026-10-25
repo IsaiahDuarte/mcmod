@@ -6,7 +6,9 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.platform.network.AccessPackets;
 import dev.izzy.factorycore.platform.network.NetworkAccessMenu;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -227,7 +229,7 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
             Tooltip.create(
                 Component.translatable(
                     "gui.factorycore.access.role.help",
-                    principal.name(),
+                    displayName(principal.name()),
                     names(principal.granted(), (1 << PERMISSIONS) - 1))));
       }
       for (int bit = 0; bit < PERMISSIONS; bit++) {
@@ -244,7 +246,7 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
                     "gui.factorycore.access.toggle."
                         + (blocked ? "blocked" : granted ? "granted" : "absent"),
                     permission(bit),
-                    principal.name())));
+                    displayName(principal.name()))));
       }
       revokes[row].visible = visible && !pending && !principal.candidate();
       owners[row].visible = visible && !pending && view.transfer();
@@ -302,6 +304,40 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
         font, font.plainSubstrByWidth(text.getString(), imageWidth - 16), 8, y, color, false);
   }
 
+  private static final java.util.regex.Pattern UUID_TEXT =
+      java.util.regex.Pattern.compile("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}");
+
+  /**
+   * The server sends a player's current or cached profile name; a bare UUID means neither exists
+   * (the player never joined this server), so it is shortened under a readable label.
+   */
+  static String displayName(String name) {
+    return UUID_TEXT.matcher(name).matches()
+        ? Component.translatable("gui.factorycore.access.unknown_player", name.substring(0, 6))
+            .getString()
+        : name;
+  }
+
+  @Override
+  public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
+    super.render(graphics, mouseX, mouseY, partial);
+    var rows = menu.view().rows();
+    int row = (mouseY - topPos - ROW_Y) / ROW_HEIGHT;
+    if (menu.view().manage()
+        && mouseY >= topPos + ROW_Y
+        && row < rows.size()
+        && mouseX >= leftPos + 8
+        && mouseX < leftPos + TOGGLE_X - 4)
+      graphics.renderTooltip(
+          font,
+          List.of(
+              Component.literal(displayName(rows.get(row).name())),
+              Component.literal(rows.get(row).id().toString())),
+          Optional.empty(),
+          mouseX,
+          mouseY);
+  }
+
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     var view = menu.view();
@@ -316,7 +352,7 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
               view.ownerSelf()
                   ? "gui.factorycore.access.owner_self"
                   : "gui.factorycore.access.owner",
-              view.owner()),
+              displayName(view.owner())),
           18,
           0xe4bc83);
     else
@@ -389,7 +425,7 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
         var principal = view.rows().get(row);
         String name =
             (principal.candidate() ? "+ " : "")
-                + principal.name()
+                + displayName(principal.name())
                 + (principal.online()
                     ? ""
                     : Component.translatable("gui.factorycore.access.offline").getString());

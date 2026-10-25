@@ -775,6 +775,7 @@
   "gui.factorycore.access.empty": "No players yet. Online players appear here so you can grant access.",
   "gui.factorycore.access.readonly_help": "Only the network owner, players with Manage and server operators can change access. Your own access and the gateway limits that apply here are shown above.",
   "gui.factorycore.access.offline": " (offline)",
+  "gui.factorycore.access.unknown_player": "Unknown %s",
   "gui.factorycore.access.role": "Role",
   "gui.factorycore.access.role.none": "No access",
   "gui.factorycore.access.role.guest": "Guest",

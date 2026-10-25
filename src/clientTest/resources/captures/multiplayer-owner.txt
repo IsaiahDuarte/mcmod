@@ -7,3 +7,4 @@ owner-took-one.png
 owner-sees-stranger-deposit.png
 owner-concurrent-take.png
 owner-after-revoke.png
+owner-access-names.png

@@ -343,6 +343,8 @@ Networks start private. Use the controller, or **Access…** on a gateway screen
 - **Roles:** each player's role button cycles **Guest** (view), **Member** (also
   deposit, withdraw, craft) and **Builder** (also edit and deploy). Next comes
   **Admin** (also manage access and gateways).
+- **Names:** players are listed by name. Hover a name to see the player's ID. A player
+  who has never joined this server shows as *Unknown* with a short ID.
 - **Advanced:** shows the seven individual rights.
 - **Revoke:** removes a player's access.
 - **Owner:** hands the network over after **Confirm**; only the owner or an

@@ -116,13 +116,21 @@ view cells, portable cells and cross-dimension links. See Wave G.
   The direction is a bit in the existing `Sort` preference, so the saved schema did not change.
   The terminal tour passed on a rerun after one real-cursor Buffer hover flake.
 
-- [ ] **P3 — Status and Access fixes (G16).** Size S. Lane T.
+- [x] **P3 — Status and Access fixes (G16).** Size S. Lane T.
   Wrap or abbreviate the status strip so it never truncates mid-word (full text on hover
   stays). Show player names (from the server profile cache) on the Access screen, with
   the UUID only in the tooltip; verify with two real clients.
   Files: `StatusStrip.java`, `NetworkAccessMenu.java`, `NetworkAccessScreen.java`.
   Done when: buffer scale 4 shows a whole word; the two-client run shows the second
   player's name.
+  Evidence: `FitTextTest` (whole parts dropped first, then whole words, "…" marks the cut);
+  `buffer-scale-4.png` shows "Online …"; `runMultiplayerCheck` passes with the new
+  `owner-access-names.png` step (rows and owner line named `FactoryGuest`/`FactoryOwner`).
+  Names were already resolved server-side; a principal unknown to the profile cache now
+  reads "Unknown b1c26c" with the full UUID on hover (`access-scale-{1,4}.png`).
+  Also repaired the two-client check, stale since U3 removed the Take 1 button: it now sends
+  the grid's withdraw payload, and its view-only step retries a stale-revision drop as
+  `take()` already did. P1: 83f2b48. P2: f41f84c.
 
 - [ ] **P4 — Jobs list scrolls (G4, part).** Size S. Lane T.
   Replace Home/Next in Jobs with the same scrolling list as Items; remove the `HOME`/`NEXT`

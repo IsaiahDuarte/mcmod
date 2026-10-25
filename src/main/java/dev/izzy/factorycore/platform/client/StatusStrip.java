@@ -1,24 +1,33 @@
 package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.platform.session.DeviceStatus;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
 /**
  * Draws the shared one-line device status (U7): a lamp, the network state, the device's reason and
- * stored power, truncated to the room left on the title line. Coordinates are screen-relative.
+ * stored power, shortened at part and word boundaries ({@link FitText}) to the room left on the
+ * title line; the tooltip shows it all. Coordinates are screen-relative.
  */
 public final class StatusStrip {
   private StatusStrip() {}
 
   public static Component text(DeviceStatus.View status) {
-    if (status.network().isEmpty()) return Component.translatable("gui.factorycore.status.loading");
-    var line = Component.translatable("gui.factorycore.status.network." + status.network()).copy();
-    if (!status.reason().isEmpty())
-      line.append(" · ").append(Component.translatable(status.reason()));
-    if (!status.power().isEmpty()) line.append(" · ").append(status.power());
-    return line;
+    return Component.literal(String.join(FitText.SEPARATOR, parts(status)));
+  }
+
+  private static List<String> parts(DeviceStatus.View status) {
+    if (status.network().isEmpty())
+      return List.of(Component.translatable("gui.factorycore.status.loading").getString());
+    var parts = new ArrayList<String>();
+    parts.add(
+        Component.translatable("gui.factorycore.status.network." + status.network()).getString());
+    if (!status.reason().isEmpty()) parts.add(Component.translatable(status.reason()).getString());
+    if (!status.power().isEmpty()) parts.add(status.power());
+    return parts;
   }
 
   /** Online is green; anything else (rebuilding, unloaded, invalid) is amber. */
@@ -45,11 +54,6 @@ public final class StatusStrip {
     if (width < 16) return;
     graphics.fill(x, y + 2, x + 4, y + 6, 0xff000000 | color(status));
     graphics.drawString(
-        font,
-        font.plainSubstrByWidth(text(status).getString(), width - 7),
-        x + 7,
-        y,
-        color(status),
-        false);
+        font, FitText.fit(parts(status), width - 7, font::width), x + 7, y, color(status), false);
   }
 }

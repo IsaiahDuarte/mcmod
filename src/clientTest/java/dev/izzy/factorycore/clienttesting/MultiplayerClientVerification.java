@@ -3,6 +3,7 @@ package dev.izzy.factorycore.clienttesting;
 import static dev.izzy.factorycore.clienttesting.MultiplayerSync.*;
 
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
+import dev.izzy.factorycore.platform.client.NetworkAccessScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
@@ -13,7 +14,6 @@ import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
@@ -35,7 +35,6 @@ import net.neoforged.neoforge.client.event.ClientChatReceivedEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.PacketDistributor;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * One real graphical client of the multiplayer check ({@code owner} or {@code stranger}). It joins
@@ -168,7 +167,7 @@ public final class MultiplayerClientVerification {
       case STRANGER_DEPOSITS -> observe(client, 63, "owner-sees-stranger-deposit.png");
       case BOTH_TAKE -> take(client, 2, 61, "owner-concurrent-take.png");
       case REVOKE -> ownerRevoke(client);
-      case OPERATOR_GRANT -> close(client);
+      case OPERATOR_GRANT -> ownerAccess(client);
       case FINISH -> finish(client);
       default -> true;
     };
@@ -361,16 +360,24 @@ public final class MultiplayerClientVerification {
       }
       case 1 -> {
         if (ironTotal(client) != SEEDED_IRON) return false;
+        retries = 0;
         captures.grab(client, "stranger-view-only.png");
-        select(client);
         mark = ticks;
-        click(terminal(client), "Take 1");
+        takeOne(client);
         sub++;
       }
       case 2 -> {
         var view = terminal(client).getMenu().view();
-        // An admission refusal changes the status without a new revision.
-        if (!view.status().equals("denied") && ticks - mark < 100) return false;
+        // An admission refusal changes the status without a new revision. A background rescan
+        // can bump the revision first, so the server drops the request as stale; resend then.
+        if (!view.status().equals("denied") && !view.busy() && ticks - mark > 40) {
+          retries++;
+          require(retries <= 5, "View-only withdrawal kept losing its revision");
+          takeOne(client);
+          mark = ticks;
+          return false;
+        }
+        if (!view.status().equals("denied")) return false;
         require(view.status().equals("denied"), "View-only withdrawal is denied: " + view.status());
         require(iron(client) == 0, "No item reached the view-only stranger");
         mark = ticks;
@@ -411,13 +418,13 @@ public final class MultiplayerClientVerification {
   }
 
   /**
-   * Native row selection plus the Take 1 button; retried only if the server dropped it as stale.
+   * Takes one iron through the real C2S withdraw payload; retried only if the server dropped it as
+   * stale.
    */
   private boolean take(Minecraft client, int expectedIron, int expectedTotal, String capture) {
     switch (sub) {
       case 0 -> {
-        select(client);
-        click(terminal(client), "Take 1");
+        takeOne(client);
         mark = ticks;
         sub++;
       }
@@ -432,8 +439,7 @@ public final class MultiplayerClientVerification {
           // The other player's change bumped the server revision first; the server ignored ours.
           retries++;
           require(retries <= 5, "Take 1 kept losing its revision");
-          select(client);
-          click(terminal(client), "Take 1");
+          takeOne(client);
           mark = ticks;
         }
       }
@@ -592,6 +598,43 @@ public final class MultiplayerClientVerification {
     return false;
   }
 
+  /** P3: Network Access names the second real player from the server, not by UUID. */
+  private boolean ownerAccess(Minecraft client) {
+    switch (sub) {
+      case 0 -> {
+        close(client);
+        mark = ticks;
+        sub++;
+      }
+      case 1 -> {
+        if (ticks - mark < 5) return false;
+        use(client, ROOT, Direction.UP);
+        sub++;
+      }
+      case 2 -> {
+        if (!(client.screen instanceof NetworkAccessScreen screen)) return false;
+        var rows = screen.getMenu().view().rows();
+        if (rows.stream().noneMatch(row -> row.id().equals(STRANGER_ID))) return false;
+        var row = rows.stream().filter(entry -> entry.id().equals(STRANGER_ID)).findFirst().get();
+        require(row.name().equals(STRANGER), "Access row names the guest: " + row.name());
+        require(
+            screen.getMenu().view().owner().equals(OWNER),
+            "Access owner line names the owner: " + screen.getMenu().view().owner());
+        mark = ticks;
+        sub++;
+      }
+      case 3 -> {
+        if (ticks - mark < 5) return false;
+        captures.grab(client, "owner-access-names.png");
+        close(client);
+        evidence.append("owner: Network Access lists " + STRANGER + " and owner by name\n");
+        return true;
+      }
+      default -> {}
+    }
+    return false;
+  }
+
   private boolean close(Minecraft client) {
     if (client.screen != null) client.player.closeContainer();
     return true;
@@ -652,15 +695,27 @@ public final class MultiplayerClientVerification {
     return client.player.getInventory().countItem(Items.IRON_INGOT);
   }
 
-  private static void select(Minecraft client) {
-    var screen = terminal(client);
-    var rows = screen.getMenu().view().rows();
+  /**
+   * Withdraws one iron into the inventory with the same payload the grid's Shift-click sends (the
+   * grid itself always asks for up to a stack; U3 removed the old Take 1 button).
+   */
+  private static void takeOne(Minecraft client) {
+    var menu = terminal(client).getMenu();
+    var rows = menu.view().rows();
     int index = -1;
     for (int i = 0; i < rows.size(); i++)
       if (rows.get(i).icon().equals("minecraft:iron_ingot")) index = i;
     require(index >= 0, "Iron row present");
-    for (var child : screen.children()) if (child instanceof EditBox edit) edit.setFocused(false);
-    screen.keyPressed(GLFW.GLFW_KEY_1 + index, 0, 0);
+    PacketDistributor.sendToServer(
+        new TerminalPackets.Command(
+            menu.containerId,
+            menu.session(),
+            menu.view().revision(),
+            TerminalPackets.WITHDRAW,
+            index,
+            1,
+            "",
+            new byte[32]));
   }
 
   /** The first policy toggle (branch View), whether or not the Custom view shows it. */
