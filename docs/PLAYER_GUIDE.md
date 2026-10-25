@@ -348,6 +348,11 @@ every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage
   labels. **Preview next rule** shows what a rule would do without moving anything.
 - **Rust programs:** build one with the SDK (`sdk/rust/README.md`), put the `.wasm`
   in `factorycore/programs` in your game folder and press **Upload Wasm**.
+- **Machine to machine:** `move` may name machines on both sides, for example
+  `move item("iron_ingot") from machines("furnace") to machines("chest")`. Items go
+  straight across without passing through storage. With several machines on each side,
+  every source gives to every target (up to 64 pairs per line). Storage to storage is
+  not a move.
 - **When a rule can't act:** its log line says why, for example a machine busy with
   a crafting job, stock reserved by jobs, or the rate limit. It retries at its next
   interval without losing items.

@@ -18,6 +18,9 @@ public final class ProgramEvaluator {
   public static final int MAX_COMMANDS = 256;
   public static final int MAX_MACHINES_PER_LABEL = 64;
 
+  /** Source × target pairs one machine-to-machine move statement may produce (ADR 0062). */
+  public static final int MAX_MOVE_PAIRS = 64;
+
   /** Host queries (label lookups and stock reads) per invocation, matching the Wasm ABI bound. */
   public static final int MAX_HOST_CALLS = 512;
 
@@ -116,7 +119,18 @@ public final class ProgramEvaluator {
             emit(new ProgramCommand.Keep(machine, keep.filter(), keep.amount()));
         }
         case ProgramIr.Move move -> {
-          if (move.from() instanceof ProgramIr.Machine from)
+          if (move.from() instanceof ProgramIr.Machine from
+              && move.to() instanceof ProgramIr.Machine to) {
+            var sources = resolve(from.target(), scope);
+            var targets = resolve(to.target(), scope);
+            if ((long) sources.size() * targets.size() > MAX_MOVE_PAIRS)
+              throw new Trap(
+                  "A machine-to-machine move pairs more than " + MAX_MOVE_PAIRS + " machines");
+            for (var source : sources)
+              for (var target : targets)
+                if (!source.equals(target))
+                  emit(new ProgramCommand.Move(move.filter(), source, target, move.limit()));
+          } else if (move.from() instanceof ProgramIr.Machine from)
             for (var machine : resolve(from.target(), scope))
               emit(new ProgramCommand.Move(move.filter(), machine, null, move.limit()));
           else

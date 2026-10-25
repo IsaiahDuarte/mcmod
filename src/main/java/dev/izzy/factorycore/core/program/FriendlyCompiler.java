@@ -381,9 +381,10 @@ public final class FriendlyCompiler {
         var from = place(variables);
         expect("to");
         var to = place(variables);
-        if ((from instanceof ProgramIr.Storage) == (to instanceof ProgramIr.Storage))
+        // ADR 0062 (D2): either side may be a machine; storage to storage moves nothing.
+        if (from instanceof ProgramIr.Storage && to instanceof ProgramIr.Storage)
           throw new SyntaxError(
-              fromToken, "A move goes between storage and machines, one side each");
+              fromToken, "A move needs a machine on at least one side, not storage to storage");
         long limit = DEFAULT_LIMIT;
         if (at("limit")) {
           next();

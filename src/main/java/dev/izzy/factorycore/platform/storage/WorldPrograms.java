@@ -535,6 +535,10 @@ public final class WorldPrograms {
       Runtime runtime,
       NetworkPermissions.Actor actor,
       ProgramCommand.Move move) {
+    if (move.from() != null && move.to() != null) {
+      between(controller, runtime, actor, move);
+      return;
+    }
     var node = move.from() != null ? move.from() : move.to();
     var owner = machine(node, controller);
     if (owner == null) {
@@ -570,6 +574,101 @@ public final class WorldPrograms {
             WorldStorageRoutes.Direction.TO_STORAGE);
         return;
       }
+  }
+
+  /**
+   * ADR 0062 (D2): one bounded move from the first matching entry of the source's first page
+   * straight into the target, staged by the shared transfer path. Both machines must be loaded in
+   * the program's segment; a processing lease on either refuses it as busy, and neither end may
+   * hold an unresolved transfer when it starts.
+   */
+  private void between(
+      ProgramControllerEntity controller,
+      Runtime runtime,
+      NetworkPermissions.Actor actor,
+      ProgramCommand.Move move) {
+    var source = machine(move.from(), controller);
+    var target = machine(move.to(), controller);
+    if (source == null || target == null) {
+      controller.log("move: machine unloaded or outside this segment");
+      return;
+    }
+    var from = networks().connectors().bind(source);
+    var to = networks().connectors().bind(target);
+    for (var pair : List.of(Map.entry(source, from), Map.entry(target, to)))
+      if (pair.getValue().handle() == null
+          || pair.getValue().handle().kind() != move.filter().kind()) {
+        controller.log("move " + pair.getKey().label() + ": " + unbound(pair.getValue()));
+        return;
+      }
+    for (var pair : List.of(Map.entry(source, from), Map.entry(target, to))) {
+      var busy = networks().connectors().limit(pair.getValue().handle(), false, 0);
+      if (busy.reason() == OperationResult.Reason.BUSY) {
+        controller.log("move " + pair.getKey().label() + ": " + name(busy.reason()));
+        return;
+      }
+    }
+    var observation = networks().connectors().observe(actor, source.position(), from.handle(), 0);
+    if (observation.reason() != OperationResult.Reason.OK) {
+      controller.log("move " + source.label() + ": " + name(observation.reason()));
+      return;
+    }
+    for (var entry : observation.page().entries()) {
+      if (entry.stored() <= 0 || !move.filter().matches(entry.key(), this::tagged)) continue;
+      long amount =
+          Math.min(
+              Math.min(move.limit(), entry.stored()),
+              Math.min(source.settings().rate(), target.settings().rate()));
+      // A platform item call moves at most one stack.
+      if (entry.key().kind() == ResourceKind.ITEM)
+        amount =
+            Math.min(
+                amount,
+                new PlatformResourceCodec(server.registryAccess())
+                    .itemStack(entry.key(), 1)
+                    .getMaxStackSize());
+      var key = entry.key();
+      var id = UUID.randomUUID();
+      runtime.request = id;
+      var submission =
+          networks()
+              .transfers()
+              .submitGuarded(
+                  id,
+                  actor,
+                  source.position(),
+                  new WorldStorageTransfers.External(from.handle()),
+                  new WorldStorageTransfers.External(to.handle()),
+                  key,
+                  amount,
+                  result -> {
+                    var transfer = result.transfer();
+                    if (transfer != null
+                        && transfer.state() == StagedTransfer.State.COMPLETE
+                        && transfer.pending() == StagedTransfer.PendingCall.NONE
+                        && transfer.staged() == 0
+                        && saved().transfers().contains(result.id()))
+                      saved().transfers().retire(result.id());
+                    if (id.equals(runtime.request)) runtime.request = null;
+                    if (result.reason() != OperationResult.Reason.OK)
+                      controller.log(
+                          "move "
+                              + key.registryId()
+                              + " to "
+                              + target.label()
+                              + ": "
+                              + name(result.reason()));
+                  },
+                  () -> true,
+                  () ->
+                      saved().transfers().unresolved(from.handle().backing()) == null
+                          && saved().transfers().unresolved(to.handle().backing()) == null);
+      if (submission.rejection() != OperationResult.Reason.OK) {
+        runtime.request = null;
+        controller.log("move " + key.registryId() + ": " + name(submission.rejection()));
+      }
+      return;
+    }
   }
 
   /** Finds the first matching stored key over a bounded number of catalog pages, then routes. */

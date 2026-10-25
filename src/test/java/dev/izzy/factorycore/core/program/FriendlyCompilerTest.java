@@ -102,7 +102,7 @@ class FriendlyCompilerTest {
     assertTrue(
         error("every 10 ticks { move item(\"stone\") from storage to storage }")
             .message()
-            .contains("one side each"));
+            .contains("not storage to storage"));
     assertTrue(
         error("every 10 ticks { move item(\"stone\") from storage to machines(\"m\") limit 5000 }")
             .message()

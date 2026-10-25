@@ -132,8 +132,11 @@ Each rule invocation has a 256-unit host-work budget: one unit per storage catal
 
 [ADR 0062](../decisions/0062-friendly-language-v2.md) freezes a strict superset of the v1
 language: moves between two machines, `side`/`slots` per endpoint, `else`/`and`/`or`/`not`,
-`has` conditions, one-`*` globs with `except`, and redstone `redstone(...)`/`emit`. **None of
-it is implemented yet.** `src/test/resources/program/v2/` holds one fixture per form and
+`has` conditions, one-`*` globs with `except`, and redstone `redstone(...)`/`emit`. Implemented so far:
+D2, moves between two machines (`WorldPrograms.between`: one guarded External→External
+transfer per pair, at most one stack, the lower of the two Interface rates, a processing
+lease on either end refuses as busy, and neither end may hold an unresolved transfer).
+The rest is not implemented yet. `src/test/resources/program/v2/` holds one fixture per form and
 names the slice (D2–D6) that must make it compile. `FriendlyV1PinTest` fails if one
 compiles early, or if any v1 program's IR changes.
 

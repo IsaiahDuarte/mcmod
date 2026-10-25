@@ -550,6 +550,7 @@ public final class PlayerInventoryGameTests {
     var actor = new NetworkPermissions.Actor(guest.getUUID(), false);
     UUID[] record = {null};
     WorldStorageTransfers.Result[] result = {null, null, null};
+    OperationResult.Reason[] admitted = {null};
     helper
         .startSequence()
         .thenWaitUntil(() -> ready(helper, fixture))
@@ -583,12 +584,25 @@ public final class PlayerInventoryGameTests {
               var refill = guest.getInventory().getItem(0).copy();
               guest.getInventory().setItem(1, refill);
               guest.getInventory().setItem(0, ItemStack.EMPTY);
-              fixture
-                  .runtime()
-                  .transfers()
-                  .progress(record[0], actor, true, value -> result[1] = value);
             })
-        .thenWaitUntil(() -> helper.assertTrue(result[1] != null, "Owned cleanup callback"))
+        .thenWaitUntil(
+            () -> {
+              // A neighboring chunk loading (other tests' connected players) can rebuild this
+              // network for a moment; OFFLINE is then the correct refusal, so ask again.
+              if (result[1] == null && admitted[0] != OperationResult.Reason.OK)
+                admitted[0] =
+                    fixture
+                        .runtime()
+                        .transfers()
+                        .progress(record[0], actor, true, value -> result[1] = value)
+                        .rejection();
+              helper.assertTrue(
+                  admitted[0] == OperationResult.Reason.OK
+                      || admitted[0] == OperationResult.Reason.OFFLINE,
+                  "Cleanup admission is only ever delayed by a rebuild: " + admitted[0]);
+              helper.assertTrue(
+                  result[1] != null, "Owned cleanup callback; admission " + admitted[0]);
+            })
         .thenExecute(
             () -> {
               helper.assertTrue(

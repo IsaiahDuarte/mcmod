@@ -17,11 +17,13 @@ public sealed interface ProgramCommand {
     }
   }
 
+  /** A null {@code from} or {@code to} is storage; both set is a machine-to-machine move. */
   record Move(ResourceFilter filter, UUID from, UUID to, long limit) implements ProgramCommand {
     public Move {
       Objects.requireNonNull(filter);
-      if ((from == null) == (to == null))
-        throw new IllegalArgumentException("Exactly one side is storage");
+      // ADR 0062: machine to machine is allowed; storage to storage is not a move.
+      if (from == null && to == null)
+        throw new IllegalArgumentException("A move needs a machine on at least one side");
     }
   }
 

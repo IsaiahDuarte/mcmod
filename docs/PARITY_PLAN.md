@@ -386,12 +386,19 @@ to identical IR (a fixture test pins this).
   templates (`program/v1-ir.txt`) and fails if a v2 fixture compiles before its slice is
   marked done. No compiler change.
 
-- [ ] **D2 — Machine-to-machine moves (G9).** Size M.
+- [x] **D2 — Machine-to-machine moves (G9).** Size M.
   Lift the "one side is storage" rule. The transfer layer already moves between two
   `External` endpoints (`WorldStorageTransfers.submit`), so this is compiler, evaluator and
   `WorldPrograms` work. Processing-job leases and fences (ADR 0053) still apply to both ends.
   Done when: GameTests move furnace output into a chest with no storage involved, are
   refused by a leased machine with the busy reason, and conserve items on a full target.
+  Evidence (2026-10-25): `MachineToMachineGameTests` — 20 ingots from a furnace's output
+  into a chest with storage never holding one; a full chest receives nothing, the count is
+  conserved, and the ingots move once room frees; a chest leased by a processing job logs
+  "busy: a crafting job is using this machine", then moves after the job is cancelled.
+  `ProgramEvaluatorTest` covers source-major pairing, no self-move and the 64-pair trap.
+  `FriendlyV1PinTest` marks D2 (its fixture compiles; v1 IR unchanged). The storage-to-
+  storage compiler message changed with the requirement, and its test was updated.
 
 - [ ] **D3 — Side and slots per statement (G10).** Size L.
   `side` overrides the Interface's bound side for that statement (the Interface still

@@ -99,4 +99,38 @@ class ProgramEvaluatorTest {
     var condition = rule("every 10 ticks { if stock(item(\"stone\")) == 0 { log \"x\" } }");
     assertThrows(ProgramEvaluator.Trap.class, () -> ProgramEvaluator.invoke(condition, failing));
   }
+
+  @Test
+  void machineToMachineMovesPairEverySourceWithEveryOtherTargetWithinTheBound() {
+    var rule =
+        rule(
+            "every 10 ticks { move item(\"iron_ingot\") from machines(\"out\") to machines(\"in\") limit 16 }");
+    var commands =
+        ProgramEvaluator.invoke(rule, host(Map.of("out", List.of(OUT, A), "in", List.of(A, B)), 0));
+    var filter = ((ProgramCommand.Move) commands.getFirst()).filter();
+    assertEquals(
+        List.of(
+            new ProgramCommand.Move(filter, OUT, A, 16),
+            new ProgramCommand.Move(filter, OUT, B, 16),
+            new ProgramCommand.Move(filter, A, B, 16)),
+        commands,
+        "Stable source-major order; a machine never moves to itself");
+    var sources = new ArrayList<UUID>();
+    var targets = new ArrayList<UUID>();
+    for (int i = 0; i < 9; i++) {
+      if (i < 8) sources.add(new UUID(2, i));
+      targets.add(new UUID(3, i));
+    }
+    assertEquals(
+        64,
+        ProgramEvaluator.invoke(rule, host(Map.of("out", sources, "in", targets.subList(0, 8)), 0))
+            .size(),
+        "8 x 8 pairs is exactly the bound");
+    assertThrows(
+        ProgramEvaluator.Trap.class,
+        () -> ProgramEvaluator.invoke(rule, host(Map.of("out", sources, "in", targets), 0)),
+        "8 x 9 pairs exceed the 64-pair bound");
+    assertThrows(
+        IllegalArgumentException.class, () -> new ProgramCommand.Move(filter, null, null, 1));
+  }
 }
