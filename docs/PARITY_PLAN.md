@@ -444,9 +444,12 @@ to identical IR (a fixture test pins this).
   feature that was missing. Feed findings back as new slices here.
   Done when: an evidence file under `docs/evidence/` and A17 updated.
 
-- [ ] **V2 — Parity re-audit.** Size S. After Waves 0, A and B.
+- [x] **V2 — Parity re-audit.** Size S. After Waves 0, A and B.
   Re-take terminal, crafting, filter and drive screenshots; repeat the comparison table;
   close or re-open findings.
+  Evidence: [parity-v2-2026-10-25.md](evidence/parity-v2-2026-10-25.md) with 26 screenshots
+  and SHA256SUMS. G1–G7, G15 and G16 are closed. G8–G14 wait on PD1–PD5, and G17 waits on V1.
+  B4: 2ce3929.
 
 ## Wave G — Later (only if PD6 says yes)
 
