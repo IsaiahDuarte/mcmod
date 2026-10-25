@@ -67,3 +67,10 @@ crafting-inputs-scale-1.png
 crafting-inputs-scale-4.png
 crafting-outputs-scale-1.png
 crafting-outputs-scale-4.png
+terminal-sort-qty-scale-4.png
+terminal-sort-mod-scale-4.png
+terminal-sort-mod-reversed-scale-4.png
+terminal-sort-name-reversed-scale-4.png
+terminal-sort-name-scale-4.png
+terminal-fluids-scale-4.png
+terminal-fluids-scale-1.png

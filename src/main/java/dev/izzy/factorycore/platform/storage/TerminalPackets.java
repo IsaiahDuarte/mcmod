@@ -56,7 +56,7 @@ public final class TerminalPackets {
                           || action == FILL
                       ? MAX_ROWS
                       : 36)
-          || (action == SORT && selection > TerminalSearchSupport.QUANTITY)
+          || (action == SORT && !TerminalSearchSupport.validSort(selection))
           || amount < 1
           || amount > (action == WINDOW ? MAX_ROWS : 64)
           || text.length() > 128
@@ -190,9 +190,7 @@ public final class TerminalPackets {
     }
 
     public View {
-      if (search.length() > 128
-          || sort < TerminalSearchSupport.NAME
-          || sort > TerminalSearchSupport.QUANTITY)
+      if (search.length() > 128 || !TerminalSearchSupport.validSort(sort))
         throw new IllegalArgumentException("Invalid terminal preferences");
       if (offset < 0
           || total < 0

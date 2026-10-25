@@ -9,7 +9,10 @@ per-player preserved search/sort. Extend the existing scheduled authorized colle
 rather than shipping a separate client catalog. Plain text matches names/IDs, `@`
 selects namespace and `#` selects loaded item/fluid tags; matching is case-insensitive.
 Names use the server language and custom item name. Name order uses at most 256
-characters; quantity order is descending BigInteger total. Exact keys break ties.
+characters; quantity order is descending BigInteger total; mod order groups by registry
+namespace, then name. Exact keys break ties. A reversed flag (bit 4) flips any mode; the
+saved `Sort` integer keeps 0/1 meaning Name/Qty, so schema 1 is unchanged (amended by
+parity slice P2).
 An ordered index updates at most one bounded catalog page per scheduled callback,
 with 1,024 bytes charged per aggregate. Tag walks reject more than 1,024 tags.
 

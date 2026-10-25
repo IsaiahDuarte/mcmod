@@ -89,8 +89,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         String stored = preferences.getString("Search");
         if (stored.length() <= 128) text = stored;
         int storedSort = preferences.getInt("Sort");
-        if (storedSort >= TerminalSearchSupport.NAME
-            && storedSort <= TerminalSearchSupport.QUANTITY) sort = storedSort;
+        if (TerminalSearchSupport.validSort(storedSort)) sort = storedSort;
       }
     }
     for (int row = 0; row < 3; row++)
@@ -432,7 +431,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       return;
     }
     if (command.action() == TerminalPackets.SORT) {
-      if (command.selection() > TerminalSearchSupport.QUANTITY) return;
+      if (!TerminalSearchSupport.validSort(command.selection())) return;
       offset = 0;
       sort = command.selection();
       savePreferences();

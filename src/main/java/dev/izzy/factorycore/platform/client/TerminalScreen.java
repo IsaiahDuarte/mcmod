@@ -5,6 +5,7 @@ import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.platform.storage.TerminalSearchSupport;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +20,13 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
@@ -38,6 +44,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private int kind;
 
   private Button sortButton;
+  private Button directionButton;
   private final List<AbstractButton> cells = new ArrayList<>();
   private final List<Button> tabs = new ArrayList<>();
   private int columns = 20, rows = 4, extra, desiredOffset, clock, lastCommand = -20, searchDelay;
@@ -153,11 +160,33 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         addRenderableWidget(
             Button.builder(
                     sortLabel(),
-                    button ->
-                        send(TerminalPackets.SORT, (menu.view().sort() + 1) % 2, 1, new byte[32]))
-                .bounds(leftPos + imageWidth - 52, topPos + 3, 44, 18)
+                    button -> {
+                      int sort = menu.view().sort();
+                      int mode = (TerminalSearchSupport.mode(sort) + 1) % 3;
+                      send(
+                          TerminalPackets.SORT,
+                          mode | (sort & TerminalSearchSupport.REVERSED),
+                          1,
+                          new byte[32]);
+                    })
+                .bounds(leftPos + imageWidth - 52, topPos + 3, 30, 18)
                 .tooltip(
                     Tooltip.create(Component.translatable("gui.factorycore.terminal.sort.help")))
+                .build());
+    directionButton =
+        addRenderableWidget(
+            Button.builder(
+                    directionLabel(),
+                    button ->
+                        send(
+                            TerminalPackets.SORT,
+                            menu.view().sort() ^ TerminalSearchSupport.REVERSED,
+                            1,
+                            new byte[32]))
+                .bounds(leftPos + imageWidth - 22, topPos + 3, 14, 18)
+                .tooltip(
+                    Tooltip.create(
+                        Component.translatable("gui.factorycore.terminal.sort.direction.help")))
                 .build());
     for (int tab = 0; tab < 4; tab++) {
       int choice = tab;
@@ -316,7 +345,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   private Component sortLabel() {
-    return Component.translatable("gui.factorycore.terminal.sort." + menu.view().sort());
+    return Component.translatable(
+        "gui.factorycore.terminal.sort." + TerminalSearchSupport.mode(menu.view().sort()));
+  }
+
+  /** The arrow shows the visible order: down is the mode's natural order, up is reversed. */
+  private Component directionLabel() {
+    return Component.literal(TerminalSearchSupport.reversed(menu.view().sort()) ? "↑" : "↓");
   }
 
   private void selectGridPage(int page) {
@@ -537,6 +572,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
     sortButton.setMessage(sortLabel());
     sortButton.active = !view.busy();
+    directionButton.setMessage(directionLabel());
+    directionButton.active = !view.busy();
     if (shownRevision != view.revision()) {
       selected = Math.min(selected, Math.max(0, view.rows().size() - 1));
       shownRevision = view.revision();
@@ -681,7 +718,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       if (index >= entries.size()) continue;
       var value = entries.get(index);
       var shown = rowIcon(value.icon()).getDefaultInstance();
-      graphics.renderItem(shown, x + 1, y + 1);
+      if (kind != 1 || !renderFluid(graphics, value.icon(), x + 1, y + 1))
+        graphics.renderItem(shown, x + 1, y + 1);
       var count = compact(value.available());
       renderCount(graphics, shown, x, y, count);
     }
@@ -818,7 +856,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     };
   }
 
-  /** Items show themselves; fluids show their bucket; energy shows redstone. */
+  /** Items show themselves; energy shows redstone; a fluid's bucket is the fallback icon. */
   private Item rowIcon(String id) {
     if (kind == 2) return Items.REDSTONE;
     var location = ResourceLocation.tryParse(id);
@@ -831,6 +869,38 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     return BuiltInRegistries.ITEM.containsKey(location)
         ? BuiltInRegistries.ITEM.get(location)
         : Items.BARRIER;
+  }
+
+  /**
+   * Draws a registered fluid's still texture with its client tint, as AE2/RS do; returns false
+   * (caller falls back to the bucket item) for an unknown fluid or a missing sprite.
+   */
+  private static boolean renderFluid(GuiGraphics graphics, String id, int x, int y) {
+    var location = ResourceLocation.tryParse(id);
+    if (location == null || !BuiltInRegistries.FLUID.containsKey(location)) return false;
+    var fluid = BuiltInRegistries.FLUID.get(location);
+    if (fluid == Fluids.EMPTY) return false;
+    var stack = new FluidStack(fluid, FluidType.BUCKET_VOLUME);
+    var extensions = IClientFluidTypeExtensions.of(fluid);
+    var texture = extensions.getStillTexture(stack);
+    if (texture == null) return false;
+    var sprite =
+        net.minecraft.client.Minecraft.getInstance()
+            .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
+            .apply(texture);
+    int tint = extensions.getTintColor(stack);
+    graphics.blit(
+        x,
+        y,
+        0,
+        16,
+        16,
+        sprite,
+        ((tint >> 16) & 0xff) / 255f,
+        ((tint >> 8) & 0xff) / 255f,
+        (tint & 0xff) / 255f,
+        1f);
+    return true;
   }
 
   private static Item icon(String id) {

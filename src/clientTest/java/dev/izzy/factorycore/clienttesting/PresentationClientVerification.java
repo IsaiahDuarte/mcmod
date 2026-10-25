@@ -648,6 +648,113 @@ public final class PresentationClientVerification {
    * Terminal Jobs mode through real clicks: a pattern's craftable row, ×8 preview, Start, the
    * finished delivery, then a ×64 shortage preview at scale 4 with fit checks.
    */
+  /**
+   * Each sort mode and direction over the count-rendering items, then water and lava drawn with
+   * their still textures. Leaves the per-player sort at Name ascending for later tours.
+   */
+  private void sortAndFluidTour(BlockPos base) {
+    step(
+        client -> {
+          client.setScreen(null);
+          return true;
+        });
+    server(
+        player -> {
+          var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(base.east());
+          var codec = new PlatformResourceCodec(player.registryAccess());
+          var registry = DeviceSavedData.get(player.server).registry();
+          var fluids = CellHandleData.read(drive.cell(2));
+          check(
+              registry.insert(fluids, codec.fluidKey(new FluidStack(Fluids.LAVA, 1)), 2000).amount()
+                  == 2000,
+              "Lava admitted");
+          check(
+              registry
+                      .insert(fluids, codec.fluidKey(new FluidStack(Fluids.WATER, 1)), 1000)
+                      .amount()
+                  == 1000,
+              "Water admitted");
+        });
+    use(base.east(2), Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof TerminalScreen) || waited() < 6) return false;
+          setScale(client, 4);
+          return true;
+        });
+    String[][] orders = {{"Qty", "↓"}, {"Mod", "↓"}, {"Mod", "↑"}, {"Name", "↑"}, {"Name", "↓"}};
+    for (var order : orders) {
+      String mode = order[0], arrow = order[1];
+      step(
+          client -> {
+            var screen = terminal(client);
+            var view = screen.getMenu().view();
+            if (view.busy() || waited() < 4) return false;
+            boolean modeShown = hasButton(client, mode), arrowShown = hasButton(client, arrow);
+            if (modeShown && arrowShown) return !view.rows().isEmpty();
+            if (!modeShown) press(client, labelOfSort(client));
+            else press(client, arrow.equals("↓") ? "↑" : "↓");
+            return false;
+          });
+      waitTicks(4);
+      step(
+          client -> {
+            captures.grab(
+                client,
+                "terminal-sort-"
+                    + mode.toLowerCase(java.util.Locale.ROOT)
+                    + (arrow.equals("↑") ? "-reversed" : "")
+                    + "-scale-4.png");
+            evidence.append(
+                "terminal sort "
+                    + mode
+                    + " "
+                    + arrow
+                    + ": "
+                    + terminal(client).getMenu().view().rows().stream()
+                        .map(row -> row.icon())
+                        .toList()
+                    + "\n");
+            return true;
+          });
+    }
+    step(client -> press(client, "Fluids"));
+    for (int value : new int[] {4, 1}) {
+      step(
+          client -> {
+            setScale(client, value);
+            return true;
+          });
+      step(
+          client -> {
+            var view = terminal(client).getMenu().view();
+            if (view.busy() || waited() < 8 || view.rows().size() < 2) return false;
+            captures.grab(client, "terminal-fluids-scale-" + value + ".png");
+            return true;
+          });
+    }
+    step(
+        client -> {
+          client.setScreen(null);
+          return true;
+        });
+  }
+
+  private static boolean hasButton(Minecraft client, String label) {
+    for (var child : client.screen.children())
+      if (child instanceof Button button
+          && button.visible
+          && button.getMessage().getString().equals(label)) return true;
+    return false;
+  }
+
+  /** The sort button's current label: whichever of the three mode names is shown. */
+  private static String labelOfSort(Minecraft client) {
+    for (var label : new String[] {"Name", "Qty", "Mod"})
+      if (hasButton(client, label)) return label;
+    return "";
+  }
+
   private void jobsTour(BlockPos base) {
     server(PresentationScenes::jobs);
     serverUntil(player -> valid(player, PresentationScenes.JOB_UNIT) && planks(player) == 0);
@@ -1181,6 +1288,7 @@ public final class PresentationClientVerification {
     scales("terminal", TerminalScreen.class, true);
     craftingTour(base);
     jobsTour(base);
+    sortAndFluidTour(base);
     use(base.east(), Direction.SOUTH, false);
     step(client -> client.screen instanceof DriveScreen && waited() > 4);
     step(

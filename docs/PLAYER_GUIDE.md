@@ -102,7 +102,8 @@ Deposit and withdrawing needs Withdraw.
 
 - **Search:** type a name or ID; `@minecraft` matches a mod and
   `#minecraft:planks` matches a tag.
-- **Sort:** Name/Qty changes the order. Your search and sort are remembered.
+- **Sort:** the sort button cycles Name, Qty and Mod; the arrow beside it reverses the
+  order. Your search and sort are remembered.
 - **Taking items:** left-click takes a stack and right-click takes half. Shift-click
   sends the stack to your inventory.
 - **Depositing:** click the grid with items on your cursor, or Shift-click an

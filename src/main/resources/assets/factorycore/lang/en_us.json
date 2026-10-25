@@ -1,7 +1,9 @@
 {
   "gui.factorycore.terminal.sort.0": "Name",
   "gui.factorycore.terminal.sort.1": "Qty",
-  "gui.factorycore.terminal.sort.help": "Sort by name A–Z or total quantity, highest first. Search names/IDs, @mod or #tag.",
+  "gui.factorycore.terminal.sort.2": "Mod",
+  "gui.factorycore.terminal.sort.help": "Sort by name A–Z, total quantity (highest first) or mod. Search names/IDs, @mod or #tag.",
+  "gui.factorycore.terminal.sort.direction.help": "Reverse the sort order.",
   "block.factorycore.storage_drive": "Storage Drive",
   "item.factorycore.expansion_module": "Expansion Module",
   "item.factorycore.advanced_module": "Advanced Module",

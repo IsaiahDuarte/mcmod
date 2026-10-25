@@ -102,13 +102,19 @@ view cells, portable cells and cross-dimension links. See Wave G.
   at scale 1 they stay full size (half-size glyphs would be under one pixel) and shrink to fit.
   Counts are truncated, never rounded up (`1.0k`, `989k`, `9.2E`).
 
-- [ ] **P2 — Sort and fluid icons (G15).** Size S. Lane T.
+- [x] **P2 — Sort and fluid icons (G15).** Size S. Lane T.
   Add **Mod** sort and an ascending/descending toggle, saved with the existing per-player
   search preferences (ADR 0052). Render fluids with their still texture and tint instead
   of a bucket.
   Files: `TerminalScreen.java`, `TerminalMenu.java`, terminal preference codec.
   Done when: native test round-trips the new preference fields; client tour shows each
   sort and a water/lava fluid grid at scales 1 and 4.
+  Evidence: `TerminalSearchSupportTest`, `TerminalPacketsTest`, the extended
+  `TerminalGameTests` sort test (reversed quantity persisted across reopen, invalid mode
+  refused); presentation tour `terminal-sort-{qty,mod,mod-reversed,name-reversed,name}-scale-4.png`
+  and `terminal-fluids-scale-{1,4}.png` (row orders logged in `client-presentation/result.txt`).
+  The direction is a bit in the existing `Sort` preference, so the saved schema did not change.
+  The terminal tour passed on a rerun after one real-cursor Buffer hover flake.
 
 - [ ] **P3 — Status and Access fixes (G16).** Size S. Lane T.
   Wrap or abbreviate the status strip so it never truncates mid-word (full text on hover

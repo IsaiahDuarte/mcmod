@@ -448,10 +448,15 @@ public final class TerminalClientVerification {
         click(screen, "Qty");
       }
       case 8 -> {
+        // The sort button cycles Name → Qty → Mod → Name.
+        if (view.sort() != TerminalSearchSupport.MOD) return;
+        click(screen, "Mod");
+      }
+      case 9 -> {
         if (view.sort() != TerminalSearchSupport.NAME) return;
         search(screen, "");
       }
-      case 9 -> {
+      case 10 -> {
         if (!view.search().isEmpty()
             || view.rows().size() != Math.min(view.size(), 110)
             || view.total() != 110) return;

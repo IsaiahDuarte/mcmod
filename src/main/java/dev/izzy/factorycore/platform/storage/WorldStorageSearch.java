@@ -137,7 +137,7 @@ public final class WorldStorageSearch {
       ResourceKind kind,
       String text,
       int sort) {
-    if (sort < TerminalSearchSupport.NAME || sort > TerminalSearchSupport.QUANTITY)
+    if (!TerminalSearchSupport.validSort(sort))
       throw new IllegalArgumentException("Invalid terminal sort");
     checkThread();
     Objects.requireNonNull(id);

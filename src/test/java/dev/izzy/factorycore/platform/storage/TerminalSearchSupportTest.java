@@ -63,7 +63,51 @@ class TerminalSearchSupportTest {
         List.of(z, b, a).stream()
             .sorted(TerminalSearchSupport.order(TerminalSearchSupport.NAME, names::get))
             .toList());
-    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(2, names::get));
+    assertEquals(
+        List.of(z, b, a),
+        List.of(a, z, b).stream()
+            .sorted(
+                TerminalSearchSupport.order(
+                    TerminalSearchSupport.NAME | TerminalSearchSupport.REVERSED, names::get))
+            .toList());
+    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(3, names::get));
+    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(8, names::get));
+    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(-1, names::get));
+  }
+
+  @Test
+  void modSortGroupsByNamespaceThenNameAndReverses() {
+    var vanillaZ = new ResourceKey(ResourceKind.ITEM, "minecraft:zinc", new byte[0]);
+    var vanillaA = new ResourceKey(ResourceKind.ITEM, "minecraft:apple", new byte[0]);
+    var modded = new ResourceKey(ResourceKind.ITEM, "alpha:widget", new byte[0]);
+    var names = Map.of(vanillaZ, "Zinc", vanillaA, "Apple", modded, "Widget");
+    var rows =
+        List.of(
+            row(vanillaZ, BigInteger.ONE),
+            row(modded, BigInteger.TWO),
+            row(vanillaA, BigInteger.TEN));
+    var mod =
+        rows.stream()
+            .sorted(TerminalSearchSupport.order(TerminalSearchSupport.MOD, names::get))
+            .map(r -> r.key())
+            .toList();
+    assertEquals(List.of(modded, vanillaA, vanillaZ), mod);
+    var back =
+        rows.stream()
+            .sorted(
+                TerminalSearchSupport.order(
+                    TerminalSearchSupport.MOD | TerminalSearchSupport.REVERSED, names::get))
+            .map(r -> r.key())
+            .toList();
+    assertEquals(List.of(vanillaZ, vanillaA, modded), back);
+    var quantityUp =
+        rows.stream()
+            .sorted(
+                TerminalSearchSupport.order(
+                    TerminalSearchSupport.QUANTITY | TerminalSearchSupport.REVERSED, names::get))
+            .map(r -> r.key())
+            .toList();
+    assertEquals(List.of(vanillaZ, modded, vanillaA), quantityUp);
   }
 
   private static CatalogCounts.Row row(ResourceKey key, BigInteger amount) {

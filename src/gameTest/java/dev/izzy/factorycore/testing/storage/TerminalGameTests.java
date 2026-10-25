@@ -222,6 +222,42 @@ public final class TerminalGameTests {
                   f.player.getInventory().isEmpty()
                       && f.saved.registry().stock(f.cell, f.key).total() == 32,
                   "All searches and sorts are read-only");
+            })
+        .thenExecute(
+            () ->
+                command(
+                    f,
+                    TerminalPackets.SORT,
+                    TerminalSearchSupport.QUANTITY | TerminalSearchSupport.REVERSED,
+                    1,
+                    new byte[32]))
+        .thenWaitUntil(
+            () -> {
+              loaded(helper, f);
+              helper.assertTrue(
+                  menu(f).view().rows().getFirst().total().equals("32"),
+                  "Reversed quantity sort lists the smallest total first");
+            })
+        .thenExecute(
+            () -> {
+              f.player.closeContainer();
+              open(helper, f);
+            })
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  menu(f).view().sort()
+                          == (TerminalSearchSupport.QUANTITY | TerminalSearchSupport.REVERSED)
+                      && menu(f).view().rows().getFirst().total().equals("32"),
+                  "Sort direction is persisted per player and restored on reopen");
+              boolean refused = false;
+              try {
+                command(f, TerminalPackets.SORT, 3, 1, new byte[32]);
+              } catch (IllegalArgumentException expected) {
+                refused = true;
+              }
+              helper.assertTrue(refused, "An invalid sort mode is refused at decode");
               logout(f);
             })
         .thenSucceed();
