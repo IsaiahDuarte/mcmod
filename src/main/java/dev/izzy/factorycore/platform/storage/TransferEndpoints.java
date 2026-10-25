@@ -512,10 +512,23 @@ final class TransferEndpoints {
           || !target.scope().network().equals(from.scope().network())) return false;
       var view = networks.storage(actor, origin, key, operation);
       return view.decision() == NetworkAuthority.Decision.ALLOWED
-          && view.segments().contains(target.scope().segment());
+          && view.segments().contains(target.scope().segment())
+          && admits(handle, key, operation);
     } catch (IllegalArgumentException | IllegalStateException unavailable) {
       return false;
     }
+  }
+
+  /** B3: a partitioned cell refuses deposits outside its filter; other operations are open. */
+  private boolean admits(
+      DeviceRegistry.Handle handle, ResourceKey key, NetworkPermissions.Permission operation) {
+    if (operation != NetworkPermissions.Permission.DEPOSIT) return true;
+    if (!(physical(handle) instanceof StorageDriveEntity drive)) return true;
+    var partition =
+        drive
+            .cell(saved.registry().definition(handle).location().slot())
+            .get(StorageContent.PARTITION.get());
+    return partition == null || partition.filter().matches(key, new PlatformFilterTags(server));
   }
 
   BlockEntity physical(DeviceRegistry.Handle handle) {

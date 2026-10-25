@@ -119,6 +119,98 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
     return true;
   }
 
+  /** B3: edits the partition of the cell in a bay, at once, if the player may EDIT here. */
+  public void filter(ServerPlayer sender, DrivePackets.FilterCommand packet) {
+    if (drive == null
+        || !session.fromViewer(sender, packet.menu(), packet.session())
+        || !stillValid(sender)
+        || !session.admitRate()) return;
+    var networks = dev.izzy.factorycore.platform.network.WorldNetworks.get(sender.server);
+    if (!networks.allows(
+        dev.izzy.factorycore.platform.Actors.of(sender),
+        Positions.of(sender.serverLevel(), drive.getBlockPos()),
+        dev.izzy.factorycore.core.network.NetworkPermissions.Permission.EDIT)) {
+      status = "denied";
+      session.pollNow();
+      return;
+    }
+    var cell = drive.cell(packet.bay());
+    if (!(cell.getItem() instanceof CellItem item)) return;
+    var kind = item.tier().kind();
+    var current = cell.get(StorageContent.PARTITION.get());
+    var filter =
+        current == null
+            ? dev.izzy.factorycore.core.resource.ResourceFilter.all(kind)
+            : current.filter();
+    var terms = new ArrayList<>(filter.terms());
+    var mode = filter.mode();
+    detail = "";
+    try {
+      switch (packet.action()) {
+        case DrivePackets.FilterCommand.CARRIED -> {
+          var term = FilterEdits.carried(kind, getCarried());
+          if (term == null) return;
+          terms.add(term);
+        }
+        case DrivePackets.FilterCommand.CYCLE -> {
+          if (packet.selection() >= terms.size()) return;
+          var next =
+              FilterEdits.cycle(
+                  kind,
+                  terms.get(packet.selection()),
+                  packet.text(),
+                  new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                      sender.registryAccess()));
+          if (next == null) {
+            status = "stale";
+            session.pollNow();
+            return;
+          }
+          terms.set(packet.selection(), next);
+        }
+        case DrivePackets.FilterCommand.REMOVE -> {
+          if (packet.selection() >= terms.size()) return;
+          terms.remove(packet.selection());
+        }
+        case DrivePackets.FilterCommand.CLEAR -> terms.clear();
+        case DrivePackets.FilterCommand.REGISTRY ->
+            terms.add(
+                new dev.izzy.factorycore.core.resource.ResourceFilter.Registry(packet.text()));
+        case DrivePackets.FilterCommand.TAG -> {
+          String text = packet.text();
+          terms.add(
+              new dev.izzy.factorycore.core.resource.ResourceFilter.Tag(
+                  text.startsWith("#") ? text.substring(1) : text));
+        }
+        case DrivePackets.FilterCommand.MODE ->
+            mode =
+                switch (mode) {
+                  case ALL -> dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE;
+                  case INCLUDE -> dev.izzy.factorycore.core.resource.ResourceFilter.Mode.EXCLUDE;
+                  case EXCLUDE -> dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL;
+                };
+        default -> {
+          return;
+        }
+      }
+      // A first slot starts an allow list; an empty list, or "everything", removes the partition.
+      if (packet.action() != DrivePackets.FilterCommand.MODE) {
+        if (terms.isEmpty()) mode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL;
+        else if (mode == dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL)
+          mode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE;
+      } else if (mode == dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL) terms.clear();
+      if (mode != dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL && terms.isEmpty())
+        mode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL;
+      drive.setPartition(
+          packet.bay(), new dev.izzy.factorycore.core.resource.ResourceFilter(kind, mode, terms));
+      status = "partitioned";
+    } catch (IllegalArgumentException | IllegalStateException refused) {
+      status = "refused";
+      detail = String.valueOf(refused.getMessage());
+    }
+    session.pollNow();
+  }
+
   private static void give(Player player, ItemStack stack) {
     if (!player.getInventory().add(stack)) player.drop(stack, false);
   }
@@ -198,6 +290,7 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
         continue;
       }
       var definition = owner == null ? null : owner.definition();
+      var partition = cell.get(StorageContent.PARTITION.get());
       bays.add(
           new DrivePackets.Bay(
               BuiltInRegistries.ITEM.getKey(item).toString(),
@@ -205,7 +298,14 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
               owner == null ? 0 : owner.total(),
               definition == null ? item.tier().capacity() : definition.capacity(),
               definition == null ? item.tier().infinite() : definition.infinite(),
-              owner == null ? 0 : owner.types()));
+              owner == null ? 0 : owner.types(),
+              partition == null ? "ALL" : partition.filter().mode().name(),
+              partition == null
+                  ? java.util.List.of()
+                  : FilterEdits.rules(
+                      partition.filter(),
+                      new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                          session.player().registryAccess()))));
     }
     boolean faulted = !drive.diagnostic().isEmpty() && status.equals("ready");
     return new DrivePackets.View(

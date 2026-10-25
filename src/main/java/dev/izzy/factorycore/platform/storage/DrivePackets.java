@@ -25,13 +25,81 @@ public final class DrivePackets {
    * counts exact identities with positive stored quantities, including reserved stock.
    */
   public record Bay(
-      String item, boolean fluid, long total, long capacity, boolean infinite, int types) {
-    public static final Bay EMPTY = new Bay("", false, 0, 0, false, 0);
+      String item,
+      boolean fluid,
+      long total,
+      long capacity,
+      boolean infinite,
+      int types,
+      String partitionMode,
+      List<FilterEdits.Rule> partition) {
+    public static final Bay EMPTY = new Bay("", false, 0, 0, false, 0, "ALL", List.of());
 
+    /** B3: {@code partitionMode} is ALL, INCLUDE or EXCLUDE; {@code partition} its slots. */
     public Bay {
-      if (item.length() > 96 || total < 0 || capacity < 0 || types < 0)
+      partition = List.copyOf(partition);
+      if (item.length() > 96
+          || total < 0
+          || capacity < 0
+          || types < 0
+          || partitionMode.length() > 16
+          || partition.size() > dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS)
         throw new IllegalArgumentException("Invalid drive bay");
     }
+  }
+
+  /**
+   * B3 partition edits for {@code bay}, applied to the cell at once (the Drive has no Apply step)
+   * under EDIT. MODE cycles all → only listed → all but listed; the others mirror the ghost slots.
+   */
+  public record FilterCommand(
+      int menu, UUID session, int bay, int action, int selection, String text)
+      implements CustomPacketPayload {
+    public static final int CARRIED = 0,
+        CYCLE = 1,
+        REMOVE = 2,
+        CLEAR = 3,
+        REGISTRY = 4,
+        TAG = 5,
+        MODE = 6;
+
+    public static final Type<FilterCommand> TYPE =
+        new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "drive_filter"));
+
+    public FilterCommand {
+      if (bay < 0
+          || bay >= BAYS
+          || action < CARRIED
+          || action > MODE
+          || selection < 0
+          || selection >= dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS
+          || text.length() > 256)
+        throw new IllegalArgumentException("Invalid drive filter command");
+    }
+
+    @Override
+    public Type<FilterCommand> type() {
+      return TYPE;
+    }
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, FilterCommand> CODEC =
+        StreamCodec.of(
+            (b, v) -> {
+              b.writeVarInt(v.menu);
+              b.writeUUID(v.session);
+              b.writeVarInt(v.bay);
+              b.writeVarInt(v.action);
+              b.writeVarInt(v.selection);
+              b.writeUtf(v.text, 256);
+            },
+            b ->
+                new FilterCommand(
+                    b.readVarInt(),
+                    b.readUUID(),
+                    b.readVarInt(),
+                    b.readVarInt(),
+                    b.readVarInt(),
+                    b.readUtf(256)));
   }
 
   /**
@@ -68,6 +136,9 @@ public final class DrivePackets {
                 b.writeVarLong(bay.capacity);
                 b.writeBoolean(bay.infinite);
                 b.writeVarInt(bay.types);
+                b.writeUtf(bay.partitionMode, 16);
+                b.writeVarInt(bay.partition.size());
+                for (var rule : bay.partition) FilterEdits.Rule.write(b, rule);
               }
               b.writeUtf(v.status, 16);
               b.writeUtf(v.detail, 128);
@@ -77,15 +148,20 @@ public final class DrivePackets {
               UUID session = b.readUUID();
               long revision = b.readVarLong();
               var bays = new ArrayList<Bay>(BAYS);
-              for (int i = 0; i < BAYS; i++)
-                bays.add(
-                    new Bay(
-                        b.readUtf(96),
-                        b.readBoolean(),
-                        b.readVarLong(),
-                        b.readVarLong(),
-                        b.readBoolean(),
-                        b.readVarInt()));
+              for (int i = 0; i < BAYS; i++) {
+                String item = b.readUtf(96);
+                boolean fluid = b.readBoolean();
+                long total = b.readVarLong(), capacity = b.readVarLong();
+                boolean infinite = b.readBoolean();
+                int types = b.readVarInt();
+                String mode = b.readUtf(16);
+                int size = b.readVarInt();
+                if (size < 0 || size > dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS)
+                  throw new IllegalArgumentException("Partition rule count");
+                var rules = new ArrayList<FilterEdits.Rule>(size);
+                for (int r = 0; r < size; r++) rules.add(FilterEdits.Rule.read(b));
+                bays.add(new Bay(item, fluid, total, capacity, infinite, types, mode, rules));
+              }
               return new View(menu, session, revision, bays, b.readUtf(16), b.readUtf(128));
             });
   }
@@ -93,7 +169,9 @@ public final class DrivePackets {
   private DrivePackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    MenuPayloads.toClient(
-        event.registrar("1"), View.TYPE, View.CODEC, DriveMenu.class, DriveMenu::accept);
+    var registrar = event.registrar("2");
+    MenuPayloads.toClient(registrar, View.TYPE, View.CODEC, DriveMenu.class, DriveMenu::accept);
+    MenuPayloads.toServer(
+        registrar, FilterCommand.TYPE, FilterCommand.CODEC, DriveMenu.class, DriveMenu::filter);
   }
 }

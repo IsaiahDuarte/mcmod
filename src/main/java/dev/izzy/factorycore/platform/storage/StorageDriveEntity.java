@@ -74,6 +74,26 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     return cells[slot].copy();
   }
 
+  /**
+   * B3: sets or clears (null, or an ALL filter) the partition of the cell in {@code slot} where it
+   * sits. Contents, identity and reservations are untouched; only what may be put in changes.
+   */
+  public void setPartition(int slot, dev.izzy.factorycore.core.resource.ResourceFilter filter) {
+    requireUsable();
+    checkSlot(slot);
+    if (!(cells[slot].getItem() instanceof CellItem item))
+      throw new IllegalStateException("That drive bay is empty");
+    if (filter == null
+        || filter.mode() == dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL)
+      cells[slot].remove(StorageContent.PARTITION.get());
+    else {
+      if (filter.kind() != item.tier().kind())
+        throw new IllegalArgumentException("Partition kind does not match the cell");
+      cells[slot].set(StorageContent.PARTITION.get(), new CellPartition(filter));
+    }
+    setChanged();
+  }
+
   // ServerLevel is borrowed from Minecraft; this device must never close the world.
   public DeviceRegistry.Location location(int slot) {
     checkSlot(slot);

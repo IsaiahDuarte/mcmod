@@ -1739,6 +1739,48 @@ public final class PresentationClientVerification {
         });
     step(client -> client.player.containerMenu.getCarried().isEmpty() && waited() > 4);
     scales("drive", DriveScreen.class, false);
+    // B3: the partition panel of bay 1, with cobblestone dropped as a recipe viewer would.
+    use(base.east(), Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof DriveScreen) || waited() < 6) return false;
+          setScale(client, 4);
+          return press(client, "⚙");
+        });
+    step(
+        client -> {
+          var screen = (DriveScreen) client.screen;
+          if (!screen.getMenu().view().bays().getFirst().partition().isEmpty()) return waited() > 4;
+          if (waited() % 10 == 5)
+            screen.addFilterId(
+                dev.izzy.factorycore.core.resource.ResourceKind.ITEM, "minecraft:cobblestone");
+          return false;
+        });
+    step(
+        client -> {
+          captures.grab(client, "drive-partition-scale-4.png");
+          setScale(client, 1);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          captures.grab(client, "drive-partition-scale-1.png");
+          var screen = (DriveScreen) client.screen;
+          // Remove the partition again so later scenes store items as before.
+          return screen.mouseClicked(
+              screen.filterArea().getX() + 9, screen.filterArea().getY() + 9, 1);
+        });
+    step(
+        client -> {
+          var screen = (DriveScreen) client.screen;
+          if (!screen.getMenu().view().bays().getFirst().partition().isEmpty() || waited() < 4)
+            return false;
+          setScale(client, 2);
+          client.screen.onClose();
+          return true;
+        });
+    step(client -> client.screen == null && waited() > 4);
     // B1: one ghost slot per match kind (Item, Exact, Tag) in the Buffer's saved filter.
     server(
         player -> {

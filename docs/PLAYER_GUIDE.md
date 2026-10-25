@@ -80,6 +80,13 @@ install it. Click a filled bay to pick its cell up, or Shift-click it to send th
 cell to your inventory. Sneak-use with an empty hand takes out the first cell.
 Breaking the drive drops its cells with their contents.
 
+**Partitioning a cell:** the **⚙** button on a bay opens that cell's partition. It
+works like the other filter slots: click a slot holding an item, drag from JEI, or
+**Add by ID…**, then choose whether the network may put in only the listed items or
+everything but them. The cell keeps its partition when it is moved or upgraded, and
+everything already in it stays visible and can be taken out. Changing a partition
+needs Edit access.
+
 | Cell tier | Items | Fluids |
 | --- | --- | --- |
 | Starter | 8,192 items | 16,000 mB |

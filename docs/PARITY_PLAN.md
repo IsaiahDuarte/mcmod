@@ -294,7 +294,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
   filter. Screen: a **Filter…** tab (the screen cannot grow past 240 units at scale 4),
   `connector-filter-scale-{1,4}.png`. B1: 5b00a9d.
 
-- [ ] **B3 — Cell partitions (G6).** Size M.
+- [x] **B3 — Cell partitions (G6).** Size M.
   A cell carries an optional filter component, edited from its Drive bay (B1 widget).
   Same insertion-only rule as B2. Upgrades keep the filter. Partition and priority
   together let players build sorting systems without chests.
@@ -302,6 +302,14 @@ view cells, portable cells and cross-dimension links. See Wave G.
   `WorldStorageRoutes.java`, cell persistence schema.
   Done when: GameTests cover partitioned insert, upgrade keeping the partition, and an
   existing cell outside the partition still being withdrawable.
+  Evidence: `DrivePartitionGameTests` (the screen's own command makes a cobblestone-only
+  partition; logs are refused and stay with the player while it is the only cell, then go
+  to a second cell and never into the partitioned one; cobblestone goes in; dirt stored
+  before the partition stays listed and is withdrawn; an in-place upgrade keeps the
+  partition and contents; a fluid partition on an item cell is refused); presentation
+  `drive-scale-4.png` (⚙ per bay) and `drive-partition-scale-{1,4}.png`. Stored as the
+  `cell_partition` item component (documented in PERSISTENCE). The check sits in the
+  digital endpoint's DEPOSIT permission, so every insertion path respects it. B2: 7fd1780.
 
 - [ ] **B4 — Drive and cell priority.** Size S.
   Add a per-drive priority (Storage-mode containers already have one) so partitioned cells

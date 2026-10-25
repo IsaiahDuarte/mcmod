@@ -39,6 +39,19 @@ public final class StorageContent {
       FactoryRegistries.menu("storage_drive", DriveMenu::new);
   private static final EnumMap<CellTier, DeferredItem<CellItem>> CELLS =
       new EnumMap<>(CellTier.class);
+
+  /** B3: a cell's partition; see {@link CellPartition}. */
+  public static final net.neoforged.neoforge.registries.DeferredHolder<
+          net.minecraft.core.component.DataComponentType<?>,
+          net.minecraft.core.component.DataComponentType<CellPartition>>
+      PARTITION =
+          FactoryRegistries.COMPONENTS.registerComponentType(
+              "cell_partition",
+              builder ->
+                  builder
+                      .persistent(CellPartition.CODEC)
+                      .networkSynchronized(CellPartition.STREAM_CODEC));
+
   public static final DeferredItem<CellUpgradeItem> EXPANSION =
       FactoryRegistries.ITEMS.register("expansion_module", () -> new CellUpgradeItem(1));
   public static final DeferredItem<CellUpgradeItem> ADVANCED =

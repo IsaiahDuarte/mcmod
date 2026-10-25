@@ -291,3 +291,13 @@ inventory; it never replays extraction or writes into an unrelated menu's cursor
 Unknown pending calls stay quarantined. A context-four fixture and compressed
 canonical reload check accompany the existing world/context goldens. Independent
 player/world save ordering remains outside the normal-save guarantee.
+
+## Cell partitions — parity slice B3 (2026-10-25)
+
+A cell's partition is the `factorycore:cell_partition` item component on the cell stack
+(`CellPartition`, the `FilterCodec` compound: `Kind`, `Mode`, `Terms`). It is saved with the
+cell wherever the stack is saved (drive bays, inventories) and is copied by cell upgrades,
+so no world or drive schema changes. A malformed value fails to decode, so the stack (and a
+drive holding it) goes to the existing data-recovery path instead of loading as an
+unpartitioned cell; an older build without the component type also rejects the stack.
+Removing a partition removes the component, restoring the earlier bytes.
