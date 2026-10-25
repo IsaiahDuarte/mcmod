@@ -35,5 +35,7 @@ public final class TerminalClient {
     event.register(NetworkContent.POLICY_MENU.get(), GatewayPolicyScreen::new);
     event.register(NetworkContent.ACCESS_MENU.get(), NetworkAccessScreen::new);
     event.register(RecoveryContent.MENU.get(), RecoveryScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.signal.SignalContent.MENU.get(), SignalScreen::new);
   }
 }

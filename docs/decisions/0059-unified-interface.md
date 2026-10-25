@@ -94,3 +94,26 @@ the block entity, and places the new kind with a fresh item. GameTests cover eac
 refusal, six consecutive switches leaving exactly one lease with all old ids
 retired, and the screen button path.
 
+## Amendment — Signal mode (parity C1, 2026-10-25)
+
+PD1 chose a fourth Interface mode over a separate block. `InterfaceKind.SIGNAL` uses the
+Buffer's full-block shape, wires on all six faces and emits the same weak power on every
+side. It holds no lease, contents or upgrades, so switching into or out of it needs only
+EDIT and the device's reach; the new mode is placed fresh and a Signal switched back to
+starts unset.
+
+- **Authority.** The signal reads storage under the grants of the player who last applied
+  its settings (EDIT to apply). Losing VIEW turns it off with the reason "denied"; it
+  never reads under a wider identity.
+- **Bounded work.** `WorldSignals` evaluates each tracked signal at most once per 20 ticks,
+  at most 4,096 signals, through the scheduler-backed paged catalog (at most 640 pages).
+  Busy or over-limit evaluation keeps the last output and says why.
+- **Neighbor updates.** A strength change notifies only non-network neighbors. Network
+  blocks treat neighbor updates as topology changes and read no redstone; notifying them
+  rebuilt the network and briefly refused permissions (regression-tested).
+- **Scope.** One watched resource rather than a filter; a filter condition can come later
+  without a schema break (`FactoryCoreSignal` Schema 1).
+
+Alternatives: a separate Level Emitter block (rejected by PD1: another item and recipe for
+one behavior); evaluating every tick (unbounded on large networks).
+

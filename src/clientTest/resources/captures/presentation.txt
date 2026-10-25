@@ -96,3 +96,6 @@ connector-filter-scale-4.png
 connector-filter-scale-1.png
 drive-partition-scale-4.png
 drive-partition-scale-1.png
+signal-scale-4.png
+signal-scale-1.png
+signal-lamp-lit.png

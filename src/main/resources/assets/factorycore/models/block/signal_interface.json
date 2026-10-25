@@ -1,0 +1,6 @@
+{
+  "parent": "factorycore:block/buffered_interface",
+  "textures": {
+    "slot": "factorycore:block/signal_slot"
+  }
+}

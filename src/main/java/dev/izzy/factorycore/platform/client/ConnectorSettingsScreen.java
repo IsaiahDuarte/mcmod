@@ -200,9 +200,9 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
         InterfaceKind.STORAGE,
         leftPos + 60,
         topPos + 188,
-        78,
+        58,
         0,
-        74,
+        56,
         18);
     if (draft == null) load(menu.view().form());
     else {

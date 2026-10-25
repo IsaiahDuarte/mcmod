@@ -60,6 +60,16 @@ public final class InterfaceSwitch {
     if (!(state.getBlock() instanceof InterfaceBlock)) return Outcome.FAULT;
     if (state.getValue(InterfaceBlock.KIND) == target) return Outcome.SAME;
     var entity = level.getBlockEntity(position);
+    // C1: a Signal Interface has no lease, contents or upgrades; switching it only needs EDIT.
+    if (entity instanceof dev.izzy.factorycore.platform.signal.SignalInterfaceEntity signal) {
+      if (!signal.canUse(player)
+          || !WorldNetworks.get(player.server)
+              .allows(Actors.of(player), signal.origin(), NetworkPermissions.Permission.EDIT))
+        return Outcome.DENIED;
+      level.removeBlockEntity(position);
+      level.setBlock(position, state.setValue(InterfaceBlock.KIND, target), Block.UPDATE_ALL);
+      return placeFresh(player, level.getBlockEntity(position));
+    }
     NodeRegistry.Handle lease;
     NodeRegistry.Position at;
     ThroughputTier tier;
@@ -101,10 +111,17 @@ public final class InterfaceSwitch {
     // Same block, new kind: drop the old entity so the chunk creates the new kind's entity.
     level.removeBlockEntity(position);
     level.setBlock(position, state.setValue(InterfaceBlock.KIND, target), Block.UPDATE_ALL);
-    var fresh = level.getBlockEntity(position);
+    return placeFresh(player, level.getBlockEntity(position));
+  }
+
+  /** Places the new kind's device through its own placement path, owned by {@code player}. */
+  private static Outcome placeFresh(
+      ServerPlayer player, net.minecraft.world.level.block.entity.BlockEntity fresh) {
     var item = new ItemStack(InterfaceContent.ITEM.get());
     if (fresh instanceof BufferedInterfaceEntity buffer) buffer.place(item, player.getUUID());
     else if (fresh instanceof ConnectorEntity port) port.place(item);
+    else if (fresh instanceof dev.izzy.factorycore.platform.signal.SignalInterfaceEntity signal)
+      signal.place(player.getUUID());
     else return Outcome.FAULT;
     return Outcome.SWITCHED;
   }

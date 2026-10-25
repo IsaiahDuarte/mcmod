@@ -10,7 +10,12 @@ public enum InterfaceKind implements StringRepresentable {
   /** A labelled machine port with presets ({@link MachineInterfaceEntity}). */
   MACHINE,
   /** Its own nine-slot hopper buffer ({@link BufferedInterfaceEntity}). */
-  BUFFER;
+  BUFFER,
+  /**
+   * C1: emits redstone from a network condition (stock or a running job); no container and no lease
+   * ({@link dev.izzy.factorycore.platform.signal.SignalInterfaceEntity}).
+   */
+  SIGNAL;
 
   @Override
   public String getSerializedName() {

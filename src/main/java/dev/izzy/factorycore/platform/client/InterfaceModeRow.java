@@ -11,8 +11,8 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 
 /**
- * The Storage / Machine / Buffer buttons shared by the three Interface screens (U11, ADR 0059). The
- * current mode's button is disabled; the others ask the server to switch through a menu button.
+ * The Storage / Machine / Buffer / Signal buttons shared by the Interface screens (U11, ADR 0059).
+ * The current mode's button is disabled; the others ask the server to switch through a menu button.
  */
 final class InterfaceModeRow {
   private InterfaceModeRow() {}

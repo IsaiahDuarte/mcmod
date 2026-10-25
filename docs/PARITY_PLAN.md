@@ -324,7 +324,7 @@ view cells, portable cells and cross-dimension links. See Wave G.
 
 ## Wave C — redstone (needs PD1; lane R)
 
-- [ ] **C1 — Signal mode (G8).** Size M.
+- [x] **C1 — Signal mode (G8).** Size M.
   Interface **Signal** mode: emits redstone when a condition holds, re-evaluated on the
   shared scheduler at a bounded interval (not every tick). Conditions: network stock of a
   filter compared with a number (VIEW-checked under the placer's grants), or "a job for
@@ -333,6 +333,13 @@ view cells, portable cells and cross-dimension links. See Wave G.
   settings screen, `InterfaceSwitch.java`.
   Done when: GameTests cover threshold crossing, revoked VIEW (signal off, reason shown),
   network offline (off) and reload; client screenshot of the screen and a lit lamp.
+  Evidence (2026-10-25): `SignalRuleTest` (strength math); `SignalGameTests` — threshold
+  crossing with a lit lamp and proportional 4/8 → 7, no network rebuild on strength change,
+  revoked VIEW → off "denied", controller removed → off "offline", reload and Signal ↔
+  Buffer switching, job condition on while a smelt job runs and off after cancel.
+  `runPresentationClient` PASS with `signal-scale-4.png`, `signal-scale-1.png` and
+  `signal-lamp-lit.png` (inspected). Deviation: one watched resource rather than a filter,
+  and grants are those of whoever last applied (ADR 0059 amendment).
 
 - [ ] **C2 — Redstone control on presets.** Size S.
   Machine and Buffer presets get a redstone setting: Ignore, Active when powered, Active

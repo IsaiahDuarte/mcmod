@@ -255,6 +255,24 @@ The **Inventory** tab shows the nine slots.
 
 Full storage backs items up into the buffer and then the hopper; nothing is voided.
 
+### Signal mode
+
+A Signal-mode Interface is a redstone output for the network. Choose it from the Mode row
+of any Interface screen. In its screen:
+
+- **Watch**: click the slot holding an item (a filled bucket or tank watches its fluid),
+  drag from JEI, or use **Add by ID…**.
+- **When**: *amount stored* compares network stock with a number (≥ or <; items, or mB for
+  fluids), or *a crafting job runs* turns on while a job for that item is running.
+- **Output**: *full 15*, or *proportional*, which rises like a comparator to 15 at the
+  number.
+- **Apply** saves it. The signal then reads storage with your access, so you need Edit
+  access to apply. It updates about once a second.
+
+It turns off and shows why when nothing is chosen, the network is offline, or whoever
+applied it can no longer view storage. Breaking it drops a plain Interface; its settings
+are not kept.
+
 ## Patterns and the Crafter
 
 Craft Blank Patterns.

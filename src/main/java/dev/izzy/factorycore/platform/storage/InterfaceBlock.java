@@ -115,7 +115,8 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
   @Override
   protected VoxelShape getShape(
       BlockState state, BlockGetter level, BlockPos position, CollisionContext context) {
-    return state.getValue(KIND) == InterfaceKind.BUFFER
+    var kind = state.getValue(KIND);
+    return kind == InterfaceKind.BUFFER || kind == InterfaceKind.SIGNAL
         ? Shapes.block()
         : SOCKETS.get(state.getValue(BlockStateProperties.FACING));
   }
@@ -126,7 +127,25 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
       case STORAGE -> new ConnectorEntity(position, state);
       case MACHINE -> new MachineInterfaceEntity(position, state);
       case BUFFER -> new BufferedInterfaceEntity(position, state);
+      case SIGNAL ->
+          new dev.izzy.factorycore.platform.signal.SignalInterfaceEntity(position, state);
     };
+  }
+
+  /** C1: only Signal mode emits redstone, the same strength on every side. */
+  @Override
+  protected boolean isSignalSource(BlockState state) {
+    return state.getValue(KIND) == InterfaceKind.SIGNAL;
+  }
+
+  @Override
+  protected int getSignal(
+      BlockState state, BlockGetter level, BlockPos position, Direction direction) {
+    return state.getValue(KIND) == InterfaceKind.SIGNAL
+            && level.getBlockEntity(position)
+                instanceof dev.izzy.factorycore.platform.signal.SignalInterfaceEntity signal
+        ? signal.power()
+        : 0;
   }
 
   @Override
@@ -136,7 +155,11 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
     if (level.isClientSide()) return;
     if (state.getValue(KIND) == InterfaceKind.BUFFER)
       BufferControls.placed(this, level, position, placer, stack);
-    else ConnectorControls.placed(level, position, placer, stack);
+    else if (state.getValue(KIND) == InterfaceKind.SIGNAL) {
+      if (level.getBlockEntity(position)
+              instanceof dev.izzy.factorycore.platform.signal.SignalInterfaceEntity signal
+          && placer != null) signal.place(placer.getUUID());
+    } else ConnectorControls.placed(level, position, placer, stack);
   }
 
   /** Deferred work after placement or upgrades: the buffer Import default, a preset resume. */
@@ -159,6 +182,26 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
   @Override
   protected InteractionResult useWithoutItem(
       BlockState state, Level level, BlockPos position, Player player, BlockHitResult hit) {
+    if (state.getValue(KIND) == InterfaceKind.SIGNAL) {
+      if (player instanceof net.minecraft.server.level.ServerPlayer server
+          && level.getBlockEntity(position)
+              instanceof dev.izzy.factorycore.platform.signal.SignalInterfaceEntity signal) {
+        if (!signal.canUse(server)
+            || !dev.izzy.factorycore.platform.network.WorldNetworks.get(server.server)
+                .allows(
+                    dev.izzy.factorycore.platform.Actors.of(server),
+                    signal.origin(),
+                    dev.izzy.factorycore.core.network.NetworkPermissions.Permission.VIEW)) {
+          server.displayClientMessage(
+              net.minecraft.network.chat.Component.translatable(
+                  "message.factorycore.signal_unavailable"),
+              true);
+          return InteractionResult.CONSUME;
+        }
+        dev.izzy.factorycore.platform.signal.SignalMenu.open(server, signal);
+      }
+      return InteractionResult.sidedSuccess(level.isClientSide());
+    }
     return state.getValue(KIND) == InterfaceKind.BUFFER
         ? BufferControls.use(level, position, player)
         : ConnectorControls.use(level, position, player);
@@ -173,13 +216,17 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
   protected List<ItemStack> dropsOnBreak(BlockEntity entity) {
     if (entity instanceof BufferedInterfaceEntity buffer) return List.of(buffer.portableForBreak());
     if (entity instanceof ConnectorEntity connector) return List.of(connector.portableForBreak());
+    // A Signal Interface has no lease or contents; it drops a plain Interface (settings are lost).
+    if (entity instanceof dev.izzy.factorycore.platform.signal.SignalInterfaceEntity)
+      return List.of(new ItemStack(InterfaceContent.ITEM.get()));
     return List.of();
   }
 
-  /** Storage and Machine connect cables on every face but the socket; Buffer on all six. */
+  /** Storage and Machine connect cables on every face but the socket; Buffer and Signal all six. */
   @Override
   public boolean wiredFace(BlockState state, Direction face) {
     return state.getValue(KIND) == InterfaceKind.BUFFER
+        || state.getValue(KIND) == InterfaceKind.SIGNAL
         || face != state.getValue(BlockStateProperties.FACING);
   }
 }

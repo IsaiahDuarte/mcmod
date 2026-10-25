@@ -63,6 +63,24 @@
     },
     "facing=down,kind=buffer": {
       "model": "factorycore:block/buffered_interface"
+    },
+    "facing=north,kind=signal": {
+      "model": "factorycore:block/signal_interface"
+    },
+    "facing=east,kind=signal": {
+      "model": "factorycore:block/signal_interface"
+    },
+    "facing=south,kind=signal": {
+      "model": "factorycore:block/signal_interface"
+    },
+    "facing=west,kind=signal": {
+      "model": "factorycore:block/signal_interface"
+    },
+    "facing=up,kind=signal": {
+      "model": "factorycore:block/signal_interface"
+    },
+    "facing=down,kind=signal": {
+      "model": "factorycore:block/signal_interface"
     }
   }
 }

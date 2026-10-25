@@ -242,6 +242,8 @@ def block_textures():
     out["contact"] = flat("contact", STEEL, grain=5)
     slot = flat("slot", STEEL, grain=4)
     out["slot"] = slot
+    # C1 Signal-mode Interface tray: a redstone-red slot face.
+    out["signal_slot"] = flat("signal_slot", (178, 40, 34, 255), grain=4)
     interface = Canvas("interface_panel")
     interface.rect(0, 0, 15, 15, SCREEN, grain=4)
     for i in range(0, 16, 3):

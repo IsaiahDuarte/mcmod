@@ -81,6 +81,7 @@ sound or animated renderer is required for these status contracts.
 | Storage- and Machine-mode Interface | Six-direction socket geometry, distinct textures, translated side/type/status inspection | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
 | Storage Terminal | Casing, screen and contacts with original textures | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
 | Buffer-mode Interface | Nine-slot tray geometry and original texture | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
+| Signal-mode Interface (C1) | Buffer tray geometry; original `signal_slot.png` (red slot face from `tools/art/generate_art.py`) on its slot faces; emits redstone on all sides | Presentation screenshot with a lit lamp (parity C1 evidence); held/orientation coverage open |
 | Crafter | Distinct process/crafting symbols, ports and original textures | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
 | Blank/Crafting/Processing Patterns | Distinct original icons; invalid/exclusive-use tooltips | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |
 | Program Controller | Program symbol, original texture, deployment status | [Gallery/icons inspected](evidence/art-client-v1-2026-10-18.md); remaining held/state/orientation coverage open |

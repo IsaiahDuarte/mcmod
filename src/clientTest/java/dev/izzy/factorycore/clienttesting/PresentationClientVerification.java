@@ -751,6 +751,100 @@ public final class PresentationClientVerification {
         });
   }
 
+  /**
+   * C1: a Signal-mode Interface behind the controller with a lamp on it. Through the real screen it
+   * watches stone (one is stored), the threshold is typed down to 1 and applied, and the lamp
+   * lights; the screen is captured at scales 4 and 1 and the lit lamp in the world.
+   */
+  private void signalTour(BlockPos base) {
+    var signalAt = base.north();
+    Vec3[] home = {null};
+    float[] facing = {0, 0};
+    server(
+        player -> {
+          home[0] = player.position();
+          facing[0] = player.getYRot();
+          facing[1] = player.getXRot();
+          var level = player.serverLevel();
+          level.setBlock(
+              signalAt,
+              dev.izzy.factorycore.platform.storage.InterfaceContent.state(
+                  dev.izzy.factorycore.platform.storage.InterfaceKind.SIGNAL, Direction.NORTH),
+              3);
+          ((dev.izzy.factorycore.platform.signal.SignalInterfaceEntity)
+                  level.getBlockEntity(signalAt))
+              .place(player.getUUID());
+          level.setBlock(
+              signalAt.above(),
+              net.minecraft.world.level.block.Blocks.REDSTONE_LAMP.defaultBlockState(),
+              3);
+        });
+    serverUntil(player -> valid(player, signalAt));
+    use(signalAt, Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof dev.izzy.factorycore.platform.client.SignalScreen screen)
+              || waited() < 6) return false;
+          setScale(client, 4);
+          screen.addFilterId(
+              dev.izzy.factorycore.core.resource.ResourceKind.ITEM, "minecraft:stone");
+          return true;
+        });
+    step(
+        client -> {
+          var screen = (dev.izzy.factorycore.platform.client.SignalScreen) client.screen;
+          if (!screen.getMenu().view().resource().equals("minecraft:stone") || waited() < 4)
+            return false;
+          for (var child : screen.children())
+            if (child instanceof net.minecraft.client.gui.components.EditBox box
+                && box.visible
+                && box.getMessage().getString().equals("Amount")) {
+              screen.setFocused(box);
+              box.setFocused(true);
+              box.setValue("");
+              screen.charTyped('1', 0);
+              return screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+            }
+          throw new IllegalStateException("Signal amount box shown");
+        });
+    step(
+        client -> {
+          var view =
+              ((dev.izzy.factorycore.platform.client.SignalScreen) client.screen).getMenu().view();
+          if (view.power() != 15 || waited() < 6) return false;
+          evidence.append("signal: watching stone >= 1 emits ").append(view.power()).append('\n');
+          captures.grab(client, "signal-scale-4.png");
+          setScale(client, 1);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          captures.grab(client, "signal-scale-1.png");
+          setScale(client, 2);
+          client.screen.onClose();
+          return true;
+        });
+    serverUntil(
+        player ->
+            player
+                .serverLevel()
+                .getBlockState(signalAt.above())
+                .getValue(net.minecraft.world.level.block.RedstoneLampBlock.LIT));
+    // From the north, looking south at the lamp on top of the Signal Interface.
+    view(
+        new PresentationScenes.View(
+            signalAt.getX() + 0.5, signalAt.getY() + 3.5, signalAt.getZ() - 2.5, 0, 45),
+        "signal-lamp-lit.png",
+        10);
+    // Later tours reach blocks from where the player stood before.
+    server(
+        player ->
+            player.teleportTo(
+                player.serverLevel(), home[0].x, home[0].y, home[0].z, facing[0], facing[1]));
+    step(client -> client.player.position().distanceToSqr(home[0]) < 0.01 && waited() > 4);
+  }
+
   private boolean toastCaptured;
   private int toastSeen = -1;
 
@@ -1810,6 +1904,7 @@ public final class PresentationClientVerification {
     use(base.east(4), Direction.SOUTH, false);
     scales("machine", MachineSettingsScreen.class, false);
     filterTour(base);
+    signalTour(base);
     use(base.east(6).north(), Direction.SOUTH, false);
     step(
         client ->

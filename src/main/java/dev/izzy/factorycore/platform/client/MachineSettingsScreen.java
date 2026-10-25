@@ -120,9 +120,9 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
         InterfaceKind.MACHINE,
         leftPos + 60,
         topPos + 214,
-        78,
+        58,
         0,
-        74,
+        56,
         18);
     picker =
         addRenderableWidget(
