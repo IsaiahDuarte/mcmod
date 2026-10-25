@@ -34,6 +34,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
@@ -306,6 +307,69 @@ final class PresentationScenes {
         new PatternContents(
             UUID.randomUUID(), 1, 0, cells, new ItemStack(Items.OAK_PLANKS, 4), List.of()));
     ((CrafterEntity) level.getBlockEntity(JOB_UNIT)).patterns().insertItem(0, pattern, false);
+  }
+
+  /** Crafters added beside the Jobs scene so the craftable strip has to scroll (P4). */
+  static final BlockPos[] EXTRA_UNITS = {SCREENS.north(), SCREENS.east(2).north()};
+
+  /** Fills the Jobs Crafter and two more with 22 more outputs (23 craftables in all). */
+  static void manyJobs(ServerPlayer player) {
+    var level = player.serverLevel();
+    Item[] outputs = {
+      Items.STICK,
+      Items.TORCH,
+      Items.CHEST,
+      Items.LADDER,
+      Items.BOWL,
+      Items.OAK_SLAB,
+      Items.OAK_STAIRS,
+      Items.OAK_FENCE,
+      Items.OAK_DOOR,
+      Items.OAK_BUTTON,
+      Items.OAK_SIGN,
+      Items.OAK_TRAPDOOR,
+      Items.OAK_PRESSURE_PLATE,
+      Items.OAK_FENCE_GATE,
+      Items.OAK_BOAT,
+      Items.CRAFTING_TABLE,
+      Items.BARREL,
+      Items.COMPOSTER,
+      Items.BOOKSHELF,
+      Items.LECTERN,
+      Items.LOOM,
+      Items.SMITHING_TABLE
+    };
+    for (var unit : EXTRA_UNITS)
+      level.setBlock(unit, CraftingContent.CRAFTER.get().defaultBlockState(), 3);
+    BlockPos[] units = {JOB_UNIT, EXTRA_UNITS[0], EXTRA_UNITS[1]};
+    for (int index = 0; index < outputs.length; index++) {
+      // Slot 0 of the Jobs Crafter keeps the planks pattern.
+      int slot = (index + 1) % 9, unit = (index + 1) / 9;
+      var cells = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
+      cells.set(0, new ItemStack(Items.OAK_LOG));
+      var pattern = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
+      pattern.set(
+          CraftingContent.PATTERN.get(),
+          new PatternContents(
+              UUID.randomUUID(), 1, 0, cells, new ItemStack(outputs[index]), List.of()));
+      ((CrafterEntity) level.getBlockEntity(units[unit]))
+          .patterns()
+          .insertItem(slot, pattern, false);
+    }
+  }
+
+  /** Removes the extra Crafters and patterns so later scenes see the original Jobs fixture. */
+  static void fewJobs(ServerPlayer player) {
+    var level = player.serverLevel();
+    var unit = (CrafterEntity) level.getBlockEntity(JOB_UNIT);
+    for (int slot = 1; slot < 9; slot++) unit.patterns().setStackInSlot(slot, ItemStack.EMPTY);
+    for (var extra : EXTRA_UNITS) {
+      for (int slot = 0; slot < 9; slot++)
+        ((CrafterEntity) level.getBlockEntity(extra))
+            .patterns()
+            .setStackInSlot(slot, ItemStack.EMPTY);
+      level.removeBlock(extra, false);
+    }
   }
 
   /** Stores the 8 oak logs once the rebuilt network has the cell online again. */

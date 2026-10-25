@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.crafting.CrafterEntity;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
+import dev.izzy.factorycore.platform.crafting.PatternHolderEntity;
 import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -42,6 +43,9 @@ public final class TerminalJobGameTests {
       UNIT = new BlockPos(1, 1, 2),
       TERMINAL = new BlockPos(0, 1, 1);
 
+  /** Ticks between commands so the shared per-session command rate gate admits each one. */
+  private static final int RATE_GAP = 5;
+
   private TerminalJobGameTests() {}
 
   private static ItemStack pattern(int[] cells, Item input, Item output, int count) {
@@ -75,6 +79,138 @@ public final class TerminalJobGameTests {
     for (int index = 0; index < rows.size(); index++)
       if (rows.get(index).icon().equals(id)) return index;
     return -1;
+  }
+
+  /**
+   * P4: 22 craftables from three Crafters scroll one window of eight at a time: any offset, clamped
+   * to the last full window, with indices of later commands relative to the visible window.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void craftableListScrollsByWindow(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    Net.in(h, player.getUUID()).controller(ROOT);
+    Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    Item[] outputs = {
+      Items.STICK,
+      Items.TORCH,
+      Items.CHEST,
+      Items.LADDER,
+      Items.BOWL,
+      Items.OAK_PLANKS,
+      Items.OAK_SLAB,
+      Items.OAK_STAIRS,
+      Items.OAK_FENCE,
+      Items.OAK_DOOR,
+      Items.OAK_BUTTON,
+      Items.OAK_SIGN,
+      Items.OAK_TRAPDOOR,
+      Items.OAK_PRESSURE_PLATE,
+      Items.OAK_FENCE_GATE,
+      Items.OAK_BOAT,
+      Items.CRAFTING_TABLE,
+      Items.BARREL,
+      Items.COMPOSTER,
+      Items.BOOKSHELF,
+      Items.LECTERN,
+      Items.LOOM
+    };
+    BlockPos[] crafters = {UNIT, new BlockPos(1, 1, 0), new BlockPos(1, 2, 1)};
+    for (int index = 0; index < outputs.length; index++) {
+      if (index % PatternHolderEntity.SLOTS == 0)
+        h.setBlock(crafters[index / PatternHolderEntity.SLOTS], CraftingContent.CRAFTER.get());
+      CrafterEntity crafter = h.getBlockEntity(crafters[index / PatternHolderEntity.SLOTS]);
+      crafter
+          .patterns()
+          .insertItem(
+              index % PatternHolderEntity.SLOTS,
+              pattern(new int[] {0}, Items.OAK_LOG, outputs[index], 1),
+              false);
+    }
+    h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
+    TerminalEntity terminal = h.getBlockEntity(TERMINAL);
+    var seen = new java.util.TreeSet<String>();
+    var firstWindow = new ArrayList<TerminalJobPackets.Entry>();
+    var keepTarget = new ArrayList<String>();
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenExecute(
+            () -> {
+              h.useBlock(TERMINAL, player);
+              menu(h, player).broadcastChanges();
+            })
+        .thenWaitUntil(
+            () -> {
+              var m = menu(h, player);
+              m.broadcastChanges();
+              h.assertTrue(
+                  m.jobView().total() == outputs.length, "All craftables counted: " + m.jobView());
+            })
+        .thenExecute(
+            () -> {
+              var first = menu(h, player).jobView();
+              h.assertTrue(
+                  first.offset() == 0 && first.craftables().size() == TerminalJobPackets.ROWS,
+                  "The first window shows eight");
+              for (var row : first.craftables()) seen.add(row.icon());
+              firstWindow.addAll(first.craftables());
+              command(h, player, TerminalJobPackets.WINDOW, 3, 1);
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () -> {
+              var shifted = menu(h, player).jobView();
+              h.assertTrue(
+                  shifted.offset() == 3
+                      && shifted.craftables().getFirst().equals(firstWindow.get(3)),
+                  "Scrolling by three shifts the window by three, not by a page");
+              command(h, player, TerminalJobPackets.WINDOW, 9_999, 1);
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () -> {
+              var last = menu(h, player).jobView();
+              h.assertTrue(
+                  last.offset() == outputs.length - TerminalJobPackets.ROWS
+                      && last.craftables().size() == TerminalJobPackets.ROWS,
+                  "A past-the-end offset clamps to the last full window: " + last.offset());
+              for (var row : last.craftables()) seen.add(row.icon());
+              command(h, player, TerminalJobPackets.WINDOW, 8, 1);
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () -> {
+              var m = menu(h, player);
+              for (var row : m.jobView().craftables()) seen.add(row.icon());
+              h.assertTrue(
+                  seen.size() == outputs.length, "Windows 0, 8 and 14 reach every craftable");
+              keepTarget.add(m.jobView().craftables().get(2).icon());
+              command(h, player, TerminalJobPackets.KEEP, 2, 16);
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () -> {
+              var m = menu(h, player);
+              var row = m.jobView().craftables().get(2);
+              h.assertTrue(
+                  row.icon().equals(keepTarget.getFirst()) && row.amount().equals("16"),
+                  "Row indices are relative to the visible window: " + row);
+              boolean refused = false;
+              try {
+                new TerminalJobPackets.Command(
+                    m.containerId,
+                    m.session(),
+                    m.jobView().revision(),
+                    TerminalJobPackets.WINDOW,
+                    TerminalJobPackets.MAX_OFFSET + 1,
+                    1);
+              } catch (IllegalArgumentException expected) {
+                refused = true;
+              }
+              h.assertTrue(refused, "An offset past the protocol bound is refused at decode");
+            })
+        .thenSucceed();
   }
 
   @GameTest(template = "empty", timeoutTicks = 900)

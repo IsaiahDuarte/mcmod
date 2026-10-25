@@ -132,10 +132,15 @@ view cells, portable cells and cross-dimension links. See Wave G.
   the grid's withdraw payload, and its view-only step retries a stale-revision drop as
   `take()` already did. P1: 83f2b48. P2: f41f84c.
 
-- [ ] **P4 — Jobs list scrolls (G4, part).** Size S. Lane T.
+- [x] **P4 — Jobs list scrolls (G4, part).** Size S. Lane T.
   Replace Home/Next in Jobs with the same scrolling list as Items; remove the `HOME`/`NEXT`
   commands.
   Done when: native job-view tests page by window; client shows 20+ craftables scrolling.
+  Evidence: `TerminalJobGameTests.craftableListScrollsByWindow` (22 craftables, offset 3
+  shifts by three, past-the-end clamps to the last full window, KEEP index relative to the
+  window, out-of-bound offset refused), `TerminalJobPacketsTest`; presentation
+  `jobs-scroll-top-scale-4.png`, `jobs-scrolled-end-scale-{1,4}.png` (23 craftables, one
+  notch moves one, last window offset 15). Payload protocol 4 → 5. P3: 1e3f5b1.
 
 - [ ] **P5 — Visual slot picker (G16, UD4 leftover).** Size M. Lane F.
   Replace First slot / Slot count fields on Machine and Storage modes with a clickable

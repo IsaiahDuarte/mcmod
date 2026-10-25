@@ -15,10 +15,14 @@ import net.minecraft.resources.ResourceLocation;
  * bounded names and exact decimal counts.
  */
 public final class TerminalJobPackets {
-  /** KEEP toggles the viewer's keep-stock rule for a craftable row at {@code amount}. */
-  public static final int HOME = 0, NEXT = 1, PREVIEW = 2, START = 3, CANCEL = 4, KEEP = 5;
+  /**
+   * WINDOW scrolls the craftable list so {@code selection} is the first visible index (clamped to
+   * the last full window); the other actions' {@code selection} is an index into the visible
+   * window. KEEP toggles the viewer's keep-stock rule for a craftable row at {@code amount}.
+   */
+  public static final int WINDOW = 0, PREVIEW = 1, START = 2, CANCEL = 3, KEEP = 4;
 
-  public static final int ROWS = 8, JOBS = 4, MISSING = 3;
+  public static final int ROWS = 8, JOBS = 4, MISSING = 3, MAX_OFFSET = 65_536;
   public static final int MAX_AMOUNT = 4_096;
 
   public record Command(
@@ -29,10 +33,10 @@ public final class TerminalJobPackets {
             ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_job_command"));
 
     public Command {
-      if (action < HOME
+      if (action < WINDOW
           || action > KEEP
           || selection < 0
-          || selection >= ROWS
+          || selection >= (action == WINDOW ? MAX_OFFSET + 1 : ROWS)
           || amount < 1
           || amount > MAX_AMOUNT) throw new IllegalArgumentException("Invalid job command bounds");
     }
@@ -102,7 +106,8 @@ public final class TerminalJobPackets {
       UUID session,
       long revision,
       List<Entry> craftables,
-      boolean next,
+      int offset,
+      int total,
       Entry preview,
       String previewReason,
       int previewSteps,
@@ -120,6 +125,8 @@ public final class TerminalJobPackets {
       missing = List.copyOf(missing);
       jobs = List.copyOf(jobs);
       if (craftables.size() > ROWS
+          || offset < 0
+          || total < offset + craftables.size()
           || missing.size() > MISSING
           || jobs.size() > JOBS
           || previewReason.length() > 64
@@ -153,7 +160,8 @@ public final class TerminalJobPackets {
               buffer.writeUUID(value.session);
               buffer.writeLong(value.revision);
               entries(buffer, value.craftables);
-              buffer.writeBoolean(value.next);
+              buffer.writeVarInt(value.offset);
+              buffer.writeVarInt(value.total);
               Entry.write(buffer, value.preview);
               buffer.writeUtf(value.previewReason, 64);
               buffer.writeVarInt(value.previewSteps);
@@ -174,7 +182,8 @@ public final class TerminalJobPackets {
               UUID session = buffer.readUUID();
               long revision = buffer.readLong();
               var craftables = entries(buffer, ROWS);
-              boolean next = buffer.readBoolean();
+              int offset = buffer.readVarInt();
+              int total = buffer.readVarInt();
               var preview = Entry.read(buffer);
               String reason = buffer.readUtf(64);
               int steps = buffer.readVarInt();
@@ -196,7 +205,8 @@ public final class TerminalJobPackets {
                   session,
                   revision,
                   craftables,
-                  next,
+                  offset,
+                  total,
                   preview,
                   reason,
                   steps,

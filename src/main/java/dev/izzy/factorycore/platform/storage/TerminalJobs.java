@@ -13,9 +13,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
- * Server-side Jobs mode of one terminal session: craftable paging, plan preview, starting the
- * previewed plan, keep-stock toggles and cancelling the viewer's own jobs. {@link TerminalMenu}
- * keeps packet/session validation and rate limiting and calls in only for accepted commands.
+ * Server-side Jobs mode of one terminal session: a scrolled craftable window, plan preview,
+ * starting the previewed plan, keep-stock toggles and cancelling the viewer's own jobs. {@link
+ * TerminalMenu} keeps packet/session validation and rate limiting and calls in only for accepted
+ * commands.
  */
 final class TerminalJobs {
   private static final java.util.Set<String> HEALTHY_RULES =
@@ -29,7 +30,7 @@ final class TerminalJobs {
   private long jobRevision = 1;
   private int craftableOffset;
   private List<ResourceKey> craftables = List.of();
-  private boolean craftablesNext;
+  private int craftableTotal;
   private ResourceKey previewKey;
   private int previewAmount;
   private WorldCraftingJobs.Preview preview;
@@ -58,21 +59,27 @@ final class TerminalJobs {
     return Actors.of(viewer);
   }
 
-  /** Lists craftable outputs of this segment's Crafting Units, eight per page, in key order. */
+  /**
+   * Lists a window of up to {@link TerminalJobPackets#ROWS} craftable outputs of this segment's
+   * Crafters in key order, starting at the scrolled offset (clamped so the last window is full).
+   */
   void refreshCraftables() {
     var member = WorldNetworks.get(viewer.server).membership(terminal.origin());
     if (member.status() != NetworkTopology.Status.VALID) {
       craftables = List.of();
-      craftablesNext = false;
+      craftableTotal = 0;
+      craftableOffset = 0;
       return;
     }
     var keys =
         new ArrayList<>(WorldCrafting.get(viewer.server).index(member.scope()).byOutput().keySet());
     keys.sort(null);
-    craftableOffset = Math.min(craftableOffset, Math.max(0, keys.size() - 1) / 8 * 8);
+    int rows = TerminalJobPackets.ROWS;
+    craftableTotal = Math.min(keys.size(), TerminalJobPackets.MAX_OFFSET + rows);
+    craftableOffset = Math.max(0, Math.min(craftableOffset, craftableTotal - rows));
     craftables =
-        List.copyOf(keys.subList(craftableOffset, Math.min(keys.size(), craftableOffset + 8)));
-    craftablesNext = keys.size() > craftableOffset + 8;
+        List.copyOf(
+            keys.subList(craftableOffset, Math.min(craftableTotal, craftableOffset + rows)));
   }
 
   /**
@@ -82,12 +89,8 @@ final class TerminalJobs {
   boolean command(TerminalJobPackets.Command command) {
     var jobs = WorldCraftingJobs.get(viewer.server);
     switch (command.action()) {
-      case TerminalJobPackets.HOME -> {
-        craftableOffset = 0;
-        refreshCraftables();
-      }
-      case TerminalJobPackets.NEXT -> {
-        if (craftablesNext) craftableOffset += 8;
+      case TerminalJobPackets.WINDOW -> {
+        craftableOffset = command.selection();
         refreshCraftables();
       }
       case TerminalJobPackets.PREVIEW -> {
@@ -210,7 +213,8 @@ final class TerminalJobs {
             session,
             jobRevision,
             rows,
-            craftablesNext,
+            craftableOffset,
+            craftableTotal,
             previewKey == null
                 ? TerminalJobPackets.NONE
                 : entry(previewKey, Integer.toString(previewAmount)),

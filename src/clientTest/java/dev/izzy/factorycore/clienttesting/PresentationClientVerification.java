@@ -153,7 +153,13 @@ public final class PresentationClientVerification {
           "Presentation stage timeout: "
               + index
               + " screen="
-              + (client.screen == null ? "none" : client.screen.getClass().getName()));
+              + (client.screen == null ? "none" : client.screen.getClass().getName())
+              + (client.screen instanceof TerminalScreen screen
+                  ? " jobs offset="
+                      + screen.getMenu().jobView().offset()
+                      + " total="
+                      + screen.getMenu().jobView().total()
+                  : ""));
     if (steps.get(index).tick(client)) {
       index++;
       entered = ticks;
@@ -819,12 +825,79 @@ public final class PresentationClientVerification {
             return false;
           captures.grab(client, "jobs-keep-waiting-scale-4.png");
           press(client, "Keep");
+          return true;
+        });
+    // P4: 23 craftables scroll through the eight-wide strip with the real wheel handler. New
+    // Crafters rebuild the network, which closes an open terminal, so reopen it afterwards.
+    step(
+        client -> {
+          if (waited() < 4) return false;
+          client.screen.onClose();
+          return true;
+        });
+    step(client -> client.screen == null && waited() > 4);
+    server(PresentationScenes::manyJobs);
+    serverUntil(
+        player ->
+            valid(player, PresentationScenes.EXTRA_UNITS[0])
+                && valid(player, PresentationScenes.EXTRA_UNITS[1])
+                && valid(player, base.east(2)));
+    use(base.east(2), Direction.SOUTH, false);
+    step(
+        client -> client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Jobs"));
+    step(client -> jobView(client).total() >= 20 && waited() > 6);
+    step(
+        client -> {
+          captures.grab(client, "jobs-scroll-top-scale-4.png");
+          var screen = terminal(client);
+          return screen.mouseScrolled(screen.getGuiLeft() + 60, screen.getGuiTop() + 60, 0, -1);
+        });
+    step(
+        client -> {
+          var view = jobView(client);
+          if (view.offset() == 0 || waited() < 4) return false;
+          check(view.offset() == 1, "One wheel notch scrolls one craftable: " + view.offset());
+          return true;
+        });
+    step(
+        client -> {
+          // One notch every few ticks, as a person scrolls, to the last full window.
+          var view = jobView(client);
+          if (view.offset() == view.total() - TerminalJobPackets.ROWS) return true;
+          var screen = terminal(client);
+          if (waited() % 4 == 3)
+            screen.mouseScrolled(screen.getGuiLeft() + 60, screen.getGuiTop() + 60, 0, -1);
+          return false;
+        });
+    step(
+        client -> {
+          var view = jobView(client);
+          if (waited() < 6) return false;
+          evidence
+              .append("jobs scroll: total=")
+              .append(view.total())
+              .append(" last window offset=")
+              .append(view.offset())
+              .append(' ')
+              .append(view.craftables().stream().map(row -> row.icon()).toList())
+              .append('\n');
+          captures.grab(client, "jobs-scrolled-end-scale-4.png");
+          setScale(client, 1);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          captures.grab(client, "jobs-scrolled-end-scale-1.png");
           setScale(client, 2);
           press(client, "Items");
           client.screen.onClose();
           return true;
         });
     step(client -> client.screen == null && waited() > 4);
+    server(PresentationScenes::fewJobs);
+    serverUntil(
+        player -> valid(player, base.east(2)) && valid(player, PresentationScenes.JOB_UNIT));
   }
 
   private static long planks(ServerPlayer player) {

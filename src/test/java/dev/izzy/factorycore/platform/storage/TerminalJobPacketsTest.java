@@ -41,7 +41,8 @@ class TerminalJobPacketsTest {
             9,
             List.of(
                 stick, new TerminalJobPackets.Entry("minecraft:torch", "Torch", "16", "missing")),
-            true,
+            40,
+            42,
             stick,
             "",
             2,
@@ -68,10 +69,11 @@ class TerminalJobPacketsTest {
         new int[][] {
           {-1, 0, 1},
           {TerminalJobPackets.KEEP + 1, 0, 1},
-          {2, 8, 1},
-          {2, -1, 1},
-          {2, 0, 0},
-          {2, 0, 4097}
+          {TerminalJobPackets.PREVIEW, TerminalJobPackets.ROWS, 1},
+          {TerminalJobPackets.PREVIEW, -1, 1},
+          {TerminalJobPackets.PREVIEW, 0, 0},
+          {TerminalJobPackets.PREVIEW, 0, 4097},
+          {TerminalJobPackets.WINDOW, TerminalJobPackets.MAX_OFFSET + 1, 1}
         })
       assertThrows(
           IllegalArgumentException.class,
@@ -85,7 +87,8 @@ class TerminalJobPacketsTest {
                 id,
                 1,
                 Collections.nCopies(9, entry),
-                false,
+                0,
+                9,
                 entry,
                 "",
                 0,
@@ -93,6 +96,16 @@ class TerminalJobPacketsTest {
                 List.of(),
                 List.of(),
                 "ready"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalJobPackets.View(
+                1, id, 1, List.of(entry), 5, 5, entry, "", 0, 0, List.of(), List.of(), "ready"));
+    assertEquals(
+        TerminalJobPackets.MAX_OFFSET,
+        new TerminalJobPackets.Command(
+                1, id, 1, TerminalJobPackets.WINDOW, TerminalJobPackets.MAX_OFFSET, 1)
+            .selection());
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalJobPackets.Job(entry, 4, 3, "running", ""));

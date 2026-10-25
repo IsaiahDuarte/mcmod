@@ -127,7 +127,8 @@ cells: nothing moves into the grid, so closing never loses items.
   *Partial*. A craft whose output would not fit in your inventory is refused before
   anything is used.
 
-**Jobs.** Press **Jobs** to list what your Crafters can make.
+**Jobs.** Press **Jobs** to list what your Crafters can make. Scroll over the list (Shift:
+eight at a time) or click its scrollbar to see more.
 - **Preview:** select an item and press **×1**, **×8** or **×64**. This shows the
   steps needed or the first missing ingredient.
 - **Start:** press **Start** to run the job; you need Craft. Its ingredients are

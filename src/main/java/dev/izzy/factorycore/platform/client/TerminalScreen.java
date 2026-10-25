@@ -36,7 +36,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private int selected;
   private long shownRevision;
   private Button one, stack, returning, useRow, craftOne, craftMany, clearGrid, encode;
-  private Button previewOne, previewEight, previewMany, startJob, keepJob, jobHome, jobNext;
+  private Button previewOne, previewEight, previewMany, startJob, keepJob;
   private Button cancelJob;
   private boolean jobsMode;
 
@@ -112,6 +112,12 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private int gridPage;
 
   private int target, craftSelected, jobSelected;
+
+  /**
+   * The craftable offset last requested, so fast wheel notches add up before the server replies.
+   */
+  private int pendingCraftOffset = -1;
+
   public static final int JOBS_X = 276;
   private static final int STRIP_X = 336;
 
@@ -431,8 +437,6 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     startJob = jobButton("start", 120, 40, () -> job(TerminalJobPackets.START, 0, 1));
     keepJob =
         jobButton("keep", 162, 38, () -> job(TerminalJobPackets.KEEP, craftSelected, keepAmount()));
-    jobHome = jobButton("home", 202, 32, () -> job(TerminalJobPackets.HOME, 0, 1));
-    jobNext = jobButton("next", 238, 32, () -> job(TerminalJobPackets.NEXT, 0, 1));
     cancelJob =
         addRenderableWidget(
             Button.builder(
@@ -615,20 +619,19 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
     updateCraftingControls();
     var jobs = menu.jobView();
+    if (jobs.offset() == pendingCraftOffset) pendingCraftOffset = -1;
     craftSelected = Math.min(craftSelected, Math.max(0, jobs.craftables().size() - 1));
     jobSelected = Math.min(jobSelected, Math.max(0, jobs.jobs().size() - 1));
     one.visible = !jobsMode && kind != 0;
     stack.visible = !jobsMode && kind == 2;
     returning.visible = !jobsMode && !view.staged().equals("0");
-    for (var item :
-        List.of(previewOne, previewEight, previewMany, startJob, keepJob, jobHome, jobNext))
+    for (var item : List.of(previewOne, previewEight, previewMany, startJob, keepJob))
       item.visible = jobsMode;
     keepJob.active = craftSelected < jobs.craftables().size();
     previewOne.active = craftSelected < jobs.craftables().size();
     previewEight.active = previewOne.active;
     previewMany.active = previewOne.active;
     startJob.active = !jobs.preview().icon().isEmpty() && jobs.previewReason().isEmpty();
-    jobNext.active = jobs.next();
     cancelJob.visible = jobsMode;
     cancelJob.active =
         jobSelected < jobs.jobs().size()
@@ -708,6 +711,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
               topPos + 65,
               waiting ? 0xffb347 : 0xb8e986);
       }
+      var jobs = menu.jobView();
+      graphics.fill(leftPos + 12, topPos + 75, leftPos + 268, topPos + 78, 0xff151b20);
+      int visible = TerminalJobPackets.ROWS;
+      int thumb = jobs.total() <= visible ? 256 : Math.max(12, 256 * visible / jobs.total());
+      int thumbX =
+          leftPos
+              + 12
+              + (256 - thumb) * jobs.offset() / Math.max(1, Math.max(0, jobs.total() - visible));
+      graphics.fill(thumbX, topPos + 76, thumbX + thumb, topPos + 77, 0xffa5b5c5);
       return;
     }
     var entries = menu.view().rows();
@@ -1168,6 +1180,17 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       return true;
     }
 
+    if (jobsMode
+        && button == 0
+        && mouseY >= topPos + 75
+        && mouseY < topPos + 81
+        && mouseX >= leftPos + 12
+        && mouseX < leftPos + 268) {
+      // Clicking the scrollbar track jumps there, as on the Items grid.
+      int range = Math.max(0, menu.jobView().total() - TerminalJobPackets.ROWS);
+      scrollCraftables((int) Math.round((mouseX - leftPos - 12) / 256.0 * range));
+      return true;
+    }
     if (button == 0
         && mouseY >= topPos + 45
         && mouseY < topPos + 75
@@ -1257,9 +1280,41 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     return super.mouseClicked(mouseX, mouseY, button);
   }
 
-  /** In processing mode, scrolling over a cell changes its per-craft count (Shift: by 8). */
+  /**
+   * Scrolls the craftable strip to {@code offset}, keeping the same craftable selected while it
+   * stays visible; the server clamps the offset to the last full window.
+   */
+  private void scrollCraftables(int offset) {
+    int from = craftOffset();
+    int to = Math.max(0, Math.min(offset, menu.jobView().total() - TerminalJobPackets.ROWS));
+    if (to == from) return;
+    craftSelected = Math.max(0, Math.min(TerminalJobPackets.ROWS - 1, craftSelected - (to - from)));
+    pendingCraftOffset = Math.min(to, TerminalJobPackets.MAX_OFFSET);
+    job(TerminalJobPackets.WINDOW, pendingCraftOffset, 1);
+  }
+
+  private int craftOffset() {
+    return pendingCraftOffset >= 0 ? pendingCraftOffset : menu.jobView().offset();
+  }
+
+  private boolean overCraftables(double mouseX, double mouseY) {
+    return mouseX >= leftPos + 12
+        && mouseX < leftPos + 268
+        && mouseY >= topPos + 45
+        && mouseY < topPos + 81;
+  }
+
+  /**
+   * The Items grid and the Jobs craftable strip scroll (Shift: a full strip of eight in Jobs); in
+   * processing mode, scrolling over a cell changes its per-craft count (Shift: by 8).
+   */
   @Override
   public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    if (jobsMode && overCraftables(mouseX, mouseY) && scrollY != 0) {
+      int step = hasShiftDown() ? TerminalJobPackets.ROWS : 1;
+      scrollCraftables(craftOffset() + (scrollY > 0 ? -step : step));
+      return true;
+    }
     if (!jobsMode && rowAt(mouseX, mouseY) >= 0 && scrollY != 0) {
       desiredOffset =
           Math.max(0, Math.min(maxOffset(), desiredOffset + (scrollY > 0 ? -columns : columns)));

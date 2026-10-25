@@ -74,3 +74,6 @@ terminal-sort-name-reversed-scale-4.png
 terminal-sort-name-scale-4.png
 terminal-fluids-scale-4.png
 terminal-fluids-scale-1.png
+jobs-scroll-top-scale-4.png
+jobs-scrolled-end-scale-4.png
+jobs-scrolled-end-scale-1.png
