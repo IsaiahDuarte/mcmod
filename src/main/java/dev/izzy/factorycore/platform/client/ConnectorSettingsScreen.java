@@ -22,6 +22,8 @@ import org.lwjgl.glfw.GLFW;
 /** Local unsaved form for a Storage-mode Interface; only Apply sends one complete configuration. */
 public final class ConnectorSettingsScreen extends AbstractContainerScreen<ConnectorSettingsMenu> {
   private EditBox priority, firstSlot, count, rate;
+  private SlotPicker picker;
+  private boolean picking;
   private Button kindButton, accessButton, apply;
   private ResourceKind kind = ResourceKind.ITEM;
   private ConnectorSettings.Access access = ConnectorSettings.Access.READ_WRITE;
@@ -80,6 +82,17 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
                 ThroughputTier.BASE.portRate(ResourceKind.ITEM),
                 ThroughputTier.BASE.portRate(ResourceKind.FLUID),
                 ThroughputTier.BASE.portRate(ResourceKind.ENERGY))));
+    picker =
+        addRenderableWidget(
+            new SlotPicker(
+                leftPos + 80,
+                topPos + 76,
+                210,
+                18,
+                (first, slots) -> {
+                  firstSlot.setValue(Integer.toString(first));
+                  count.setValue(Integer.toString(slots));
+                }));
     apply = button("apply", 10, 164, 88, this::apply);
     button("reset", 106, 164, 88, () -> load(menu.view().form()));
     button("cancel", 202, 164, 88, this::onClose);
@@ -161,6 +174,23 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
     count.setEditable(view.editable() && kind != ResourceKind.ENERGY);
     kindButton.active = view.editable();
     accessButton.active = view.editable();
+    int slots =
+        switch (kind) {
+          case ITEM -> view.itemSlots();
+          case FLUID -> view.tanks();
+          case ENERGY -> 0;
+        };
+    // P5: a small container shows a clickable slot strip in place of the two number fields.
+    picking = SlotSelection.pickable(slots);
+    picker.visible = picking;
+    picker.active = view.editable();
+    picker.show(
+        slots,
+        kind == ResourceKind.FLUID,
+        SlotPicker.number(firstSlot, 0),
+        SlotPicker.number(count, 64));
+    firstSlot.visible = !picking;
+    count.visible = !picking;
   }
 
   private void apply() {
@@ -218,8 +248,13 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
     StatusStrip.draw(g, font, menu.deviceStatus(), strip, 10, imageWidth - 10 - strip);
     text(g, "priority", 10, 58);
     text(g, "rate", 160, 58);
-    text(g, "window_first", 10, 82);
-    text(g, "window_count", 160, 82);
+    if (picking)
+      g.drawString(
+          font, Component.translatable("gui.factorycore.slot_picker"), 10, 81, 0xffffff, false);
+    else {
+      text(g, "window_first", 10, 82);
+      text(g, "window_count", 160, 82);
+    }
     var view = menu.view();
     line(
         g,

@@ -18,6 +18,8 @@ import org.lwjgl.glfw.GLFW;
 /** Local draft form; only explicit Apply sends one complete validated configuration. */
 public final class MachineSettingsScreen extends AbstractContainerScreen<MachineSettingsMenu> {
   private EditBox label, priority, firstSlot, count, rate;
+  private SlotPicker picker;
+  private boolean picking;
   private Button kindButton, accessButton, apply;
   private ResourceKind kind = ResourceKind.ITEM;
   private ConnectorSettings.Access access = ConnectorSettings.Access.READ_WRITE;
@@ -115,6 +117,17 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
         0,
         74,
         18);
+    picker =
+        addRenderableWidget(
+            new SlotPicker(
+                leftPos + 80,
+                topPos + 121,
+                210,
+                18,
+                (first, slots) -> {
+                  firstSlot.setValue(Integer.toString(first));
+                  count.setValue(Integer.toString(slots));
+                }));
     for (var child : children())
       if (child instanceof AbstractWidget widget) bindingWidgets.add(widget);
     presetButton(
@@ -251,6 +264,24 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     kindButton.active = view.editable();
     accessButton.active = view.editable();
     for (var widget : bindingWidgets) widget.visible = !presets;
+    int slots =
+        switch (kind) {
+          case ITEM -> view.itemSlots();
+          case FLUID -> view.tanks();
+          case ENERGY -> 0;
+        };
+    // P5: a small container shows a clickable slot strip; Rate moves up beside Priority.
+    picking = SlotSelection.pickable(slots);
+    picker.visible = !presets && picking;
+    picker.active = view.editable();
+    picker.show(
+        slots,
+        kind == ResourceKind.FLUID,
+        SlotPicker.number(firstSlot, 0),
+        SlotPicker.number(count, 64));
+    firstSlot.visible = !presets && !picking;
+    count.visible = !presets && !picking;
+    rate.setY(topPos + (picking ? 96 : 123));
     var preset = menu.presetView();
     for (var widget : presetWidgets) {
       widget.visible = presets;
@@ -396,9 +427,15 @@ public final class MachineSettingsScreen extends AbstractContainerScreen<Machine
     g.drawString(
         font, Component.translatable("gui.factorycore.interface.mode"), 10, 219, 0xffffff, false);
     text(g, "priority", 10, 100);
-    text(g, "window_first", 160, 100);
-    text(g, "window_count", 10, 127);
-    text(g, "rate", 160, 127);
+    if (picking) {
+      text(g, "rate", 160, 100);
+      g.drawString(
+          font, Component.translatable("gui.factorycore.slot_picker"), 10, 126, 0xffffff, false);
+    } else {
+      text(g, "window_first", 160, 100);
+      text(g, "window_count", 10, 127);
+      text(g, "rate", 160, 127);
+    }
     var view = menu.view();
     g.drawString(
         font,

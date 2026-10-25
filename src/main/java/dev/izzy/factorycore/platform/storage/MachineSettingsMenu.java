@@ -90,7 +90,9 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
             false,
             "base",
             ThroughputTier.BASE.portRate(ResourceKind.ITEM),
-            false);
+            false,
+            0,
+            0);
   }
 
   public UUID session() {
@@ -145,6 +147,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
 
   private void publish() {
     var settings = machine.settings();
+    int[] size = machine.containerSize();
     var packet =
         new MachineSettingsPackets.View(
             containerId,
@@ -163,7 +166,9 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
             editable(),
             machine.tier().name().toLowerCase(Locale.ROOT),
             machine.tier().portRate(settings.kind()),
-            ThroughputStatus.throttled(machine.serverLevel().getServer(), machine.position()));
+            ThroughputStatus.throttled(machine.serverLevel().getServer(), machine.position()),
+            size[0],
+            size[1]);
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);

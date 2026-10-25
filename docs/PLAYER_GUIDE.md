@@ -168,7 +168,9 @@ The screen sets the following:
 - **Resource:** Items, Fluids or Energy.
 - **Access:** deposit and withdraw, read-only or write-only.
 - **Priority:** −1000 to 1000. Higher-priority containers are used first.
-- **First slot, slot count and rate per tick.**
+- **Slots and rate per tick.** For a container with up to 64 slots (or tanks) the screen
+  shows a strip of them: click a slot to use only it, Shift-click to use a range. Larger
+  containers show First slot and Slot count fields instead.
 
 It also shows which side of the container is used and whether the container is
 ready. **Apply & Close** saves, and **Cancel** discards. Saving needs Edit; without
@@ -176,8 +178,8 @@ it the screen is read-only. A container can be connected by only one Interface.
 
 ### Machine mode
 
-**Binding** sets a label, the resource, access, first slot or tank, slot count and
-rate. Labels are private to your network and let programs target the machine.
+**Binding** sets a label, the resource, access, the slots or tanks to use (the same slot
+strip as Storage mode) and rate. Labels are private to your network and let programs target the machine.
 
 **Presets** sets up one of:
 - **Import:** machine → storage.

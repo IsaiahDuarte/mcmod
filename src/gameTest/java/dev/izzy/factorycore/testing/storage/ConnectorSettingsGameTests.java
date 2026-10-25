@@ -11,6 +11,7 @@ import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.InterfaceContent;
 import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineSettingsPackets;
+import dev.izzy.factorycore.testing.ConnectorFixture;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.Set;
@@ -122,6 +123,82 @@ public final class ConnectorSettingsGameTests {
                   m.view().binding().equals("unsupported"),
                   "Status line explains that a vanilla chest has no fluid storage");
               end(f.player);
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * P5: the screens learn the bound container's size so they can draw a slot picker; a window
+   * picked there is an ordinary Apply; a container over 64 slots reports its size for the fields.
+   */
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void viewsReportContainerSizeAndPickedWindowRoundTrips(GameTestHelper h) {
+    var f = setup(h);
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.connector.canUse(f.player), "Wired owner ready"))
+        .thenExecute(
+            () -> {
+              var m = open(h, f.player);
+              h.assertTrue(
+                  m.view().itemSlots() == 27 && m.view().tanks() == 0,
+                  "A chest reports 27 slots and no tanks: " + m.view());
+              // What a click on slot 3 then Shift-click on slot 4 produces.
+              var picked =
+                  new MachineSettingsPackets.Form(
+                      "", ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 3, 2, 64);
+              apply(f.player, m, picked);
+              m = open(h, f.player);
+              h.assertTrue(
+                  m.view().form().firstSlot() == 3 && m.view().form().slotCount() == 2,
+                  "The picked window is saved and shown again: " + m.view().form());
+              f.player.closeContainer();
+              h.setBlock(CHEST, ConnectorFixture.WIDE.get());
+            })
+        .thenWaitUntil(() -> h.assertTrue(f.connector.canUse(f.player), "Rebound to wide"))
+        .thenExecute(
+            () -> {
+              var m = open(h, f.player);
+              h.assertTrue(
+                  m.view().itemSlots() == 100,
+                  "A 100-slot container reports its size (the screen keeps number fields)");
+              f.player.closeContainer();
+              h.setBlock(CHEST, Blocks.AIR);
+            })
+        .thenWaitUntil(() -> h.assertTrue(f.connector.canUse(f.player), "Usable unbound"))
+        .thenExecute(
+            () -> {
+              var m = open(h, f.player);
+              h.assertTrue(
+                  m.view().itemSlots() == 0 && m.view().tanks() == 0,
+                  "No container reports zero, so no picker is drawn");
+              end(f.player);
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void machineViewReportsBoundFaceSize(GameTestHelper h) {
+    var player = player(h);
+    Net.in(h, player.getUUID()).controller(ROOT);
+    h.setBlock(CONNECTOR, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
+    var machine =
+        (dev.izzy.factorycore.platform.storage.MachineInterfaceEntity) h.getBlockEntity(CONNECTOR);
+    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    h.setBlock(CHEST, Blocks.HOPPER);
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(machine.canUse(player), "Wired owner ready"))
+        .thenExecute(
+            () -> {
+              h.useBlock(CONNECTOR, player);
+              h.assertTrue(
+                  player.containerMenu
+                      instanceof dev.izzy.factorycore.platform.storage.MachineSettingsMenu,
+                  "Machine screen opens");
+              var m =
+                  (dev.izzy.factorycore.platform.storage.MachineSettingsMenu) player.containerMenu;
+              m.broadcastChanges();
+              h.assertTrue(m.view().itemSlots() == 5, "A hopper reports its 5 slots: " + m.view());
+              end(player);
             })
         .thenSucceed();
   }

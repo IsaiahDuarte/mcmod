@@ -1585,10 +1585,28 @@ public final class TerminalClientVerification {
   private static void fillMachine(Screen screen) {
     edit(screen, 0, "smelter", false);
     edit(screen, 1, "-7", false);
-    edit(screen, 2, "2", false);
-    edit(screen, 3, "1", false);
+    // P5: a container of up to 64 slots shows the slot strip instead of the two fields.
+    if (!pickSlot(screen, 2)) {
+      edit(screen, 2, "2", false);
+      edit(screen, 3, "1", false);
+    }
     edit(screen, 4, "8", false);
     click(screen, "Deposit and withdraw");
+  }
+
+  /** Clicks {@code slot} on a visible slot strip (one slot, no Shift); false if none is shown. */
+  private static boolean pickSlot(Screen screen, int slot) {
+    if (!(screen instanceof MachineSettingsScreen machine)) return false;
+    int slots = machine.getMenu().view().itemSlots();
+    for (var child : screen.children())
+      if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget
+          && widget.visible
+          && widget.getClass().getSimpleName().equals("SlotPicker")) {
+        int cell = widget.getWidth() / Math.min(32, slots);
+        screen.mouseClicked(widget.getX() + cell * slot + cell / 2.0, widget.getY() + 4, 0);
+        return true;
+      }
+    return false;
   }
 
   private static void edit(Screen screen, int index, String text, boolean enter) {

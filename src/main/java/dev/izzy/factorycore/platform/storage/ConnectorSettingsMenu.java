@@ -70,7 +70,9 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
             false,
             "base",
             ThroughputTier.BASE.portRate(ResourceKind.ITEM),
-            false);
+            false,
+            0,
+            0);
   }
 
   public UUID session() {
@@ -125,6 +127,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
 
   private void publish() {
     var settings = connector.settings();
+    int[] size = connector.containerSize();
     var binding = runtime().connectors().bind(connector).reason();
     deviceStatus =
         DeviceStatus.publish(
@@ -159,7 +162,9 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
                 connector.tier().name().toLowerCase(Locale.ROOT),
                 connector.tier().portRate(settings.kind()),
                 ThroughputStatus.throttled(
-                    connector.serverLevel().getServer(), connector.position())));
+                    connector.serverLevel().getServer(), connector.position()),
+                size[0],
+                size[1]));
   }
 
   @Override

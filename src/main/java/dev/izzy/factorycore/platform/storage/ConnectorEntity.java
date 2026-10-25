@@ -397,6 +397,25 @@ public class ConnectorEntity extends BlockEntity
   }
 
   /** Caller must establish every provider chunk is loaded before invoking a capability getter. */
+  /** Item slots and fluid tanks reported to settings screens are capped here (P5 slot picker). */
+  public static final int MAX_REPORTED_SLOTS = 65_536;
+
+  /**
+   * The bound container's item slot and fluid tank counts on the bound face, each 0 when absent and
+   * capped at {@link #MAX_REPORTED_SLOTS}. Two capability lookups; server thread only. The settings
+   * screens use it to draw a slot picker; it grants no access.
+   */
+  public int[] containerSize() {
+    var target = worldPosition.relative(targetDirection());
+    var side = targetDirection().getOpposite();
+    var items = serverLevel().getCapability(Capabilities.ItemHandler.BLOCK, target, side);
+    var fluids = serverLevel().getCapability(Capabilities.FluidHandler.BLOCK, target, side);
+    return new int[] {
+      items == null ? 0 : Math.min(MAX_REPORTED_SLOTS, Math.max(0, items.getSlots())),
+      fluids == null ? 0 : Math.min(MAX_REPORTED_SLOTS, Math.max(0, fluids.getTanks()))
+    };
+  }
+
   public Object capability() {
     validatePlaced();
     if (cache != null && cachedDirection != targetDirection()) {

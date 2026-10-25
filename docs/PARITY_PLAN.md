@@ -142,12 +142,21 @@ view cells, portable cells and cross-dimension links. See Wave G.
   `jobs-scroll-top-scale-4.png`, `jobs-scrolled-end-scale-{1,4}.png` (23 craftables, one
   notch moves one, last window offset 15). Payload protocol 4 → 5. P3: 1e3f5b1.
 
-- [ ] **P5 — Visual slot picker (G16, UD4 leftover).** Size M. Lane F.
+- [x] **P5 — Visual slot picker (G16, UD4 leftover).** Size M. Lane F.
   Replace First slot / Slot count fields on Machine and Storage modes with a clickable
   strip of the container's slots (shift-click to range-select). Fields stay for
   containers over 64 slots.
   Files: `MachineSettingsScreen.java`, `ConnectorSettingsScreen.java`, their menus.
   Done when: GameTests cover selection round-trip and the >64 fallback; scale 1/4 fit.
+  Evidence: `ConnectorSettingsGameTests.viewsReportContainerSizeAndPickedWindowRoundTrips`
+  (chest 27 slots, picked window 3+2 saved and shown again, a 100-slot fixture reports 100 so
+  the fields stay, no container reports 0) and `machineViewReportsBoundFaceSize` (hopper 5);
+  `SlotSelectionTest` (click/Shift-click, ≤64 rule, cell mapping with a second row past 32);
+  `machine-scale-{1,4}.png`, `connector-scale-{1,4}.png`, `connector-picked-scale-4.png`
+  (real click on slot 3); the terminal tour now picks slot 2 with a real click on the Machine
+  strip and its server check confirms Apply saved first slot 2, count 1. Views carry `itemSlots`/`tanks` for the bound face (Machine
+  payload protocol 2 → 3, Connector 1 → 2). Shift-click range was unit-tested only; the
+  tour cannot hold a real Shift key. P4: fb86b1e.
 
 ## Wave A — crafting UX (no gate; lane T)
 

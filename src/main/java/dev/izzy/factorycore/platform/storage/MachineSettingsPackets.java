@@ -86,7 +86,9 @@ public final class MachineSettingsPackets {
       boolean editable,
       String tier,
       int maxRate,
-      boolean throttled)
+      boolean throttled,
+      int itemSlots,
+      int tanks)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
@@ -97,7 +99,11 @@ public final class MachineSettingsPackets {
           || status.length() > 32
           || tier.length() > 16
           || maxRate < 1
-          || maxRate > ThroughputTier.maxQuantum(form.kind()))
+          || maxRate > ThroughputTier.maxQuantum(form.kind())
+          || itemSlots < 0
+          || itemSlots > ConnectorEntity.MAX_REPORTED_SLOTS
+          || tanks < 0
+          || tanks > ConnectorEntity.MAX_REPORTED_SLOTS)
         throw new IllegalArgumentException("Machine view bounds");
     }
 
@@ -119,6 +125,8 @@ public final class MachineSettingsPackets {
               b.writeUtf(v.tier(), 16);
               b.writeVarInt(v.maxRate());
               b.writeBoolean(v.throttled());
+              b.writeVarInt(v.itemSlots());
+              b.writeVarInt(v.tanks());
             },
             b ->
                 new View(
@@ -131,13 +139,15 @@ public final class MachineSettingsPackets {
                     b.readBoolean(),
                     b.readUtf(16),
                     b.readVarInt(),
-                    b.readBoolean()));
+                    b.readBoolean(),
+                    b.readVarInt(),
+                    b.readVarInt()));
   }
 
   private MachineSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("2");
+    var registrar = event.registrar("3");
     MenuPayloads.toServer(
         registrar, Apply.TYPE, Apply.CODEC, MachineSettingsMenu.class, MachineSettingsMenu::apply);
     MenuPayloads.toClient(

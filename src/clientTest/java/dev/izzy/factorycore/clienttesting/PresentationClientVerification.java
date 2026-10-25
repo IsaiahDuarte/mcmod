@@ -1388,6 +1388,36 @@ public final class PresentationClientVerification {
                 && screen.getMenu().view().generation() > 0
                 && screen.getMenu().view().binding().equals("ok"));
     scales("connector", ConnectorSettingsScreen.class, false);
+    // P5: a real click on the slot strip picks slot 3 of the 27-slot chest (draft only).
+    use(base.east(6).north(), Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof ConnectorSettingsScreen)) return false;
+          setScale(client, 4);
+          return true;
+        });
+    step(
+        client -> {
+          if (!(client.screen instanceof ConnectorSettingsScreen screen) || waited() < 4)
+            return false;
+          for (var child : screen.children())
+            if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget
+                && widget.visible
+                && widget.getClass().getSimpleName().equals("SlotPicker")) {
+              int cell = widget.getWidth() / 27;
+              return screen.mouseClicked(
+                  widget.getX() + cell * 3 + cell / 2.0, widget.getY() + 4, 0);
+            }
+          throw new IllegalStateException("Slot picker shown for a 27-slot chest");
+        });
+    step(
+        client -> {
+          if (waited() < 4) return false;
+          captures.grab(client, "connector-picked-scale-4.png");
+          setScale(client, 2);
+          client.screen.onClose();
+          return true;
+        });
     upgrade(base.east(4), ThroughputTier.ADVANCED, false);
     upgrade(base.east(4), ThroughputTier.ENDGAME, false);
     upgrade(base.east(3), ThroughputTier.ADVANCED, true);

@@ -49,6 +49,34 @@ public final class ConnectorFixture {
               () -> BlockEntityType.Builder.of(OpaqueEntity::new, OPAQUE.get()).build(null));
   private static final ItemStackHandler OPAQUE_SHARED = new ItemStackHandler(1);
 
+  /** A 100-slot container: more slots than the settings screens' slot picker draws. */
+  public static final DeferredBlock<WideBlock> WIDE =
+      BLOCKS.registerBlock("wide_provider", WideBlock::new, BlockBehaviour.Properties.of());
+
+  public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WideEntity>> WIDE_ENTITY =
+      ENTITIES.register(
+          "wide_provider",
+          () -> BlockEntityType.Builder.of(WideEntity::new, WIDE.get()).build(null));
+
+  public static final class WideBlock extends Block implements EntityBlock {
+    public WideBlock(Properties properties) {
+      super(properties);
+    }
+
+    @Override
+    public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
+      return new WideEntity(position, state);
+    }
+  }
+
+  public static final class WideEntity extends BlockEntity {
+    public final ItemStackHandler handler = new ItemStackHandler(100);
+
+    public WideEntity(BlockPos position, BlockState state) {
+      super(WIDE_ENTITY.get(), position, state);
+    }
+  }
+
   public static final class OpaqueBlock extends Block implements EntityBlock {
     public OpaqueBlock(Properties properties) {
       super(properties);
@@ -77,6 +105,8 @@ public final class ConnectorFixture {
   }
 
   private static void capabilities(RegisterCapabilitiesEvent event) {
+    event.registerBlockEntity(
+        Capabilities.ItemHandler.BLOCK, WIDE_ENTITY.get(), (entity, side) -> entity.handler);
     event.registerBlockEntity(
         Capabilities.ItemHandler.BLOCK, OPAQUE_ENTITY.get(), (entity, side) -> entity.handler);
     event.registerBlockEntity(
