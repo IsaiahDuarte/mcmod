@@ -50,6 +50,26 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private Button craftablesButton;
 
   private String pendingRequest;
+
+  /**
+   * A5: a recipe viewer asked to request this item in terminal menu {@code viewerMenu}; the
+   * terminal screen picks it up when it is shown again. Client thread only.
+   */
+  private static int viewerMenu = -1;
+
+  private static String viewerRequest;
+
+  /** Whether the Jobs view is shown (for verification). */
+  public boolean jobsMode() {
+    return jobsMode;
+  }
+
+  /** Called by an optional recipe-viewer integration after it sent the request packet. */
+  public static void requestFromViewer(int menu, String itemId) {
+    viewerMenu = menu;
+    viewerRequest = itemId;
+  }
+
   private final List<AbstractButton> cells = new ArrayList<>();
   private final List<Button> tabs = new ArrayList<>();
   private int columns = 20, rows = 4, extra, desiredOffset, clock, lastCommand = -20, searchDelay;
@@ -733,6 +753,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     updateCraftingControls();
     var jobs = menu.jobView();
     if (jobs.offset() == pendingCraftOffset || --pendingCraftTicks <= 0) pendingCraftOffset = -1;
+    if (viewerRequest != null && viewerMenu == menu.containerId) {
+      pendingRequest = viewerRequest;
+      viewerRequest = null;
+      boolean previousJobs = jobsMode;
+      jobsMode = true;
+      showPlan = false;
+      if (!previousJobs && craftingOpen) rebuildWidgets();
+    }
     if (pendingRequest != null && jobsMode)
       for (int index = 0; index < jobs.craftables().size(); index++)
         if (jobs.craftables().get(index).icon().equals(pendingRequest)) {

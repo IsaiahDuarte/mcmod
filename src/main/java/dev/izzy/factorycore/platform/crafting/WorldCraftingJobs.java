@@ -385,6 +385,12 @@ public final class WorldCraftingJobs {
     list.addLast(new Notice(job.id(), job.request(), job.amount(), cancelled));
     var player = server.getPlayerList().getPlayer(job.principal());
     if (player == null) return;
+    // A5: clients that know the payload show a toast over open screens, chat otherwise.
+    if (player.connection.hasChannel(JobNotice.TYPE)) {
+      net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(
+          player, new JobNotice(job.request().registryId(), job.amount(), cancelled));
+      return;
+    }
     Component name;
     try {
       name =

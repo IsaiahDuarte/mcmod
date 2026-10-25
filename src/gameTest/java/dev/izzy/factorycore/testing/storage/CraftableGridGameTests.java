@@ -230,6 +230,56 @@ public final class CraftableGridGameTests {
         .thenSucceed();
   }
 
+  private static void requestById(Fixture f, String id) {
+    var m = menu(f);
+    m.command(
+        f.player,
+        new TerminalPackets.Command(
+            m.containerId,
+            m.session(),
+            m.view().revision(),
+            TerminalPackets.REQUEST,
+            0,
+            1,
+            id,
+            new byte[32]));
+    m.broadcastChanges();
+  }
+
+  /** A5: a recipe viewer names a plain item ID; only an item a visible pattern makes is opened. */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void recipeViewerRequestsOnlyCraftableItems(GameTestHelper h) {
+    var f = setup(h);
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Terminal ready"))
+        .thenExecute(() -> open(h, f))
+        .thenWaitUntil(
+            () -> {
+              menu(f).broadcastChanges();
+              h.assertTrue(menu(f).jobView().total() == 2, "Two craftables listed");
+            })
+        .thenExecute(
+            () -> {
+              long before = menu(f).jobView().revision();
+              requestById(f, "minecraft:diamond");
+              h.assertTrue(
+                  menu(f).jobView().revision() == before, "An item nothing makes is ignored");
+              requestById(f, "not a valid id");
+              h.assertTrue(menu(f).jobView().revision() == before, "A malformed ID is ignored");
+            })
+        .thenIdle(GAP)
+        .thenExecute(
+            () -> {
+              requestById(f, "minecraft:stick");
+              h.assertTrue(
+                  menu(f).jobView().craftables().stream()
+                      .anyMatch(e -> e.icon().equals("minecraft:stick")),
+                  "A craftable item ID scrolls Jobs to it");
+              end(f);
+            })
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void gatewayWithoutCraftPublishesNoCraftables(GameTestHelper h) {
     var f = setup(h);

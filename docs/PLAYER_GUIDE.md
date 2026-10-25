@@ -145,6 +145,11 @@ eight at a time) or click its scrollbar to see more.
   running, ⏸ waiting, ⇩ storing, ✕ cancelling); hover for the reason, scroll for more.
   Click a job to see each step: done, crafting, waiting (and why) or next. **Cancel**
   stops a job and returns unused ingredients; **Back** closes the steps.
+- **Finished jobs:** while a screen is open you get a toast in the corner; otherwise the
+  usual chat line.
+- **From JEI:** with JEI installed and a terminal open, Ctrl-click a crafting recipe's
+  **+** button to open its output in Jobs (if your Crafters can make it) instead of
+  filling the grid.
 - **Everyone's jobs:** with Manage access you also see other players' jobs on the
   network, with who asked for them. Only the player who started a job (or an operator)
   can cancel it.

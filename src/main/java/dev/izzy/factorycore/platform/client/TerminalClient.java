@@ -18,6 +18,12 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 public final class TerminalClient {
   private TerminalClient() {}
 
+  /** A5: job notices become toasts over open screens (see {@link JobToast}). */
+  @SubscribeEvent
+  public static void setup(net.neoforged.fml.event.lifecycle.FMLClientSetupEvent event) {
+    dev.izzy.factorycore.platform.crafting.JobNotice.sink(JobToast::receive);
+  }
+
   @SubscribeEvent
   public static void screens(RegisterMenuScreensEvent event) {
     event.register(TerminalContent.MENU.get(), TerminalScreen::new);

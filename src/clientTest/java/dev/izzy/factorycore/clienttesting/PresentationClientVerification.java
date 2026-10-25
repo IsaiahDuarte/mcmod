@@ -751,6 +751,23 @@ public final class PresentationClientVerification {
         });
   }
 
+  private boolean toastCaptured;
+  private int toastSeen = -1;
+
+  /** A job notice for {@code line}: a toast while a screen is open, otherwise a chat line. */
+  private boolean finished(Minecraft client, String line) {
+    // A toast lasts five seconds, so remember each notice once seen.
+    if (client
+            .getToasts()
+            .getToast(
+                dev.izzy.factorycore.platform.client.JobToast.class,
+                "Crafting job finished " + line)
+        != null) seenNotices.add(line);
+    return seenNotices.contains(line) || chat.contains("Crafting job finished: " + line);
+  }
+
+  private final java.util.Set<String> seenNotices = new java.util.HashSet<>();
+
   private static boolean hasButton(Minecraft client, String label) {
     for (var child : client.screen.children())
       if (child instanceof Button button
@@ -803,7 +820,15 @@ public final class PresentationClientVerification {
     server(PresentationScenes::stockJobs);
     step(
         client -> {
-          if (!chat.contains("Crafting job finished: 8 × Oak Planks")) return false;
+          // A5: with the terminal open the notice is a toast, not a chat line.
+          if (!finished(client, "8 × Oak Planks")) return false;
+          // Toasts slide in over about half a second; capture it fully shown.
+          if (toastSeen < 0) toastSeen = waited();
+          if (!toastCaptured && waited() - toastSeen < 20) return false;
+          if (!toastCaptured) {
+            toastCaptured = true;
+            captures.grab(client, "jobs-finished-toast-scale-2.png");
+          }
           if (waited() < 10 || !jobView(client).jobs().isEmpty()) return false;
           var screen = terminal(client);
           for (var child : screen.children())
@@ -847,7 +872,7 @@ public final class PresentationClientVerification {
         });
     step(
         client ->
-            chat.contains("Crafting job finished: 37 × Oak Planks")
+            finished(client, "37 × Oak Planks")
                 && waited() > 10
                 && jobView(client).jobs().isEmpty());
     server(PresentationScenes::drainLogs);

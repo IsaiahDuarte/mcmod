@@ -478,6 +478,17 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       publish();
       return;
     }
+    if (command.action() == TerminalPackets.REQUEST && !command.text().isEmpty()) {
+      // A5 recipe viewer: a plain item ID (no components) that a visible pattern makes.
+      var id = net.minecraft.resources.ResourceLocation.tryParse(command.text());
+      if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return;
+      var key =
+          new PlatformResourceCodec(sender.registryAccess())
+              .itemKey(new ItemStack(BuiltInRegistries.ITEM.get(id)));
+      if (TerminalJobs.craftableKeys(sender.server, terminal.origin()).contains(key)
+          && jobs.focus(key)) jobs.publish();
+      return;
+    }
     if (command.action() == TerminalPackets.REQUEST) {
       // Selecting a craftable for a request reads only rows this session already shows.
       int index = command.selection();

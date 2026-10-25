@@ -145,6 +145,16 @@ atomic per-request commit over a copied inventory that proves output/remainder f
 per craft. Only `RecipeType.CRAFTING` recipes are used; the grid holds no items.
 
 
+## Job notices and recipe-viewer requests (A5)
+
+`WorldCraftingJobs` sends a finished or cancelled job's requester a `JobNotice` payload
+(optional channel, protocol 1) when the client negotiated it, else the server chat line.
+The client (`JobToast`, registered as the payload's sink at client setup so common code
+loads no client class) shows a toast while any screen is open and the chat line otherwise;
+the item is named in the client's language. With JEI, Ctrl on a crafting recipe's transfer
+button calls `JeiRequests.request`, which sends `REQUEST` with the output's plain item ID in
+the command text; the server opens it only if `TerminalJobs.craftableKeys` contains it.
+
 ## Craftable rows in the Items grid (A3)
 
 Each search is started with the craftable output keys of the terminal segment's visible

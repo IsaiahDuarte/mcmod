@@ -234,11 +234,20 @@ view cells, portable cells and cross-dimension links. See Wave G.
   3/10 crafting) and `jobs-monitor-waiting-scale-4.png` (smelting with no machine, reason
   on its own line), each opened with a real click on the job row. A3: 2eba58f.
 
-- [ ] **A5 — Crafting done notification and request from JEI.** Size S.
+- [x] **A5 — Crafting done notification and request from JEI.** Size S.
   A toast instead of chat for "job finished" (chat stays when the screen is closed). With
   JEI, Ctrl-click on a recipe output that the network can craft opens the request.
   Files: `WorldCraftingJobs.java` notices, `platform/client/integration` (JEI stays optional and isolated).
   Done when: client run with and without JEI; ArchUnit rule still keeps JEI off mandatory loading.
+  Evidence: presentation run without JEI, `jobs-finished-toast-scale-2.png` (toast over the
+  open terminal; the tour now accepts the toast or the chat line); `runJeiClient`
+  `jei-request-jobs.png` (JEI's own crafting-table recipe layout through `JeiRequests`
+  opens Jobs with Crafting Table selected; the physical Ctrl key and button click are not
+  simulated, as for the existing transfer check); `CraftableGridGameTests
+  .recipeViewerRequestsOnlyCraftableItems` (diamond and a malformed ID ignored, stick
+  opened); `JobNoticeTest`; `ArchitectureTest` passes (JEI stays in `integration`, the
+  toast is reached through a sink). The no-screen chat path is unchanged code and was not
+  separately captured. A4: 2b33116.
 
 ## Wave B — filters (no gate; lane F)
 

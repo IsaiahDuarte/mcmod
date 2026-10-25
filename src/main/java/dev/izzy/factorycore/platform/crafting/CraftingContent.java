@@ -71,5 +71,6 @@ public final class CraftingContent {
 
   public static void register(IEventBus bus) {
     bus.addListener(CraftingContent::capabilities);
+    bus.addListener(JobNotice::register);
   }
 }

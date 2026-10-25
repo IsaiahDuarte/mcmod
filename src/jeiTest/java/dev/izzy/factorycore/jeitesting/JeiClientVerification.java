@@ -73,7 +73,8 @@ final class JeiClientVerification {
   private static final BlockPos ROOT = new BlockPos(1, 65, 1),
       DRIVE = new BlockPos(2, 65, 1),
       TERMINAL = new BlockPos(1, 65, 2),
-      PROGRAM = new BlockPos(1, 65, 0);
+      PROGRAM = new BlockPos(1, 65, 0),
+      CRAFTER = new BlockPos(0, 65, 1);
   private static final ResourceLocation CRAFTING_TABLE =
       ResourceLocation.withDefaultNamespace("crafting_table");
   private final Path report = Path.of(System.getProperty("factorycore.client.report"));
@@ -445,6 +446,30 @@ final class JeiClientVerification {
         check(!table.active, "JEI fill selects the Table tab");
         evidence.append(
             "jei: fill reveals crafting panel; real Craft and table Encode; visible Inputs/Outputs author a processing pattern at scale 4; exact stock 12 planks + 1 stone, one crafted table, one pattern of each kind; second JEI transfer reopens Table from collapsed Outputs.\n");
+        // A5: the Ctrl branch of the transfer button, fed JEI's own recipe layout.
+        var runtime = RuntimeCapture.runtime;
+        var layout =
+            runtime
+                .getRecipeManager()
+                .createRecipeLayoutDrawable(
+                    category,
+                    recipe,
+                    runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup())
+                .orElseThrow();
+        check(
+            dev.izzy.factorycore.platform.client.integration.jei.JeiRequests.request(
+                screen.getMenu(), layout.getRecipeSlotsView()),
+            "The crafting table recipe has an item output");
+      }
+      case 11 -> {
+        var jobs = screen.getMenu().jobView();
+        if (!screen.jobsMode()
+            || jobs.craftables().stream()
+                .noneMatch(entry -> entry.icon().equals("minecraft:crafting_table"))) return false;
+        capture(client, "jei-request-jobs.png");
+        evidence.append(
+            "jei: Ctrl-click request opens Jobs with the recipe's output (crafting table)"
+                + " selected for an amount.\n");
         return true;
       }
       default -> throw new IllegalStateException("Unknown panel stage " + panelStage);
@@ -497,6 +522,24 @@ final class JeiClientVerification {
     cell = CellHandleData.read(drive.cell(0));
     level.setBlock(TERMINAL, TerminalContent.BLOCK.get().defaultBlockState(), 3);
     level.setBlock(PROGRAM, ProgramContent.BLOCK.get().defaultBlockState(), 3);
+    // A5: the network can craft the JEI recipe's output, so Ctrl-click can request it.
+    level.setBlock(CRAFTER, CraftingContent.CRAFTER.get().defaultBlockState(), 3);
+    var cells =
+        new java.util.ArrayList<ItemStack>(java.util.Collections.nCopies(9, ItemStack.EMPTY));
+    for (int cell : new int[] {0, 1, 3, 4}) cells.set(cell, new ItemStack(Items.OAK_PLANKS));
+    var pattern = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
+    pattern.set(
+        CraftingContent.PATTERN.get(),
+        new dev.izzy.factorycore.platform.crafting.PatternContents(
+            java.util.UUID.randomUUID(),
+            1,
+            0,
+            cells,
+            new ItemStack(Items.CRAFTING_TABLE),
+            java.util.List.of()));
+    ((dev.izzy.factorycore.platform.crafting.CrafterEntity) level.getBlockEntity(CRAFTER))
+        .patterns()
+        .insertItem(0, pattern, false);
     player.getInventory().clearContent();
     player.getInventory().setItem(22, new ItemStack(CraftingContent.BLANK_PATTERN.get(), 2));
     player.teleportTo(4.5, 65, 4.5);

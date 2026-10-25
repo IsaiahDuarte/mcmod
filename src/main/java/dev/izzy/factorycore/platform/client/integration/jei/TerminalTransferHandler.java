@@ -25,7 +25,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Fills the terminal's 3-by-3 ghost grid from a JEI crafting recipe. Nothing is moved or consumed;
- * options the player can see (inventory or terminal rows) are preferred.
+ * options the player can see (inventory or terminal rows) are preferred. With Ctrl held (A5) the
+ * recipe's output is opened in the Jobs view as a request instead, if the network can craft it.
  */
 final class TerminalTransferHandler
     implements IRecipeTransferHandler<TerminalMenu, RecipeHolder<CraftingRecipe>> {
@@ -65,6 +66,10 @@ final class TerminalTransferHandler
       return helper.createUserErrorWithTooltip(
           Component.translatable("gui.factorycore.terminal.jei.too_large"));
     if (!doTransfer) return null;
+    if (net.minecraft.client.gui.screens.Screen.hasControlDown()) {
+      JeiRequests.request(menu, slots);
+      return null;
+    }
     var available = new HashSet<String>();
     for (var stack : player.getInventory().items)
       if (!stack.isEmpty())

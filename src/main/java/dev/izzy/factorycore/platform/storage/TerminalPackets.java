@@ -29,7 +29,9 @@ public final class TerminalPackets {
 
   /**
    * A3: CRAFTABLES sets the "Show craftable" preference ({@code selection} 0 off, 1 on); REQUEST
-   * asks for craftable row {@code selection} to be selected in the Jobs list for a request.
+   * asks for craftable row {@code selection} to be selected in the Jobs list for a request. A5:
+   * with non-empty {@code text}, REQUEST names a plain item ID (from a recipe viewer) instead; it
+   * is honoured only if a visible pattern makes that item.
    */
   public static final int CRAFTABLES = 16, REQUEST = 17;
 
