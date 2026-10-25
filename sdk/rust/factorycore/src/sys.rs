@@ -36,6 +36,12 @@ mod imports {
         pub fn log(text: *const u8, text_len: i32) -> i32;
         pub fn state_read(buffer: *mut u8, capacity: i32) -> i32;
         pub fn state_write(data: *const u8, len: i32) -> i32;
+        // Language v2 (ADR 0062), additive.
+        pub fn with_access(machine: i32, side: i32, first: i32, last: i32) -> i32;
+        pub fn move2(from: i32, to: i32, kind: i32, id: *const u8, id_len: i32, limit: i64) -> i32;
+        pub fn has(machine: i32, kind: i32, id: *const u8, id_len: i32) -> i64;
+        pub fn redstone_in(machine: i32) -> i32;
+        pub fn emit(label: *const u8, label_len: i32, strength: i32) -> i32;
         pub fn panic(text: *const u8, text_len: i32);
     }
 }
@@ -112,6 +118,46 @@ mod real {
 
     pub fn state_write(data: &[u8]) {
         unsafe { host::state_write(data.as_ptr(), len(data)) };
+    }
+
+    pub fn with_access(machine: i32, side: i32, first: i32, last: i32) -> i32 {
+        unsafe { host::with_access(machine, side, first, last) }
+    }
+
+    pub fn move2(from: i32, to: i32, resource: Resource<'_>, limit: u32) {
+        let id = resource.id();
+        let kind = resource.kind() as i32;
+        unsafe {
+            host::move2(
+                from,
+                to,
+                kind,
+                id.as_ptr(),
+                len(id.as_bytes()),
+                limit.into(),
+            )
+        };
+    }
+
+    pub fn has(machine: i32, resource: Resource<'_>) -> u64 {
+        let id = resource.id();
+        let held = unsafe {
+            host::has(
+                machine,
+                resource.kind() as i32,
+                id.as_ptr(),
+                len(id.as_bytes()),
+            )
+        };
+        held.max(0) as u64
+    }
+
+    pub fn redstone_in(machine: i32) -> bool {
+        unsafe { host::redstone_in(machine) != 0 }
+    }
+
+    pub fn emit(label: &str, strength: u8) {
+        unsafe { host::emit(label.as_ptr(), len(label.as_bytes()), strength.into()) };
     }
 
     pub fn panic(message: &str) -> ! {

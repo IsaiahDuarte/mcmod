@@ -59,6 +59,19 @@ impl Rule {
         sys::craft(item.id(), amount);
     }
 
+    /// Sets every Signal-mode Interface labelled `label` in this network segment to `strength`
+    /// (0..=15) while the program stays deployed (language v2, ADR 0062). Stopping or pausing the
+    /// program hands them back to their own settings.
+    ///
+    /// # Panics
+    /// If `strength` is over 15.
+    pub fn emit_redstone(&self, label: &str, strength: u8) {
+        if strength > 15 {
+            panic!("redstone strength {strength} is over 15");
+        }
+        sys::emit(text::truncate(label), strength);
+    }
+
     /// Appends a line to the controller log, cut to 128 bytes. Use [`log!`](crate::log) to
     /// format values.
     pub fn log(&self, text: &str) {
@@ -112,6 +125,18 @@ impl Rule {
     }
 }
 
+/// A face of the machine block (not of its Interface), for [`Machine::side`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(i32)]
+pub enum Side {
+    Down = 0,
+    Up = 1,
+    North = 2,
+    South = 3,
+    West = 4,
+    East = 5,
+}
+
 /// A machine interface selected by label during one rule.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Machine<'cx> {
@@ -119,7 +144,50 @@ pub struct Machine<'cx> {
     _rule: PhantomData<&'cx Rule>,
 }
 
-impl Machine<'_> {
+impl<'cx> Machine<'cx> {
+    /// This machine reached through `side` of the machine block for the moves that use the
+    /// returned value (language v2). Another face than the Interface's own needs the Interface
+    /// bound to every slot; the server refuses it otherwise.
+    pub fn side(self, side: Side) -> Machine<'cx> {
+        Machine {
+            handle: sys::with_access(self.handle, side as i32, -1, -1),
+            _rule: PhantomData,
+        }
+    }
+
+    /// Only slots `first..=last` of the face used (language v2). On the Interface's own face
+    /// they must lie inside its bound window.
+    ///
+    /// # Panics
+    /// If `first > last` or `last` is over 1,023.
+    pub fn slots(self, slots: core::ops::RangeInclusive<u16>) -> Machine<'cx> {
+        let (first, last) = (*slots.start(), *slots.end());
+        if first > last || last > 1_023 {
+            panic!("slots {first}..={last} are not a range within 0..=1023");
+        }
+        Machine {
+            handle: sys::with_access(self.handle, -1, first.into(), last.into()),
+            _rule: PhantomData,
+        }
+    }
+
+    /// Moves at most `limit` (1..=4,096) matching units straight from this machine into
+    /// `target`, without passing through storage (language v2).
+    pub fn move_to(self, target: Machine<'_>, resource: Resource<'_>, limit: u32) {
+        sys::move2(self.handle, target.handle, resource, limit);
+    }
+
+    /// Matching units this machine holds now, through its Interface's binding. Moves still in
+    /// flight are not counted.
+    pub fn has(self, resource: Resource<'_>) -> u64 {
+        sys::has(self.handle, resource)
+    }
+
+    /// Whether this machine's Interface receives redstone power.
+    pub fn powered(self) -> bool {
+        sys::redstone_in(self.handle)
+    }
+
     /// Requests the deficit so this machine holds `amount` (1..=1,048,576) matching units.
     pub fn keep_stocked(self, resource: Resource<'_>, amount: u32) {
         sys::keep_stocked(self.handle, resource, amount);

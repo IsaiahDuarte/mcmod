@@ -26,6 +26,17 @@ public enum HostImport {
   LOG("log", List.of(I32, I32), I32),
   STATE_READ("state_read", List.of(I32, I32), I32),
   STATE_WRITE("state_write", List.of(I32, I32), I32),
+  // Additive language-v2 imports (ADR 0062, parity D7); older guests never declare them.
+  /** {@code with_access(machine, side, first, last)}: a handle for that face/slots (-1 keeps). */
+  WITH_ACCESS("with_access", List.of(I32, I32, I32, I32), I32),
+  /** {@code move2(from, to, kind, id, id_len, limit)}: either side -1 for storage, not both. */
+  MOVE2("move2", List.of(I32, I32, I32, I32, I32, I64), I32),
+  /** {@code has(machine, kind, id, id_len)}: matching units held by the machine. */
+  HAS("has", List.of(I32, I32, I32, I32), I64),
+  /** {@code redstone_in(machine)}: 1 when its Interface is powered, else 0. */
+  REDSTONE_IN("redstone_in", List.of(I32), I32),
+  /** {@code emit(label, label_len, strength)}: drive labelled Signal Interfaces at 0–15. */
+  EMIT("emit", List.of(I32, I32, I32), I32),
   /** Traps with the guest's message; never returns. */
   PANIC("panic", List.of(I32, I32), null);
 

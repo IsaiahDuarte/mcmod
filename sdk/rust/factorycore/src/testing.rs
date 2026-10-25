@@ -58,6 +58,25 @@ pub struct MachineRef {
     pub index: usize,
 }
 
+/// A machine endpoint with the face and slots a v2 move used (`None` keeps the Interface's).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Place {
+    pub machine: MachineRef,
+    pub side: Option<crate::Side>,
+    pub slots: Option<(u16, u16)>,
+}
+
+impl Place {
+    /// The machine as its Interface binds it (no side or slots).
+    pub fn plain(machine: MachineRef) -> Self {
+        Place {
+            machine,
+            side: None,
+            slots: None,
+        }
+    }
+}
+
 /// A command staged by a rule, as the server would receive it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Command {
@@ -81,6 +100,18 @@ pub enum Command {
         amount: u32,
     },
     Log(&'static str),
+    /// A language-v2 move: machine to machine, or with a side or slots (`None` is storage).
+    Move {
+        from: Option<Place>,
+        to: Option<Place>,
+        resource: Resource<'static>,
+        limit: u32,
+    },
+    /// Drive Signal-mode Interfaces with this label at `strength`.
+    Emit {
+        label: &'static str,
+        strength: u8,
+    },
 }
 
 /// The result of one successful rule run.
@@ -146,6 +177,8 @@ pub struct World {
     stock: Vec<(Resource<'static>, u64)>,
     labels: Vec<(&'static str, usize)>,
     state: Option<Vec<u8>>,
+    contents: Vec<(MachineRef, Resource<'static>, u64)>,
+    powered: Vec<MachineRef>,
 }
 
 impl World {
@@ -166,6 +199,36 @@ impl World {
     pub fn machines(mut self, label: &str, count: usize) -> Self {
         self.labels.retain(|(known, _)| *known != label);
         self.labels.push((leak(label), count));
+        self
+    }
+
+    /// Sets what the `index`-th machine labelled `label` holds of `resource`, for
+    /// [`Machine::has`](crate::Machine::has).
+    pub fn contents(
+        mut self,
+        label: &str,
+        index: usize,
+        resource: Resource<'_>,
+        amount: u64,
+    ) -> Self {
+        let machine = MachineRef {
+            label: leak(label),
+            index,
+        };
+        let resource = leak_resource(resource);
+        self.contents
+            .retain(|(known, held, _)| !(*known == machine && *held == resource));
+        self.contents.push((machine, resource, amount));
+        self
+    }
+
+    /// Powers the Interface of the `index`-th machine labelled `label`, for
+    /// [`Machine::powered`](crate::Machine::powered).
+    pub fn powered(mut self, label: &str, index: usize) -> Self {
+        self.powered.push(MachineRef {
+            label: leak(label),
+            index,
+        });
         self
     }
 
@@ -207,6 +270,8 @@ impl World {
             pending: None,
             registered: Vec::new(),
             handles: Vec::new(),
+            contents: self.contents.clone(),
+            powered: self.powered.clone(),
             commands: Vec::new(),
             host_calls: 0,
         };
@@ -250,7 +315,9 @@ struct Session {
     committed: Option<Vec<u8>>,
     pending: Option<Vec<u8>>,
     registered: Vec<&'static str>,
-    handles: Vec<MachineRef>,
+    handles: Vec<Place>,
+    contents: Vec<(MachineRef, Resource<'static>, u64)>,
+    powered: Vec<MachineRef>,
     commands: Vec<Command>,
     host_calls: u32,
 }
@@ -318,11 +385,15 @@ impl Session {
         self.commands.push(command);
     }
 
-    fn machine(&self, handle: i32) -> MachineRef {
+    fn place(&self, handle: i32) -> Place {
         usize::try_from(handle)
             .ok()
             .and_then(|handle| self.handles.get(handle).copied())
             .unwrap_or_else(|| trap("unknown machine handle"))
+    }
+
+    fn machine(&self, handle: i32) -> MachineRef {
+        self.place(handle).machine
     }
 }
 
@@ -334,21 +405,43 @@ fn text(text: &str) -> &str {
 }
 
 /// Checks a registry ID like Minecraft's resource locations (default namespace `minecraft`).
+/// Since language v2 an item or fluid ID may hold one `*` in its path and `" except "`-separated
+/// IDs to remove, as the server accepts (at most 8 terms).
 fn resource(resource: Resource<'_>) -> Resource<'static> {
     text(resource.id());
     if resource.kind() != ResourceKind::Energy {
-        let (namespace, path) = resource.namespaced();
-        let valid = |part: &str, slash: bool| {
+        let valid = |part: &str, slash: bool, star: bool| {
             !part.is_empty()
                 && part.bytes().all(|b| {
                     b.is_ascii_lowercase()
                         || b.is_ascii_digit()
                         || matches!(b, b'_' | b'-' | b'.')
                         || (slash && b == b'/')
+                        || (star && b == b'*')
                 })
         };
-        if !valid(namespace, false) || !valid(path, true) {
-            trap(format!("invalid registry ID {}", resource.id()));
+        let patterns = resource.kind() != ResourceKind::ItemTag;
+        let parts: Vec<&str> = if patterns {
+            resource.id().split(" except ").collect()
+        } else {
+            std::vec![resource.id()]
+        };
+        if parts.len() > 8 {
+            trap("a filter has at most 8 terms");
+        }
+        for part in parts {
+            let (namespace, path) = part.split_once(':').unwrap_or(("minecraft", part));
+            let stars = path.bytes().filter(|&b| b == b'*').count();
+            if !valid(namespace, false, false)
+                || !valid(path, true, patterns)
+                || stars > 1
+                || (stars == 1 && !patterns)
+            {
+                if stars == 0 && !resource.id().contains(" except ") {
+                    trap(format!("invalid registry ID {part}"));
+                }
+                trap(format!("invalid registry ID or pattern {part}"));
+            }
         }
     }
     leak_resource(resource)
@@ -409,7 +502,7 @@ pub(crate) mod host {
             let label = leak(label);
             session
                 .handles
-                .extend((0..count).map(|index| MachineRef { label, index }));
+                .extend((0..count).map(|index| Place::plain(MachineRef { label, index })));
             (base as i32, count as i32)
         })
     }
@@ -417,7 +510,11 @@ pub(crate) mod host {
     pub fn keep_stocked(machine: i32, target: Resource<'_>, amount: u32) {
         with_session(|session| {
             session.require_rule();
-            let machine = session.machine(machine);
+            let place = session.place(machine);
+            if place != Place::plain(place.machine) {
+                trap("keep_stocked takes no side or slots");
+            }
+            let machine = place.machine;
             let resource = resource(target);
             let amount = super::amount(amount, MAX_AMOUNT);
             session.stage(Command::KeepStocked {
@@ -431,13 +528,22 @@ pub(crate) mod host {
     pub fn move_to_storage(machine: i32, target: Resource<'_>, limit: u32) {
         with_session(|session| {
             session.require_rule();
-            let machine = session.machine(machine);
+            let place = session.place(machine);
             let resource = resource(target);
             let limit = amount(limit, MAX_MOVE);
-            session.stage(Command::MoveToStorage {
-                machine,
-                resource,
-                limit,
+            session.stage(if place == Place::plain(place.machine) {
+                Command::MoveToStorage {
+                    machine: place.machine,
+                    resource,
+                    limit,
+                }
+            } else {
+                Command::Move {
+                    from: Some(place),
+                    to: None,
+                    resource,
+                    limit,
+                }
             });
         })
     }
@@ -445,13 +551,130 @@ pub(crate) mod host {
     pub fn move_from_storage(machine: i32, target: Resource<'_>, limit: u32) {
         with_session(|session| {
             session.require_rule();
-            let machine = session.machine(machine);
+            let place = session.place(machine);
             let resource = resource(target);
             let limit = amount(limit, MAX_MOVE);
-            session.stage(Command::MoveFromStorage {
-                machine,
+            session.stage(if place == Place::plain(place.machine) {
+                Command::MoveFromStorage {
+                    machine: place.machine,
+                    resource,
+                    limit,
+                }
+            } else {
+                Command::Move {
+                    from: None,
+                    to: Some(place),
+                    resource,
+                    limit,
+                }
+            });
+        })
+    }
+
+    pub fn with_access(machine: i32, side: i32, first: i32, last: i32) -> i32 {
+        with_session(|session| {
+            session.require_rule();
+            let before = session.place(machine);
+            if !(-1..=5).contains(&side) {
+                trap("side is -1 (keep) or 0..5 (down..east)");
+            }
+            if side == -1 && first == -1 {
+                trap("with_access needs a side or slots");
+            }
+            if if first == -1 {
+                last != -1
+            } else {
+                first < 0 || last < first || last > 1_023
+            } {
+                trap("slots are 0..1023, low to high, or -1 to keep");
+            }
+            if session.handles.len() == MAX_HANDLES {
+                trap("too many machine handles");
+            }
+            let sides = [
+                crate::Side::Down,
+                crate::Side::Up,
+                crate::Side::North,
+                crate::Side::South,
+                crate::Side::West,
+                crate::Side::East,
+            ];
+            session.handles.push(Place {
+                machine: before.machine,
+                side: if side < 0 {
+                    before.side
+                } else {
+                    Some(sides[side as usize])
+                },
+                slots: if first < 0 {
+                    before.slots
+                } else {
+                    Some((first as u16, last as u16))
+                },
+            });
+            session.handles.len() as i32 - 1
+        })
+    }
+
+    pub fn move2(from: i32, to: i32, target: Resource<'_>, limit: u32) {
+        with_session(|session| {
+            session.require_rule();
+            if from == -1 && to == -1 {
+                trap("a move needs a machine on at least one side");
+            }
+            let from = (from != -1).then(|| session.place(from));
+            let to = (to != -1).then(|| session.place(to));
+            if let (Some(a), Some(b)) = (from, to)
+                && a.machine == b.machine
+            {
+                trap("a machine cannot move to itself");
+            }
+            let resource = resource(target);
+            let limit = amount(limit, MAX_MOVE);
+            session.stage(Command::Move {
+                from,
+                to,
                 resource,
                 limit,
+            });
+        })
+    }
+
+    pub fn has(machine: i32, target: Resource<'_>) -> u64 {
+        with_session(|session| {
+            session.require_rule();
+            let machine = session.machine(machine);
+            let target = resource(target);
+            session
+                .contents
+                .iter()
+                .filter(|(known, held, _)| *known == machine && *held == target)
+                .map(|(_, _, amount)| *amount)
+                .sum()
+        })
+    }
+
+    pub fn redstone_in(machine: i32) -> bool {
+        with_session(|session| {
+            session.require_rule();
+            let machine = session.machine(machine);
+            session.powered.contains(&machine)
+        })
+    }
+
+    pub fn emit(label: &str, strength: u8) {
+        with_session(|session| {
+            session.require_rule();
+            let label = text(label);
+            if label.is_empty() || label.encode_utf16().count() > 64 {
+                trap("invalid label");
+            }
+            if strength > 15 {
+                trap("redstone strength is 0..15");
+            }
+            session.stage(Command::Emit {
+                label: leak(label),
+                strength,
             });
         })
     }

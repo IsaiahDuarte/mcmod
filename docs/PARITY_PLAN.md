@@ -464,11 +464,19 @@ to identical IR (a fixture test pins this).
   (`signal-scale-4.png`, inspected; the tour now captures a few frames after the
   evaluated view arrives). `FriendlyV1PinTest` marks D6; every v2 fixture now compiles.
 
-- [ ] **D7 — Rust SDK parity.** Size M.
+- [x] **D7 — Rust SDK parity.** Size M.
   Additive `factory_v1` imports for every v2 operation; SDK wrappers, docs and an example.
   The friendly twin test grows to cover v2 command-for-command.
   Files: `sdk/rust/factorycore/src/{sys,rule}.rs`, `core/wasm/WasmProgram.java`, `WasmProgramTest`.
   Done when: old guest artifacts still load and run; the new example builds with the pinned toolchain.
+  Evidence (2026-10-25): five additive imports in `HostImport` (`with_access`, `move2`, `has`,
+  `redstone_in`, `emit`). Filter text gains globs and ` except `, which used to trap, so no
+  old guest changes meaning. SDK: `Side`, `Machine::{side, slots, move_to, has, powered}`,
+  `Rule::emit_redstone`, and mock-host parity (`Command::Move`/`Emit`, `World::contents`/
+  `powered`). New `examples/furnace` (Rust 1.95.0, `wasm32v1-none`) has its own cargo tests.
+  `WasmProgramTest.languageV2GuestMatchesItsFriendlyTwinCommandForCommand` runs 3 rules × 4
+  coal levels × 2 button states, and the old smelter twin still passes (old artifacts load
+  and run). `HostImportTest.rustSdkDeclaresExactlyTheHostImports` passes.
 
 - [ ] **D8 — Label Tool (G12, needs PD3).** Size M.
   Option (a): a handheld tool. Use on an Interface to apply the current label; sneak-use

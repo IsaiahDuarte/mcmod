@@ -3,7 +3,7 @@
 Status: accepted 2026-10-25 (PD2: v2 is a strict superset of v1; Wasm gains additive
 `factory_v1` imports). Grammar, limits and diagnostics are frozen here before parser work.
 Slices D2–D6 implement it, and each one is complete only when its fixtures in
-`src/test/resources/program/v2/` compile and run. Implemented so far: D2, D3, D4, D5, D6.
+`src/test/resources/program/v2/` compile and run. Implemented so far: D2–D6 (language), D7 (Wasm imports and Rust SDK).
 
 ## Context
 

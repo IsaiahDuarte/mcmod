@@ -74,6 +74,85 @@ class WasmProgramTest {
     assertEquals(3, guest.invoke(0, host(0)).commands().size());
   }
 
+  /** D7 (ADR 0062): the v2 example guest and its friendly twin, command for command. */
+  @Test
+  void languageV2GuestMatchesItsFriendlyTwinCommandForCommand() throws Exception {
+    var furnace = new UUID(1, 1);
+    var left = new UUID(1, 2);
+    var right = new UUID(1, 3);
+    var button = new UUID(1, 4);
+    var guest =
+        new WasmProgram(
+            Files.readAllBytes(Path.of(System.getProperty("factorycore.test.furnace"))),
+            System::nanoTime);
+    var friendly =
+        FriendlyCompiler.compile(
+            """
+            every 10 ticks as "furnace" {
+                for f in machines("furnace") {
+                    if f has < 8 of item("minecraft:coal") {
+                        move item("minecraft:coal") from storage to f side north limit 4
+                    }
+                    move item("*_ingot") except item("iron_ingot") from f side down slots 0 to storage limit 64
+                }
+            }
+            every 20 ticks as "pass" {
+                move item("minecraft:cobblestone") from machines("left") to machines("right") limit 16
+            }
+            every 10 ticks as "relay" {
+                if redstone(machines("button")) { emit redstone 15 on machines("alarm") }
+                else { emit redstone 0 on machines("alarm") }
+            }
+            """);
+    assertTrue(friendly.ok(), friendly.diagnostics()::toString);
+    assertEquals(
+        List.of(
+            new WasmProgram.RuleSpec("furnace", 10),
+            new WasmProgram.RuleSpec("pass", 20),
+            new WasmProgram.RuleSpec("relay", 10)),
+        guest.rules());
+    var labels =
+        Map.of(
+            "furnace",
+            List.of(furnace),
+            "left",
+            List.of(left),
+            "right",
+            List.of(right),
+            "button",
+            List.of(button));
+    for (long coal : new long[] {0, 7, 8, 64})
+      for (boolean pressed : new boolean[] {false, true}) {
+        var host =
+            new ProgramEvaluator.Host() {
+              @Override
+              public List<UUID> machines(String label) {
+                return labels.getOrDefault(label, List.of());
+              }
+
+              @Override
+              public long stock(ResourceFilter filter) {
+                return 0;
+              }
+
+              @Override
+              public ProgramEvaluator.Contents contents(UUID machine, ResourceFilter filter) {
+                return new ProgramEvaluator.Contents(machine.equals(furnace) ? coal : 0, 1);
+              }
+
+              @Override
+              public boolean powered(UUID machine) {
+                return pressed && machine.equals(button);
+              }
+            };
+        for (int rule = 0; rule < 3; rule++)
+          assertEquals(
+              ProgramEvaluator.invoke(friendly.program().rules().get(rule), host),
+              guest.invoke(rule, host).commands(),
+              "rule " + rule + " coal " + coal + " pressed " + pressed);
+      }
+  }
+
   @Test
   void preflightRejectsForeignImportsAndOversizedArtifacts() {
     var foreign =

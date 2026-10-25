@@ -44,7 +44,7 @@ pub mod testing;
 
 pub use factorycore_macros::{program, rule};
 pub use resource::{ENERGY, Resource, ResourceKind, fluid, item, item_tag};
-pub use rule::{Machine, Machines, Rule, RuleDef};
+pub use rule::{Machine, Machines, Rule, RuleDef, Side};
 pub use text::MAX_TEXT;
 
 /// Maximum persistent state in bytes.
@@ -52,7 +52,7 @@ pub const MAX_STATE: usize = 4_096;
 
 /// Everything a program usually needs: `use factorycore::prelude::*;`.
 pub mod prelude {
-    pub use crate::{ENERGY, Machine, Resource, Rule, fluid, item, item_tag, log, program};
+    pub use crate::{ENERGY, Machine, Resource, Rule, Side, fluid, item, item_tag, log, program};
 }
 
 /// Formats a line into the controller log without allocating, cut to 128 bytes:

@@ -56,7 +56,11 @@ public final class WasmProgram {
   private final Instance instance;
   private final List<RuleSpec> rules = new ArrayList<>();
   private final List<ProgramCommand> staged = new ArrayList<>();
-  private final List<UUID> selected = new ArrayList<>();
+
+  /** A machine handle: the machine and the face/slots {@code with_access} gave it (or null). */
+  private record Selected(UUID machine, ProgramCommand.Access access) {}
+
+  private final List<Selected> selected = new ArrayList<>();
   private ProgramEvaluator.Host host;
   private boolean initializing, failed, wrote;
   private byte[] committed, pending;
@@ -121,6 +125,11 @@ public final class WasmProgram {
                 case LOG -> this::log;
                 case STATE_READ -> this::stateRead;
                 case STATE_WRITE -> this::stateWrite;
+                case WITH_ACCESS -> this::withAccess;
+                case MOVE2 -> this::move2;
+                case HAS -> this::has;
+                case REDSTONE_IN -> this::redstoneIn;
+                case EMIT -> this::emitSignal;
                 case PANIC -> this::panic;
               }));
     instance =
@@ -270,12 +279,47 @@ public final class WasmProgram {
       throw new Limit("more than 64 machines labeled " + label);
     if (selected.size() + found.size() > 1_024) throw new Limit("too many machine handles");
     long base = selected.size();
-    selected.addAll(found);
+    for (var machine : found) selected.add(new Selected(machine, null));
     return new long[] {(base << 32) | found.size()};
   }
 
-  /** Filter from a resource kind (0 item, 1 fluid, 2 energy, 3 item tag) and a registry ID. */
+  /**
+   * Filter from a resource kind (0 item, 1 fluid, 2 energy, 3 item tag) and a registry ID. Since D7
+   * an item or fluid ID may hold one {@code *} (a glob) and {@code " except "}-separated IDs to
+   * remove (ADR 0062); such text used to trap, so no older guest changes meaning.
+   */
   private ResourceFilter filter(long kind, String id) {
+    if (kind != 2 && kind != 3 && (id.contains("*") || id.contains(" except "))) {
+      var parts = id.split(" except ", -1);
+      if (parts.length > 8) throw new Limit("a filter has at most 8 terms");
+      var terms = new ArrayList<ResourceFilter.Term>();
+      for (var part : parts) terms.add(term(part.strip()));
+      var resourceKind = kind == 1 ? ResourceKind.FLUID : ResourceKind.ITEM;
+      try {
+        return new ResourceFilter(
+            resourceKind,
+            ResourceFilter.Mode.INCLUDE,
+            List.of(
+                terms.size() == 1
+                    ? terms.getFirst()
+                    : new ResourceFilter.Except(terms.getFirst(), terms.subList(1, terms.size()))));
+      } catch (IllegalArgumentException invalid) {
+        throw new Limit("invalid filter " + id);
+      }
+    }
+    return plainFilter(kind, id);
+  }
+
+  private ResourceFilter.Term term(String id) {
+    try {
+      if (id.contains("*")) return new ResourceFilter.Glob(id);
+      return new ResourceFilter.Registry(id.contains(":") ? id : "minecraft:" + id);
+    } catch (IllegalArgumentException invalid) {
+      throw new Limit("invalid registry ID or pattern " + id);
+    }
+  }
+
+  private ResourceFilter plainFilter(long kind, String id) {
     if (kind == 2) {
       return new ResourceFilter(
           ResourceKind.ENERGY,
@@ -303,13 +347,111 @@ public final class WasmProgram {
     long amount = a[4];
     if (amount < 1 || amount > (op == 0 ? ProgramIr.MAX_AMOUNT : 4_096))
       throw new Limit("amount out of range");
-    var machine = selected.get((int) handle);
+    var chosen = selected.get((int) handle);
+    var machine = chosen.machine();
+    if (op == 0 && chosen.access() != null) throw new Limit("keep_stocked takes no side or slots");
     stage(
         switch (op) {
           case 0 -> new ProgramCommand.Keep(machine, filter, amount);
-          case 1 -> new ProgramCommand.Move(filter, machine, null, amount);
-          default -> new ProgramCommand.Move(filter, null, machine, amount);
+          case 1 -> new ProgramCommand.Move(filter, machine, null, amount, chosen.access(), null);
+          default -> new ProgramCommand.Move(filter, null, machine, amount, null, chosen.access());
         });
+    return new long[] {0};
+  }
+
+  private Selected handle(long value) {
+    if (value < 0 || value >= selected.size()) throw new Limit("unknown machine handle");
+    return selected.get((int) value);
+  }
+
+  /**
+   * {@code with_access(machine, side, first, last)}: appends a handle with that face/slots; -1
+   * keeps the side or slots the given handle already had.
+   */
+  private long[] withAccess(long[] a) {
+    call();
+    requireCallback();
+    var chosen = handle(a[0]);
+    // i32 arguments: cast so -1 is -1 however the runtime widens them.
+    long side = (int) a[1], first = (int) a[2], last = (int) a[3];
+    if (side < -1 || side > 5) throw new Limit("side is -1 (keep) or 0..5 (down..east)");
+    if (side == -1 && first == -1) throw new Limit("with_access needs a side or slots");
+    if (first == -1 ? last != -1 : first < 0 || last < first || last > ProgramIr.MAX_SLOT)
+      throw new Limit("slots are 0..1023, low to high, or -1 to keep");
+    if (selected.size() == 1_024) throw new Limit("too many machine handles");
+    // Chained calls merge: -1 keeps what an earlier with_access on this handle set.
+    var before = chosen.access();
+    var keptSide = before == null ? null : before.side();
+    int keptFirst = before == null ? -1 : before.first(),
+        keptLast = before == null ? -1 : before.last();
+    selected.add(
+        new Selected(
+            chosen.machine(),
+            new ProgramCommand.Access(
+                side < 0 ? keptSide : ProgramIr.Side.values()[(int) side],
+                first < 0 ? keptFirst : (int) first,
+                first < 0 ? keptLast : (int) last)));
+    return new long[] {selected.size() - 1};
+  }
+
+  /** {@code move2(from, to, kind, id, len, limit)}: -1 is storage on either side, not both. */
+  private long[] move2(long[] a) {
+    call();
+    requireCallback();
+    int fromHandle = (int) a[0], toHandle = (int) a[1];
+    if (fromHandle == -1 && toHandle == -1)
+      throw new Limit("a move needs a machine on at least one side");
+    var from = fromHandle == -1 ? null : handle(fromHandle);
+    var to = toHandle == -1 ? null : handle(toHandle);
+    if (from != null && to != null && from.machine().equals(to.machine()))
+      throw new Limit("a machine cannot move to itself");
+    var filter = filter(a[2], text(a[3], a[4]));
+    if (a[5] < 1 || a[5] > 4_096) throw new Limit("amount out of range");
+    stage(
+        new ProgramCommand.Move(
+            filter,
+            from == null ? null : from.machine(),
+            to == null ? null : to.machine(),
+            a[5],
+            from == null ? null : from.access(),
+            to == null ? null : to.access()));
+    return new long[] {0};
+  }
+
+  /** {@code has(machine, kind, id, len)}: one call, plus one per extra observation page. */
+  private long[] has(long[] a) {
+    call();
+    requireCallback();
+    var chosen = handle(a[0]);
+    var filter = filter(a[1], text(a[2], a[3]));
+    ProgramEvaluator.Contents read;
+    try {
+      read = host.contents(chosen.machine(), filter);
+    } catch (RuntimeException failure) {
+      throw new Limit("has query failed: " + failure.getMessage());
+    }
+    for (int page = 1; page < read.pages(); page++) call();
+    return new long[] {read.amount()};
+  }
+
+  private long[] redstoneIn(long[] a) {
+    call();
+    requireCallback();
+    var chosen = handle(a[0]);
+    try {
+      return new long[] {host.powered(chosen.machine()) ? 1 : 0};
+    } catch (RuntimeException failure) {
+      throw new Limit("redstone query failed: " + failure.getMessage());
+    }
+  }
+
+  private long[] emitSignal(long[] a) {
+    call();
+    requireCallback();
+    var label = text(a[0], a[1]);
+    if (label.isEmpty() || label.length() > 64) throw new Limit("invalid label");
+    if (a[2] < 0 || a[2] > 15) throw new Limit("redstone strength is 0..15");
+    stage(new ProgramCommand.Emit(label, (int) a[2]));
     return new long[] {0};
   }
 

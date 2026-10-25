@@ -103,6 +103,29 @@ mod tests {
 across runs (see `examples/counter`). The mock does not model the instruction budget, FE,
 permissions or what the server later does with the commands.
 
+## Language version 2 operations
+
+These match the friendly language's version 2 ([ADR 0062](../../docs/decisions/0062-friendly-language-v2.md))
+through additive `factory_v1` imports (`with_access`, `move2`, `has`, `redstone_in`, `emit`).
+Guests built before them still load and run unchanged.
+
+| Rust | Friendly language | Notes |
+| --- | --- | --- |
+| `machine.side(Side::North)` | `… side north` | The face of the machine block. Another face than the Interface's own needs the Interface bound to every slot. |
+| `machine.slots(0..=2)` | `… slots 0..2` | Positions on the face used. On the Interface's own face they must lie inside its window. Chains with `side`. |
+| `a.move_to(b, item("stone"), 16)` | `move item("stone") from a to b limit 16` | Machine to machine, no storage. A machine never moves to itself. |
+| `machine.has(item("coal"))` | `m has < 8 of item("coal")` | Units held now. Moves in flight are not counted. Costs one host call plus one per extra page. |
+| `machine.powered()` | `redstone(m)` | Whether its Interface receives redstone power. |
+| `cx.emit_redstone("alarm", 15)` | `emit redstone 15 on machines("alarm")` | Drives Signal-mode Interfaces with that label while deployed. |
+| `item("*_ingot except iron_ingot")` | `item("*_ingot") except item("iron_ingot")` | One `*` per ID, in the path. At most 8 terms. Not for tags. |
+
+Conditions (`else`, `and`, `or`, `not`) are plain Rust. `examples/furnace` uses every
+operation and is checked command for command against its friendly twin (`FURNACE`). In
+`testing::World`, `.contents(label, index, resource, amount)` and `.powered(label, index)`
+set up machine reads. A move that uses a side, slots or two machines appears as
+`Command::Move { from, to, .. }` with `Place` endpoints, and `Command::Emit` records
+redstone output.
+
 ## Persistent state
 
 Each deployment keeps one state value of at most 4,096 bytes. A write commits only if the
