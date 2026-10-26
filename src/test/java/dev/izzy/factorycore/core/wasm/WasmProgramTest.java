@@ -193,7 +193,7 @@ class WasmProgramTest {
    * Imports factory_v1.register_rule; factory_init registers rule "a" every 10 ticks; factory_rule
    * runs {@code ruleBody} (raw instruction bytes ending with 0x0b).
    */
-  private static byte[] module(String importName, byte[] ruleBody) {
+  static byte[] module(String importName, byte[] ruleBody) {
     return module(importName, ruleBody, new byte[] {1, 1, 1, 1});
   }
 
@@ -436,6 +436,21 @@ class WasmProgramTest {
     var trap = assertThrows(ProgramEvaluator.Trap.class, () -> guest.invoke(0, host(0)));
     assertTrue(trap.getMessage().contains("time limit"), trap.getMessage());
     assertTrue(guest.failed());
+  }
+
+  /** Q59: the clock is read once per DEADLINE_STRIDE instructions, not every instruction. */
+  @Test
+  void fullBudgetRuleReadsTheClockOncePerStride() {
+    var loop = module("register_rule", new byte[] {0x03, 0x40, 0x0c, 0, 0x0b, 0x0b});
+    long[] reads = {0};
+    var guest = new WasmProgram(loop, () -> ++reads[0] * 0);
+    reads[0] = 0;
+    var trap = assertThrows(ProgramEvaluator.Trap.class, () -> guest.invoke(0, host(0)));
+    assertTrue(trap.getMessage().contains("instruction budget"), trap.getMessage());
+    long strides = WasmProgram.RULE_INSTRUCTIONS / WasmProgram.DEADLINE_STRIDE;
+    assertTrue(
+        reads[0] >= strides && reads[0] <= strides + 2,
+        "One start read plus one per stride, got " + reads[0]);
   }
 
   @Test

@@ -41,6 +41,14 @@ public final class WasmProgram {
   public static final int MAX_TEXT = 128;
   public static final long DEADLINE_NANOS = 50_000_000;
 
+  /**
+   * The deadline is read once per this many instructions (a power of two). Reading the clock every
+   * instruction cost about half of a full-budget rule
+   * (docs/performance/wasm-deadline-2026-10-26.md); a guest can now overrun the deadline by at most
+   * this many instructions minus one.
+   */
+  public static final int DEADLINE_STRIDE = 256;
+
   /** Persistent guest state quota in bytes (one blob per deployment). */
   public static final int MAX_STATE = 4_096;
 
@@ -143,7 +151,9 @@ public final class WasmProgram {
                   if (remaining-- <= 0) throw new Limit("instruction budget exhausted");
                   if (stack.size() >= MAX_OPERANDS)
                     throw new Limit("operand stack over " + MAX_OPERANDS);
-                  if (clock.getAsLong() - started >= DEADLINE_NANOS) throw new Limit("time limit");
+                  if ((remaining & (DEADLINE_STRIDE - 1)) == 0
+                      && clock.getAsLong() - started >= DEADLINE_NANOS)
+                    throw new Limit("time limit");
                 })
             .build();
     initializing = true;

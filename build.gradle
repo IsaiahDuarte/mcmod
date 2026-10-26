@@ -354,6 +354,13 @@ tasks.register('wasmBenchmark', JavaExec) {
     systemProperty 'factorycore.test.smelter', file('build/test-guests/smelter.wasm').absolutePath
 }
 
+tasks.register('wasmDeadlineBenchmark', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.izzy.factorycore.core.wasm.WasmDeadlineBenchmark'
+    maxHeapSize = '2g'
+}
+
 
 // Compile the isolated graphical fixture in the canonical gate; run it explicitly on a desktop.
 tasks.named('check') { dependsOn tasks.named('compileClientTestJava'), tasks.named('compileJeiTestJava') }

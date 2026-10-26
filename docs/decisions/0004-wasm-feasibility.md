@@ -90,3 +90,12 @@ guest counts, event/log/state limits and lifecycle remain P5 work. Linux/Windows
 CI installs pinned Rust tools and runs these tests; remote execution is pending.
 
 Observed experiment results also belong in [the implementation plan](../IMPLEMENTATION.md).
+
+## Amendment — deadline stride (2026-10-26, ergonomics plan Q59)
+
+The production runtime (`WasmProgram`) reads its 50 ms callback deadline once per 256
+instructions instead of on every instruction. Measured on a full-budget rule (65,536
+instructions), the per-instruction read was about half the rule's time (1.55 ms against 0.80 ms;
+[measurement](../performance/wasm-deadline-2026-10-26.md)). The worst-case overrun past the
+deadline is 255 instructions, about 3 µs at the measured rate. The instruction budget, operand
+and frame limits stay per instruction.

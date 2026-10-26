@@ -393,7 +393,11 @@ New gates:
   Done when: a client test (or `runJeiClient` step) shows a JEI request not carried into a later
   terminal, and the dedicated-server GameTests still pass.
 
-- [ ] **Q59 — Cheaper Wasm deadline (M58).** Size S. Measure first.
+- [x] **Q59 — Cheaper Wasm deadline (M58).** Size S. Done 2026-10-26 (commit subject
+  `Q59:`). Measured first: the per-instruction clock read was 47–50 % of a full-budget rule
+  (1.55 ms). Now read every 256 instructions: 0.80 ms; worst-case overrun 255 instructions
+  (about 3 µs), recorded in the ADR 0004 amendment.
+  [Measurement](performance/wasm-deadline-2026-10-26.md).
   Benchmark a 65,536-instruction rule with the per-instruction clock read. Only if the clock
   read is a measurable share, check every 256 instructions and record the new worst-case
   overrun in ADR 0004.
