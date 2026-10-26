@@ -4,7 +4,11 @@ Implemented: `platform/wireless` — `AccessPointBlock`/`AccessPointEntity` (ter
 20,000 FE buffer, 1,000 FE/tick input, 64-block range, 16 FE per open-session tick),
 `WirelessTerminalItem` (20,000 FE, 64 FE per mutating action, bound via use-on), and
 `WirelessAccess`, the `TerminalAccess` implementation re-checked every tick.
-See [ADR0039](../decisions/0039-wireless-access.md).
+See [ADR0039](../decisions/0039-wireless-access.md). The Access Point, the Wireless Link and
+the Program Controller take FE through one `platform.power.RateLimitedEnergyInput`
+(consume-only, capacity and per-tick rate, server side only, an owner gate, dirty callback); a
+Link with unsupported saved data also reports `canReceive` false, and a Program Controller
+item's stored FE is clamped to the buffer when placed.
 
 Thread ownership: server thread only. Binding data is dimension + block position; no
 grants, stock or session credentials are stored on the item or block.

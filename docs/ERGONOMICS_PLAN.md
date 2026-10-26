@@ -360,7 +360,10 @@ New gates:
   scales 1 and 4 match the H2 evidence; no raw `fill` or hard-coded colour remains in the
   terminal classes.
 
-- [ ] **Q56 — One rate-limited energy input (M55).** Size S.
+- [x] **Q56 — One rate-limited energy input (M55).** Size S. Done 2026-10-26 (commit subject
+  `Q56:`). `platform.power.RateLimitedEnergyInput`; `RateLimitedEnergyInputTest` (4 tests)
+  covers rate, capacity, a refused accept, off-server input and the zero clamp. All 417
+  GameTests pass. Two edge changes are documented in `modules/WIRELESS.md`.
   A shared `RateLimitedEnergyInput` (capacity, per-tick rate, dirty callback, accept gate) used
   by the Access Point, Program Controller and Wireless Link.
   Done when: a unit test covers rate, capacity, a refused accept and the zero clamp, and the

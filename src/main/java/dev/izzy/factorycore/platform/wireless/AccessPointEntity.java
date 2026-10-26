@@ -6,6 +6,7 @@ import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.power.RateLimitedEnergyInput;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -25,74 +26,29 @@ public final class AccessPointEntity extends BlockEntity implements WiredMember 
   public static final long INPUT_RATE = 1_000;
   public static final int RANGE = 64;
   public static final long TICK_COST = 16;
-  private long energy;
-  private long inputTick = Long.MIN_VALUE, inputThisTick;
-
-  private final IEnergyStorage storage =
-      new IEnergyStorage() {
-        @Override
-        public int receiveEnergy(int amount, boolean simulate) {
-          if (amount <= 0 || level == null || level.isClientSide()) return 0;
-          long tick = level.getGameTime();
-          long used = tick == inputTick ? inputThisTick : 0;
-          long accepted =
-              Math.max(0, Math.min(amount, Math.min(CAPACITY - energy, INPUT_RATE - used)));
-          if (!simulate && accepted > 0) {
-            if (tick != inputTick) {
-              inputTick = tick;
-              inputThisTick = 0;
-            }
-            inputThisTick += accepted;
-            energy += accepted;
-            setChanged();
-          }
-          return (int) accepted;
-        }
-
-        @Override
-        public int extractEnergy(int amount, boolean simulate) {
-          return 0;
-        }
-
-        @Override
-        public int getEnergyStored() {
-          return (int) energy;
-        }
-
-        @Override
-        public int getMaxEnergyStored() {
-          return (int) CAPACITY;
-        }
-
-        @Override
-        public boolean canExtract() {
-          return false;
-        }
-
-        @Override
-        public boolean canReceive() {
-          return true;
-        }
-      };
+  private final RateLimitedEnergyInput input =
+      new RateLimitedEnergyInput(
+          CAPACITY, INPUT_RATE, this::serverTick, () -> true, this::setChanged);
 
   public AccessPointEntity(BlockPos position, BlockState state) {
     super(WirelessContent.ACCESS_POINT_ENTITY.get(), position, state);
   }
 
+  private long serverTick() {
+    return level == null || level.isClientSide() ? -1 : level.getGameTime();
+  }
+
   public IEnergyStorage energyStorage() {
-    return storage;
+    return input;
   }
 
   public long energy() {
-    return energy;
+    return input.energy();
   }
 
   /** Spends FE if available; spends nothing and returns false otherwise. */
   public boolean spend(long amount) {
-    if (amount < 0 || amount > energy) return false;
-    energy -= amount;
-    setChanged();
-    return true;
+    return input.spend(amount);
   }
 
   public NodeRegistry.Position origin() {
@@ -121,13 +77,13 @@ public final class AccessPointEntity extends BlockEntity implements WiredMember 
   @Override
   protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.saveAdditional(tag, registries);
-    tag.putLong("Energy", energy);
+    tag.putLong("Energy", input.energy());
   }
 
   @Override
   protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.loadAdditional(tag, registries);
-    energy = Math.max(0, Math.min(CAPACITY, tag.getLong("Energy")));
+    input.restore(tag.getLong("Energy"));
   }
 
   @Override

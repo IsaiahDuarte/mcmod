@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.power.RateLimitedEnergyInput;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,61 +45,24 @@ public final class LinkModule {
 
   private final NetworkNodeEntity host;
   private Direction side;
-  private long energy;
   private Long partner;
   private UUID owner;
   private boolean powered;
   private ThroughputTier tier = ThroughputTier.BASE;
   private CompoundTag rejected;
-  private long inputTick = Long.MIN_VALUE, inputThisTick;
 
-  private final IEnergyStorage storage =
-      new IEnergyStorage() {
-        @Override
-        public int receiveEnergy(int amount, boolean simulate) {
-          var level = host.getLevel();
-          if (amount <= 0 || level == null || level.isClientSide() || rejected != null) return 0;
-          long tick = level.getGameTime();
-          long used = tick == inputTick ? inputThisTick : 0;
-          long accepted =
-              Math.max(0, Math.min(amount, Math.min(CAPACITY - energy, INPUT_RATE - used)));
-          if (!simulate && accepted > 0) {
-            if (tick != inputTick) {
-              inputTick = tick;
-              inputThisTick = 0;
-            }
-            inputThisTick += accepted;
-            energy += accepted;
-            host.setChanged();
-          }
-          return (int) accepted;
-        }
+  private final RateLimitedEnergyInput input =
+      new RateLimitedEnergyInput(
+          CAPACITY, INPUT_RATE, this::gameTime, () -> rejected == null, this::changed);
 
-        @Override
-        public int extractEnergy(int amount, boolean simulate) {
-          return 0;
-        }
+  private long gameTime() {
+    var level = host.getLevel();
+    return level == null || level.isClientSide() ? -1 : level.getGameTime();
+  }
 
-        @Override
-        public int getEnergyStored() {
-          return (int) energy;
-        }
-
-        @Override
-        public int getMaxEnergyStored() {
-          return (int) CAPACITY;
-        }
-
-        @Override
-        public boolean canExtract() {
-          return false;
-        }
-
-        @Override
-        public boolean canReceive() {
-          return true;
-        }
-      };
+  private void changed() {
+    host.setChanged();
+  }
 
   /** A freshly installed link on {@code side} of {@code host}, owned by its installer. */
   public LinkModule(NetworkNodeEntity host, Direction side, UUID owner) {
@@ -112,19 +76,16 @@ public final class LinkModule {
   }
 
   public IEnergyStorage energyStorage() {
-    return storage;
+    return input;
   }
 
   public long energy() {
-    return energy;
+    return input.energy();
   }
 
   /** Test/diagnostic drain; spends nothing and returns false if unaffordable. */
   public boolean spend(long amount) {
-    if (amount < 0 || amount > energy) return false;
-    energy -= amount;
-    host.setChanged();
-    return true;
+    return input.spend(amount);
   }
 
   public UUID owner() {
@@ -148,7 +109,7 @@ public final class LinkModule {
   /** Sets or clears the partner gateway; callers refresh topology at both ends. */
   void partner(BlockPos value) {
     partner = value == null ? null : value.asLong();
-    powered = partner != null && energy >= TICK_COST;
+    powered = partner != null && input.energy() >= TICK_COST;
     host.setChanged();
   }
 
@@ -233,11 +194,7 @@ public final class LinkModule {
   /** Pays operating power every tick; a change in powered state re-discovers both ends. */
   public void serverTick() {
     if (rejected != null || partner == null) return;
-    boolean next = energy >= TICK_COST;
-    if (next) {
-      energy -= TICK_COST;
-      host.setChanged();
-    }
+    boolean next = input.spend(TICK_COST);
     if (next != powered) {
       powered = next;
       refresh();
@@ -268,7 +225,7 @@ public final class LinkModule {
     if (rejected != null) return rejected.copy();
     var tag = new CompoundTag();
     tag.putString("Side", side.getSerializedName());
-    tag.putLong("Energy", energy);
+    tag.putLong("Energy", input.energy());
     if (partner != null) tag.putLong("Partner", partner);
     if (owner != null) tag.putUUID("Owner", owner);
     if (tier != ThroughputTier.BASE) tag.putString("Throughput", tier.name());
@@ -279,10 +236,10 @@ public final class LinkModule {
   public static LinkModule load(NetworkNodeEntity host, CompoundTag tag) {
     var link = new LinkModule(host);
     link.side = Direction.byName(tag.getString("Side").toLowerCase(Locale.ROOT));
-    link.energy = Math.max(0, Math.min(CAPACITY, tag.getLong("Energy")));
+    link.input.restore(tag.getLong("Energy"));
     link.partner = tag.contains("Partner") ? tag.getLong("Partner") : null;
     link.owner = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
-    link.powered = link.partner != null && link.energy >= TICK_COST;
+    link.powered = link.partner != null && link.input.energy() >= TICK_COST;
     try {
       if (link.side == null) throw new IllegalArgumentException("Missing link side");
       if (tag.contains("Throughput")) {

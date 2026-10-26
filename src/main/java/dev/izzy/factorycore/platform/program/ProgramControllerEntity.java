@@ -11,6 +11,7 @@ import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.power.RateLimitedEnergyInput;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.util.List;
 import java.util.Objects;
@@ -54,8 +55,6 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
   private UUID deployer, deployment;
   private State state = State.STOPPED;
   private String message = "";
-  private long energy;
-  private long inputTick = Long.MIN_VALUE, inputThisTick;
   private ProgramIr.Program program;
   private byte[] artifact;
   private WasmProgram wasm;
@@ -63,70 +62,29 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
   private CompoundTag unsupported;
   private final ProgramLog logs = new ProgramLog();
 
-  private final IEnergyStorage storage =
-      new IEnergyStorage() {
-        @Override
-        public int receiveEnergy(int amount, boolean simulate) {
-          if (amount <= 0 || unsupported != null || level == null || level.isClientSide()) return 0;
-          long tick = level.getGameTime();
-          long used = tick == inputTick ? inputThisTick : 0;
-          long accepted = Math.min(amount, Math.min(CAPACITY - energy, INPUT_RATE - used));
-          if (!simulate && accepted > 0) {
-            if (tick != inputTick) {
-              inputTick = tick;
-              inputThisTick = 0;
-            }
-            inputThisTick += accepted;
-            energy += accepted;
-            setChanged();
-          }
-          return (int) Math.max(0, accepted);
-        }
-
-        @Override
-        public int extractEnergy(int amount, boolean simulate) {
-          return 0;
-        }
-
-        @Override
-        public int getEnergyStored() {
-          return (int) energy;
-        }
-
-        @Override
-        public int getMaxEnergyStored() {
-          return (int) CAPACITY;
-        }
-
-        @Override
-        public boolean canExtract() {
-          return false;
-        }
-
-        @Override
-        public boolean canReceive() {
-          return unsupported == null;
-        }
-      };
+  private final RateLimitedEnergyInput input =
+      new RateLimitedEnergyInput(
+          CAPACITY,
+          INPUT_RATE,
+          () -> level == null || level.isClientSide() ? -1 : level.getGameTime(),
+          () -> unsupported == null,
+          this::setChanged);
 
   public ProgramControllerEntity(BlockPos position, BlockState state) {
     super(ProgramContent.ENTITY.get(), position, state);
   }
 
   public IEnergyStorage energyStorage() {
-    return storage;
+    return input;
   }
 
   public long energy() {
-    return energy;
+    return input.energy();
   }
 
   /** Spends {@code amount} FE if available; returns false and spends nothing otherwise. */
   public boolean spend(long amount) {
-    if (amount < 0 || amount > energy) return false;
-    energy -= amount;
-    setChanged();
-    return true;
+    return input.spend(amount);
   }
 
   public String draft() {
@@ -315,7 +273,7 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
     }
     tag.putInt("Schema", SCHEMA);
     tag.putString("Draft", draft);
-    tag.putLong("Energy", energy);
+    tag.putLong("Energy", input.energy());
     tag.putString("State", state.name());
     tag.putString("Message", message);
     if (deployed != null) tag.putString("Deployed", deployed);
@@ -344,7 +302,7 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
       if (savedDraft.length() > MAX_DRAFT || savedEnergy < 0 || savedEnergy > CAPACITY)
         throw new IllegalArgumentException("Range");
       draft = savedDraft;
-      energy = savedEnergy;
+      input.restore(savedEnergy);
       message = tag.getString("Message");
       artifact = null;
       wasm = null;
@@ -395,7 +353,7 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
     var saved = input.get(ProgramContent.DRAFT.get());
     if (saved != null) draft = saved;
     var fe = input.get(ProgramContent.ENERGY.get());
-    if (fe != null) energy = fe;
+    if (fe != null) this.input.restore(fe);
   }
 
   @Override
@@ -403,7 +361,7 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
     super.collectImplicitComponents(components);
     if (unsupported != null) return;
     if (!draft.isEmpty()) components.set(ProgramContent.DRAFT.get(), draft);
-    if (energy > 0) components.set(ProgramContent.ENERGY.get(), energy);
+    if (input.energy() > 0) components.set(ProgramContent.ENERGY.get(), input.energy());
   }
 
   @Override
