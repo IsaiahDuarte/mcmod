@@ -254,6 +254,7 @@ M142 onward are follow-ups from slices and findings from Q51.
 | --- | --- | --- |
 | M142 | Q54 typed the job, rule and staging reasons only. Other menus still send a status string that their screens compare with `.equals` (`"ready"`, `"applied"`, `"valid"`, `"filled"`, `"running"`, …): Signal, Port, Drive, Network Access, Program, Connector, Buffer and the Terminal's grid and search status. A typo there still compiles. | `grep 'equals("' platform/client` after Q54 |
 | M143 | Raw `fill` calls and colour literals remain outside the Terminal: Drive bay fill bars, `FilterSlots` (inactive veil, tag badge), `SlotPicker`, the `StatusStrip` lamp. The program editor's dark code field is deliberate (ADR 0064 H3c). | Q60 evidence |
+| M144 | `runAutomaticThroughputServer` (in `--full`) requires Endgame import to beat Advanced on one 1,728-item chest, where fixed overhead leaves 1–3 ticks between the tiers; a tie fails it. Measured 2026-10-26: 2 failures in 12 runs at `ca56f9c` (ticks Endgame 14–16, Advanced 15–18) and 0 in 11 at `9c155c7` (14–15, 15–17). The distributions overlap, so this is a marginal assertion, not a regression; it is the flaky-test kind PD7 also covers. | `AutomaticThroughputGameTests`, `MachinePresetGameTests.paidTiersIncreaseAutomaticChestImport` |
 
 ## Decision gates (user)
 
@@ -416,6 +417,14 @@ New gates:
   `OperationResult.Reason` plus the menu's own states), with a LangKeysTest entry per enum.
   Done when: no string-status `.equals` remains in `platform/client`; packet tests refuse an
   unknown status.
+
+- [ ] **Q106 — A throughput check with a real margin (M144).** Size S.
+  Keep the strict Base > Advanced > Endgame ordering, but measure a workload where the tiers'
+  rates dominate fixed overhead (for example refilling the chest until a fixed total such as
+  13,824 items has been imported, or timing steady-state ticks after the first transfer), so the
+  expected gaps are many ticks. Record the measured ticks per tier.
+  Done when: 20 consecutive `runAutomaticThroughputServer` runs pass and the evidence lists
+  their ticks; the assertion is no weaker than today's.
 
 - [ ] **Q105 — Remaining screen fills on the kit (M143).** Size S.
   Move the Drive bay bars, `FilterSlots` marks, `SlotPicker` and the `StatusStrip` lamp to
