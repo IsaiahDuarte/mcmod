@@ -77,6 +77,8 @@ public final class StorageContent {
                         var shown = new LinkedHashSet<Item>();
                         shown.add(DRIVE_ITEM.get());
                         shown.add(TerminalContent.ITEM.get());
+                        shown.add(PortContent.IMPORTER_ITEM.get());
+                        shown.add(PortContent.EXPORTER_ITEM.get());
                         shown.add(InterfaceContent.ITEM.get());
                         shown.add(NetworkContent.CONTROLLER_ITEM.get());
                         shown.add(NetworkContent.GATEWAY_ITEM.get());

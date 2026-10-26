@@ -27,7 +27,10 @@ public final class MachinePresetPackets {
       RETURN = 10,
       // B1 ghost slots: add the cursor item; cycle rule {@code selection}'s match (text: shown ID).
       CARRIED = 11,
-      CYCLE = 12;
+      CYCLE = 12,
+      // H6: apply as mode {@code selection} (an ordinal; text: goal), and set the filter mode.
+      DEPLOY_AS = 13,
+      FILTER_MODE = 14;
 
   public record Command(
       int menu,
@@ -45,7 +48,7 @@ public final class MachinePresetPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > CYCLE
+          || action > FILTER_MODE
           || selection < 0
           || selection > 35
           || text.length() > 256

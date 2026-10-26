@@ -11,7 +11,11 @@ public final class MachineInterfaceContent {
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MachineInterfaceEntity>>
       ENTITY =
           FactoryRegistries.entity(
-              "machine_interface", MachineInterfaceEntity::new, InterfaceContent.BLOCK);
+              "machine_interface",
+              MachineInterfaceEntity::new,
+              InterfaceContent.BLOCK,
+              PortContent.IMPORTER,
+              PortContent.EXPORTER);
 
   public static final DeferredHolder<MenuType<?>, MenuType<MachineSettingsMenu>> MENU =
       FactoryRegistries.menu("machine_settings", MachineSettingsMenu::new);

@@ -113,7 +113,8 @@ before Machine-mode ports go away.
   machine removed mid-move (nothing lost or replayed), a block replaced at the same position
   (label dropped), a machine touching two networks, and permission denial.
 
-- [ ] **H6 — Importer and Exporter (K4, K8; HD2).** Size L.
+- [x] **H6 — Importer and Exporter (K4, K8; HD2).** Done 2026-10-26 (commit subject `H6:`). [Evidence](evidence/playtest-h6-importer-exporter-2026-10-26.md).
+  The Side override is not built; several ports on different faces of one machine cover it, and programs keep `side`.
   Two blocks that attach to a machine, with cables on their other faces. Their screen: a filter
   (B1 ghost slots, empty means **Everything**), allow/deny, redstone, **Side** (Auto = the
   touching face, or any of six), and for the Exporter **Keep** (stock up to N, replacing

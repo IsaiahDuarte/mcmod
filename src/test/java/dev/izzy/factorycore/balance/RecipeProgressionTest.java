@@ -100,6 +100,8 @@ class RecipeProgressionTest {
           entry("starter_item_cell", Stage.STARTER),
           entry("starter_fluid_cell", Stage.STARTER),
           entry("storage_terminal", Stage.STARTER),
+          entry("importer", Stage.STARTER),
+          entry("exporter", Stage.STARTER),
           entry("interface", Stage.STARTER),
           entry("starter_energy_bank", Stage.STARTER),
           entry("fuel_generator", Stage.STARTER),

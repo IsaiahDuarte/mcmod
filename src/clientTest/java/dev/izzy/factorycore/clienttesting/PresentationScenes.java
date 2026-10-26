@@ -504,6 +504,24 @@ final class PresentationScenes {
         base.east(6).north(), InterfaceContent.state(InterfaceKind.STORAGE, Direction.NORTH), 3);
     ((ConnectorEntity) level.getBlockEntity(base.east(6).north()))
         .place(new ItemStack(InterfaceContent.ITEM.get()));
+    // H6: an Importer and an Exporter off the last cable, each on its own chest.
+    for (var side : new Direction[] {Direction.NORTH, Direction.SOUTH}) {
+      var block =
+          side == Direction.NORTH
+              ? dev.izzy.factorycore.platform.storage.PortContent.IMPORTER.get()
+              : dev.izzy.factorycore.platform.storage.PortContent.EXPORTER.get();
+      level.setBlock(base.east(8).relative(side, 2), Blocks.CHEST.defaultBlockState(), 3);
+      level.setBlock(
+          base.east(8).relative(side),
+          block
+              .defaultBlockState()
+              .setValue(
+                  net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING,
+                  side),
+          3);
+      ((MachineInterfaceEntity) level.getBlockEntity(base.east(8).relative(side)))
+          .place(new ItemStack(block));
+    }
   }
 
   static void teleport(ServerPlayer player, View view) {

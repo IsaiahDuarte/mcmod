@@ -250,6 +250,19 @@ def block_textures():
     for i in range(0, 16, 3):
         interface.hline(0, 15, i, (36, 96, 152, 255))
     out["interface_panel"] = interface
+    # H6 Importer and Exporter: the Interface socket with a chevron on every casing face. The
+    # Importer's points down ("V", into the network, cyan); the Exporter's points up ("Λ", out
+    # to the machine, amber). The shape alone tells them apart.
+    for name, rows, color, shadow in (
+        ("importer_case", ("#.......#", ".#.....#.", "..#...#..", "...#.#...", "....#...."),
+         SIGNAL, SIGNAL_DARK),
+        ("exporter_case", ("....#....", "...#.#...", "..#...#..", ".#.....#.", "#.......#"),
+         AMBER, AMBER_DARK),
+    ):
+        case = casing(name)
+        inset(case, 3, 4, 12, 11)
+        case.glyph(4, 5, rows, color, shadow)
+        out[name] = case
     for tier in ("starter", "expanded", "advanced"):
         dark, base, hi = TIERS[tier]
         accent = Canvas(f"accent_{tier}")

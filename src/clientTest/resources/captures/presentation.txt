@@ -100,3 +100,7 @@ signal-scale-4.png
 signal-scale-1.png
 signal-lamp-lit.png
 program-v2-scale-4.png
+importer-scale-1.png
+importer-scale-4.png
+exporter-scale-1.png
+exporter-scale-4.png

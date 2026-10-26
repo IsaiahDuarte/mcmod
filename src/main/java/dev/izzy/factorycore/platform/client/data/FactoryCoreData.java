@@ -124,7 +124,11 @@ public final class FactoryCoreData {
       var iron = tag(BlockTags.NEEDS_IRON_TOOL);
       Stream.concat(
               Stream.of(EnergyBankTier.values()).map(EnergyBankContent::block),
-              Stream.of(InterfaceContent.BLOCK.get(), TerminalContent.BLOCK.get()))
+              Stream.of(
+                  InterfaceContent.BLOCK.get(),
+                  TerminalContent.BLOCK.get(),
+                  dev.izzy.factorycore.platform.storage.PortContent.IMPORTER.get(),
+                  dev.izzy.factorycore.platform.storage.PortContent.EXPORTER.get()))
           .forEach(iron::add);
     }
   }
@@ -241,6 +245,33 @@ public final class FactoryCoreData {
           1,
           Items.HOPPER,
           "CRC/RHR/CRC",
+          'C',
+          Items.COPPER_INGOT,
+          'R',
+          Items.REDSTONE,
+          'H',
+          Items.HOPPER);
+      // H6: copper around a hopper; the redstone sits on the side the items leave by.
+      shaped(
+          out,
+          misc,
+          "importer",
+          1,
+          Items.HOPPER,
+          "C C/CHC/ R ",
+          'C',
+          Items.COPPER_INGOT,
+          'R',
+          Items.REDSTONE,
+          'H',
+          Items.HOPPER);
+      shaped(
+          out,
+          misc,
+          "exporter",
+          1,
+          Items.HOPPER,
+          " R /CHC/C C",
           'C',
           Items.COPPER_INGOT,
           'R',

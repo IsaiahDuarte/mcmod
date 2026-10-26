@@ -91,8 +91,9 @@ public final class RecipeGameTests {
       unlocked.addAll(advancement.value().rewards().recipes());
     var recipes = modRecipes(h);
     h.assertTrue(
-        recipes.size() == 23,
-        "All 23 Factory Core crafting recipes, including speed upgrades and the Label Tool, load");
+        recipes.size() == 25,
+        "All 25 Factory Core crafting recipes, including speed upgrades, the Label Tool, the"
+            + " Importer and the Exporter, load");
     for (var holder : recipes) {
       var input = input(holder.value());
       var found = manager.getRecipeFor(RecipeType.CRAFTING, input, h.getLevel());

@@ -1,7 +1,9 @@
 {
   "values": [
     "factorycore:interface",
+    "factorycore:exporter",
     "factorycore:storage_drive",
+    "factorycore:importer",
     "factorycore:starter_energy_bank",
     "factorycore:program_controller",
     "factorycore:network_cable",

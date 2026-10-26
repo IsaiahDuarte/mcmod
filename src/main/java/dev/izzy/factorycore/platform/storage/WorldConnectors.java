@@ -505,8 +505,13 @@ public final class WorldConnectors {
         invalidate(owner);
         return new Registration(OperationResult.Reason.DENIED, null);
       }
+      // H6 (ADR 0066): an Importer or Exporter owns only the face it touches, so ports on
+      // different faces of one machine can coexist, each with its own fences and staging.
+      boolean sided = !indexed && sidedPort(owner);
       UUID backing =
-          indexed ? indexedBacking(group, settings.firstSlot(), settings.slotCount()) : group;
+          indexed
+              ? indexedBacking(group, settings.firstSlot(), settings.slotCount())
+              : sided ? faceBacking(group, owner.targetDirection()) : group;
       var previous = bindings.get(owner.handle().id());
       if (previous != null
           && previous.owner == owner
@@ -521,9 +526,9 @@ public final class WorldConnectors {
         return new Registration(OperationResult.Reason.DENIED, null);
       invalidate(owner);
       for (var provider : selected)
-        if (overlaps(providers.get(provider), owner, group, indexed))
+        if (overlaps(providers.get(provider), owner, group, indexed, sided))
           return new Registration(OperationResult.Reason.OVERLAP, null);
-      if (overlaps(handlers.get(handler), owner, group, indexed))
+      if (overlaps(handlers.get(handler), owner, group, indexed, sided))
         return new Registration(OperationResult.Reason.OVERLAP, null);
       if (bindings.size() >= NodeRegistry.MAX_NODES || providerClaims > 16384 - selected.size())
         return new Registration(OperationResult.Reason.TECHNICAL_LIMIT, null);
@@ -594,10 +599,16 @@ public final class WorldConnectors {
   }
 
   private boolean overlaps(
-      List<Binding> existing, ConnectorEntity owner, UUID group, boolean indexed) {
+      List<Binding> existing, ConnectorEntity owner, UUID group, boolean indexed, boolean sided) {
     if (existing == null) return false;
     var settings = owner.settings();
     for (var binding : existing) {
+      // Two Importers/Exporters on different faces of one container never share a backing.
+      if (sided
+          && !binding.indexed
+          && sidedPort(binding.owner)
+          && group.equals(binding.group)
+          && binding.face != owner.targetDirection()) continue;
       var other = binding.owner.settings();
       if (!indexed
           || !binding.indexed
@@ -973,6 +984,9 @@ public final class WorldConnectors {
         if (ids.size() != providers.size()) return OperationResult.Reason.RESERVED;
         var group = ExternalProviderIdentity.group(saved.registry().world(), kind, ids);
         if (ownedBacking(group)) return OperationResult.Reason.RESERVED;
+        // H6: an Importer's or Exporter's unresolved work is held under its face backing.
+        for (var face : Direction.values())
+          if (ownedBacking(faceBacking(group, face))) return OperationResult.Reason.RESERVED;
         if (entity instanceof ExternalBackingProvider described) {
           var ports = described.factoryCorePorts(kind);
           if (ports == null || ports.size() > 64) return OperationResult.Reason.RESERVED;
@@ -992,6 +1006,18 @@ public final class WorldConnectors {
   private boolean ownedBacking(UUID backing) {
     return saved.externalClaims().hasBacking(backing)
         || saved.transfers().unresolved(backing) != null;
+  }
+
+  /** An Importer or Exporter (H6); Machine-mode Interfaces and storage keep one owner per group. */
+  private static boolean sidedPort(ConnectorEntity owner) {
+    return owner instanceof MachineInterfaceEntity machine && machine.role() != null;
+  }
+
+  /** A port's backing on one face of {@code group}; stable across reloads for recovery. */
+  private static UUID faceBacking(UUID group, Direction face) {
+    return UUID.nameUUIDFromBytes(
+        ("factorycore:face-port:v1:" + group + ":" + face.getName())
+            .getBytes(StandardCharsets.UTF_8));
   }
 
   private static UUID indexedBacking(UUID group, int first, int count) {

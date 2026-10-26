@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "H": {
+      "item": "minecraft:hopper"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    " R ",
+    "CHC",
+    "C C"
+  ],
+  "result": {
+    "count": 1,
+    "id": "factorycore:exporter"
+  }
+}

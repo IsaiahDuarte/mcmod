@@ -1,0 +1,7 @@
+{
+  "parent": "factorycore:block/storage_connector",
+  "textures": {
+    "case": "factorycore:block/exporter_case",
+    "particle": "factorycore:block/exporter_case"
+  }
+}

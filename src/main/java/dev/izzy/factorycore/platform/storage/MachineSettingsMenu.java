@@ -21,6 +21,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.*;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidUtil;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -54,11 +55,36 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   private DeviceStatus.View deviceStatus;
 
   public MachineSettingsMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-    this(id, inventory, null, MenuSession.read(buffer));
+    this(MachineInterfaceContent.MENU.get(), id, inventory, null, MenuSession.read(buffer));
+  }
+
+  /** The client side of an Importer or Exporter menu (H6), whose type selects its screen. */
+  static MachineSettingsMenu client(
+      MenuType<MachineSettingsMenu> type,
+      int id,
+      Inventory inventory,
+      RegistryFriendlyByteBuf buffer) {
+    return new MachineSettingsMenu(type, id, inventory, null, MenuSession.read(buffer));
   }
 
   MachineSettingsMenu(int id, Inventory inventory, MachineInterfaceEntity machine, UUID session) {
-    super(MachineInterfaceContent.MENU.get(), id);
+    this(
+        machine.role() == null
+            ? MachineInterfaceContent.MENU.get()
+            : PortContent.menu(machine.role()),
+        id,
+        inventory,
+        machine,
+        session);
+  }
+
+  private MachineSettingsMenu(
+      MenuType<MachineSettingsMenu> type,
+      int id,
+      Inventory inventory,
+      MachineInterfaceEntity machine,
+      UUID session) {
+    super(type, id);
     this.viewer = inventory.player;
     protocol = new MenuSession(this, viewer, session, machine != null, 5);
     this.machine = machine;
@@ -230,12 +256,17 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
         publish();
         return;
       }
+      var before = machine.settings().kind();
       if (machine.applySettings(actor(), packet.form().settings(), packet.form().label())
           != NetworkAuthority.Decision.ALLOWED) {
         status = "denied";
         publish();
         return;
       }
+      // H6: an Importer switched to another resource keeps importing everything of it; without
+      // Deploy or resource grants it stays paused for an explicit Apply.
+      if (machine.role() == PortBlock.Role.IMPORTER && machine.settings().kind() != before)
+        machine.importEverything(actor());
     } catch (IllegalArgumentException invalid) {
       status = "invalid";
       publish();
@@ -461,10 +492,21 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
       var filterMode = presetFilter.mode();
       long goal = presetGoal;
       switch (packet.action()) {
-        case MachinePresetPackets.MODE ->
+        case MachinePresetPackets.MODE -> {
+          var role = machine.role();
+          do
             presetMode =
                 MachinePresets.Mode.values()[
                     (presetMode.ordinal() + 1) % MachinePresets.Mode.values().length];
+          while (role != null && !role.allows(presetMode));
+        }
+        case MachinePresetPackets.FILTER_MODE -> {
+          if (packet.selection() >= ResourceFilter.Mode.values().length)
+            throw new IllegalArgumentException("Filter mode");
+          filterMode = ResourceFilter.Mode.values()[packet.selection()];
+          if (filterMode == ResourceFilter.Mode.ALL) terms.clear();
+          else if (terms.isEmpty()) throw new IllegalArgumentException("Empty filter");
+        }
         case MachinePresetPackets.FILTER -> {
           filterMode =
               ResourceFilter.Mode.values()[
@@ -551,7 +593,27 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
           publishPreset();
           return;
         }
-        case MachinePresetPackets.DEPLOY -> {
+        case MachinePresetPackets.DEPLOY, MachinePresetPackets.DEPLOY_AS -> {
+          if (packet.action() == MachinePresetPackets.DEPLOY_AS) {
+            if (packet.selection() >= MachinePresets.Mode.values().length)
+              throw new IllegalArgumentException("Preset mode");
+            presetMode = MachinePresets.Mode.values()[packet.selection()];
+          }
+          // H6: an Importer only imports; an Exporter exports or keeps a stock.
+          if (machine.role() != null && !machine.role().allows(presetMode)) {
+            presetStatus = "denied";
+            publishPreset();
+            return;
+          }
+          // An Exporter needs to be told what to send; it never empties all storage.
+          if (presetMode != MachinePresets.Mode.PAUSED
+              && presetMode != MachinePresets.Mode.IMPORT
+              && machine.role() == PortBlock.Role.EXPORTER
+              && presetFilter.mode() == ResourceFilter.Mode.ALL) {
+            presetStatus = "choose";
+            publishPreset();
+            return;
+          }
           if (!packet.text().isEmpty()) goal = Long.parseLong(packet.text());
           if (goal < 0) throw new IllegalArgumentException("Negative goal");
           if (presetMode != MachinePresets.Mode.PAUSED)

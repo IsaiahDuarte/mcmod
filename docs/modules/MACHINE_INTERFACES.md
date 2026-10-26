@@ -327,3 +327,16 @@ Focused JVM/native regressions are authored; integrated run evidence is tracked
 in the implementation plan. Full processing lease interoperability, real
 third-party adapters, graphical/restart/multiplayer and performance acceptance
 remain separate requirements.
+
+## Importer and Exporter (H6)
+
+The Importer and Exporter blocks ([ADR 0066](../decisions/0066-importer-exporter.md)) are
+Machine ports with a fixed role. They use this module's lease, policy, preset, staging and
+recovery paths unchanged. Two differences:
+
+- **Role.** An Importer deploys only Import and an Exporter only Export or Stock. Any other
+  preset is refused.
+- **Backing.** Each port's backing is derived from the container group and the face it touches,
+  so ports on different faces of one container coexist. Machine-mode Interfaces and storage
+  connectors keep one owner per group.
+

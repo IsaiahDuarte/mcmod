@@ -13,7 +13,9 @@ for permissions commands, configuration and recovery.
 2. **Place a Network Controller** and run **Network Cables** from it.
 3. **Add a Storage Drive** on the cables and put a **Starter Item Cell** in it.
 4. **Place a Storage Terminal** on the network to deposit, withdraw and craft.
-5. **Connect chests and machines** with **Interfaces**.
+5. **Move things in and out.** Put an **Importer** on a chest or machine to pull its
+   contents into storage, and an **Exporter** to push chosen items into it.
+   A chest with an **Interface** becomes part of storage.
 6. **Power it.** A **Fuel Generator** makes FE, and an **Energy Bank** stores it.
 7. **Automate crafting.** Encode **Patterns** in the terminal and place a **Crafter**.
 8. **Grow.** Add **Gateways** for subnetworks, **Program Controllers** for rules,
@@ -40,6 +42,8 @@ that consume them.
 | Starter | Starter Fluid Cell | 7 glass blocks, 1 empty bucket, 1 redstone dust |
 | Starter | Storage Terminal | 4 iron ingots, 3 glass blocks, 2 redstone dust |
 | Starter | Interface | 4 copper ingots, 4 redstone dust, 1 hopper |
+| Starter | Importer | 4 copper ingots, 1 hopper, 1 redstone dust (redstone at the bottom) |
+| Starter | Exporter | 4 copper ingots, 1 hopper, 1 redstone dust (redstone at the top) |
 | Starter | Fuel Generator | 4 iron ingots, 3 copper ingots, 1 furnace, 1 redstone dust |
 | Starter | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
@@ -178,6 +182,29 @@ to stop.
 
 The **Wireless Terminal** opens the same screen from a distance (see
 [Wireless access](#wireless-access)).
+
+## Importer and Exporter
+
+Place one against a chest or machine; its socket faces the block you clicked, and cables
+connect to its back and sides. Use it with an empty hand to open its screen.
+
+- **Importer** (a "V" chevron): pulls from that side into network storage. A new Importer
+  starts straight away and takes **everything**. To take only some things, click a filter slot
+  with an item (or drag from JEI) and choose **Only these** or **All but these**.
+- **Exporter** (a "Λ" chevron): pushes from storage into that side. It sends nothing until you
+  choose what: click a filter slot with an item, then **Apply**. Leave **Keep** blank to send
+  everything that matches, or type a number to keep the machine stocked up to that amount.
+- **Resource:** Items, Fluids or Energy. A new one picks what the machine offers on that side.
+- **Stop** pauses it; **Apply** starts it again in your name. You need Edit and Deploy access,
+  plus Deposit and Withdraw to move things.
+- **Several on one machine:** each one uses only the side it touches, so a machine can have an
+  Importer and Exporters on different sides. A chest that is part of storage (through an
+  Interface) can't also have an Importer or Exporter.
+- Redstone control, speed upgrades and labels work as on an Interface.
+
+**Auto smelter:** on a furnace, put an Exporter on top with raw ores in its filter, an Exporter
+on a side with coal and **Keep** 8, and an Importer underneath. Ores in storage are smelted and
+the ingots come back.
 
 ## Interface
 

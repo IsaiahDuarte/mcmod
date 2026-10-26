@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.MachinePresets;
@@ -19,6 +20,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.capabilities.Capabilities;
 
 /**
  * Local machine port; canonical leases and foreign adapter ownership are shared with connectors.
@@ -59,9 +61,95 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     return opening;
   }
 
+  /** Importer or Exporter (H6), or null for a Machine-mode Interface. */
+  public PortBlock.Role role() {
+    return PortBlock.role(getBlockState());
+  }
+
   @Override
   public Component getDisplayName() {
-    return Component.translatable("gui.factorycore.interface.title.machine");
+    var role = role();
+    return Component.translatable(
+        role == null
+            ? "gui.factorycore.interface.title.machine"
+            : "block.factorycore." + role.name().toLowerCase(java.util.Locale.ROOT));
+  }
+
+  /** A placer waiting for this port's default preset (H6); not saved. */
+  private UUID pendingDefault;
+
+  private int pendingDefaultAttempts;
+
+  /**
+   * Asks for the role's default preset once the network is valid (see {@link #applyDefaultPreset}).
+   */
+  void requestDefaultPreset(UUID placer) {
+    if (role() == null) return;
+    pendingDefault = placer;
+    pendingDefaultAttempts = 0;
+  }
+
+  /**
+   * H6, like a Buffer's default Import (U6): a freshly placed port binds the resource its machine
+   * offers on the touching face (items, else fluids, else energy) and an Importer starts importing
+   * everything, under the authenticated live player who placed it and with that player's grants. An
+   * Exporter waits for a filter. Missing grants or a departed placer leave it paused. True while
+   * the network is still settling and the caller should try again.
+   */
+  public boolean applyDefaultPreset() {
+    if (pendingDefault == null || handle() == null) return false;
+    var server = serverLevel().getServer();
+    var player = server.getPlayerList().getPlayer(pendingDefault);
+    if (player == null || ++pendingDefaultAttempts > RESUME_ATTEMPTS) {
+      pendingDefault = null;
+      return false;
+    }
+    if (WorldNetworks.get(server).membership(position()).status() != NetworkTopology.Status.VALID)
+      return true;
+    pendingDefault = null;
+    var saved = DeviceSavedData.get(server);
+    if (saved.machinePresets().get(handle().id()) != null) return false;
+    var actor = dev.izzy.factorycore.platform.Actors.of(player);
+    try {
+      var kind = offeredKind();
+      if (kind != settings().kind()
+          && applySettings(actor, ConnectorSettings.defaults(kind), label())
+              != NetworkAuthority.Decision.ALLOWED) return false;
+    } catch (IllegalArgumentException | IllegalStateException denied) {
+      // Missing grants or an unavailable network leave the port paused for an explicit Apply.
+      return false;
+    }
+    if (role() == PortBlock.Role.IMPORTER) importEverything(actor);
+    return false;
+  }
+
+  /**
+   * Starts an Importer importing everything of its bound resource under {@code actor}, with the
+   * same checks as an explicit Apply. False, leaving it paused, when the actor lacks a grant.
+   */
+  public boolean importEverything(NetworkPermissions.Actor actor) {
+    try {
+      deployPreset(actor, MachinePresets.Mode.IMPORT, ResourceFilter.all(settings().kind()), 0);
+      return true;
+    } catch (IllegalArgumentException | IllegalStateException denied) {
+      return false;
+    }
+  }
+
+  /**
+   * Items if the touched face offers them, else fluids, else energy (items when it offers none).
+   */
+  private ResourceKind offeredKind() {
+    var level = serverLevel();
+    var target = getBlockPos().relative(targetDirection());
+    var side = targetDirection().getOpposite();
+    if (level.getCapability(Capabilities.ItemHandler.BLOCK, target, side) != null)
+      return ResourceKind.ITEM;
+    if (level.getCapability(Capabilities.FluidHandler.BLOCK, target, side) != null)
+      return ResourceKind.FLUID;
+    if (level.getCapability(Capabilities.EnergyStorage.BLOCK, target, side) != null)
+      return ResourceKind.ENERGY;
+    return ResourceKind.ITEM;
   }
 
   @Override
@@ -84,6 +172,9 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     validatePlaced();
     if (filter.kind() != settings().kind())
       throw new IllegalArgumentException("Preset/port resource mismatch");
+    // H6: an Importer only imports and an Exporter only exports or keeps a stock.
+    if (role() != null && !role().allows(mode))
+      throw new IllegalArgumentException("Preset mode not allowed for " + role());
     var runtime = WorldNetworks.get(serverLevel().getServer());
     for (var permission :
         List.of(
@@ -291,9 +382,10 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     return NodeRegistry.Kind.MACHINE_INTERFACE;
   }
 
+  /** The Interface, Importer or Exporter item this port was placed from. */
   @Override
   protected Item portableItem() {
-    return InterfaceContent.ITEM.get();
+    return getBlockState().getBlock().asItem();
   }
 
   public NetworkAuthority.Decision relabel(NetworkPermissions.Actor actor, String label) {

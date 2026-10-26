@@ -89,8 +89,9 @@ final class FilterSlots extends AbstractWidget {
     var font = Minecraft.getInstance().font;
     for (int slot = 0; slot < SLOTS; slot++) {
       int x = getX() + (slot % COLUMNS) * 18, y = getY() + (slot / COLUMNS) * 18;
-      graphics.fill(x, y, x + 18, y + 18, slot == selection ? 0xffbb8659 : 0xff151b20);
-      graphics.fill(x + 1, y + 1, x + 17, y + 17, active ? 0xff30373e : 0xff262b30);
+      dev.izzy.factorycore.platform.client.ui.Panels.slot(graphics, x, y);
+      if (slot == selection) graphics.renderOutline(x, y, 18, 18, 0xffb5683c);
+      if (!active) graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x60c6c6c6);
       if (slot >= rules.size()) continue;
       var rule = rules.get(slot);
       if (kind == ResourceKind.FLUID) {

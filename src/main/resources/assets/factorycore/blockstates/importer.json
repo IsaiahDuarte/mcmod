@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "factorycore:block/importer"
+    },
+    "facing=east": {
+      "model": "factorycore:block/importer",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "factorycore:block/importer",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "factorycore:block/importer",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "factorycore:block/importer",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "factorycore:block/importer",
+      "x": 90
+    }
+  }
+}

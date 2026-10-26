@@ -4,6 +4,8 @@
     "factorycore:expanded_energy_bank",
     "factorycore:advanced_energy_bank",
     "factorycore:interface",
-    "factorycore:storage_terminal"
+    "factorycore:storage_terminal",
+    "factorycore:importer",
+    "factorycore:exporter"
   ]
 }

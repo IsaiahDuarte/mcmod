@@ -1907,6 +1907,19 @@ public final class PresentationClientVerification {
     scales("buffer", BufferSettingsScreen.class, false);
     use(base.east(4), Direction.SOUTH, false);
     scales("machine", MachineSettingsScreen.class, false);
+    // H6: the Importer and Exporter screens on the panel kit.
+    use(base.east(8).north(), Direction.SOUTH, false);
+    step(
+        client ->
+            client.screen instanceof dev.izzy.factorycore.platform.client.PortScreen screen
+                && screen.role() == dev.izzy.factorycore.platform.storage.PortBlock.Role.IMPORTER);
+    scales("importer", dev.izzy.factorycore.platform.client.PortScreen.class, false);
+    use(base.east(8).south(), Direction.NORTH, false);
+    step(
+        client ->
+            client.screen instanceof dev.izzy.factorycore.platform.client.PortScreen screen
+                && screen.role() == dev.izzy.factorycore.platform.storage.PortBlock.Role.EXPORTER);
+    scales("exporter", dev.izzy.factorycore.platform.client.PortScreen.class, false);
     filterTour(base);
     signalTour(base);
     use(base.east(6).north(), Direction.SOUTH, false);

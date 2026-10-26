@@ -29,6 +29,10 @@ public final class TerminalClient {
     event.register(TerminalContent.MENU.get(), TerminalScreen::new);
     event.register(StorageContent.DRIVE_MENU.get(), DriveScreen::new);
     event.register(MachineInterfaceContent.MENU.get(), MachineSettingsScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.storage.PortContent.IMPORTER_MENU.get(), PortScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.storage.PortContent.EXPORTER_MENU.get(), PortScreen::new);
     event.register(ConnectorContent.MENU.get(), ConnectorSettingsScreen::new);
     event.register(BufferedInterfaceContent.MENU.get(), BufferSettingsScreen::new);
     event.register(ProgramContent.MENU.get(), ProgramScreen::new);
