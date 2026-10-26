@@ -54,7 +54,9 @@ public final class RecipeGameTests {
           "expanded_energy_bank",
           "advanced_energy_bank",
           "crafting_pattern",
-          "processing_pattern");
+          "processing_pattern",
+          // H5: a cable port's item only exists to carry the lease of a port broken mid-transfer.
+          "cable_port");
 
   private static final BlockPos TABLE = new BlockPos(1, 1, 1);
 

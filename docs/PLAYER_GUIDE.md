@@ -381,6 +381,9 @@ costs about 4 FE. Use it to open its editor.
 every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage }
 ```
 
+Programs find machines by label. To label one, run a cable to it and use the
+[Label Tool](#label-tool) on the machine.
+
 - **Editing:** type a program, then **Save draft** and **Check** (errors show as
   line:column). **Deploy** runs it with your permissions. **Pause/Resume** and
   **Stop** control it. **Template** cycles built-in examples.
@@ -513,8 +516,14 @@ expression. Everything also works without JEI.
 Crafted from a copper ingot over paper over an iron ingot. Use it in the air to type the label it
 applies.
 
-- **Label:** use it on a Machine or Signal Interface to give that Interface the label, so
-  programs can find it with `machines("label")`.
+- **Label a machine:** run a network cable so it touches the machine, then use the tool on
+  the machine. The cable turns into a **cable port** aimed at the machine (a cable with a small
+  plate) and the machine gets the label, so programs can find it with `machines("label")` and use
+  any of its sides. Using the tool on it again relabels it. Use the port with an empty hand to
+  change its label or what programs move through it (items, fluids or energy). Breaking an idle
+  port gives the cable back.
+- **Label an Interface:** use it on a Machine or Signal Interface to give that Interface the
+  label.
 - **Copy:** sneak and use it on a Machine or Storage Interface to copy its settings
   (resource kind, access, priority, slots, rate and, for Storage, its insert filter) and
   label.

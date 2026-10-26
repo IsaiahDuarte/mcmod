@@ -1008,9 +1008,13 @@ public final class WorldConnectors {
         || saved.transfers().unresolved(backing) != null;
   }
 
-  /** An Importer or Exporter (H6); Machine-mode Interfaces and storage keep one owner per group. */
+  /**
+   * An Importer, Exporter (H6) or cable port (H5); Machine-mode Interfaces and storage keep one
+   * owner per group.
+   */
   private static boolean sidedPort(ConnectorEntity owner) {
-    return owner instanceof MachineInterfaceEntity machine && machine.role() != null;
+    return owner instanceof MachineInterfaceEntity machine
+        && (machine.role() != null || machine.cablePort());
   }
 
   /** A port's backing on one face of {@code group}; stable across reloads for recovery. */

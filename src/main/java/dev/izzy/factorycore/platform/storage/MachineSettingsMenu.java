@@ -69,9 +69,11 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
 
   MachineSettingsMenu(int id, Inventory inventory, MachineInterfaceEntity machine, UUID session) {
     this(
-        machine.role() == null
-            ? MachineInterfaceContent.MENU.get()
-            : PortContent.menu(machine.role()),
+        machine.role() != null
+            ? PortContent.menu(machine.role())
+            : machine.cablePort()
+                ? PortContent.CABLE_PORT_MENU.get()
+                : MachineInterfaceContent.MENU.get(),
         id,
         inventory,
         machine,
@@ -230,10 +232,13 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
                 containerId,
                 protocol.id(),
                 machine.position(),
-                // A paused preset has no runtime reason worth showing; say it is paused.
-                presetView.running() == MachinePresets.Mode.PAUSED
-                    ? "status.factorycore.buffer_mode.paused"
-                    : "status.factorycore.buffer_reason." + presetView.reason(),
+                // A paused preset has no runtime reason worth showing; say it is paused. A cable
+                // port has no preset of its own (programs drive it), so it shows no reason.
+                machine.cablePort()
+                    ? ""
+                    : presetView.running() == MachinePresets.Mode.PAUSED
+                        ? "status.factorycore.buffer_mode.paused"
+                        : "status.factorycore.buffer_reason." + presetView.reason(),
                 ""));
   }
 

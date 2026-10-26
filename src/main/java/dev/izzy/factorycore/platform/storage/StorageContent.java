@@ -60,10 +60,12 @@ public final class StorageContent {
       FactoryRegistries.ITEMS.register("infinite_module", () -> new CellUpgradeItem(3));
 
   /**
-   * Items left out of the creative tab: encoded patterns are meaningless without their recipe data.
-   * Every other Factory Core item is shown, curated ones first.
+   * Items left out of the creative tab: encoded patterns are meaningless without their recipe data,
+   * and a cable port's item only carries a lease. Every other Factory Core item is shown, curated
+   * ones first.
    */
-  public static final Set<String> TAB_HIDDEN = Set.of("crafting_pattern", "processing_pattern");
+  public static final Set<String> TAB_HIDDEN =
+      Set.of("crafting_pattern", "processing_pattern", "cable_port");
 
   public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB =
       FactoryRegistries.TABS.register(

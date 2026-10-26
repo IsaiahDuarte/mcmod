@@ -33,6 +33,9 @@ public final class TerminalClient {
         dev.izzy.factorycore.platform.storage.PortContent.IMPORTER_MENU.get(), PortScreen::new);
     event.register(
         dev.izzy.factorycore.platform.storage.PortContent.EXPORTER_MENU.get(), PortScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.storage.PortContent.CABLE_PORT_MENU.get(),
+        CablePortScreen::new);
     event.register(ConnectorContent.MENU.get(), ConnectorSettingsScreen::new);
     event.register(BufferedInterfaceContent.MENU.get(), BufferSettingsScreen::new);
     event.register(ProgramContent.MENU.get(), ProgramScreen::new);

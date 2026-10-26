@@ -61,18 +61,92 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     return opening;
   }
 
-  /** Importer or Exporter (H6), or null for a Machine-mode Interface. */
+  /** Importer or Exporter (H6), or null for a Machine-mode Interface or a cable port. */
   public PortBlock.Role role() {
     return PortBlock.role(getBlockState());
+  }
+
+  /** True for a cable port (H5): a cable that reaches the machine beside it. */
+  public boolean cablePort() {
+    return getBlockState().getBlock() instanceof CablePortBlock;
+  }
+
+  /** A label (and its owner) a Label Tool asked for while the network rebuilt; not saved. */
+  private UUID pendingLabeller;
+
+  private String pendingLabel;
+  private int pendingLabelAttempts;
+
+  /** Asks to bind and label this port under {@code player} once its network is valid again. */
+  public void requestLabel(UUID player, String label) {
+    pendingLabeller = player;
+    pendingLabel = label;
+    pendingLabelAttempts = 0;
+  }
+
+  /**
+   * H5: binds the resource the machine offers on the touched face and applies the requested label
+   * under the live player who asked, with that player's current EDIT. True while the network is
+   * still settling and the caller should try again.
+   */
+  public boolean applyPendingLabel() {
+    if (pendingLabeller == null || handle() == null) return false;
+    var server = serverLevel().getServer();
+    var player = server.getPlayerList().getPlayer(pendingLabeller);
+    if (player == null || ++pendingLabelAttempts > RESUME_ATTEMPTS) {
+      pendingLabeller = null;
+      return false;
+    }
+    if (WorldNetworks.get(server).membership(position()).status() != NetworkTopology.Status.VALID)
+      return true;
+    var label = pendingLabel;
+    pendingLabeller = null;
+    pendingLabel = null;
+    try {
+      var kind = offeredKind();
+      var settings = kind == settings().kind() ? settings() : ConnectorSettings.defaults(kind);
+      if (applySettings(dev.izzy.factorycore.platform.Actors.of(player), settings, label)
+          != NetworkAuthority.Decision.ALLOWED)
+        player.displayClientMessage(
+            Component.translatable("message.factorycore.label_tool.denied"), true);
+    } catch (IllegalArgumentException | IllegalStateException refused) {
+      player.displayClientMessage(
+          Component.translatable("message.factorycore.label_tool.invalid"), true);
+    }
+    return false;
+  }
+
+  /**
+   * Breaking a cable port (H5). With nothing in transit its lease, presets and binding are retired
+   * exactly as an Interface mode switch retires them (ADR 0059) and a plain cable drops. With work
+   * in transit, or a lease that cannot be retired, the port item drops carrying the lease, so
+   * Transfer Recovery can still finish it.
+   */
+  public ItemStack cablePortBreak() {
+    var saved = DeviceSavedData.get(serverLevel().getServer());
+    var lease = handle();
+    boolean busy =
+        lease == null
+            || !diagnostic().isEmpty()
+            || saved.transfers().unresolvedDevice(lease.id()) != null
+            || tier() != ThroughputTier.BASE;
+    var portable = portableForBreak();
+    if (busy) return portable;
+    var detached = handle();
+    saved.machinePresets().forget(detached.id());
+    if (saved.nodes().retire(detached) != NodeRegistry.Failure.OK) return portable;
+    return new ItemStack(dev.izzy.factorycore.platform.network.NetworkContent.CABLE_ITEM.get());
   }
 
   @Override
   public Component getDisplayName() {
     var role = role();
     return Component.translatable(
-        role == null
-            ? "gui.factorycore.interface.title.machine"
-            : "block.factorycore." + role.name().toLowerCase(java.util.Locale.ROOT));
+        cablePort()
+            ? "block.factorycore.cable_port"
+            : role == null
+                ? "gui.factorycore.interface.title.machine"
+                : "block.factorycore." + role.name().toLowerCase(java.util.Locale.ROOT));
   }
 
   /** A placer waiting for this port's default preset (H6); not saved. */

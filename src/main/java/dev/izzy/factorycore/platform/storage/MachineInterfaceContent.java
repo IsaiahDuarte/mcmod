@@ -15,7 +15,8 @@ public final class MachineInterfaceContent {
               MachineInterfaceEntity::new,
               InterfaceContent.BLOCK,
               PortContent.IMPORTER,
-              PortContent.EXPORTER);
+              PortContent.EXPORTER,
+              PortContent.CABLE_PORT);
 
   public static final DeferredHolder<MenuType<?>, MenuType<MachineSettingsMenu>> MENU =
       FactoryRegistries.menu("machine_settings", MachineSettingsMenu::new);

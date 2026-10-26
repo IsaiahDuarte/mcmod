@@ -104,3 +104,5 @@ importer-scale-1.png
 importer-scale-4.png
 exporter-scale-1.png
 exporter-scale-4.png
+cable-port-scale-1.png
+cable-port-scale-4.png

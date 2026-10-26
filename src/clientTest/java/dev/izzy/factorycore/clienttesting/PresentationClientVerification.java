@@ -1920,6 +1920,9 @@ public final class PresentationClientVerification {
             client.screen instanceof dev.izzy.factorycore.platform.client.PortScreen screen
                 && screen.role() == dev.izzy.factorycore.platform.storage.PortBlock.Role.EXPORTER);
     scales("exporter", dev.izzy.factorycore.platform.client.PortScreen.class, false);
+    // H5: the cable port screen.
+    use(base.east(6), Direction.SOUTH, false);
+    scales("cable-port", dev.izzy.factorycore.platform.client.CablePortScreen.class, false);
     filterTour(base);
     signalTour(base);
     use(base.east(6).north(), Direction.SOUTH, false);

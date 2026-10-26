@@ -90,7 +90,7 @@ before Machine-mode ports go away.
 
 ## Wave H1 — machines on cables (HD1)
 
-- [ ] **H4 — ADR 0065: cable-adjacent machines.** Size M.
+- [x] **H4 — ADR 0065: cable-adjacent machines.** Done 2026-10-26 (commit subject `H5:`): [ADR 0065](decisions/0065-cable-ports.md) chose **cable ports**. Labelling a machine turns the cable touching it into a port device, so leases, staging and recovery are reused. Block-less ports were rejected for now, with reasons. The bullets below were the questions it answered.
   Decide and record:
   - discovery: a cable records its non-network neighbours with a handler during the bounded
     wire discovery (ADR 0010), at most 6 per cable, with no extra scan;
@@ -106,7 +106,7 @@ before Machine-mode ports go away.
     External endpoint path.
   Amend SPEC R02/R04 and ADR 0062 D3 (side/slots no longer need a whole-container binding).
 
-- [ ] **H5 — Machines on cables and labels on machines.** Size L.
+- [x] **H5 — Machines on cables and labels on machines.** Done 2026-10-26 (commit subject `H5:`). [Evidence](evidence/playtest-h5-cable-ports-2026-10-26.md). Not covered by a GameTest: the machine-removed-mid-move and two-networks cases. The busy-break path reuses the Interface-switch rules.
   Implement H4. Using the Label Tool on any machine that touches a cable labels it; looking
   at it with the tool shows its label. `machines("x")` in programs finds labelled machines.
   Done when: GameTests cover a furnace labelled through a cable with moves on three faces, a

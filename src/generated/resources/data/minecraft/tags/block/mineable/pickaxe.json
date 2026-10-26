@@ -1,6 +1,7 @@
 {
   "values": [
     "factorycore:interface",
+    "factorycore:cable_port",
     "factorycore:exporter",
     "factorycore:storage_drive",
     "factorycore:importer",

@@ -153,4 +153,6 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 
 - [0064 — Panel kit for screens](0064-panel-kit.md)
 
+- [0065 — Machines on cables through cable ports](0065-cable-ports.md)
+
 - [0066 — Importer and Exporter](0066-importer-exporter.md)

@@ -26,6 +26,20 @@ public final class PortContent {
           properties -> new PortBlock(PortBlock.Role.EXPORTER, properties),
           DeviceProperties.machine());
 
+  /** H5 (ADR 0065): made by the Label Tool from a cable; its item only carries a busy lease. */
+  public static final DeferredBlock<CablePortBlock> CABLE_PORT =
+      FactoryRegistries.BLOCKS.registerBlock(
+          "cable_port", CablePortBlock::new, DeviceProperties.machine());
+
+  public static final DeferredItem<LeasedBlockItem> CABLE_PORT_ITEM =
+      FactoryRegistries.ITEMS.register(
+          "cable_port",
+          () ->
+              new LeasedBlockItem(
+                  CABLE_PORT.get(),
+                  LeasedBlockItem.Tooltip.lines(
+                      "tooltip.factorycore.cable_port", "tooltip.factorycore.cable_port_item")));
+
   public static final DeferredItem<LeasedBlockItem> IMPORTER_ITEM = item("importer", IMPORTER);
   public static final DeferredItem<LeasedBlockItem> EXPORTER_ITEM = item("exporter", EXPORTER);
 
@@ -39,6 +53,12 @@ public final class PortContent {
           "exporter_settings",
           (id, inventory, buffer) ->
               MachineSettingsMenu.client(menu(PortBlock.Role.EXPORTER), id, inventory, buffer));
+
+  public static final DeferredHolder<MenuType<?>, MenuType<MachineSettingsMenu>> CABLE_PORT_MENU =
+      FactoryRegistries.menu(
+          "cable_port_settings",
+          (id, inventory, buffer) ->
+              MachineSettingsMenu.client(PortContent.CABLE_PORT_MENU.get(), id, inventory, buffer));
 
   private PortContent() {}
 
