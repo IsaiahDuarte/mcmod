@@ -546,13 +546,8 @@ public final class WorldStorageTransfers {
         || destination instanceof Buffered
         || source instanceof PlayerInventory
         || destination instanceof PlayerInventory) {
-      try {
-        var codec = new PlatformResourceCodec(server.registryAccess());
-        if (key.kind() == ResourceKind.ITEM) codec.itemStack(key, 1);
-        else if (key.kind() == ResourceKind.FLUID) codec.fluidStack(key, 1);
-      } catch (RuntimeException invalidIdentity) {
+      if (!new PlatformResourceCodec(server.registryAccess()).resolvable(key))
         return new Submission(null, OperationResult.Reason.WRONG_RESOURCE);
-      }
     }
     var member = networks.membership(origin);
     if (member.status() != NetworkTopology.Status.VALID)
@@ -604,13 +599,8 @@ public final class WorldStorageTransfers {
         || !endpoint.connector().world().equals(saved.registry().world()))
       return new Submission(null, OperationResult.Reason.WRONG_RESOURCE);
     if (!releasing) {
-      try {
-        var codec = new PlatformResourceCodec(server.registryAccess());
-        if (key.kind() == ResourceKind.ITEM) codec.itemStack(key, 1);
-        else if (key.kind() == ResourceKind.FLUID) codec.fluidStack(key, 1);
-      } catch (RuntimeException invalid) {
+      if (!new PlatformResourceCodec(server.registryAccess()).resolvable(key))
         return new Submission(null, OperationResult.Reason.WRONG_RESOURCE);
-      }
     }
     var member = networks.membership(origin);
     if (member.status() != NetworkTopology.Status.VALID)

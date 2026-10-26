@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.Failures;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -489,8 +490,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
   }
 
   private void fault(RuntimeException failure) {
-    var message =
-        failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+    var message = Failures.message(failure);
     diagnostic = message.substring(0, Math.min(message.length(), 512));
     handler = null;
   }

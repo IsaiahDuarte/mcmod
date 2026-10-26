@@ -5,7 +5,6 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
-import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.PriorityOrder;
@@ -199,13 +198,8 @@ public final class WorldStorageRoutes {
     if (amount > ThroughputTier.maxQuantum(key.kind()))
       throw new IllegalArgumentException("Route exceeds bounded quantum");
     prune();
-    try {
-      var codec = new PlatformResourceCodec(server.registryAccess());
-      if (key.kind() == ResourceKind.ITEM) codec.itemStack(key, 1);
-      else if (key.kind() == ResourceKind.FLUID) codec.fluidStack(key, 1);
-    } catch (RuntimeException invalid) {
+    if (!new PlatformResourceCodec(server.registryAccess()).resolvable(key))
       return rejected(OperationResult.Reason.WRONG_RESOURCE);
-    }
     var member = networks.membership(origin);
     if (member.status() != NetworkTopology.Status.VALID)
       return rejected(OperationResult.Reason.OFFLINE);

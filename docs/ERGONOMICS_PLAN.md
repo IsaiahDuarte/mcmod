@@ -369,7 +369,11 @@ New gates:
   Done when: a unit test covers rate, capacity, a refused accept and the zero clamp, and the
   three devices' existing GameTests pass.
 
-- [ ] **Q57 — Shared resource checks (M56).** Size S.
+- [x] **Q57 — Shared resource checks (M56).** Size S. Done 2026-10-26 (commit subject
+  `Q57:`). `PlatformResourceCodec.resolvable` replaces the three inline checks in
+  `WorldStorageTransfers` and `WorldStorageRoutes`; `core.Failures.message` replaces the nine
+  copies (core and platform). `PlatformResourceTest.resolvableRefusesUnknownItemsAndFluids` and
+  `FailuresTest`; all GameTests pass. `ThroughputUpgradeItem` keeps its own empty fallback.
   `PlatformResourceCodec.resolvable(key)` replaces the inline try/catch checks, and one helper
   replaces the 9 exception-message copies.
   Done when: the transfer and route GameTests pass and a unit test covers an unknown item and an

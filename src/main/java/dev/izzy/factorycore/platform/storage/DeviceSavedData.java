@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.storage;
 
 import com.mojang.logging.LogUtils;
+import dev.izzy.factorycore.core.Failures;
 import dev.izzy.factorycore.core.crafting.CraftingJobs;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -524,8 +525,7 @@ public final class DeviceSavedData extends SavedData {
           || tag.getCompound("CraftingJobs").getInt("Schema") < 5) loaded.setDirty();
       return loaded;
     } catch (RuntimeException invalid) {
-      String message =
-          invalid.getMessage() == null ? invalid.getClass().getSimpleName() : invalid.getMessage();
+      String message = Failures.message(invalid);
       return new DeviceSavedData(
           null,
           List.of(),

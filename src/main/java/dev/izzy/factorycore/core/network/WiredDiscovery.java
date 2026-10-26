@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.core.network;
 
+import dev.izzy.factorycore.core.Failures;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -147,8 +148,7 @@ public final class WiredDiscovery {
     } catch (RuntimeException error) {
       state = State.FAILED;
       topology.invalidate();
-      String message =
-          error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
+      String message = Failures.message(error);
       diagnostic = message.substring(0, Math.min(message.length(), 512));
     }
     return new Advance(work, state, probes.size(), captured.size(), diagnostic);

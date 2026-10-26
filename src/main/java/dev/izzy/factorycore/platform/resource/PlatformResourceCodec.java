@@ -47,6 +47,20 @@ public final class PlatformResourceCodec {
         canonical((CompoundTag) stack.copyWithAmount(1).save(registries)));
   }
 
+  /**
+   * True when {@code key} still names a registered item or fluid that round-trips exactly through
+   * this codec (energy always resolves). A removed mod or changed component makes it false.
+   */
+  public boolean resolvable(ResourceKey key) {
+    try {
+      if (key.kind() == ResourceKind.ITEM) itemStack(key, 1);
+      else if (key.kind() == ResourceKind.FLUID) fluidStack(key, 1);
+      return true;
+    } catch (RuntimeException unresolved) {
+      return false;
+    }
+  }
+
   public ItemStack itemStack(ResourceKey key, int count) {
     if (key.kind() != ResourceKind.ITEM || count <= 0)
       throw new IllegalArgumentException("Expected item identity and positive count");

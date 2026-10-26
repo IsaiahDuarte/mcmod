@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.Failures;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
@@ -495,8 +496,7 @@ public class ConnectorEntity extends BlockEntity
   }
 
   private static String bounded(RuntimeException failure) {
-    String message =
-        failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+    String message = Failures.message(failure);
     return message.substring(0, Math.min(message.length(), 512));
   }
 

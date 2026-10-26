@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.network;
 
+import dev.izzy.factorycore.core.Failures;
 import dev.izzy.factorycore.core.network.DiscoverySeeds;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
@@ -756,8 +757,7 @@ public final class WorldNetworks {
   }
 
   private static String message(RuntimeException error) {
-    String value =
-        error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
+    String value = Failures.message(error);
     return value.substring(0, Math.min(512, value.length()));
   }
 

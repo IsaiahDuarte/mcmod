@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.Failures;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
@@ -184,8 +185,7 @@ public final class WorldPrograms {
     try {
       instance = new WasmProgram(artifact, System::nanoTime);
     } catch (RuntimeException failure) {
-      var message =
-          failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+      var message = Failures.message(failure);
       return List.of(new FriendlyCompiler.Diagnostic(1, 1, "Wasm rejected: " + message));
     }
     releaseSignals(controller);

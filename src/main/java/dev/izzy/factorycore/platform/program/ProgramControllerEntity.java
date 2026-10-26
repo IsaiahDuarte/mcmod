@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.program;
 
+import dev.izzy.factorycore.core.Failures;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
@@ -145,9 +146,7 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
       return "";
     } catch (RuntimeException failure) {
       wasm = null;
-      return failure.getMessage() == null
-          ? failure.getClass().getSimpleName()
-          : failure.getMessage();
+      return Failures.message(failure);
     }
   }
 

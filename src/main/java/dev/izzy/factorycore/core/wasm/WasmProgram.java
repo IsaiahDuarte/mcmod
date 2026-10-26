@@ -8,6 +8,7 @@ import com.dylibso.chicory.runtime.MStack;
 import com.dylibso.chicory.runtime.StackFrame;
 import com.dylibso.chicory.wasm.Parser;
 import com.dylibso.chicory.wasm.types.FunctionType;
+import dev.izzy.factorycore.core.Failures;
 import dev.izzy.factorycore.core.program.ProgramCommand;
 import dev.izzy.factorycore.core.program.ProgramEvaluator;
 import dev.izzy.factorycore.core.program.ProgramIr;
@@ -197,12 +198,7 @@ public final class WasmProgram {
     } catch (RuntimeException failure) {
       failed = true;
       staged.clear();
-      throw new ProgramEvaluator.Trap(
-          export
-              + ": "
-              + (failure.getMessage() == null
-                  ? failure.getClass().getSimpleName()
-                  : failure.getMessage()));
+      throw new ProgramEvaluator.Trap(export + ": " + (Failures.message(failure)));
     }
   }
 

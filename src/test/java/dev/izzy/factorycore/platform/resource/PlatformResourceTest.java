@@ -40,6 +40,37 @@ class PlatformResourceTest {
             RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY));
   }
 
+  /** Q57: identities whose item or fluid is gone (a removed mod) do not resolve. */
+  @Test
+  void resolvableRefusesUnknownItemsAndFluids() {
+    var stone = codec.itemKey(new ItemStack(Items.STONE));
+    var water = codec.fluidKey(new FluidStack(Fluids.WATER, 1000));
+    assertTrue(codec.resolvable(stone));
+    assertTrue(codec.resolvable(water));
+    assertTrue(codec.resolvable(ResourceKey.ENERGY));
+    var item = new CompoundTag();
+    item.putString("id", "factorycore_test:removed_item");
+    item.putInt("count", 1);
+    var fluid = new CompoundTag();
+    fluid.putString("id", "factorycore_test:removed_fluid");
+    fluid.putInt("amount", 1);
+    assertFalse(
+        codec.resolvable(
+            new ResourceKey(
+                ResourceKind.ITEM,
+                "factorycore_test:removed_item",
+                PlatformResourceCodec.canonical(item))));
+    assertFalse(
+        codec.resolvable(
+            new ResourceKey(
+                ResourceKind.FLUID,
+                "factorycore_test:removed_fluid",
+                PlatformResourceCodec.canonical(fluid))));
+    assertFalse(
+        codec.resolvable(new ResourceKey(ResourceKind.ITEM, "minecraft:stone", new byte[] {1})),
+        "Corrupt identity bytes");
+  }
+
   @Test
   void itemComponentsNormalizeCountsAndCanonicalizeCompoundOrder() {
     var first = new CompoundTag();
