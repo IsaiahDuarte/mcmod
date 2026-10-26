@@ -1,5 +1,7 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.guide.GuideContent;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +21,7 @@ import net.minecraft.world.item.crafting.ShapedRecipe;
 /**
  * The Factory Guide in the vanilla book screen, with the page's blocks pictured to the left of the
  * book and the first one's real crafting recipe to the right (U9). Side panels are skipped when the
- * window leaves too little room beside the book.
+ * window leaves too little room beside the book. The side panels use the panel kit (playtest H3c).
  */
 public final class GuideScreen extends BookViewScreen {
   private static final int BOOK = 192, SLOT = 18, CYCLE_TICKS = 20;
@@ -110,8 +112,7 @@ public final class GuideScreen extends BookViewScreen {
   }
 
   private void slot(GuiGraphics graphics, int x, int y, ItemStack stack) {
-    graphics.fill(x, y, x + SLOT, y + SLOT, 0xff8b8b8b);
-    graphics.fill(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, 0xff373737);
+    Panels.slot(graphics, x, y);
     if (!stack.isEmpty()) {
       graphics.renderItem(stack, x + 1, y + 1);
       graphics.renderItemDecorations(font, stack, x + 1, y + 1);
@@ -125,8 +126,9 @@ public final class GuideScreen extends BookViewScreen {
     int book = (width - BOOK) / 2, margin = book - 8;
     ItemStack hovered = ItemStack.EMPTY;
     // Left: the page's blocks, one per row.
-    if (margin >= SLOT + 4) {
+    if (margin >= SLOT + 4 && !pictures.isEmpty()) {
       int x = book - SLOT - 6;
+      Panels.panel(graphics, new Rect(x - 5, 25, SLOT + 10, pictures.size() * (SLOT + 2) + 8));
       for (int i = 0; i < pictures.size(); i++) {
         int y = 30 + i * (SLOT + 2);
         slot(graphics, x, y, pictures.get(i));
@@ -137,8 +139,14 @@ public final class GuideScreen extends BookViewScreen {
     int needed = 3 * SLOT + 12 + SLOT;
     if (grid != null && margin >= needed + 4) {
       int x = book + BOOK + 6, y = 30;
+      Panels.panel(graphics, new Rect(x - 5, y - 16, needed + 10, 3 * SLOT + 21));
       graphics.drawString(
-          font, Component.translatable("gui.factorycore.guide.recipe"), x, y - 11, 0xffffff);
+          font,
+          Component.translatable("gui.factorycore.guide.recipe"),
+          x,
+          y - 11,
+          Panels.TEXT,
+          false);
       for (int cell = 0; cell < 9; cell++) {
         int cx = x + cell % 3 * SLOT, cy = y + cell / 3 * SLOT;
         var stack = grid.get(cell) == null ? ItemStack.EMPTY : shown(grid.get(cell));
@@ -146,7 +154,7 @@ public final class GuideScreen extends BookViewScreen {
         if (!stack.isEmpty() && over(mouseX, mouseY, cx, cy)) hovered = stack;
       }
       int rx = x + 3 * SLOT + 12, ry = y + SLOT;
-      graphics.drawString(font, "→", x + 3 * SLOT + 2, ry + 5, 0xffffff);
+      graphics.drawString(font, "→", x + 3 * SLOT + 2, ry + 5, Panels.TEXT, false);
       slot(graphics, rx, ry, result);
       if (over(mouseX, mouseY, rx, ry)) hovered = result;
     }

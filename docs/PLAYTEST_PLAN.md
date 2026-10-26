@@ -82,7 +82,7 @@ before Machine-mode ports go away.
   Done when: the existing terminal GameTests and client tours pass unchanged in behavior;
   screenshots at scales 1–4 in normal and tall.
 
-- [ ] **H3 — Device screens on the kit (K1, K3).** Size L; one commit per group.
+- [x] **H3 — Device screens on the kit (K1, K3).** Size L; one commit per group. Done 2026-10-26 (commit subjects `H3a:`, `H3b:`, `H3c:`).
   (a) Interface (Storage, Buffer, Signal), Drive; (b) Access, Recovery (Gateway moved in H1);
   (c) Program Controller, Label Tool, Guide. Mode buttons become tabs at the top. Remove the
   in-panel instruction lines.
@@ -92,6 +92,9 @@ before Machine-mode ports go away.
   captioned row at the bottom rather than tabs; the ADR 0064 amendment says why.
   (b) done 2026-10-26 (commit subject `H3b:`,
   [evidence](evidence/playtest-h3b-access-recovery-2026-10-26.md)).
+  (c) done 2026-10-26 (commit subject `H3c:`,
+  [evidence](evidence/playtest-h3c-program-label-guide-2026-10-26.md)). The Program Controller
+  keeps a 344 px panel for the editor; templates are now chosen by name.
 
 ## Wave H1 — machines on cables (HD1)
 

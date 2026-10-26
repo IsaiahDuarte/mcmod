@@ -94,3 +94,17 @@ The Storage, Buffer and Signal Interface screens and the Drive screen moved to t
 - **Transfer Recovery** uses the same list style. The selected record's safe next step is shown
   in words under the list, and only the applicable actions are enabled. The "Select a record"
   instruction is gone. Both panels are 230 px wide.
+
+## Amendment — H3c: Program Controller, Label Tool and Guide (2026-10-26)
+
+- **The Program Controller stays 344 px wide.** The editor needs the width for readable lines.
+  At 344 px it still fits the 427 px minimum window at scale 4, like the Terminal with its
+  crafting panel open. The code editor keeps its dark field, as a text area should. The panel,
+  log area and preview are on the kit.
+- **Templates are chosen by name.** The Template button used to replace the draft with the next
+  template on each click. It now opens the same chooser as Insert, on a Templates category that
+  lists all templates in teaching order. Choosing one replaces the draft, and Ctrl+Z undoes it.
+- The side buttons are grouped: saving and deploying, running, then writing.
+- The Label Tool screen and the Guide's picture and recipe panels use the kit.
+
+H3 is complete: every screen the mod opens uses the kit.

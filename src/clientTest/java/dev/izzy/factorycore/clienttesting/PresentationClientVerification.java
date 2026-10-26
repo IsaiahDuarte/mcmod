@@ -2020,6 +2020,13 @@ public final class PresentationClientVerification {
               .append(checkFits(client, client.screen))
               .append('\n');
           captures.grab(client, "program-v2-scale-4.png");
+          // H3c: Templates… opens the chooser on the templates, listed by name.
+          return press(client, "Templates…");
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          captures.grab(client, "program-templates-scale-4.png");
           setScale(client, 2);
           client.screen.onClose();
           return true;
@@ -2108,6 +2115,19 @@ public final class PresentationClientVerification {
                 .performPrefixedCommand(
                     player.createCommandSourceStack(), "factorycore recovery screen"));
     scales("recovery", RecoveryScreen.class, false);
+    // H3c: the Label Tool's screen, opened as using the tool in the air would.
+    step(
+        client -> {
+          dev.izzy.factorycore.platform.client.LabelToolScreen.open(
+              InteractionHand.MAIN_HAND, "furnace", false);
+          return true;
+        });
+    scales("label-tool", dev.izzy.factorycore.platform.client.LabelToolScreen.class, false);
+    step(
+        client -> {
+          client.setScreen(null);
+          return waited() > 2;
+        });
     server(player -> player.getInventory().setItem(0, new ItemStack(GuideContent.GUIDE.get())));
     step(
         client -> {

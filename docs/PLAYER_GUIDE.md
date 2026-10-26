@@ -371,7 +371,7 @@ labelled "furnace": raw ores in the top, coal kept at 8 on the side, ingots out 
 
 - **Editing:** type a program, then **Save draft** and **Check** (errors show as
   line:column). **Deploy** runs it with your permissions. **Pause/Resume** and
-  **Stop** control it. **Template** cycles built-in examples.
+  **Stop** control it. **Templates…** lists the built-in examples by name; choosing one replaces the draft (Ctrl+Z undoes it).
 - **Rights:** saving needs Edit and deploying needs Deploy.
 - **Helpers:** **Insert / complete** (Ctrl+Space) finds items, fluids and machine
   labels. **Preview next rule** shows what a rule would do without moving anything.

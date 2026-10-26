@@ -107,3 +107,6 @@ cable-port-scale-4.png
 overview-scale-1.png
 overview-scale-4.png
 guide-smelting.png
+label-tool-scale-1.png
+label-tool-scale-4.png
+program-templates-scale-4.png

@@ -3,6 +3,8 @@ package dev.izzy.factorycore.platform.client;
 import dev.izzy.factorycore.core.program.DraftHistory;
 import dev.izzy.factorycore.core.program.ProgramTemplates;
 import dev.izzy.factorycore.core.program.ResourceExpressions;
+import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.program.ProgramMenu;
 import dev.izzy.factorycore.platform.program.ProgramPackets;
 import java.io.IOException;
@@ -26,7 +28,12 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
-/** Program editor: draft text, inline diagnostics, deployment controls, templates and logs. */
+/**
+ * Program editor: draft text, inline diagnostics, deployment controls, templates and logs. On the
+ * panel kit since playtest H3c; wider than other panels because the editor needs the width. The
+ * buttons are grouped: saving and deploying, running, and writing (templates, insert, preview,
+ * Wasm). Templates open in the same chooser as Insert, by name.
+ */
 public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   private ProgramTextEditor editor;
   private DraftHistory history;
@@ -37,12 +44,15 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   private Button previousPage, nextPage;
   private boolean selecting, completing, previewing;
   private int kind, page, previewRule, previewPage;
+
+  /** The chooser's categories: items, fluids, local labels, keywords and templates. */
+  private static final int KINDS = 5, TEMPLATES = 4;
+
   private Button scope;
   private List<String> options = List.of();
   private ProgramPackets.AuthorView observedAuthor;
   private String labelAfter = "";
   private Button pause;
-  private int template = -1;
   private boolean loaded;
 
   public ProgramScreen(ProgramMenu menu, Inventory inventory, Component title) {
@@ -61,29 +71,32 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
         addRenderableWidget(
             new ProgramTextEditor(
                 font, leftPos + 8, topPos + 18, editorWidth(), 148, previous, history));
-    button("save", controlsX(), 18, () -> upload(-1));
+    // Three groups, a gap apart: saving and deploying; running; writing.
+    button("save", controlsX(), BUTTONS_Y, () -> upload(-1));
     button(
         "check",
         controlsX(),
-        36,
+        BUTTONS_Y + STEP,
         () -> {
           previewing = false;
           rebuildChoices();
           upload(ProgramPackets.CHECK);
         });
-    button("deploy", controlsX(), 54, () -> upload(ProgramPackets.DEPLOY));
-    pause = button("pause", controlsX(), 72, this::togglePause);
-    button("stop", controlsX(), 90, () -> action(ProgramPackets.STOP));
-    button("template", controlsX(), 108, this::nextTemplate);
-    button("wasm", controlsX(), 126, this::uploadWasm);
-    button("insert", controlsX(), 144, () -> openSelector(false));
-    button("preview", controlsX(), 162, this::preview);
+    button("deploy", controlsX(), BUTTONS_Y + 2 * STEP, () -> upload(ProgramPackets.DEPLOY));
+    int running = BUTTONS_Y + 3 * STEP + GROUP;
+    pause = button("pause", controlsX(), running, this::togglePause);
+    button("stop", controlsX(), running + STEP, () -> action(ProgramPackets.STOP));
+    int writing = running + 2 * STEP + GROUP;
+    button("template", controlsX(), writing, this::openTemplates);
+    button("insert", controlsX(), writing + STEP, () -> openSelector(false));
+    button("preview", controlsX(), writing + 2 * STEP, this::preview);
+    button("wasm", controlsX(), writing + 3 * STEP, this::uploadWasm);
     category =
         addRenderableWidget(
             Button.builder(
                     Component.empty(),
                     b -> {
-                      kind = (kind + 1) % 4;
+                      kind = (kind + 1) % KINDS;
                       page = 0;
                       labelAfter = "";
                       if (kind == 2) requestAuthor(false, "");
@@ -162,6 +175,12 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     rebuildChoices();
   }
 
+  /** The side buttons: 16 high, {@link #STEP} apart, with {@link #GROUP} between groups. */
+  private static final int BUTTONS_Y = 18, STEP = 17, GROUP = 4;
+
+  /** The message and log area under the editor. */
+  private static final int LOG_Y = 182, LOG_HEIGHT = 50;
+
   private int editorWidth() {
     return imageWidth - 124;
   }
@@ -191,6 +210,14 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     setFocused(selecting ? search : editor);
   }
 
+  /** Opens the chooser on the templates, listed by name. */
+  private void openTemplates() {
+    openSelector(false);
+    if (!selecting) return;
+    kind = TEMPLATES;
+    rebuildChoices();
+  }
+
   private void requestAuthor(boolean preview, String after) {
     PacketDistributor.sendToServer(
         new ProgramPackets.AuthorRequest(
@@ -218,13 +245,15 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
           case 1 -> BuiltInRegistries.FLUID.keySet().stream().map(Object::toString);
           case 2 ->
               menu.authorView() == null ? Stream.empty() : menu.authorView().labels().stream();
+          case TEMPLATES -> ProgramTemplates.ALL.stream().map(ProgramTemplates.Template::name);
           default ->
               Stream.concat(
                   dev.izzy.factorycore.core.program.ProgramSyntax.KEYWORD_WORDS.stream(),
                   dev.izzy.factorycore.core.program.ProgramSyntax.CALL_WORDS.stream());
         };
-    options =
-        values.filter(value -> value.toLowerCase(Locale.ROOT).contains(needle)).sorted().toList();
+    var matching = values.filter(value -> value.toLowerCase(Locale.ROOT).contains(needle));
+    // Templates keep their teaching order; everything else is alphabetical.
+    options = (kind == TEMPLATES ? matching : matching.sorted()).toList();
     editor.visible = !selecting && !previewing;
     if (scope != null) scope.visible = !selecting && !previewing;
     category.visible = selecting;
@@ -254,6 +283,16 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     int index = page * choices.size() + row;
     if (index >= options.size()) return;
     var value = options.get(index);
+    if (kind == TEMPLATES) {
+      for (var template : ProgramTemplates.ALL)
+        if (template.name().equals(value)) editor.setValue(template.source());
+      selecting = false;
+      rebuildChoices();
+      setFocused(editor);
+      editor.setFocused(true);
+      refocusEditor = true;
+      return;
+    }
     // Inside a quoted call, completion inserts its identifier; outside, insert a working
     // expression.
     String text =
@@ -353,11 +392,6 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     action(menu.view().state().equals("running") ? ProgramPackets.PAUSE : ProgramPackets.RESUME);
   }
 
-  private void nextTemplate() {
-    template = (template + 1) % ProgramTemplates.ALL.size();
-    editor.setValue(ProgramTemplates.ALL.get(template).source());
-  }
-
   @Override
   protected void containerTick() {
     super.containerTick();
@@ -379,9 +413,10 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
 
   @Override
   protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
-    graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xff282c30);
-    graphics.fill(leftPos + 4, topPos + 4, leftPos + imageWidth - 4, topPos + 236, 0xff44484d);
-    graphics.fill(leftPos + 8, topPos + 182, leftPos + imageWidth - 8, topPos + 232, 0xff171d22);
+    Panels.panel(graphics, new Rect(leftPos, topPos, imageWidth, imageHeight));
+    Panels.inset(graphics, new Rect(leftPos + 7, topPos + LOG_Y, imageWidth - 14, LOG_HEIGHT));
+    if (previewing)
+      Panels.inset(graphics, new Rect(leftPos + 7, topPos + 18, editorWidth() + 2, 137));
   }
 
   /** The strip follows the title on the free part of the title row. */
@@ -405,26 +440,27 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-    graphics.drawString(font, title, 8, 6, 0xffffff, false);
+    Panels.title(graphics, font, title, 0, 0);
     var view = menu.view();
-    StatusStrip.draw(graphics, font, menu.deviceStatus(), stripX(), 6, imageWidth - 8 - stripX());
+    StatusStrip.drawOnPanel(
+        graphics, font, menu.deviceStatus(), stripX(), 6, imageWidth - 8 - stripX());
     if (menu.authorView() != null)
       scope.setTooltip(Tooltip.create(Component.literal(menu.authorView().scope())));
     if (previewing) {
-      graphics.fill(8, 18, 8 + editorWidth(), 154, 0xff171d22);
       graphics.drawString(
           font,
           Component.translatable("gui.factorycore.program.snapshot"),
           12,
-          20,
-          0xe4bc83,
+          21,
+          Panels.WARN,
           false);
       var snapshot = previewLines();
       int end = Math.min(snapshot.size(), (previewPage + 1) * 13);
       for (int index = previewPage * 13; index < end; index++)
-        graphics.drawString(font, snapshot.get(index), 12, 32 + (index % 13) * 9, 0xd8dee9, false);
+        graphics.drawString(
+            font, snapshot.get(index), 12, 32 + (index % 13) * 9, Panels.TEXT, false);
     }
-    int y = 185;
+    int y = LOG_Y + 4;
     var lines = new ArrayList<String>();
     if (!view.message().isEmpty()) lines.add(view.message());
     lines.addAll(view.diagnostics());
@@ -435,7 +471,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
           font.plainSubstrByWidth(lines.get(i), imageWidth - 20),
           12,
           y,
-          view.diagnostics().contains(lines.get(i)) ? 0xff8a80 : 0xd8dee9,
+          view.diagnostics().contains(lines.get(i)) ? Panels.BAD : Panels.TEXT,
           false);
       y += 11;
     }
