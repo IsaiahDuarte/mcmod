@@ -17,6 +17,8 @@ Feature parity with AE2, Refined Storage and Super Factory Manager is sequenced 
 [parity plan](PARITY_PLAN.md).
 Fixes for the first survival playtest (screens, machines on cables, Importer/Exporter,
 first steps) are sequenced in the [playtest plan](PLAYTEST_PLAN.md).
+Every remaining ergonomics gap against AE2, Refined Storage and SFM found in the 2026-10-26
+audit is sequenced in the [ergonomics plan](ERGONOMICS_PLAN.md).
 
 ## How an AI should proceed
 
