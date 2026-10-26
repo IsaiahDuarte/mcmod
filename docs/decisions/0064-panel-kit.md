@@ -108,3 +108,23 @@ The Storage, Buffer and Signal Interface screens and the Drive screen moved to t
 - The Label Tool screen and the Guide's picture and recipe panels use the kit.
 
 H3 is complete: every screen the mod opens uses the kit.
+
+## Amendment — Q55: Terminal split and shared selection colours (2026-10-26)
+
+Ergonomics plan Q55 (M53, M54). No behaviour or layout change.
+
+- **The Terminal is a shell plus three parts.** `TerminalScreen` keeps the tabs, search row,
+  status lamp, mode switches, the terminal command packet and the verification API that the
+  client tours use. `TerminalStorageView` draws the Items/Fluids/Energy grid, its scrollbar and
+  the info row; `TerminalCraftingPanel` the crafting panel; `TerminalJobsView` the Jobs view
+  with the plan and job steps. Each part adds its widgets in `init` in the old order, so focus
+  order is unchanged, and the shell asks the parts for drawing, tooltips, clicks, scrolling and
+  keys in the order the single class used. New terminal features (lane T, Q3, Q7) go into the
+  part they belong to, or a new part, rather than the shell.
+- **Selection and row colours live in `Panels`.** `selected` (copper fill), `selectedEdge`,
+  `focusEdge`, `hovered` and `row` replace the colours copied into the Terminal, Drive, Network
+  Access, Recovery and Buffer screens. The Terminal's other marks are kit calls too: `veil` for a
+  craftable with no stock, `marker`, `meter`, `thumb`/`lightThumb`, `shortRow`, `lamp`, and the
+  `LIST_*` and `FIELD_*` text colours. No terminal class calls `fill` or holds a colour value.
+- The job list, plan and job steps keep shadowed light text on the grey inset (`LIST_*`), as H2
+  shipped them; a restyle would be a separate, visible change.

@@ -65,6 +65,9 @@ supported 427×240 GUI), bounded to 256 cells. The mouse wheel scrolls by a row;
 supports direct clicks and dragging. Items/Fluids/Energy/Jobs are tabs on the panel's top edge.
 The crafting grid opens as a panel to the right. The Jobs view replaces the grid and hides the
 inventory slots while shown (they are neither drawn nor clickable; contents are unchanged).
+In code, `TerminalScreen` is a shell (tabs, search, lamp, mode switches, command packet) over
+three parts: `TerminalStorageView` (grid and info row), `TerminalCraftingPanel` and
+`TerminalJobsView` (ADR 0064, Q55 amendment).
 Search coalesces typing after four idle client ticks, retains unsent typing while busy,
 and retries when the shared two-tick command gate admits it. Name/Qty and saved per-player
 preferences retain their existing meaning. Main inventory slot identities/order remain

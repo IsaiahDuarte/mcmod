@@ -479,7 +479,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
       Panels.slot(graphics, leftPos + contentsX(slot) - 1, topPos + CONTENTS_Y);
     for (var row : menu.view().slots()) {
       int x = leftPos + contentsX(row.slot()), y = topPos + CONTENTS_Y + 1;
-      if (row.slot() == selectedSlot) graphics.fill(x, y, x + 16, y + 16, 0x60b5683c);
+      if (row.slot() == selectedSlot) Panels.selected(graphics, new Rect(x, y, 16, 16));
       if (row.count() > 0) {
         var id = ResourceLocation.tryParse(row.icon());
         var item =

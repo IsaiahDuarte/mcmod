@@ -334,8 +334,11 @@ New gates:
   Done when: `LangKeysTest` checks that every enum value has a key; packet tests round-trip each
   value and refuse an unknown one; no `"uncertain"`-style string comparison remains in `platform/client`.
 
-- [ ] **Q55 — Split the terminal screen onto the kit (M53, M54).** Size L. Before the lane T
-  feature slices and Q3/Q7.
+- [x] **Q55 — Split the terminal screen onto the kit (M53, M54).** Size L. Done 2026-10-26
+  (commit subject `Q55:`). Shell plus `TerminalStorageView`, `TerminalCraftingPanel` and
+  `TerminalJobsView`; selection and row colours in `Panels`; all graphical tours pass unchanged
+  and panels match the previous commit's screenshots pixel for pixel.
+  [Evidence](evidence/ergonomics-q55-terminal-split-2026-10-26.md).
   Split `TerminalScreen` into a shell plus per-mode parts (items/fluids/energy grid, crafting
   panel, Jobs), drawn with the panel kit. Add the selection highlight and row colours to
   `Panels` and use them in Terminal, Drive, Network Access, Recovery and Buffer screens. No

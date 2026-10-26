@@ -4,6 +4,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -12,6 +14,15 @@ import net.neoforged.neoforge.fluids.FluidType;
 /** Shared resource icon drawing for terminal rows and filter slots. */
 final class ResourceIcons {
   private ResourceIcons() {}
+
+  /** The item for a registry ID: null for none, a barrier for an unknown or malformed ID. */
+  static Item item(String id) {
+    if (id.isEmpty()) return null;
+    var location = ResourceLocation.tryParse(id);
+    return location == null || !BuiltInRegistries.ITEM.containsKey(location)
+        ? Items.BARRIER
+        : BuiltInRegistries.ITEM.get(location);
+  }
 
   /**
    * Draws a registered fluid's still texture with its client tint, as AE2/RS do; returns false

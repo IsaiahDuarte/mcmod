@@ -327,7 +327,7 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
     for (int bay = 0; bay < DrivePackets.BAYS && filterBay < 0; bay++) {
       int x = leftPos + DriveMenu.BAY_X, y = topPos + bayTop(bay);
       Panels.inset(graphics, new Rect(x, y, ROW_WIDTH, 24));
-      if (bay == hovered) graphics.fill(x + 1, y + 1, x + ROW_WIDTH - 1, y + 23, 0x30ffffff);
+      if (bay == hovered) Panels.hovered(graphics, new Rect(x + 1, y + 1, ROW_WIDTH - 2, 22));
       Panels.slot(graphics, x + 3, y + 3);
       var row = menu.view().bays().get(bay);
       if (row.item().isEmpty()) continue;

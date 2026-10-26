@@ -28,7 +28,106 @@ public final class Panels {
       WARN = 0x8a5200,
       BAD = 0xa01e1e;
 
+  /**
+   * Shadowed text on an inset list (the Terminal's job list, plan and job steps): normal, muted,
+   * good, warning, a short row's name and its missing count.
+   */
+  public static final int LIST_TEXT = 0xffffff,
+      LIST_MUTED = 0xe0e0e0,
+      LIST_OTHER = 0xe8e8e8,
+      LIST_GOOD = 0xb4f0a8,
+      LIST_WARN = 0xffd27f,
+      LIST_SHORT = 0xffd0d0,
+      LIST_MISSING = 0xffb0b0;
+
+  /** Text in an edit box (vanilla's), and in one whose value was refused. */
+  public static final int FIELD_TEXT = 0xe0e0e0, FIELD_ERROR = 0xff8080;
+
+  /** The copper selection: a translucent fill for slots and rows, and an outline. */
+  private static final int SELECTED_FILL = 0x60b5683c, SELECTED_EDGE = 0xffb5683c;
+
+  private static final int HOVER_FILL = 0x30ffffff,
+      FOCUS_EDGE = 0xff000000,
+      SHORT_FILL = 0xff8a3a3a,
+      VEIL = 0xa08b8b8b,
+      MARKER = 0xffd9822b,
+      METER = 0xff2f8fb5,
+      THUMB = 0xff555555,
+      LIGHT_THUMB = 0xffe0e0e0,
+      LAMP_FRAME = 0xff181a1d,
+      LAMP_GOOD = 0xff3fbf4f,
+      LAMP_WARN = 0xffe0a030;
+
   private Panels() {}
+
+  /** Fills {@code area} as the selected slot or row. */
+  public static void selected(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, SELECTED_FILL);
+  }
+
+  /** Outlines {@code area} as the selected slot when a fill would hide its icon. */
+  public static void selectedEdge(GuiGraphics graphics, Rect area) {
+    graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), SELECTED_EDGE);
+  }
+
+  /** Outlines a control that has keyboard focus. */
+  public static void focusEdge(GuiGraphics graphics, Rect area) {
+    graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), FOCUS_EDGE);
+  }
+
+  /** Lightens the row or bay under the mouse. */
+  public static void hovered(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, HOVER_FILL);
+  }
+
+  /** A list row: the selection fill when selected, otherwise the hover fill when hovered. */
+  public static void row(GuiGraphics graphics, Rect area, boolean selected, boolean hovered) {
+    if (selected) selected(graphics, area);
+    else if (hovered) hovered(graphics, area);
+  }
+
+  /** Marks a list row that is short of something (a plan row with missing units). */
+  public static void shortRow(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, SHORT_FILL);
+  }
+
+  /** Greys an icon out: shown, but none is stored. */
+  public static void veil(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, VEIL);
+  }
+
+  /** A small copper corner marker (a craftable entry). */
+  public static void marker(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, MARKER);
+  }
+
+  /** The filled part of a meter (the Terminal's capacity bar) inside a sunken track. */
+  public static void meter(GuiGraphics graphics, Rect filled) {
+    fill(graphics, filled, METER);
+  }
+
+  /** A flat thumb for a thin scrollbar that has no room for a bevel. */
+  public static void thumb(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, THUMB);
+  }
+
+  /** A flat light thumb drawn inside a list's right edge. */
+  public static void lightThumb(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, LIGHT_THUMB);
+  }
+
+  /** A status lamp: green when {@code good}, amber otherwise, in a dark frame. */
+  public static void lamp(GuiGraphics graphics, Rect area, boolean good) {
+    fill(graphics, area, LAMP_FRAME);
+    fill(
+        graphics,
+        new Rect(area.x() + 1, area.y() + 1, area.width() - 2, area.height() - 2),
+        good ? LAMP_GOOD : LAMP_WARN);
+  }
+
+  private static void fill(GuiGraphics graphics, Rect area, int color) {
+    graphics.fill(area.x(), area.y(), area.right(), area.bottom(), color);
+  }
 
   private static ResourceLocation sprite(String name) {
     return ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, name);

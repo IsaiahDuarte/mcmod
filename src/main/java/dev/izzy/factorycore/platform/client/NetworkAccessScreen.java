@@ -358,10 +358,11 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
     int hovered = rowAt(mouseX, mouseY);
     for (int row = 0; row < view.rows().size(); row++) {
       int y = area.y() + 2 + row * LINE_HEIGHT;
-      if (row == selected)
-        graphics.fill(area.x() + 1, y, area.right() - 1, y + LINE_HEIGHT, 0x60b5683c);
-      else if (row == hovered)
-        graphics.fill(area.x() + 1, y, area.right() - 1, y + LINE_HEIGHT, 0x30ffffff);
+      Panels.row(
+          graphics,
+          new Rect(area.x() + 1, y, area.width() - 2, LINE_HEIGHT),
+          row == selected,
+          row == hovered);
     }
   }
 
