@@ -603,12 +603,13 @@ public final class TerminalClientVerification {
             view.mode().equals("IMPORT") && !view.dirty(),
             "Native buffer menu opens saved Import settings");
         captures.grab(client, "buffer-scale-2-settings.png");
-        click(screen, "Import");
+        // H3a: the buffer mode is a row of choices.
+        click(screen, "Export");
         next();
       }
       case 14 -> {
         if (!view.mode().equals("EXPORT")) return;
-        click(screen, "Export");
+        click(screen, "Stock");
         next();
       }
       case 15 -> {
@@ -666,7 +667,7 @@ public final class TerminalClientVerification {
       }
       case 19 -> {
         if (client.player.getInventory().getItem(9).getCount() != 2) return;
-        pointer(client, screen, 87, 111);
+        pointer(client, screen, 43, 85);
         next();
       }
       case 20 -> {
@@ -684,7 +685,7 @@ public final class TerminalClientVerification {
       case 22 -> {
         if (!view.rules().isEmpty()) return;
         click(screen, "Sample");
-        pointer(client, screen, 87, 111);
+        pointer(client, screen, 43, 85);
         next();
       }
       case 23 -> {
@@ -727,12 +728,15 @@ public final class TerminalClientVerification {
                 && view.slots().getFirst().count() == 8,
             "Full Stock goal retains player deposit without extraction");
         captures.grab(client, "buffer-scale-2-full.png");
-        click(screen, "Stock");
+        // H3a: the mode choices are in the Settings view.
+        click(screen, "Settings");
+        click(screen, "Paused");
         next();
       }
       case 29 -> {
         if (!view.mode().equals("PAUSED")) return;
         click(screen, "Apply");
+        click(screen, "Inventory");
         next();
       }
       case 30 -> {
@@ -1474,7 +1478,7 @@ public final class TerminalClientVerification {
 
   private static void pointer(Minecraft client, BufferSettingsScreen screen, int x, int y) {
     var window = client.getWindow();
-    double guiX = (screen.width - 320) / 2.0 + x, guiY = (screen.height - 232) / 2.0 + y;
+    double guiX = screen.getGuiLeft() + x, guiY = screen.getGuiTop() + y;
     double cursorX = guiX * window.getScreenWidth() / window.getGuiScaledWidth();
     double cursorY = guiY * window.getScreenHeight() / window.getGuiScaledHeight();
     var callback = GLFW.glfwSetCursorPosCallback(window.getWindow(), null);
@@ -1488,7 +1492,7 @@ public final class TerminalClientVerification {
     check(
         slot != null && slot.getContainerSlot() == 9,
         "Actual renderer hovers sample inventory slot");
-    screen.mouseClicked((screen.width - 320) / 2.0 + 87, (screen.height - 232) / 2.0 + 111, 0);
+    screen.mouseClicked(screen.getGuiLeft() + 43, screen.getGuiTop() + 85, 0);
   }
 
   private static void deposit(Minecraft client, BufferSettingsMenu menu, int slot, int amount) {

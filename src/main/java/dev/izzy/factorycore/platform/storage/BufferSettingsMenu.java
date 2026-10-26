@@ -58,6 +58,12 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
     this(id, inventory, holder, holder.getBlockPos(), nonce);
   }
 
+  /**
+   * Where the screen shows the player's inventory (item positions, panel-relative; playtest H3a):
+   * centred in the 230-wide kit panel, below the buffer's slots, Take row and help line.
+   */
+  public static final int INVENTORY_X = 35, INVENTORY_Y = 77, HOTBAR_Y = INVENTORY_Y + 3 * 18 + 4;
+
   private BufferSettingsMenu(
       int id, Inventory inventory, BufferedInterfaceEntity holder, BlockPos position, UUID nonce) {
     super(BufferedInterfaceContent.MENU.get(), id);
@@ -74,7 +80,11 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
     for (int row = 0; row < 3; row++)
       for (int column = 0; column < 9; column++)
         addSlot(
-            new Slot(inventory, 9 + row * 9 + column, 79 + 18 * column, 103 + 18 * row) {
+            new Slot(
+                inventory,
+                9 + row * 9 + column,
+                INVENTORY_X + 18 * column,
+                INVENTORY_Y + 18 * row) {
               @Override
               public boolean isActive() {
                 return !viewer.level().isClientSide() || inventoryTab;
@@ -82,7 +92,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
             });
     for (int column = 0; column < 9; column++)
       addSlot(
-          new Slot(inventory, column, 79 + 18 * column, 165) {
+          new Slot(inventory, column, INVENTORY_X + 18 * column, HOTBAR_Y) {
             @Override
             public boolean isActive() {
               return !viewer.level().isClientSide() || inventoryTab;
@@ -294,19 +304,23 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
       switch (packet.action()) {
         case BufferSettingsPackets.MODE ->
             mode =
-                switch (mode) {
-                  case PAUSED -> BufferRegistry.Mode.IMPORT;
-                  case IMPORT -> BufferRegistry.Mode.EXPORT;
-                  case EXPORT -> BufferRegistry.Mode.STOCK;
-                  case STOCK -> BufferRegistry.Mode.PAUSED;
-                };
+                packet.value() > 0
+                    ? BufferSettingsPackets.chosen(BufferRegistry.Mode.values(), packet.value())
+                    : switch (mode) {
+                      case PAUSED -> BufferRegistry.Mode.IMPORT;
+                      case IMPORT -> BufferRegistry.Mode.EXPORT;
+                      case EXPORT -> BufferRegistry.Mode.STOCK;
+                      case STOCK -> BufferRegistry.Mode.PAUSED;
+                    };
         case BufferSettingsPackets.FILTER -> {
           filterMode =
-              switch (filterMode) {
-                case ALL -> ResourceFilter.Mode.INCLUDE;
-                case INCLUDE -> ResourceFilter.Mode.EXCLUDE;
-                case EXCLUDE -> ResourceFilter.Mode.ALL;
-              };
+              packet.value() > 0
+                  ? BufferSettingsPackets.chosen(ResourceFilter.Mode.values(), packet.value())
+                  : switch (filterMode) {
+                    case ALL -> ResourceFilter.Mode.INCLUDE;
+                    case INCLUDE -> ResourceFilter.Mode.EXCLUDE;
+                    case EXCLUDE -> ResourceFilter.Mode.ALL;
+                  };
           if (filterMode == ResourceFilter.Mode.ALL) terms.clear();
         }
         case BufferSettingsPackets.RATE -> {

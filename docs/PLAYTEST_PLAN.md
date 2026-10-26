@@ -87,6 +87,9 @@ before Machine-mode ports go away.
   (c) Program Controller, Label Tool, Guide. Mode buttons become tabs at the top. Remove the
   in-panel instruction lines.
   Done when: every screen's tour screenshot fits at scales 1 and 4 on the kit grid.
+  Progress: (a) done 2026-10-26 (commit subject `H3a:`,
+  [evidence](evidence/playtest-h3a-device-screens-2026-10-26.md)). The Interface mode stays a
+  captioned row at the bottom rather than tabs; the ADR 0064 amendment says why.
 
 ## Wave H1 — machines on cables (HD1)
 

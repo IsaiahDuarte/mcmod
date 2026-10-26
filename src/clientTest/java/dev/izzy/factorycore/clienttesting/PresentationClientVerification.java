@@ -1958,7 +1958,7 @@ public final class PresentationClientVerification {
           if (waited() < 4) return false;
           captures.grab(client, "connector-picked-scale-4.png");
           // B2: the Filter tab, with cobblestone dropped as a recipe viewer would.
-          return press(client, "Filter…");
+          return press(client, "Filter");
         });
     step(
         client -> {

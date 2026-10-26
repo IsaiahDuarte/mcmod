@@ -401,4 +401,81 @@ public final class BufferSettingsGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * H3a: the screen picks a mode or filter choice directly; 0 still cycles; out of range is
+   * invalid.
+   */
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void modeAndFilterChoicesAreSetDirectly(GameTestHelper helper) {
+    var f = setup(helper);
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> helper.assertTrue(f.buffer.canUse(f.player), "Wired owner ready"))
+        .thenExecute(() -> open(helper, f))
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              command(
+                  f,
+                  BufferSettingsPackets.MODE,
+                  0,
+                  1 + BufferRegistry.Mode.STOCK.ordinal(),
+                  "",
+                  new byte[32]);
+              helper.assertTrue(menu(f).view().mode().equals("STOCK"), "Stock picked directly");
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              command(
+                  f,
+                  BufferSettingsPackets.MODE,
+                  0,
+                  1 + BufferRegistry.Mode.STOCK.ordinal(),
+                  "",
+                  new byte[32]);
+              helper.assertTrue(menu(f).view().mode().equals("STOCK"), "Picking it again keeps it");
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              command(f, BufferSettingsPackets.MODE, 0, 0, "", new byte[32]);
+              helper.assertTrue(menu(f).view().mode().equals("PAUSED"), "0 still cycles");
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              command(
+                  f,
+                  BufferSettingsPackets.FILTER,
+                  0,
+                  1 + ResourceFilter.Mode.EXCLUDE.ordinal(),
+                  "",
+                  new byte[32]);
+              helper.assertTrue(menu(f).view().filter().equals("EXCLUDE"), "Block list picked");
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              command(f, BufferSettingsPackets.MODE, 0, 9, "", new byte[32]);
+              helper.assertTrue(
+                  menu(f).view().status().equals("invalid")
+                      && menu(f).view().mode().equals("PAUSED"),
+                  "An unknown choice changes nothing");
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              command(f, BufferSettingsPackets.APPLY, 0, 0, "", new byte[32]);
+              var saved =
+                  DeviceSavedData.get(f.player.server).buffers().deployment(f.buffer.handle().id());
+              helper.assertTrue(
+                  saved.mode() == BufferRegistry.Mode.PAUSED
+                      && saved.policy().filter().mode() == ResourceFilter.Mode.EXCLUDE,
+                  "Apply saves the picked choices");
+              end(f);
+            })
+        .thenSucceed();
+  }
 }

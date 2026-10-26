@@ -1,5 +1,8 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.platform.client.ui.PanelLayout;
+import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.storage.DriveMenu;
 import dev.izzy.factorycore.platform.storage.DrivePackets;
 import java.util.ArrayList;
@@ -16,15 +19,22 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
-/** Four drive bays with fill bars above the player inventory; clicks act with the cursor item. */
+/**
+ * Four drive bays with fill bars above the player inventory; clicks act with the cursor item. A
+ * bay's ⚙ opens its partition in place of the list. On the panel kit since playtest H3a.
+ */
 public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
     implements FilterDropTarget {
-  private static final int ROW_WIDTH = 214;
+  private static final int ROW_WIDTH = PanelLayout.WIDE - 2 * PanelLayout.EDGE;
+
+  /** The priority row under the bays, and the partition rows in the same space. */
+  private static final int PRIORITY_Y = DriveMenu.BAY_Y + DrivePackets.BAYS * DriveMenu.BAY_HEIGHT;
 
   /** B3: the bay whose partition panel is open, or -1 for the bay list. */
   private int filterBay = -1, selectedRule;
 
   private boolean typing;
+  private int describeY;
   private final List<Button> bayButtons = new ArrayList<>(), filterButtons = new ArrayList<>();
   private FilterSlots filterSlots;
   private net.minecraft.client.gui.components.EditBox filterId;
@@ -37,9 +47,10 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
 
   public DriveScreen(DriveMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
-    imageWidth = 230;
-    imageHeight = DriveMenu.INVENTORY_Y + 82;
-    inventoryLabelY = DriveMenu.INVENTORY_Y - 11;
+    imageWidth = PanelLayout.WIDE;
+    imageHeight = DriveMenu.HOTBAR_Y + PanelLayout.SLOT - 1 + PanelLayout.EDGE;
+    inventoryLabelX = DriveMenu.INVENTORY_X - 1;
+    inventoryLabelY = DriveMenu.INVENTORY_Y - 12;
   }
 
   @Override
@@ -60,41 +71,57 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
                         selectedRule = 0;
                       })
                   .bounds(
-                      leftPos + DriveMenu.BAY_X + ROW_WIDTH - 18, topPos + bayTop(bay) + 2, 16, 16)
+                      leftPos + DriveMenu.BAY_X + ROW_WIDTH - 20, topPos + bayTop(bay) + 3, 18, 18)
                   .tooltip(
                       net.minecraft.client.gui.components.Tooltip.create(
                           Component.translatable("gui.factorycore.drive.filter.help")))
                   .build()));
     }
-    int top = DriveMenu.BAY_Y;
+    // The partition panel: heading and Back; the insert mode; the slots with Add by ID and Clear
+    // beside them (a right-click removes one slot); then the selected rule or the typed-ID row.
+    int top = DriveMenu.BAY_Y, left = DriveMenu.BAY_X;
+    var backLabel = Component.translatable("gui.factorycore.drive.filter.back");
+    int backWidth = font.width(backLabel) + 10;
     back =
         addRenderableWidget(
-            Button.builder(
-                    Component.translatable("gui.factorycore.drive.filter.back"),
-                    b -> filterBay = -1)
-                .bounds(leftPos + 170, topPos + top, 52, 14)
+            Button.builder(backLabel, b -> filterBay = -1)
+                .bounds(leftPos + left + ROW_WIDTH - backWidth, topPos + top, backWidth, 18)
                 .build());
+    int modeY = top + PanelLayout.ROW + PanelLayout.GAP;
     mode =
         addRenderableWidget(
             Button.builder(Component.empty(), b -> filter(DrivePackets.FilterCommand.MODE, 0, ""))
-                .bounds(leftPos + 8, topPos + top + 16, 214, 16)
+                .bounds(leftPos + left, topPos + modeY, ROW_WIDTH, 18)
                 .tooltip(
                     net.minecraft.client.gui.components.Tooltip.create(
                         Component.translatable("gui.factorycore.drive.filter.mode.help")))
                 .build());
+    int slotsY = modeY + PanelLayout.ROW + PanelLayout.GAP;
+    int side = left + FilterSlots.COLUMNS * PanelLayout.SLOT + PanelLayout.GAP;
+    int sideWidth = left + ROW_WIDTH - side;
     addById =
         addRenderableWidget(
             Button.builder(
-                    Component.translatable("gui.factorycore.buffer.add_by_id"), b -> typing = true)
-                .bounds(leftPos + 8, topPos + top + 34, 96, 16)
+                    Component.translatable("gui.factorycore.buffer.add_by_id"),
+                    b -> typing = !typing)
+                .bounds(leftPos + side, topPos + slotsY, sideWidth, 17)
+                .tooltip(
+                    net.minecraft.client.gui.components.Tooltip.create(
+                        Component.translatable("gui.factorycore.buffer.add_by_id.help")))
                 .build());
+    describeY = slotsY + 2 * PanelLayout.SLOT + PanelLayout.GAP;
+    var idCells =
+        PanelLayout.fit(
+            new Rect(left, describeY, ROW_WIDTH, PanelLayout.ROW),
+            new int[] {100, 40, 40},
+            PanelLayout.GAP);
     filterId =
         addRenderableWidget(
             new net.minecraft.client.gui.components.EditBox(
                 font,
-                leftPos + 8,
-                topPos + top + 34,
-                120,
+                leftPos + idCells.get(0).x() + 1,
+                topPos + describeY + 1,
+                idCells.get(0).width() - 2,
                 16,
                 Component.translatable("gui.factorycore.buffer.id")));
     filterId.setMaxLength(256);
@@ -103,20 +130,22 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
             Button.builder(
                     Component.translatable("gui.factorycore.machine.add_id"),
                     b -> filter(DrivePackets.FilterCommand.REGISTRY, 0, filterId.getValue()))
-                .bounds(leftPos + 132, topPos + top + 34, 44, 16)
+                .bounds(
+                    leftPos + idCells.get(1).x(), topPos + describeY, idCells.get(1).width(), 18)
                 .build());
     addTag =
         addRenderableWidget(
             Button.builder(
                     Component.translatable("gui.factorycore.machine.add_tag"),
                     b -> filter(DrivePackets.FilterCommand.TAG, 0, filterId.getValue()))
-                .bounds(leftPos + 178, topPos + top + 34, 44, 16)
+                .bounds(
+                    leftPos + idCells.get(2).x(), topPos + describeY, idCells.get(2).width(), 18)
                 .build());
     filterSlots =
         addRenderableWidget(
             new FilterSlots(
-                leftPos + 8,
-                topPos + top + 54,
+                leftPos + left,
+                topPos + slotsY,
                 new FilterSlots.Actions() {
                   @Override
                   public void addCarried() {
@@ -139,16 +168,16 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
             Button.builder(
                     Component.translatable("gui.factorycore.machine.clear_rules"),
                     b -> filter(DrivePackets.FilterCommand.CLEAR, 0, ""))
-                .bounds(leftPos + 156, topPos + top + 54, 66, 16)
+                .bounds(leftPos + side, topPos + slotsY + 19, sideWidth, 17)
                 .build());
     priority =
         addRenderableWidget(
             new net.minecraft.client.gui.components.EditBox(
                 font,
-                leftPos + 182,
-                topPos + bayTop(DrivePackets.BAYS) + 1,
+                leftPos + DriveMenu.BAY_X + ROW_WIDTH - 40,
+                topPos + PRIORITY_Y + 1,
                 40,
-                14,
+                16,
                 Component.translatable("gui.factorycore.drive.priority")));
     priority.setMaxLength(5);
     priority.setTooltip(
@@ -293,53 +322,42 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
 
   @Override
   protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
-    graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xff282c30);
-    graphics.fill(
-        leftPos + 4, topPos + 4, leftPos + imageWidth - 4, topPos + imageHeight - 4, 0xff44484d);
+    Panels.panel(graphics, new Rect(leftPos, topPos, imageWidth, imageHeight));
     int hovered = filterBay >= 0 ? -1 : bayAt(mouseX, mouseY);
     for (int bay = 0; bay < DrivePackets.BAYS && filterBay < 0; bay++) {
       int x = leftPos + DriveMenu.BAY_X, y = topPos + bayTop(bay);
-      graphics.fill(x, y, x + ROW_WIDTH, y + 24, bay == hovered ? 0xff3a4e60 : 0xff30373e);
-      graphics.fill(x + 1, y + 1, x + 19, y + 19, 0xff151b20);
+      Panels.inset(graphics, new Rect(x, y, ROW_WIDTH, 24));
+      if (bay == hovered) graphics.fill(x + 1, y + 1, x + ROW_WIDTH - 1, y + 23, 0x30ffffff);
+      Panels.slot(graphics, x + 3, y + 3);
       var row = menu.view().bays().get(bay);
       if (row.item().isEmpty()) continue;
       graphics.renderItem(
           new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(row.item()))),
-          x + 2,
-          y + 2);
-      int barX = x + 24, barY = y + 21, barWidth = ROW_WIDTH - 28;
-      graphics.fill(barX, barY, barX + barWidth, barY + 2, 0xff151b20);
+          x + 4,
+          y + 4);
+      int barX = x + 25, barY = y + 21, barWidth = ROW_WIDTH - 50;
+      graphics.fill(barX, barY, barX + barWidth, barY + 2, 0xff555555);
       if (!row.infinite() && row.capacity() > 0) {
         int filled = (int) Math.min(barWidth, (double) row.total() / row.capacity() * barWidth);
         if (row.total() > 0) filled = Math.max(1, filled);
-        int color = filled * 10 >= barWidth * 9 ? 0xffd9534f : 0xff4fb6d9;
+        int color = filled * 10 >= barWidth * 9 ? 0xffc0392b : 0xff2f8fbf;
         graphics.fill(barX, barY, barX + filled, barY + 2, color);
       }
     }
-    for (var slot : menu.slots) {
-      graphics.fill(
-          leftPos + slot.x - 1,
-          topPos + slot.y - 1,
-          leftPos + slot.x + 17,
-          topPos + slot.y + 17,
-          0xff151b20);
-      graphics.fill(
-          leftPos + slot.x,
-          topPos + slot.y,
-          leftPos + slot.x + 16,
-          topPos + slot.y + 16,
-          0xff30373e);
-    }
+    for (var slot : menu.slots) Panels.slot(graphics, leftPos + slot.x - 1, topPos + slot.y - 1);
   }
 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-    graphics.drawString(font, title, 8, 6, 0xffffff, false);
-    int strip = 8 + font.width(title) + 10;
-    StatusStrip.draw(graphics, font, menu.deviceStatus(), strip, 6, imageWidth - 8 - strip);
-    graphics.drawString(font, playerInventoryTitle, 8, inventoryLabelY, 0xd8dee9, false);
+    Panels.title(graphics, font, title, 0, 0);
+    int strip = PanelLayout.EDGE + 1 + font.width(title) + 8;
+    StatusStrip.drawOnPanel(
+        graphics, font, menu.deviceStatus(), strip, PanelLayout.TITLE_Y, imageWidth - 8 - strip);
+    graphics.drawString(
+        font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, Panels.TEXT, false);
+    var view = menu.view();
     if (filterBay >= 0) {
-      var row = menu.view().bays().get(filterBay);
+      var row = view.bays().get(filterBay);
       var name =
           new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(row.item())))
               .getHoverName();
@@ -348,60 +366,64 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
           font.plainSubstrByWidth(
               Component.translatable("gui.factorycore.drive.filter.title", filterBay + 1, name)
                   .getString(),
-              158),
-          8,
-          DriveMenu.BAY_Y + 3,
-          0xffffff,
+              back.getX() - leftPos - DriveMenu.BAY_X - PanelLayout.GAP),
+          DriveMenu.BAY_X,
+          DriveMenu.BAY_Y + 5,
+          Panels.TEXT,
           false);
-      graphics.drawString(
-          font,
-          font.plainSubstrByWidth(
-              Component.translatable("gui.factorycore.drive.filter.note").getString(), 214),
-          8,
-          DriveMenu.BAY_Y + 94,
-          0xa5b5c5,
-          false);
+      if (!typing && selectedRule < row.partition().size())
+        FilterSlots.describe(
+            graphics,
+            font,
+            row.partition().get(selectedRule),
+            DriveMenu.BAY_X,
+            describeY,
+            ROW_WIDTH);
     }
     for (int bay = 0; bay < DrivePackets.BAYS && filterBay < 0; bay++) {
-      var row = menu.view().bays().get(bay);
-      int x = DriveMenu.BAY_X + 24, y = bayTop(bay) + 3;
+      var row = view.bays().get(bay);
+      int x = DriveMenu.BAY_X + 25, y = bayTop(bay) + 3;
       if (row.item().isEmpty()) {
         graphics.drawString(
-            font, Component.translatable("gui.factorycore.drive.empty"), x, y + 3, 0x9aa5b1, false);
+            font,
+            Component.translatable("gui.factorycore.drive.empty"),
+            x,
+            y + 4,
+            Panels.MUTED,
+            false);
         continue;
       }
       var name =
           new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(row.item())))
               .getHoverName();
       var heading = Component.translatable("gui.factorycore.drive.heading", name, row.types());
-      graphics.drawString(font, heading, x, y - 1, 0xffffff, false);
-      var text = amountLine(row);
+      int textWidth = ROW_WIDTH - 50;
+      graphics.drawString(
+          font, font.plainSubstrByWidth(heading.getString(), textWidth), x, y, Panels.TEXT, false);
       graphics.drawString(
           font,
-          font.plainSubstrByWidth(text.getString(), ROW_WIDTH - 28),
+          font.plainSubstrByWidth(amountLine(row).getString(), textWidth),
           x,
           y + 9,
-          0xffffff,
+          Panels.TEXT,
           false);
     }
-    var view = menu.view();
+    if (filterBay >= 0) return;
+    var priorityLabel = Component.translatable("gui.factorycore.drive.priority");
+    int priorityX = priority.getX() - leftPos - 6 - font.width(priorityLabel);
+    graphics.drawString(font, priorityLabel, priorityX, PRIORITY_Y + 5, Panels.TEXT, false);
+    // The result of the last bay click (instructions are in the bay tooltips).
+    if (view.status().equals("ready") && view.detail().isEmpty()) return;
     var status =
         view.detail().isEmpty()
             ? Component.translatable("gui.factorycore.drive.status." + view.status())
             : Component.literal(view.detail());
-    if (filterBay < 0)
-      graphics.drawString(
-          font,
-          Component.translatable("gui.factorycore.drive.priority"),
-          182 - 4 - font.width(Component.translatable("gui.factorycore.drive.priority")),
-          bayTop(DrivePackets.BAYS) + 4,
-          0xffffff,
-          false);
-    // Narrower while the priority field shares the row.
-    var lines = font.split(status, filterBay < 0 ? 120 : ROW_WIDTH);
-    for (int line = 0; line < Math.min(2, lines.size()); line++)
-      graphics.drawString(
-          font, lines.get(line), 8, bayTop(DrivePackets.BAYS) + 2 + line * 10, 0xe4bc83, false);
+    Panels.wrapped(
+        graphics,
+        font,
+        status,
+        new Rect(DriveMenu.BAY_X, PRIORITY_Y, priorityX - DriveMenu.BAY_X - PanelLayout.GAP, 20),
+        Panels.WARN);
   }
 
   private static Component amountLine(DrivePackets.Bay row) {

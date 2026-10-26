@@ -129,8 +129,8 @@ final class FilterSlots extends AbstractWidget {
   }
 
   /**
-   * The selected rule beside the slots in at most three lines: its label on one line, then how it
-   * matches wrapped to two. Coordinates are screen-relative, like the caller's labels.
+   * The selected rule in at most three lines, in kit panel colors: its label on one line, then how
+   * it matches wrapped to two. Coordinates are screen-relative, like the caller's labels.
    */
   static void describe(
       GuiGraphics graphics,
@@ -139,11 +139,23 @@ final class FilterSlots extends AbstractWidget {
       int x,
       int y,
       int width) {
-    graphics.drawString(font, font.plainSubstrByWidth(rule.label(), width), x, y, 0xc9dbed, false);
+    graphics.drawString(
+        font,
+        font.plainSubstrByWidth(rule.label(), width),
+        x,
+        y,
+        dev.izzy.factorycore.platform.client.ui.Panels.TEXT,
+        false);
     var lines =
         font.split(Component.translatable("gui.factorycore.filter.match." + rule.type()), width);
     for (int line = 0; line < Math.min(2, lines.size()); line++)
-      graphics.drawString(font, lines.get(line), x, y + 10 + 10 * line, 0xa5b5c5, false);
+      graphics.drawString(
+          font,
+          lines.get(line),
+          x,
+          y + 10 + 10 * line,
+          dev.izzy.factorycore.platform.client.ui.Panels.MUTED,
+          false);
   }
 
   private static void icon(GuiGraphics graphics, String id, int x, int y) {

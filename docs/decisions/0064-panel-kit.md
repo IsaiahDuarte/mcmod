@@ -62,3 +62,23 @@ screen moves, it keeps its dark style. `StatusStrip.draw` keeps the dark colors 
 - Client tours find toggles as `ToggleButton` with a bare label rather than a "Name: on" button.
 - `PanelLayoutTest` covers row stacking, footer reservation, vanilla edge alignment, and `fit`
   sharing and shrinking. The presentation tour checks each ported screen at scales 1–4.
+
+## Amendment — H3a: Interface and Drive screens (2026-10-26)
+
+The Storage, Buffer and Signal Interface screens and the Drive screen moved to the kit.
+
+- **One choice per setting.** Every setting with a few named values is a row of `ChoiceButton`s
+  showing all of them, instead of a button that cycles. That covers the Interface's resource and
+  access, the Buffer's mode and filter, and the Signal's condition, comparison and output. For
+  the Buffer, the `MODE` and `FILTER` commands gained a direct form: `value` n picks choice n − 1,
+  and 0 still cycles.
+- **Views, not tabs, inside a screen.** Settings/Filter (Storage) and Settings/Inventory (Buffer)
+  are a pair of choices at the top that swap the rows below them, in the same panel size.
+- **The Interface's mode stays a captioned row at the bottom ("Mode: Storage Buffer Signal").**
+  The H3 plan said "mode buttons become tabs at the top". They were not made tabs because
+  switching mode changes the block, and the switch is refused while items are in transit or an
+  upgrade is installed. A tab would suggest a free change of view.
+- **Instruction lines removed.** "Apply saves your changes…", the Drive's "Click a bay…", and the
+  partition note moved into tooltips. The message row shows only results and problems.
+- **Inventory positions.** The Buffer and Drive menus place the player inventory centred in the
+  230 px panel (`INVENTORY_X = 35`). The Drive panel is 238 px tall, within the 240 px limit.

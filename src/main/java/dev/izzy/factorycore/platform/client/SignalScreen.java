@@ -2,11 +2,18 @@ package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.SignalRule;
+import dev.izzy.factorycore.platform.client.ui.ChoiceButton;
+import dev.izzy.factorycore.platform.client.ui.PanelLayout;
+import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.signal.SignalMenu;
 import dev.izzy.factorycore.platform.signal.SignalPackets;
 import dev.izzy.factorycore.platform.storage.InterfaceKind;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
@@ -21,106 +28,179 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * C1 Signal Interface settings: what to watch, when to turn on and how strong. The rule is a local
- * draft until Apply; the watched resource is set at once (held item, JEI drop or Add by ID).
+ * C1 Signal Interface settings (on the panel kit since playtest H3a): what to watch, when to turn
+ * on and how strong. The rule is a local draft until Apply; the watched resource is set at once
+ * (held item, JEI drop or Add by ID).
  */
 public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
     implements FilterDropTarget {
-  private static final int SLOT_X = 60, SLOT_Y = 24;
+  private static final SignalRule.Condition[] CONDITIONS = SignalRule.Condition.values();
+  private static final SignalRule.Compare[] COMPARES = SignalRule.Compare.values();
+  private static final SignalRule.Output[] OUTPUTS = SignalRule.Output.values();
+
+  private static final int BODY =
+      5 * (PanelLayout.ROW + PanelLayout.GAP) + 2 * PanelLayout.LINE + PanelLayout.GAP;
+
+  private final PanelLayout layout = new PanelLayout(PanelLayout.WIDE, PanelLayout.heightFor(BODY));
 
   private SignalRule.Condition condition;
   private SignalRule.Compare compare;
   private SignalRule.Output output;
   private EditBox threshold, id;
-  private Button conditionButton, compareButton, outputButton, apply, addById, setItem, setFluid;
-  private Button setLabel;
+  private Button apply, addById, setItem, setFluid, setLabel;
+  private final List<ChoiceButton> conditions = new ArrayList<>(),
+      compares = new ArrayList<>(),
+      outputs = new ArrayList<>();
   private EditBox labelBox;
   private String shownLabel;
   private boolean typing, invalid;
   private long shown = -1;
+  private int statusWidth;
+
+  /** Panel-relative rows that carry text, and the watched slot. */
+  private Rect watchRow, whenRow, powerRow, labelRow, modeRow, messageRow, footer, slot;
 
   public SignalScreen(SignalMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
-    imageWidth = 300;
-    imageHeight = 220;
+    imageWidth = layout.width();
+    imageHeight = layout.height();
   }
 
   @Override
   protected void init() {
     String typed = threshold == null ? null : threshold.getValue();
     super.init();
+    conditions.clear();
+    compares.clear();
+    outputs.clear();
+    var rows = new PanelLayout(layout.width(), layout.height());
+
+    // Watch: the slot, then the watched name and Add by ID, or the typed-ID row in their place.
+    watchRow = rows.row();
+    slot =
+        new Rect(watchRow.x() + caption("watch"), watchRow.y(), PanelLayout.SLOT, PanelLayout.SLOT);
+    var addLabel = Component.translatable("gui.factorycore.signal.add_by_id");
+    var addCell =
+        PanelLayout.alignRight(watchRow, new int[] {font.width(addLabel) + 10}, 0).getFirst();
     addById =
         button(
+            addCell,
             "add_by_id",
-            200,
-            24,
-            90,
             () -> {
-              typing = true;
+              typing = !typing;
               sync();
             });
+    var idCells =
+        PanelLayout.fit(
+            new Rect(
+                slot.right() + PanelLayout.GAP,
+                watchRow.y(),
+                watchRow.right() - slot.right() - PanelLayout.GAP,
+                watchRow.height()),
+            new int[] {
+              100,
+              font.width(Component.translatable("gui.factorycore.signal.set_item")) + 10,
+              font.width(Component.translatable("gui.factorycore.signal.set_fluid")) + 10
+            },
+            PanelLayout.GAP);
     id =
         addRenderableWidget(
             new EditBox(
                 font,
-                leftPos + 10,
-                topPos + 47,
-                170,
+                leftPos + idCells.get(0).x() + 1,
+                topPos + idCells.get(0).y() + 1,
+                idCells.get(0).width() - 2,
                 16,
                 Component.translatable("gui.factorycore.buffer.id")));
     id.setMaxLength(256);
-    setItem = button("set_item", 184, 46, 52, () -> resource(false));
-    setFluid = button("set_fluid", 238, 46, 52, () -> resource(true));
-    conditionButton =
-        button(
-            "condition",
-            10,
-            70,
-            280,
-            () -> {
-              condition = SignalRule.Condition.values()[(condition.ordinal() + 1) % 2];
-              sync();
-            });
-    compareButton =
-        button(
-            "compare",
-            10,
-            94,
-            60,
-            () -> {
-              compare = SignalRule.Compare.values()[(compare.ordinal() + 1) % 2];
-              sync();
-            });
+    setItem = button(idCells.get(1), "set_item", () -> resource(false));
+    setFluid = button(idCells.get(2), "set_fluid", () -> resource(true));
+
+    // When it turns on.
+    whenRow = rows.row();
+    int whenLeft = whenRow.x() + caption("when");
+    var whenCells =
+        fitted(
+            new Rect(whenLeft, whenRow.y(), whenRow.right() - whenLeft, whenRow.height()),
+            CONDITIONS.length,
+            i -> conditionName(CONDITIONS[i]));
+    for (int i = 0; i < CONDITIONS.length; i++) {
+      var choice = CONDITIONS[i];
+      conditions.add(
+          choice(
+              whenCells.get(i),
+              conditionName(choice),
+              "gui.factorycore.signal.condition.help",
+              () -> {
+                condition = choice;
+                sync();
+              }));
+    }
+
+    // For an amount: at least or below, the number, and full or proportional output.
+    var ruleRow = rows.row();
+    int compareWidth = PanelLayout.SLOT;
+    for (int i = 0; i < COMPARES.length; i++) {
+      var choice = COMPARES[i];
+      compares.add(
+          choice(
+              new Rect(
+                  ruleRow.x() + i * (compareWidth + 2),
+                  ruleRow.y(),
+                  compareWidth,
+                  ruleRow.height()),
+              Component.translatable(
+                  "gui.factorycore.signal.compare." + choice.name().toLowerCase(Locale.ROOT)),
+              "gui.factorycore.signal.compare.help",
+              () -> {
+                compare = choice;
+                sync();
+              }));
+    }
+    var outWidths = new int[OUTPUTS.length];
+    for (int i = 0; i < OUTPUTS.length; i++) outWidths[i] = font.width(outputName(OUTPUTS[i])) + 10;
+    int outTotal = (OUTPUTS.length - 1) * 2;
+    for (int width : outWidths) outTotal += width;
+    var outCells = PanelLayout.alignRight(ruleRow, outWidths, 2);
+    for (int i = 0; i < OUTPUTS.length; i++) {
+      var choice = OUTPUTS[i];
+      outputs.add(
+          choice(
+              outCells.get(i),
+              outputName(choice),
+              "gui.factorycore.signal.output.help",
+              () -> {
+                output = choice;
+                sync();
+              }));
+    }
+    int boxLeft = ruleRow.x() + COMPARES.length * (compareWidth + 2) + 2;
     threshold =
         addRenderableWidget(
             new EditBox(
                 font,
-                leftPos + 74,
-                topPos + 95,
-                80,
+                leftPos + boxLeft + 1,
+                topPos + ruleRow.y() + 1,
+                ruleRow.right() - outTotal - PanelLayout.GAP - boxLeft - 2,
                 16,
                 Component.translatable("gui.factorycore.signal.threshold")));
     threshold.setMaxLength(19);
     threshold.setTooltip(
         Tooltip.create(Component.translatable("gui.factorycore.signal.threshold.help")));
-    outputButton =
-        button(
-            "output",
-            160,
-            94,
-            130,
-            () -> {
-              output = SignalRule.Output.values()[(output.ordinal() + 1) % 2];
-              sync();
-            });
+    powerRow = rows.row(PanelLayout.LINE);
+
     // D6: the label programs name in `emit redstone N on machines("label")`.
+    labelRow = rows.row();
+    var setLabelText = Component.translatable("gui.factorycore.signal.set_label");
+    int setWidth = font.width(setLabelText) + 10;
+    int labelLeft = labelRow.x() + caption("label");
     labelBox =
         addRenderableWidget(
             new EditBox(
                 font,
-                leftPos + 64,
-                topPos + 147,
-                160,
+                leftPos + labelLeft + 1,
+                topPos + labelRow.y() + 1,
+                labelRow.right() - setWidth - PanelLayout.GAP - labelLeft - 2,
                 16,
                 Component.translatable("gui.factorycore.signal.label")));
     labelBox.setMaxLength(64);
@@ -128,34 +208,83 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
         Tooltip.create(Component.translatable("gui.factorycore.signal.label.help")));
     setLabel =
         button(
+            new Rect(labelRow.right() - setWidth, labelRow.y(), setWidth, labelRow.height()),
             "set_label",
-            228,
-            146,
-            62,
             () ->
                 send(SignalPackets.Command.LABEL, false, labelBox.getValue(), menu.view().rule()));
-    apply = button("apply", 10, 170, 88, this::apply);
-    button("reset", 106, 170, 88, () -> load(menu.view().rule()));
-    button("cancel", 202, 170, 88, this::onClose);
+
+    modeRow = rows.row();
     InterfaceModeRow.add(
         this::addRenderableWidget,
+        font,
         menu.containerId,
         InterfaceKind.SIGNAL,
-        leftPos + 60,
-        topPos + 194,
-        58,
-        0,
-        56,
-        18);
+        modeRow.offset(leftPos, topPos));
+    messageRow = rows.row(PanelLayout.LINE);
+
+    footer = rows.footer();
+    var resetLabel = Component.translatable("gui.factorycore.signal.reset");
+    var closeLabel = Component.translatable("gui.factorycore.signal.cancel");
+    var applyLabel = Component.translatable("gui.factorycore.signal.apply");
+    var actions =
+        PanelLayout.alignRight(
+            footer,
+            new int[] {
+              font.width(resetLabel) + 10, font.width(closeLabel) + 10, font.width(applyLabel) + 12
+            },
+            PanelLayout.GAP);
+    statusWidth = actions.get(0).x() - footer.x() - PanelLayout.GAP;
+    button(
+        actions.get(0),
+        "reset",
+        () -> {
+          load(menu.view().rule());
+          sync();
+        });
+    button(actions.get(1), "cancel", this::onClose);
+    apply = button(actions.get(2), "apply", this::apply);
     if (condition == null) load(menu.view().rule());
     if (typed != null) threshold.setValue(typed);
     sync();
   }
 
-  private Button button(String key, int x, int y, int width, Runnable action) {
+  /** The width a caption takes before its row's controls. */
+  private int caption(String key) {
+    return font.width(Component.translatable("gui.factorycore.signal." + key)) + 6;
+  }
+
+  private List<Rect> fitted(Rect row, int count, java.util.function.IntFunction<Component> label) {
+    var widths = new int[count];
+    for (int i = 0; i < count; i++) widths[i] = font.width(label.apply(i)) + 10;
+    return PanelLayout.fit(row, widths, PanelLayout.GAP);
+  }
+
+  private ChoiceButton choice(Rect cell, Component label, String help, Runnable action) {
+    var button = new ChoiceButton(cell.offset(leftPos, topPos), label, b -> action.run());
+    button.setTooltip(Tooltip.create(Component.translatable(help)));
+    return addRenderableWidget(button);
+  }
+
+  private Button button(Rect cell, String key, Runnable action) {
     return addRenderableWidget(
         ScreenButtons.labeled(
-            "gui.factorycore.signal.", key, leftPos + x, topPos + y, width, 18, action));
+            "gui.factorycore.signal.",
+            key,
+            leftPos + cell.x(),
+            topPos + cell.y(),
+            cell.width(),
+            cell.height(),
+            action));
+  }
+
+  private static Component conditionName(SignalRule.Condition condition) {
+    return Component.translatable(
+        "gui.factorycore.signal.when." + condition.name().toLowerCase(Locale.ROOT));
+  }
+
+  private static Component outputName(SignalRule.Output output) {
+    return Component.translatable(
+        "gui.factorycore.signal.out." + output.name().toLowerCase(Locale.ROOT));
   }
 
   private void load(SignalRule rule) {
@@ -173,6 +302,8 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
 
   private void resource(boolean fluid) {
     send(SignalPackets.Command.RESOURCE, fluid, id.getValue(), menu.view().rule());
+    typing = false;
+    sync();
   }
 
   private void apply() {
@@ -205,31 +336,34 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
       shownLabel = view.label();
     }
     boolean editable = view.editable();
-    conditionButton.setMessage(
-        Component.translatable(
-            "gui.factorycore.signal.condition." + condition.name().toLowerCase(Locale.ROOT)));
-    compareButton.setMessage(
-        Component.translatable(
-            "gui.factorycore.signal.compare." + compare.name().toLowerCase(Locale.ROOT)));
-    outputButton.setMessage(
-        Component.translatable(
-            "gui.factorycore.signal.output." + output.name().toLowerCase(Locale.ROOT)));
     boolean stock = condition == SignalRule.Condition.STOCK;
-    compareButton.visible = threshold.visible = outputButton.visible = stock;
-    for (var widget :
-        java.util.List.of(
-            conditionButton, compareButton, outputButton, apply, addById, setItem, setFluid))
+    for (int i = 0; i < CONDITIONS.length; i++) {
+      conditions.get(i).setSelected(CONDITIONS[i] == condition);
+      conditions.get(i).active = editable && CONDITIONS[i] != condition;
+    }
+    for (int i = 0; i < COMPARES.length; i++) {
+      compares.get(i).setSelected(COMPARES[i] == compare);
+      compares.get(i).active = editable && COMPARES[i] != compare;
+      compares.get(i).visible = stock;
+    }
+    for (int i = 0; i < OUTPUTS.length; i++) {
+      outputs.get(i).setSelected(OUTPUTS[i] == output);
+      outputs.get(i).active = editable && OUTPUTS[i] != output;
+      outputs.get(i).visible = stock;
+    }
+    threshold.visible = stock;
+    for (var widget : List.<AbstractWidget>of(apply, addById, setItem, setFluid))
       widget.active = editable;
     threshold.setEditable(editable);
     labelBox.setEditable(editable);
     setLabel.active = editable;
-    addById.visible = !typing;
     id.visible = setItem.visible = setFluid.visible = typing;
+    addById.visible = !typing;
   }
 
   private boolean overSlot(double mouseX, double mouseY) {
-    double x = mouseX - leftPos - SLOT_X, y = mouseY - topPos - SLOT_Y;
-    return x >= 0 && x < 18 && y >= 0 && y < 18;
+    double x = mouseX - leftPos - slot.x(), y = mouseY - topPos - slot.y();
+    return x >= 0 && x < PanelLayout.SLOT && y >= 0 && y < PanelLayout.SLOT;
   }
 
   @Override
@@ -255,7 +389,7 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
 
   @Override
   public Rect2i filterArea() {
-    return new Rect2i(leftPos + SLOT_X, topPos + SLOT_Y, 18, 18);
+    return new Rect2i(leftPos + slot.x(), topPos + slot.y(), PanelLayout.SLOT, PanelLayout.SLOT);
   }
 
   @Override
@@ -265,11 +399,9 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
 
   @Override
   protected void renderBg(GuiGraphics g, float partial, int mouseX, int mouseY) {
-    g.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xff282c30);
-    g.fill(leftPos + 4, topPos + 4, leftPos + imageWidth - 4, topPos + imageHeight - 4, 0xff44484d);
-    int x = leftPos + SLOT_X, y = topPos + SLOT_Y;
-    g.fill(x, y, x + 18, y + 18, 0xff151b20);
-    g.fill(x + 1, y + 1, x + 17, y + 17, 0xff30373e);
+    Panels.panel(g, leftPos, topPos, layout);
+    int x = leftPos + slot.x(), y = topPos + slot.y();
+    Panels.slot(g, x, y);
     var view = menu.view();
     if (view.resource().isEmpty()) return;
     if (view.fluid()) {
@@ -282,34 +414,35 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
     }
   }
 
-  @Override
-  protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
-    g.drawString(font, title, 10, 8, 0xffffff, false);
-    int strip = 10 + font.width(title) + 10;
-    StatusStrip.draw(g, font, menu.deviceStatus(), strip, 8, imageWidth - 10 - strip);
-    var view = menu.view();
-    g.drawString(
-        font, Component.translatable("gui.factorycore.signal.watch"), 10, 29, 0xffffff, false);
+  private void caption(GuiGraphics g, String key, Rect row) {
     g.drawString(
         font,
-        font.plainSubstrByWidth(
-            view.resource().isEmpty()
-                ? Component.translatable("gui.factorycore.signal.watch.none").getString()
-                : view.name(),
-            110),
-        84,
-        29,
-        view.resource().isEmpty() ? 0xa5b5c5 : 0xd3e5ed,
+        Component.translatable("gui.factorycore.signal." + key),
+        row.x(),
+        row.y() + 5,
+        Panels.TEXT,
         false);
+  }
+
+  @Override
+  protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
+    Panels.title(g, font, title, 0, 0);
+    var view = menu.view();
+    caption(g, "watch", watchRow);
+    int nameX = slot.right() + 6;
     if (!typing)
       g.drawString(
           font,
           font.plainSubstrByWidth(
-              Component.translatable("gui.factorycore.signal.watch.help").getString(), 280),
-          10,
-          50,
-          0xa5b5c5,
+              view.resource().isEmpty()
+                  ? Component.translatable("gui.factorycore.signal.watch.none").getString()
+                  : view.name(),
+              addById.getX() - leftPos - nameX - PanelLayout.GAP),
+          nameX,
+          watchRow.y() + 5,
+          view.resource().isEmpty() ? Panels.MUTED : Panels.TEXT,
           false);
+    caption(g, "when", whenRow);
     var state =
         Component.translatable(
             "gui.factorycore.signal.power",
@@ -319,24 +452,25 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
                 : Component.translatable("gui.factorycore.signal.reason." + view.reason()));
     g.drawString(
         font,
-        font.plainSubstrByWidth(state.getString(), 280),
-        10,
-        119,
-        view.power() > 0 ? 0xff6b6b : 0xd3e5ed,
+        font.plainSubstrByWidth(state.getString(), powerRow.width()),
+        powerRow.x(),
+        powerRow.y(),
+        view.power() > 0 ? Panels.BAD : Panels.MUTED,
         false);
+    caption(g, "label", labelRow);
+    InterfaceModeRow.caption(g, font, modeRow);
     String key = invalid ? "invalid" : view.editable() ? view.status() : "denied";
-    g.drawString(
-        font,
-        font.plainSubstrByWidth(
-            Component.translatable("gui.factorycore.signal.status." + key).getString(), 280),
-        10,
-        131,
-        0xe4bc83,
-        false);
-    g.drawString(
-        font, Component.translatable("gui.factorycore.interface.mode"), 10, 199, 0xffffff, false);
-    g.drawString(
-        font, Component.translatable("gui.factorycore.signal.label"), 10, 151, 0xffffff, false);
+    if (!key.equals("ready"))
+      g.drawString(
+          font,
+          font.plainSubstrByWidth(
+              Component.translatable("gui.factorycore.signal.status." + key).getString(),
+              messageRow.width()),
+          messageRow.x(),
+          messageRow.y(),
+          key.equals("applied") || key.equals("labeled") ? Panels.GOOD : Panels.WARN,
+          false);
+    StatusStrip.drawOnPanel(g, font, menu.deviceStatus(), footer.x(), footer.y() + 5, statusWidth);
   }
 
   @Override

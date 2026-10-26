@@ -1,7 +1,14 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.core.resource.ResourceFilter;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.BufferPolicy;
+import dev.izzy.factorycore.core.storage.BufferRegistry;
+import dev.izzy.factorycore.platform.client.ui.ChoiceButton;
+import dev.izzy.factorycore.platform.client.ui.PanelLayout;
+import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
@@ -19,44 +26,54 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Two compact native tabs; ghost samples never become container stacks or mutate held inventory.
+ * Buffer-mode Interface (playtest H3a, on the panel kit). Two views of one panel, chosen in the
+ * title row: Settings (mode, filter, rate and goal, filter slots) and Inventory (the nine owned
+ * slots, Take/Return and the player's inventory). Edits are a server-side draft that Apply saves;
+ * ghost samples never become container stacks or touch the held inventory.
  */
 public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSettingsMenu>
     implements FilterDropTarget {
-  private Button redstone;
-  private List<Button> modeRow = List.of();
+  private static final BufferRegistry.Mode[] MODES = {
+    BufferRegistry.Mode.PAUSED,
+    BufferRegistry.Mode.IMPORT,
+    BufferRegistry.Mode.EXPORT,
+    BufferRegistry.Mode.STOCK
+  };
+  private static final ResourceFilter.Mode[] FILTERS = ResourceFilter.Mode.values();
 
+  /** Panel-relative rows; the player's inventory slots sit where the menu puts them. */
+  private static final int CONTENTS_Y = PanelLayout.BODY,
+      TAKE_Y = CONTENTS_Y + PanelLayout.ROW + PanelLayout.GAP,
+      HELP_Y = TAKE_Y + PanelLayout.ROW + PanelLayout.GAP,
+      MODE_Y = BufferSettingsMenu.HOTBAR_Y - 1 + PanelLayout.SLOT + PanelLayout.GAP,
+      MESSAGE_Y = MODE_Y + PanelLayout.ROW + PanelLayout.GAP;
+
+  private final PanelLayout layout =
+      new PanelLayout(
+          PanelLayout.WIDE, PanelLayout.heightFor(MESSAGE_Y + PanelLayout.LINE - PanelLayout.BODY));
+
+  private Button redstone;
   private EditBox id, rate, target;
-  private Button mode,
-      filter,
-      apply,
-      reset,
-      addId,
-      addTag,
-      setRate,
-      setTarget,
-      remove,
-      clear,
-      takeOne,
-      takeStack,
-      returning,
-      exact;
-  private int selectedRule, selectedSlot;
+  private Button apply, reset, addId, addTag, setRate, setTarget, clear, addById, sampleButton;
+  private Button takeOne, takeStack, returning;
+  private ChoiceButton settingsView, inventoryView;
+  private final List<ChoiceButton> modes = new ArrayList<>(), filters = new ArrayList<>();
+  private final List<AbstractWidget> settingsWidgets = new ArrayList<>(),
+      inventoryWidgets = new ArrayList<>();
+  private int selectedRule, selectedSlot, statusWidth;
 
   /** B1 ghost filter slots; typed IDs are behind "Add by ID". */
   private FilterSlots filterSlots;
 
-  private Button addById;
   private boolean typing;
   private boolean sample;
   private long shown;
+  private Rect numbersRow, describeRow, modeRow, footer;
 
   public BufferSettingsScreen(BufferSettingsMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
-    imageWidth = 320;
-    imageHeight = 232;
-    inventoryLabelX = 79;
-    inventoryLabelY = 91;
+    imageWidth = layout.width();
+    imageHeight = layout.height();
   }
 
   @Override
@@ -65,42 +82,69 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     String rateDraft = rate == null ? null : rate.getValue();
     String targetDraft = target == null ? null : target.getValue();
     super.init();
-    button(
-        "settings",
-        174,
-        5,
-        65,
-        () -> {
-          menu.inventoryTab(false);
-          sample = false;
-          sync();
-        });
-    button(
-        "inventory",
-        243,
-        5,
-        67,
-        () -> {
-          menu.inventoryTab(true);
-          sync();
-        });
-    mode =
-        button("mode", 10, 23, 78, () -> send(BufferSettingsPackets.MODE, 0, 0, "", new byte[32]));
-    filter =
-        button(
-            "filter",
-            92,
-            23,
-            110,
-            () -> send(BufferSettingsPackets.FILTER, 0, 0, "", new byte[32]));
-    apply =
-        button(
-            "apply", 206, 23, 48, () -> send(BufferSettingsPackets.APPLY, 0, 0, "", new byte[32]));
-    reset =
-        button(
-            "reset", 258, 23, 52, () -> send(BufferSettingsPackets.RESET, 0, 0, "", new byte[32]));
-    rate = box(36, 48, 35, "rate", 3);
-    target = box(155, 48, 45, "target", 3);
+    modes.clear();
+    filters.clear();
+    settingsWidgets.clear();
+    inventoryWidgets.clear();
+
+    // Settings | Inventory, right of the title.
+    var settingsLabel = Component.translatable("gui.factorycore.buffer.settings");
+    var inventoryLabel = Component.translatable("gui.factorycore.buffer.inventory");
+    var views =
+        PanelLayout.alignRight(
+            new Rect(PanelLayout.EDGE, 3, layout.innerWidth(), 14),
+            new int[] {font.width(settingsLabel) + 10, font.width(inventoryLabel) + 10},
+            2);
+    settingsView =
+        choice(
+            views.get(0),
+            settingsLabel,
+            "gui.factorycore.buffer.settings.help",
+            () -> {
+              menu.inventoryTab(false);
+              sample = false;
+              sync();
+            });
+    inventoryView =
+        choice(
+            views.get(1),
+            inventoryLabel,
+            "gui.factorycore.buffer.inventory.help",
+            () -> {
+              menu.inventoryTab(true);
+              sync();
+            });
+
+    // Settings view.
+    var rows = new PanelLayout(layout.width(), layout.height());
+    var modeCells = fitted(rows.row(), MODES.length, i -> modeName(MODES[i]));
+    for (int i = 0; i < MODES.length; i++) {
+      int choice = MODES[i].ordinal() + 1;
+      modes.add(
+          settings(
+              choice(
+                  modeCells.get(i),
+                  modeName(MODES[i]),
+                  "gui.factorycore.buffer.mode.help",
+                  () -> send(BufferSettingsPackets.MODE, 0, choice, "", new byte[32]))));
+    }
+    var filterCells = fitted(rows.row(), FILTERS.length, i -> filterName(FILTERS[i]));
+    for (int i = 0; i < FILTERS.length; i++) {
+      int choice = FILTERS[i].ordinal() + 1;
+      filters.add(
+          settings(
+              choice(
+                  filterCells.get(i),
+                  filterName(FILTERS[i]),
+                  "gui.factorycore.buffer.filter.help",
+                  () -> send(BufferSettingsPackets.FILTER, 0, choice, "", new byte[32]))));
+    }
+    numbersRow = rows.row();
+    var halves = PanelLayout.columns(numbersRow, 2, PanelLayout.GAP);
+    var setLabel = Component.translatable("gui.factorycore.buffer.set");
+    int setWidth = font.width(setLabel) + 10;
+    rate = number(halves.get(0), "rate", setWidth);
+    target = number(halves.get(1), "target", setWidth);
     rate.setTooltip(
         Tooltip.create(
             ThroughputContent.limits(
@@ -112,137 +156,245 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
         Tooltip.create(
             ThroughputContent.limits(
                 "gui.factorycore.buffer.target.help", BufferPolicy.MAX_TARGET)));
-    setRate = button("set", 75, 47, 35, () -> number(rate, BufferSettingsPackets.RATE));
-    setTarget = button("set", 204, 47, 36, () -> number(target, BufferSettingsPackets.TARGET));
-    id = box(10, 73, 196, "id", 256);
+    setRate =
+        settings(
+            button(
+                setCell(halves.get(0), setWidth),
+                "set",
+                () -> number(rate, BufferSettingsPackets.RATE)));
+    setTarget =
+        settings(
+            button(
+                setCell(halves.get(1), setWidth),
+                "set",
+                () -> number(target, BufferSettingsPackets.TARGET)));
+
+    // The filter slots, with Add by ID and Clear beside them (a right-click removes one slot).
+    var slotsRow = rows.row(2 * PanelLayout.SLOT);
+    filterSlots =
+        settings(
+            addRenderableWidget(
+                new FilterSlots(
+                    leftPos + slotsRow.x(),
+                    topPos + slotsRow.y(),
+                    new FilterSlots.Actions() {
+                      @Override
+                      public void addCarried() {
+                        send(BufferSettingsPackets.CARRIED, 0, 0, "", new byte[32]);
+                      }
+
+                      @Override
+                      public void cycle(int index, String shown) {
+                        send(BufferSettingsPackets.CYCLE, index, 0, shown, new byte[32]);
+                      }
+
+                      @Override
+                      public void remove(int index) {
+                        send(BufferSettingsPackets.REMOVE, index, 0, "", new byte[32]);
+                      }
+                    },
+                    index -> selectedRule = index)));
+    int side = slotsRow.x() + FilterSlots.COLUMNS * PanelLayout.SLOT + PanelLayout.GAP;
+    int sideWidth = slotsRow.right() - side;
+    addById =
+        settings(
+            button(
+                new Rect(side, slotsRow.y(), sideWidth, 17),
+                "add_by_id",
+                () -> {
+                  typing = !typing;
+                  sync();
+                }));
+    clear =
+        settings(
+            button(
+                new Rect(side, slotsRow.y() + 19, sideWidth, 17),
+                "clear",
+                () -> send(BufferSettingsPackets.CLEAR, 0, 0, "", new byte[32])));
+
+    // The selected slot's rule, or the typed-ID row while "Add by ID" is open.
+    describeRow = rows.row(3 * PanelLayout.LINE);
+    var idCells =
+        PanelLayout.fit(
+            new Rect(describeRow.x(), describeRow.y(), describeRow.width(), PanelLayout.ROW),
+            new int[] {
+              100, font.width(Component.translatable("gui.factorycore.buffer.id")) + 10, 40
+            },
+            PanelLayout.GAP);
+    id =
+        settings(
+            addRenderableWidget(
+                new EditBox(
+                    font,
+                    leftPos + idCells.get(0).x() + 1,
+                    topPos + idCells.get(0).y() + 1,
+                    idCells.get(0).width() - 2,
+                    16,
+                    Component.translatable("gui.factorycore.buffer.id"))));
+    id.setMaxLength(256);
     id.setValue(value);
     addId =
-        button(
-            "id",
-            210,
-            72,
-            48,
-            () -> send(BufferSettingsPackets.REGISTRY, 0, 0, id.getValue(), new byte[32]));
+        settings(
+            button(
+                idCells.get(1),
+                "id",
+                () -> send(BufferSettingsPackets.REGISTRY, 0, 0, id.getValue(), new byte[32])));
     addTag =
-        button(
-            "tag",
-            262,
-            72,
-            48,
-            () -> send(BufferSettingsPackets.TAG, 0, 0, id.getValue(), new byte[32]));
-    filterSlots =
-        addRenderableWidget(
-            new FilterSlots(
-                leftPos + 10,
-                topPos + 97,
-                new FilterSlots.Actions() {
-                  @Override
-                  public void addCarried() {
-                    send(BufferSettingsPackets.CARRIED, 0, 0, "", new byte[32]);
-                  }
+        settings(
+            button(
+                idCells.get(2),
+                "tag",
+                () -> send(BufferSettingsPackets.TAG, 0, 0, id.getValue(), new byte[32])));
 
-                  @Override
-                  public void cycle(int index, String shown) {
-                    send(BufferSettingsPackets.CYCLE, index, 0, shown, new byte[32]);
-                  }
-
-                  @Override
-                  public void remove(int index) {
-                    send(BufferSettingsPackets.REMOVE, index, 0, "", new byte[32]);
-                  }
-                },
-                index -> selectedRule = index));
-    addById =
-        button(
-            "add_by_id",
-            10,
-            72,
-            96,
-            () -> {
-              typing = true;
-              sync();
-            });
-    remove =
-        button(
-            "remove",
-            202,
-            170,
-            52,
-            () -> send(BufferSettingsPackets.REMOVE, selectedRule, 0, "", new byte[32]));
-    clear =
-        button(
-            "clear", 258, 170, 52, () -> send(BufferSettingsPackets.CLEAR, 0, 0, "", new byte[32]));
+    // Redstone control and Sample, level with the Inventory view's mode row.
+    var controls = new Rect(PanelLayout.EDGE, MODE_Y, layout.innerWidth(), PanelLayout.ROW);
+    var sampleLabel = Component.translatable("gui.factorycore.buffer.sample");
+    var controlCells =
+        PanelLayout.alignRight(controls, new int[] {font.width(sampleLabel) + 12}, 0);
     redstone =
-        addRenderableWidget(
-            RedstoneButton.create(
-                menu.containerId, menu::redstoneState, leftPos + 10, topPos + 170, 180));
-    exact =
-        button(
-            "sample",
-            245,
-            47,
-            65,
-            () -> {
-              menu.inventoryTab(true);
-              sample = true;
-              sync();
-            });
+        settings(
+            addRenderableWidget(
+                RedstoneButton.create(
+                    menu.containerId,
+                    menu::redstoneState,
+                    leftPos + controls.x(),
+                    topPos + controls.y(),
+                    controlCells.get(0).x() - controls.x() - PanelLayout.GAP)));
+    sampleButton =
+        settings(
+            button(
+                controlCells.get(0),
+                "sample",
+                () -> {
+                  menu.inventoryTab(true);
+                  sample = true;
+                  sync();
+                }));
+
+    // Inventory view: the buffer's slots, Take and Return, the player's inventory, the mode row.
+    var takeCells =
+        PanelLayout.columns(
+            new Rect(
+                BufferSettingsMenu.INVENTORY_X - 1, TAKE_Y, 9 * PanelLayout.SLOT, PanelLayout.ROW),
+            3,
+            PanelLayout.GAP);
     takeOne =
-        button(
-            "take_one",
-            10,
-            186,
-            72,
-            () -> send(BufferSettingsPackets.TAKE, selectedSlot, 1, "", new byte[32]));
+        inventory(
+            button(
+                takeCells.get(0),
+                "take_one",
+                () -> send(BufferSettingsPackets.TAKE, selectedSlot, 1, "", new byte[32])));
     takeStack =
-        button(
-            "take_stack",
-            86,
-            186,
-            72,
-            () -> send(BufferSettingsPackets.TAKE, selectedSlot, 64, "", new byte[32]));
+        inventory(
+            button(
+                takeCells.get(1),
+                "take_stack",
+                () -> send(BufferSettingsPackets.TAKE, selectedSlot, 64, "", new byte[32])));
     returning =
+        inventory(
+            button(
+                takeCells.get(2),
+                "return",
+                () -> send(BufferSettingsPackets.RETURN, 0, 0, "", new byte[32])));
+    modeRow = controls;
+    InterfaceModeRow.add(
+        button -> inventory(addRenderableWidget(button)),
+        font,
+        menu.containerId,
+        InterfaceKind.BUFFER,
+        modeRow.offset(leftPos, topPos));
+
+    // Footer: the device status, then Reset and Apply.
+    footer = layout.footer();
+    var resetLabel = Component.translatable("gui.factorycore.buffer.reset");
+    var applyLabel = Component.translatable("gui.factorycore.buffer.apply");
+    var actions =
+        PanelLayout.alignRight(
+            footer,
+            new int[] {font.width(resetLabel) + 10, font.width(applyLabel) + 12},
+            PanelLayout.GAP);
+    statusWidth = actions.get(0).x() - footer.x() - PanelLayout.GAP;
+    reset =
         button(
-            "return",
-            162,
-            186,
-            72,
-            () -> send(BufferSettingsPackets.RETURN, 0, 0, "", new byte[32]));
-    modeRow =
-        InterfaceModeRow.add(
-            this::addRenderableWidget,
-            menu.containerId,
-            InterfaceKind.BUFFER,
-            leftPos + 236,
-            topPos + 57,
-            0,
-            16,
-            74,
-            14);
+            actions.get(0),
+            "reset",
+            () -> send(BufferSettingsPackets.RESET, 0, 0, "", new byte[32]));
+    apply =
+        button(
+            actions.get(1),
+            "apply",
+            () -> send(BufferSettingsPackets.APPLY, 0, 0, "", new byte[32]));
     shown = -1;
     sync();
     if (rateDraft != null) rate.setValue(rateDraft);
     if (targetDraft != null) target.setValue(targetDraft);
   }
 
-  private EditBox box(int x, int y, int width, String label, int limit) {
+  private <T extends AbstractWidget> T settings(T widget) {
+    settingsWidgets.add(widget);
+    return widget;
+  }
+
+  private <T extends AbstractWidget> T inventory(T widget) {
+    inventoryWidgets.add(widget);
+    return widget;
+  }
+
+  private List<Rect> fitted(Rect row, int count, java.util.function.IntFunction<Component> label) {
+    var widths = new int[count];
+    for (int i = 0; i < count; i++) widths[i] = font.width(label.apply(i)) + 10;
+    return PanelLayout.fit(row, widths, PanelLayout.GAP);
+  }
+
+  private ChoiceButton choice(Rect cell, Component label, String help, Runnable action) {
+    var button = new ChoiceButton(cell.offset(leftPos, topPos), label, b -> action.run());
+    button.setTooltip(Tooltip.create(Component.translatable(help)));
+    return addRenderableWidget(button);
+  }
+
+  private Button button(Rect cell, String key, Runnable action) {
+    return addRenderableWidget(
+        ScreenButtons.labeled(
+            "gui.factorycore.buffer.",
+            key,
+            leftPos + cell.x(),
+            topPos + cell.y(),
+            cell.width(),
+            cell.height(),
+            action));
+  }
+
+  /** The Set button's cell at the right end of a number cell. */
+  private static Rect setCell(Rect cell, int width) {
+    return new Rect(cell.right() - width, cell.y(), width, cell.height());
+  }
+
+  /** A caption, then a number field up to the Set button. */
+  private EditBox number(Rect cell, String key, int setWidth) {
+    int caption =
+        font.width(Component.translatable("gui.factorycore.buffer." + key)) + PanelLayout.GAP + 2;
     var box =
-        addRenderableWidget(
-            new EditBox(
-                font,
-                leftPos + x,
-                topPos + y,
-                width,
-                16,
-                Component.translatable("gui.factorycore.buffer." + label)));
-    box.setMaxLength(limit);
+        settings(
+            addRenderableWidget(
+                new EditBox(
+                    font,
+                    leftPos + cell.x() + caption,
+                    topPos + cell.y() + 1,
+                    cell.width() - caption - setWidth - 2,
+                    16,
+                    Component.translatable("gui.factorycore.buffer." + key))));
+    box.setMaxLength(3);
     return box;
   }
 
-  private Button button(String key, int x, int y, int width, Runnable action) {
-    return addRenderableWidget(
-        ScreenButtons.labeled(
-            "gui.factorycore.buffer.", key, leftPos + x, topPos + y, width, 18, action));
+  private static Component modeName(BufferRegistry.Mode mode) {
+    return Component.translatable(
+        "status.factorycore.buffer_mode." + mode.name().toLowerCase(Locale.ROOT));
+  }
+
+  private static Component filterName(ResourceFilter.Mode mode) {
+    return Component.translatable(
+        "gui.factorycore.buffer.filter." + mode.name().toLowerCase(Locale.ROOT));
   }
 
   private void number(EditBox box, int action) {
@@ -278,53 +430,39 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
   private void sync() {
     var view = menu.view();
     boolean inventory = menu.inventoryTab();
+    boolean editing = view.editable() && !view.busy();
+    settingsView.setSelected(!inventory);
+    settingsView.active = inventory;
+    inventoryView.setSelected(inventory);
+    inventoryView.active = !inventory;
     RedstoneButton.refresh(redstone, menu.redstoneState());
-    mode.setMessage(
-        Component.translatable(
-            "status.factorycore.buffer_mode." + view.mode().toLowerCase(Locale.ROOT)));
-    filter.setMessage(
-        Component.translatable(
-            "status.factorycore.buffer_filter." + view.filter().toLowerCase(Locale.ROOT)));
-    mode.active = view.editable() && !view.busy();
-    filter.active = mode.active;
-    apply.active = mode.active && view.dirty();
-    reset.active = mode.active && view.dirty();
-    for (var widget :
-        List.of(
-            rate,
-            target,
-            id,
-            setRate,
-            setTarget,
-            addId,
-            addTag,
-            remove,
-            clear,
-            addById,
-            redstone,
-            filterSlots)) {
+    for (var widget : settingsWidgets) {
       widget.visible = !inventory;
-      widget.active = view.editable() && !view.busy();
+      widget.active = editing;
     }
+    for (var widget : inventoryWidgets) widget.visible = inventory;
+    for (int i = 0; i < MODES.length; i++) {
+      boolean current = MODES[i].name().equals(view.mode());
+      modes.get(i).setSelected(current);
+      modes.get(i).active = editing && !current;
+    }
+    for (int i = 0; i < FILTERS.length; i++) {
+      boolean current = FILTERS[i].name().equals(view.filter());
+      filters.get(i).setSelected(current);
+      filters.get(i).active = editing && !current;
+    }
+    apply.active = editing && view.dirty();
+    reset.active = apply.active;
     id.visible = addId.visible = addTag.visible = !inventory && typing;
-    addById.visible = !inventory && !typing;
     selectedRule = Math.min(selectedRule, Math.max(0, view.rules().size() - 1));
-    filterSlots.show(
-        view.rules(), dev.izzy.factorycore.core.resource.ResourceKind.ITEM, selectedRule);
-    remove.active =
-        !inventory && view.editable() && !view.busy() && selectedRule < view.rules().size();
-    for (var button : modeRow) button.visible = inventory;
-    takeOne.visible = inventory;
-    takeStack.visible = inventory;
-    returning.visible = inventory;
-    exact.visible = true;
+    filterSlots.show(view.rules(), ResourceKind.ITEM, selectedRule);
+    clear.active = editing && !view.rules().isEmpty();
     boolean selected =
         selectedSlot < view.slots().size() && view.slots().get(selectedSlot).count() > 0;
     takeOne.active = inventory && !view.busy() && selected;
     takeStack.active = takeOne.active;
     returning.active =
         inventory && !view.busy() && view.staged() > 0 && !view.status().equals("uncertain");
-    exact.active = view.editable() && !view.busy();
     if (shown != view.revision()) {
       if (!rate.isFocused()) rate.setValue(Integer.toString(view.rate()));
       if (!target.isFocused()) target.setValue(Integer.toString(view.target()));
@@ -334,49 +472,30 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
 
   @Override
   protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
-    graphics.fill(leftPos, topPos, leftPos + 320, topPos + 232, 0xff282c30);
-    graphics.fill(leftPos + 4, topPos + 4, leftPos + 316, topPos + 228, 0xff44484d);
-    if (menu.inventoryTab()) {
-      for (var slot : menu.slots) {
-        graphics.fill(
-            leftPos + slot.x - 1,
-            topPos + slot.y - 1,
-            leftPos + slot.x + 17,
-            topPos + slot.y + 17,
-            0xff151b20);
-        graphics.fill(
-            leftPos + slot.x,
-            topPos + slot.y,
-            leftPos + slot.x + 16,
-            topPos + slot.y + 16,
-            0xff59626b);
-        graphics.fill(
-            leftPos + slot.x + 1,
-            topPos + slot.y + 1,
-            leftPos + slot.x + 15,
-            topPos + slot.y + 15,
-            0xff30373e);
-      }
-      for (var row : menu.view().slots()) {
-        int x = leftPos + 79 + row.slot() * 18;
-        graphics.fill(
-            x - 1,
-            topPos + 52,
-            x + 17,
-            topPos + 71,
-            row.slot() == selectedSlot ? 0xffbb8659 : 0xff20262c);
-        if (row.count() > 0) {
-          var id = ResourceLocation.tryParse(row.icon());
-          var item =
-              id == null || !BuiltInRegistries.ITEM.containsKey(id)
-                  ? Items.BARRIER
-                  : BuiltInRegistries.ITEM.get(id);
-          graphics.renderItem(item.getDefaultInstance(), x, topPos + 53);
-          graphics.renderItemDecorations(
-              font, item.getDefaultInstance(), x, topPos + 53, Integer.toString(row.count()));
-        }
+    Panels.panel(graphics, leftPos, topPos, layout);
+    if (!menu.inventoryTab()) return;
+    for (var slot : menu.slots) Panels.slot(graphics, leftPos + slot.x - 1, topPos + slot.y - 1);
+    for (int slot = 0; slot < 9; slot++)
+      Panels.slot(graphics, leftPos + contentsX(slot) - 1, topPos + CONTENTS_Y);
+    for (var row : menu.view().slots()) {
+      int x = leftPos + contentsX(row.slot()), y = topPos + CONTENTS_Y + 1;
+      if (row.slot() == selectedSlot) graphics.fill(x, y, x + 16, y + 16, 0x60b5683c);
+      if (row.count() > 0) {
+        var id = ResourceLocation.tryParse(row.icon());
+        var item =
+            id == null || !BuiltInRegistries.ITEM.containsKey(id)
+                ? Items.BARRIER
+                : BuiltInRegistries.ITEM.get(id);
+        graphics.renderItem(item.getDefaultInstance(), x, y);
+        graphics.renderItemDecorations(
+            font, item.getDefaultInstance(), x, y, Integer.toString(row.count()));
       }
     }
+  }
+
+  /** The item x of buffer slot {@code slot}, panel-relative; it lines up with the inventory. */
+  private static int contentsX(int slot) {
+    return BufferSettingsMenu.INVENTORY_X + slot * PanelLayout.SLOT;
   }
 
   @Override
@@ -391,70 +510,70 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
   }
 
   @Override
-  public void addFilterId(dev.izzy.factorycore.core.resource.ResourceKind kind, String id) {
-    if (kind == dev.izzy.factorycore.core.resource.ResourceKind.ITEM)
-      send(BufferSettingsPackets.REGISTRY, 0, 0, id, new byte[32]);
-  }
-
-  /** The strip shares the title row with the tabs (from x=174); hover shows it in full. */
-  private int stripX() {
-    return 8 + font.width(title) + 8;
+  public void addFilterId(ResourceKind kind, String id) {
+    if (kind == ResourceKind.ITEM) send(BufferSettingsPackets.REGISTRY, 0, 0, id, new byte[32]);
   }
 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-    graphics.drawString(font, title, 8, 8, 0xffffff, false);
-    StatusStrip.draw(graphics, font, menu.deviceStatus(), stripX(), 8, 170 - stripX());
+    Panels.title(graphics, font, title, 0, 0);
     var view = menu.view();
     if (menu.inventoryTab()) {
-      graphics.drawString(
-          font, Component.translatable("gui.factorycore.buffer.contents"), 10, 47, 0xffffff, false);
-      graphics.drawString(
-          font, Component.translatable("gui.factorycore.interface.mode"), 236, 47, 0xffffff, false);
-      graphics.drawString(font, playerInventoryTitle, 79, 91, 0xffffff, false);
       graphics.drawString(
           font,
           Component.translatable(
               sample
                   ? "gui.factorycore.buffer.sample.help"
                   : "gui.factorycore.buffer.deposit.help"),
-          10,
-          207,
-          0xe4bc83,
+          PanelLayout.EDGE + 1,
+          HELP_Y,
+          sample ? Panels.WARN : Panels.MUTED,
           false);
+      InterfaceModeRow.caption(graphics, font, modeRow);
     } else {
-      graphics.drawString(
-          font, Component.translatable("gui.factorycore.buffer.rate"), 10, 52, 0xffffff, false);
-      graphics.drawString(
-          font, Component.translatable("gui.factorycore.buffer.target"), 118, 52, 0xffffff, false);
-      // B1: the selected slot's rule, beside the ghost slots.
-      if (selectedRule < view.rules().size())
-        FilterSlots.describe(graphics, font, view.rules().get(selectedRule), 162, 99, 148);
-      graphics.drawString(
-          font,
-          Component.translatable(
-              view.dirty() ? "gui.factorycore.buffer.draft" : "gui.factorycore.buffer.saved"),
-          10,
-          205,
-          0xe4bc83,
-          false);
+      var halves = PanelLayout.columns(numbersRow, 2, PanelLayout.GAP);
+      for (int i = 0; i < 2; i++)
+        graphics.drawString(
+            font,
+            Component.translatable("gui.factorycore.buffer." + (i == 0 ? "rate" : "target")),
+            halves.get(i).x(),
+            halves.get(i).y() + 5,
+            Panels.TEXT,
+            false);
+      // B1: the selected slot's rule, under the ghost slots.
+      if (!typing && selectedRule < view.rules().size())
+        FilterSlots.describe(
+            graphics,
+            font,
+            view.rules().get(selectedRule),
+            describeRow.x(),
+            describeRow.y(),
+            describeRow.width());
     }
+    Component message;
+    int color = Panels.WARN;
+    if (view.requested() != 0) {
+      if (view.status().equals("ok")) color = Panels.GOOD;
+      message =
+          Component.translatable(
+              "gui.factorycore.buffer.result",
+              Component.translatable("gui.factorycore.buffer.status." + view.status()),
+              view.moved(),
+              view.requested());
+    } else if (view.dirty()) message = Component.translatable("gui.factorycore.buffer.draft");
+    else if (!view.status().equals("ready")) {
+      message = Component.translatable("gui.factorycore.buffer.status." + view.status());
+      if (view.status().equals("applied") || view.status().equals("ok")) color = Panels.GOOD;
+    } else message = Component.empty();
     graphics.drawString(
         font,
-        font.plainSubstrByWidth(
-            (view.requested() == 0
-                    ? Component.translatable("gui.factorycore.buffer.status." + view.status())
-                    : Component.translatable(
-                        "gui.factorycore.buffer.result",
-                        Component.translatable("gui.factorycore.buffer.status." + view.status()),
-                        view.moved(),
-                        view.requested()))
-                .getString(),
-            300),
-        10,
-        219,
-        0xc9dbed,
+        font.plainSubstrByWidth(message.getString(), layout.innerWidth()),
+        PanelLayout.EDGE + 1,
+        MESSAGE_Y,
+        color,
         false);
+    StatusStrip.drawOnPanel(
+        graphics, font, menu.deviceStatus(), footer.x(), footer.y() + 5, statusWidth);
   }
 
   @Override
@@ -465,9 +584,9 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
         graphics,
         font,
         menu.deviceStatus(),
-        leftPos + stripX(),
-        topPos + 8,
-        170 - stripX(),
+        leftPos + footer.x(),
+        topPos + footer.y() + 5,
+        statusWidth,
         mouseX,
         mouseY);
   }
@@ -476,11 +595,11 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
   public boolean mouseClicked(double x, double y, int button) {
     if (button == 0
         && menu.inventoryTab()
-        && x >= leftPos + 79
-        && x < leftPos + 241
-        && y >= topPos + 52
-        && y < topPos + 72) {
-      selectedSlot = ((int) x - leftPos - 79) / 18;
+        && x >= leftPos + contentsX(0)
+        && x < leftPos + contentsX(9)
+        && y >= topPos + CONTENTS_Y
+        && y < topPos + CONTENTS_Y + PanelLayout.SLOT) {
+      selectedSlot = ((int) x - leftPos - contentsX(0)) / PanelLayout.SLOT;
       return true;
     }
     var slot = getSlotUnderMouse();

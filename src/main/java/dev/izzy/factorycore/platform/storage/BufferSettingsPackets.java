@@ -30,6 +30,15 @@ public final class BufferSettingsPackets {
       CARRIED = 14,
       CYCLE = 15;
 
+  /**
+   * MODE and FILTER with {@code value} 0 cycle to the next choice; a value of n picks choice n - 1
+   * directly (playtest H3a: the screen shows every choice). An out-of-range choice is invalid.
+   */
+  public static <T> T chosen(T[] choices, int value) {
+    if (value > choices.length) throw new IllegalArgumentException("Choice");
+    return choices[value - 1];
+  }
+
   public record Command(
       int menu,
       UUID session,

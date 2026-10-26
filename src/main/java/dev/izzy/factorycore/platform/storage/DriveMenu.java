@@ -24,7 +24,14 @@ import net.minecraft.world.item.ItemStack;
  * block, this is physical access: it needs no network grant.
  */
 public final class DriveMenu extends AbstractContainerMenu implements DeviceStatus.Holder {
-  public static final int BAY_X = 8, BAY_Y = 18, BAY_HEIGHT = 26, INVENTORY_Y = 158;
+  /** Screen layout, panel-relative item positions (on the 230-wide kit panel since H3a). */
+  public static final int BAY_X = 7,
+      BAY_Y = 18,
+      BAY_HEIGHT = 26,
+      INVENTORY_X = 35,
+      INVENTORY_Y = 156,
+      HOTBAR_Y = INVENTORY_Y + 58;
+
   private static final int POLL_TICKS = 10;
   private final MenuSession session;
   private final StorageDriveEntity drive;
@@ -43,9 +50,14 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
     this.drive = drive;
     for (int row = 0; row < 3; row++)
       for (int column = 0; column < 9; column++)
-        addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + 18 * column, INVENTORY_Y + 18 * row));
+        addSlot(
+            new Slot(
+                inventory,
+                9 + row * 9 + column,
+                INVENTORY_X + 18 * column,
+                INVENTORY_Y + 18 * row));
     for (int column = 0; column < 9; column++)
-      addSlot(new Slot(inventory, column, 8 + 18 * column, INVENTORY_Y + 58));
+      addSlot(new Slot(inventory, column, INVENTORY_X + 18 * column, HOTBAR_Y));
     var empty = new ArrayList<DrivePackets.Bay>();
     for (int bay = 0; bay < DrivePackets.BAYS; bay++) empty.add(DrivePackets.Bay.EMPTY);
     view = new DrivePackets.View(id, session, 0, empty, "loading", "", 0);
