@@ -79,9 +79,7 @@ final class SplitRootVerification {
       drive = (StorageDriveEntity) level.getBlockEntity(DRIVE);
       drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
       cell = CellHandleData.read(drive.cell(0));
-      level.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.SOUTH), 3);
-      machine = (MachineInterfaceEntity) level.getBlockEntity(MACHINE);
-      machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+      machine = Ports.cable(level, MACHINE, Direction.SOUTH);
       level.setBlock(CHEST, Blocks.CHEST.defaultBlockState(), 3);
       key =
           new PlatformResourceCodec(player.registryAccess())

@@ -10,8 +10,6 @@ import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.program.ProgramMenu;
 import dev.izzy.factorycore.platform.program.ProgramPackets;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.InterfaceContent;
-import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -24,7 +22,6 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -182,9 +179,7 @@ public final class ProgramEditorGameTests {
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
     ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
     var machinePos = new BlockPos(2, 1, 1);
-    h.setBlock(machinePos, InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH));
-    MachineInterfaceEntity machine = h.getBlockEntity(machinePos);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    MachineInterfaceEntity machine = Net.in(h).machine(machinePos, Direction.NORTH);
     h.startSequence()
         .thenWaitUntil(
             () ->

@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.resource.ExternalBackingProvider;
 import java.util.List;
@@ -32,7 +31,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.neoforged.neoforge.capabilities.Capabilities;
 
 /**
  * The unified Interface (ADR 0059): one block whose {@link #KIND} selects the existing device that
@@ -70,21 +68,14 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
   public static InterfaceKind carried(ItemStack stack) {
     var custom = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
     if (custom.contains(BufferData.FIELD)) return InterfaceKind.BUFFER;
-    if (!custom.contains(ConnectorData.FIELD)) return null;
-    try {
-      return ConnectorData.read(custom.get(ConnectorData.FIELD)).lease().kind()
-              == NodeRegistry.Kind.MACHINE_INTERFACE
-          ? InterfaceKind.MACHINE
-          : InterfaceKind.STORAGE;
-    } catch (IllegalArgumentException unreadable) {
-      return InterfaceKind.STORAGE;
-    }
+    // An old Machine-mode lease (removed in H7, UD7) reads as Storage and is refused on placement.
+    return custom.contains(ConnectorData.FIELD) ? InterfaceKind.STORAGE : null;
   }
 
   /**
    * A fresh Interface's mode from what its socket faces: Storage for storage containers (chests,
-   * barrels, shulker boxes, identified backing providers), Machine for anything else with an item,
-   * fluid or energy capability, Buffer otherwise.
+   * barrels, shulker boxes, identified backing providers), Buffer otherwise. Machines are reached
+   * with Importers, Exporters and cable ports (H5–H7), never by joining storage.
    */
   public static InterfaceKind detect(Level level, BlockPos position, Direction facing) {
     var target = position.relative(facing);
@@ -93,11 +84,6 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
         || entity instanceof BarrelBlockEntity
         || entity instanceof ShulkerBoxBlockEntity
         || entity instanceof ExternalBackingProvider) return InterfaceKind.STORAGE;
-    var side = facing.getOpposite();
-    if (level.getCapability(Capabilities.ItemHandler.BLOCK, target, side) != null
-        || level.getCapability(Capabilities.FluidHandler.BLOCK, target, side) != null
-        || level.getCapability(Capabilities.EnergyStorage.BLOCK, target, side) != null)
-      return InterfaceKind.MACHINE;
     return InterfaceKind.BUFFER;
   }
 
@@ -125,14 +111,13 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
   public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
     return switch (state.getValue(KIND)) {
       case STORAGE -> new ConnectorEntity(position, state);
-      case MACHINE -> new MachineInterfaceEntity(position, state);
       case BUFFER -> new BufferedInterfaceEntity(position, state);
       case SIGNAL ->
           new dev.izzy.factorycore.platform.signal.SignalInterfaceEntity(position, state);
     };
   }
 
-  /** C2: Machine and Buffer presets read the Interface's redstone input. */
+  /** C2: Buffer presets read the Interface's redstone input. */
   @Override
   protected void neighborChanged(
       BlockState state,
@@ -178,21 +163,12 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
     } else ConnectorControls.placed(level, position, placer, stack);
   }
 
-  /** Deferred work after placement or upgrades: the buffer Import default, a preset resume. */
+  /** Deferred work after placement: the buffer's Import default. */
   @Override
   protected void tick(BlockState state, ServerLevel level, BlockPos position, RandomSource random) {
-    var entity = level.getBlockEntity(position);
-    boolean again =
-        entity instanceof BufferedInterfaceEntity buffer
-            ? buffer.applyDefaultImport()
-            : entity instanceof MachineInterfaceEntity machine && machine.applyPendingResume();
-    if (again)
-      level.scheduleTick(
-          position,
-          this,
-          entity instanceof BufferedInterfaceEntity
-              ? BufferedInterfaceEntity.DEFAULT_IMPORT_TICKS
-              : MachineInterfaceEntity.RESUME_TICKS);
+    if (level.getBlockEntity(position) instanceof BufferedInterfaceEntity buffer
+        && buffer.applyDefaultImport())
+      level.scheduleTick(position, this, BufferedInterfaceEntity.DEFAULT_IMPORT_TICKS);
   }
 
   @Override
@@ -238,7 +214,7 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
     return List.of();
   }
 
-  /** Storage and Machine connect cables on every face but the socket; Buffer and Signal all six. */
+  /** Storage connects cables on every face but the socket; Buffer and Signal on all six. */
   @Override
   public boolean wiredFace(BlockState state, Direction face) {
     return state.getValue(KIND) == InterfaceKind.BUFFER

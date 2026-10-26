@@ -53,6 +53,16 @@ it:
   block-entity types stay as internal implementation types bound to the new block, so
   their persisted schemas and recovery tools are untouched.
 
+## Amendment — Machine mode removed (playtest H7, 2026-10-26)
+
+HD4 removed Machine mode. An Interface placed against anything that is not a storage container
+is now a Buffer. The mode row offers Storage, Buffer and Signal. The `machine_interface` block
+entity type and its preset engine stay, behind the Importer and Exporter (ADR 0066) and the cable
+port (ADR 0065). Its registry id keeps its name. Under UD7, a placed Machine-mode Interface from
+an older world is unsupported: the block state no longer exists, and an old Machine item reads as
+Storage and is refused on placement. The tests and verification worlds that used Machine-mode
+Interfaces as their generic machine port now use cable ports, which back the same entity.
+
 ## Alternatives
 
 - **One entity owning all three subsystems.** This would be the cleanest model, but

@@ -175,9 +175,18 @@ public final class CablePortGameTests {
         .thenWaitUntil(() -> f.net.assertValid(CABLE, CONTROLLER))
         .thenExecute(() -> labelMachine(h, f))
         .thenWaitUntil(() -> h.assertTrue(port(h).label().equals("oven"), "Labelled"))
+        .thenWaitUntil(() -> f.net.assertValid(CABLE, CONTROLLER))
         .thenExecute(
             () -> {
-              lease[0] = port(h).handle().id();
+              var port = port(h);
+              lease[0] = port.handle().id();
+              // A preset on the port is forgotten with it (the rule an Interface switch follows).
+              port.deployPreset(
+                  new NetworkPermissions.Actor(f.player.getUUID(), false),
+                  dev.izzy.factorycore.core.storage.MachinePresets.Mode.PAUSED,
+                  dev.izzy.factorycore.core.resource.ResourceFilter.all(
+                      dev.izzy.factorycore.core.resource.ResourceKind.ITEM),
+                  0);
               h.getLevel().destroyBlock(h.absolutePos(CABLE), true);
             })
         .thenWaitUntil(
@@ -192,6 +201,10 @@ public final class CablePortGameTests {
                   "A plain cable drops: " + drops);
               h.assertFalse(
                   f.net.saved().nodes().contains(lease[0]), "The idle port's lease is retired");
+              h.assertTrue(
+                  f.net.saved().machinePresets().get(lease[0]) == null
+                      && !f.net.saved().machinePresets().configurations().containsKey(lease[0]),
+                  "Its preset and configuration fence are forgotten");
               h.assertTrue(
                   WorldNetworks.get(h.getLevel().getServer())
                           .membership(Positions.of(h.getLevel(), h.absolutePos(CONTROLLER)))

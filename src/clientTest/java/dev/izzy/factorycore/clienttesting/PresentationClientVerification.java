@@ -13,8 +13,8 @@ import dev.izzy.factorycore.platform.client.ConnectorSettingsScreen;
 import dev.izzy.factorycore.platform.client.DriveScreen;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.ItemDescriptions;
-import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
 import dev.izzy.factorycore.platform.client.NetworkAccessScreen;
+import dev.izzy.factorycore.platform.client.PortScreen;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
 import dev.izzy.factorycore.platform.client.RecoveryScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
@@ -869,17 +869,18 @@ public final class PresentationClientVerification {
   private final java.util.Set<String> seenNotices = new java.util.HashSet<>();
 
   /**
-   * B1: Machine Presets ghost slots through real input. Three IDs are dropped through the screen's
-   * recipe-viewer entry point (what a JEI drag calls); real clicks then cycle the planks slot Item
-   * → Exact → Tag and the diamond slot to Exact. The draft is discarded afterwards.
+   * B1: an Exporter's ghost filter slots through real input (H7: formerly the Machine presets).
+   * Three IDs are dropped through the screen's recipe-viewer entry point (what a JEI drag calls);
+   * real clicks then cycle the planks slot Item → Exact → Tag and the diamond slot to Exact. The
+   * draft is discarded afterwards.
    */
   private void filterTour(BlockPos base) {
     use(base.east(4), Direction.SOUTH, false);
     step(
         client -> {
-          if (!(client.screen instanceof MachineSettingsScreen) || waited() < 4) return false;
+          if (!(client.screen instanceof PortScreen) || waited() < 4) return false;
           setScale(client, 4);
-          return press(client, "Presets");
+          return true;
         });
     String[] ids = {"minecraft:iron_ingot", "minecraft:oak_planks", "minecraft:diamond"};
     for (int index = 0; index < ids.length; index++) {
@@ -887,7 +888,7 @@ public final class PresentationClientVerification {
       String id = ids[index];
       step(
           client -> {
-            var screen = (MachineSettingsScreen) client.screen;
+            var screen = (PortScreen) client.screen;
             int rules = screen.getMenu().presetView().rules().size();
             if (rules >= count) return true;
             if (waited() % 10 == 5)
@@ -900,7 +901,7 @@ public final class PresentationClientVerification {
       int slot = click[0], type = click[1];
       step(
           client -> {
-            var screen = (MachineSettingsScreen) client.screen;
+            var screen = (PortScreen) client.screen;
             var rules = screen.getMenu().presetView().rules();
             if (rules.get(slot).type() == type) return true;
             if (waited() % 10 == 5) {
@@ -914,17 +915,17 @@ public final class PresentationClientVerification {
         client -> {
           if (waited() < 6) return false;
           evidence
-              .append("machine preset ghost slots: ")
-              .append(((MachineSettingsScreen) client.screen).getMenu().presetView().rules())
+              .append("exporter ghost slots: ")
+              .append(((PortScreen) client.screen).getMenu().presetView().rules())
               .append('\n');
-          captures.grab(client, "machine-presets-filter-scale-4.png");
+          captures.grab(client, "exporter-filter-scale-4.png");
           setScale(client, 1);
           return true;
         });
     step(
         client -> {
           if (waited() < 6) return false;
-          captures.grab(client, "machine-presets-filter-scale-1.png");
+          captures.grab(client, "exporter-filter-scale-1.png");
           setScale(client, 2);
           client.screen.onClose();
           return true;
@@ -1432,7 +1433,7 @@ public final class PresentationClientVerification {
   /** Installs through the actual client interaction path, then checks consumption and synced UI. */
   private void upgrade(BlockPos target, ThroughputTier tier, boolean buffer) {
     String item = tier == ThroughputTier.ADVANCED ? "throughput_upgrade" : "overdrive_upgrade";
-    String name = (buffer ? "buffer-" : "machine-") + item.replace("_upgrade", "");
+    String name = (buffer ? "buffer-" : "exporter-") + item.replace("_upgrade", "");
     int maximum = buffer ? tier.bufferRate() : tier.portRate(ResourceKind.ITEM);
     server(
         player -> {
@@ -1460,7 +1461,7 @@ public final class PresentationClientVerification {
             if (!(client.screen instanceof BufferSettingsScreen screen)
                 || screen.getMenu().view().rate() != maximum) return false;
           } else {
-            if (!(client.screen instanceof MachineSettingsScreen screen)
+            if (!(client.screen instanceof PortScreen screen)
                 || screen.getMenu().view().maxRate() != maximum
                 || screen.getMenu().view().form().rate() != maximum) return false;
             check(
@@ -1474,7 +1475,7 @@ public final class PresentationClientVerification {
               .append('\n');
           return true;
         });
-    scales(name, buffer ? BufferSettingsScreen.class : MachineSettingsScreen.class, false);
+    scales(name, buffer ? BufferSettingsScreen.class : PortScreen.class, false);
   }
 
   // ------------------------------------------------------------------ tooltips
@@ -1905,21 +1906,19 @@ public final class PresentationClientVerification {
         });
     use(base.east(3), Direction.SOUTH, false);
     scales("buffer", BufferSettingsScreen.class, false);
-    use(base.east(4), Direction.SOUTH, false);
-    scales("machine", MachineSettingsScreen.class, false);
     // H6: the Importer and Exporter screens on the panel kit.
     use(base.east(8).north(), Direction.SOUTH, false);
     step(
         client ->
-            client.screen instanceof dev.izzy.factorycore.platform.client.PortScreen screen
+            client.screen instanceof PortScreen screen
                 && screen.role() == dev.izzy.factorycore.platform.storage.PortBlock.Role.IMPORTER);
-    scales("importer", dev.izzy.factorycore.platform.client.PortScreen.class, false);
+    scales("importer", PortScreen.class, false);
     use(base.east(8).south(), Direction.NORTH, false);
     step(
         client ->
-            client.screen instanceof dev.izzy.factorycore.platform.client.PortScreen screen
+            client.screen instanceof PortScreen screen
                 && screen.role() == dev.izzy.factorycore.platform.storage.PortBlock.Role.EXPORTER);
-    scales("exporter", dev.izzy.factorycore.platform.client.PortScreen.class, false);
+    scales("exporter", PortScreen.class, false);
     // H5: the cable port screen.
     use(base.east(6), Direction.SOUTH, false);
     scales("cable-port", dev.izzy.factorycore.platform.client.CablePortScreen.class, false);

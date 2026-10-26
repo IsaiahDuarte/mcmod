@@ -11,8 +11,6 @@ import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.InterfaceContent;
-import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.MachinePresetPackets;
 import dev.izzy.factorycore.platform.storage.MachineSettingsMenu;
@@ -25,7 +23,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -50,9 +47,7 @@ public final class MachinePresetResumeGameTests {
   private static Fixture setup(GameTestHelper h) {
     var owner = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     NetworkNodeEntity root = Net.in(h, owner.id()).controller(ROOT);
-    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH));
-    MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    MachineInterfaceEntity machine = Net.in(h).machine(MACHINE, Direction.NORTH);
     return new Fixture(owner, machine, root, DeviceSavedData.get(h.getLevel().getServer()));
   }
 

@@ -212,12 +212,13 @@ One **Interface** connects the network to a block next to it. Its **mode** depen
 what you place it against:
 
 - a chest, barrel or shulker box: **Storage**, where the container joins network storage;
-- another block that holds items, fluids or energy (a furnace or tank, for example):
-  **Machine**, a labelled port with Import/Export/Stock presets;
-- nothing usable: **Buffer**, with nine slots of its own for hoppers.
+- anything else: **Buffer**, with nine slots of its own for hoppers.
 
-Storage and Machine have a socket that faces the container; cable the other faces. A
-Buffer accepts cables on every face. Breaking an Interface keeps its mode, settings and
+Machines such as furnaces don't take an Interface: use an [Importer or Exporter](#importer-and-exporter),
+or label them with the [Label Tool](#label-tool) for programs.
+
+Storage has a socket that faces the container; cable the other faces. A Buffer accepts
+cables on every face. Breaking an Interface keeps its mode, settings and
 contents. To change mode, use the **Mode** buttons on its screen. A switch needs Edit
 access, nothing in transit and an empty buffer, and the screen says which is missing.
 An upgraded Interface keeps its mode so the upgrade is not lost. Use an Interface with
@@ -240,25 +241,6 @@ The screen sets the following:
 It also shows which side of the container is used and whether the container is
 ready. **Apply & Close** saves, and **Cancel** discards. Saving needs Edit; without
 it the screen is read-only. A container can be connected by only one Interface.
-
-### Machine mode
-
-**Binding** sets a label, the resource, access, the slots or tanks to use (the same slot
-strip as Storage mode) and rate. Labels are private to your network and let programs target the machine.
-
-**Presets** sets up one of:
-- **Import:** machine → storage.
-- **Export:** storage → machine.
-- **Stock:** fill the machine to a goal.
-- **Paused.**
-
-Add rules in the filter slots, the same way as on a Buffer (a JEI drag, a sample
-copied from your inventory, or **Add by ID…**), and click a slot to change how it
-matches; nothing is consumed. Up to 16 rules are allowed. **Apply** saves and starts the preset in your
-name; it needs Edit and Deploy, and moving items also needs Deposit and Withdraw. If
-you applied the preset, your own edits and upgrades keep it running. Someone else's
-edits pause it until a player with rights applies it again. **Return** sends items
-stuck in transit back to their source.
 
 ### Buffer mode
 
@@ -289,7 +271,7 @@ Full storage backs items up into the buffer and then the hopper; nothing is void
 
 ### Redstone control
 
-Machine presets (Presets tab) and Buffer settings have a **Redstone** button. Each click
+Importers, Exporters and Buffer settings have a **Redstone** button. Each click
 selects the next setting:
 
 - **ignored**: the preset runs whatever the input (the default).
@@ -399,10 +381,10 @@ Programs find machines by label. To label one, run a cable to it and use the
   not a move.
 - **Sides and slots:** after a machine in `move`, `side up` (or down, north, south,
   west, east) uses that face of the machine, and `slots 2` or `slots 0..3` uses only those
-  slots. For example, one Interface can run a furnace:
+  slots. For example, one cable port can run a furnace:
   `side up` for the input, `side north` for fuel and `side down slots 0` for the output.
-  Slot numbers count the slots that face shows. Using another face needs the Interface
-  set to all slots. A range outside what the Interface allows is refused with a log line.
+  Slot numbers count the slots that face shows. A range outside what the port allows is
+  refused with a log line.
 - **Conditions:** `if` takes `else` and `else if`, and combines checks with `and`, `or`,
   `not` and parentheses. `machine has < 8 of item("coal")` counts what a machine (or a
   whole label) holds. For example:
@@ -413,8 +395,8 @@ Programs find machines by label. To label one, run a cable to it and use the
 - **Whole inventories:** `everything` (or `items`) means every item and `fluids` every
   fluid, so `move everything from machines("chest") to storage` empties a chest. They take
   `except` too: `move everything except item("dirt") from machines("chest") to storage`.
-- **Redstone:** `redstone(machines("button"))` is true while that Machine Interface is
-  powered. `emit redstone 15 on machines("alarm")` sets every Signal-mode Interface
+- **Redstone:** `redstone(machines("button"))` is true while that cable port (or
+  Importer or Exporter) is powered. `emit redstone 15 on machines("alarm")` sets every Signal-mode Interface
   labelled "alarm" (set the label in its screen) while the program runs. Stopping or
   pausing the program hands those Interfaces back to their own settings.
 - **Long rules:** a rule's moves run one after another, and the next run of the rule
@@ -472,12 +454,12 @@ denied consume nothing, and upgrades stay when the Interface moves.
 
 | Hardware | Base | Throughput | Overdrive |
 | --- | --- | --- | --- |
-| Storage/Machine items per tick | 128 (default 64) | 256 | 1,024 |
-| Storage/Machine mB per tick | 1,000 | 4,000 | 16,000 |
-| Storage/Machine FE per tick | 1,000 | 8,000 | 32,000 |
+| Storage, Importer, Exporter, cable port items per tick | 128 (default 64) | 256 | 1,024 |
+| Storage, Importer, Exporter, cable port mB per tick | 1,000 | 4,000 | 16,000 |
+| Storage, Importer, Exporter, cable port FE per tick | 1,000 | 8,000 | 32,000 |
 | Buffer items per tick | 64 | 256 | 576 |
 
-- **Machine presets:** your own upgrade keeps a preset running; an upgrade by
+- **Importers and Exporters:** your own upgrade keeps them running; an upgrade by
   someone else pauses it.
 - **Crafter:** Throughput, then Overdrive, makes it do 8, then 32, crafting-table
   crafts each time a job runs instead of 1. Processing patterns are unchanged. Breaking
@@ -522,12 +504,12 @@ applies.
   any of its sides. Using the tool on it again relabels it. Use the port with an empty hand to
   change its label or what programs move through it (items, fluids or energy). Breaking an idle
   port gives the cable back.
-- **Label an Interface:** use it on a Machine or Signal Interface to give that Interface the
-  label.
-- **Copy:** sneak and use it on a Machine or Storage Interface to copy its settings
+- **Label a Signal Interface:** use it on a Signal Interface to give it the label.
+- **Copy:** sneak and use it on a cable port, Importer, Exporter or Storage Interface to copy
+  its settings
   (resource kind, access, priority, slots, rate and, for Storage, its insert filter) and
   label.
-- **Paste:** use it on another Interface of the same mode. The first use asks you to use
+- **Paste:** use it on another of the same kind (a machine port, or a Storage Interface). The first use asks you to use
   it again to confirm. After that, other Interfaces paste straight away for 30 seconds.
   If someone changed the Interface between the prompt and your confirming use, nothing is
   pasted and it asks again. A rate higher than the target's upgrade allows is lowered to

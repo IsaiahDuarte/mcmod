@@ -51,9 +51,7 @@ public final class MachinePresetGameTests {
   private static Fixture setup(GameTestHelper h, ResourceKind kind) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
-    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
-    MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    MachineInterfaceEntity machine = Net.in(h).machine(MACHINE, Direction.EAST);
     h.setBlock(PROVIDER, kind == ResourceKind.ITEM ? Blocks.CHEST : ConnectorFixture.BLOCK.get());
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     var key =

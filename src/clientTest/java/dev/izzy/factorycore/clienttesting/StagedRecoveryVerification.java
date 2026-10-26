@@ -57,13 +57,7 @@ final class StagedRecoveryVerification {
         drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
         cell = CellHandleData.read(drive.cell(0));
         for (int i = 0; i < 3; i++) {
-          level.setBlock(
-              MACHINES.get(i),
-              InterfaceContent.state(
-                  InterfaceKind.MACHINE, i == 1 ? Direction.EAST : Direction.SOUTH),
-              3);
-          ((MachineInterfaceEntity) level.getBlockEntity(MACHINES.get(i)))
-              .place(new ItemStack(InterfaceContent.ITEM.get()));
+          Ports.cable(level, MACHINES.get(i), i == 1 ? Direction.EAST : Direction.SOUTH);
           level.setBlock(target(i), RecoveryProvider.BLOCK.get().defaultBlockState(), 3);
         }
         ((RecoveryProvider.Provider) level.getBlockEntity(target(2))).failAfterInsert = true;

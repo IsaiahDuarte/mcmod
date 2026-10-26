@@ -23,29 +23,6 @@
       "model": "factorycore:block/storage_connector",
       "x": 90
     },
-    "facing=north,kind=machine": {
-      "model": "factorycore:block/machine_interface"
-    },
-    "facing=east,kind=machine": {
-      "model": "factorycore:block/machine_interface",
-      "y": 90
-    },
-    "facing=south,kind=machine": {
-      "model": "factorycore:block/machine_interface",
-      "y": 180
-    },
-    "facing=west,kind=machine": {
-      "model": "factorycore:block/machine_interface",
-      "y": 270
-    },
-    "facing=up,kind=machine": {
-      "model": "factorycore:block/machine_interface",
-      "x": 270
-    },
-    "facing=down,kind=machine": {
-      "model": "factorycore:block/machine_interface",
-      "x": 90
-    },
     "facing=north,kind=buffer": {
       "model": "factorycore:block/buffered_interface"
     },

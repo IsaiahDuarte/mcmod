@@ -19,13 +19,9 @@ buffer-scale-3-inventory.png
 buffer-scale-3-settings.png
 buffer-scale-4-settings.png
 buffer-scale-4-inventory.png
-machine-scale-2-draft.png
-machine-scale-3-draft.png
-machine-scale-4-draft.png
-machine-scale-4-reopened.png
-machine-preset-scale-2-draft.png
-machine-preset-scale-3-draft.png
-machine-preset-scale-4-stock.png
+exporter-scale-2-draft.png
+exporter-scale-3-draft.png
+exporter-scale-4-stock.png
 terminal-grid-scale-4.png
 terminal-grid-scale-2.png
 gateway-policy-scale-2.png

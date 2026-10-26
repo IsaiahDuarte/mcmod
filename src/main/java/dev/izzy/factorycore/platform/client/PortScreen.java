@@ -44,6 +44,9 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
   private Rect hint, message, status;
   private int selectedRule = -1;
 
+  /** Whether the Keep box was filled from the first synced preset; typing then owns it. */
+  private boolean keepSynced;
+
   public PortScreen(MachineSettingsMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
     role =
@@ -55,7 +58,7 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
             + 2 * 18
             + PanelLayout.GAP
             + (role == PortBlock.Role.EXPORTER ? PanelLayout.ROW + PanelLayout.GAP : 0)
-            + PanelLayout.LINE;
+            + 2 * PanelLayout.LINE;
     layout = new PanelLayout(PanelLayout.NARROW, PanelLayout.heightFor(body));
     imageWidth = layout.width();
     imageHeight = layout.height();
@@ -134,6 +137,8 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
     if (role == PortBlock.Role.EXPORTER) {
       var keepRow = rows.row();
       var label = Component.translatable("gui.factorycore.port.keep");
+      // A resize rebuilds the screen; keep what the player typed rather than the saved goal.
+      String typed = keep == null ? savedKeep() : keep.getValue();
       int labelWidth = font.width(label) + 6;
       keep =
           addRenderableWidget(
@@ -147,9 +152,7 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
       keep.setMaxLength(12);
       keep.setHint(Component.translatable("gui.factorycore.port.keep.hint"));
       keep.setTooltip(Tooltip.create(Component.translatable("gui.factorycore.port.keep.help")));
-      long goal = menu.presetView().goal();
-      keep.setValue(
-          menu.presetView().mode() == MachinePresets.Mode.STOCK ? Long.toString(goal) : "");
+      keep.setValue(typed);
     } else keep = null;
 
     var redstoneRow = rows.row();
@@ -161,7 +164,7 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
                 leftPos + redstoneRow.x(),
                 topPos + redstoneRow.y(),
                 redstoneRow.width()));
-    message = rows.row(PanelLayout.LINE);
+    message = rows.row(2 * PanelLayout.LINE);
 
     var footer = rows.footer();
     var applyLabel = Component.translatable("gui.factorycore.port.apply");
@@ -199,6 +202,12 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
             footer.y(),
             cells.get(1).x() - PanelLayout.GAP - footer.x(),
             footer.height());
+  }
+
+  /** The saved Keep amount, or blank when the Exporter sends everything that matches. */
+  private String savedKeep() {
+    var view = menu.presetView();
+    return view.mode() == MachinePresets.Mode.STOCK ? Long.toString(view.goal()) : "";
   }
 
   private Button button(Rect cell, Component label, String help, Runnable action) {
@@ -307,7 +316,14 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
     stop.active = editable && running;
     returning.visible = view.cleanup();
     returning.active = view.cleanup() && !view.busy();
-    if (keep != null) keep.setEditable(editable);
+    if (keep != null) {
+      keep.setEditable(editable);
+      // The client's placeholder view has revision 1; the server's first publish is newer.
+      if (!keepSynced && view.revision() > 1) {
+        keepSynced = true;
+        if (keep.getValue().isEmpty()) keep.setValue(savedKeep());
+      }
+    }
   }
 
   @Override

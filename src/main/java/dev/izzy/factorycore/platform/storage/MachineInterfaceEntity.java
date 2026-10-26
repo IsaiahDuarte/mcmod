@@ -142,11 +142,9 @@ public final class MachineInterfaceEntity extends ConnectorEntity
   public Component getDisplayName() {
     var role = role();
     return Component.translatable(
-        cablePort()
+        role == null
             ? "block.factorycore.cable_port"
-            : role == null
-                ? "gui.factorycore.interface.title.machine"
-                : "block.factorycore." + role.name().toLowerCase(java.util.Locale.ROOT));
+            : "block.factorycore." + role.name().toLowerCase(java.util.Locale.ROOT));
   }
 
   /** A placer waiting for this port's default preset (H6); not saved. */

@@ -42,10 +42,13 @@ class GuidePagesTest {
           "Storage Drive",
           "hopper",
           "upgrade",
-          // ADR 0059: one Interface; the guide must teach its Machine and Buffer modes.
+          // ADR 0059: one Interface with a Buffer mode. H7 removed Machine mode: machines are
+          // taught through the Importer, Exporter and Label Tool instead.
           "Interface",
-          "Machine mode",
           "Buffer mode",
+          "Importer",
+          "Exporter",
+          "Label Tool",
           "Pattern",
           "Program Controller",
           "Wireless",

@@ -17,8 +17,6 @@ import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.InterfaceContent;
-import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
@@ -155,9 +153,7 @@ final class ServerBenchmark {
       for (int m = 0; m < 4; m++) {
         var face = m < 3 ? FACES[m] : Direction.EAST;
         var at = m < 3 ? root.relative(face) : drivePos.east();
-        level.setBlock(at, InterfaceContent.state(InterfaceKind.MACHINE, face), 3);
-        var machine = (MachineInterfaceEntity) level.getBlockEntity(at);
-        machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+        var machine = Ports.cable(level, at, face);
         level.setBlock(at.relative(face), Blocks.CHEST.defaultBlockState(), 3);
         machines.add(machine);
         chests.add(at.relative(face));

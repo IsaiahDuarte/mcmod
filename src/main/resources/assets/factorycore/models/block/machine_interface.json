@@ -1,7 +1,0 @@
-{
-  "parent": "factorycore:block/storage_connector",
-  "textures": {
-    "panel": "factorycore:block/interface_panel",
-    "contact": "factorycore:block/contact"
-  }
-}

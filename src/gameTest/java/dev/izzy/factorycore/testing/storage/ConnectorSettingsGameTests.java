@@ -180,10 +180,7 @@ public final class ConnectorSettingsGameTests {
   public static void machineViewReportsBoundFaceSize(GameTestHelper h) {
     var player = player(h);
     Net.in(h, player.getUUID()).controller(ROOT);
-    h.setBlock(CONNECTOR, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
-    var machine =
-        (dev.izzy.factorycore.platform.storage.MachineInterfaceEntity) h.getBlockEntity(CONNECTOR);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    var machine = Net.in(h).machine(CONNECTOR, Direction.EAST);
     h.setBlock(CHEST, Blocks.HOPPER);
     h.startSequence()
         .thenWaitUntil(() -> h.assertTrue(machine.canUse(player), "Wired owner ready"))

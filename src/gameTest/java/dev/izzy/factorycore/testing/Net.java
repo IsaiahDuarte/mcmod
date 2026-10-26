@@ -20,6 +20,7 @@ import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.InterfaceContent;
 import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
+import dev.izzy.factorycore.platform.storage.PortContent;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import java.util.UUID;
@@ -111,11 +112,15 @@ public final class Net {
     return bank;
   }
 
-  /** A placed Machine Interface whose target face is {@code facing}. */
+  /**
+   * A placed Machine port aimed at {@code facing}: a cable port (ADR 0065), the block that replaced
+   * the Interface's Machine mode in H7. It carries the network on its other faces like a cable.
+   */
   public MachineInterfaceEntity machine(BlockPos position, Direction facing) {
-    helper.setBlock(position, InterfaceContent.state(InterfaceKind.MACHINE, facing));
+    var block = PortContent.CABLE_PORT.get();
+    helper.setBlock(position, block.aimed(helper.getLevel(), helper.absolutePos(position), facing));
     MachineInterfaceEntity machine = helper.getBlockEntity(position);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    machine.place(new ItemStack(PortContent.CABLE_PORT_ITEM.get()));
     return machine;
   }
 

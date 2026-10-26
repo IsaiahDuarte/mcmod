@@ -245,11 +245,6 @@ def block_textures():
     out["slot"] = slot
     # C1 Signal-mode Interface tray: a redstone-red slot face.
     out["signal_slot"] = flat("signal_slot", (178, 40, 34, 255), grain=4)
-    interface = Canvas("interface_panel")
-    interface.rect(0, 0, 15, 15, SCREEN, grain=4)
-    for i in range(0, 16, 3):
-        interface.hline(0, 15, i, (36, 96, 152, 255))
-    out["interface_panel"] = interface
     # H6 Importer and Exporter: the Interface socket with a chevron on every casing face. The
     # Importer's points down ("V", into the network, cyan); the Exporter's points up ("Λ", out
     # to the machine, amber). The shape alone tells them apart.

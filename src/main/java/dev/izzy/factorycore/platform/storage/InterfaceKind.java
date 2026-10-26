@@ -3,12 +3,14 @@ package dev.izzy.factorycore.platform.storage;
 import java.util.Locale;
 import net.minecraft.util.StringRepresentable;
 
-/** The unified Interface's mode (ADR 0059); each is backed by an existing device entity. */
+/**
+ * The unified Interface's mode (ADR 0059); each is backed by an existing device entity. Machine
+ * mode was removed in playtest H7: machines are reached through Importers, Exporters and cable
+ * ports.
+ */
 public enum InterfaceKind implements StringRepresentable {
   /** The container joins network storage ({@link ConnectorEntity}). */
   STORAGE,
-  /** A labelled machine port with presets ({@link MachineInterfaceEntity}). */
-  MACHINE,
   /** Its own nine-slot hopper buffer ({@link BufferedInterfaceEntity}). */
   BUFFER,
   /**

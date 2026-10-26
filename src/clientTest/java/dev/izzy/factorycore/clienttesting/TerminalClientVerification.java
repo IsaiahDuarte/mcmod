@@ -9,10 +9,9 @@ import dev.izzy.factorycore.core.storage.BufferRegistry;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
-import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
-import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
+import dev.izzy.factorycore.platform.client.PortScreen;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.client.ui.ToggleButton;
@@ -21,6 +20,7 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.PortContent;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import java.io.IOException;
@@ -820,12 +820,8 @@ public final class TerminalClientVerification {
               try {
                 var player = server.getPlayerList().getPlayer(principal);
                 var level = player.serverLevel();
-                level.setBlock(
-                    new BlockPos(2, 65, 2),
-                    InterfaceContent.state(InterfaceKind.MACHINE, Direction.SOUTH),
-                    3);
-                ((MachineInterfaceEntity) level.getBlockEntity(new BlockPos(2, 65, 2)))
-                    .place(new ItemStack(InterfaceContent.ITEM.get()));
+                // H7: an Exporter on the chest replaces the removed Machine-mode Interface.
+                Ports.exporter(level, new BlockPos(2, 65, 2), Direction.SOUTH);
                 level.setBlock(new BlockPos(2, 65, 3), Blocks.CHEST.defaultBlockState(), 3);
                 ready.set(true);
               } catch (RuntimeException error) {
@@ -840,6 +836,11 @@ public final class TerminalClientVerification {
     }
   }
 
+  /**
+   * H7: an Exporter keeps the chest stocked through its own screen. The server binds it to chest
+   * slot 2 under the label "smelter" (the binding the restart check expects); the real screen then
+   * gets a filter through its recipe-viewer drop, Keep 8 typed into its box, and Apply.
+   */
   private void machineTick(Minecraft client) {
     var location = new BlockPos(2, 65, 2);
     if (ticks - entered < 5) return;
@@ -854,8 +855,31 @@ public final class TerminalClientVerification {
           () -> {
             try {
               var player = server.getPlayerList().getPlayer(principal);
-              if (((MachineInterfaceEntity) player.serverLevel().getBlockEntity(location))
-                  .canUse(player)) ready.set(false);
+              var port = (MachineInterfaceEntity) player.serverLevel().getBlockEntity(location);
+              // The Exporter's filter is an Item rule (any components). Leave only the named
+              // variant in the cell, so Stock picks it, as the old exact sample did.
+              var registry = DeviceSavedData.get(server).registry();
+              var plain =
+                  new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                          player.registryAccess())
+                      .itemKey(new ItemStack(Items.IRON_INGOT));
+              long stray =
+                  registry.stock(cell, plain).total() - registry.stock(cell, plain).reserved();
+              if (stray > 0) registry.extract(cell, plain, stray, null);
+              if (port.canUse(player)
+                  && port.applySettings(
+                          new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                              principal, false),
+                          new ConnectorSettings(
+                              dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
+                              ConnectorSettings.Access.READ_WRITE,
+                              0,
+                              2,
+                              1,
+                              8),
+                          "smelter")
+                      == dev.izzy.factorycore.core.network.NetworkAuthority.Decision.ALLOWED)
+                ready.set(false);
             } catch (RuntimeException error) {
               failure.set(error);
             }
@@ -865,83 +889,7 @@ public final class TerminalClientVerification {
     if (stage == 40
         && !ready.get()
         && client.screen == null
-        && client.level.getBlockState(location).is(InterfaceContent.BLOCK.get())) {
-      client.gameMode.useItemOn(
-          client.player,
-          InteractionHand.MAIN_HAND,
-          new BlockHitResult(Vec3.atCenterOf(location), Direction.NORTH, location, false));
-      next();
-      return;
-    }
-    if (stage == 45 && client.screen == null) {
-      var server = client.getSingleplayerServer();
-      var principal = client.player.getUUID();
-      if (!checked.get()) {
-        server.execute(
-            () -> {
-              try {
-                var machine =
-                    (MachineInterfaceEntity)
-                        server
-                            .getPlayerList()
-                            .getPlayer(principal)
-                            .serverLevel()
-                            .getBlockEntity(location);
-                check(
-                    machine.label().isEmpty() && machine.settings().rate() == 64,
-                    "Native Cancel discards the complete machine draft");
-                checked.set(true);
-              } catch (RuntimeException error) {
-                failure.set(error);
-              }
-            });
-        return;
-      }
-      client.gameMode.useItemOn(
-          client.player,
-          InteractionHand.MAIN_HAND,
-          new BlockHitResult(Vec3.atCenterOf(location), Direction.NORTH, location, false));
-      next();
-      return;
-    }
-    if (stage == 47 && client.screen == null) {
-      var server = client.getSingleplayerServer();
-      var principal = client.player.getUUID();
-      server.execute(
-          () -> {
-            try {
-              var machine =
-                  (MachineInterfaceEntity)
-                      server
-                          .getPlayerList()
-                          .getPlayer(principal)
-                          .serverLevel()
-                          .getBlockEntity(location);
-              check(
-                  machine.label().equals("smelter")
-                      && machine.settings().rate() == 8
-                      && machine.settings().firstSlot() == 2
-                      && machine.settings().slotCount() == 1
-                      && machine.settings().priority() == -7
-                      && machine.settings().access() == ConnectorSettings.Access.READ_ONLY,
-                  "Native Apply publishes exact complete machine settings");
-              checked.set(true);
-            } catch (RuntimeException error) {
-              failure.set(error);
-            }
-          });
-      next();
-      return;
-    }
-    if (stage == 48 && checked.get() && client.screen == null) {
-      client.gameMode.useItemOn(
-          client.player,
-          InteractionHand.MAIN_HAND,
-          new BlockHitResult(Vec3.atCenterOf(location), Direction.NORTH, location, false));
-      next();
-      return;
-    }
-    if (stage == 50 && client.screen == null) {
+        && client.level.getBlockState(location).is(PortContent.EXPORTER.get())) {
       client.gameMode.useItemOn(
           client.player,
           InteractionHand.MAIN_HAND,
@@ -957,7 +905,25 @@ public final class TerminalClientVerification {
             try {
               var player = server.getPlayerList().getPlayer(principal);
               var chest = (ChestBlockEntity) player.serverLevel().getBlockEntity(location.south());
-              if (chest.getItem(2).getCount() != 8) return;
+              if (chest.getItem(2).getCount() != 8) {
+                if (ticks % 40 == 0) {
+                  var port = (MachineInterfaceEntity) player.serverLevel().getBlockEntity(location);
+                  System.out.println(
+                      "FACTORYCORE_EXPORTER chest="
+                          + chest.getItem(0)
+                          + "/"
+                          + chest.getItem(1)
+                          + "/"
+                          + chest.getItem(2)
+                          + " preset="
+                          + DeviceSavedData.get(server).machinePresets().get(port.handle().id())
+                          + " status="
+                          + dev.izzy.factorycore.platform.network.WorldNetworks.get(server)
+                              .machinePresets()
+                              .status(port));
+                }
+                return;
+              }
               check(
                   chest.getItem(0).isEmpty() && chest.getItem(1).isEmpty(),
                   "Stock respects selected machine window");
@@ -974,7 +940,7 @@ public final class TerminalClientVerification {
       return;
     }
     if (stage == 59 && checked.get()) {
-      captures.grab(client, "machine-preset-scale-4-stock.png");
+      captures.grab(client, "exporter-scale-4-stock.png");
       client.player.closeContainer();
       checked.set(false);
       jump(61);
@@ -1001,9 +967,35 @@ public final class TerminalClientVerification {
       jump(72);
       return;
     }
-    if (!(client.screen instanceof MachineSettingsScreen screen)
-        || !screen.getMenu().view().editable()) return;
-    machineScreenTick(client, screen);
+    if (!(client.screen instanceof PortScreen screen) || !screen.getMenu().presetView().editable())
+      return;
+    switch (stage) {
+      case 41 -> {
+        if (screen.getMenu().presetView().rules().isEmpty()) {
+          if ((ticks - entered) % 10 == 5)
+            screen.addFilterId(
+                dev.izzy.factorycore.core.resource.ResourceKind.ITEM, key.registryId());
+          return;
+        }
+        edit(screen, 0, "8", false);
+        captures.grab(client, "exporter-scale-2-draft.png");
+        client.options.guiScale().set(3);
+        client.resizeDisplay();
+        next();
+      }
+      case 42 -> {
+        check(
+            screen.getMenu().presetView().rules().size() == 1,
+            "A recipe-viewer drop adds one filter rule");
+        captures.grab(client, "exporter-scale-3-draft.png");
+        client.options.guiScale().set(4);
+        client.resizeDisplay();
+        click(screen, "Apply");
+        checked.set(false);
+        jump(59);
+      }
+      default -> {}
+    }
   }
 
   private void writeReport(Minecraft client) {
@@ -1463,154 +1455,6 @@ public final class TerminalClientVerification {
             down
                 ? ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY
                 : ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
-  }
-
-  private void machineScreenTick(Minecraft client, MachineSettingsScreen screen) {
-    switch (stage) {
-      case 41 -> {
-        edit(screen, 0, "discarded", false);
-        click(screen, "Reset");
-        check(machineLabel(screen).isEmpty(), "Native Reset restores saved machine label");
-        fillMachine(screen);
-        next();
-      }
-      case 42 -> {
-        check(machineLabel(screen).equals("smelter"), "Machine draft populated at scale2");
-        captures.grab(client, "machine-scale-2-draft.png");
-        client.options.guiScale().set(3);
-        client.resizeDisplay();
-        next();
-      }
-      case 43 -> {
-        check(machineLabel(screen).equals("smelter"), "Machine draft survives GUI scale3");
-        captures.grab(client, "machine-scale-3-draft.png");
-        // Select one indexed fluid tank (ADR 0053); Cancel at stage 44 discards the draft.
-        click(screen, "Items");
-        edit(screen, 2, "1", false);
-        edit(screen, 3, "1", false);
-        client.options.guiScale().set(4);
-        client.resizeDisplay();
-        next();
-      }
-      case 44 -> {
-        check(machineLabel(screen).equals("smelter"), "Machine draft survives GUI scale4");
-        var tankFields =
-            screen.children().stream()
-                .filter(child -> child instanceof EditBox)
-                .map(child -> (EditBox) child)
-                .toList();
-        check(
-            screen.children().stream()
-                    .anyMatch(
-                        child ->
-                            child instanceof Button button
-                                && button.getMessage().getString().equals("Fluids (mB)"))
-                && tankFields.get(2).getValue().equals("1")
-                // Typed through charTyped, which an uneditable box refuses.
-                && tankFields.get(3).getValue().equals("1"),
-            "Fluid kind exposes an editable selected-tank window");
-        captures.grab(client, "machine-scale-4-draft.png");
-        click(screen, "Cancel");
-        checked.set(false);
-        next();
-      }
-      case 46 -> {
-        check(machineLabel(screen).isEmpty(), "Reopened form has saved values after Cancel");
-        captures.grab(client, "machine-scale-4-reopened.png");
-        fillMachine(screen);
-        checked.set(false);
-        click(screen, "Apply & Close");
-        next();
-      }
-      case 49 -> {
-        click(screen, "Withdraw only");
-        click(screen, "Deposit only");
-        click(screen, "Apply & Close");
-        next();
-      }
-      case 51 -> {
-        click(screen, "Presets");
-        next();
-      }
-      case 52 -> {
-        click(screen, "Paused");
-        next();
-      }
-      case 53 -> {
-        click(screen, "Import");
-        next();
-      }
-      case 54 -> {
-        click(screen, "Export");
-        next();
-      }
-      case 55 -> {
-        check(
-            screen.getMenu().presetView().mode() == MachinePresets.Mode.STOCK,
-            "Actual mode commands author Stock draft");
-        click(screen, "Copy sample");
-        next();
-      }
-      case 56 -> {
-        check(
-            screen.getMenu().presetView().rules().size() == 1,
-            "Actual own named sample creates exact rule");
-        edit(screen, 5, "8", true);
-        client.options.guiScale().set(2);
-        client.resizeDisplay();
-        next();
-      }
-      case 57 -> {
-        captures.grab(client, "machine-preset-scale-2-draft.png");
-        client.options.guiScale().set(3);
-        client.resizeDisplay();
-        next();
-      }
-      case 58 -> {
-        captures.grab(client, "machine-preset-scale-3-draft.png");
-        client.options.guiScale().set(4);
-        client.resizeDisplay();
-        click(screen, "Apply");
-        checked.set(false);
-        next();
-      }
-      default -> {}
-    }
-  }
-
-  private static String machineLabel(Screen screen) {
-    return screen.children().stream()
-        .filter(c -> c instanceof EditBox)
-        .map(c -> ((EditBox) c).getValue())
-        .findFirst()
-        .orElseThrow();
-  }
-
-  private static void fillMachine(Screen screen) {
-    edit(screen, 0, "smelter", false);
-    edit(screen, 1, "-7", false);
-    // P5: a container of up to 64 slots shows the slot strip instead of the two fields.
-    if (!pickSlot(screen, 2)) {
-      edit(screen, 2, "2", false);
-      edit(screen, 3, "1", false);
-    }
-    edit(screen, 4, "8", false);
-    click(screen, "Deposit and withdraw");
-  }
-
-  /** Clicks {@code slot} on a visible slot strip (one slot, no Shift); false if none is shown. */
-  private static boolean pickSlot(Screen screen, int slot) {
-    if (!(screen instanceof MachineSettingsScreen machine)) return false;
-    int slots = machine.getMenu().view().itemSlots();
-    for (var child : screen.children())
-      if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget
-          && widget.visible
-          && widget.getClass().getSimpleName().equals("SlotPicker")) {
-        int cell = widget.getWidth() / Math.min(32, slots);
-        screen.mouseClicked(widget.getX() + cell * slot + cell / 2.0, widget.getY() + 4, 0);
-        return true;
-      }
-    return false;
   }
 
   private static void edit(Screen screen, int index, String text, boolean enter) {

@@ -2406,9 +2406,7 @@ public final class ConnectorGameTests {
     if (machine) {
       // Same block, new kind: clear it first so a fresh machine entity replaces the connector.
       h.setBlock(CONNECTOR, Blocks.AIR);
-      h.setBlock(CONNECTOR, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
-      MachineInterfaceEntity port = h.getBlockEntity(CONNECTOR);
-      port.place(new ItemStack(InterfaceContent.ITEM.get()));
+      Net.in(h).machine(CONNECTOR, Direction.EAST);
     }
     ConnectorEntity port = h.getBlockEntity(CONNECTOR);
     h.setBlock(PROVIDER, Blocks.CHEST);

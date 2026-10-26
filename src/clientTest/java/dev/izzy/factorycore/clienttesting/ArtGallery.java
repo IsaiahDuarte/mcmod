@@ -62,7 +62,11 @@ final class ArtGallery {
             TerminalContent.BLOCK.get().defaultBlockState(),
             InterfaceContent.state(InterfaceKind.BUFFER, Direction.NORTH),
             InterfaceContent.state(InterfaceKind.STORAGE, Direction.NORTH),
-            InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH),
+            facing(
+                dev.izzy.factorycore.platform.storage.PortContent.IMPORTER
+                    .get()
+                    .defaultBlockState(),
+                Direction.NORTH),
             facing(NetworkContent.GATEWAY.get().defaultBlockState(), Direction.NORTH),
             EnergyBankContent.block(EnergyBankTier.STARTER).defaultBlockState(),
             EnergyBankContent.block(EnergyBankTier.EXPANDED).defaultBlockState());

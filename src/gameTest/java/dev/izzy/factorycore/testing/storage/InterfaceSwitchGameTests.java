@@ -1,10 +1,7 @@
 package dev.izzy.factorycore.testing.storage;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
-import dev.izzy.factorycore.core.resource.ResourceFilter;
-import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
-import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -87,13 +84,14 @@ public final class InterfaceSwitchGameTests {
                   var old = buffer.handle();
                   retired.add(old.id());
                   h.assertTrue(
-                      InterfaceSwitch.request(owner, h.absolutePos(PORT), InterfaceKind.MACHINE)
+                      InterfaceSwitch.request(owner, h.absolutePos(PORT), InterfaceKind.STORAGE)
                           == InterfaceSwitch.Outcome.SWITCHED,
-                      "An empty idle buffer switches to Machine");
+                      "An empty idle buffer switches to Storage");
                   h.assertTrue(
-                      kind(h) == InterfaceKind.MACHINE
-                          && h.getBlockEntity(PORT) instanceof MachineInterfaceEntity,
-                      "The block and its entity are now a Machine Interface");
+                      kind(h) == InterfaceKind.STORAGE
+                          && h.getBlockEntity(PORT) instanceof ConnectorEntity connector
+                          && !(connector instanceof MachineInterfaceEntity),
+                      "The block and its entity are now a Storage connector");
                   h.assertFalse(
                       saved.nodes().contains(old.id()), "The old buffer lease is retired");
                   h.assertTrue(
@@ -101,35 +99,11 @@ public final class InterfaceSwitchGameTests {
                           .noneMatch(state -> state.backing().equals(old.id())),
                       "The old buffer inventory record is gone");
                   h.assertTrue(placedAtPort(h, saved) == 1, "One lease out, one lease in");
-                })
-            .thenWaitUntil(() -> ready(h, net))
-            .thenExecute(
-                () -> {
-                  MachineInterfaceEntity machine = h.getBlockEntity(PORT);
-                  machine.deployPreset(
-                      net.owner(),
-                      MachinePresets.Mode.IMPORT,
-                      ResourceFilter.all(ResourceKind.ITEM),
-                      64);
-                  var old = machine.handle();
-                  retired.add(old.id());
-                  h.assertTrue(
-                      InterfaceSwitch.request(owner, h.absolutePos(PORT), InterfaceKind.STORAGE)
-                          == InterfaceSwitch.Outcome.SWITCHED,
-                      "A Machine with a preset but nothing in transit switches to Storage");
-                  h.assertTrue(
-                      saved.machinePresets().get(old.id()) == null
-                          && !saved.machinePresets().configurations().containsKey(old.id()),
-                      "The old preset and its configuration fence are forgotten");
-                  h.assertTrue(
-                      h.getBlockEntity(PORT) instanceof ConnectorEntity connector
-                          && !(connector instanceof MachineInterfaceEntity),
-                      "Now a Storage connector");
                 });
     // Each switch rebuilds the network; the next one is checked once it settles.
     for (var target :
         new InterfaceKind[] {
-          InterfaceKind.BUFFER, InterfaceKind.STORAGE, InterfaceKind.MACHINE, InterfaceKind.BUFFER
+          InterfaceKind.BUFFER, InterfaceKind.STORAGE, InterfaceKind.BUFFER, InterfaceKind.STORAGE
         })
       sequence =
           sequence
@@ -148,9 +122,9 @@ public final class InterfaceSwitchGameTests {
             () -> {
               h.assertTrue(
                   placedAtPort(h, saved) == 1
-                      && retired.size() == 6
+                      && retired.size() == 5
                       && retired.stream().noneMatch(id -> saved.nodes().contains(id)),
-                  "Six switches leave exactly one lease and retire every old one");
+                  "Five switches leave exactly one lease and retire every old one");
               owner.connection.disconnect(Component.literal("done"));
             })
         .thenSucceed();

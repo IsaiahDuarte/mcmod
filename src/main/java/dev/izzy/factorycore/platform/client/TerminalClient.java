@@ -5,7 +5,6 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
 import dev.izzy.factorycore.platform.storage.ConnectorContent;
-import dev.izzy.factorycore.platform.storage.MachineInterfaceContent;
 import dev.izzy.factorycore.platform.storage.RecoveryContent;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
@@ -28,7 +27,6 @@ public final class TerminalClient {
   public static void screens(RegisterMenuScreensEvent event) {
     event.register(TerminalContent.MENU.get(), TerminalScreen::new);
     event.register(StorageContent.DRIVE_MENU.get(), DriveScreen::new);
-    event.register(MachineInterfaceContent.MENU.get(), MachineSettingsScreen::new);
     event.register(
         dev.izzy.factorycore.platform.storage.PortContent.IMPORTER_MENU.get(), PortScreen::new);
     event.register(

@@ -19,8 +19,6 @@ import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
-import dev.izzy.factorycore.platform.storage.InterfaceContent;
-import dev.izzy.factorycore.platform.storage.InterfaceKind;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
@@ -79,9 +77,7 @@ public final class ProgramGameTests {
     NetworkNodeEntity root = Net.in(h, owner.id()).controller(ROOT);
     StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
-    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
-    MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    MachineInterfaceEntity machine = Net.in(h).machine(MACHINE, Direction.EAST);
     h.setBlock(CHEST, Blocks.CHEST);
     return new Fixture(
         owner,

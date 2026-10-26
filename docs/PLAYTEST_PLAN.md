@@ -123,7 +123,7 @@ before Machine-mode ports go away.
   Done when: GameTests cover an empty filter moving a whole chest, a filtered Exporter, Keep 8,
   full storage backpressure, redstone modes and permission denial; screens fit at scales 1–4.
 
-- [ ] **H7 — Remove Machine mode (HD4).** Size M.
+- [x] **H7 — Remove Machine mode (HD4).** Done 2026-10-26 (commit subject `H7:`). [Evidence](evidence/playtest-h7-machine-mode-removed-2026-10-26.md). The preset engine stays: Importers, Exporters and cable ports use it.
   Delete Machine mode, its menu, presets and screen. Move the Machine-mode tests to H5/H6
   equivalents. No migration (UD7).
 

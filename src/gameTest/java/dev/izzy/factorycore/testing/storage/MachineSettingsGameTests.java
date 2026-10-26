@@ -37,9 +37,7 @@ public final class MachineSettingsGameTests {
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
     player.getInventory().clearContent();
     NetworkNodeEntity root = Net.in(h, player.getUUID()).controller(ROOT);
-    h.setBlock(MACHINE, InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH));
-    MachineInterfaceEntity machine = h.getBlockEntity(MACHINE);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    MachineInterfaceEntity machine = Net.in(h).machine(MACHINE, Direction.NORTH);
     return new Fixture(player, machine, root);
   }
 

@@ -5,7 +5,7 @@ import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.*;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.Loaded;
-import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
+import dev.izzy.factorycore.platform.client.PortScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -17,7 +17,6 @@ import java.util.Properties;
 import java.util.concurrent.atomic.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
@@ -83,7 +82,7 @@ final class WorldRestartVerification {
               + openAttempts
               + " server="
               + reopenDiagnostic.get()
-              + (client.screen instanceof MachineSettingsScreen machine
+              + (client.screen instanceof PortScreen machine
                   ? " preset=" + machine.getMenu().presetView()
                   : ""));
     if (stage == 0 && client.screen instanceof TitleScreen) {
@@ -245,7 +244,10 @@ final class WorldRestartVerification {
         && ticks - entered > 30
         && client.screen == null
         && client.player.distanceToSqr(4.5, 65, 4.5) < 4
-        && client.level.getBlockState(MACHINE).is(InterfaceContent.BLOCK.get())) {
+        && client
+            .level
+            .getBlockState(MACHINE)
+            .is(dev.izzy.factorycore.platform.storage.PortContent.EXPORTER.get())) {
       lastOpen = ticks;
       openAttempts++;
       System.out.println(
@@ -257,22 +259,14 @@ final class WorldRestartVerification {
       if (stage == 2) next();
       return;
     }
+    // H7: the Exporter's screen shows its preset directly; there is no Presets tab to open.
     if (stage == 3
-        && client.screen instanceof MachineSettingsScreen screen
-        && screen.getMenu().view().editable()) {
-      for (var child : screen.children())
-        if (child instanceof Button button
-            && button.visible
-            && button.getMessage().getString().equals("Presets")) {
-          screen.mouseClicked(button.getX() + 10, button.getY() + 8, 0);
-          next();
-          return;
-        }
-      throw new IllegalStateException("Reopened machine has no Presets tab");
+        && client.screen instanceof PortScreen screen
+        && screen.getMenu().presetView().editable()) {
+      next();
+      return;
     }
-    if (stage == 4
-        && ticks - entered > 10
-        && client.screen instanceof MachineSettingsScreen screen) {
+    if (stage == 4 && ticks - entered > 10 && client.screen instanceof PortScreen screen) {
       var view = screen.getMenu().presetView();
       require(
           view.mode() == MachinePresets.Mode.STOCK && view.goal() == 8 && view.rules().size() == 1,
@@ -292,7 +286,7 @@ final class WorldRestartVerification {
               + screen.height
               + " scale="
               + client.getWindow().getGuiScale());
-      captures.grab(client, "restarted-machine-stock.png");
+      captures.grab(client, "restarted-exporter-stock.png");
       client.player.closeContainer();
       next();
       return;

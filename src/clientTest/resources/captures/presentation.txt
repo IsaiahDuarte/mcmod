@@ -23,8 +23,6 @@ connector-scale-1.png
 connector-scale-4.png
 buffer-scale-1.png
 buffer-scale-4.png
-machine-scale-1.png
-machine-scale-4.png
 program-scale-1.png
 program-scale-4.png
 gateway-policy-scale-1.png
@@ -45,10 +43,10 @@ tooltips-corner-3-scale-2.png
 tooltips-corner-1-scale-4.png
 tooltips-corner-2-scale-4.png
 tooltips-corner-3-scale-4.png
-machine-throughput-scale-1.png
-machine-throughput-scale-4.png
-machine-overdrive-scale-1.png
-machine-overdrive-scale-4.png
+exporter-throughput-scale-1.png
+exporter-throughput-scale-4.png
+exporter-overdrive-scale-1.png
+exporter-overdrive-scale-4.png
 buffer-throughput-scale-1.png
 buffer-throughput-scale-4.png
 buffer-overdrive-scale-1.png
@@ -90,8 +88,8 @@ jobs-monitor-running-scale-2.png
 jobs-plan-iron-scale-4.png
 jobs-monitor-waiting-scale-4.png
 jobs-finished-toast-scale-2.png
-machine-presets-filter-scale-4.png
-machine-presets-filter-scale-1.png
+exporter-filter-scale-4.png
+exporter-filter-scale-1.png
 connector-filter-scale-4.png
 connector-filter-scale-1.png
 drive-partition-scale-4.png

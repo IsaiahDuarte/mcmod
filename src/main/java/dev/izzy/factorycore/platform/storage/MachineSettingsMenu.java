@@ -54,10 +54,6 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   private MachinePresetPackets.View presetView;
   private DeviceStatus.View deviceStatus;
 
-  public MachineSettingsMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
-    this(MachineInterfaceContent.MENU.get(), id, inventory, null, MenuSession.read(buffer));
-  }
-
   /** The client side of an Importer or Exporter menu (H6), whose type selects its screen. */
   static MachineSettingsMenu client(
       MenuType<MachineSettingsMenu> type,
@@ -71,9 +67,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
     this(
         machine.role() != null
             ? PortContent.menu(machine.role())
-            : machine.cablePort()
-                ? PortContent.CABLE_PORT_MENU.get()
-                : MachineInterfaceContent.MENU.get(),
+            : PortContent.CABLE_PORT_MENU.get(),
         id,
         inventory,
         machine,

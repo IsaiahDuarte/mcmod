@@ -55,9 +55,7 @@ public final class MachineInterfaceGameTests {
   }
 
   private static MachineInterfaceEntity machine(GameTestHelper h, BlockPos p, Direction face) {
-    h.setBlock(p, InterfaceContent.state(InterfaceKind.MACHINE, face));
-    MachineInterfaceEntity machine = h.getBlockEntity(p);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    MachineInterfaceEntity machine = Net.in(h).machine(p, face);
     return machine;
   }
 

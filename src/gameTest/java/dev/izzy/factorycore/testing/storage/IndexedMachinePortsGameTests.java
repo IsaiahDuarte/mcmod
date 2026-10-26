@@ -43,9 +43,7 @@ public final class IndexedMachinePortsGameTests {
   private IndexedMachinePortsGameTests() {}
 
   private static MachineInterfaceEntity machine(GameTestHelper h, BlockPos p, Direction direction) {
-    h.setBlock(p, InterfaceContent.state(InterfaceKind.MACHINE, direction));
-    MachineInterfaceEntity machine = h.getBlockEntity(p);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    MachineInterfaceEntity machine = Net.in(h).machine(p, direction);
     return machine;
   }
 

@@ -36,7 +36,8 @@ public final class InterfacePlacementGameTests {
   public static void freshPlacementPicksModeFromTheFacedBlock(GameTestHelper h) {
     h.assertTrue(detectAgainst(h, Blocks.CHEST) == InterfaceKind.STORAGE, "Chest: Storage");
     h.assertTrue(detectAgainst(h, Blocks.BARREL) == InterfaceKind.STORAGE, "Barrel: Storage");
-    h.assertTrue(detectAgainst(h, Blocks.FURNACE) == InterfaceKind.MACHINE, "Furnace: Machine");
+    // H7: a machine never joins storage; machines take Importers, Exporters and cable ports.
+    h.assertTrue(detectAgainst(h, Blocks.FURNACE) == InterfaceKind.BUFFER, "Furnace: Buffer");
     h.assertTrue(detectAgainst(h, Blocks.STONE) == InterfaceKind.BUFFER, "Stone: Buffer");
     h.assertTrue(detectAgainst(h, Blocks.AIR) == InterfaceKind.BUFFER, "Nothing: Buffer");
     h.assertTrue(
@@ -49,11 +50,9 @@ public final class InterfacePlacementGameTests {
   public static void eachKindIsBackedByItsDeviceAndAMovedItemKeepsItsMode(GameTestHelper h) {
     var net = Net.in(h);
     net.controller(ROOT);
-    h.setBlock(PORT, InterfaceContent.state(InterfaceKind.MACHINE, Direction.EAST));
-    h.assertTrue(
-        h.getBlockEntity(PORT) instanceof MachineInterfaceEntity, "Machine kind: machine entity");
-    MachineInterfaceEntity machine = h.getBlockEntity(PORT);
-    machine.place(new ItemStack(InterfaceContent.ITEM.get()));
+    h.setBlock(PORT, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
+    ConnectorEntity storage = h.getBlockEntity(PORT);
+    storage.place(new ItemStack(InterfaceContent.ITEM.get()));
     var buffer = net.buffer(new BlockPos(1, 1, 2));
     h.setBlock(
         new BlockPos(1, 1, 3), InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
@@ -66,8 +65,8 @@ public final class InterfacePlacementGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  InterfaceBlock.carried(machine.portableForBreak()) == InterfaceKind.MACHINE,
-                  "A broken Machine Interface carries Machine");
+                  InterfaceBlock.carried(storage.portableForBreak()) == InterfaceKind.STORAGE,
+                  "A broken Storage Interface carries Storage");
               h.assertTrue(
                   buffer instanceof BufferedInterfaceEntity
                       && InterfaceBlock.carried(buffer.portableForBreak()) == InterfaceKind.BUFFER,

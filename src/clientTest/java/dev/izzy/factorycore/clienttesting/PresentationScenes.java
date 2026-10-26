@@ -120,7 +120,7 @@ final class PresentationScenes {
             NetworkContent.CONTROLLER.get().defaultBlockState(),
             NetworkContent.GATEWAY.get().defaultBlockState(),
             InterfaceContent.state(InterfaceKind.STORAGE, Direction.NORTH),
-            InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH),
+            dev.izzy.factorycore.platform.storage.PortContent.IMPORTER.get().defaultBlockState(),
             CraftingContent.CRAFTER.get().defaultBlockState(),
             TerminalContent.BLOCK.get().defaultBlockState(),
             FuelGeneratorContent.BLOCK.get().defaultBlockState());
@@ -255,12 +255,7 @@ final class PresentationScenes {
     ((ConnectorEntity) level.getBlockEntity(new BlockPos(41, 66, arms)))
         .place(new ItemStack(InterfaceContent.ITEM.get()));
     level.setBlock(new BlockPos(44, 65, arms), Blocks.FURNACE.defaultBlockState(), 3);
-    level.setBlock(
-        new BlockPos(44, 65, arms - 1),
-        InterfaceContent.state(InterfaceKind.MACHINE, Direction.SOUTH),
-        3);
-    ((MachineInterfaceEntity) level.getBlockEntity(new BlockPos(44, 65, arms - 1)))
-        .place(new ItemStack(InterfaceContent.ITEM.get()));
+    Ports.cable(level, new BlockPos(44, 65, arms - 1), Direction.SOUTH);
     var cable = NetworkContent.CABLE.get();
     for (var position :
         List.of(
@@ -487,9 +482,8 @@ final class PresentationScenes {
     ((BufferedInterfaceEntity) level.getBlockEntity(base.east(3)))
         .place(new ItemStack(InterfaceContent.ITEM.get()), player.getUUID());
     level.setBlock(base.east(4).north(), Blocks.CHEST.defaultBlockState(), 3);
-    level.setBlock(base.east(4), InterfaceContent.state(InterfaceKind.MACHINE, Direction.NORTH), 3);
-    ((MachineInterfaceEntity) level.getBlockEntity(base.east(4)))
-        .place(new ItemStack(InterfaceContent.ITEM.get()));
+    // H7: the old Machine Interface spot holds an Exporter on the chest to its north.
+    Ports.exporter(level, base.east(4), Direction.NORTH);
     level.setBlock(base.east(5), ProgramContent.BLOCK.get().defaultBlockState(), 3);
     level.setBlock(base.east(6), NetworkContent.CABLE.get().defaultBlockState(), 3);
     level.setBlock(base.east(7), facing(NetworkContent.GATEWAY.get(), Direction.EAST), 3);
