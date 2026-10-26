@@ -253,6 +253,7 @@ M142 onward are follow-ups from slices and findings from Q51.
 | ID | Finding | Evidence |
 | --- | --- | --- |
 | M142 | Q54 typed the job, rule and staging reasons only. Other menus still send a status string that their screens compare with `.equals` (`"ready"`, `"applied"`, `"valid"`, `"filled"`, `"running"`, …): Signal, Port, Drive, Network Access, Program, Connector, Buffer and the Terminal's grid and search status. A typo there still compiles. | `grep 'equals("' platform/client` after Q54 |
+| M143 | Raw `fill` calls and colour literals remain outside the Terminal: Drive bay fill bars, `FilterSlots` (inactive veil, tag badge), `SlotPicker`, the `StatusStrip` lamp. The program editor's dark code field is deliberate (ADR 0064 H3c). | Q60 evidence |
 
 ## Decision gates (user)
 
@@ -371,7 +372,7 @@ New gates:
 
 - [x] **Q57 — Shared resource checks (M56).** Size S. Done 2026-10-26 (commit subject
   `Q57:`). `PlatformResourceCodec.resolvable` replaces the three inline checks in
-  `WorldStorageTransfers` and `WorldStorageRoutes`; `core.Failures.message` replaces the nine
+  `WorldStorageTransfers` and `WorldStorageRoutes`; `core.Failures.message` replaces the eight
   copies (core and platform). `PlatformResourceTest.resolvableRefusesUnknownItemsAndFluids` and
   `FailuresTest`; all GameTests pass. `ThroughputUpgradeItem` keeps its own empty fallback.
   `PlatformResourceCodec.resolvable(key)` replaces the inline try/catch checks, and one helper
@@ -404,7 +405,9 @@ New gates:
   Done when: the measurement is in `docs/performance/` either way; if changed, `WasmProgramTest`
   still traps a runaway guest within the documented bound.
 
-- [ ] **Q60 — Code-health re-check.** Size S. After Q52–Q58.
+- [x] **Q60 — Code-health re-check.** Size S. After Q52–Q58. Done 2026-10-26 (commit subject
+  `Q60:`). Counts before and after in
+  [evidence](evidence/ergonomics-q60-code-health-2026-10-26.md); follow-ups M142/Q104 and M143.
   Re-run the review's searches (string reason comparisons, raw fills, duplicated energy
   storages, inline codec checks) and record the counts.
 
@@ -413,6 +416,12 @@ New gates:
   `OperationResult.Reason` plus the menu's own states), with a LangKeysTest entry per enum.
   Done when: no string-status `.equals` remains in `platform/client`; packet tests refuse an
   unknown status.
+
+- [ ] **Q105 — Remaining screen fills on the kit (M143).** Size S.
+  Move the Drive bay bars, `FilterSlots` marks, `SlotPicker` and the `StatusStrip` lamp to
+  `Panels` calls (reuse `Panels.lamp` and `meter`), with screenshots matching before and after.
+  Done when: no raw `fill` or colour literal remains in `platform/client` outside `ui/` and the
+  program editor's code field.
 
 ## Wave A — Crafter and patterns (lane C)
 
