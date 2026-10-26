@@ -3,6 +3,11 @@ package dev.izzy.factorycore.platform.client;
 import dev.izzy.factorycore.core.network.GatewayPolicy;
 import dev.izzy.factorycore.core.network.NetworkPermissions.Permission;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.platform.client.ui.ChoiceButton;
+import dev.izzy.factorycore.platform.client.ui.PanelLayout;
+import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
+import dev.izzy.factorycore.platform.client.ui.ToggleButton;
 import dev.izzy.factorycore.platform.network.GatewayPolicyMenu;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,13 +20,28 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
 /**
- * Four choices (U8): Shared, Read-only and Isolated apply an exact preset; Custom shows the three
- * columns of toggles (branch grants, inherited permissions and inherited kinds).
+ * Four choices (U8): Shared, Read-only and Isolated apply an exact preset; Custom unlocks the three
+ * columns of toggles (branch grants, inherited permissions and inherited kinds). The toggles always
+ * show the current policy, so a preset's effect is visible; under a preset they are locked and the
+ * preset's description sits below them. Built on the panel kit (ADR 0064).
  */
 public final class GatewayPolicyScreen extends AbstractContainerScreen<GatewayPolicyMenu> {
-  private static final int TOGGLES_Y = 62;
-  private final List<Button> toggles = new ArrayList<>(), presets = new ArrayList<>();
-  private Button custom;
+  /** Lines a column header may wrap to; checked by the terminal tour. */
+  public static final int HEADER_LINES = 3;
+
+  /** Column headers, then one toggle row per permission; then the description or note. */
+  private static final int HEADER = HEADER_LINES * PanelLayout.LINE,
+      COLUMNS_HEIGHT = HEADER + 7 * ToggleButton.HEIGHT,
+      TEXT_HEIGHT = 4 * PanelLayout.LINE,
+      BODY = PanelLayout.ROW + PanelLayout.GAP + COLUMNS_HEIGHT + PanelLayout.GAP + TEXT_HEIGHT;
+
+  private final PanelLayout layout = new PanelLayout(PanelLayout.WIDE, PanelLayout.heightFor(BODY));
+  private final List<ToggleButton> toggles = new ArrayList<>();
+  private final List<ChoiceButton> presets = new ArrayList<>();
+  private ChoiceButton custom;
+
+  /** Panel-relative areas, set by {@link #init}. */
+  private Rect columns, note, status;
 
   /** Custom view; starts on when the synchronized policy matches no preset. */
   private boolean customView;
@@ -31,8 +51,16 @@ public final class GatewayPolicyScreen extends AbstractContainerScreen<GatewayPo
 
   public GatewayPolicyScreen(GatewayPolicyMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
-    imageWidth = 300;
-    imageHeight = 230;
+    imageWidth = layout.width();
+    imageHeight = layout.height();
+  }
+
+  /** Width of one toggle column, for checks that its header fits in {@link #HEADER_LINES}. */
+  public static int columnWidth() {
+    return PanelLayout.columns(
+            new Rect(0, 0, PanelLayout.WIDE - 2 * PanelLayout.EDGE, 1), 3, PanelLayout.GAP)
+        .getFirst()
+        .width();
   }
 
   @Override
@@ -40,60 +68,83 @@ public final class GatewayPolicyScreen extends AbstractContainerScreen<GatewayPo
     super.init();
     toggles.clear();
     presets.clear();
-    for (var preset : GatewayPolicy.Preset.values()) {
+    var rows = new PanelLayout(layout.width(), layout.height());
+
+    var choices = GatewayPolicy.Preset.values();
+    var labels = new Component[choices.length + 1];
+    var minimum = new int[labels.length];
+    for (int i = 0; i < labels.length; i++) {
+      String key = i < choices.length ? choices[i].name().toLowerCase(Locale.ROOT) : "custom";
+      labels[i] = Component.translatable("gui.factorycore.gateway_policy.preset." + key);
+      minimum[i] = font.width(labels[i]) + 10;
+    }
+    var cells = PanelLayout.fit(rows.row(), minimum, PanelLayout.GAP);
+    for (var preset : choices) {
       int index = GatewayPolicyMenu.PRESET_BUTTON + preset.ordinal();
       String key = preset.name().toLowerCase(Locale.ROOT);
-      presets.add(
-          addRenderableWidget(
-              Button.builder(
-                      Component.translatable("gui.factorycore.gateway_policy.preset." + key),
-                      button -> {
-                        customView = false;
-                        minecraft.gameMode.handleInventoryButtonClick(menu.containerId, index);
-                      })
-                  .bounds(leftPos + 8 + preset.ordinal() * 72, topPos + 18, 68, 18)
-                  .tooltip(
-                      Tooltip.create(
-                          Component.translatable(
-                              "gui.factorycore.gateway_policy.preset." + key + ".help")))
-                  .build()));
+      var button =
+          new ChoiceButton(
+              cells.get(preset.ordinal()).offset(leftPos, topPos),
+              labels[preset.ordinal()],
+              b -> {
+                customView = false;
+                minecraft.gameMode.handleInventoryButtonClick(menu.containerId, index);
+              });
+      button.setTooltip(
+          Tooltip.create(
+              Component.translatable("gui.factorycore.gateway_policy.preset." + key + ".help")));
+      presets.add(addRenderableWidget(button));
     }
     custom =
         addRenderableWidget(
-            Button.builder(
-                    Component.translatable("gui.factorycore.gateway_policy.preset.custom"),
-                    button -> customView = true)
-                .bounds(leftPos + 8 + 3 * 72, topPos + 18, 68, 18)
-                .tooltip(
-                    Tooltip.create(
-                        Component.translatable(
-                            "gui.factorycore.gateway_policy.preset.custom.help")))
-                .build());
+            new ChoiceButton(
+                cells.getLast().offset(leftPos, topPos),
+                labels[choices.length],
+                b -> customView = true));
+    custom.setTooltip(
+        Tooltip.create(
+            Component.translatable("gui.factorycore.gateway_policy.preset.custom.help")));
+
+    columns = rows.row(COLUMNS_HEIGHT);
+    note = rows.row(TEXT_HEIGHT);
+    var column = PanelLayout.columns(columns, 3, PanelLayout.GAP);
     for (int bit = 0; bit < GatewayPolicy.BITS; bit++) {
-      int column = bit < 7 ? 0 : bit < 14 ? 1 : 2;
+      var cell = column.get(bit < 7 ? 0 : bit < 14 ? 1 : 2);
       int row = bit < 14 ? bit % 7 : bit - 14;
       int index = bit;
       toggles.add(
           addRenderableWidget(
-              Button.builder(
-                      Component.empty(),
-                      button ->
-                          minecraft.gameMode.handleInventoryButtonClick(menu.containerId, index))
-                  .bounds(leftPos + 8 + column * 98, topPos + TOGGLES_Y + row * 20, 92, 18)
-                  .build()));
+              new ToggleButton(
+                  leftPos + cell.x(),
+                  topPos + cell.y() + HEADER + row * ToggleButton.HEIGHT,
+                  cell.width(),
+                  name(bit),
+                  b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, index))));
     }
-    // Free space under the three resource-kind toggles: open this gateway's access screen.
+
+    var access = Component.translatable("gui.factorycore.gateway_policy.access");
+    var footer = rows.footer();
+    var accessCell =
+        PanelLayout.alignRight(footer, new int[] {font.width(access) + 12}, PanelLayout.GAP)
+            .getFirst();
     addRenderableWidget(
         Button.builder(
-                Component.translatable("gui.factorycore.gateway_policy.access"),
+                access,
                 button ->
                     minecraft.gameMode.handleInventoryButtonClick(
                         menu.containerId, GatewayPolicyMenu.ACCESS_BUTTON))
-            .bounds(leftPos + 8 + 2 * 98, topPos + TOGGLES_Y + 6 * 20, 92, 18)
+            .bounds(
+                leftPos + accessCell.x(),
+                topPos + accessCell.y(),
+                accessCell.width(),
+                accessCell.height())
             .tooltip(
                 Tooltip.create(
                     Component.translatable("gui.factorycore.gateway_policy.access.tooltip")))
             .build());
+    status =
+        new Rect(
+            footer.x(), footer.y(), accessCell.x() - PanelLayout.GAP - footer.x(), footer.height());
   }
 
   private static Component name(int bit) {
@@ -116,67 +167,78 @@ public final class GatewayPolicyScreen extends AbstractContainerScreen<GatewayPo
     }
     // Someone else's toggle edit leaves no preset, so show the toggles it changed.
     if (initialized && current == null) customView = true;
-    for (var preset : GatewayPolicy.Preset.values())
-      presets.get(preset.ordinal()).active = menu.editable() && (customView || preset != current);
+    for (var preset : GatewayPolicy.Preset.values()) {
+      var button = presets.get(preset.ordinal());
+      boolean selected = !customView && preset == current;
+      button.setSelected(selected);
+      button.active = menu.editable() && !selected;
+    }
+    custom.setSelected(customView);
     custom.active = !customView;
     int mask = policy.mask();
     for (int bit = 0; bit < toggles.size(); bit++) {
       var toggle = toggles.get(bit);
-      toggle.visible = customView;
-      toggle.active = menu.editable();
-      toggle.setMessage(name(bit).copy().append((mask & 1 << bit) != 0 ? ": on" : ": off"));
+      toggle.active = customView && menu.editable();
+      toggle.setOn((mask & 1 << bit) != 0);
     }
   }
 
   @Override
   protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
-    graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xff282c30);
-    graphics.fill(
-        leftPos + 4, topPos + 4, leftPos + imageWidth - 4, topPos + imageHeight - 4, 0xff44484d);
+    Panels.panel(graphics, leftPos, topPos, layout);
   }
 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-    graphics.drawString(font, title, 8, 6, 0xffffff, false);
-    int strip = 8 + font.width(title) + 10;
-    StatusStrip.draw(graphics, font, menu.deviceStatus(), strip, 6, imageWidth - 8 - strip);
-    if (customView) {
-      String[] headers = {"branch", "inherited", "kinds"};
-      for (int column = 0; column < 3; column++) {
-        int line = 40;
-        for (var text :
-            font.split(
-                Component.translatable("gui.factorycore.gateway_policy." + headers[column]), 94)) {
-          if (line > 49) break;
-          graphics.drawString(font, text, 8 + column * 98, line, 0xe4bc83, false);
-          line += 9;
-        }
-      }
-    } else {
-      var preset = GatewayPolicy.Preset.matching(menu.policy());
-      if (preset != null) {
-        int line = 44;
-        for (var text :
-            font.split(
-                Component.translatable(
-                    "gui.factorycore.gateway_policy.preset."
-                        + preset.name().toLowerCase(Locale.ROOT)
-                        + ".description"),
-                284)) {
-          graphics.drawString(font, text, 8, line, 0xd8dee9, false);
-          line += 10;
-        }
-      }
+    Panels.title(graphics, font, title, 0, 0);
+    StatusStrip.drawOnPanel(
+        graphics, font, menu.deviceStatus(), status.x(), status.y() + 5, status.width());
+    String[] headers = {"branch", "inherited", "kinds"};
+    var cells = PanelLayout.columns(columns, 3, PanelLayout.GAP);
+    for (int column = 0; column < 3; column++) {
+      var cell = cells.get(column);
+      Panels.wrapped(
+          graphics,
+          font,
+          Component.translatable("gui.factorycore.gateway_policy." + headers[column]),
+          new Rect(cell.x(), cell.y(), cell.width(), HEADER),
+          Panels.TEXT);
     }
-    var footer =
-        Component.translatable(
-            menu.editable()
-                ? "gui.factorycore.gateway_policy.help"
-                : "gui.factorycore.gateway_policy.readonly");
-    int y = 204;
-    for (var line : font.split(footer, 284)) {
-      graphics.drawString(font, line, 8, y, 0xd8dee9, false);
-      y += 10;
+    var text = note;
+    if (!menu.editable()) {
+      int lines =
+          Panels.wrapped(
+              graphics,
+              font,
+              Component.translatable("gui.factorycore.gateway_policy.readonly"),
+              text,
+              Panels.WARN);
+      int used = lines * PanelLayout.LINE;
+      text = new Rect(text.x(), text.y() + used, text.width(), text.height() - used);
     }
+    // The selected choice's description: a preset's exact effect, or Custom's narrowing rule.
+    var preset = GatewayPolicy.Preset.matching(menu.policy());
+    Component description =
+        customView || preset == null
+            ? Component.translatable("gui.factorycore.gateway_policy.help")
+            : Component.translatable(
+                "gui.factorycore.gateway_policy.preset."
+                    + preset.name().toLowerCase(Locale.ROOT)
+                    + ".description");
+    Panels.wrapped(graphics, font, description, text, Panels.MUTED);
+  }
+
+  @Override
+  protected void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+    super.renderTooltip(graphics, mouseX, mouseY);
+    StatusStrip.tooltip(
+        graphics,
+        font,
+        menu.deviceStatus(),
+        leftPos + status.x(),
+        topPos + status.y() + 5,
+        status.width(),
+        mouseX,
+        mouseY);
   }
 }

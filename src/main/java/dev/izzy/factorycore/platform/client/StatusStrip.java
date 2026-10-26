@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.session.DeviceStatus;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,9 +52,36 @@ public final class StatusStrip {
 
   public static void draw(
       GuiGraphics graphics, Font font, DeviceStatus.View status, int x, int y, int width) {
+    draw(graphics, font, status, x, y, width, color(status));
+  }
+
+  /**
+   * Draws the strip on a light kit panel (ADR 0064), where the dark-screen colors are unreadable:
+   * green when online, amber otherwise.
+   */
+  public static void drawOnPanel(
+      GuiGraphics graphics, Font font, DeviceStatus.View status, int x, int y, int width) {
+    draw(
+        graphics,
+        font,
+        status,
+        x,
+        y,
+        width,
+        status.network().equals("valid") ? Panels.GOOD : Panels.WARN);
+  }
+
+  private static void draw(
+      GuiGraphics graphics,
+      Font font,
+      DeviceStatus.View status,
+      int x,
+      int y,
+      int width,
+      int color) {
     if (width < 16) return;
-    graphics.fill(x, y + 2, x + 4, y + 6, 0xff000000 | color(status));
+    graphics.fill(x, y + 2, x + 4, y + 6, 0xff000000 | color);
     graphics.drawString(
-        font, FitText.fit(parts(status), width - 7, font::width), x + 7, y, color(status), false);
+        font, FitText.fit(parts(status), width - 7, font::width), x + 7, y, color, false);
   }
 }

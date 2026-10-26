@@ -15,6 +15,7 @@ import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.MachineSettingsScreen;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
+import dev.izzy.factorycore.platform.client.ui.ToggleButton;
 import dev.izzy.factorycore.platform.guide.GuideContent;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.program.ProgramContent;
@@ -1099,11 +1100,12 @@ public final class TerminalClientVerification {
           return;
         }
         policyMask = screen.getMenu().policy().mask();
+        // The first visible "View" toggle is the subnetwork's own View grant (bit 0).
         var first =
             screen.children().stream()
-                .filter(child -> child instanceof Button button && button.visible)
-                .map(child -> (Button) child)
-                .filter(button -> button.getMessage().getString().startsWith("View: "))
+                .filter(child -> child instanceof ToggleButton toggle && toggle.visible)
+                .map(child -> (ToggleButton) child)
+                .filter(toggle -> toggle.getMessage().getString().equals("View"))
                 .findFirst()
                 .orElseThrow();
         screen.mouseClicked(
@@ -1120,10 +1122,12 @@ public final class TerminalClientVerification {
           check(
               client
                       .font
-                      .split(Component.translatable("gui.factorycore.gateway_policy." + header), 94)
+                      .split(
+                          Component.translatable("gui.factorycore.gateway_policy." + header),
+                          GatewayPolicyScreen.columnWidth())
                       .size()
-                  <= 2,
-              "Policy column header fits in two lines: " + header);
+                  <= GatewayPolicyScreen.HEADER_LINES,
+              "Policy column header fits its lines: " + header);
         checkNoOverlap(screen);
         captures.grab(client, "gateway-policy-scale-2.png");
         client.options.guiScale().set(4);

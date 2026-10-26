@@ -256,6 +256,7 @@
   "gui.factorycore.buffer.result": "%s · Moved %s/%s",
   "gui.factorycore.guide.recipe": "Recipe",
   "gui.factorycore.status.loading": "Checking status…",
+  "gui.factorycore.ui.selected": "selected",
   "gui.factorycore.status.network.valid": "Online",
   "gui.factorycore.status.network.rebuilding": "Connecting",
   "gui.factorycore.status.network.unknown": "Not connected to a network",

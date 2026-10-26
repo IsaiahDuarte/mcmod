@@ -150,3 +150,5 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0062 — Friendly language version 2](0062-friendly-language-v2.md)
 
 - [0063 — Crafting-pattern substitution](0063-pattern-substitution.md)
+
+- [0064 — Panel kit for screens](0064-panel-kit.md)

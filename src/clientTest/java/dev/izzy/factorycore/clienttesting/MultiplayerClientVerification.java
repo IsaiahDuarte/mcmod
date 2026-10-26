@@ -5,6 +5,7 @@ import static dev.izzy.factorycore.clienttesting.MultiplayerSync.*;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.NetworkAccessScreen;
 import dev.izzy.factorycore.platform.client.TerminalScreen;
+import dev.izzy.factorycore.platform.client.ui.ToggleButton;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import java.io.IOException;
@@ -719,11 +720,11 @@ public final class MultiplayerClientVerification {
   }
 
   /** The first policy toggle (branch View), whether or not the Custom view shows it. */
-  private static Button firstButton(Screen screen) {
+  private static ToggleButton firstButton(Screen screen) {
     return screen.children().stream()
-        .filter(child -> child instanceof Button)
-        .map(child -> (Button) child)
-        .filter(button -> button.getMessage().getString().startsWith("View: "))
+        .filter(child -> child instanceof ToggleButton)
+        .map(child -> (ToggleButton) child)
+        .filter(toggle -> toggle.getMessage().getString().equals("View"))
         .findFirst()
         .orElseThrow();
   }

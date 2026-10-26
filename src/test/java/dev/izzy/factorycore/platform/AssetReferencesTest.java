@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.izzy.factorycore.platform.client.ui.Panels;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,12 +19,14 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 import javax.imageio.ImageIO;
+import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
 /**
  * Resource-level art checks: every model and texture reference resolves, finished art uses only
  * Factory Core textures (vanilla parents supply geometry/transforms only), every texture is a 16x16
- * PNG and none is orphaned. Registry coverage is checked in-game by {@code AssetCoverageGameTests}.
+ * PNG and none is orphaned (screen sprites are checked separately against the panel kit). Registry
+ * coverage is checked in-game by {@code AssetCoverageGameTests}.
  */
 class AssetReferencesTest {
   /** Vanilla parents that carry no textures of their own. */
@@ -34,6 +37,9 @@ class AssetReferencesTest {
           "minecraft:block/cube_bottom_top",
           "minecraft:block/orientable",
           "minecraft:item/generated");
+
+  /** Screen sprites (ADR 0064) are referenced from code, not models, and may be any size. */
+  private static final String GUI_SPRITES = "gui/sprites/";
 
   private static Path assets() throws Exception {
     var url = AssetReferencesTest.class.getResource("/assets/factorycore/lang/en_us.json");
@@ -114,6 +120,7 @@ class AssetReferencesTest {
     assertFalse(textures.isEmpty(), "Native textures exist");
     for (var texture : textures) {
       var name = root.resolve("textures").relativize(texture).toString().replace('\\', '/');
+      if (name.startsWith(GUI_SPRITES)) continue;
       assertTrue(used.contains(name.substring(0, name.length() - 4)), "Orphan texture " + name);
       BufferedImage image;
       try (var input = Files.newInputStream(texture)) {
@@ -123,5 +130,28 @@ class AssetReferencesTest {
       assertEquals(16, image.getWidth(), "16 px wide: " + name);
       assertEquals(16, image.getHeight(), "16 px tall: " + name);
     }
+  }
+
+  @Test
+  void everyScreenSpriteIsUsedByThePanelKitAndExists() throws Exception {
+    var directory = assets().resolve("textures/" + GUI_SPRITES);
+    var onDisk = new TreeSet<String>();
+    for (var sprite : files(directory, ".png")) {
+      var name = sprite.getFileName().toString();
+      onDisk.add(name.substring(0, name.length() - 4));
+      try (var input = Files.newInputStream(sprite)) {
+        assertNotNull(ImageIO.read(input), "Readable PNG " + name);
+      }
+    }
+    var used = new TreeSet<String>();
+    for (var field : Panels.class.getFields())
+      if (field.getType() == ResourceLocation.class
+          && java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+        var id = (ResourceLocation) field.get(null);
+        assertEquals("factorycore", id.getNamespace(), field.getName());
+        used.add(id.getPath());
+      }
+    assertFalse(used.isEmpty(), "The panel kit declares sprites");
+    assertEquals(used, onDisk, "Panel kit sprites and generated sprite files match");
   }
 }

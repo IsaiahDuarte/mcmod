@@ -29,7 +29,7 @@ class ArtGeneratorTests(unittest.TestCase):
                 # Status overlays now generate models/blockstates alongside textures.
                 self.assertIsInstance(json.loads(data), dict, path)
                 continue
-            if path == art.SHEET:
+            if path == art.SHEET or art.GUI_SPRITES in path.parents:
                 continue
             self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n", path)
             width, height, depth, kind = struct.unpack(">IIBB", data[16:26])
@@ -37,6 +37,25 @@ class ArtGeneratorTests(unittest.TestCase):
             length = struct.unpack(">I", data[33:37])[0]
             raw = zlib.decompress(data[41 : 41 + length])
             self.assertEqual(len(raw), 16 * (1 + 16 * 4), path)
+
+    def test_gui_sprites_are_rgba_pngs_with_valid_nine_slices(self):
+        """ADR 0064: panel sprites may be any size; a nine-slice border leaves a stretchable centre."""
+        outputs = art.outputs()
+        sprites = art.gui_sprites()
+        self.assertGreaterEqual(set(sprites), {"panel", "inset", "slot", "choice_selected"})
+        for name, (canvas, border) in sprites.items():
+            data = outputs[art.GUI_SPRITES / f"{name}.png"]
+            self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n", name)
+            width, height, depth, kind = struct.unpack(">IIBB", data[16:26])
+            self.assertEqual((width, height, depth, kind), (canvas.width, canvas.height, 8, 6), name)
+            meta = art.GUI_SPRITES / f"{name}.png.mcmeta"
+            if border is None:
+                self.assertNotIn(meta, outputs, name)
+                continue
+            scaling = json.loads(outputs[meta])["gui"]["scaling"]
+            self.assertEqual(scaling["type"], "nine_slice", name)
+            self.assertEqual((scaling["width"], scaling["height"]), (width, height), name)
+            self.assertLess(2 * scaling["border"], min(width, height), name)
 
     def test_tier_markings_differ_in_shape_not_only_color(self):
         """Grayscale renderings of the cell tiers must still differ."""

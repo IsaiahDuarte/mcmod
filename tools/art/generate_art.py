@@ -29,6 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TEXTURES = ROOT / "src/main/resources/assets/factorycore/textures"
 SHEET = ROOT / "docs/art/reference-sheet.png"
+GUI_SPRITES = TEXTURES / "gui/sprites"
 
 # Palette (sRGB). Documented in docs/ASSETS.md; keep the two in sync.
 CLEAR = (0, 0, 0, 0)
@@ -888,6 +889,95 @@ def item_textures():
     return out
 
 
+# ---------------------------------------------------------------- screen sprites
+
+# Screen panels (ADR 0064) use a light, vanilla-scale palette so dark text and vanilla widgets
+# read on them; the copper accent marks the selected choice.
+GUI_OUTLINE = (24, 25, 29, 255)
+GUI_FACE = (198, 198, 198, 255)
+GUI_LIGHT = (255, 255, 255, 255)
+GUI_SHADOW = (85, 85, 85, 255)
+GUI_WELL = (139, 139, 139, 255)
+GUI_WELL_SHADOW = (55, 55, 55, 255)
+
+
+def bevel(c, x0, y0, x1, y1, light, shadow):
+    """One-pixel raised edge: light on the top and left, shadow on the bottom and right."""
+    c.hline(x0, x1 - 1, y0, light)
+    c.vline(x0, y0, y1 - 1, light)
+    c.hline(x0 + 1, x1, y1, shadow)
+    c.vline(x1, y0 + 1, y1, shadow)
+
+
+def gui_panel():
+    """16x16 nine-slice (border 4): outlined, rounded panel with a two-pixel bevel."""
+    c = Canvas("gui_panel")
+    c.rect(1, 1, 14, 14, GUI_FACE)
+    c.hline(2, 13, 0, GUI_OUTLINE)
+    c.hline(2, 13, 15, GUI_OUTLINE)
+    c.vline(0, 2, 13, GUI_OUTLINE)
+    c.vline(15, 2, 13, GUI_OUTLINE)
+    for x, y in ((1, 1), (14, 1), (1, 14), (14, 14)):
+        c.px(x, y, GUI_OUTLINE)
+    bevel(c, 1, 1, 14, 14, GUI_LIGHT, GUI_SHADOW)
+    c.px(1, 1, GUI_OUTLINE)
+    c.px(14, 14, GUI_OUTLINE)
+    bevel(c, 2, 2, 13, 13, GUI_LIGHT, GUI_SHADOW)
+    c.px(2, 13, GUI_FACE)
+    c.px(13, 2, GUI_FACE)
+    return c
+
+
+def gui_well(name, size):
+    """Sunken area (a slot, list or nine-slice inset): shadow top-left, light bottom-right."""
+    c = Canvas(name, size, size)
+    c.rect(0, 0, size - 1, size - 1, GUI_WELL)
+    c.hline(0, size - 2, 0, GUI_WELL_SHADOW)
+    c.vline(0, 0, size - 2, GUI_WELL_SHADOW)
+    c.hline(1, size - 1, size - 1, GUI_LIGHT)
+    c.vline(size - 1, 1, size - 1, GUI_LIGHT)
+    return c
+
+
+def gui_choice_selected():
+    """16x16 nine-slice (border 3): the chosen option of a choice row, pressed in copper."""
+    c = Canvas("gui_choice_selected")
+    c.rect(0, 0, 15, 15, GUI_OUTLINE)
+    c.rect(1, 1, 14, 14, COPPER)
+    c.hline(1, 14, 1, COPPER_DARK)
+    c.vline(1, 1, 14, COPPER_DARK)
+    c.hline(2, 14, 14, COPPER_HI)
+    c.vline(14, 2, 14, COPPER_HI)
+    return c
+
+
+def gui_checkbox(checked):
+    """9x9 box for a toggle; the tick is a shape, so the state never depends on color alone."""
+    c = gui_well("gui_checkbox" + ("_checked" if checked else ""), 9)
+    c.rect(1, 1, 7, 7, GUI_FACE)
+    if checked:
+        for x, y in ((2, 4), (3, 5), (4, 6), (5, 5), (6, 4), (6, 3), (7, 2), (3, 4), (4, 5), (5, 4)):
+            c.px(x, y, GUI_OUTLINE)
+    return c
+
+
+def gui_sprites():
+    """Sprite name -> (canvas, nine-slice border or None for a fixed-size sprite)."""
+    return {
+        "panel": (gui_panel(), 4),
+        "inset": (gui_well("gui_inset", 8), 1),
+        "slot": (gui_well("gui_slot", 18), None),
+        "choice_selected": (gui_choice_selected(), 3),
+        "checkbox": (gui_checkbox(False), None),
+        "checkbox_checked": (gui_checkbox(True), None),
+    }
+
+
+def sprite_meta(canvas, border):
+    scaling = {"type": "nine_slice", "width": canvas.width, "height": canvas.height, "border": border}
+    return (json.dumps({"gui": {"scaling": scaling}}, indent=2) + "\n").encode()
+
+
 def reference_sheet(blocks, items, scale=4, columns=10):
     """Unlabeled contact sheet: blocks (sorted) then items (sorted), 4x, 2 px gutter."""
     entries = [blocks[k] for k in sorted(blocks)] + [items[k] for k in sorted(items)]
@@ -914,6 +1004,10 @@ def outputs():
     items = item_textures()
     files = {TEXTURES / "block" / f"{k}.png": v.png() for k, v in blocks.items()}
     files.update({TEXTURES / "item" / f"{k}.png": v.png() for k, v in items.items()})
+    for name, (canvas, border) in gui_sprites().items():
+        files[GUI_SPRITES / f"{name}.png"] = canvas.png()
+        if border is not None:
+            files[GUI_SPRITES / f"{name}.png.mcmeta"] = sprite_meta(canvas, border)
     files[SHEET] = reference_sheet(blocks, items).png()
     files.update(status_json())
     return files
@@ -924,12 +1018,13 @@ def main(argv=None) -> int:
     parser.add_argument("--check", action="store_true", help="fail on drift instead of writing")
     args = parser.parse_args(argv)
     files = outputs()
-    expected_dirs = {TEXTURES / "block", TEXTURES / "item"}
+    expected_dirs = {TEXTURES / "block", TEXTURES / "item", GUI_SPRITES}
     stale = [
         path
         for directory in expected_dirs
         if directory.is_dir()
-        for path in directory.glob("*.png")
+        for pattern in ("*.png", "*.png.mcmeta")
+        for path in directory.glob(pattern)
         if path not in files
     ]
     if args.check:

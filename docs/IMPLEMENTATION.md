@@ -15,6 +15,8 @@ how this was built is in the [work log archive](archive/IMPLEMENTATION-LOG.md).
 Player-experience simplification work is sequenced in the [UX plan](UX_PLAN.md).
 Feature parity with AE2, Refined Storage and Super Factory Manager is sequenced in the
 [parity plan](PARITY_PLAN.md).
+Fixes for the first survival playtest (screens, machines on cables, Importer/Exporter,
+first steps) are sequenced in the [playtest plan](PLAYTEST_PLAN.md).
 
 ## How an AI should proceed
 
