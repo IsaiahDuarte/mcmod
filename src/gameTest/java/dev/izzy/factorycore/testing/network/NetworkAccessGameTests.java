@@ -59,15 +59,20 @@ public final class NetworkAccessGameTests {
     return DeviceSavedData.get(h.getLevel().getServer()).network(root.handle().id()).snapshot();
   }
 
-  /** Sneak-use on the controller, as a real client would. */
+  /** Use on the controller, then Access… on its overview (H10), as a real client would. */
   private static NetworkAccessMenu open(GameTestHelper h, ServerPlayer player) {
     player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT).above()));
     player.setShiftKeyDown(true);
     h.useBlock(ROOT, player);
     player.setShiftKeyDown(false);
     h.assertTrue(
+        player.containerMenu instanceof dev.izzy.factorycore.platform.network.OverviewMenu overview
+            && overview.clickMenuButton(
+                player, dev.izzy.factorycore.platform.network.OverviewMenu.ACCESS_BUTTON),
+        "Use on a controller opens the overview, and Access… is accepted");
+    h.assertTrue(
         player.containerMenu instanceof NetworkAccessMenu,
-        "Sneak-use on a controller opens Network Access");
+        "The overview's Access… opens Network Access");
     var menu = (NetworkAccessMenu) player.containerMenu;
     menu.broadcastChanges();
     return menu;

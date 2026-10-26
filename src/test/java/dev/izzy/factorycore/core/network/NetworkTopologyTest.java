@@ -75,6 +75,40 @@ class NetworkTopologyTest {
   }
 
   @Test
+  void roleCountsCoverOneSegmentAndStopAtAGateway() {
+    var topology = topology(8);
+    for (var n :
+        List.of(
+            node(1, Role.ROOT),
+            node(2, Role.CABLE),
+            node(3, Role.STORAGE),
+            node(4, Role.STORAGE),
+            node(5, Role.INTERFACE),
+            node(6, Role.CRAFTER),
+            node(20, Role.CABLE),
+            node(21, Role.CABLE),
+            node(22, Role.STORAGE))) topology.putNode(n);
+    for (int other : new int[] {2, 3, 4, 5, 6}) topology.connect(id(1), id(other));
+    topology.putGateway(gate(30, 20, 21, true));
+    topology.connect(id(2), id(20));
+    topology.connect(id(21), id(22));
+    finish(topology, 64);
+    var counts = topology.roleCounts(topology.membership(id(3)).scope());
+    assertEquals(1, counts[Role.ROOT.ordinal()]);
+    assertEquals(2, counts[Role.STORAGE.ordinal()], "the child's storage is not counted");
+    assertEquals(1, counts[Role.INTERFACE.ordinal()]);
+    assertEquals(1, counts[Role.CRAFTER.ordinal()]);
+    var child = topology.roleCounts(topology.membership(id(22)).scope());
+    assertEquals(1, child[Role.STORAGE.ordinal()]);
+    assertEquals(0, child[Role.ROOT.ordinal()]);
+    counts[Role.STORAGE.ordinal()] = 99;
+    assertEquals(
+        2,
+        topology.roleCounts(topology.membership(id(3)).scope())[Role.STORAGE.ordinal()],
+        "callers get a copy");
+  }
+
+  @Test
   void gatewaysRejectBypassesCyclesMultipleParentsAndWrongRootDirection() {
     var topology = topology(8);
     topology.putNode(node(1, Role.ROOT));

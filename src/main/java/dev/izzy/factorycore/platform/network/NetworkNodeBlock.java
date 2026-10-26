@@ -147,11 +147,12 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
             buffer -> buffer.writeBlockPos(position));
         return InteractionResult.CONSUME;
       }
-      // Use on a controller opens the Network Access screen (ADR 0055) with its status strip.
+      // H10: use on a controller opens the network overview; its Access… button opens the
+      // Network Access screen (ADR 0055).
       if (kind == NodeRegistry.Kind.CONTROLLER
           && player instanceof ServerPlayer server
           && node.handle() != null) {
-        NetworkAccessMenu.open(server, node);
+        OverviewMenu.open(server, node);
         return InteractionResult.CONSUME;
       }
       player.displayClientMessage(message, true);

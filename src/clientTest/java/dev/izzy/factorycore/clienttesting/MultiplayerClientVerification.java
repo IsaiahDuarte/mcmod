@@ -613,6 +613,14 @@ public final class MultiplayerClientVerification {
         sub++;
       }
       case 2 -> {
+        // H10: the controller opens the overview first; Access… opens Network Access.
+        if (client.screen instanceof dev.izzy.factorycore.platform.client.OverviewScreen overview) {
+          if (ticks - mark > 5) {
+            click(overview, "Access…");
+            mark = ticks;
+          }
+          return false;
+        }
         if (!(client.screen instanceof NetworkAccessScreen screen)) return false;
         var rows = screen.getMenu().view().rows();
         if (rows.stream().noneMatch(row -> row.id().equals(STRANGER_ID))) return false;

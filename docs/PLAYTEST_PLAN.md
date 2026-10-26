@@ -140,7 +140,7 @@ before Machine-mode ports go away.
 
 ## Wave H2 — first steps (K6, K7)
 
-- [ ] **H10 — Network overview.** Size M.
+- [x] **H10 — Network overview.** Done 2026-10-26 (commit subject `H10:`). [Evidence](evidence/playtest-h10-overview-2026-10-26.md). There is no separate cable marker: cable ports (H5) already show where a cable reaches a machine.
   Using the Controller opens **Overview** (Access becomes a tab): connected counts (drives,
   storage, machines, Importers/Exporters, Crafters), storage used, energy, and a checklist of
   problems with what to do ("No storage — place a Drive with a cell", "Two controllers —

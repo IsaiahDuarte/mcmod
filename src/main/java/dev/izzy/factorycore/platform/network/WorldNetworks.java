@@ -601,6 +601,17 @@ public final class WorldNetworks {
     return resolve(owners.get(origin)).authority.labels(actor, member.scope(), after, limit);
   }
 
+  /**
+   * H10: members of each topology role in {@code origin}'s segment, or null while it is not valid.
+   * Constant work (counted at publication); it reveals no positions, labels or contents.
+   */
+  public int[] roleCounts(NodeRegistry.Position origin) {
+    checkThread();
+    var membership = membership(origin);
+    if (membership.status() != NetworkTopology.Status.VALID) return null;
+    return resolve(owners.get(origin)).discovery.publishedTopology().roleCounts(membership.scope());
+  }
+
   /** Gateways above {@code origin}, nearest first, with their policies; empty when invalid. */
   public List<NetworkTopology.Ancestor> ancestors(NodeRegistry.Position origin) {
     checkThread();

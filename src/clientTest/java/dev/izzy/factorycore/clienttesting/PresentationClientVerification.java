@@ -2061,16 +2061,31 @@ public final class PresentationClientVerification {
                             NetworkPermissions.AccessRole.MEMBER.grants())
                     == NetworkPermissions.Change.OK,
                 "Owner grants a second principal before opening Network Access"));
+    // H10: the controller opens the network overview; its Access… opens Network Access.
     use(base, Direction.SOUTH, true);
     step(
         client -> {
-          if (!(client.screen instanceof NetworkAccessScreen)) return false;
+          if (!(client.screen instanceof dev.izzy.factorycore.platform.client.OverviewScreen))
+            return false;
           shift(client, false);
           return true;
         });
+    scales("overview", dev.izzy.factorycore.platform.client.OverviewScreen.class, false);
+    use(base, Direction.SOUTH, false);
+    step(
+        client ->
+            client.screen instanceof dev.izzy.factorycore.platform.client.OverviewScreen
+                && waited() > 4
+                && press(client, "Access…"));
+    step(client -> client.screen instanceof NetworkAccessScreen && waited() > 2);
     scales("access", NetworkAccessScreen.class, false);
     // U8: Advanced swaps the role buttons for the seven permission toggles.
     use(base, Direction.SOUTH, false);
+    step(
+        client ->
+            client.screen instanceof dev.izzy.factorycore.platform.client.OverviewScreen
+                && waited() > 4
+                && press(client, "Access…"));
     step(
         client -> {
           if (!(client.screen instanceof NetworkAccessScreen screen)) return false;

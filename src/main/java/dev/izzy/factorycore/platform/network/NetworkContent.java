@@ -42,6 +42,10 @@ public final class NetworkContent {
   public static final DeferredHolder<MenuType<?>, MenuType<NetworkAccessMenu>> ACCESS_MENU =
       FactoryRegistries.menu("network_access", NetworkAccessMenu::new);
 
+  /** H10: the network overview a Controller opens. */
+  public static final DeferredHolder<MenuType<?>, MenuType<OverviewMenu>> OVERVIEW_MENU =
+      FactoryRegistries.menu("network_overview", OverviewMenu::new);
+
   private NetworkContent() {}
 
   private static BlockBehaviour.Properties properties() {

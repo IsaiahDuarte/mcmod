@@ -75,3 +75,11 @@ working unchanged. `AccessPresetsTest` pins each role to its set, and
 `NetworkAccessGameTests.roleButtonsSetExactGrantsOnlyWithManage` covers the command
 and its denial.
 
+## Amendment — opened from the network overview (playtest H10, 2026-10-26)
+
+Plain use on a controller now opens the network overview (`OverviewMenu`). The overview shows the
+routing status, per-role counts for players with View access, and a first-network checklist. Its
+**Access…** button opens this Network Access screen through the same `NetworkAccessMenu.open`
+path. The counts are kept per topology segment while it is published
+(`NetworkTopology.roleCounts`), so opening the overview costs constant work and reveals no
+positions, labels or contents.

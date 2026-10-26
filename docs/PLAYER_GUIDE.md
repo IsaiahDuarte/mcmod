@@ -69,8 +69,10 @@ recipes. Its last page lists the materials for each tier.
 A Controller starts a private network owned by whoever placed it. Cables connect on
 all six faces. Connect everything to exactly one controller: two connected
 controllers stop the network until you separate them. A long cable run can take a few
-ticks to come online. Use the controller to open the **Network Access** screen (see
-[Sharing a network](#sharing-a-network)).
+ticks to come online. Use the controller to open the **Network** overview: whether the
+network works (and what to fix if not), what it has, and a checklist of what a first
+network needs: storage, a terminal, then machines and Crafters. **Access…** opens the
+Network Access screen (see [Sharing a network](#sharing-a-network)).
 
 Breaking and replacing a controller keeps its owner and grants. If the controller's
 chunk unloads, its network pauses; nothing is lost.
@@ -472,7 +474,8 @@ denied consume nothing, and upgrades stay when the Interface moves.
 
 ## Sharing a network
 
-Networks start private. Use the controller, or **Access…** on a gateway screen.
+Networks start private. Use the controller and press **Access…**, or **Access…** on a
+gateway screen.
 - **Roles:** each player's role button cycles **Guest** (view), **Member** (also
   deposit, withdraw, craft) and **Builder** (also edit and deploy). Next comes
   **Admin** (also manage access and gateways).

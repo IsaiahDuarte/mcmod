@@ -96,6 +96,10 @@ public final class NetworkTopology {
   private static final class Segment {
     final int representative;
     final TreeMap<String, TreeMap<UUID, Scope>> machines = new TreeMap<>();
+
+    /** H10: members of each role, counted once while the segment is published. */
+    final int[] roles = new int[Role.values().length];
+
     final List<Gateway> children = new ArrayList<>();
     UUID minimum;
     UUID root;
@@ -282,6 +286,17 @@ public final class NetworkTopology {
     var iterator = candidates.values().iterator();
     while (page.size() < limit && iterator.hasNext()) page.add(iterator.next());
     return new MachinePage(page, iterator.hasNext());
+  }
+
+  /**
+   * H10: how many members of each {@link Role} the published segment of {@code origin} has, indexed
+   * by ordinal (gateway halves count as cables). Counted during publication, so this is constant
+   * work; children behind gateways are not included.
+   */
+  public int[] roleCounts(Scope origin) {
+    checkThread();
+    requireScope(origin);
+    return publication.entries().get(origin.node()).segment().roles.clone();
   }
 
   /** Sorted local labels from the published segment; no inherited or child interfaces. */
@@ -580,6 +595,7 @@ public final class NetworkTopology {
               ? new Scope(region, capturedGeneration, component.root, segment.id(), node.id())
               : null;
       entries.put(node.id(), new Entry(new Membership(status, scope), segment));
+      segment.roles[node.role().ordinal()]++;
       if (scope != null && node.role() == Role.INTERFACE && !node.label().isEmpty())
         segment
             .machines

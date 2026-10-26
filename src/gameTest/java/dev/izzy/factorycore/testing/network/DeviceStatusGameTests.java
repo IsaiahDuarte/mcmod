@@ -40,9 +40,14 @@ public final class DeviceStatusGameTests {
         .thenExecute(
             () -> {
               h.useBlock(ROOT, player);
+              // H10: plain use opens the network overview; its Access… button opens Access.
               h.assertTrue(
-                  player.containerMenu instanceof NetworkAccessMenu,
-                  "Plain use on a controller opens Network Access instead of printing status");
+                  player.containerMenu
+                          instanceof dev.izzy.factorycore.platform.network.OverviewMenu overview
+                      && overview.clickMenuButton(
+                          player, dev.izzy.factorycore.platform.network.OverviewMenu.ACCESS_BUTTON)
+                      && player.containerMenu instanceof NetworkAccessMenu,
+                  "Plain use on a controller opens the overview, whose Access… opens Access");
               var access = (NetworkAccessMenu) player.containerMenu;
               access.broadcastChanges();
               h.assertTrue(
