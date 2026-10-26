@@ -366,7 +366,8 @@ every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage
 ```
 
 Programs find machines by label. To label one, run a cable to it and use the
-[Label Tool](#label-tool) on the machine.
+[Label Tool](#label-tool) on the machine. The **Auto smelter** template runs every furnace
+labelled "furnace": raw ores in the top, coal kept at 8 on the side, ingots out the bottom.
 
 - **Editing:** type a program, then **Save draft** and **Check** (errors show as
   line:column). **Deploy** runs it with your permissions. **Pause/Resume** and

@@ -19,7 +19,7 @@ import net.neoforged.neoforge.registries.DeferredItem;
  */
 public final class GuideContent {
   /** Page count; page {@code n} text is the {@code guide.factorycore.page.n} lang key. */
-  public static final int PAGES = 16;
+  public static final int PAGES = 17;
 
   private static final String GIVEN = FactoryCoreMod.MOD_ID + ":guide_given";
   public static final DeferredItem<GuideItem> GUIDE =
@@ -37,11 +37,13 @@ public final class GuideContent {
           List.of("factorycore:storage_terminal"),
           List.of("factorycore:interface", "minecraft:hopper"),
           List.of("factorycore:expansion_module", "factorycore:advanced_module"),
-          List.of("factorycore:interface"),
+          List.of("factorycore:importer", "factorycore:exporter"),
+          // H11: the auto smelter (Exporter on top and side, Importer below).
+          List.of("factorycore:exporter", "minecraft:furnace", "factorycore:importer"),
           List.of("factorycore:fuel_generator", "factorycore:starter_energy_bank"),
           List.of("factorycore:crafter", "factorycore:blank_pattern"),
           List.of("factorycore:crafter", "factorycore:processing_pattern"),
-          List.of("factorycore:program_controller"),
+          List.of("factorycore:program_controller", "factorycore:label_tool"),
           List.of("factorycore:gateway"),
           List.of("factorycore:wireless_access_point", "factorycore:wireless_terminal"),
           List.of("factorycore:wireless_link", "factorycore:gateway"),

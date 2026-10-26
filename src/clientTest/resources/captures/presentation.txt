@@ -106,3 +106,4 @@ cable-port-scale-1.png
 cable-port-scale-4.png
 overview-scale-1.png
 overview-scale-4.png
+guide-smelting.png

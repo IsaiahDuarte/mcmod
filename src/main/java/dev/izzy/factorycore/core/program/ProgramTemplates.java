@@ -87,6 +87,25 @@ public final class ProgramTemplates {
               }
               """),
           new Template(
+              "Auto smelter",
+              """
+              # Run a cable to each furnace and label it "furnace" with the Label Tool.
+              # Ores go in the top, coal is kept at 8 on the side, ingots come out the bottom.
+              every 20 ticks as "ores" {
+                  move item("minecraft:raw_*") except item("minecraft:raw_*_block") from storage to machines("furnace") side up limit 8
+              }
+              every 20 ticks as "fuel" {
+                  for f in machines("furnace") {
+                      if f has < 8 of item("minecraft:coal") {
+                          move item("minecraft:coal") from storage to f side north limit 8
+                      }
+                  }
+              }
+              every 20 ticks as "ingots" {
+                  move everything from machines("furnace") side down to storage limit 64
+              }
+              """),
+          new Template(
               "Empty containers",
               """
               # Move everything out of each container labeled "unload" into storage, except dirt.

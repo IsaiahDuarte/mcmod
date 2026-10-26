@@ -146,7 +146,7 @@ before Machine-mode ports go away.
   problems with what to do ("No storage — place a Drive with a cell", "Two controllers —
   break one"). Cables show a small port where they touch a machine.
 
-- [ ] **H11 — Auto smelter in one step (K7).** Size M.
+- [x] **H11 — Auto smelter in one step (K7).** Done 2026-10-26 (commit subject `H11:`). [Evidence](evidence/playtest-h11-auto-smelter-2026-10-26.md). The GameTest smelts 2 raw iron rather than 64, to keep the run short; the build is the same.
   The guide's first pages become a build checklist with pictures: Controller → cable →
   Drive + cell → Terminal → Importer/Exporter. Add an **Auto smelting** page: furnace,
   Exporter on top (filter `#c:raw_materials` or the player's choice), Exporter on the side

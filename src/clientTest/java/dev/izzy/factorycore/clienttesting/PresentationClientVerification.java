@@ -2118,12 +2118,22 @@ public final class PresentationClientVerification {
         });
     step(client -> client.screen instanceof BookViewScreen);
     for (int page = 1; page < GuideContent.PAGES; page++) {
+      int shown = page;
       step(
           client -> {
             check(client.screen instanceof BookViewScreen, "Guide closed while paging");
             client.screen.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
             return true;
           });
+      // H11: the auto smelting page (7), with its Exporter, furnace and Importer pictures.
+      if (shown == 7) {
+        step(client -> waited() > 4);
+        step(
+            client -> {
+              captures.grab(client, "guide-smelting.png");
+              return true;
+            });
+      }
     }
     scales("guide-throughput", BookViewScreen.class, false);
     // Reopen at its first page to retain the original guide captures.

@@ -215,4 +215,56 @@ public final class CablePortGameTests {
             })
         .thenSucceed();
   }
+
+  /** H11: the "Auto smelter" template, run as written, smelts through a labelled cable port. */
+  @GameTest(template = "empty", timeoutTicks = 1200)
+  public static void theAutoSmelterTemplateSmeltsThroughALabelledFurnace(GameTestHelper h) {
+    var f = setup(h);
+    f.tool.set(
+        LabelToolContent.DATA.get(), new LabelToolContent.Data("furnace", new CompoundTag()));
+    var actor = new NetworkPermissions.Actor(f.player.getUUID(), false);
+    var cell = f.net.cell(DRIVE, 0);
+    var source =
+        dev.izzy.factorycore.core.program.ProgramTemplates.ALL.stream()
+            .filter(template -> template.name().equals("Auto smelter"))
+            .findFirst()
+            .orElseThrow()
+            .source();
+    h.startSequence()
+        .thenWaitUntil(() -> f.net.assertValid(CABLE, CONTROLLER))
+        .thenExecute(() -> labelMachine(h, f))
+        .thenWaitUntil(() -> h.assertTrue(port(h).label().equals("furnace"), "Labelled"))
+        .thenWaitUntil(() -> f.net.assertValid(CABLE, CONTROLLER))
+        .thenExecute(
+            () -> {
+              var registry = f.net.saved().registry();
+              registry.insert(cell, f.net.key(Items.RAW_IRON), 2);
+              registry.insert(cell, f.net.key(Items.RAW_IRON_BLOCK), 1);
+              registry.insert(cell, f.net.key(Items.COAL), 16);
+              ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
+              controller.energyStorage().receiveEnergy(100_000, false);
+              controller.draft(source);
+              var diagnostics =
+                  WorldPrograms.get(h.getLevel().getServer()).deploy(actor, controller);
+              h.assertTrue(diagnostics.isEmpty(), "Template deploys: " + diagnostics);
+            })
+        .thenWaitUntil(
+            () -> {
+              var registry = f.net.saved().registry();
+              h.assertTrue(
+                  registry.stock(cell, f.net.key(Items.IRON_INGOT)).total() == 2,
+                  "Both raw iron came back as ingots");
+              FurnaceBlockEntity furnace = h.getBlockEntity(MACHINE);
+              h.assertTrue(
+                  registry.stock(cell, f.net.key(Items.RAW_IRON_BLOCK)).total() == 1
+                      && furnace.getItem(0).isEmpty(),
+                  "A raw ore block is never sent to the furnace");
+              long coal = registry.stock(cell, f.net.key(Items.COAL)).total();
+              h.assertTrue(
+                  coal + furnace.getItem(1).getCount() == 15,
+                  "Coal is kept on the side and one was burned: " + coal);
+              end(f);
+            })
+        .thenSucceed();
+  }
 }
