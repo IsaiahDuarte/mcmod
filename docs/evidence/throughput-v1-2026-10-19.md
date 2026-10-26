@@ -75,6 +75,10 @@ border inside the framebuffer. Final rerun status follows below.
 | Throughput | 8 | 128 | 9 (1 + 8 × 8) |
 | Overdrive | 32 | 512 | 3 (1 + 32 + 31) |
 
+Parallel Crafters (E3): a 128-plank job (32 crafts) took **32 runs on one Crafter and 17 on
+two** holding copies of the same pattern (1 run at the old batch, then 16 × 2), measured
+side by side in `CrafterSpeedGameTests.twoCraftersFinishA128PlankJobInAboutHalfTheRuns`.
+
 The first run after an upgrade is paid at the previous batch, so it makes one craft. 32 is
 the cap because 32 × 16 credits equals the scheduler's per-task maximum (512), so
 crafting speed is bought only with credits, never with fairness (R11). Processing patterns

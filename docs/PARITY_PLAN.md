@@ -541,11 +541,16 @@ to identical IR (a fixture test pins this).
   tier is 32, not the example 64, because 32 × 16 credits is the scheduler's per-task cap,
   and processing stays one craft per dispatch (ADR 0054 amendment).
 
-- [ ] **E3 — Parallel Crafters.** Size M.
+- [x] **E3 — Parallel Crafters.** Size M.
   First measure whether two Crafters holding the same pattern already split one job. If
   not, let the planner split a step's crafts across every Crafter offering that pattern.
   Done when: GameTest shows two Crafters finishing a 128-plank job in about half the
   dispatches of one.
+  Evidence (2026-10-25): measured first. The index kept only the first holder of a
+  duplicated pattern, so nothing split. After the change,
+  `CrafterSpeedGameTests.twoCraftersFinishA128PlankJobInAboutHalfTheRuns` takes 32 runs on
+  one Crafter and 17 on two, side by side, with 128 planks each. Processing patterns are
+  not split (ADR 0054 amendment).
 
 ## Wave V — verification
 

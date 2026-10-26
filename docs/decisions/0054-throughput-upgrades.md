@@ -141,3 +141,13 @@ Crafter (`FactoryCoreThroughput`; absent means Base), and breaking the Crafter d
 installed items. Processing patterns are unchanged (one craft per dispatch, one machine
 lease); parallel Crafters are E3.
 
+### Parallel Crafters (parity E3)
+
+Measured first: the crafting index kept only the first holder of a duplicated pattern ID, so
+a second Crafter holding a copy sat idle and a job never split. Now a crafting-table offer
+lists the other loaded holders of the same pattern (same ID and contents, same segment
+publication; at most 32). A run's batch is the sum of their batches, capped and paid as
+above, and crafts rotate across them, each checked as current and using its own location
+for movement permits. Processing patterns still run one dispatch per job (one machine
+lease). Different patterns for the same output are still chosen by priority, not split.
+

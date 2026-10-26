@@ -29,6 +29,10 @@ import net.minecraft.server.MinecraftServer;
 public final class WorldCrafting {
   public static final int MAX_UNITS = 1_024;
   public static final int MAX_PATTERNS = 4_096;
+
+  /** Holders one crafting-table offer spreads its crafts across (E3). */
+  public static final int MAX_PARALLEL = 32;
+
   private static final ServerScoped<WorldCrafting> SERVERS = ServerScoped.of(WorldCrafting::new);
 
   /**
@@ -42,7 +46,24 @@ public final class WorldCrafting {
       ProcessingContents processing,
       PatternHolderEntity unit,
       int slot,
-      boolean published) {}
+      boolean published,
+      List<PatternHolderEntity> also) {
+    /**
+     * E3: {@code also} lists other loaded holders in the segment offering the same crafting-table
+     * pattern (same ID and contents), in stable order; jobs spread crafts across all of them.
+     */
+    public Offer {
+      also = List.copyOf(also);
+    }
+
+    /** Every holder that can run this offer's crafting-table crafts, the first one first. */
+    public List<PatternHolderEntity> holders() {
+      var all = new ArrayList<PatternHolderEntity>(1 + also.size());
+      all.add(unit);
+      all.addAll(also);
+      return all;
+    }
+  }
 
   /** Patterns visible to one segment, keyed by output. Overflow beyond the bounds is reported. */
   public record Index(Map<ResourceKey, List<Offer>> byOutput, boolean truncated) {
@@ -128,6 +149,8 @@ public final class WorldCrafting {
             .thenComparingLong(unit -> unit.origin().block()));
     var byOutput = new LinkedHashMap<ResourceKey, List<Offer>>();
     var seen = new HashMap<UUID, Boolean>();
+    var first = new HashMap<UUID, Offer>();
+    var extra = new HashMap<UUID, List<PatternHolderEntity>>();
     int count = 0;
     boolean truncated = overflow;
     for (var unit : members)
@@ -136,7 +159,21 @@ public final class WorldCrafting {
         var contents = stack.get(CraftingContent.PATTERN.get());
         var processing = stack.get(CraftingContent.PROCESSING.get());
         UUID id = contents != null ? contents.id() : processing != null ? processing.id() : null;
-        if (id == null || seen.putIfAbsent(id, true) != null) continue;
+        if (id == null) continue;
+        if (seen.putIfAbsent(id, true) != null) {
+          // E3: another holder of the same crafting-table pattern can share its crafts.
+          var earlier = first.get(id);
+          if (contents != null
+              && earlier != null
+              && earlier.contents() != null
+              && earlier.contents().equals(contents)
+              && earlier.unit() != unit
+              && !published.contains(unit) == !earlier.published()) {
+            var list = extra.computeIfAbsent(id, key -> new ArrayList<>());
+            if (!list.contains(unit) && list.size() < MAX_PARALLEL - 1) list.add(unit);
+          }
+          continue;
+        }
         if (count == MAX_PATTERNS) {
           truncated = true;
           continue;
@@ -147,11 +184,29 @@ public final class WorldCrafting {
         } catch (IllegalArgumentException unsupported) {
           continue;
         }
-        byOutput
-            .computeIfAbsent(pattern.output(), key -> new ArrayList<>())
-            .add(new Offer(pattern, contents, processing, unit, slot, published.contains(unit)));
+        var offer =
+            new Offer(
+                pattern, contents, processing, unit, slot, published.contains(unit), List.of());
+        first.put(id, offer);
+        byOutput.computeIfAbsent(pattern.output(), key -> new ArrayList<>()).add(offer);
         count++;
       }
+    if (!extra.isEmpty())
+      for (var offers : byOutput.values())
+        offers.replaceAll(
+            offer -> {
+              var more = extra.get(offer.pattern().id());
+              return more == null
+                  ? offer
+                  : new Offer(
+                      offer.pattern(),
+                      offer.contents(),
+                      offer.processing(),
+                      offer.unit(),
+                      offer.slot(),
+                      offer.published(),
+                      more);
+            });
     return new Index(byOutput, truncated);
   }
 }

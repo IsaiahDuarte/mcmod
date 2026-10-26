@@ -443,6 +443,15 @@ public final class WorldCraftingJobs {
   /** Crafts each job's latest run made (runtime diagnostics for E2 measurements). */
   private final Map<UUID, Integer> lastRun = new HashMap<>();
 
+  /** Scheduled runs each job has made so far (runtime diagnostics for E3 measurements). */
+  private final Map<UUID, Integer> runs = new HashMap<>();
+
+  /** How many scheduled runs {@code job} has made, or 0 before its first. */
+  public int runs(UUID job) {
+    checkThread();
+    return runs.getOrDefault(job, 0);
+  }
+
   /** How many crafts {@code job}'s latest scheduled run made, or 0 before its first. */
   public int lastRunCrafts(UUID job) {
     checkThread();
@@ -474,6 +483,7 @@ public final class WorldCraftingJobs {
         retryAt.remove(id);
         batches.remove(id);
         lastRun.remove(id);
+        runs.remove(id);
         recipes.remove(id);
         notice(job, cancelling);
       }
@@ -484,12 +494,14 @@ public final class WorldCraftingJobs {
     int batch = batch(job);
     batches.put(id, batch);
     long before = job.craftsDone();
-    String why = craft(job);
-    // E2: a faster Crafter makes more crafting-table crafts in the same run, never more than paid.
+    String why = craft(job, 0);
+    // E2/E3: faster or parallel Crafters make more crafting-table crafts in the same run, never
+    // more than paid; crafts rotate across the Crafters holding the pattern.
     for (int extra = 1;
         why == null && extra < Math.min(batch, paid) && job.state() == CraftingJob.State.RUNNING;
-        extra++) why = craft(job);
+        extra++) why = craft(job, extra);
     lastRun.put(id, (int) (job.craftsDone() - before));
+    runs.merge(id, 1, Integer::sum);
     if (why == null) job.resume();
     else {
       job.waiting(why);
@@ -653,14 +665,20 @@ public final class WorldCraftingJobs {
         WorldCrafting.get(server)
             .index(networks().membership(anchor).scope())
             .offer(job.steps().get(index).pattern());
-    return offer == null
-            || offer.processing() != null
-            || !(offer.unit() instanceof CrafterEntity crafter)
-        ? 1
-        : CrafterEntity.batch(crafter.tier());
+    if (offer == null || offer.processing() != null) return 1;
+    // E3: every Crafter holding this pattern adds its batch, still within the per-task cap.
+    int total = 0;
+    for (var holder : offer.holders())
+      if (holder instanceof CrafterEntity crafter && crafter.current())
+        total += CrafterEntity.batch(crafter.tier());
+    return Math.max(
+        1,
+        Math.min(
+            total, CrafterEntity.batch(dev.izzy.factorycore.core.resource.ThroughputTier.ENDGAME)));
   }
 
-  private String craft(CraftingJob job) {
+  /** Runs one craft of the current step; {@code turn} picks which holder of the pattern runs it. */
+  private String craft(CraftingJob job, int turn) {
     int index = job.current();
     if (index < 0) return null;
     var step = job.steps().get(index);
@@ -670,8 +688,22 @@ public final class WorldCraftingJobs {
     if (!networks().allows(actor, scopeAnchor, NetworkPermissions.Permission.CRAFT))
       return "denied";
     var crafting = WorldCrafting.get(server).index(networks().membership(scopeAnchor).scope());
-    var offer = crafting.offer(step.pattern());
-    if (offer == null || offer.pattern().version() != step.version()) return "pattern_missing";
+    var indexed = crafting.offer(step.pattern());
+    if (indexed == null || indexed.pattern().version() != step.version()) return "pattern_missing";
+    var offer = indexed;
+    if (indexed.processing() == null && !indexed.also().isEmpty()) {
+      var holders = indexed.holders();
+      var holder = holders.get(Math.floorMod(turn, holders.size()));
+      offer =
+          new WorldCrafting.Offer(
+              indexed.pattern(),
+              indexed.contents(),
+              null,
+              holder,
+              indexed.slot(),
+              indexed.published(),
+              List.of());
+    }
     if (offer.processing() != null) return process(job, offer);
     // E1: a substituting input draws this craft's units from the step's own remaining allocation,
     // in its (registry ID) order, never from units planned for another step.

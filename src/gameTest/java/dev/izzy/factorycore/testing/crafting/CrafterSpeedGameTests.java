@@ -171,4 +171,97 @@ public final class CrafterSpeedGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * A network at x offset {@code dx} whose {@code crafters} Crafters hold copies of one pattern.
+   */
+  private record Line(
+      NetworkPermissions.Actor owner,
+      dev.izzy.factorycore.core.storage.DeviceRegistry.Handle cell,
+      dev.izzy.factorycore.core.network.NodeRegistry.Position origin) {}
+
+  private static Line line(GameTestHelper h, int dx, int crafters, ItemStack pattern) {
+    var owner = new NetworkPermissions.Actor(UUID.randomUUID(), false);
+    Net.in(h, owner.id()).controller(new BlockPos(1 + dx, 1, 1));
+    var drive = Net.in(h).drive(new BlockPos(2 + dx, 1, 1), CellTier.STARTER_ITEM);
+    for (int index = 0; index < crafters; index++) {
+      var at = new BlockPos(1 + dx, 1, 2 + index);
+      h.setBlock(at, CraftingContent.CRAFTER.get());
+      CrafterEntity unit = h.getBlockEntity(at);
+      unit.patterns().insertItem(0, pattern.copy(), false);
+    }
+    return new Line(
+        owner,
+        CellHandleData.read(drive.cell(0)),
+        Positions.of(h.getLevel(), h.absolutePos(new BlockPos(1 + dx, 1, 2))));
+  }
+
+  /**
+   * E3: a 128-plank job (32 crafts) on two Crafters holding copies of one pattern takes about half
+   * the scheduled runs it takes on one Crafter, beside it in the same test.
+   */
+  @GameTest(template = "empty", timeoutTicks = 800)
+  public static void twoCraftersFinishA128PlankJobInAboutHalfTheRuns(GameTestHelper h) {
+    var cells = new ArrayList<ItemStack>(Collections.nCopies(9, ItemStack.EMPTY));
+    cells.set(0, new ItemStack(Items.OAK_LOG));
+    var pattern = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
+    pattern.set(
+        CraftingContent.PATTERN.get(),
+        new PatternContents(
+            UUID.randomUUID(), 1, 0, cells, new ItemStack(Items.OAK_PLANKS, 4), List.of()));
+    var one = line(h, 0, 1, pattern);
+    var two = line(h, 3, 2, pattern);
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var log = codec.itemKey(new ItemStack(Items.OAK_LOG));
+    var planks = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
+    var jobs = WorldCraftingJobs.get(h.getLevel().getServer());
+    var networks = WorldNetworks.get(h.getLevel().getServer());
+    UUID[] ids = {null, null};
+    int[] runs = {0, 0};
+    var lines = List.of(one, two);
+    h.startSequence()
+        .thenWaitUntil(
+            () -> {
+              for (var line : lines)
+                h.assertTrue(
+                    networks.membership(line.origin()).status() == NetworkTopology.Status.VALID
+                        && saved.registry().stock(line.cell(), log).loaded(),
+                    "Networks ready");
+            })
+        .thenExecute(
+            () -> {
+              for (int index = 0; index < 2; index++) {
+                var line = lines.get(index);
+                saved.registry().insert(line.cell(), log, 32);
+                var submission = jobs.submit(line.owner(), line.origin(), planks, 128);
+                h.assertTrue(submission.job() != null, "Submitted: " + submission.reason());
+                ids[index] = submission.job();
+              }
+            })
+        .thenWaitUntil(
+            () -> {
+              for (int index = 0; index < 2; index++)
+                if (saved.craftingJobs().get(ids[index]) != null)
+                  runs[index] = Math.max(runs[index], jobs.runs(ids[index]));
+              h.assertTrue(
+                  saved.craftingJobs().get(ids[0]) == null
+                      && saved.craftingJobs().get(ids[1]) == null,
+                  "Both jobs finish");
+            })
+        .thenExecute(
+            () -> {
+              for (var line : lines)
+                h.assertTrue(
+                    saved.registry().stock(line.cell(), planks).total() == 128
+                        && saved.registry().stock(line.cell(), log).total() == 0,
+                    "128 planks from 32 logs on each line");
+              com.mojang.logging.LogUtils.getLogger()
+                  .info("E3 parallel Crafters: one took {} runs, two took {}", runs[0], runs[1]);
+              h.assertTrue(
+                  runs[0] >= 31 && runs[1] <= runs[0] / 2 + 2,
+                  "One Crafter took " + runs[0] + " runs, two took " + runs[1]);
+            })
+        .thenSucceed();
+  }
 }
