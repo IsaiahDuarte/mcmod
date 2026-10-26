@@ -302,7 +302,11 @@ New gates:
 
 ## Wave K — code health (lane K)
 
-- [ ] **Q52 — Keep-stock never doubles a job (M50).** Size S. Bug fix; do first.
+- [x] **Q52 — Keep-stock never doubles a job (M50).** Size S. Done 2026-10-26 (commit subject
+  `Q52:`). `KeepStockGameTests.keepTurnedOffAndOnMidJobStartsNoSecondJob` and
+  `keepAmountChangedMidJobStartsNoSecondJob` failed before the fix with 128 and 144 sticks (two
+  jobs) and pass after it with 64 and 80; `KeepStockRuleTest` checks a replacement keeps the
+  first rule's ID; ADR 0034 states the dedup key. All 416 GameTests pass.
   Replacing a rule for the same owner, network, subnetwork and resource keeps its ID, and
   `evaluate` also treats a job as in flight when it matches the rule's owner, network,
   subnetwork and resource, so an older job still counts after Keep is turned off and on.

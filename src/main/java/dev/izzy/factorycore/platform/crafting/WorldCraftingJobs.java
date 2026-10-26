@@ -337,14 +337,17 @@ public final class WorldCraftingJobs {
     return ruleStatus.getOrDefault(rule, "");
   }
 
-  /** Evaluates one rule: start a job for its deficit unless one of its jobs is in flight. */
+  /**
+   * Evaluates one rule: start a job for its deficit unless a job for its target is in flight. The
+   * target match also covers a job left by an earlier rule that was removed and set again.
+   */
   void evaluate(UUID id) {
     checkThread();
     var jobs = saved().craftingJobs();
     var rule = jobs.rules().stream().filter(r -> r.id().equals(id)).findFirst().orElse(null);
     if (rule == null) return;
     for (var job : jobs.all())
-      if (id.equals(job.rule())) {
+      if (id.equals(job.rule()) || rule.targets(job)) {
         ruleStatus.put(id, "in_flight");
         return;
       }

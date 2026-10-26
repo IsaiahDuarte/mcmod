@@ -40,13 +40,16 @@ class KeepStockRuleTest {
     int[] dirty = {0};
     var jobs = new CraftingJobs(List.of(), List.of(), () -> dirty[0]++);
     var principal = new UUID(0, 5);
-    assertNull(jobs.setRule(rule(principal, STICK, 8, 8)));
-    var replacement = rule(principal, STICK, 32, 64);
-    assertNull(jobs.setRule(replacement));
+    var first = rule(principal, STICK, 8, 8);
+    assertNull(jobs.setRule(first));
+    assertNull(jobs.setRule(rule(principal, STICK, 32, 64)));
+    var replacement =
+        new KeepStockRule(
+            first.id(), principal, first.network(), first.segment(), ORIGIN, STICK, 32, 64);
     assertEquals(
         List.of(replacement),
         jobs.rules(),
-        "Same principal/segment/key replaces, never duplicates");
+        "Same principal/segment/key replaces under the first rule's ID, never duplicates");
     for (int i = 1; i < CraftingJobs.MAX_RULES_PER_PRINCIPAL; i++)
       assertNull(
           jobs.setRule(

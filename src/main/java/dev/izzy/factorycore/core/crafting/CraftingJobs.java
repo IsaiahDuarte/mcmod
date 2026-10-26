@@ -94,15 +94,19 @@ public final class CraftingJobs {
     dirty.run();
   }
 
-  /** Adds or replaces the principal's rule for the same network, segment and key. */
+  /**
+   * Adds or replaces the principal's rule for the same network, segment and key. A replacement
+   * keeps the existing rule's ID, so jobs it started still count as its own.
+   */
   public String setRule(KeepStockRule rule) {
     checkThread();
     var existing = ruleFor(rule.principal(), rule.network(), rule.segment(), rule.key());
-    if (existing != null) rules.remove(existing.id());
-    else if (rules.size() >= MAX_RULES) return "rule_limit";
-    else if (rules().stream().filter(r -> r.principal().equals(rule.principal())).count()
-        >= MAX_RULES_PER_PRINCIPAL) return "principal_rule_limit";
-    rules.put(rule.id(), rule);
+    if (existing == null && rules.size() >= MAX_RULES) return "rule_limit";
+    if (existing == null
+        && rules().stream().filter(r -> r.principal().equals(rule.principal())).count()
+            >= MAX_RULES_PER_PRINCIPAL) return "principal_rule_limit";
+    var stored = existing == null ? rule : rule.withId(existing.id());
+    rules.put(stored.id(), stored);
     dirty.run();
     return null;
   }

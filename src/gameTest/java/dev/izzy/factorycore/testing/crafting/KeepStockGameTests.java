@@ -138,6 +138,61 @@ public final class KeepStockGameTests {
         .thenSucceed();
   }
 
+  /**
+   * M50 regression: setting Keep again mid-job used to make a new rule ID, so evaluation no longer
+   * saw the running job as in flight and started a second one. Enough logs for both are stored so
+   * the duplicate would run and overshoot.
+   */
+  private static void toggledMidJob(GameTestHelper h, long high, boolean offFirst) {
+    var f = setup(h);
+    var actor = new NetworkPermissions.Actor(f.owner, false);
+    int[] maxInFlight = {0};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.log, 20);
+              h.assertTrue(jobs(h).keep(actor, f.origin, f.stick, 64, 64).isEmpty(), "Rule set");
+            })
+        .thenWaitUntil(() -> h.assertTrue(jobs(h).jobs(f.owner).size() == 1, "Job started"))
+        .thenExecute(
+            () -> {
+              if (offFirst) {
+                var rule = jobs(h).rule(actor, f.origin, f.stick);
+                h.assertTrue(rule != null && jobs(h).unkeep(actor, rule.id()), "Keep off");
+              }
+              h.assertTrue(
+                  jobs(h).keep(actor, f.origin, f.stick, high, high).isEmpty(), "Keep set again");
+            })
+        .thenWaitUntil(
+            () -> {
+              maxInFlight[0] = Math.max(maxInFlight[0], jobs(h).jobs(f.owner).size());
+              h.assertTrue(
+                  f.stock(f.stick) == high && jobs(h).jobs(f.owner).isEmpty(),
+                  "Filled to " + high + ", found " + f.stock(f.stick) + " sticks");
+            })
+        .thenIdle(WorldCraftingJobs.RULE_TICKS + 20)
+        .thenExecute(
+            () -> {
+              h.assertTrue(maxInFlight[0] == 1, "One job at a time, saw " + maxInFlight[0]);
+              h.assertTrue(
+                  f.stock(f.stick) == high && jobs(h).jobs(f.owner).isEmpty(),
+                  "No overshoot past " + high + ", found " + f.stock(f.stick));
+              h.assertTrue(f.stock(f.log) == 20 - high / 8, "Logs used only for the target");
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 2400)
+  public static void keepTurnedOffAndOnMidJobStartsNoSecondJob(GameTestHelper h) {
+    toggledMidJob(h, 64, true);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 2400)
+  public static void keepAmountChangedMidJobStartsNoSecondJob(GameTestHelper h) {
+    toggledMidJob(h, 80, false);
+  }
+
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void ruleOfARevokedPrincipalStartsNothing(GameTestHelper h) {
     var f = setup(h);
