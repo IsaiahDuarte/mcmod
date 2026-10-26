@@ -379,7 +379,15 @@ New gates:
   Done when: the transfer and route GameTests pass and a unit test covers an unknown item and an
   unknown fluid.
 
-- [ ] **Q58 — Small consistency fixes (M57).** Size S.
+- [x] **Q58 — Small consistency fixes (M57).** Size S. Done 2026-10-26 (commit subject
+  `Q58:`). Clearing in `removed()` alone would not have fixed it: the recipe viewer replaces the
+  terminal screen before the request is made. The request now belongs to its terminal menu
+  object (`ViewerRequests`, held weakly), and `removed()` drops it only when the terminal
+  itself closes; `ViewerRequestsTest` covers a request left pending not reaching a later
+  terminal. The Label Tool handler runs like `MenuPayloads`; `FairScheduler.Admission` is
+  imported; items open screens through `platform.ClientScreens`, installed by the client, and
+  ArchUnit now forbids common code from naming `platform.client`. `runJeiClient`,
+  `runPresentationClient`, `runTerminalClient` and the dedicated-server suites pass.
   Clear `viewerRequest` in `removed()`; make the Label Tool handler match `MenuPayloads`; import
   `FairScheduler.Admission`; open the Guide and Label Tool screens through a client-only class.
   Done when: a client test (or `runJeiClient` step) shows a JEI request not carried into a later

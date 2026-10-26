@@ -13,6 +13,7 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.WirelessBudget;
+import dev.izzy.factorycore.core.scheduling.FairScheduler;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.ServerScoped;
@@ -437,8 +438,8 @@ public final class WorldCraftingJobs {
       var admission =
           scheduler.submit(
               job.network(), job.principal(), key, TASK_COST * paid, () -> run(id, paid));
-      if (admission != dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.ACCEPTED
-          && admission != dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.REPLACED
+      if (admission != FairScheduler.Admission.ACCEPTED
+          && admission != FairScheduler.Admission.REPLACED
           && paid > 1) batches.put(id, 1);
     }
     var rules = saved().craftingJobs().rules();

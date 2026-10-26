@@ -33,7 +33,8 @@ class ArchitectureTest {
         .resideOutsideOfPackage("..platform.client..")
         .should()
         .dependOnClassesThat()
-        .resideInAnyPackage("net.minecraft.client..", "net.neoforged.neoforge.client..")
+        .resideInAnyPackage(
+            "net.minecraft.client..", "net.neoforged.neoforge.client..", "..platform.client..")
         .allowEmptyShould(false)
         .check(classes);
     noClasses()

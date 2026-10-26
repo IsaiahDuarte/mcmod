@@ -72,13 +72,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   /** A3: the "Show craftable" toggle. */
   private Button craftablesButton;
 
-  /**
-   * A5: a recipe viewer asked to request this item in terminal menu {@code viewerMenu}; the
-   * terminal screen picks it up when it is shown again. Client thread only.
-   */
-  private static int viewerMenu = -1;
-
-  private static String viewerRequest;
+  /** A5: a recipe viewer's request, picked up when its own terminal is shown again. */
+  private static final ViewerRequests VIEWER = new ViewerRequests();
 
   private final List<TabButton> tabs = new ArrayList<>();
   private int clock, lastCommand = -20, searchDelay;
@@ -100,9 +95,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /** Called by an optional recipe-viewer integration after it sent the request packet. */
-  public static void requestFromViewer(int menu, String itemId) {
-    viewerMenu = menu;
-    viewerRequest = itemId;
+  public static void requestFromViewer(TerminalMenu menu, String itemId) {
+    VIEWER.offer(menu, itemId);
   }
 
   public int columns() {
@@ -463,14 +457,22 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     storage.tickActions();
     crafting.tick();
     jobs.tickOffset();
-    if (viewerRequest != null && viewerMenu == menu.containerId) {
-      var request = viewerRequest;
-      viewerRequest = null;
-      showJobs(request);
-    }
+    var request = VIEWER.take(menu);
+    if (request != null) showJobs(request);
     jobs.tick(jobsMode);
     storage.tickVisibility(jobsMode);
     jobs.tickButtons(jobsMode);
+  }
+
+  /**
+   * Opening the recipe viewer also removes this screen, while the menu stays open; a request is
+   * dropped only when the terminal itself closes.
+   */
+  @Override
+  public void removed() {
+    super.removed();
+    if (minecraft == null || minecraft.player == null || minecraft.player.containerMenu != menu)
+      VIEWER.drop(menu);
   }
 
   // ---------------------------------------------------------------- drawing

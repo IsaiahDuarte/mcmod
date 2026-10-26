@@ -5,8 +5,8 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.ClientScreens;
 import dev.izzy.factorycore.platform.ServerScoped;
-import dev.izzy.factorycore.platform.client.LabelToolScreen;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.signal.SignalInterfaceEntity;
 import java.util.HashMap;
@@ -64,8 +64,8 @@ public final class LabelToolItem extends Item {
   @Override
   public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
     var stack = player.getItemInHand(hand);
-    // The client class is only resolved on the client branch.
-    if (level.isClientSide()) LabelToolScreen.open(hand, data(stack).label(), data(stack).copied());
+    if (level.isClientSide())
+      ClientScreens.opener().labelTool(hand, data(stack).label(), data(stack).copied());
     return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
   }
 

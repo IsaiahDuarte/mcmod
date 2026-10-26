@@ -34,7 +34,7 @@ public final class JeiRequests {
             1,
             id,
             new byte[32]));
-    TerminalScreen.requestFromViewer(menu.containerId, id);
+    TerminalScreen.requestFromViewer(menu, id);
     return true;
   }
 }

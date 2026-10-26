@@ -106,11 +106,9 @@ public final class LabelToolContent {
                 .playToServer(
                     SetLabel.TYPE,
                     SetLabel.CODEC,
-                    (packet, context) ->
-                        context.enqueueWork(
-                            () -> {
-                              if (context.player() instanceof ServerPlayer player)
-                                handle(packet, player);
-                            })));
+                    // Handlers run on the server thread, as in MenuPayloads.
+                    (packet, context) -> {
+                      if (context.player() instanceof ServerPlayer player) handle(packet, player);
+                    }));
   }
 }
