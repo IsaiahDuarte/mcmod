@@ -5,9 +5,11 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.FactoryRegistries;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -85,7 +87,58 @@ public final class LabelToolContent {
     }
   }
 
+  /**
+   * Q9: the player used the tool on {@code pos} while holding the row key; label the whole row. The
+   * server checks the hand, the item and the player's reach as for a normal use.
+   */
+  public record LabelRow(boolean mainHand, BlockPos pos) implements CustomPacketPayload {
+    public static final Type<LabelRow> TYPE =
+        new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "label_tool_row"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, LabelRow> CODEC =
+        StreamCodec.composite(
+            ByteBufCodecs.BOOL,
+            LabelRow::mainHand,
+            BlockPos.STREAM_CODEC,
+            LabelRow::pos,
+            LabelRow::new);
+
+    @Override
+    public Type<LabelRow> type() {
+      return TYPE;
+    }
+  }
+
   private LabelToolContent() {}
+
+  private static void handle(LabelRow packet, ServerPlayer player) {
+    var stack =
+        player.getItemInHand(
+            packet.mainHand() ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND);
+    var pos = packet.pos();
+    if (!stack.is(ITEM.get())
+        || !player.serverLevel().isLoaded(pos)
+        || !player.canInteractWithBlock(pos, 1.0)) return;
+    if (stack.getOrDefault(DATA.get(), Data.EMPTY).label().isEmpty()) {
+      player.displayClientMessage(
+          Component.translatable("message.factorycore.label_tool.no_label"), true);
+      return;
+    }
+    LabelToolItem.RowResult result;
+    try {
+      result = LabelToolItem.labelRow(player, stack, pos);
+    } catch (IllegalArgumentException | IllegalStateException refused) {
+      result = null;
+    }
+    player.displayClientMessage(
+        result == null
+            ? Component.translatable("message.factorycore.label_tool.row_unsupported")
+            : Component.translatable(
+                "message.factorycore.label_tool." + (result.capped() ? "row_capped" : "row"),
+                result.labelled(),
+                result.refused(),
+                LabelToolItem.MAX_ROW),
+        true);
+  }
 
   private static void handle(SetLabel packet, ServerPlayer player) {
     var stack =
@@ -107,6 +160,12 @@ public final class LabelToolContent {
                     SetLabel.TYPE,
                     SetLabel.CODEC,
                     // Handlers run on the server thread, as in MenuPayloads.
+                    (packet, context) -> {
+                      if (context.player() instanceof ServerPlayer player) handle(packet, player);
+                    })
+                .playToServer(
+                    LabelRow.TYPE,
+                    LabelRow.CODEC,
                     (packet, context) -> {
                       if (context.player() instanceof ServerPlayer player) handle(packet, player);
                     }));

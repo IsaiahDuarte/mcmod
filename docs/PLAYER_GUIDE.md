@@ -508,6 +508,13 @@ applies.
   any of its sides. Using the tool on it again relabels it. Use the port with an empty hand to
   change its label or what programs move through it (items, fluids or energy). Breaking an idle
   port gives the cable back.
+- **Label a whole row:** hold **Left Alt** (rebind it under Controls → Factory Core) while
+  using the tool on a machine. Every machine of the same kind that touches the same cable run
+  gets the label, up to 64, nearest first; a chest beside a row of furnaces is left alone. The
+  message says how many were labelled and how many were not (for example a machine whose only
+  cable already serves another machine, or one on a network where you lack Edit). New ports take
+  their label one after another while the network rebuilds, so a long row fills in over a few
+  seconds.
 - **Label a Signal Interface:** use it on a Signal Interface to give it the label.
 - **Copy:** sneak and use it on a cable port, Importer, Exporter or Storage Interface to copy
   its settings

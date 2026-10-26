@@ -74,3 +74,22 @@ A machine is reached through a **cable port**: the network cable touching it, tu
     place;
   - a program pulling a furnace's output through the port with `side down` (fuel untouched);
   - breaking an idle port leaving one plain cable and retiring the lease.
+
+## Amendment — row labelling (2026-10-26, ergonomics plan Q9)
+
+Holding the **Label row** key (default Left Alt, the mod's first key mapping) while using the
+Label Tool on a machine sends one bounded packet instead of a normal use. The server checks the
+hand, the item and reach, then walks the cable run from the machine: network cables and cable
+ports only, through wired faces, at most 2,048 loaded blocks, never loading a chunk. It collects
+machines of the clicked machine's block type that touch the run, nearest first, at most 64.
+Every machine is planned with the single-machine rules and the player's EDIT while the network is
+still valid; relabels apply first and new ports last, because each new port starts a rebuild.
+
+A port's pending label now waits up to 1,200 ticks for a valid network instead of 20 retries:
+each applied label rebuilds the network, so a row of 64 new ports applies one label per rebuild
+and the last waits about 320 ticks. The wait is runtime-only, as before.
+
+SFM's contiguous fill also reaches diagonal neighbours (M129). Here the row follows the cable
+run, and a machine needs its own touching cable to get a port, so diagonal neighbours are not a
+separate case.
+

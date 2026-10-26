@@ -493,7 +493,12 @@ New gates:
 
 ## Wave B — labels and copying (lane L)
 
-- [ ] **Q9 — Label a whole row (M9).** Size M.
+- [x] **Q9 — Label a whole row (M9).** Size M. Done 2026-10-26 (commit subject `Q9:`).
+  `LabelRowGameTests` (8 furnaces in one use with a chest skipped; a 68-furnace tower stopping
+  at 64; a stranger refused on all 8) and the presentation tour's step that holds the key and
+  fires the client's real use event (`label-row.png`). Pending port labels now wait by time
+  (1,200 ticks) rather than 20 retries, found when only 20 of 64 labels landed. Diagonals (M129)
+  are not a separate case: the row follows the cable run. ADR 0065 amendment.
   Holding a key (default Left Alt, rebindable) while using the Label Tool labels every machine
   of the same block type that touches the same connected cable run, up to 64 machines, each
   through the existing per-machine authorization. The action-bar says how many were labelled

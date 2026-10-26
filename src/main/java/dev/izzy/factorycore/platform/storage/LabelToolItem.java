@@ -27,6 +27,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.capabilities.Capabilities;
 
@@ -40,6 +41,10 @@ import net.neoforged.neoforge.capabilities.Capabilities;
  */
 public final class LabelToolItem extends Item {
   public static final int MAX_LABEL = 64;
+
+  /** Q9: machines one row label reaches, and cable-run blocks its walk visits. */
+  public static final int MAX_ROW = 64, MAX_RUN = 2_048;
+
   public static final int CONFIRM_TICKS = 200, BATCH_TICKS = 600;
 
   /** Server-thread confirmation state per player; runtime only. */
@@ -83,7 +88,12 @@ public final class LabelToolItem extends Item {
       if (!(context.getPlayer() instanceof ServerPlayer player)) return InteractionResult.FAIL;
       String outcome;
       try {
-        outcome = labelMachine(player, data(context.getItemInHand()), context);
+        outcome =
+            labelMachine(
+                player,
+                data(context.getItemInHand()),
+                context.getClickedPos(),
+                context.getClickedFace());
       } catch (IllegalArgumentException | IllegalStateException refused) {
         outcome = "invalid";
       }
@@ -191,31 +201,42 @@ public final class LabelToolItem extends Item {
   }
 
   /**
+   * What labelling one machine will do, decided while the network is still valid: relabel the port
+   * already aimed at it, turn the touching {@code cable} into a port aimed at it, or a refusal.
+   */
+  private record Plan(String refusal, MachineInterfaceEntity port, BlockPos cable, Direction side) {
+    static Plan refused(String outcome) {
+      return new Plan(outcome, null, null, null);
+    }
+  }
+
+  /**
    * H5 (ADR 0065): labels the machine itself. The cable port already aimed at it is relabelled;
-   * otherwise the network cable touching it (the one on the clicked face first) becomes a cable
-   * port aimed at it, under the player's EDIT where that cable is, and takes the label once the
-   * network has rebuilt.
+   * otherwise the network cable touching it (the {@code preferred} face first) becomes a cable port
+   * aimed at it, under the player's EDIT where that cable is, and takes the label once the network
+   * has rebuilt.
    */
   private static String labelMachine(
-      ServerPlayer player, LabelToolContent.Data tool, UseOnContext context) {
-    if (tool.label().isEmpty()) return "no_label";
+      ServerPlayer player, LabelToolContent.Data tool, BlockPos machine, Direction preferred) {
+    var plan = plan(player, tool, machine, preferred);
+    return plan.refusal() != null ? plan.refusal() : apply(player, tool, plan);
+  }
+
+  private static Plan plan(
+      ServerPlayer player, LabelToolContent.Data tool, BlockPos machine, Direction preferred) {
+    if (tool.label().isEmpty()) return Plan.refused("no_label");
     var level = player.serverLevel();
-    var machine = context.getClickedPos();
-    var actor = Actors.of(player);
     for (var side : Direction.values()) {
       var at = machine.relative(side);
       var state = level.getBlockState(at);
       if (state.getBlock() instanceof CablePortBlock
           && state.getValue(BlockStateProperties.FACING) == side.getOpposite()
           && level.getBlockEntity(at) instanceof MachineInterfaceEntity port)
-        return port.applySettings(actor, port.settings(), tool.label())
-                == NetworkAuthority.Decision.ALLOWED
-            ? "labeled"
-            : "denied";
+        return new Plan(null, port, null, null);
     }
     var sides = new java.util.ArrayList<Direction>(6);
-    sides.add(context.getClickedFace());
-    for (var side : Direction.values()) if (side != context.getClickedFace()) sides.add(side);
+    sides.add(preferred);
+    for (var side : Direction.values()) if (side != preferred) sides.add(side);
     for (var side : sides) {
       var at = machine.relative(side);
       if (!(level.getBlockState(at).getBlock()
@@ -223,21 +244,116 @@ public final class LabelToolItem extends Item {
       if (level.getCapability(Capabilities.ItemHandler.BLOCK, machine, side) == null
           && level.getCapability(Capabilities.FluidHandler.BLOCK, machine, side) == null
           && level.getCapability(Capabilities.EnergyStorage.BLOCK, machine, side) == null)
-        return "label_unsupported";
+        return Plan.refused("label_unsupported");
       if (!WorldNetworks.get(player.server)
           .allows(
-              actor,
+              Actors.of(player),
               dev.izzy.factorycore.platform.Positions.of(level, at),
-              NetworkPermissions.Permission.EDIT)) return "denied";
-      var block = PortContent.CABLE_PORT.get();
-      level.setBlock(at, block.aimed(level, at, side.getOpposite()), Block.UPDATE_ALL);
-      if (!(level.getBlockEntity(at) instanceof MachineInterfaceEntity port)) return "invalid";
-      port.place(new ItemStack(PortContent.CABLE_PORT_ITEM.get()));
-      port.requestLabel(player.getUUID(), tool.label());
-      level.scheduleTick(at, block, MachineInterfaceEntity.RESUME_TICKS);
-      return "port_made";
+              NetworkPermissions.Permission.EDIT)) return Plan.refused("denied");
+      return new Plan(null, null, at.immutable(), side.getOpposite());
     }
-    return "no_cable";
+    return Plan.refused("no_cable");
+  }
+
+  private static String apply(ServerPlayer player, LabelToolContent.Data tool, Plan plan) {
+    if (plan.port() != null)
+      return plan.port().applySettings(Actors.of(player), plan.port().settings(), tool.label())
+              == NetworkAuthority.Decision.ALLOWED
+          ? "labeled"
+          : "denied";
+    var level = player.serverLevel();
+    var at = plan.cable();
+    var block = PortContent.CABLE_PORT.get();
+    level.setBlock(at, block.aimed(level, at, plan.side()), Block.UPDATE_ALL);
+    if (!(level.getBlockEntity(at) instanceof MachineInterfaceEntity port)) return "invalid";
+    port.place(new ItemStack(PortContent.CABLE_PORT_ITEM.get()));
+    port.requestLabel(player.getUUID(), tool.label());
+    level.scheduleTick(at, block, MachineInterfaceEntity.RESUME_TICKS);
+    return "port_made";
+  }
+
+  /** True when the block at {@code at} is a machine the Label Tool labels by itself (H5). */
+  private static boolean machine(Level level, BlockPos at) {
+    var entity = level.getBlockEntity(at);
+    return entity != null
+        && !(entity instanceof ConnectorEntity)
+        && !(entity instanceof SignalInterfaceEntity)
+        && !(level.getBlockState(at).getBlock()
+            instanceof dev.izzy.factorycore.platform.network.NetworkedBlock);
+  }
+
+  /** Cables and cable ports form a cable run; devices end it. */
+  private static boolean run(BlockState state) {
+    return state.getBlock() instanceof dev.izzy.factorycore.platform.network.NetworkCableBlock
+        || state.getBlock() instanceof CablePortBlock;
+  }
+
+  /** Q9: how a row label went. */
+  public record RowResult(int labelled, int refused, boolean capped) {}
+
+  /**
+   * Q9: labels {@code clicked} and every other machine of the same block that touches the cable run
+   * it touches, nearest along the run first, at most {@link #MAX_ROW}. Each machine goes through
+   * the single-machine path, so each needs the player's EDIT where its cable is. The walk follows
+   * wired faces of cables and cable ports only, visits at most {@link #MAX_RUN} loaded blocks and
+   * never loads a chunk. Returns null when {@code clicked} is not such a machine.
+   */
+  public static RowResult labelRow(ServerPlayer player, ItemStack stack, BlockPos clicked) {
+    var level = player.serverLevel();
+    if (!(stack.getItem() instanceof LabelToolItem) || !machine(level, clicked)) return null;
+    var tool = data(stack);
+    var type = level.getBlockState(clicked).getBlock();
+    // Each machine with the face toward the run cable it was found from.
+    var machines = new java.util.LinkedHashMap<BlockPos, Direction>();
+    var visited = new java.util.HashSet<BlockPos>();
+    var queue = new java.util.ArrayDeque<BlockPos>();
+    for (var side : Direction.values()) {
+      var at = clicked.relative(side);
+      if (level.isLoaded(at) && run(level.getBlockState(at)) && visited.add(at)) {
+        machines.putIfAbsent(clicked, side);
+        queue.add(at);
+      }
+    }
+    machines.putIfAbsent(clicked, Direction.UP);
+    while (!queue.isEmpty() && machines.size() <= MAX_ROW) {
+      var cable = queue.poll();
+      var state = level.getBlockState(cable);
+      for (var side : Direction.values()) {
+        var next = cable.relative(side);
+        if (!level.isLoaded(next)) continue;
+        var nextState = level.getBlockState(next);
+        if (run(nextState)) {
+          if (visited.size() < MAX_RUN
+              && dev.izzy.factorycore.platform.network.NetworkedBlock.wired(state, side)
+              && dev.izzy.factorycore.platform.network.NetworkedBlock.wired(
+                  nextState, side.getOpposite())
+              && visited.add(next)) queue.add(next);
+        } else if (nextState.getBlock() == type && machine(level, next))
+          machines.putIfAbsent(next.immutable(), side.getOpposite());
+      }
+    }
+    // Every machine is planned (and authorized) while the network is valid; relabels run next,
+    // and new ports last, because each new port makes the network rebuild.
+    int labelled = 0, refused = 0, done = 0;
+    var plans = new java.util.ArrayList<Plan>();
+    for (var entry : machines.entrySet()) {
+      if (done++ == MAX_ROW) break;
+      var plan = plan(player, tool, entry.getKey(), entry.getValue());
+      if (plan.refusal() != null) refused++;
+      else plans.add(plan);
+    }
+    plans.sort(java.util.Comparator.comparing(plan -> plan.port() == null));
+    for (var plan : plans) {
+      String outcome;
+      try {
+        outcome = apply(player, tool, plan);
+      } catch (IllegalArgumentException | IllegalStateException failed) {
+        outcome = "invalid";
+      }
+      if (outcome.equals("labeled") || outcome.equals("port_made")) labelled++;
+      else refused++;
+    }
+    return new RowResult(labelled, refused, machines.size() > MAX_ROW);
   }
 
   private static String label(ServerPlayer player, LabelToolContent.Data tool, Object entity) {

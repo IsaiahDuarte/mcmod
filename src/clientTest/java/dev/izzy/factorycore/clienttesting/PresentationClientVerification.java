@@ -13,6 +13,7 @@ import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
 import dev.izzy.factorycore.platform.client.ConnectorSettingsScreen;
 import dev.izzy.factorycore.platform.client.DriveScreen;
+import dev.izzy.factorycore.platform.client.FactoryCoreKeys;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.ItemDescriptions;
 import dev.izzy.factorycore.platform.client.NetworkAccessScreen;
@@ -29,6 +30,7 @@ import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.LabelToolContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
@@ -49,6 +51,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
@@ -2130,6 +2133,28 @@ public final class PresentationClientVerification {
           client.setScreen(null);
           return waited() > 2;
         });
+    // Q9: holding the row key while using the Label Tool on one furnace labels all three. The
+    // use goes through the client's real interaction event, as the use key fires it.
+    server(PresentationScenes::labelRow);
+    serverUntil(PresentationScenes::labelRowReady);
+    step(
+        client -> {
+          if (client.screen != null || waited() < 10) return false;
+          if (!client.player.getMainHandItem().is(LabelToolContent.ITEM.get())) return false;
+          var target = PresentationScenes.ROW_TARGET;
+          client.hitResult =
+              new BlockHitResult(Vec3.atCenterOf(target), Direction.SOUTH, target, false);
+          var key = FactoryCoreKeys.LABEL_ROW.getKey();
+          KeyMapping.set(key, true);
+          var event =
+              net.neoforged.neoforge.client.ClientHooks.onClickInput(
+                  1, client.options.keyUse, InteractionHand.MAIN_HAND);
+          KeyMapping.set(key, false);
+          check(event.isCanceled(), "The row key takes over the use");
+          return true;
+        });
+    serverUntil(PresentationScenes::labelRowDone);
+    view(PresentationScenes.ROW, "label-row.png", 10);
     server(player -> player.getInventory().setItem(0, new ItemStack(GuideContent.GUIDE.get())));
     step(
         client -> {

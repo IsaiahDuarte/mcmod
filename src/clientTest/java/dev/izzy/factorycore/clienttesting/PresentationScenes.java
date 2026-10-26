@@ -525,6 +525,55 @@ final class PresentationScenes {
     }
   }
 
+  /** Q9: a root, three cables and a furnace beside each, south of the screens. */
+  static final BlockPos ROW_ROOT = new BlockPos(-8, 65, 6);
+
+  /** The middle furnace, which the tour uses the tool on. */
+  static final BlockPos ROW_TARGET = ROW_ROOT.offset(2, 0, 1);
+
+  static final View ROW = View.looking(-6.5, 66.6, 9.5, -5.5, 65.5, 7.5);
+
+  static void labelRow(ServerPlayer player) {
+    var level = player.serverLevel();
+    floor(
+        level,
+        ROW_ROOT.getX() - 1,
+        ROW_ROOT.getZ() - 1,
+        ROW_ROOT.getX() + 4,
+        ROW_ROOT.getZ() + 3,
+        64);
+    root(level, ROW_ROOT, player);
+    for (int x = 1; x <= 3; x++) {
+      level.setBlock(ROW_ROOT.east(x), NetworkContent.CABLE.get().defaultBlockState(), 3);
+      level.setBlock(ROW_ROOT.east(x).south(), Blocks.FURNACE.defaultBlockState(), 3);
+    }
+    var tool = new ItemStack(dev.izzy.factorycore.platform.storage.LabelToolContent.ITEM.get());
+    tool.set(
+        dev.izzy.factorycore.platform.storage.LabelToolContent.DATA.get(),
+        new dev.izzy.factorycore.platform.storage.LabelToolContent.Data(
+            "row", new net.minecraft.nbt.CompoundTag()));
+    player.getInventory().setItem(0, tool);
+    player.getInventory().selected = 0;
+    teleport(player, ROW);
+  }
+
+  static boolean labelRowReady(ServerPlayer player) {
+    return dev.izzy.factorycore.platform.network.WorldNetworks.get(player.server)
+            .membership(
+                dev.izzy.factorycore.platform.Positions.of(player.serverLevel(), ROW_ROOT.east(3)))
+            .status()
+        == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID;
+  }
+
+  /** True once every furnace's cable is a port labelled "row". */
+  static boolean labelRowDone(ServerPlayer player) {
+    var level = player.serverLevel();
+    for (int x = 1; x <= 3; x++)
+      if (!(level.getBlockEntity(ROW_ROOT.east(x)) instanceof MachineInterfaceEntity port)
+          || !port.label().equals("row")) return false;
+    return true;
+  }
+
   static void teleport(ServerPlayer player, View view) {
     player.getAbilities().flying = true;
     player.onUpdateAbilities();

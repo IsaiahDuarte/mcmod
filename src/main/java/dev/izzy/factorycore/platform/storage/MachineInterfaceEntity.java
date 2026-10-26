@@ -75,13 +75,21 @@ public final class MachineInterfaceEntity extends ConnectorEntity
   private UUID pendingLabeller;
 
   private String pendingLabel;
-  private int pendingLabelAttempts;
+
+  /** Game time after which a pending label is dropped. */
+  private long pendingLabelUntil;
+
+  /**
+   * How long a pending label waits for a valid network. A time bound, not a retry count: a row of
+   * new ports (Q9) applies one label per rebuild, so the last of 64 waits about 320 ticks.
+   */
+  public static final int LABEL_WAIT_TICKS = 1_200;
 
   /** Asks to bind and label this port under {@code player} once its network is valid again. */
   public void requestLabel(UUID player, String label) {
     pendingLabeller = player;
     pendingLabel = label;
-    pendingLabelAttempts = 0;
+    pendingLabelUntil = serverLevel().getGameTime() + LABEL_WAIT_TICKS;
   }
 
   /**
@@ -93,7 +101,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     if (pendingLabeller == null || handle() == null) return false;
     var server = serverLevel().getServer();
     var player = server.getPlayerList().getPlayer(pendingLabeller);
-    if (player == null || ++pendingLabelAttempts > RESUME_ATTEMPTS) {
+    if (player == null || serverLevel().getGameTime() > pendingLabelUntil) {
       pendingLabeller = null;
       return false;
     }
