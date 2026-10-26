@@ -127,7 +127,7 @@ before Machine-mode ports go away.
   Delete Machine mode, its menu, presets and screen. Move the Machine-mode tests to H5/H6
   equivalents. No migration (UD7).
 
-- [ ] **H8 — Directionless Crafter (HD5).** Size M.
+- [x] **H8 — Directionless Crafter (HD5).** Done 2026-10-26 (commit subject `H8:`). [Evidence](evidence/playtest-h8-crafter-sides-2026-10-26.md).
   The Crafter dispatches processing patterns to any adjacent machine that accepts them,
   rotating between machines, through the face it touches. ADR 0060/0032 amendments.
   Done when: GameTests cover one Crafter between two furnaces, two Crafters sharing one furnace

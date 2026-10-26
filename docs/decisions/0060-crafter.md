@@ -28,6 +28,28 @@ patterns generically (`WorldCrafting`).
   entity is simpler than ADR 0059's per-kind backing because there is no persisted
   state to preserve.
 
+## Amendment — any adjacent machine (playtest H8, 2026-10-26)
+
+HD5 removed the single faced machine. A processing dispatch now tries each side in turn,
+starting after the side the Crafter used last. It picks the first machine that:
+
+- exposes the handlers the pattern needs;
+- is not leased by another job;
+- passes processing admission;
+- holds none of the expected outputs; and
+- has a journal that agrees.
+
+Skipping a machine that cannot take the job means one dirty machine no longer stops the job;
+the refusal reported is that of the last side tried. A machine is any neighbour with an item or
+fluid handler, except Factory Core blocks (cables and devices, including other Crafters) and a
+hopper pointing into the Crafter (it feeds patterns). The dispatch already saved the exact
+machine position, so later passes, cleanup and recovery use that side. A saved target that is no
+longer beside the Crafter reports `machine_changed`, as before. Sides with a machine hide the
+pattern handler, so a machine never pulls patterns, and a neighbour change invalidates the
+Crafter's capabilities. The `facing` block state remains for the front texture only.
+`CrafterSidesGameTests` covers taking turns between two furnaces, skipping a dirty furnace, and
+the neighbour rules. `CraftingUnitGameTests` covers the pattern handler on machine sides.
+
 ## Alternatives
 
 - **Keep two entity types behind one block, as ADR 0059 does.** That pattern exists

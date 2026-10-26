@@ -68,6 +68,19 @@ public final class CrafterBlock extends NetworkedBlock implements EntityBlock, C
     return new CrafterEntity(position, state);
   }
 
+  /** H8: a neighbour that becomes or stops being a machine changes which sides take patterns. */
+  @Override
+  protected void neighborChanged(
+      BlockState state,
+      Level level,
+      BlockPos position,
+      Block neighbor,
+      BlockPos from,
+      boolean moved) {
+    super.neighborChanged(state, level, position, neighbor, from, moved);
+    if (!level.isClientSide()) level.invalidateCapabilities(position);
+  }
+
   /** Using a pattern inserts it into the first free slot. */
   @Override
   protected ItemInteractionResult useItemOn(

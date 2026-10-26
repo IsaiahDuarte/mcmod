@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -547,17 +548,16 @@ public final class WorldCraftingJobs {
     int passes = cleanups.merge(job.id(), 1, Integer::sum);
     var holder = interfaceAt(dispatch.machine());
     var offer = holder == null ? null : findDispatched(job);
-    if (offer != null
-        && original
-        && dispatch.target().equals(machineTarget(holder))
-        && reachable(holder, offer.pattern())) {
+    var side = holder == null ? null : sideOf(holder, dispatch.target());
+    if (offer != null && original && side != null && reachable(holder, side, offer.pattern())) {
       var outputs = expected(offer.pattern());
       var codec = new PlatformResourceCodec(server.registryAccess());
       var journal = new MachineIo.Journal(saved().registry().world(), job, machine.entity());
       try {
-        if (holder.machine() != null) io.collect(job, outputs, holder.machine(), codec, journal);
-        if (holder.fluidMachine() != null)
-          io.collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
+        if (holder.machine(side) != null)
+          io.collect(job, outputs, holder.machine(side), codec, journal);
+        if (holder.fluidMachine(side) != null)
+          io.collectFluids(job, outputs, holder.fluidMachine(side), codec, journal);
       } catch (RuntimeException uncertain) {
         // The journal keeps its pending mark; nothing is retried or refunded.
         job.waiting("uncertain");
@@ -776,9 +776,15 @@ public final class WorldCraftingJobs {
     return null;
   }
 
-  private static NodeRegistry.Position machineTarget(CrafterEntity holder) {
+  private static NodeRegistry.Position machineTarget(CrafterEntity holder, Direction side) {
     return new NodeRegistry.Position(
-        holder.origin().dimension(), holder.getBlockPos().relative(holder.facing()).asLong());
+        holder.origin().dimension(), holder.getBlockPos().relative(side).asLong());
+  }
+
+  /** The Crafter's side facing a saved dispatch target, or null when it is no longer beside it. */
+  private static Direction sideOf(CrafterEntity holder, NodeRegistry.Position target) {
+    if (target == null || !target.dimension().equals(holder.origin().dimension())) return null;
+    return holder.sideOf(BlockPos.of(target.block()));
   }
 
   /**
@@ -843,26 +849,33 @@ public final class WorldCraftingJobs {
     var outputs = expected(pattern);
     if (job.dispatch() == null) {
       var holder = (CrafterEntity) offer.unit();
-      if (!reachable(holder, pattern)) return "machine_missing";
-      if (leasedByOther(machineTarget(holder), job.id())) return "busy";
-      var admission = networks().connectors().processingAdmission(machineTarget(holder));
-      if (admission == OperationResult.Reason.BUSY) return "busy";
-      if (admission != OperationResult.Reason.OK) return "reserved";
-      for (var key : outputs.keySet())
-        if (key.kind() == ResourceKind.FLUID
-            ? MachineIo.containsFluid(holder.fluidMachine(), key)
-            : contains(holder.machine(), key, codec)) return "output_not_clean";
-      var blocked = journalBlocks(job, machineTarget(holder));
-      if (blocked != null) return blocked;
-      var providers = networks().connectors().processingIdentity(machineTarget(holder), true);
-      if (providers.isEmpty()) return "machine_identity";
+      // H8: try each machine beside the Crafter in turn; report why the last one was refused.
+      String refused = "machine_missing";
+      Direction chosen = null;
+      Map<ResourceKind, UUID> providers = Map.of();
+      for (var side : holder.machineSides()) {
+        var reason = refusal(job, holder, side, pattern, outputs, codec);
+        if (reason != null) {
+          refused = reason;
+          continue;
+        }
+        providers = networks().connectors().processingIdentity(machineTarget(holder, side), true);
+        if (providers.isEmpty()) {
+          refused = "machine_identity";
+          continue;
+        }
+        chosen = side;
+        break;
+      }
+      if (chosen == null) return refused;
       for (var input : pattern.inputs().entrySet()) {
         long missing = input.getValue() - job.stagedAmount(input.getKey());
         if (missing > 0) pull(job, input.getKey(), missing);
         if (job.stagedAmount(input.getKey()) < input.getValue()) return "offline";
       }
-      job.dispatch(holder.origin(), machineTarget(holder), providers);
-      var captured = target(machineTarget(holder));
+      job.dispatch(holder.origin(), machineTarget(holder, chosen), providers);
+      holder.used(chosen);
+      var captured = target(machineTarget(holder, chosen));
       if (captured.entity() != null)
         ProcessingJournal.write(
             captured.entity(), saved().registry().world(), job.id(), job.dispatch(), false);
@@ -871,25 +884,26 @@ public final class WorldCraftingJobs {
     if (holder == null) return "machine_missing";
     if (job.dispatch().target() == null) return "legacy_machine";
     if (job.dispatch().providers().isEmpty()) return "legacy_provider";
-    if (!job.dispatch().target().equals(machineTarget(holder))) return "machine_changed";
+    var side = sideOf(holder, job.dispatch().target());
+    if (side == null) return "machine_changed";
     if (!job.dispatch()
         .providers()
         .equals(networks().connectors().processingIdentity(job.dispatch().target(), false)))
       return "machine_replaced";
-    if (!reachable(holder, pattern)) return "machine_missing";
+    if (!reachable(holder, side, pattern)) return "machine_missing";
     var machine = target(job.dispatch().target()).entity();
     if (machine == null) return "machine_missing";
     var disagreement = journalCheck(job, machine);
     if (disagreement != null) return disagreement;
     var journal = new MachineIo.Journal(saved().registry().world(), job, machine);
     try {
-      if (holder.machine() != null) {
-        io.insert(job, pattern.inputs(), holder.machine(), codec, journal);
-        io.collect(job, outputs, holder.machine(), codec, journal);
+      if (holder.machine(side) != null) {
+        io.insert(job, pattern.inputs(), holder.machine(side), codec, journal);
+        io.collect(job, outputs, holder.machine(side), codec, journal);
       }
-      if (holder.fluidMachine() != null) {
-        io.insertFluids(job, pattern.inputs(), holder.fluidMachine(), codec, journal);
-        io.collectFluids(job, outputs, holder.fluidMachine(), codec, journal);
+      if (holder.fluidMachine(side) != null) {
+        io.insertFluids(job, pattern.inputs(), holder.fluidMachine(side), codec, journal);
+        io.collectFluids(job, outputs, holder.fluidMachine(side), codec, journal);
       }
     } catch (RuntimeException uncertain) {
       // The started call's outcome is unknown: its pending journal mark stays with the machine's
@@ -908,14 +922,40 @@ public final class WorldCraftingJobs {
     return null;
   }
 
-  /** True when the machine exposes every handler kind the pattern's keys need. */
-  private static boolean reachable(CrafterEntity holder, Pattern pattern) {
+  /**
+   * Why the machine on {@code side} cannot take a new dispatch of {@code pattern}, or null when it
+   * can: missing handlers, another job's lease, foreign holds or staging, expected outputs already
+   * inside, or a journal that disagrees.
+   */
+  private String refusal(
+      CraftingJob job,
+      CrafterEntity holder,
+      Direction side,
+      Pattern pattern,
+      Map<ResourceKey, Long> outputs,
+      PlatformResourceCodec codec) {
+    if (!reachable(holder, side, pattern)) return "machine_missing";
+    var target = machineTarget(holder, side);
+    if (leasedByOther(target, job.id())) return "busy";
+    var admission = networks().connectors().processingAdmission(target);
+    if (admission == OperationResult.Reason.BUSY) return "busy";
+    if (admission != OperationResult.Reason.OK) return "reserved";
+    for (var key : outputs.keySet())
+      if (key.kind() == ResourceKind.FLUID
+          ? MachineIo.containsFluid(holder.fluidMachine(side), key)
+          : contains(holder.machine(side), key, codec)) return "output_not_clean";
+    return journalBlocks(job, target);
+  }
+
+  /** True when the machine on {@code side} exposes every handler kind the pattern's keys need. */
+  private static boolean reachable(CrafterEntity holder, Direction side, Pattern pattern) {
     var keys = new HashSet<>(pattern.inputs().keySet());
     keys.addAll(expected(pattern).keySet());
     boolean items = keys.stream().anyMatch(key -> key.kind() == ResourceKind.ITEM);
     boolean fluids = keys.stream().anyMatch(key -> key.kind() == ResourceKind.FLUID);
     if (keys.stream().anyMatch(key -> key.kind() == ResourceKind.ENERGY)) return false;
-    return (!items || holder.machine() != null) && (!fluids || holder.fluidMachine() != null);
+    return (!items || holder.machine(side) != null)
+        && (!fluids || holder.fluidMachine(side) != null);
   }
 
   /** Moves reserved units into job staging; stops at offline or moved ledgers. */

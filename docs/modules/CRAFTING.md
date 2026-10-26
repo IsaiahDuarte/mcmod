@@ -104,7 +104,7 @@ removeRule/rules` with the bounds in [ADR 0034](../decisions/0034-keep-stock-req
 ## Fluid processing
 
 Processing patterns may declare fluid inputs/outputs (mB); the Crafter uses the
-faced machine's fluid handler for them ([ADR0045](../decisions/0045-fluid-processing.md)).
+machine's fluid handler for them (the machine the dispatch chose, on any side since H8) ([ADR0045](../decisions/0045-fluid-processing.md)).
 Requests and keep-stock rules accept item and fluid keys. Wait reasons: `machine_missing`
 also covers a missing fluid port; `output_not_clean` also covers tanks holding the output
 fluid.

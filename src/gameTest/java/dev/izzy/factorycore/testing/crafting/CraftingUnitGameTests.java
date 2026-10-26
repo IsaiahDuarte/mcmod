@@ -376,12 +376,20 @@ public final class CraftingUnitGameTests {
         "A crafting-table pattern and a processing pattern both fit in one Crafter");
     h.assertFalse(
         crafter.patterns().isItemValid(2, new ItemStack(Items.PAPER)), "Anything else is refused");
+    // H8: every side with a machine is closed to the pattern handler, not only the faced one, so
+    // a machine never pulls patterns; the other sides still take them from hoppers.
+    h.setBlock(position.east(), Blocks.FURNACE);
+    h.setBlock(position.west(), Blocks.FURNACE);
     var absolute = h.absolutePos(position);
+    h.getLevel().invalidateCapabilities(absolute);
+    var level = h.getLevel();
     h.assertTrue(
-        h.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.EAST) == null
-            && h.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.UP)
+        level.getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.EAST) == null
+            && level.getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.WEST) == null
+            && level.getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.UP) != null
+            && level.getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.NORTH)
                 != null,
-        "Hoppers reach the patterns from every face except the faced machine's");
+        "Hoppers reach the patterns from every side without a machine");
     h.succeed();
   }
 }

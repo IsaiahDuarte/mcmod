@@ -12,10 +12,10 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /**
- * The Crafter (ADR 0060): one holder for crafting-table and processing patterns, facing one
- * machine. Crafting-table patterns run without the machine; processing patterns are pushed into it.
- * A job's persisted dispatch is the only lease on the machine port; the Crafter itself stores no
- * job state and owns no resources.
+ * The Crafter (ADR 0060): one holder for crafting-table and processing patterns. Crafting-table
+ * patterns run inside it; processing patterns are pushed into any machine beside it (H8), taking
+ * turns between machines. A job's persisted dispatch is the only lease on the machine port; the
+ * Crafter itself stores no job state and owns no resources.
  */
 public final class CrafterEntity extends PatternHolderEntity
     implements dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable {
@@ -87,10 +87,17 @@ public final class CrafterEntity extends PatternHolderEntity
       if (known.name().equals(saved)) tier = known;
   }
 
-  private BlockCapabilityCache<IItemHandler, Direction> machine, sided;
-  private BlockCapabilityCache<IFluidHandler, Direction> tanks, sidedTanks;
-  private Direction tankFacing;
-  private Direction cachedFacing;
+  /** Per side: the neighbour's unsided handler, and its handler on the side facing us. */
+  private final java.util.EnumMap<Direction, BlockCapabilityCache<IItemHandler, Direction>>
+      machines = new java.util.EnumMap<>(Direction.class),
+      sidedMachines = new java.util.EnumMap<>(Direction.class);
+
+  private final java.util.EnumMap<Direction, BlockCapabilityCache<IFluidHandler, Direction>>
+      tanks = new java.util.EnumMap<>(Direction.class),
+      sidedTanks = new java.util.EnumMap<>(Direction.class);
+
+  /** Where the next processing dispatch starts looking, so jobs rotate between machines. */
+  private int nextSide;
 
   public CrafterEntity(BlockPos position, BlockState state) {
     super(CraftingContent.CRAFTER_ENTITY.get(), position, state);
@@ -104,49 +111,103 @@ public final class CrafterEntity extends PatternHolderEntity
             && stack.get(CraftingContent.PROCESSING.get()) != null;
   }
 
+  /** The way the Crafter was placed; only its front texture uses it (H8). */
   public Direction facing() {
     return getBlockState().getValue(BlockStateProperties.FACING);
   }
 
   /**
-   * The faced machine's unsided item handler when it exposes one (so a furnace's input, fuel and
-   * result slots are all reachable), otherwise its handler on the interface-facing side.
+   * H8: the sides with a machine the Crafter may push processing patterns into, starting after the
+   * side it used last. A machine is any neighbour with an item or fluid handler, except Factory
+   * Core devices and cables, other Crafters, and a hopper pointing into this Crafter (it feeds
+   * patterns).
    */
-  public IItemHandler machine() {
-    if (!(level instanceof ServerLevel server) || !current()) return null;
-    if (machine == null || cachedFacing != facing()) {
-      cachedFacing = facing();
-      var target = worldPosition.relative(cachedFacing);
-      machine = BlockCapabilityCache.create(Capabilities.ItemHandler.BLOCK, server, target, null);
-      sided =
-          BlockCapabilityCache.create(
-              Capabilities.ItemHandler.BLOCK, server, target, cachedFacing.getOpposite());
+  public java.util.List<Direction> machineSides() {
+    var sides = new java.util.ArrayList<Direction>(6);
+    var all = Direction.values();
+    for (int i = 0; i < all.length; i++) {
+      var side = all[(nextSide + i) % all.length];
+      if (machineSide(side)) sides.add(side);
     }
-    var whole = machine.getCapability();
-    return whole != null ? whole : sided.getCapability();
+    return sides;
   }
 
-  /** The faced machine's fluid handler, chosen like {@link #machine()}; null if it has none. */
-  public IFluidHandler fluidMachine() {
+  /** True when {@code side} holds a machine (see {@link #machineSides}). */
+  public boolean machineSide(Direction side) {
+    if (!(level instanceof ServerLevel server)) return false;
+    var target = worldPosition.relative(side);
+    if (dev.izzy.factorycore.platform.Loaded.chunk(server, target) == null) return false;
+    var state = server.getBlockState(target);
+    if (state.getBlock() instanceof dev.izzy.factorycore.platform.network.NetworkedBlock
+        || state.getBlock() instanceof CrafterBlock) return false;
+    if (state.getBlock() instanceof net.minecraft.world.level.block.HopperBlock
+        && state.getValue(net.minecraft.world.level.block.HopperBlock.FACING) == side.getOpposite())
+      return false;
+    return machine(side) != null || fluidMachine(side) != null;
+  }
+
+  /**
+   * Remembers that a dispatch used {@code side}, so the next one tries the following side first.
+   */
+  public void used(Direction side) {
+    nextSide = (side.ordinal() + 1) % Direction.values().length;
+  }
+
+  /** The side whose neighbour is at {@code target}, or null when it is not adjacent. */
+  public Direction sideOf(BlockPos target) {
+    for (var side : Direction.values())
+      if (worldPosition.relative(side).equals(target)) return side;
+    return null;
+  }
+
+  /**
+   * The machine's unsided item handler on {@code side} when it exposes one (so a furnace's input,
+   * fuel and result slots are all reachable), otherwise its handler on the side facing the Crafter.
+   */
+  public IItemHandler machine(Direction side) {
     if (!(level instanceof ServerLevel server) || !current()) return null;
-    if (tanks == null || tankFacing != facing()) {
-      tankFacing = facing();
-      var target = worldPosition.relative(tankFacing);
-      tanks = BlockCapabilityCache.create(Capabilities.FluidHandler.BLOCK, server, target, null);
-      sidedTanks =
-          BlockCapabilityCache.create(
-              Capabilities.FluidHandler.BLOCK, server, target, tankFacing.getOpposite());
-    }
-    var whole = tanks.getCapability();
-    return whole != null ? whole : sidedTanks.getCapability();
+    var target = worldPosition.relative(side);
+    var whole =
+        machines.computeIfAbsent(
+            side,
+            s -> BlockCapabilityCache.create(Capabilities.ItemHandler.BLOCK, server, target, null));
+    var handler = whole.getCapability();
+    if (handler != null) return handler;
+    return sidedMachines
+        .computeIfAbsent(
+            side,
+            s ->
+                BlockCapabilityCache.create(
+                    Capabilities.ItemHandler.BLOCK, server, target, side.getOpposite()))
+        .getCapability();
+  }
+
+  /** The machine's fluid handler on {@code side}, chosen like {@link #machine}; null if none. */
+  public IFluidHandler fluidMachine(Direction side) {
+    if (!(level instanceof ServerLevel server) || !current()) return null;
+    var target = worldPosition.relative(side);
+    var whole =
+        tanks.computeIfAbsent(
+            side,
+            s ->
+                BlockCapabilityCache.create(Capabilities.FluidHandler.BLOCK, server, target, null));
+    var handler = whole.getCapability();
+    if (handler != null) return handler;
+    return sidedTanks
+        .computeIfAbsent(
+            side,
+            s ->
+                BlockCapabilityCache.create(
+                    Capabilities.FluidHandler.BLOCK, server, target, side.getOpposite()))
+        .getCapability();
   }
 
   @Override
   public void setRemoved() {
-    machine = null;
-    sided = null;
-    tanks = null;
-    sidedTanks = null;
+    machines.clear();
+    sidedMachines.clear();
+    tanks.clear();
+    sidedTanks.clear();
     super.setRemoved();
   }
 }

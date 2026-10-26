@@ -337,10 +337,14 @@ Craft Blank Patterns.
 - **Fluids:** switch the browser to **Fluids** and use **Use selected**. Amounts go
   from 250 to 16,000 mB.
 
-A **Crafter** holds nine patterns of either kind. Place it on the network facing the
-machine its processing patterns use (it faces the block you click). Then use patterns
-on it or feed them with a hopper. Crafting patterns run inside it. Sneak-use with an
-empty hand takes the last pattern back.
+A **Crafter** holds nine patterns of either kind. Place it on the network next to the
+machines its processing patterns use, on any side. Then use patterns on it or feed them
+with a hopper. Crafting patterns run inside it. Sneak-use with an empty hand takes the
+last pattern back.
+- **Several machines:** a Crafter with machines on more than one side sends each
+  processing step to the next free one, so two furnaces smelt twice as fast. A machine
+  already holding the output is skipped. Hoppers pointing into the Crafter, cables and
+  Factory Core blocks are never treated as machines.
 - **Machine use:** while a job runs, keep the machine's output slot empty and don't
   feed the machine with other pipes.
 - **Subnetworks:** patterns in a subnetwork can serve the network above it unless its

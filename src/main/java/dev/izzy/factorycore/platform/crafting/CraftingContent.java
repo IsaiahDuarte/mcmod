@@ -66,7 +66,8 @@ public final class CraftingContent {
     event.registerBlockEntity(
         Capabilities.ItemHandler.BLOCK,
         CRAFTER_ENTITY.get(),
-        (holder, face) -> face == holder.facing() ? null : holder.patterns());
+        // H8: sides with a machine get no pattern handler, so a machine never pulls patterns.
+        (holder, face) -> face != null && holder.machineSide(face) ? null : holder.patterns());
   }
 
   public static void register(IEventBus bus) {
