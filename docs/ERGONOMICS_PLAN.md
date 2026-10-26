@@ -315,7 +315,13 @@ New gates:
   start, turns Keep off and on (and separately changes the amount) mid-job, and finds exactly one
   job and no overshoot; persistence tests still round-trip rules.
 
-- [ ] **Q53 — Rule maps are cleaned up (M51).** Size S. With or after Q52.
+- [x] **Q53 — Rule maps are cleaned up (M51).** Size S. Done 2026-10-26 (commit subject
+  `Q53:`). `unkeep` drops both entries and each tick prunes entries of rules that are gone;
+  replacements keep their ID since Q52. Networks are never removed from saved data, so there is
+  no network-removal path to clean.
+  `KeepStockGameTests.ruleStateStaysAtLiveRulesAcrossSetReplaceAndRemove` (4 rounds of 5 rules
+  set, replaced and removed) failed before the fix with 7 entries for 5 live rules and passes
+  after it.
   `ruleDue` and `ruleStatus` drop an entry when its rule is removed or replaced, and on network
   removal.
   Done when: a test sets, replaces and removes rules many times and both maps stay at the number

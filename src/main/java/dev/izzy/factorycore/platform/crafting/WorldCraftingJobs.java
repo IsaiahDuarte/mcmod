@@ -328,7 +328,14 @@ public final class WorldCraftingJobs {
     if (existing == null || (!existing.principal().equals(actor.id()) && !actor.operator()))
       return false;
     ruleStatus.remove(rule);
+    ruleDue.remove(rule);
     return jobs.removeRule(rule);
+  }
+
+  /** Runtime entries kept for rules (status and due tick), for leak checks; bounded by rules. */
+  public int ruleStateEntries() {
+    checkThread();
+    return Math.max(ruleStatus.size(), ruleDue.size());
   }
 
   /** Last evaluation outcome for a rule: "" when satisfied or a job started, else a reason. */
@@ -431,7 +438,15 @@ public final class WorldCraftingJobs {
           && admission != dev.izzy.factorycore.core.scheduling.FairScheduler.Admission.REPLACED
           && paid > 1) batches.put(id, 1);
     }
-    for (var rule : saved().craftingJobs().rules()) {
+    var rules = saved().craftingJobs().rules();
+    // M51: runtime entries follow the live rules even if one is removed outside unkeep.
+    if (ruleStatus.size() > rules.size() || ruleDue.size() > rules.size()) {
+      var live = new HashSet<UUID>();
+      for (var rule : rules) live.add(rule.id());
+      ruleStatus.keySet().retainAll(live);
+      ruleDue.keySet().retainAll(live);
+    }
+    for (var rule : rules) {
       var key = "keep:" + rule.id();
       if (ruleDue.getOrDefault(rule.id(), Long.MIN_VALUE) > now
           || scheduler.isQueued(rule.network(), rule.principal(), key)) continue;

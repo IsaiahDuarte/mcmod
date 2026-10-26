@@ -193,6 +193,61 @@ public final class KeepStockGameTests {
     toggledMidJob(h, 80, false);
   }
 
+  /** M51: rule status and due-tick entries stay at the number of live rules. */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void ruleStateStaysAtLiveRulesAcrossSetReplaceAndRemove(GameTestHelper h) {
+    var f = setup(h);
+    var actor = new NetworkPermissions.Actor(f.owner, false);
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var keys =
+        List.of(Items.STONE, Items.DIRT, Items.SAND, Items.GRAVEL, Items.CLAY_BALL).stream()
+            .map(item -> codec.itemKey(new ItemStack(item)))
+            .toList();
+    var sequence = h.startSequence().thenWaitUntil(() -> ready(h, f));
+    for (int round = 0; round < 4; round++) {
+      long amount = 4 + round;
+      sequence =
+          sequence
+              .thenExecute(
+                  () -> {
+                    for (var key : keys)
+                      h.assertTrue(
+                          jobs(h).keep(actor, f.origin, key, amount, amount).isEmpty(), "Set");
+                  })
+              .thenIdle(5)
+              .thenExecute(
+                  () -> {
+                    for (var key : keys)
+                      h.assertTrue(
+                          jobs(h).keep(actor, f.origin, key, amount + 1, amount + 1).isEmpty(),
+                          "Replaced");
+                  })
+              .thenIdle(5)
+              .thenExecute(
+                  () -> {
+                    h.assertTrue(
+                        jobs(h).ruleStateEntries() <= liveRules(h),
+                        "Replacing keeps one entry per rule, found " + jobs(h).ruleStateEntries());
+                    for (var key : keys) {
+                      var rule = jobs(h).rule(actor, f.origin, key);
+                      h.assertTrue(rule != null && jobs(h).unkeep(actor, rule.id()), "Removed");
+                    }
+                  })
+              .thenIdle(5)
+              .thenExecute(
+                  () ->
+                      h.assertTrue(
+                          jobs(h).ruleStateEntries() <= liveRules(h),
+                          "Removed rules leave no entries, found " + jobs(h).ruleStateEntries()));
+    }
+    sequence.thenSucceed();
+  }
+
+  /** Every live rule on the server, including other GameTests' rules in the same batch. */
+  private static int liveRules(GameTestHelper h) {
+    return DeviceSavedData.get(h.getLevel().getServer()).craftingJobs().rules().size();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void ruleOfARevokedPrincipalStartsNothing(GameTestHelper h) {
     var f = setup(h);

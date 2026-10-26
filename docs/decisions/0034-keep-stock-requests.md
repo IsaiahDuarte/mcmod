@@ -43,4 +43,5 @@ accounting exact. Polling every tick would waste work for a slow-moving target.
 
 A rule refills at most once per job duration plus up to 100 ticks. Separate low/high
 thresholds are supported by the API; the terminal sets equal thresholds. Rule status
-is runtime-only.
+and the next due tick are runtime-only, one entry per live rule: removing a rule drops both,
+and each tick prunes entries whose rule is gone (M51).
