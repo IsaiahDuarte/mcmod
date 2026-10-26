@@ -13,20 +13,25 @@ public final class TerminalSearchSupport {
   /**
    * A sort is a mode ({@link #NAME} A–Z, {@link #QUANTITY} highest first, {@link #MOD} by namespace
    * then name), optionally combined with {@link #REVERSED}, which flips that mode's direction. Old
-   * saved values 0 and 1 keep their meaning.
+   * saved values 0 and 1 keep their meaning. {@link #TALL} rides in the same saved preference: it
+   * changes only the client's grid height (H2), never the order.
    */
-  public static final int NAME = 0, QUANTITY = 1, MOD = 2, REVERSED = 4;
+  public static final int NAME = 0, QUANTITY = 1, MOD = 2, REVERSED = 4, TALL = 8;
 
   public static boolean validSort(int sort) {
-    return sort >= 0 && (sort & ~REVERSED) <= MOD;
+    return sort >= 0 && (sort & ~(REVERSED | TALL)) <= MOD;
   }
 
   public static int mode(int sort) {
-    return sort & ~REVERSED;
+    return sort & ~(REVERSED | TALL);
   }
 
   public static boolean reversed(int sort) {
     return (sort & REVERSED) != 0;
+  }
+
+  public static boolean tall(int sort) {
+    return (sort & TALL) != 0;
   }
 
   private TerminalSearchSupport() {}

@@ -58,13 +58,17 @@ The menu retains at most 256 exact rows/names across a periodic rescan to avoid
 flashing. This bounded per-menu display snapshot is separate from the query budget
 and is released on replacement, explicit refresh, scope invalidation or closure.
 
-The adaptive screen displays at least 9×4 item cells at the minimum supported 427×240
-GUI; larger GUIs show more columns/rows, bounded to 256. The mouse wheel scrolls by a row;
-the scrollbar supports direct clicks and dragging. Items/Fluids/Energy/Jobs are visible tabs.
+The screen (playtest H2, [ADR 0064](../decisions/0064-panel-kit.md)) shows a 9-column grid
+whose columns line up with the player inventory docked under it. It has six rows, or as many
+as fit the window when the player's Tall preference is on (at least 3 rows; 4 at the minimum
+supported 427×240 GUI), bounded to 256 cells. The mouse wheel scrolls by a row; the scrollbar
+supports direct clicks and dragging. Items/Fluids/Energy/Jobs are tabs on the panel's top edge.
+The crafting grid opens as a panel to the right. The Jobs view replaces the grid and hides the
+inventory slots while shown (they are neither drawn nor clickable; contents are unchanged).
 Search coalesces typing after four idle client ticks, retains unsent typing while busy,
 and retries when the shared two-tick command gate admits it. Name/Qty and saved per-player
 preferences retain their existing meaning. Main inventory slot identities/order remain
-unchanged when client-only coordinates move down for extra grid rows.
+unchanged when client-only coordinates move for extra grid rows.
 
 TAKE_CURSOR resolves the current server row and its actual native maximum stack size,
 then withdraws up to one stack. HALF_CURSOR withdraws half of that available stack rounded
@@ -226,7 +230,8 @@ page anchor also returns Home. No raw catalog cursor is sent to clients.
 
 The Name/Qty button is keyboard-focusable. Search/sort state is stored per player
 under `ForgeData.PlayerPersisted.FactoryCoreTerminal`, schema 1 (`Search`, at most
-128 UTF-16 characters; `Sort`, 0 or 1). Missing data uses empty search/name order;
+128 UTF-16 characters; `Sort`: a mode 0–2, plus 4 for reversed and 8 for the Tall grid,
+which changes only the client layout). Missing data uses empty search/name order;
 invalid known fields default without granting authority. Unknown schemas are left
 untouched until the player explicitly changes a preference. Each authenticated
 change writes only this preference compound. It survives screen closure, normal

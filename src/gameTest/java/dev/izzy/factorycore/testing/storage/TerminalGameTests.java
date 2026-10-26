@@ -258,6 +258,34 @@ public final class TerminalGameTests {
                 refused = true;
               }
               helper.assertTrue(refused, "An invalid sort mode is refused at decode");
+              command(
+                  f,
+                  TerminalPackets.SORT,
+                  TerminalSearchSupport.QUANTITY
+                      | TerminalSearchSupport.REVERSED
+                      | TerminalSearchSupport.TALL,
+                  1,
+                  new byte[32]);
+            })
+        .thenWaitUntil(
+            () -> {
+              loaded(helper, f);
+              helper.assertTrue(
+                  menu(f).view().rows().getFirst().total().equals("32"),
+                  "The Tall layout preference keeps the reversed quantity order");
+            })
+        .thenExecute(
+            () -> {
+              f.player.closeContainer();
+              open(helper, f);
+            })
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  TerminalSearchSupport.tall(menu(f).view().sort())
+                      && TerminalSearchSupport.reversed(menu(f).view().sort()),
+                  "Tall is persisted per player with the sort and restored on reopen");
               logout(f);
             })
         .thenSucceed();

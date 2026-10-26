@@ -17,7 +17,9 @@ public final class Panels {
       SLOT = sprite("slot"),
       CHOICE_SELECTED = sprite("choice_selected"),
       CHECKBOX = sprite("checkbox"),
-      CHECKBOX_CHECKED = sprite("checkbox_checked");
+      CHECKBOX_CHECKED = sprite("checkbox_checked"),
+      TAB = sprite("tab"),
+      TAB_SELECTED = sprite("tab_selected");
 
   /** Text on the panel face: normal, secondary, good, warning and error. */
   public static final int TEXT = 0x404040,
@@ -45,6 +47,32 @@ public final class Panels {
   /** One 18×18 item slot whose item sits at {@code x + 1, y + 1}. */
   public static void slot(GuiGraphics graphics, int x, int y) {
     graphics.blitSprite(SLOT, x, y, PanelLayout.SLOT, PanelLayout.SLOT);
+  }
+
+  /** The panel background drawn at an absolute rectangle (for a panel without a layout). */
+  public static void panel(GuiGraphics graphics, Rect area) {
+    graphics.blitSprite(PANEL, area.x(), area.y(), area.width(), area.height());
+  }
+
+  /**
+   * A vertical scrollbar in {@code track}: a sunken track and a raised thumb sized to the visible
+   * share ({@code visible} of {@code total}) at {@code position} of {@code range}.
+   */
+  public static void scrollbar(
+      GuiGraphics graphics, Rect track, int visible, int total, int position, int range) {
+    inset(graphics, track);
+    int inner = track.height() - 2;
+    int thumb =
+        total <= visible ? inner : Math.max(8, (int) ((long) inner * visible / Math.max(1, total)));
+    int y = track.y() + 1 + (inner - thumb) * Math.max(0, position) / Math.max(1, range);
+    raised(graphics, new Rect(track.x() + 1, y, track.width() - 2, thumb));
+  }
+
+  /** A small raised box (scrollbar thumbs, markers): face with a one-pixel bevel. */
+  public static void raised(GuiGraphics graphics, Rect area) {
+    graphics.fill(area.x(), area.y(), area.right(), area.bottom(), 0xff555555);
+    graphics.fill(area.x(), area.y(), area.right() - 1, area.bottom() - 1, 0xffffffff);
+    graphics.fill(area.x() + 1, area.y() + 1, area.right() - 1, area.bottom() - 1, 0xffc6c6c6);
   }
 
   /** The title at the vanilla position; {@code left, top} is the panel's corner. */

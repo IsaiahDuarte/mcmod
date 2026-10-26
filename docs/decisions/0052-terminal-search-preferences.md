@@ -12,7 +12,8 @@ Names use the server language and custom item name. Name order uses at most 256
 characters; quantity order is descending BigInteger total; mod order groups by registry
 namespace, then name. Exact keys break ties. A reversed flag (bit 4) flips any mode; the
 saved `Sort` integer keeps 0/1 meaning Name/Qty, so schema 1 is unchanged (amended by
-parity slice P2).
+parity slice P2). A Tall flag (bit 8, playtest H2) rides in the same integer: it sets
+only the client grid height, `mode` masks it out, and an unknown bit is still refused.
 An ordered index updates at most one bounded catalog page per scheduled callback,
 with 1,024 bytes charged per aggregate. Tag walks reject more than 1,024 tags.
 

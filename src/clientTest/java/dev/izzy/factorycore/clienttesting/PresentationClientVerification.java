@@ -1023,8 +1023,7 @@ public final class PresentationClientVerification {
           captures.grab(client, "jobs-typed-37-started-scale-2.png");
           // A4: open the running job's steps with a real click on its row.
           var screen = terminal(client);
-          return screen.mouseClicked(
-              screen.getGuiLeft() + TerminalScreen.JOBS_X + 20, screen.getGuiTop() + 50, 0);
+          return screen.mouseClicked(screen.jobRowX(), screen.jobRowY(0), 0);
         });
     step(
         client -> {
@@ -1092,7 +1091,7 @@ public final class PresentationClientVerification {
         client -> {
           captures.grab(client, "jobs-scroll-top-scale-4.png");
           var screen = terminal(client);
-          return screen.mouseScrolled(screen.getGuiLeft() + 60, screen.getGuiTop() + 60, 0, -1);
+          return screen.mouseScrolled(screen.craftableStripX(), screen.craftableStripY(), 0, -1);
         });
     step(
         client -> {
@@ -1108,7 +1107,7 @@ public final class PresentationClientVerification {
           if (view.offset() == view.total() - TerminalJobPackets.ROWS) return true;
           var screen = terminal(client);
           if (waited() % 4 == 3)
-            screen.mouseScrolled(screen.getGuiLeft() + 60, screen.getGuiTop() + 60, 0, -1);
+            screen.mouseScrolled(screen.craftableStripX(), screen.craftableStripY(), 0, -1);
           return false;
         });
     step(
@@ -1228,8 +1227,7 @@ public final class PresentationClientVerification {
           }
           if (!jobs.getFirst().reason().equals("machine_missing")) return false;
           var screen = terminal(client);
-          return screen.mouseClicked(
-              screen.getGuiLeft() + TerminalScreen.JOBS_X + 20, screen.getGuiTop() + 50, 0);
+          return screen.mouseClicked(screen.jobRowX(), screen.jobRowY(0), 0);
         });
     step(
         client -> {
@@ -1301,7 +1299,7 @@ public final class PresentationClientVerification {
           if (waited() % 4 == 3 && !view.craftables().isEmpty()) {
             boolean before = target.compareTo(view.craftables().getFirst().icon()) < 0;
             screen.mouseScrolled(
-                screen.getGuiLeft() + 60, screen.getGuiTop() + 60, 0, before ? 1 : -1);
+                screen.craftableStripX(), screen.craftableStripY(), 0, before ? 1 : -1);
           }
           return false;
         });
@@ -1351,7 +1349,7 @@ public final class PresentationClientVerification {
         client -> {
           var screen = terminal(client);
           for (int notch = 0; notch < 100; notch++)
-            screen.mouseScrolled(screen.getGuiLeft() + 60, screen.getGuiTop() + 60, 0, -1);
+            screen.mouseScrolled(screen.craftableStripX(), screen.craftableStripY(), 0, -1);
           return true;
         });
     step(

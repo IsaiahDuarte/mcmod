@@ -961,6 +961,35 @@ def gui_checkbox(checked):
     return c
 
 
+GUI_TAB = (160, 160, 160, 255)
+
+
+def gui_tab(selected):
+    """16x16 nine-slice (border 4) tab on a panel's top edge. The selected tab has no bottom edge
+    and is drawn over the panel's border so it joins the panel face; the others sit behind it."""
+    c = Canvas("gui_tab" + ("_selected" if selected else ""))
+    face = GUI_FACE if selected else GUI_TAB
+    c.rect(1, 1, 14, 15, face)
+    c.hline(2, 13, 0, GUI_OUTLINE)
+    c.px(1, 1, GUI_OUTLINE)
+    c.px(14, 1, GUI_OUTLINE)
+    c.vline(0, 2, 15, GUI_OUTLINE)
+    c.vline(15, 2, 15, GUI_OUTLINE)
+    c.hline(2, 13, 1, GUI_LIGHT)
+    c.vline(1, 2, 15, GUI_LIGHT)
+    c.vline(14, 2, 15 if not selected else 12, GUI_SHADOW)
+    if selected:
+        # The last rows cover the panel's outline and bevel: face, with the bevel continuing.
+        for y in (13, 14, 15):
+            c.hline(0, 15, y, face)
+        c.px(0, 13, GUI_OUTLINE)
+        c.hline(0, 1, 14, GUI_LIGHT)
+        c.hline(0, 1, 15, GUI_LIGHT)
+    else:
+        c.hline(0, 15, 15, GUI_OUTLINE)
+    return c
+
+
 def gui_sprites():
     """Sprite name -> (canvas, nine-slice border or None for a fixed-size sprite)."""
     return {
@@ -970,6 +999,8 @@ def gui_sprites():
         "choice_selected": (gui_choice_selected(), 3),
         "checkbox": (gui_checkbox(False), None),
         "checkbox_checked": (gui_checkbox(True), None),
+        "tab": (gui_tab(False), 4),
+        "tab_selected": (gui_tab(True), 4),
     }
 
 

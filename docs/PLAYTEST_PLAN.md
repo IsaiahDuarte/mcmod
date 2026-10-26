@@ -56,6 +56,11 @@ Same loop as the UX and parity plans:
 
 ## Wave H0 — screens (HD3)
 
+Order note (2026-10-26): after H2, run H6 → H8 → H9 → H4/H5 → H7, then H3 and Wave H2. H3
+would otherwise port the Machine-mode screen that H7 deletes. Starting with H6 also fixes K4 (no
+import/export found) first. H7 must follow H5, because programs need cable-adjacent machines
+before Machine-mode ports go away.
+
 - [x] **H1 — Panel kit.** Done 2026-10-26 (commit subject `H1:`). [Evidence](evidence/playtest-h1-panel-kit-2026-10-26.md).
   The Gateway screen is the first screen on the kit. Tabs are specified in ADR 0064 and built with H2.
   One shared layout kit replaces hand-placed offsets: a nine-slice panel texture, fixed width
@@ -68,7 +73,8 @@ Same loop as the UX and parity plans:
   Done when: a unit test lays out every kit row type and finds no overlap and nothing outside
   the panel; a sample screen fits at scales 1–4.
 
-- [ ] **H2 — Terminal on the kit (K2).** Size M.
+- [x] **H2 — Terminal on the kit (K2).** Done 2026-10-26 (commit subject `H2:`). [Evidence](evidence/playtest-h2-terminal-2026-10-26.md).
+  Tall is a bit in the saved sort preference.
   9-column item grid with the player inventory docked and centred below it, like AE2/RS. A
   **Tall** toggle (saved with ADR 0052 preferences) adds rows to fill the window height.
   Items/Fluids/Energy/Jobs become edge tabs, and crafting opens as a side panel. Every action

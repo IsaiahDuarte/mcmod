@@ -71,7 +71,8 @@ class TerminalSearchSupportTest {
                     TerminalSearchSupport.NAME | TerminalSearchSupport.REVERSED, names::get))
             .toList());
     assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(3, names::get));
-    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(8, names::get));
+    // 8 is the Tall layout bit (H2); the first unknown bit is 16.
+    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(16, names::get));
     assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(-1, names::get));
   }
 
@@ -108,6 +109,33 @@ class TerminalSearchSupportTest {
             .map(r -> r.key())
             .toList();
     assertEquals(List.of(vanillaZ, modded, vanillaA), quantityUp);
+    // H2: the Tall bit is a client layout preference and never changes the order.
+    var tall =
+        rows.stream()
+            .sorted(
+                TerminalSearchSupport.order(
+                    TerminalSearchSupport.QUANTITY
+                        | TerminalSearchSupport.REVERSED
+                        | TerminalSearchSupport.TALL,
+                    names::get))
+            .map(r -> r.key())
+            .toList();
+    assertEquals(quantityUp, tall);
+  }
+
+  @Test
+  void tallRidesInTheSortPreferenceWithoutChangingTheMode() {
+    int sort =
+        TerminalSearchSupport.MOD | TerminalSearchSupport.REVERSED | TerminalSearchSupport.TALL;
+    assertTrue(TerminalSearchSupport.validSort(sort));
+    assertEquals(TerminalSearchSupport.MOD, TerminalSearchSupport.mode(sort));
+    assertTrue(TerminalSearchSupport.reversed(sort));
+    assertTrue(TerminalSearchSupport.tall(sort));
+    assertFalse(TerminalSearchSupport.tall(TerminalSearchSupport.MOD));
+    assertFalse(
+        TerminalSearchSupport.validSort(3 | TerminalSearchSupport.TALL), "mode 3 is unknown");
+    assertFalse(TerminalSearchSupport.validSort(16), "unknown bits are refused");
+    assertFalse(TerminalSearchSupport.validSort(-1));
   }
 
   private static CatalogCounts.Row row(ResourceKey key, BigInteger amount) {

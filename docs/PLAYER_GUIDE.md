@@ -115,7 +115,8 @@ Deposit and withdrawing needs Withdraw.
 - **Search:** type a name or ID; `@minecraft` matches a mod and
   `#minecraft:planks` matches a tag.
 - **Sort:** the sort button cycles Name, Qty and Mod; the arrow beside it reverses the
-  order. Your search and sort are remembered.
+  order. **⇕** makes the grid fill the window's height instead of six rows. Your search,
+  sort and grid height are remembered.
 - **Craftable items:** items your Crafters can make have an orange corner. **⚒** also
   lists craftable items you have none of, marked **+**. Click one (or middle-click any
   craftable item) to open it in Jobs, ready to type an amount. The setting is remembered.
@@ -124,14 +125,17 @@ Deposit and withdrawing needs Withdraw.
 - **Depositing:** click the grid with items on your cursor, or Shift-click an
   inventory slot. If storage is full, the rest stays with you.
 - **Counts:** hover an item for its total, reserved and available counts. The bar
-  shows how full your item cells are.
+  under the grid shows how full your item cells are.
+- **Status:** the lamp at the top right is green when the network is online; hover it for
+  details. If the network is offline, the reason shows over the grid.
 - **Fluids and energy:** the **Fluids** tab fills buckets and tanks (**Fill**), or
   empties them when you Shift-click a filled container. The **Energy** tab charges or
   drains FE items, up to 1,000 FE per click.
 - **Returning a stuck move:** if a move is interrupted, **Return** sends the items in
   transit back to where they came from.
 
-**Crafting grid.** Press **Crafting »** and choose **Table** for a 3×3 grid of *ghost*
+**Crafting grid.** Press **Crafting »** under the grid to open the crafting panel beside the
+terminal, and choose **Table** for a 3×3 grid of *ghost*
 cells: nothing moves into the grid, so closing never loses items.
 - **Filling the grid:** click a cell, then Ctrl-click an item in your inventory.
   Alternatively, Ctrl-click a network item (or press 1–8) and press **Use selected**.
@@ -142,18 +146,19 @@ cells: nothing moves into the grid, so closing never loses items.
   *Partial*. A craft whose output would not fit in your inventory is refused before
   anything is used.
 
-**Jobs.** Press **Jobs** to list what your Crafters can make. Scroll over the list (Shift:
-eight at a time) or click its scrollbar to see more.
+**Jobs.** Press the **Jobs** tab to list what your Crafters can make in the strip at the top.
+Scroll over the strip (Shift: eight at a time) or click its scrollbar to see more. Your
+inventory is hidden while Jobs is open.
 - **Preview:** select an item and press **×1**, **×8** or **×64**, or type an amount
   (1–4,096) in the box beside them and press Enter. This shows the steps needed or the
   first missing ingredient. For more than 4,096, start several jobs.
 - **Plan:** after a preview, **Plan** lists every item the job touches: how many come
   from storage, how many are crafted and how many are missing (red, listed first). A
   **Loop** line means two recipes make each other; keep some of one in storage to break
-  it. **Back** returns to the craftable list.
+  it. **Back** returns to the craftable strip and your jobs.
 - **Start:** press **Start** to run the job; you need Craft. Its ingredients are
   reserved so no one else takes them.
-- **Your jobs:** they appear on the right with progress and a state symbol (▶
+- **Your jobs:** they are listed under the strip with progress and a state symbol (▶
   running, ⏸ waiting, ⇩ storing, ✕ cancelling); hover for the reason, scroll for more.
   Click a job to see each step: done, crafting, waiting (and why) or next. **Cancel**
   stops a job and returns unused ingredients; **Back** closes the steps.
@@ -295,7 +300,7 @@ are not kept.
 Craft Blank Patterns.
 - **Crafting Pattern:** set up a recipe in the terminal's Table grid and press
   **Encode** with a blank in your inventory. Your ingredients are not used. Turn
-  **Subst.** on first if any item the recipe accepts may be used, for example any
+  **Substitutes** on first if any item the recipe accepts may be used, for example any
   planks for sticks or chests. Jobs then take whichever is most plentiful, and can mix
   them. With it off, the pattern uses exactly the items you placed.
 - **Processing Pattern** (for machines): choose **Inputs** and set the ingredients,

@@ -10,6 +10,7 @@ import dev.izzy.factorycore.platform.session.MenuSession;
 import java.security.MessageDigest;
 import java.util.*;
 import java.util.Collections;
+import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -238,15 +239,23 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
 
   /**
    * Client-only coordinates; slot identities/order remain the server's native 36-slot inventory.
+   * {@code left, top} place the first main-inventory slot's item and {@code hotbar} the hotbar row.
+   * While {@code shown} is false (the Jobs view uses that space) the slots are neither drawn nor
+   * clickable; their contents are unchanged.
    */
-  public void layoutInventory(int extra) {
+  public void layoutInventory(int left, int top, int hotbar, BooleanSupplier shown) {
     if (terminal != null)
       throw new IllegalStateException("Only the client lays out inventory slots");
     for (int i = 0; i < slots.size(); i++) {
       var old = slots.get(i);
-      int y = i < 27 ? 148 + 18 * (i / 9) : 210;
+      int y = i < 27 ? top + 18 * (i / 9) : hotbar;
       var replacement =
-          new Slot(old.container, old.getContainerSlot(), 10 + 18 * (i % 9), y + extra);
+          new Slot(old.container, old.getContainerSlot(), left + 18 * (i % 9), y) {
+            @Override
+            public boolean isActive() {
+              return shown.getAsBoolean();
+            }
+          };
       replacement.index = i;
       slots.set(i, replacement);
     }
