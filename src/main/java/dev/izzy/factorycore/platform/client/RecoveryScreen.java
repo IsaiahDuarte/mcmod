@@ -1,7 +1,11 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.platform.client.ui.PanelLayout;
+import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.storage.RecoveryMenu;
 import dev.izzy.factorycore.platform.storage.RecoveryPackets;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import net.minecraft.client.gui.GuiGraphics;
@@ -12,87 +16,87 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
 /**
- * Transfer Recovery screen (ADR 0055): a bounded page of transfer records, the selected record's
- * safe next step and only the actions the server would accept for it. Each row states its class in
- * words ({@code [known]}, {@code [uncertain]} ...), never by color alone.
+ * Transfer Recovery screen (ADR 0055; on the panel kit since playtest H3b): a bounded page of
+ * transfer records, the selected record's safe next step and only the actions the server would
+ * accept for it. Each row states its class in words ({@code [known]}, {@code [uncertain]} ...),
+ * never by color alone.
  */
 public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> {
-  private static final int ROWS = RecoveryPackets.PAGE_ROWS, ROW_Y = 30, ROW_HEIGHT = 14;
-  private final Button[] rows = new Button[ROWS];
+  private static final int ROWS = RecoveryPackets.PAGE_ROWS, LINE_HEIGHT = 12;
+
+  /** Panel-relative layout: the scope line, the list, the next step, the actions, the result. */
+  private static final int SCOPE_Y = PanelLayout.BODY,
+      LIST_Y = SCOPE_Y + PanelLayout.LINE + PanelLayout.GAP,
+      LIST_HEIGHT = ROWS * LINE_HEIGHT + 4,
+      STEP_Y = LIST_Y + LIST_HEIGHT + PanelLayout.GAP,
+      ACTION_Y = STEP_Y + 3 * PanelLayout.LINE + PanelLayout.GAP,
+      MESSAGE_Y = ACTION_Y + PanelLayout.ROW + PanelLayout.GAP;
+
+  private final PanelLayout layout =
+      new PanelLayout(
+          PanelLayout.WIDE,
+          PanelLayout.heightFor(MESSAGE_Y + 2 * PanelLayout.LINE - PanelLayout.BODY));
+  private final Rect list =
+      new Rect(PanelLayout.EDGE, LIST_Y, PanelLayout.WIDE - 2 * PanelLayout.EDGE, LIST_HEIGHT);
+
   private Button returning, settle, retire, home, next;
   private UUID selected = RecoveryPackets.NONE;
   private long shown = -1;
 
   public RecoveryScreen(RecoveryMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
-    imageWidth = 300;
-    imageHeight = 204;
+    imageWidth = layout.width();
+    imageHeight = layout.height();
   }
 
   @Override
   protected void init() {
     super.init();
     shown = -1;
-    for (int row = 0; row < ROWS; row++) {
-      int index = row;
-      rows[row] =
-          addRenderableWidget(
-              Button.builder(Component.empty(), button -> select(index))
-                  .bounds(leftPos + 8, topPos + ROW_Y + row * ROW_HEIGHT, imageWidth - 16, 13)
-                  .build());
-    }
-    int y = topPos + 150;
-    returning =
-        addRenderableWidget(
-            Button.builder(
-                    Component.translatable("gui.factorycore.recovery.return"),
-                    button -> act(RecoveryPackets.RETURN))
-                .bounds(leftPos + 8, y, 64, 16)
-                .tooltip(
-                    Tooltip.create(
-                        Component.translatable("gui.factorycore.recovery.return.tooltip")))
-                .build());
-    settle =
-        addRenderableWidget(
-            Button.builder(
-                    Component.translatable("gui.factorycore.recovery.settle"),
-                    button -> act(RecoveryPackets.SETTLE))
-                .bounds(leftPos + 76, y, 64, 16)
-                .tooltip(
-                    Tooltip.create(
-                        Component.translatable("gui.factorycore.recovery.settle.tooltip")))
-                .build());
-    retire =
-        addRenderableWidget(
-            Button.builder(
-                    Component.translatable("gui.factorycore.recovery.retire"),
-                    button -> act(RecoveryPackets.RETIRE))
-                .bounds(leftPos + 144, y, 64, 16)
-                .tooltip(
-                    Tooltip.create(
-                        Component.translatable("gui.factorycore.recovery.retire.tooltip")))
-                .build());
+    int x = leftPos + list.x();
+    returning = action(x, "return", RecoveryPackets.RETURN);
+    settle = action(returning.getRight() + PanelLayout.GAP, "settle", RecoveryPackets.SETTLE);
+    retire = action(settle.getRight() + PanelLayout.GAP, "retire", RecoveryPackets.RETIRE);
+    var footer = layout.footer();
+    var homeLabel = Component.translatable("gui.factorycore.recovery.home");
+    var nextLabel = Component.translatable("gui.factorycore.recovery.next");
+    var cells =
+        PanelLayout.alignRight(
+            footer,
+            new int[] {font.width(homeLabel) + 12, font.width(nextLabel) + 12},
+            PanelLayout.GAP);
     home =
         addRenderableWidget(
             Button.builder(
-                    Component.translatable("gui.factorycore.recovery.home"),
-                    button -> menu.send(RecoveryPackets.HOME, RecoveryPackets.NONE))
-                .bounds(leftPos + 212, y, 38, 16)
+                    homeLabel, button -> menu.send(RecoveryPackets.HOME, RecoveryPackets.NONE))
+                .bounds(
+                    leftPos + cells.get(0).x(),
+                    topPos + footer.y(),
+                    cells.get(0).width(),
+                    footer.height())
                 .build());
     next =
         addRenderableWidget(
             Button.builder(
-                    Component.translatable("gui.factorycore.recovery.next"),
-                    button -> menu.send(RecoveryPackets.NEXT, RecoveryPackets.NONE))
-                .bounds(leftPos + 254, y, 38, 16)
+                    nextLabel, button -> menu.send(RecoveryPackets.NEXT, RecoveryPackets.NONE))
+                .bounds(
+                    leftPos + cells.get(1).x(),
+                    topPos + footer.y(),
+                    cells.get(1).width(),
+                    footer.height())
                 .build());
     refresh();
   }
 
-  private void select(int row) {
-    var view = menu.view();
-    if (row < view.rows().size()) selected = view.rows().get(row).id();
-    refresh();
+  private Button action(int x, String key, int action) {
+    var label = Component.translatable("gui.factorycore.recovery." + key);
+    return addRenderableWidget(
+        Button.builder(label, button -> act(action))
+            .bounds(x, topPos + ACTION_Y, font.width(label) + 14, PanelLayout.ROW)
+            .tooltip(
+                Tooltip.create(
+                    Component.translatable("gui.factorycore.recovery." + key + ".tooltip")))
+            .build());
   }
 
   private void act(int action) {
@@ -103,6 +107,25 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
   private RecoveryPackets.Row selectedRow() {
     for (var row : menu.view().rows()) if (row.id().equals(selected)) return row;
     return null;
+  }
+
+  /** The list row under a screen point, or -1. */
+  private int rowAt(double mouseX, double mouseY) {
+    double x = mouseX - leftPos - list.x(), y = mouseY - topPos - list.y() - 2;
+    if (x < 0 || x >= list.width() || y < 0) return -1;
+    int row = (int) (y / LINE_HEIGHT);
+    return row < menu.view().rows().size() ? row : -1;
+  }
+
+  @Override
+  public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    int row = rowAt(mouseX, mouseY);
+    if (button == 0 && row >= 0) {
+      selected = menu.view().rows().get(row).id();
+      refresh();
+      return true;
+    }
+    return super.mouseClicked(mouseX, mouseY, button);
   }
 
   @Override
@@ -126,32 +149,13 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
         + row.owner();
   }
 
-  /** Rebuilds row labels and which actions apply to the selected record. */
+  /** Re-selects a visible record and decides which actions apply to it. */
   public void refresh() {
     var view = menu.view();
     shown = view.revision();
     var visible = view.rows();
     if (selectedRow() == null)
       selected = visible.isEmpty() ? RecoveryPackets.NONE : visible.get(0).id();
-    for (int row = 0; row < ROWS; row++) {
-      var button = rows[row];
-      button.visible = row < visible.size();
-      if (!button.visible) continue;
-      var record = visible.get(row);
-      boolean chosen = record.id().equals(selected);
-      button.setMessage(Component.literal((chosen ? "> " : "") + label(record)));
-      button.setTooltip(
-          Tooltip.create(
-              Component.translatable(
-                  "gui.factorycore.recovery.row.tooltip",
-                  record.id().toString(),
-                  record.state(),
-                  record.kind().toLowerCase(Locale.ROOT),
-                  record.resource(),
-                  record.delivered(),
-                  record.returned(),
-                  record.pending())));
-    }
     var row = selectedRow();
     returning.active = row != null && row.mine() && row.classification().equals("known");
     settle.active = row != null && row.mine() && row.classification().equals("legacy");
@@ -167,9 +171,44 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
 
   @Override
   protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
-    graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xff282c30);
-    graphics.fill(
-        leftPos + 4, topPos + 4, leftPos + imageWidth - 4, topPos + imageHeight - 4, 0xff44484d);
+    Panels.panel(graphics, leftPos, topPos, layout);
+    var area = list.offset(leftPos, topPos);
+    Panels.inset(graphics, area);
+    int hovered = rowAt(mouseX, mouseY);
+    var rows = menu.view().rows();
+    for (int row = 0; row < rows.size(); row++) {
+      int y = area.y() + 2 + row * LINE_HEIGHT;
+      if (rows.get(row).id().equals(selected))
+        graphics.fill(area.x() + 1, y, area.right() - 1, y + LINE_HEIGHT, 0x60b5683c);
+      else if (row == hovered)
+        graphics.fill(area.x() + 1, y, area.right() - 1, y + LINE_HEIGHT, 0x30ffffff);
+    }
+  }
+
+  @Override
+  public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
+    super.render(graphics, mouseX, mouseY, partial);
+    int row = rowAt(mouseX, mouseY);
+    if (row < 0) {
+      renderTooltip(graphics, mouseX, mouseY);
+      return;
+    }
+    var record = menu.view().rows().get(row);
+    var text =
+        Component.translatable(
+            "gui.factorycore.recovery.row.tooltip",
+            record.id().toString(),
+            record.state(),
+            record.kind().toLowerCase(Locale.ROOT),
+            record.resource(),
+            record.delivered(),
+            record.returned(),
+            record.pending());
+    graphics.renderComponentTooltip(
+        font,
+        List.of(text.getString().split("\n")).stream().<Component>map(Component::literal).toList(),
+        mouseX,
+        mouseY);
   }
 
   private Component status(RecoveryPackets.View view) {
@@ -189,7 +228,7 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     var view = menu.view();
-    graphics.drawString(font, title, 8, 6, 0xffffff, false);
+    Panels.title(graphics, font, title, 0, 0);
     graphics.drawString(
         font,
         font.plainSubstrByWidth(
@@ -199,38 +238,46 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
                         : "gui.factorycore.recovery.own_scope",
                     view.page() + 1)
                 .getString(),
-            imageWidth - 16),
-        8,
-        18,
-        0xe4bc83,
+            list.width()),
+        list.x() + 1,
+        SCOPE_Y,
+        Panels.MUTED,
         false);
-    if (view.rows().isEmpty())
+    var inner = new Rect(list.x() + 3, list.y() + 2, list.width() - 6, list.height() - 4);
+    var rows = view.rows();
+    if (rows.isEmpty())
       graphics.drawString(
           font,
           Component.translatable("gui.factorycore.recovery.empty"),
-          8,
-          ROW_Y + 3,
-          0xd8dee9,
+          inner.x(),
+          inner.y() + 2,
+          Panels.MUTED,
+          false);
+    for (int row = 0; row < rows.size(); row++)
+      graphics.drawString(
+          font,
+          font.plainSubstrByWidth(label(rows.get(row)), inner.width()),
+          inner.x(),
+          inner.y() + row * LINE_HEIGHT + 2,
+          Panels.TEXT,
           false);
     var row = selectedRow();
-    int y = ROW_Y + ROWS * ROW_HEIGHT + 4;
     if (row != null)
-      for (var line :
-          font.split(
-              Component.translatable(
-                  "gui.factorycore.recovery.next."
-                      + row.classification()
-                      + (row.mine() || row.classification().equals("uncertain") ? "" : ".other")),
-              imageWidth - 16)) {
-        if (y > 140) break;
-        graphics.drawString(font, line, 8, y, 0xebcb8b, false);
-        y += 10;
-      }
-    y = 170;
-    for (var line : font.split(status(view), imageWidth - 16)) {
-      if (y > 190) break;
-      graphics.drawString(font, line, 8, y, 0xd8dee9, false);
-      y += 10;
-    }
+      Panels.wrapped(
+          graphics,
+          font,
+          Component.translatable(
+              "gui.factorycore.recovery.next."
+                  + row.classification()
+                  + (row.mine() || row.classification().equals("uncertain") ? "" : ".other")),
+          new Rect(list.x() + 1, STEP_Y, list.width(), 3 * PanelLayout.LINE),
+          row.classification().equals("uncertain") ? Panels.WARN : Panels.TEXT);
+    if (!view.status().equals("ready"))
+      Panels.wrapped(
+          graphics,
+          font,
+          status(view),
+          new Rect(list.x() + 1, MESSAGE_Y, list.width(), 2 * PanelLayout.LINE),
+          Panels.WARN);
   }
 }

@@ -82,3 +82,15 @@ The Storage, Buffer and Signal Interface screens and the Drive screen moved to t
   partition note moved into tooltips. The message row shows only results and problems.
 - **Inventory positions.** The Buffer and Drive menus place the player inventory centred in the
   230 px panel (`INVENTORY_X = 35`). The Drive panel is 238 px tall, within the 240 px limit.
+
+## Amendment — H3b: Access and Recovery screens (2026-10-26)
+
+- **Network Access is a list, then the selected player's controls.** The old screen put a role
+  button, Revoke and Owner on every row, which needed a 300 px panel. Now each row is one line
+  with the player's name and current role. Under the list sit the selected player's role
+  choices (Guest, Member, Builder, Admin), or with Advanced the seven permission letters as
+  toggles, then Revoke, Owner and the Roles/Advanced switch. Paging and Recovery… are in the
+  footer. A blocked grant still shows `*` after its letter, so it does not depend on color.
+- **Transfer Recovery** uses the same list style. The selected record's safe next step is shown
+  in words under the list, and only the applicable actions are enabled. The "Select a record"
+  instruction is gone. Both panels are 230 px wide.

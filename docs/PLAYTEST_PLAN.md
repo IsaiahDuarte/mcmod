@@ -90,6 +90,8 @@ before Machine-mode ports go away.
   Progress: (a) done 2026-10-26 (commit subject `H3a:`,
   [evidence](evidence/playtest-h3a-device-screens-2026-10-26.md)). The Interface mode stays a
   captioned row at the bottom rather than tabs; the ADR 0064 amendment says why.
+  (b) done 2026-10-26 (commit subject `H3b:`,
+  [evidence](evidence/playtest-h3b-access-recovery-2026-10-26.md)).
 
 ## Wave H1 — machines on cables (HD1)
 
