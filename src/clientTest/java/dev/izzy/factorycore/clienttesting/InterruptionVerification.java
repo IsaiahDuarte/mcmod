@@ -5,6 +5,7 @@ import static dev.izzy.factorycore.clienttesting.RestartCheckpoint.require;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -324,7 +325,8 @@ final class InterruptionVerification {
       case 1 -> {
         if (current != null) {
           require(
-              !"save_mismatch".equals(current.reason()) && !"uncertain".equals(current.reason()),
+              current.reason() != JobReason.SAVE_MISMATCH
+                  && current.reason() != JobReason.UNCERTAIN,
               "A consistent S3 world is not quarantined: " + current.reason());
           return;
         }
@@ -393,7 +395,7 @@ final class InterruptionVerification {
     require(first != null, "S1 SavedData still holds job 1");
     switch (phase) {
       case 0 -> {
-        if (!"save_mismatch".equals(first.reason())) {
+        if (first.reason() != JobReason.SAVE_MISMATCH) {
           require(server.getTickCount() - started < 400, "Skew diagnosed: " + first.reason());
           return;
         }
@@ -403,7 +405,8 @@ final class InterruptionVerification {
         phase = 1;
       }
       case 1 -> {
-        require("save_mismatch".equals(first.reason()), "Quarantine persists: " + first.reason());
+        require(
+            first.reason() == JobReason.SAVE_MISMATCH, "Quarantine persists: " + first.reason());
         require(
             (machineState() + stock(server, ore) + "/" + stock(server, ingot)).equals(frozen),
             "No machine or ledger change while the machine disagrees with the job");
@@ -426,7 +429,7 @@ final class InterruptionVerification {
         if (server.getTickCount() - mark < 200) return;
         // The job re-evaluates on its next scheduled pass; by now it must have left quarantine.
         require(
-            !"save_mismatch".equals(first.reason()),
+            first.reason() != JobReason.SAVE_MISMATCH,
             "Resolved job is no longer quarantined: " + first.reason());
         finish(
             server,
@@ -477,7 +480,7 @@ final class InterruptionVerification {
         require(
             Long.toString(stock(server, ore)).equals(frozen) || third.dispatch() == null,
             "No ingredient is dispatched to a machine with an unfinished journal");
-        if (!"machine_journal".equals(third.reason())) {
+        if (third.reason() != JobReason.MACHINE_JOURNAL) {
           require(server.getTickCount() - mark < 200, "Orphan journal blocks: " + third.reason());
           return;
         }
@@ -491,7 +494,7 @@ final class InterruptionVerification {
       case 2 -> {
         var third = job(server);
         require(stock(server, ingot) <= REQUESTED + 1, "Job 3 adds at most its one ingot");
-        if (third != null && "output_not_clean".equals(third.reason())) {
+        if (third != null && third.reason() == JobReason.OUTPUT_NOT_CLEAN) {
           // The older chunk's ingots are not the job's; Factory Core refuses to absorb them, so a
           // player empties the output slot by hand, as the wait reason asks.
           require(third.dispatch() == null, "Unowned output blocks dispatch");

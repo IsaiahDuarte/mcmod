@@ -55,11 +55,11 @@ public final class CraftingJobs {
   }
 
   /** Why a new job cannot be admitted, or null when it can. */
-  public String admission(UUID principal) {
+  public JobStatus admission(UUID principal) {
     checkThread();
-    if (jobs.size() >= MAX_JOBS) return "job_limit";
+    if (jobs.size() >= MAX_JOBS) return JobStatus.JOB_LIMIT;
     long mine = jobs.values().stream().filter(job -> job.principal().equals(principal)).count();
-    return mine >= MAX_PER_PRINCIPAL ? "principal_limit" : null;
+    return mine >= MAX_PER_PRINCIPAL ? JobStatus.PRINCIPAL_LIMIT : null;
   }
 
   public void add(CraftingJob job) {
@@ -96,15 +96,16 @@ public final class CraftingJobs {
 
   /**
    * Adds or replaces the principal's rule for the same network, segment and key. A replacement
-   * keeps the existing rule's ID, so jobs it started still count as its own.
+   * keeps the existing rule's ID, so jobs it started still count as its own. Returns null on
+   * success, else why the rule was refused.
    */
-  public String setRule(KeepStockRule rule) {
+  public JobStatus setRule(KeepStockRule rule) {
     checkThread();
     var existing = ruleFor(rule.principal(), rule.network(), rule.segment(), rule.key());
-    if (existing == null && rules.size() >= MAX_RULES) return "rule_limit";
+    if (existing == null && rules.size() >= MAX_RULES) return JobStatus.RULE_LIMIT;
     if (existing == null
         && rules().stream().filter(r -> r.principal().equals(rule.principal())).count()
-            >= MAX_RULES_PER_PRINCIPAL) return "principal_rule_limit";
+            >= MAX_RULES_PER_PRINCIPAL) return JobStatus.PRINCIPAL_RULE_LIMIT;
     var stored = existing == null ? rule : rule.withId(existing.id());
     rules.put(stored.id(), stored);
     dirty.run();

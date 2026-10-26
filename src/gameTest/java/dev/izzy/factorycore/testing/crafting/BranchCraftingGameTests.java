@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.crafting;
 
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.core.network.GatewayPolicy;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
@@ -203,7 +204,7 @@ public final class BranchCraftingGameTests {
                       .submit(new NetworkPermissions.Actor(f.owner, false), f.root, f.stick, 8);
               h.assertTrue(
                   submission.job() == null
-                      && submission.reason().equals("missing")
+                      && submission.reason() == JobStatus.MISSING
                       && f.saved.registry().stock(f.cell, f.log).reserved() == 0,
                   "Root cannot request an unpublished recipe and reserves nothing");
             })

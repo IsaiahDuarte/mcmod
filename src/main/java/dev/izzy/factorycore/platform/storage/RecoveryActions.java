@@ -45,12 +45,12 @@ public final class RecoveryActions {
   }
 
   /** Safe-next-step class of one record: uncertain, complete, legacy or known. */
-  public static String classify(TransferRegistry.Stored record) {
+  public static StagingClass classify(TransferRegistry.Stored record) {
     var move = record.transfer();
     if (move.pending() != StagedTransfer.PendingCall.NONE
-        || move.state() == StagedTransfer.State.QUARANTINED) return "uncertain";
-    if (move.state() == StagedTransfer.State.COMPLETE) return "complete";
-    return record.context() == null ? "legacy" : "known";
+        || move.state() == StagedTransfer.State.QUARANTINED) return StagingClass.UNCERTAIN;
+    if (move.state() == StagedTransfer.State.COMPLETE) return StagingClass.COMPLETE;
+    return record.context() == null ? StagingClass.LEGACY : StagingClass.KNOWN;
   }
 
   /**
@@ -70,10 +70,12 @@ public final class RecoveryActions {
         return Outcome.refused("owner");
       var move = records.get(id);
       if (move.pending() != StagedTransfer.PendingCall.NONE
-          || move.state() == StagedTransfer.State.QUARANTINED) return Outcome.refused("uncertain");
-      if (move.state() == StagedTransfer.State.COMPLETE) return Outcome.refused("complete");
+          || move.state() == StagedTransfer.State.QUARANTINED)
+        return Outcome.refused(StagingClass.UNCERTAIN.key());
+      if (move.state() == StagedTransfer.State.COMPLETE)
+        return Outcome.refused(StagingClass.COMPLETE.key());
       if ((records.context(id) == null) != settle)
-        return Outcome.refused(settle ? "settle_scoped" : "legacy");
+        return Outcome.refused(settle ? "settle_scoped" : StagingClass.LEGACY.key());
       var times = REQUESTS.computeIfAbsent(server, s -> new HashMap<>());
       int tick = server.getTickCount();
       var previous = times.get(player.getUUID());

@@ -461,8 +461,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
         selectedSlot < view.slots().size() && view.slots().get(selectedSlot).count() > 0;
     takeOne.active = inventory && !view.busy() && selected;
     takeStack.active = takeOne.active;
-    returning.active =
-        inventory && !view.busy() && view.staged() > 0 && !view.status().equals("uncertain");
+    returning.active = inventory && !view.busy() && view.staged() > 0 && !view.uncertain();
     if (shown != view.revision()) {
       if (!rate.isFocused()) rate.setValue(Integer.toString(view.rate()));
       if (!target.isFocused()) target.setValue(Integer.toString(view.target()));

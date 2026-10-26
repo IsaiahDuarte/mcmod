@@ -2,6 +2,8 @@ package dev.izzy.factorycore.platform.crafting;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.CraftingPlanner;
+import dev.izzy.factorycore.core.crafting.JobReason;
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.core.crafting.KeepStockRule;
 import dev.izzy.factorycore.core.crafting.Pattern;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
@@ -24,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -58,10 +59,10 @@ public final class WorldCraftingJobs {
       ServerScoped.of(WorldCraftingJobs::new);
 
   /** Advisory preview; {@code reason} is empty when the plan could be submitted now. */
-  public record Preview(CraftingPlanner.Plan plan, String reason) {}
+  public record Preview(CraftingPlanner.Plan plan, JobStatus reason) {}
 
   /** Submission outcome; {@code job} is null when {@code reason} explains a refusal. */
-  public record Submission(UUID job, CraftingPlanner.Plan plan, String reason) {}
+  public record Submission(UUID job, CraftingPlanner.Plan plan, JobStatus reason) {}
 
   /** Recently finished job for a requester's display; not persisted. */
   public record Notice(UUID job, ResourceKey request, long amount, boolean cancelled) {}
@@ -74,7 +75,7 @@ public final class WorldCraftingJobs {
   private final Map<UUID, RecipeHolder<CraftingRecipe>> recipes = new HashMap<>();
   private final Map<UUID, ArrayDeque<Notice>> notices = new HashMap<>();
   private final Map<UUID, Integer> cleanups = new HashMap<>();
-  private final Map<UUID, String> ruleStatus = new HashMap<>();
+  private final Map<UUID, JobStatus> ruleStatus = new HashMap<>();
   private final Map<UUID, Long> ruleDue = new HashMap<>();
   public static final int RULE_TICKS = 100;
   public static final long MAX_RULE_REQUEST = 4_096;
@@ -128,10 +129,12 @@ public final class WorldCraftingJobs {
     return result;
   }
 
-  private String denial(NetworkPermissions.Actor actor, NodeRegistry.Position origin) {
+  private JobStatus denial(NetworkPermissions.Actor actor, NodeRegistry.Position origin) {
     var member = networks().membership(origin);
-    if (member.status() != NetworkTopology.Status.VALID) return "offline";
-    return networks().allows(actor, origin, NetworkPermissions.Permission.CRAFT) ? null : "denied";
+    if (member.status() != NetworkTopology.Status.VALID) return JobStatus.OFFLINE;
+    return networks().allows(actor, origin, NetworkPermissions.Permission.CRAFT)
+        ? null
+        : JobStatus.DENIED;
   }
 
   private CraftingPlanner.Plan plan(
@@ -159,16 +162,16 @@ public final class WorldCraftingJobs {
     checkThread();
     var denied = denial(actor, origin);
     if (denied != null) return new Preview(null, denied);
-    if (key.kind() == ResourceKind.ENERGY) return new Preview(null, "unsupported");
+    if (key.kind() == ResourceKind.ENERGY) return new Preview(null, JobStatus.UNSUPPORTED);
     var plan = plan(actor, origin, key, amount);
     return new Preview(plan, reason(plan));
   }
 
-  private static String reason(CraftingPlanner.Plan plan) {
+  private static JobStatus reason(CraftingPlanner.Plan plan) {
     return switch (plan.status()) {
-      case OK -> "";
-      case MISSING -> plan.cycles().isEmpty() ? "missing" : "cycle";
-      case LIMIT -> "limit";
+      case OK -> null;
+      case MISSING -> plan.cycles().isEmpty() ? JobStatus.MISSING : JobStatus.CYCLE;
+      case LIMIT -> JobStatus.LIMIT;
     };
   }
 
@@ -187,7 +190,7 @@ public final class WorldCraftingJobs {
     checkThread();
     var denied = denial(actor, origin);
     if (denied != null) return new Submission(null, null, denied);
-    if (key.kind() == ResourceKind.ENERGY) return new Submission(null, null, "unsupported");
+    if (key.kind() == ResourceKind.ENERGY) return new Submission(null, null, JobStatus.UNSUPPORTED);
     var jobs = saved().craftingJobs();
     var admission = jobs.admission(actor.id());
     if (admission != null) return new Submission(null, null, admission);
@@ -221,13 +224,13 @@ public final class WorldCraftingJobs {
         || reserved.values().stream().mapToInt(Map::size).sum() > CraftingJob.MAX_RESERVATIONS) {
       for (var cell : reserved.entrySet())
         for (var resource : cell.getValue().keySet()) release(cell.getKey(), id, resource);
-      return new Submission(null, plan, complete ? "limit" : "changed");
+      return new Submission(null, plan, complete ? JobStatus.LIMIT : JobStatus.CHANGED);
     }
     var job =
         CraftingJob.accepted(
             id, actor.id(), scope.network(), scope.segment(), origin, plan, reserved, rule);
     jobs.add(job);
-    return new Submission(id, plan, "");
+    return new Submission(id, plan, null);
   }
 
   /**
@@ -243,7 +246,7 @@ public final class WorldCraftingJobs {
       UUID link) {
     checkThread();
     Objects.requireNonNull(link);
-    if (linked(link)) return new Submission(null, null, "in_flight");
+    if (linked(link)) return new Submission(null, null, JobStatus.IN_FLIGHT);
     return submit(actor, origin, key, amount, link);
   }
 
@@ -278,7 +281,7 @@ public final class WorldCraftingJobs {
    * Creates or replaces the requester's keep-stock rule for {@code key} in the origin's segment.
    * Returns an empty reason on success. Rules act later under the principal's current grants.
    */
-  public String keep(
+  public JobStatus keep(
       NetworkPermissions.Actor actor,
       NodeRegistry.Position origin,
       ResourceKey key,
@@ -287,7 +290,7 @@ public final class WorldCraftingJobs {
     checkThread();
     var denied = denial(actor, origin);
     if (denied != null) return denied;
-    if (key.kind() == ResourceKind.ENERGY) return "unsupported";
+    if (key.kind() == ResourceKind.ENERGY) return JobStatus.UNSUPPORTED;
     var scope = networks().membership(origin).scope();
     try {
       var refused =
@@ -303,9 +306,9 @@ public final class WorldCraftingJobs {
                       key,
                       low,
                       high));
-      return refused == null ? "" : refused;
+      return refused;
     } catch (IllegalArgumentException invalid) {
-      return "limit";
+      return JobStatus.LIMIT;
     }
   }
 
@@ -338,10 +341,10 @@ public final class WorldCraftingJobs {
     return Math.max(ruleStatus.size(), ruleDue.size());
   }
 
-  /** Last evaluation outcome for a rule: "" when satisfied or a job started, else a reason. */
-  public String ruleStatus(UUID rule) {
+  /** Last evaluation outcome for a rule, or null before its first evaluation. */
+  public JobStatus ruleStatus(UUID rule) {
     checkThread();
-    return ruleStatus.getOrDefault(rule, "");
+    return ruleStatus.get(rule);
   }
 
   /**
@@ -355,7 +358,7 @@ public final class WorldCraftingJobs {
     if (rule == null) return;
     for (var job : jobs.all())
       if (id.equals(job.rule()) || rule.targets(job)) {
-        ruleStatus.put(id, "in_flight");
+        ruleStatus.put(id, JobStatus.IN_FLIGHT);
         return;
       }
     var actor = actor(rule.principal());
@@ -369,11 +372,11 @@ public final class WorldCraftingJobs {
       available = Math.addExact(available, cell.available());
     long deficit = Math.min(rule.deficit(available), MAX_RULE_REQUEST);
     if (deficit == 0) {
-      ruleStatus.put(id, "satisfied");
+      ruleStatus.put(id, JobStatus.SATISFIED);
       return;
     }
     var submission = submit(actor, rule.origin(), rule.key(), deficit, id);
-    ruleStatus.put(id, submission.job() != null ? "started" : submission.reason());
+    ruleStatus.put(id, submission.job() != null ? JobStatus.STARTED : submission.reason());
   }
 
   public List<CraftingJob> jobs(UUID principal) {
@@ -513,7 +516,7 @@ public final class WorldCraftingJobs {
     int batch = batch(job);
     batches.put(id, batch);
     long before = job.craftsDone();
-    String why = craft(job, 0);
+    JobReason why = craft(job, 0);
     // E2/E3: faster or parallel Crafters make more crafting-table crafts in the same run, never
     // more than paid; crafts rotate across the Crafters holding the pattern.
     for (int extra = 1;
@@ -544,7 +547,7 @@ public final class WorldCraftingJobs {
     if (!legacy) {
       machine = target(dispatch.target());
       if (!machine.loaded()) {
-        job.waiting("machine_unloaded");
+        job.waiting(JobReason.MACHINE_UNLOADED);
         retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
         return false;
       }
@@ -561,7 +564,7 @@ public final class WorldCraftingJobs {
           return false;
         }
       }
-      if (!job.reason().isEmpty()) job.waiting("");
+      if (job.reason() != null) job.clearReason();
     }
     int passes = cleanups.merge(job.id(), 1, Integer::sum);
     var holder = interfaceAt(dispatch.machine());
@@ -578,7 +581,7 @@ public final class WorldCraftingJobs {
           io.collectFluids(job, outputs, holder.fluidMachine(side), codec, journal);
       } catch (RuntimeException uncertain) {
         // The journal keeps its pending mark; nothing is retried or refunded.
-        job.waiting("uncertain");
+        job.waiting(JobReason.UNCERTAIN);
         retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
         return false;
       }
@@ -613,12 +616,12 @@ public final class WorldCraftingJobs {
   }
 
   /** Null when the machine's journal proves the job's dispatch progress, else a wait reason. */
-  private String journalCheck(CraftingJob job, BlockEntity machine) {
+  private JobReason journalCheck(CraftingJob job, BlockEntity machine) {
     try {
       return ProcessingJournal.check(
           ProcessingJournal.read(machine, saved().registry().world()), job.id(), job.dispatch());
     } catch (IllegalArgumentException unreadable) {
-      return "save_mismatch";
+      return JobReason.SAVE_MISMATCH;
     }
   }
 
@@ -627,19 +630,19 @@ public final class WorldCraftingJobs {
    * proves that nothing moved and no call is outstanding, in which case it is cleared. Returns null
    * when dispatch may proceed.
    */
-  private String journalBlocks(CraftingJob job, NodeRegistry.Position position) {
+  private JobReason journalBlocks(CraftingJob job, NodeRegistry.Position position) {
     var machine = target(position);
     if (!machine.loaded() || machine.entity() == null) return null;
     ProcessingJournal.Entry entry;
     try {
       entry = ProcessingJournal.read(machine.entity(), saved().registry().world());
     } catch (IllegalArgumentException unreadable) {
-      return "machine_journal";
+      return JobReason.MACHINE_JOURNAL;
     }
     if (entry == null) return null;
     var owner = saved().craftingJobs().get(entry.job());
     if (!entry.empty() || owner != null && owner != job && owner.dispatch() != null)
-      return "machine_journal";
+      return JobReason.MACHINE_JOURNAL;
     ProcessingJournal.clear(machine.entity());
     return null;
   }
@@ -696,18 +699,19 @@ public final class WorldCraftingJobs {
   }
 
   /** Runs one craft of the current step; {@code turn} picks which holder of the pattern runs it. */
-  private String craft(CraftingJob job, int turn) {
+  private JobReason craft(CraftingJob job, int turn) {
     int index = job.current();
     if (index < 0) return null;
     var step = job.steps().get(index);
     var scopeAnchor = anchor(job, null);
-    if (scopeAnchor == null) return "offline";
+    if (scopeAnchor == null) return JobReason.OFFLINE;
     var actor = actor(job.principal());
     if (!networks().allows(actor, scopeAnchor, NetworkPermissions.Permission.CRAFT))
-      return "denied";
+      return JobReason.DENIED;
     var crafting = WorldCrafting.get(server).index(networks().membership(scopeAnchor).scope());
     var indexed = crafting.offer(step.pattern());
-    if (indexed == null || indexed.pattern().version() != step.version()) return "pattern_missing";
+    if (indexed == null || indexed.pattern().version() != step.version())
+      return JobReason.PATTERN_MISSING;
     var offer = indexed;
     if (indexed.processing() == null && !indexed.also().isEmpty()) {
       var holders = indexed.holders();
@@ -742,18 +746,18 @@ public final class WorldCraftingJobs {
         need -= take;
         if (need == 0) break;
       }
-      if (need > 0) return "substitutes_short";
+      if (need > 0) return JobReason.SUBSTITUTES_SHORT;
       chosen.put(input.getKey(), units);
     }
     for (var input : inputs.entrySet()) {
       long missing = input.getValue() - job.stagedAmount(input.getKey());
       if (missing > 0) pull(job, input.getKey(), missing);
-      if (job.stagedAmount(input.getKey()) < input.getValue()) return "offline";
+      if (job.stagedAmount(input.getKey()) < input.getValue()) return JobReason.OFFLINE;
     }
     var cells = offer.contents().cells();
     if (!chosen.isEmpty()) {
       var level = offer.unit().getLevel();
-      if (level == null) return "offline";
+      if (level == null) return JobReason.OFFLINE;
       var codec = new PlatformResourceCodec(level.registryAccess());
       var grid = new ArrayList<ItemStack>(cells.size());
       for (var cell : cells) {
@@ -763,7 +767,7 @@ public final class WorldCraftingJobs {
       cells = grid;
     }
     var outputs = assemble(job.id(), offer, cells);
-    if (outputs == null) return "recipe_changed";
+    if (outputs == null) return JobReason.RECIPE_CHANGED;
     var permits = new ArrayList<WirelessBudget.Permit>();
     for (var changes : List.of(inputs, outputs))
       for (var entry : changes.entrySet()) {
@@ -773,7 +777,7 @@ public final class WorldCraftingJobs {
         permits.add(permit);
         if (permit.amount() != entry.getValue()) {
           for (var held : permits) held.finish(0);
-          return permit.reason().name().toLowerCase(Locale.ROOT);
+          return JobReason.of(permit.reason());
         }
       }
     job.crafted(inputs, outputs);
@@ -861,14 +865,14 @@ public final class WorldCraftingJobs {
    * accepts, collect expected outputs only from that machine, and complete the craft when all are
    * collected. Units the machine does not accept stay staged; nothing is voided.
    */
-  private String process(CraftingJob job, WorldCrafting.Offer offer) {
+  private JobReason process(CraftingJob job, WorldCrafting.Offer offer) {
     var pattern = offer.pattern();
     var codec = new PlatformResourceCodec(server.registryAccess());
     var outputs = expected(pattern);
     if (job.dispatch() == null) {
       var holder = (CrafterEntity) offer.unit();
       // H8: try each machine beside the Crafter in turn; report why the last one was refused.
-      String refused = "machine_missing";
+      JobReason refused = JobReason.MACHINE_MISSING;
       Direction chosen = null;
       Map<ResourceKind, UUID> providers = Map.of();
       for (var side : holder.machineSides()) {
@@ -879,7 +883,7 @@ public final class WorldCraftingJobs {
         }
         providers = networks().connectors().processingIdentity(machineTarget(holder, side), true);
         if (providers.isEmpty()) {
-          refused = "machine_identity";
+          refused = JobReason.MACHINE_IDENTITY;
           continue;
         }
         chosen = side;
@@ -889,7 +893,7 @@ public final class WorldCraftingJobs {
       for (var input : pattern.inputs().entrySet()) {
         long missing = input.getValue() - job.stagedAmount(input.getKey());
         if (missing > 0) pull(job, input.getKey(), missing);
-        if (job.stagedAmount(input.getKey()) < input.getValue()) return "offline";
+        if (job.stagedAmount(input.getKey()) < input.getValue()) return JobReason.OFFLINE;
       }
       job.dispatch(holder.origin(), machineTarget(holder, chosen), providers);
       holder.used(chosen);
@@ -899,18 +903,18 @@ public final class WorldCraftingJobs {
             captured.entity(), saved().registry().world(), job.id(), job.dispatch(), false);
     }
     var holder = interfaceAt(job.dispatch().machine());
-    if (holder == null) return "machine_missing";
-    if (job.dispatch().target() == null) return "legacy_machine";
-    if (job.dispatch().providers().isEmpty()) return "legacy_provider";
+    if (holder == null) return JobReason.MACHINE_MISSING;
+    if (job.dispatch().target() == null) return JobReason.LEGACY_MACHINE;
+    if (job.dispatch().providers().isEmpty()) return JobReason.LEGACY_PROVIDER;
     var side = sideOf(holder, job.dispatch().target());
-    if (side == null) return "machine_changed";
+    if (side == null) return JobReason.MACHINE_CHANGED;
     if (!job.dispatch()
         .providers()
         .equals(networks().connectors().processingIdentity(job.dispatch().target(), false)))
-      return "machine_replaced";
-    if (!reachable(holder, side, pattern)) return "machine_missing";
+      return JobReason.MACHINE_REPLACED;
+    if (!reachable(holder, side, pattern)) return JobReason.MACHINE_MISSING;
     var machine = target(job.dispatch().target()).entity();
-    if (machine == null) return "machine_missing";
+    if (machine == null) return JobReason.MACHINE_MISSING;
     var disagreement = journalCheck(job, machine);
     if (disagreement != null) return disagreement;
     var journal = new MachineIo.Journal(saved().registry().world(), job, machine);
@@ -926,15 +930,15 @@ public final class WorldCraftingJobs {
     } catch (RuntimeException uncertain) {
       // The started call's outcome is unknown: its pending journal mark stays with the machine's
       // own saved contents, and no later pass, cancellation or restart replays or refunds it.
-      return "uncertain";
+      return JobReason.UNCERTAIN;
     }
     var dispatch = job.dispatch();
     for (var input : pattern.inputs().entrySet())
       if (dispatch.inserted().getOrDefault(input.getKey(), 0L) < input.getValue())
-        return "machine_full";
+        return JobReason.MACHINE_FULL;
     for (var output : outputs.entrySet())
       if (dispatch.collected().getOrDefault(output.getKey(), 0L) < output.getValue())
-        return "processing";
+        return JobReason.PROCESSING;
     job.processed(pattern.inputs(), outputs);
     ProcessingJournal.clear(machine);
     return null;
@@ -945,23 +949,23 @@ public final class WorldCraftingJobs {
    * can: missing handlers, another job's lease, foreign holds or staging, expected outputs already
    * inside, or a journal that disagrees.
    */
-  private String refusal(
+  private JobReason refusal(
       CraftingJob job,
       CrafterEntity holder,
       Direction side,
       Pattern pattern,
       Map<ResourceKey, Long> outputs,
       PlatformResourceCodec codec) {
-    if (!reachable(holder, side, pattern)) return "machine_missing";
+    if (!reachable(holder, side, pattern)) return JobReason.MACHINE_MISSING;
     var target = machineTarget(holder, side);
-    if (leasedByOther(target, job.id())) return "busy";
+    if (leasedByOther(target, job.id())) return JobReason.BUSY;
     var admission = networks().connectors().processingAdmission(target);
-    if (admission == OperationResult.Reason.BUSY) return "busy";
-    if (admission != OperationResult.Reason.OK) return "reserved";
+    if (admission == OperationResult.Reason.BUSY) return JobReason.BUSY;
+    if (admission != OperationResult.Reason.OK) return JobReason.RESERVED;
     for (var key : outputs.keySet())
       if (key.kind() == ResourceKind.FLUID
           ? MachineIo.containsFluid(holder.fluidMachine(side), key)
-          : contains(holder.machine(side), key, codec)) return "output_not_clean";
+          : contains(holder.machine(side), key, codec)) return JobReason.OUTPUT_NOT_CLEAN;
     return journalBlocks(job, target);
   }
 
@@ -1048,7 +1052,7 @@ public final class WorldCraftingJobs {
     if (job.staged().isEmpty()) return;
     var anchor = anchor(job, null);
     if (anchor == null) {
-      job.waiting("offline");
+      job.waiting(JobReason.OFFLINE);
       retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
       return;
     }
@@ -1075,7 +1079,7 @@ public final class WorldCraftingJobs {
       }
     }
     if (!job.staged().isEmpty()) {
-      job.waiting("full");
+      job.waiting(JobReason.FULL);
       retryAt.put(job.id(), (long) server.getTickCount() + RETRY_TICKS);
     }
   }

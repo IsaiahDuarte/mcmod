@@ -5,6 +5,7 @@ import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.storage.RecoveryMenu;
 import dev.izzy.factorycore.platform.storage.RecoveryPackets;
+import dev.izzy.factorycore.platform.storage.StagingClass;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -139,7 +140,7 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
     int colon = resource.indexOf(':');
     if (colon >= 0) resource = resource.substring(colon + 1);
     return "["
-        + Component.translatable("gui.factorycore.recovery.class." + row.classification())
+        + Component.translatable("gui.factorycore.recovery.class." + row.classification().key())
             .getString()
         + "] "
         + resource
@@ -157,13 +158,13 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
     if (selectedRow() == null)
       selected = visible.isEmpty() ? RecoveryPackets.NONE : visible.get(0).id();
     var row = selectedRow();
-    returning.active = row != null && row.mine() && row.classification().equals("known");
-    settle.active = row != null && row.mine() && row.classification().equals("legacy");
+    returning.active = row != null && row.mine() && row.classification() == StagingClass.KNOWN;
+    settle.active = row != null && row.mine() && row.classification() == StagingClass.LEGACY;
     retire.visible = view.operator();
     retire.active =
         view.operator()
             && row != null
-            && row.classification().equals("complete")
+            && row.classification() == StagingClass.COMPLETE
             && row.staged() == 0;
     home.active = view.page() > 0;
     next.active = view.more();
@@ -269,10 +270,10 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
           font,
           Component.translatable(
               "gui.factorycore.recovery.next."
-                  + row.classification()
-                  + (row.mine() || row.classification().equals("uncertain") ? "" : ".other")),
+                  + row.classification().key()
+                  + (row.mine() || row.classification() == StagingClass.UNCERTAIN ? "" : ".other")),
           new Rect(list.x() + 1, STEP_Y, list.width(), 3 * PanelLayout.LINE),
-          row.classification().equals("uncertain") ? Panels.WARN : Panels.TEXT);
+          row.classification() == StagingClass.UNCERTAIN ? Panels.WARN : Panels.TEXT);
     if (!view.status().equals("ready"))
       Panels.wrapped(
           graphics,

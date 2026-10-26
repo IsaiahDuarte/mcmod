@@ -2,6 +2,9 @@ package dev.izzy.factorycore.platform.storage;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import io.netty.buffer.Unpooled;
 import java.util.Collections;
 import java.util.List;
@@ -40,11 +43,12 @@ class TerminalJobPacketsTest {
             id,
             9,
             List.of(
-                stick, new TerminalJobPackets.Entry("minecraft:torch", "Torch", "16", "missing")),
+                stick,
+                new TerminalJobPackets.Entry("minecraft:torch", "Torch", "16", JobStatus.MISSING)),
             40,
             42,
             stick,
-            "",
+            null,
             2,
             3,
             List.of(new TerminalJobPackets.Entry("minecraft:oak_log", "Oak Log", "1")),
@@ -55,16 +59,19 @@ class TerminalJobPacketsTest {
             3,
             List.of("Coal → Charcoal → Coal"),
             List.of(
-                new TerminalJobPackets.Job(stick, 1, 3, "running", ""),
-                new TerminalJobPackets.Job(stick, 0, 2, "waiting", "busy", "Alex")),
+                new TerminalJobPackets.Job(stick, 1, 3, CraftingJob.State.RUNNING, null),
+                new TerminalJobPackets.Job(
+                    stick, 0, 2, CraftingJob.State.WAITING, JobReason.BUSY, "Alex")),
             new TerminalJobPackets.Detail(
-                new TerminalJobPackets.Job(stick, 0, 2, "waiting", "busy", "Alex"),
+                new TerminalJobPackets.Job(
+                    stick, 0, 2, CraftingJob.State.WAITING, JobReason.BUSY, "Alex"),
                 false,
                 List.of(
-                    new TerminalJobPackets.StepRow(stick, 1, 1, "done"),
-                    new TerminalJobPackets.StepRow(stick, 0, 1, "waiting")),
+                    new TerminalJobPackets.StepRow(stick, 1, 1, TerminalJobPackets.StepStatus.DONE),
+                    new TerminalJobPackets.StepRow(
+                        stick, 0, 1, TerminalJobPackets.StepStatus.WAITING)),
                 3),
-            "previewed");
+            JobStatus.PREVIEWED);
     var output = buffer();
     try {
       TerminalJobPackets.Command.CODEC.encode(output, command);
@@ -105,7 +112,7 @@ class TerminalJobPacketsTest {
                 0,
                 9,
                 entry,
-                "",
+                null,
                 0,
                 0,
                 List.of(),
@@ -114,7 +121,7 @@ class TerminalJobPacketsTest {
                 List.of(),
                 List.of(),
                 TerminalJobPackets.NO_DETAIL,
-                "ready"));
+                JobStatus.READY));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -126,7 +133,7 @@ class TerminalJobPacketsTest {
                 5,
                 5,
                 entry,
-                "",
+                null,
                 0,
                 0,
                 List.of(),
@@ -135,7 +142,7 @@ class TerminalJobPacketsTest {
                 List.of(),
                 List.of(),
                 TerminalJobPackets.NO_DETAIL,
-                "ready"));
+                JobStatus.READY));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -147,7 +154,7 @@ class TerminalJobPacketsTest {
                 0,
                 0,
                 entry,
-                "",
+                null,
                 0,
                 0,
                 List.of(),
@@ -158,22 +165,25 @@ class TerminalJobPacketsTest {
                 List.of(),
                 List.of(),
                 TerminalJobPackets.NO_DETAIL,
-                "ready"));
+                JobStatus.READY));
     assertThrows(
         IllegalArgumentException.class, () -> new TerminalJobPackets.PlanRow(entry, -1, 0, 0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new TerminalJobPackets.Detail(
-                new TerminalJobPackets.Job(entry, 0, 0, "running", ""),
+                new TerminalJobPackets.Job(entry, 0, 0, CraftingJob.State.RUNNING, null),
                 true,
                 Collections.nCopies(
                     TerminalJobPackets.DETAIL_STEPS + 1,
-                    new TerminalJobPackets.StepRow(entry, 0, 1, "queued")),
+                    new TerminalJobPackets.StepRow(
+                        entry, 0, 1, TerminalJobPackets.StepStatus.QUEUED)),
                 0));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminalJobPackets.Job(entry, 0, 1, "running", "", "x".repeat(49)));
+        () ->
+            new TerminalJobPackets.Job(
+                entry, 0, 1, CraftingJob.State.RUNNING, null, "x".repeat(49)));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -186,12 +196,102 @@ class TerminalJobPacketsTest {
             .selection());
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminalJobPackets.Job(entry, 4, 3, "running", ""));
+        () -> new TerminalJobPackets.Job(entry, 4, 3, CraftingJob.State.RUNNING, null));
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalJobPackets.Entry("x".repeat(257), "", ""));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new TerminalJobPackets.Entry("minecraft:stick", "", "", "x".repeat(65)));
+  }
+
+  /** M52: every reason, status, state and step value crosses the wire as itself. */
+  @Test
+  void everyTypedValueRoundTrips() {
+    var id = UUID.randomUUID();
+    var stick = new TerminalJobPackets.Entry("minecraft:stick", "Stick", "8");
+    var reasons = new java.util.ArrayList<JobReason>(List.of(JobReason.values()));
+    reasons.add(null);
+    var states = CraftingJob.State.values();
+    var steps = TerminalJobPackets.StepStatus.values();
+    for (var status : JobStatus.values()) {
+      var jobs = new java.util.ArrayList<TerminalJobPackets.Job>();
+      for (int index = 0; index < reasons.size(); index++)
+        if (jobs.size() < TerminalJobPackets.JOBS)
+          jobs.add(
+              new TerminalJobPackets.Job(
+                  stick, 0, 1, states[index % states.length], reasons.get(index)));
+      var rows = new java.util.ArrayList<TerminalJobPackets.StepRow>();
+      for (var step : steps) rows.add(new TerminalJobPackets.StepRow(stick, 0, 1, step));
+      var view =
+          new TerminalJobPackets.View(
+              1,
+              id,
+              1,
+              List.of(new TerminalJobPackets.Entry("minecraft:stick", "Stick", "8", status)),
+              0,
+              1,
+              stick,
+              status,
+              0,
+              0,
+              List.of(),
+              List.of(),
+              0,
+              List.of(),
+              jobs,
+              new TerminalJobPackets.Detail(jobs.getFirst(), true, rows, 0),
+              status);
+      var output = buffer();
+      try {
+        TerminalJobPackets.View.CODEC.encode(output, view);
+        assertEquals(view, TerminalJobPackets.View.CODEC.decode(output));
+      } finally {
+        output.release();
+      }
+    }
+    // Reasons past the first JOBS rows ride in the detail job.
+    for (var reason : reasons) {
+      var job = new TerminalJobPackets.Job(stick, 0, 1, CraftingJob.State.WAITING, reason);
+      var output = buffer();
+      try {
+        TerminalJobPackets.writeJob(output, job);
+        assertEquals(job, TerminalJobPackets.readJob(output));
+      } finally {
+        output.release();
+      }
+    }
+  }
+
+  /** An unknown key from a mismatched peer is refused, not shown raw or mapped to a default. */
+  @Test
+  void unknownKeysAreRefused() {
+    var output = buffer();
+    try {
+      output.writeUtf("minecraft:stick", 256);
+      output.writeUtf("Stick", 96);
+      output.writeUtf("8", 32);
+      output.writeUtf("machine_on_fire", 32);
+      assertThrows(IllegalArgumentException.class, () -> TerminalJobPackets.Entry.read(output));
+    } finally {
+      output.release();
+    }
+    var job = buffer();
+    try {
+      TerminalJobPackets.Entry.write(job, TerminalJobPackets.NONE);
+      job.writeVarLong(0);
+      job.writeVarLong(1);
+      job.writeUtf("", 32);
+      assertThrows(IllegalArgumentException.class, () -> TerminalJobPackets.readJob(job));
+    } finally {
+      job.release();
+    }
+    var tooLong = buffer();
+    try {
+      TerminalJobPackets.Entry.write(tooLong, TerminalJobPackets.NONE);
+      tooLong.writeVarLong(0);
+      tooLong.writeVarLong(1);
+      tooLong.writeUtf("x".repeat(33));
+      assertThrows(RuntimeException.class, () -> TerminalJobPackets.readJob(tooLong));
+    } finally {
+      tooLong.release();
+    }
   }
 }

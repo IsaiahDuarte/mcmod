@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.storage;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.crafting.KeepStockRule;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
@@ -65,7 +66,7 @@ class CraftingJobPersistenceTest {
             Map.of(handle.backing(), Map.of(LOG, recorded)),
             Map.of(STICK, 4L),
             CraftingJob.State.WAITING,
-            "offline");
+            JobReason.OFFLINE);
     tag.put("CraftingJobs", CraftingJobCodec.encode(List.of(snapshot)));
     return tag;
   }
@@ -90,7 +91,7 @@ class CraftingJobPersistenceTest {
     assertEquals("", loaded.diagnostic());
     var job = loaded.craftingJobs().all().getFirst();
     assertEquals(CraftingJob.State.WAITING, job.state());
-    assertEquals("offline", job.reason());
+    assertEquals(JobReason.OFFLINE, job.reason());
     assertEquals(3, job.reservedAmount(LOG));
     assertEquals(4, job.stagedAmount(STICK));
     assertEquals(tag, loaded.save(new CompoundTag(), registries));
@@ -103,6 +104,22 @@ class CraftingJobPersistenceTest {
       assertFalse(rejected.diagnostic().isEmpty());
       assertThrows(IllegalStateException.class, rejected::craftingJobs);
       assertEquals(tag, rejected.save(new CompoundTag(), registries));
+    }
+  }
+
+  /** Every job reason, including movement refusals such as rate_limit, is saved by its key. */
+  @Test
+  void everyJobReasonLoadsFromItsSavedKey() {
+    for (var reason : JobReason.values()) {
+      var tag = world(true, 3);
+      tag.getCompound("CraftingJobs")
+          .getList("Jobs", Tag.TAG_COMPOUND)
+          .getCompound(0)
+          .putString("Reason", reason.key());
+      var loaded = DeviceSavedData.load(tag, registries);
+      assertEquals("", loaded.diagnostic(), reason.key());
+      assertEquals(reason, loaded.craftingJobs().all().getFirst().reason());
+      assertEquals(tag, loaded.save(new CompoundTag(), registries), reason.key());
     }
   }
 
@@ -122,7 +139,7 @@ class CraftingJobPersistenceTest {
     var twelveWithJobs = current.copy();
     twelveWithJobs.putInt("Schema", 12);
     assertFalse(DeviceSavedData.load(twelveWithJobs, registries).diagnostic().isEmpty());
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
       var tag = world(true, 3);
       var entry = tag.getCompound("CraftingJobs").getList("Jobs", Tag.TAG_COMPOUND).getCompound(0);
       switch (i) {
@@ -131,6 +148,8 @@ class CraftingJobPersistenceTest {
         case 1 -> entry.putString("State", "FUTURE");
         case 2 -> entry.putString("Unknown", "x");
         case 3 -> entry.getList("Steps", Tag.TAG_COMPOUND).getCompound(0).putLong("Done", 9);
+        // M52: a reason no code writes is a malformed save, not a reason to show raw.
+        case 4 -> entry.putString("Reason", "machine_on_fire");
         default -> throw new IllegalStateException();
       }
       assertFalse(DeviceSavedData.load(tag, registries).diagnostic().isEmpty(), "Case " + i);

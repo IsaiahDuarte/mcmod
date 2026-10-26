@@ -59,7 +59,7 @@ class KeepStockRuleTest {
                   1,
                   1)));
     assertEquals(
-        "principal_rule_limit",
+        JobStatus.PRINCIPAL_RULE_LIMIT,
         jobs.setRule(
             rule(
                 principal,

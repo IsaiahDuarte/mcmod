@@ -1,5 +1,7 @@
 package dev.izzy.factorycore.clienttesting;
 
+import dev.izzy.factorycore.core.crafting.JobReason;
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -961,7 +963,7 @@ public final class PresentationClientVerification {
           var view = jobView(client);
           if (view.preview().icon().isEmpty() || waited() < 6) return false;
           check(
-              view.previewReason().isEmpty(),
+              view.previewReason() == null,
               "Eight planks are craftable: "
                   + view.previewReason()
                   + " "
@@ -1012,7 +1014,7 @@ public final class PresentationClientVerification {
         client -> {
           var view = jobView(client);
           if (!view.preview().amount().equals("37") || waited() < 6) return false;
-          check(view.previewReason().isEmpty(), "37 planks are craftable: " + view.missing());
+          check(view.previewReason() == null, "37 planks are craftable: " + view.missing());
           captures.grab(client, "jobs-typed-37-scale-2.png");
           return press(client, "Start");
         });
@@ -1045,7 +1047,7 @@ public final class PresentationClientVerification {
         client -> {
           var view = jobView(client);
           if (view.missing().isEmpty() || waited() < 4) return false;
-          check(!view.previewReason().isEmpty(), "A 64-plank plan reports its shortage");
+          check(view.previewReason() != null, "A 64-plank plan reports its shortage");
           setScale(client, 4);
           return true;
         });
@@ -1063,7 +1065,7 @@ public final class PresentationClientVerification {
     step(
         client -> {
           var rows = jobView(client).craftables();
-          if (rows.isEmpty() || !rows.getFirst().note().equals("missing") || waited() < 6)
+          if (rows.isEmpty() || rows.getFirst().note() != JobStatus.MISSING || waited() < 6)
             return false;
           captures.grab(client, "jobs-keep-waiting-scale-4.png");
           press(client, "Keep");
@@ -1226,7 +1228,7 @@ public final class PresentationClientVerification {
             if (waited() % 20 == 10) press(client, "Start");
             return false;
           }
-          if (!jobs.getFirst().reason().equals("machine_missing")) return false;
+          if (jobs.getFirst().reason() != JobReason.MACHINE_MISSING) return false;
           var screen = terminal(client);
           return screen.mouseClicked(screen.jobRowX(), screen.jobRowY(0), 0);
         });

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.testing.crafting;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -212,7 +213,7 @@ public final class ProcessingJournalGameTests {
         .thenWaitUntil(
             () ->
                 h.assertTrue(
-                    f.job(id[0]) != null && f.job(id[0]).reason().equals("uncertain"),
+                    f.job(id[0]) != null && f.job(id[0]).reason() == JobReason.UNCERTAIN,
                     "The failed call is reported as uncertain"))
         .thenIdle(60)
         .thenExecute(
@@ -222,7 +223,7 @@ public final class ProcessingJournalGameTests {
                   f.held(Items.COBBLESTONE) == 2
                       && job.stagedAmount(f.cobble) == 2
                       && job.dispatch().inserted().isEmpty()
-                      && job.reason().equals("uncertain")
+                      && job.reason() == JobReason.UNCERTAIN
                       && f.pending(),
                   "Machine keeps its two accepted units, staging is unchanged and the pending"
                       + " journal mark stays: no retry inserted a second copy");
@@ -299,7 +300,7 @@ public final class ProcessingJournalGameTests {
         .thenWaitUntil(
             () ->
                 h.assertTrue(
-                    f.job(id[0]).reason().equals("save_mismatch"), "Mismatch is diagnosed"))
+                    f.job(id[0]).reason() == JobReason.SAVE_MISMATCH, "Mismatch is diagnosed"))
         .thenIdle(60)
         .thenExecute(
             () -> {
@@ -314,7 +315,7 @@ public final class ProcessingJournalGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  f.job(id[0]) != null && f.job(id[0]).reason().equals("save_mismatch"),
+                  f.job(id[0]) != null && f.job(id[0]).reason() == JobReason.SAVE_MISMATCH,
                   "Cancellation stays frozen until an operator resolves");
               h.assertTrue(resolve(h) == 1, "Operator resolves");
               h.assertTrue(
@@ -364,7 +365,7 @@ public final class ProcessingJournalGameTests {
         .thenWaitUntil(
             () ->
                 h.assertTrue(
-                    f.job(id[0]).reason().equals("save_mismatch"),
+                    f.job(id[0]).reason() == JobReason.SAVE_MISMATCH,
                     "A missing journal for saved progress is diagnosed"))
         .thenExecute(
             () -> {
@@ -378,7 +379,7 @@ public final class ProcessingJournalGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  !f.job(id[0]).reason().equals("save_mismatch"), "Job is no longer quarantined");
+                  f.job(id[0]).reason() != JobReason.SAVE_MISMATCH, "Job is no longer quarantined");
               h.assertTrue(
                   f.stock(f.cobble) == 0 && f.stock(f.stone) == 0,
                   "Nothing is refunded or invented for units the skew lost");
@@ -409,7 +410,7 @@ public final class ProcessingJournalGameTests {
         .thenWaitUntil(
             () ->
                 h.assertTrue(
-                    f.job(id[0]).reason().equals("machine_journal"),
+                    f.job(id[0]).reason() == JobReason.MACHINE_JOURNAL,
                     "An unfinished foreign journal blocks dispatch"))
         .thenExecute(
             () -> {

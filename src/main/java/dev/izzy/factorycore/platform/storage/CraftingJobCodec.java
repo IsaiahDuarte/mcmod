@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.CraftingJobs;
+import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.crafting.KeepStockRule;
 import dev.izzy.factorycore.core.crafting.Pattern;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -156,7 +158,7 @@ public final class CraftingJobCodec {
       entry.put("Reserved", reserved);
       entry.put("Staged", amounts(job.staged()));
       entry.putString("State", job.state().name());
-      entry.putString("Reason", job.reason());
+      entry.putString("Reason", job.reason() == null ? "" : job.reason().key());
       if (job.dispatch() != null) {
         var dispatch = new CompoundTag();
         dispatch.putString("Dimension", job.dispatch().machine().dimension());
@@ -370,11 +372,19 @@ public final class CraftingJobCodec {
               reserved,
               amounts(list(entry, "Staged")),
               CraftingJob.State.valueOf(entry.getString("State")),
-              entry.getString("Reason"),
+              reason(entry.getString("Reason")),
               dispatch,
               entry.hasUUID("Rule") ? entry.getUUID("Rule") : null));
     }
     var validated = new CraftingJobs(jobs, rules, () -> {});
     return new Decoded(validated.snapshot(), validated.rules());
+  }
+
+  /** A saved job reason: empty for none; an unknown key is a malformed save, not a lost reason. */
+  private static JobReason reason(String key) {
+    if (key.isEmpty()) return null;
+    var reason = EnumKeys.parse(JobReason.class, key);
+    if (reason == null) throw new IllegalArgumentException("Unknown job reason " + key);
+    return reason;
   }
 }

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -52,8 +53,8 @@ public final class RecoveryPackets {
   }
 
   /**
-   * One transfer record. {@code classification} is uncertain, complete, legacy or known; {@code
-   * mine} is true when the viewer is the record's original owner.
+   * One transfer record and its safe next step; {@code mine} is true when the viewer is the
+   * record's original owner.
    */
   public record Row(
       UUID id,
@@ -65,10 +66,11 @@ public final class RecoveryPackets {
       long delivered,
       long returned,
       String pending,
-      String classification,
+      StagingClass classification,
       boolean mine) {
     public Row {
       Objects.requireNonNull(id);
+      Objects.requireNonNull(classification);
       if (owner.length() > 48
           || state.length() > 16
           || kind.length() > 8
@@ -76,8 +78,7 @@ public final class RecoveryPackets {
           || staged < 0
           || delivered < 0
           || returned < 0
-          || pending.length() > 16
-          || classification.length() > 12) throw new IllegalArgumentException("Invalid row");
+          || pending.length() > 16) throw new IllegalArgumentException("Invalid row");
     }
   }
 
@@ -129,7 +130,7 @@ public final class RecoveryPackets {
                 b.writeVarLong(row.delivered);
                 b.writeVarLong(row.returned);
                 b.writeUtf(row.pending, 16);
-                b.writeUtf(row.classification, 12);
+                WireEnums.write(b, row.classification);
                 b.writeBoolean(row.mine);
               }
               b.writeVarInt(v.page);
@@ -158,7 +159,7 @@ public final class RecoveryPackets {
                         b.readVarLong(),
                         b.readVarLong(),
                         b.readUtf(16),
-                        b.readUtf(12),
+                        WireEnums.read(b, StagingClass.class),
                         b.readBoolean()));
               return new View(
                   menu,

@@ -3,6 +3,12 @@ package dev.izzy.factorycore.platform;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.google.gson.JsonParser;
+import dev.izzy.factorycore.core.EnumKeys;
+import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
+import dev.izzy.factorycore.core.crafting.JobStatus;
+import dev.izzy.factorycore.platform.storage.StagingClass;
+import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -47,6 +53,39 @@ class LangKeysTest {
       }
     }
     assertTrue(checked > 100, "Translation keys must be inspected: " + checked);
+    assertEquals(Set.of(), missing);
+  }
+
+  /**
+   * M52: typed job, rule, step and staging values are shown through a key built from the value, so
+   * every value needs its entry; a value added without one would show raw text.
+   */
+  @Test
+  void everyTypedReasonAndStatusHasItsKey() throws Exception {
+    Set<String> lang;
+    try (var stream = getClass().getResourceAsStream("/assets/factorycore/lang/en_us.json")) {
+      assertNotNull(stream, "lang on the test classpath");
+      lang =
+          JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+              .getAsJsonObject()
+              .keySet();
+    }
+    var expected = new TreeSet<String>();
+    for (var value : JobReason.values())
+      expected.add("gui.factorycore.terminal.job.reason." + value.key());
+    for (var value : JobStatus.values())
+      expected.add("gui.factorycore.terminal.job.status." + value.key());
+    for (var value : CraftingJob.State.values())
+      expected.add("gui.factorycore.terminal.job.state." + EnumKeys.key(value));
+    for (var value : TerminalJobPackets.StepStatus.values())
+      expected.add("gui.factorycore.terminal.job.step." + value.key());
+    for (var value : StagingClass.values()) {
+      expected.add("gui.factorycore.recovery.class." + value.key());
+      expected.add("gui.factorycore.recovery.next." + value.key());
+      expected.add("command.factorycore.recovery." + value.key());
+    }
+    var missing = new TreeSet<>(expected);
+    missing.removeAll(lang);
     assertEquals(Set.of(), missing);
   }
 

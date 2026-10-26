@@ -66,3 +66,18 @@ Version one uses digital cells only (no connector/external stock or holds), craf
 table patterns only, and the Crafting Unit's own segment. Steps run crafts
 sequentially at one craft per task. The terminal UI to preview, start and cancel
 jobs is the next slice; the server API is `WorldCraftingJobs.preview/submit/cancel`.
+
+## Amendment — typed reasons (2026-10-26, ergonomics plan Q54)
+
+Job wait reasons are `core.crafting.JobReason` and request and rule outcomes are
+`core.crafting.JobStatus`, instead of about 25 string literals compared with `.equals` (M52).
+Each constant's key (`EnumKeys.key`: the name in lower case) is what the save stores in
+`Reason`, what packets carry (`WireEnums`, bounded at 32 characters) and the suffix of its lang
+key. The keys equal the strings written before, so the nested job schema and existing saves do
+not change. A refused storage or movement operation maps through `JobReason.of`, which names
+every `OperationResult.Reason`; before, the lower-cased enum name was stored, so `rate_limit`
+and nine other reasons, and the `no_power` status, had no lang entry and showed as raw keys.
+Loading a job whose reason no code writes now marks the save malformed instead of keeping an
+unknown string. Job state and step status travel as `CraftingJob.State` and
+`TerminalJobPackets.StepStatus`. `LangKeysTest.everyTypedReasonAndStatusHasItsKey` requires a
+lang entry for every value.

@@ -52,7 +52,7 @@ class CraftingJobTest {
     job.crafted(Map.of(LOG, 1L), Map.of(PLANKS, 4L));
     assertEquals(1, job.current());
     job.crafted(Map.of(PLANKS, 2L), Map.of(STICK, 4L));
-    job.waiting("offline");
+    job.waiting(JobReason.OFFLINE);
     assertEquals(CraftingJob.State.WAITING, job.state());
     assertThrows(
         IllegalStateException.class, () -> job.crafted(Map.of(PLANKS, 2L), Map.of(STICK, 4L)));
@@ -185,7 +185,7 @@ class CraftingJobTest {
                   s.reason())));
       added.add(id);
     }
-    assertEquals("principal_limit", jobs.admission(principal));
+    assertEquals(JobStatus.PRINCIPAL_LIMIT, jobs.admission(principal));
     assertNull(jobs.admission(new UUID(0, 99)));
     assertThrows(IllegalStateException.class, () -> jobs.retire(added.get(0)));
     var first = jobs.get(added.get(0));

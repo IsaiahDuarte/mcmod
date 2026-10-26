@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.crafting;
 
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.storage.CellTier;
@@ -150,7 +151,7 @@ public final class SubstituteCraftingGameTests {
                       2);
               h.assertTrue(
                   submission.job() == null
-                      && submission.reason().equals("missing")
+                      && submission.reason() == JobStatus.MISSING
                       && f.stock(Items.BIRCH_PLANKS) == 16,
                   "Without substitutes birch is not oak: " + submission.reason());
             })

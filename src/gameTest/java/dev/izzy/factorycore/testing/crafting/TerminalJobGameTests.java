@@ -1,5 +1,7 @@
 package dev.izzy.factorycore.testing.crafting;
 
+import dev.izzy.factorycore.core.crafting.JobReason;
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
@@ -288,8 +290,8 @@ public final class TerminalJobGameTests {
         .thenWaitUntil(
             () ->
                 h.assertTrue(
-                    saved.craftingJobs().get(ids[0]).reason().equals("machine_missing")
-                        && saved.craftingJobs().get(ids[1]).reason().equals("machine_missing"),
+                    saved.craftingJobs().get(ids[0]).reason() == JobReason.MACHINE_MISSING
+                        && saved.craftingJobs().get(ids[1]).reason() == JobReason.MACHINE_MISSING,
                     "Both jobs wait: no machine faces the Crafter"))
         .thenExecute(
             () -> {
@@ -315,8 +317,8 @@ public final class TerminalJobGameTests {
                   !detail.cancellable()
                       && detail.job().owner().equals(member.getGameProfile().getName())
                       && detail.steps().size() == 1
-                      && detail.steps().getFirst().status().equals("waiting")
-                      && detail.job().reason().equals("machine_missing"),
+                      && detail.steps().getFirst().status() == TerminalJobPackets.StepStatus.WAITING
+                      && detail.job().reason() == JobReason.MACHINE_MISSING,
                   "The member's waiting step is shown, read-only: " + detail);
             })
         .thenIdle(RATE_GAP)
@@ -324,7 +326,7 @@ public final class TerminalJobGameTests {
             () -> {
               command(h, owner, TerminalJobPackets.CANCEL, 1, 1);
               h.assertTrue(
-                  menu(h, owner).jobView().status().equals("refused")
+                  menu(h, owner).jobView().status() == JobStatus.REFUSED
                       && saved.craftingJobs().get(ids[1]).state()
                           != dev.izzy.factorycore.core.crafting.CraftingJob.State.CANCELLING,
                   "Manage cannot cancel another player's job");
@@ -341,7 +343,7 @@ public final class TerminalJobGameTests {
                   "The owner's own job can be cancelled from its detail view");
               command(h, owner, TerminalJobPackets.CANCEL, 0, 1);
               h.assertTrue(
-                  m.jobView().status().equals("cancelling"), "Cancel from the detail view");
+                  m.jobView().status() == JobStatus.CANCELLING, "Cancel from the detail view");
             })
         .thenWaitUntil(
             () -> {
@@ -437,7 +439,7 @@ public final class TerminalJobGameTests {
               command(h, player, TerminalJobPackets.PREVIEW, row(m, "minecraft:stick"), 64);
               var first = m.jobView().plan().getFirst();
               h.assertTrue(
-                  m.jobView().status().equals("missing")
+                  m.jobView().status() == JobStatus.MISSING
                       && first.item().icon().equals("minecraft:oak_log")
                       && first.stored() == 1
                       && first.missing() == 7,
@@ -502,7 +504,7 @@ public final class TerminalJobGameTests {
               var view = m.jobView();
               // 37 sticks: 10 stick crafts (40) from 20 planks, i.e. 5 log crafts.
               h.assertTrue(
-                  view.status().equals("previewed")
+                  view.status() == JobStatus.PREVIEWED
                       && view.preview().amount().equals("37")
                       && view.previewCrafts() == 15,
                   "A typed 37 previews 10 stick and 5 plank crafts: " + view);
@@ -581,7 +583,7 @@ public final class TerminalJobGameTests {
               command(h, player, TerminalJobPackets.PREVIEW, row(m, "minecraft:stick"), 8);
               var view = m.jobView();
               h.assertTrue(
-                  view.status().equals("missing")
+                  view.status() == JobStatus.MISSING
                       && view.missing().getFirst().icon().equals("minecraft:oak_log")
                       && view.missing().getFirst().amount().equals("1"),
                   "Preview explains the missing log: " + view);
@@ -607,7 +609,7 @@ public final class TerminalJobGameTests {
               command(h, player, TerminalJobPackets.PREVIEW, row(m, "minecraft:stick"), 8);
               var view = m.jobView();
               h.assertTrue(
-                  view.status().equals("previewed")
+                  view.status() == JobStatus.PREVIEWED
                       && view.previewSteps() == 2
                       && view.previewCrafts() == 3
                       && view.preview().amount().equals("8")
@@ -620,7 +622,7 @@ public final class TerminalJobGameTests {
               command(h, player, TerminalJobPackets.START, 0, 1);
               var view = menu(h, player).jobView();
               h.assertTrue(
-                  view.status().equals("started")
+                  view.status() == JobStatus.STARTED
                       && view.jobs().size() == 1
                       && view.jobs().getFirst().output().icon().equals("minecraft:stick")
                       && saved.registry().stock(cell, log).reserved() == 1,
@@ -644,7 +646,7 @@ public final class TerminalJobGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  menu(h, player).jobView().status().equals("missing"), "64 sticks need 8 logs");
+                  menu(h, player).jobView().status() == JobStatus.MISSING, "64 sticks need 8 logs");
               // A 24-craft job stays running long enough to be cancelled mid-way.
               saved.registry().insert(cell, log, 8);
             })
@@ -662,7 +664,7 @@ public final class TerminalJobGameTests {
               h.assertTrue(menu(h, player).jobView().jobs().size() == 1, "Second job listed");
               command(h, player, TerminalJobPackets.CANCEL, 0, 1);
               h.assertTrue(
-                  menu(h, player).jobView().status().equals("cancelling"), "Cancel accepted");
+                  menu(h, player).jobView().status() == JobStatus.CANCELLING, "Cancel accepted");
             })
         .thenWaitUntil(
             () -> {
@@ -679,7 +681,7 @@ public final class TerminalJobGameTests {
               command(h, player, TerminalJobPackets.KEEP, row(m, "minecraft:stick"), 8);
               m.broadcastChanges();
               h.assertTrue(
-                  m.jobView().status().equals("kept")
+                  m.jobView().status() == JobStatus.KEPT
                       && m.jobView()
                           .craftables()
                           .get(row(m, "minecraft:stick"))
@@ -699,7 +701,8 @@ public final class TerminalJobGameTests {
               var m = menu(h, player);
               m.broadcastChanges();
               var note = m.jobView().craftables().get(row(m, "minecraft:stick")).note();
-              h.assertTrue(note.equals("missing"), "A blocked keep rule is shown: '" + note + "'");
+              h.assertTrue(
+                  note == JobStatus.MISSING, "A blocked keep rule is shown: '" + note + "'");
             })
         .thenIdle(3)
         .thenExecute(
@@ -708,7 +711,7 @@ public final class TerminalJobGameTests {
               command(h, player, TerminalJobPackets.KEEP, row(m, "minecraft:stick"), 8);
               m.broadcastChanges();
               h.assertTrue(
-                  m.jobView().status().equals("unkept")
+                  m.jobView().status() == JobStatus.UNKEPT
                       && m.jobView().craftables().get(row(m, "minecraft:stick")).amount().isEmpty(),
                   "Keep again removes the rule");
             })

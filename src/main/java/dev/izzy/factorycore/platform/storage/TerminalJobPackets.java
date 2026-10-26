@@ -1,8 +1,14 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
+import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -83,29 +89,32 @@ public final class TerminalJobPackets {
   }
 
   /**
-   * One displayed item with an exact decimal amount (empty when not applicable). {@code note} is a
-   * status key: on a kept craftable row, why its keep-stock rule is waiting ("" when satisfied).
+   * One displayed item with an exact decimal amount (empty when not applicable). {@code note} is,
+   * on a kept craftable row, why its keep-stock rule is waiting (null when it is not).
    */
-  public record Entry(String icon, String name, String amount, String note) {
+  public record Entry(String icon, String name, String amount, JobStatus note) {
     public Entry {
-      if (icon.length() > 256 || name.length() > 96 || amount.length() > 32 || note.length() > 64)
+      if (icon.length() > 256 || name.length() > 96 || amount.length() > 32)
         throw new IllegalArgumentException("Invalid job entry bounds");
     }
 
     public Entry(String icon, String name, String amount) {
-      this(icon, name, amount, "");
+      this(icon, name, amount, null);
     }
 
     static void write(RegistryFriendlyByteBuf buffer, Entry value) {
       buffer.writeUtf(value.icon, 256);
       buffer.writeUtf(value.name, 96);
       buffer.writeUtf(value.amount, 32);
-      buffer.writeUtf(value.note, 64);
+      WireEnums.write(buffer, value.note);
     }
 
     static Entry read(RegistryFriendlyByteBuf buffer) {
       return new Entry(
-          buffer.readUtf(256), buffer.readUtf(96), buffer.readUtf(32), buffer.readUtf(64));
+          buffer.readUtf(256),
+          buffer.readUtf(96),
+          buffer.readUtf(32),
+          WireEnums.readNullable(buffer, JobStatus.class));
     }
   }
 
@@ -120,34 +129,48 @@ public final class TerminalJobPackets {
     }
   }
 
-  /** One of the requester's jobs: output, exact crafts done/total, state and reason keys. */
   /**
-   * One listed job: output, exact crafts done/total, state and reason keys. {@code owner} is the
-   * requester's name for another player's job (shown to Manage), empty for the viewer's own.
+   * One listed job: output, exact crafts done/total, state and why it waits (null when it does
+   * not). {@code owner} is the requester's name for another player's job (shown to Manage), empty
+   * for the viewer's own.
    */
   public record Job(
-      Entry output, long done, long total, String state, String reason, String owner) {
-    public Job(Entry output, long done, long total, String state, String reason) {
+      Entry output,
+      long done,
+      long total,
+      CraftingJob.State state,
+      JobReason reason,
+      String owner) {
+    public Job(Entry output, long done, long total, CraftingJob.State state, JobReason reason) {
       this(output, done, total, state, reason, "");
     }
 
     public Job {
-      if (done < 0
-          || total < done
-          || state.length() > 32
-          || reason.length() > 64
-          || owner.length() > 48) throw new IllegalArgumentException("Invalid job row bounds");
+      Objects.requireNonNull(state);
+      if (done < 0 || total < done || owner.length() > 48)
+        throw new IllegalArgumentException("Invalid job row bounds");
     }
   }
 
-  /**
-   * One step of the opened job (A4): its output, crafts done/total, and a status key: done, running
-   * (the current step), waiting (the current step; the job's reason says why) or queued.
-   */
-  public record StepRow(Entry output, long done, long total, String status) {
+  /** Where a step of the opened job stands; shown as {@code ...terminal.job.step.<key>}. */
+  public enum StepStatus {
+    DONE,
+    /** The current step. */
+    RUNNING,
+    /** The current step of a waiting job; the job's reason says why. */
+    WAITING,
+    QUEUED;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+  }
+
+  /** One step of the opened job (A4): its output, crafts done/total and status. */
+  public record StepRow(Entry output, long done, long total, StepStatus status) {
     public StepRow {
-      if (done < 0 || total < done || status.length() > 16)
-        throw new IllegalArgumentException("Invalid step row bounds");
+      Objects.requireNonNull(status);
+      if (done < 0 || total < done) throw new IllegalArgumentException("Invalid step row bounds");
     }
   }
 
@@ -163,15 +186,20 @@ public final class TerminalJobPackets {
     }
   }
 
+  /** No opened job: an empty output icon marks it; the state is a placeholder. */
   public static final Detail NO_DETAIL =
-      new Detail(new Job(new Entry("", "", ""), 0, 0, "", ""), false, List.of(), 0);
+      new Detail(
+          new Job(new Entry("", "", ""), 0, 0, CraftingJob.State.RUNNING, null),
+          false,
+          List.of(),
+          0);
 
   static void writeJob(RegistryFriendlyByteBuf buffer, Job job) {
     Entry.write(buffer, job.output());
     buffer.writeVarLong(job.done());
     buffer.writeVarLong(job.total());
-    buffer.writeUtf(job.state(), 32);
-    buffer.writeUtf(job.reason(), 64);
+    WireEnums.write(buffer, job.state());
+    WireEnums.write(buffer, job.reason());
     buffer.writeUtf(job.owner(), 48);
   }
 
@@ -180,8 +208,8 @@ public final class TerminalJobPackets {
         Entry.read(buffer),
         buffer.readVarLong(),
         buffer.readVarLong(),
-        buffer.readUtf(32),
-        buffer.readUtf(64),
+        WireEnums.read(buffer, CraftingJob.State.class),
+        WireEnums.readNullable(buffer, JobReason.class),
         buffer.readUtf(48));
   }
 
@@ -193,7 +221,7 @@ public final class TerminalJobPackets {
       int offset,
       int total,
       Entry preview,
-      String previewReason,
+      JobStatus previewReason,
       int previewSteps,
       long previewCrafts,
       List<Entry> missing,
@@ -202,7 +230,7 @@ public final class TerminalJobPackets {
       List<String> cycles,
       List<Job> jobs,
       Detail detail,
-      String status)
+      JobStatus status)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
@@ -214,6 +242,7 @@ public final class TerminalJobPackets {
       plan = List.copyOf(plan);
       cycles = List.copyOf(cycles);
       jobs = List.copyOf(jobs);
+      Objects.requireNonNull(status);
       if (craftables.size() > ROWS
           || offset < 0
           || total < offset + craftables.size()
@@ -223,10 +252,8 @@ public final class TerminalJobPackets {
           || cycles.size() > CYCLES
           || cycles.stream().anyMatch(cycle -> cycle.length() > 256)
           || jobs.size() > JOBS
-          || previewReason.length() > 64
           || previewSteps < 0
-          || previewCrafts < 0
-          || status.length() > 64) throw new IllegalArgumentException("Invalid job view bounds");
+          || previewCrafts < 0) throw new IllegalArgumentException("Invalid job view bounds");
     }
 
     @Override
@@ -257,7 +284,7 @@ public final class TerminalJobPackets {
               buffer.writeVarInt(value.offset);
               buffer.writeVarInt(value.total);
               Entry.write(buffer, value.preview);
-              buffer.writeUtf(value.previewReason, 64);
+              WireEnums.write(buffer, value.previewReason);
               buffer.writeVarInt(value.previewSteps);
               buffer.writeVarLong(value.previewCrafts);
               entries(buffer, value.missing);
@@ -280,10 +307,10 @@ public final class TerminalJobPackets {
                 Entry.write(buffer, step.output());
                 buffer.writeVarLong(step.done());
                 buffer.writeVarLong(step.total());
-                buffer.writeUtf(step.status(), 16);
+                WireEnums.write(buffer, step.status());
               }
               buffer.writeVarInt(value.detail.moreSteps());
-              buffer.writeUtf(value.status, 64);
+              WireEnums.write(buffer, value.status);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -293,7 +320,7 @@ public final class TerminalJobPackets {
               int offset = buffer.readVarInt();
               int total = buffer.readVarInt();
               var preview = Entry.read(buffer);
-              String reason = buffer.readUtf(64);
+              var reason = WireEnums.readNullable(buffer, JobStatus.class);
               int steps = buffer.readVarInt();
               long crafts = buffer.readVarLong();
               var missing = entries(buffer, MISSING);
@@ -329,7 +356,7 @@ public final class TerminalJobPackets {
                         Entry.read(buffer),
                         buffer.readVarLong(),
                         buffer.readVarLong(),
-                        buffer.readUtf(16)));
+                        WireEnums.read(buffer, StepStatus.class)));
               var detail = new Detail(detailJob, cancellable, stepRows, buffer.readVarInt());
               return new View(
                   menu,
@@ -348,7 +375,7 @@ public final class TerminalJobPackets {
                   cycles,
                   jobs,
                   detail,
-                  buffer.readUtf(64));
+                  WireEnums.read(buffer, JobStatus.class));
             });
   }
 

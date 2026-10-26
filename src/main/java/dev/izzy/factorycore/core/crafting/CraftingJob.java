@@ -148,7 +148,7 @@ public final class CraftingJob {
       Map<UUID, Map<ResourceKey, Long>> reserved,
       Map<ResourceKey, Long> staged,
       State state,
-      String reason,
+      JobReason reason,
       Dispatch dispatch,
       UUID rule) {
     /** A manual job snapshot with no active processing dispatch. */
@@ -164,7 +164,7 @@ public final class CraftingJob {
         Map<UUID, Map<ResourceKey, Long>> reserved,
         Map<ResourceKey, Long> staged,
         State state,
-        String reason) {
+        JobReason reason) {
       this(
           id, principal, network, segment, origin, request, amount, steps, reserved, staged, state,
           reason, null, null);
@@ -178,8 +178,7 @@ public final class CraftingJob {
       Objects.requireNonNull(origin);
       Objects.requireNonNull(request);
       Objects.requireNonNull(state);
-      Objects.requireNonNull(reason);
-      if (amount < 1 || reason.length() > 64) throw new IllegalArgumentException("Invalid job");
+      if (amount < 1) throw new IllegalArgumentException("Invalid job");
       if (steps.isEmpty() || steps.size() > MAX_STEPS)
         throw new IllegalArgumentException("Invalid job step count");
       steps = List.copyOf(steps);
@@ -216,7 +215,10 @@ public final class CraftingJob {
   private final Map<UUID, Map<ResourceKey, Long>> reserved = new TreeMap<>();
   private final Map<ResourceKey, Long> staged = new LinkedHashMap<>();
   private State state;
-  private String reason;
+
+  /** Why the job waits, or null. */
+  private JobReason reason;
+
   private Dispatch dispatch;
   private final UUID rule;
 
@@ -285,7 +287,7 @@ public final class CraftingJob {
             reserved,
             Map.of(),
             State.RUNNING,
-            "",
+            null,
             null,
             rule));
   }
@@ -333,7 +335,8 @@ public final class CraftingJob {
     return state;
   }
 
-  public String reason() {
+  /** Why the job waits, or null when it does not. */
+  public JobReason reason() {
     return reason;
   }
 
@@ -420,7 +423,7 @@ public final class CraftingJob {
     steps.set(index, steps.get(index).advanced(inputs));
     if (current() < 0) {
       state = State.DELIVERING;
-      reason = "";
+      reason = null;
     }
   }
 
@@ -483,7 +486,7 @@ public final class CraftingJob {
     steps.set(index, steps.get(index).advanced(Map.of()));
     if (current() < 0) {
       state = State.DELIVERING;
-      reason = "";
+      reason = null;
     }
   }
 
@@ -503,22 +506,25 @@ public final class CraftingJob {
     unstage(key, amount);
   }
 
-  public void waiting(String why) {
-    if (state == State.RUNNING || state == State.WAITING) {
-      state = State.WAITING;
-      reason = Objects.requireNonNull(why);
-    } else reason = Objects.requireNonNull(why);
+  public void waiting(JobReason why) {
+    if (state == State.RUNNING || state == State.WAITING) state = State.WAITING;
+    reason = Objects.requireNonNull(why);
+  }
+
+  /** Drops the reason without changing state (a cancelled job's cleanup may proceed again). */
+  public void clearReason() {
+    reason = null;
   }
 
   public void resume() {
     if (state == State.WAITING) state = State.RUNNING;
-    reason = "";
+    reason = null;
   }
 
   public void cancel() {
     if (state == State.RUNNING || state == State.WAITING) {
       state = State.CANCELLING;
-      reason = "";
+      reason = null;
     }
   }
 

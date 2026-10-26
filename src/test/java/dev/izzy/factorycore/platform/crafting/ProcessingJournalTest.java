@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.crafting;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
@@ -88,7 +89,7 @@ class ProcessingJournalTest {
     assertTrue(entry.pending());
     assertEquals(2, entry.inserted());
     assertEquals(1, entry.collected());
-    assertEquals("uncertain", ProcessingJournal.check(entry, job, progress));
+    assertEquals(JobReason.UNCERTAIN, ProcessingJournal.check(entry, job, progress));
     ProcessingJournal.write(reloaded, WORLD, job, progress, false);
     assertNull(
         ProcessingJournal.check(ProcessingJournal.read(reloaded, WORLD), job, progress),
@@ -103,24 +104,24 @@ class ProcessingJournalTest {
     var empty = dispatch(Map.of(), Map.of());
     var inserted = dispatch(Map.of(ORE, 2L), Map.of());
     assertNull(ProcessingJournal.check(null, job, empty));
-    assertEquals("save_mismatch", ProcessingJournal.check(null, job, inserted));
+    assertEquals(JobReason.SAVE_MISMATCH, ProcessingJournal.check(null, job, inserted));
     var furnace = machine();
     ProcessingJournal.write(furnace, WORLD, job, empty, false);
     var older = ProcessingJournal.read(furnace, WORLD);
     assertTrue(older.empty());
     assertEquals(
-        "save_mismatch",
+        JobReason.SAVE_MISMATCH,
         ProcessingJournal.check(older, job, inserted),
         "Job table newer than the machine");
     ProcessingJournal.write(furnace, WORLD, job, inserted, false);
     var newer = ProcessingJournal.read(furnace, WORLD);
     assertFalse(newer.empty());
     assertEquals(
-        "save_mismatch",
+        JobReason.SAVE_MISMATCH,
         ProcessingJournal.check(newer, job, empty),
         "Machine newer than the job table");
     assertEquals(
-        "save_mismatch",
+        JobReason.SAVE_MISMATCH,
         ProcessingJournal.check(newer, UUID.randomUUID(), inserted),
         "Another job's journal never proves this job");
   }

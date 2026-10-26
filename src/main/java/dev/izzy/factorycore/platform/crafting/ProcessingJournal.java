@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.crafting;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -115,15 +116,15 @@ public final class ProcessingJournal {
 
   /**
    * Compares the machine's journal with the job's dispatch. Returns null when they agree, else
-   * {@code uncertain} (a started call never returned) or {@code save_mismatch}. A machine without a
+   * {@code UNCERTAIN} (a started call never returned) or {@code SAVE_MISMATCH}. A machine without a
    * journal agrees only with a dispatch that has moved nothing.
    */
-  public static String check(Entry entry, UUID job, CraftingJob.Dispatch dispatch) {
+  public static JobReason check(Entry entry, UUID job, CraftingJob.Dispatch dispatch) {
     var expected = digest(dispatch.inserted(), dispatch.collected());
-    if (entry == null) return expected.equals(EMPTY) ? null : "save_mismatch";
-    if (!entry.job().equals(job)) return "save_mismatch";
-    if (entry.pending()) return "uncertain";
-    return entry.progress().equals(expected) ? null : "save_mismatch";
+    if (entry == null) return expected.equals(EMPTY) ? null : JobReason.SAVE_MISMATCH;
+    if (!entry.job().equals(job)) return JobReason.SAVE_MISMATCH;
+    if (entry.pending()) return JobReason.UNCERTAIN;
+    return entry.progress().equals(expected) ? null : JobReason.SAVE_MISMATCH;
   }
 
   static long total(Map<ResourceKey, Long> amounts) {

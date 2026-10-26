@@ -4,6 +4,8 @@ import static dev.izzy.factorycore.platform.client.TerminalScreen.GRID_X;
 import static dev.izzy.factorycore.platform.client.TerminalScreen.GRID_Y;
 import static dev.izzy.factorycore.platform.client.TerminalScreen.MAIN;
 
+import dev.izzy.factorycore.core.EnumKeys;
+import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.platform.client.ui.PanelLayout;
 import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.client.ui.Rect;
@@ -272,14 +274,15 @@ final class TerminalJobsView {
     previewOne.active = craftSelected < jobs.craftables().size();
     previewEight.active = previewOne.active;
     previewMany.active = previewOne.active;
-    startJob.active = !jobs.preview().icon().isEmpty() && jobs.previewReason().isEmpty();
+    startJob.active = !jobs.preview().icon().isEmpty() && jobs.previewReason() == null;
     cancelJob.visible = jobsMode;
     cancelJob.active =
         detailShown()
-            ? jobs.detail().cancellable() && !jobs.detail().job().state().equals("cancelling")
+            ? jobs.detail().cancellable()
+                && jobs.detail().job().state() != CraftingJob.State.CANCELLING
             : jobSelected < jobs.jobs().size()
                 && jobs.jobs().get(jobSelected).owner().isEmpty()
-                && !jobs.jobs().get(jobSelected).state().equals("cancelling");
+                && jobs.jobs().get(jobSelected).state() != CraftingJob.State.CANCELLING;
   }
 
   // ---------------------------------------------------------------- drawing
@@ -307,7 +310,7 @@ final class TerminalJobsView {
       graphics.renderItem(shown, x + 1, y + 1);
       var keep = craftables.get(index).amount();
       // "≥N" is the keep-stock amount; "!" marks one that is waiting.
-      boolean waiting = !craftables.get(index).note().isEmpty();
+      boolean waiting = craftables.get(index).note() != null;
       if (!keep.isEmpty())
         screen.drawCount(graphics, shown, x, y, (waiting ? "!" : "≥") + CountText.compact(keep));
     }
@@ -350,7 +353,7 @@ final class TerminalJobsView {
           y + 5,
           !row.owner().isEmpty()
               ? Panels.LIST_OTHER
-              : row.reason().isEmpty() ? Panels.LIST_TEXT : Panels.LIST_WARN,
+              : row.reason() == null ? Panels.LIST_TEXT : Panels.LIST_WARN,
           true);
     }
     if (jobRows.size() > jobRows()) {
@@ -363,13 +366,12 @@ final class TerminalJobsView {
   }
 
   /** Text symbol accompanying color so job state is readable without color vision. */
-  private static String glyph(String state) {
+  private static String glyph(CraftingJob.State state) {
     return switch (state) {
-      case "running" -> "▶";
-      case "waiting" -> "⏸";
-      case "delivering" -> "⇩";
-      case "cancelling" -> "✕";
-      default -> "?";
+      case RUNNING -> "▶";
+      case WAITING -> "⏸";
+      case DELIVERING -> "⇩";
+      case CANCELLING -> "✕";
     };
   }
 
@@ -404,7 +406,8 @@ final class TerminalJobsView {
                     job.output().name())
                 .getString()
             + " · "
-            + Component.translatable("gui.factorycore.terminal.job.state." + job.state())
+            + Component.translatable(
+                    "gui.factorycore.terminal.job.state." + EnumKeys.key(job.state()))
                 .getString()
             + (job.owner().isEmpty()
                 ? ""
@@ -416,11 +419,11 @@ final class TerminalJobsView {
         font, font.plainSubstrByWidth(header, width), x + 3, y + 3, Panels.LIST_TEXT, true);
     // Why the job waits gets a full line; the waiting step's row then just says "Waiting".
     int top = 13;
-    if (!job.reason().isEmpty()) {
+    if (job.reason() != null) {
       graphics.drawString(
           font,
           font.plainSubstrByWidth(
-              Component.translatable("gui.factorycore.terminal.job.reason." + job.reason())
+              Component.translatable("gui.factorycore.terminal.job.reason." + job.reason().key())
                   .getString(),
               width),
           x + 3,
@@ -436,13 +439,13 @@ final class TerminalJobsView {
         var step = detail.steps().get(index);
         int color =
             switch (step.status()) {
-              case "done" -> Panels.LIST_GOOD;
-              case "waiting" -> Panels.LIST_WARN;
-              case "running" -> Panels.LIST_TEXT;
-              default -> Panels.LIST_MUTED;
+              case DONE -> Panels.LIST_GOOD;
+              case WAITING -> Panels.LIST_WARN;
+              case RUNNING -> Panels.LIST_TEXT;
+              case QUEUED -> Panels.LIST_MUTED;
             };
         String status =
-            Component.translatable("gui.factorycore.terminal.job.step." + step.status())
+            Component.translatable("gui.factorycore.terminal.job.step." + step.status().key())
                 .getString();
         graphics.drawString(
             font,
@@ -620,7 +623,8 @@ final class TerminalJobsView {
         font,
         font.plainSubstrByWidth(
             (amountError.isEmpty()
-                    ? Component.translatable("gui.factorycore.terminal.job.status." + jobs.status())
+                    ? Component.translatable(
+                        "gui.factorycore.terminal.job.status." + jobs.status().key())
                     : Component.translatable(
                         "gui.factorycore.terminal.job.amount." + amountError,
                         TerminalJobPackets.MAX_AMOUNT))
@@ -668,10 +672,12 @@ final class TerminalJobsView {
                   value.output().name()),
               Component.translatable(
                   "gui.factorycore.terminal.job.progress", value.done(), value.total()),
-              Component.translatable("gui.factorycore.terminal.job.state." + value.state()),
-              value.reason().isEmpty()
+              Component.translatable(
+                  "gui.factorycore.terminal.job.state." + EnumKeys.key(value.state())),
+              value.reason() == null
                   ? Component.empty()
-                  : Component.translatable("gui.factorycore.terminal.job.reason." + value.reason()),
+                  : Component.translatable(
+                      "gui.factorycore.terminal.job.reason." + value.reason().key()),
               value.owner().isEmpty()
                   ? Component.translatable("gui.factorycore.terminal.job.detail.help")
                   : Component.translatable(
@@ -685,12 +691,12 @@ final class TerminalJobsView {
           font,
           List.of(
               Component.literal(craftable.name()),
-              craftable.note().isEmpty()
+              craftable.note() == null
                   ? Component.translatable("gui.factorycore.terminal.job.select.help")
                   : Component.translatable(
                       "gui.factorycore.terminal.job.keep.waiting",
                       Component.translatable(
-                          "gui.factorycore.terminal.job.status." + craftable.note()))),
+                          "gui.factorycore.terminal.job.status." + craftable.note().key()))),
           Optional.empty(),
           mouseX,
           mouseY);

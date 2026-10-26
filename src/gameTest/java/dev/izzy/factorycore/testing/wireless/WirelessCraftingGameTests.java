@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.wireless;
 
+import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -246,7 +247,7 @@ public final class WirelessCraftingGameTests {
                   job != null
                       && job.steps().getFirst().done() == 0
                       && job.stagedAmount(f.log) == 1
-                      && job.reason().equals("rate_limit"),
+                      && job.reason() == JobReason.RATE_LIMIT,
                   "Four remaining units cannot atomically carry1 log and4 planks; input remains staged");
               h.assertTrue(
                   f.stock(f.log) == 9

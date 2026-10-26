@@ -126,7 +126,7 @@ public final class ProcessingRecoveryCommands {
                   "command.factorycore.recovery.processing.job",
                   job.id().toString(),
                   job.state().name(),
-                  job.reason(),
+                  job.reason() == null ? "" : job.reason().key(),
                   job.dispatch().inserted().toString(),
                   job.dispatch().collected().toString(),
                   job.staged().toString()),

@@ -155,7 +155,8 @@ public final class TerminalPackets {
       String capacity,
       boolean infinite,
       boolean external,
-      boolean craftables)
+      boolean craftables,
+      boolean uncertain)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_view"));
@@ -210,6 +211,7 @@ public final class TerminalPackets {
           0,
           "0",
           "0",
+          false,
           false,
           false,
           false);
@@ -269,6 +271,7 @@ public final class TerminalPackets {
               buffer.writeBoolean(value.infinite);
               buffer.writeBoolean(value.external);
               buffer.writeBoolean(value.craftables);
+              buffer.writeBoolean(value.uncertain);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -306,6 +309,7 @@ public final class TerminalPackets {
                   buffer.readVarInt(),
                   buffer.readUtf(32),
                   buffer.readUtf(32),
+                  buffer.readBoolean(),
                   buffer.readBoolean(),
                   buffer.readBoolean(),
                   buffer.readBoolean());

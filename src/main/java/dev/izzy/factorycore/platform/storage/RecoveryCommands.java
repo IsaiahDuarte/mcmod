@@ -194,13 +194,7 @@ public final class RecoveryCommands {
       source.sendSuccess(
           () ->
               Component.translatable(
-                  "command.factorycore.recovery."
-                      + (move.pending() != StagedTransfer.PendingCall.NONE
-                              || move.state() == StagedTransfer.State.QUARANTINED
-                          ? "uncertain"
-                          : move.state() == StagedTransfer.State.COMPLETE
-                              ? "complete"
-                              : context == null ? "legacy" : "known")),
+                  "command.factorycore.recovery." + RecoveryActions.classify(record).key()),
           false);
       return 1;
     } catch (IllegalStateException quarantined) {

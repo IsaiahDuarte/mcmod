@@ -55,6 +55,7 @@ class TerminalPacketsTest {
             "0",
             false,
             false,
+            true,
             true);
     var output = buffer();
     try {
@@ -196,7 +197,8 @@ class TerminalPacketsTest {
             "9223372036854792191",
             true,
             false,
-            true);
+            true,
+            false);
     var output = buffer();
     try {
       TerminalPackets.View.CODEC.encode(output, view);

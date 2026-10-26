@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.crafting;
 
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -106,7 +107,7 @@ public final class KeepStockGameTests {
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, f.log, 4);
-              h.assertTrue(jobs(h).keep(actor, f.origin, f.stick, 8, 8).isEmpty(), "Rule set");
+              h.assertTrue(jobs(h).keep(actor, f.origin, f.stick, 8, 8) == null, "Rule set");
             })
         .thenWaitUntil(
             () -> {
@@ -152,7 +153,7 @@ public final class KeepStockGameTests {
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, f.log, 20);
-              h.assertTrue(jobs(h).keep(actor, f.origin, f.stick, 64, 64).isEmpty(), "Rule set");
+              h.assertTrue(jobs(h).keep(actor, f.origin, f.stick, 64, 64) == null, "Rule set");
             })
         .thenWaitUntil(() -> h.assertTrue(jobs(h).jobs(f.owner).size() == 1, "Job started"))
         .thenExecute(
@@ -162,7 +163,7 @@ public final class KeepStockGameTests {
                 h.assertTrue(rule != null && jobs(h).unkeep(actor, rule.id()), "Keep off");
               }
               h.assertTrue(
-                  jobs(h).keep(actor, f.origin, f.stick, high, high).isEmpty(), "Keep set again");
+                  jobs(h).keep(actor, f.origin, f.stick, high, high) == null, "Keep set again");
             })
         .thenWaitUntil(
             () -> {
@@ -212,14 +213,14 @@ public final class KeepStockGameTests {
                   () -> {
                     for (var key : keys)
                       h.assertTrue(
-                          jobs(h).keep(actor, f.origin, key, amount, amount).isEmpty(), "Set");
+                          jobs(h).keep(actor, f.origin, key, amount, amount) == null, "Set");
                   })
               .thenIdle(5)
               .thenExecute(
                   () -> {
                     for (var key : keys)
                       h.assertTrue(
-                          jobs(h).keep(actor, f.origin, key, amount + 1, amount + 1).isEmpty(),
+                          jobs(h).keep(actor, f.origin, key, amount + 1, amount + 1) == null,
                           "Replaced");
                   })
               .thenIdle(5)
@@ -268,8 +269,7 @@ public final class KeepStockGameTests {
                   .setGrants(owner, member, EnumSet.of(NetworkPermissions.Permission.CRAFT));
               f.saved.registry().insert(f.cell, f.log, 4);
               h.assertTrue(
-                  jobs(h).keep(memberActor, f.origin, f.stick, 8, 8).isEmpty(),
-                  "Member sets a rule");
+                  jobs(h).keep(memberActor, f.origin, f.stick, 8, 8) == null, "Member sets a rule");
               f.saved
                   .network(network)
                   .setGrants(owner, member, EnumSet.noneOf(NetworkPermissions.Permission.class));
@@ -278,7 +278,7 @@ public final class KeepStockGameTests {
             () -> {
               var rule = jobs(h).rule(memberActor, f.origin, f.stick);
               h.assertTrue(
-                  rule != null && jobs(h).ruleStatus(rule.id()).equals("denied"),
+                  rule != null && jobs(h).ruleStatus(rule.id()) == JobStatus.DENIED,
                   "Rule evaluated as denied");
             })
         .thenExecute(

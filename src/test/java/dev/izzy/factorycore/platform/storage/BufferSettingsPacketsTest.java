@@ -90,7 +90,8 @@ class BufferSettingsPacketsTest {
             true,
             3,
             8,
-            64);
+            64,
+            true);
     var output = buffer();
     try {
       BufferSettingsPackets.View.CODEC.encode(output, packet);
@@ -140,7 +141,8 @@ class BufferSettingsPacketsTest {
                 false,
                 0,
                 0,
-                0));
+                0,
+                false));
     var output = buffer();
     try {
       output.writeVarInt(1);

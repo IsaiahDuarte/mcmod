@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.core.crafting.PlanRows;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
@@ -20,9 +21,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * commands.
  */
 final class TerminalJobs {
-  private static final java.util.Set<String> HEALTHY_RULES =
-      java.util.Set.of("", "satisfied", "started", "in_flight");
-
   private final ServerPlayer viewer;
   private final TerminalAccess terminal;
   private final int menu;
@@ -38,7 +36,7 @@ final class TerminalJobs {
   private List<TerminalJobPackets.PlanRow> planRows = List.of();
   private int planMore;
   private List<String> planCycles = List.of();
-  private String jobStatus = "ready";
+  private JobStatus jobStatus = JobStatus.READY;
   private List<UUID> jobIds = List.of();
 
   /** A4: the job opened in the detail view, or null. */
@@ -140,11 +138,11 @@ final class TerminalJobs {
         previewAmount = command.amount();
         preview = jobs.preview(actor(), terminal.origin(), previewKey, previewAmount);
         summarize();
-        jobStatus = preview.reason().isEmpty() ? "previewed" : preview.reason();
+        jobStatus = preview.reason() == null ? JobStatus.PREVIEWED : preview.reason();
       }
       case TerminalJobPackets.START -> {
         if (!terminal.spendAction(viewer)) {
-          jobStatus = "no_power";
+          jobStatus = JobStatus.NO_POWER;
           break;
         }
         if (command.revision() != jobRevision || previewKey == null) {
@@ -152,7 +150,7 @@ final class TerminalJobs {
         }
         var submission = jobs.submit(actor(), terminal.origin(), previewKey, previewAmount);
         if (submission.job() != null) {
-          jobStatus = "started";
+          jobStatus = JobStatus.STARTED;
           previewKey = null;
           preview = null;
           summarize();
@@ -170,11 +168,11 @@ final class TerminalJobs {
         var key = craftables.get(command.selection());
         var existing = jobs.rule(actor(), terminal.origin(), key);
         if (existing != null)
-          jobStatus = jobs.unkeep(actor(), existing.id()) ? "unkept" : "refused";
+          jobStatus = jobs.unkeep(actor(), existing.id()) ? JobStatus.UNKEPT : JobStatus.REFUSED;
         else {
           var reason =
               jobs.keep(actor(), terminal.origin(), key, command.amount(), command.amount());
-          jobStatus = reason.isEmpty() ? "kept" : reason;
+          jobStatus = reason == null ? JobStatus.KEPT : reason;
         }
       }
       case TerminalJobPackets.DETAIL -> {
@@ -185,7 +183,9 @@ final class TerminalJobs {
       case TerminalJobPackets.CANCEL -> {
         if (command.selection() >= jobIds.size()) return false;
         jobStatus =
-            jobs.cancel(actor(), jobIds.get(command.selection())) ? "cancelling" : "refused";
+            jobs.cancel(actor(), jobIds.get(command.selection()))
+                ? JobStatus.CANCELLING
+                : JobStatus.REFUSED;
       }
       default -> {
         return false;
@@ -279,7 +279,7 @@ final class TerminalJobs {
         entry(job.request(), Long.toString(job.amount())),
         job.craftsDone(),
         job.craftsTotal(),
-        job.state().name().toLowerCase(Locale.ROOT),
+        job.state(),
         job.reason(),
         owner);
   }
@@ -293,10 +293,14 @@ final class TerminalJobs {
     for (int index = 0; index < job.steps().size(); index++) {
       if (steps.size() == TerminalJobPackets.DETAIL_STEPS) break;
       var step = job.steps().get(index);
-      String status =
+      var status =
           step.done() >= step.crafts()
-              ? "done"
-              : index == current ? waiting ? "waiting" : "running" : "queued";
+              ? TerminalJobPackets.StepStatus.DONE
+              : index != current
+                  ? TerminalJobPackets.StepStatus.QUEUED
+                  : waiting
+                      ? TerminalJobPackets.StepStatus.WAITING
+                      : TerminalJobPackets.StepStatus.RUNNING;
       steps.add(
           new TerminalJobPackets.StepRow(
               entry(step.output(), ""), step.done(), step.crafts(), status));
@@ -314,18 +318,18 @@ final class TerminalJobs {
       // A craftable row's amount carries the viewer's keep-stock threshold, if any.
       var rule = runtime.rule(actor(), terminal.origin(), key);
       var row = entry(key, rule == null ? "" : Long.toString(rule.low()));
-      var status = rule == null ? "" : runtime.ruleStatus(rule.id());
+      var status = rule == null ? null : runtime.ruleStatus(rule.id());
       // Only a blocked rule is "waiting"; satisfied, started and in-flight rules are healthy.
-      var waiting = HEALTHY_RULES.contains(status) ? "" : status;
+      var waiting = status == null || status.healthy() ? null : status;
       rows.add(
-          waiting.isEmpty()
+          waiting == null
               ? row
               : new TerminalJobPackets.Entry(row.icon(), row.name(), row.amount(), waiting));
     }
     var missing = new ArrayList<TerminalJobPackets.Entry>();
     int steps = 0;
     long crafts = 0;
-    String reason = "";
+    JobStatus reason = null;
     if (preview != null && preview.plan() != null) {
       reason = preview.reason();
       steps = preview.plan().steps().size();

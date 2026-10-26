@@ -83,3 +83,11 @@ routing status, per-role counts for players with View access, and a first-networ
 path. The counts are kept per topology segment while it is published
 (`NetworkTopology.roleCounts`), so opening the overview costs constant work and reveals no
 positions, labels or contents.
+
+## Amendment — typed staging class (2026-10-26, ergonomics plan Q54)
+
+A Transfer Recovery row's safe next step is `StagingClass` (`UNCERTAIN`, `COMPLETE`, `LEGACY`,
+`KNOWN`) from `RecoveryActions.classify`, sent by key and refused if unknown; the recovery
+command prints the same class. The Terminal and Buffer views carry a typed `uncertain` flag
+(their unresolved staged move is quarantined) that disables **Return**, instead of the screens
+comparing the status text with `"uncertain"`. The shown status and its lang text are unchanged.

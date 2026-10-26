@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.storage;
 
+import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
@@ -288,7 +289,7 @@ public final class IndexedMachinePortsGameTests {
         .thenWaitUntil(
             () ->
                 h.assertTrue(
-                    f.saved.craftingJobs().get(id[0]).reason().equals("reserved"),
+                    f.saved.craftingJobs().get(id[0]).reason() == JobReason.RESERVED,
                     "Saved foreign hold blocks physical processing acquisition without a live connector binding"))
         .thenExecute(
             () -> {

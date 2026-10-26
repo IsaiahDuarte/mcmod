@@ -53,7 +53,8 @@ legs before consuming ingredients; insufficient quota leaves staging intact and
 waits. See [shared wireless throughput](../decisions/0050-shared-wireless-throughput.md).
 
 `core.crafting.CraftingJob` holds `(id, principal, network, segment, origin, request,
-amount, steps, reserved, staged, state, reason)`. States: RUNNING, WAITING (reason),
+amount, steps, reserved, staged, state, reason)`; `reason` is a `JobReason` or null.
+States: RUNNING, WAITING (reason),
 DELIVERING, CANCELLING. Mutators: `pulled(backing, key, n)` (reserved → staged),
 `crafted(inputs, outputs)` (RUNNING only; advances the current step), `delivered(key,
 n)` (DELIVERING/CANCELLING), `released(backing, key)`, `waiting(reason)`, `resume()`,
@@ -62,9 +63,9 @@ reserved. Invalid transitions throw. `CraftingJobs` bounds 64 jobs (8 per princi
 and `retire(id)` refuses unfinished jobs.
 
 `platform.crafting.WorldCraftingJobs` (server thread): `preview(actor, origin, key,
-amount)` and `submit(...)` return the plan and a reason (`""`, `missing`, `cycle`,
-`limit`, `denied`, `offline`, `unsupported`, `changed`, `job_limit`,
-`principal_limit`); `cancel(actor, id)` (requester or operator); `jobs(principal)`;
+amount)` and `submit(...)` return the plan and a `JobStatus` reason (null when it may
+start; else `MISSING`, `CYCLE`, `LIMIT`, `DENIED`, `OFFLINE`, `UNSUPPORTED`, `CHANGED`,
+`JOB_LIMIT`, `PRINCIPAL_LIMIT`); `cancel(actor, id)` (requester or operator); `jobs(principal)`;
 `notices(principal)` (last eight finished, not persisted). `CraftingJobCodec` is the
 nested schema-one codec in world schema 13.
 
@@ -94,10 +95,11 @@ there.
 
 `core.crafting.KeepStockRule` (`deficit(available)`) and `CraftingJobs.setRule/ruleFor/
 removeRule/rules` with the bounds in [ADR 0034](../decisions/0034-keep-stock-requests.md).
-`WorldCraftingJobs.keep(actor, origin, key, low, high)` returns `""` or a reason
-(`denied`, `offline`, `unsupported`, `rule_limit`, `principal_rule_limit`, `limit`);
+`WorldCraftingJobs.keep(actor, origin, key, low, high)` returns null or a `JobStatus`
+(`DENIED`, `OFFLINE`, `UNSUPPORTED`, `RULE_LIMIT`, `PRINCIPAL_RULE_LIMIT`, `LIMIT`);
 `rule(actor, origin, key)`, `unkeep(actor, ruleId)` (owner or operator) and
-`ruleStatus(ruleId)` (`satisfied`, `in_flight`, `started` or a submit reason).
+`ruleStatus(ruleId)` (`SATISFIED`, `IN_FLIGHT`, `STARTED`, a submit reason, or null before
+the first evaluation).
 `CraftingJob.rule()` links a job to its rule. Nested job schema 3 adds `Rules`.
 
 

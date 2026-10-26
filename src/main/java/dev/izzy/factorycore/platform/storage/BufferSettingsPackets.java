@@ -128,7 +128,8 @@ public final class BufferSettingsPackets {
       boolean dirty,
       long staged,
       long moved,
-      int requested)
+      int requested,
+      boolean uncertain)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
@@ -183,6 +184,7 @@ public final class BufferSettingsPackets {
               b.writeVarLong(v.staged);
               b.writeVarLong(v.moved);
               b.writeVarInt(v.requested);
+              b.writeBoolean(v.uncertain);
             },
             b -> {
               int id = b.readVarInt();
@@ -214,7 +216,8 @@ public final class BufferSettingsPackets {
                   b.readBoolean(),
                   b.readVarLong(),
                   b.readVarLong(),
-                  b.readVarInt());
+                  b.readVarInt(),
+                  b.readBoolean());
             });
   }
 

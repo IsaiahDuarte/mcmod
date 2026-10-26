@@ -1,6 +1,8 @@
 package dev.izzy.factorycore.testing.crafting;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -129,7 +131,7 @@ public final class CraftingJobGameTests {
               f.saved.registry().insert(f.cell, f.log, 2);
               var preview = jobs(h).preview(actor(f.owner), f.origin, f.stick, 8);
               h.assertTrue(
-                  preview.reason().isEmpty()
+                  preview.reason() == null
                       && preview.plan().steps().size() == 2
                       && preview.plan().consumed().get(f.log) == 1
                       && f.reserved(f.log) == 0,
@@ -170,14 +172,14 @@ public final class CraftingJobGameTests {
               var missing = jobs(h).submit(actor(f.owner), f.origin, f.stick, 8);
               h.assertTrue(
                   missing.job() == null
-                      && missing.reason().equals("missing")
+                      && missing.reason() == JobStatus.MISSING
                       && missing.plan().missing().get(f.log) == 1
                       && jobs(h).jobs(f.owner).isEmpty(),
                   "Shortage explains the missing log and creates no job");
               f.saved.registry().insert(f.cell, f.log, 2);
               var stranger = jobs(h).submit(actor(UUID.randomUUID()), f.origin, f.stick, 8);
               h.assertTrue(
-                  stranger.reason().equals("denied") && f.reserved(f.log) == 0,
+                  stranger.reason() == JobStatus.DENIED && f.reserved(f.log) == 0,
                   "A principal without CRAFT reserves nothing");
             })
         .thenSucceed();
@@ -242,7 +244,7 @@ public final class CraftingJobGameTests {
               var job = f.saved.craftingJobs().get(id[0]);
               h.assertTrue(
                   job.state() == CraftingJob.State.WAITING
-                      && job.reason().equals("pattern_missing")
+                      && job.reason() == JobReason.PATTERN_MISSING
                       && job.stagedAmount(f.planks) == 4,
                   "Planks are staged and the job waits for its stick pattern");
             })
@@ -277,7 +279,7 @@ public final class CraftingJobGameTests {
               h.assertTrue(
                   job != null
                       && job.state() == CraftingJob.State.DELIVERING
-                      && job.reason().equals("full")
+                      && job.reason() == JobReason.FULL
                       && job.stagedAmount(f.stick) + f.stock(f.stick) == 8,
                   "Undeliverable sticks stay staged, never voided");
             })
@@ -319,7 +321,7 @@ public final class CraftingJobGameTests {
               var job = f.saved.craftingJobs().get(id[0]);
               h.assertTrue(
                   job.state() == CraftingJob.State.WAITING
-                      && job.reason().equals("denied")
+                      && job.reason() == JobReason.DENIED
                       && job.craftsDone() == 0
                       && f.reserved(f.log) == 1,
                   "Revoked grant stops crafting; reservation is kept for the job");

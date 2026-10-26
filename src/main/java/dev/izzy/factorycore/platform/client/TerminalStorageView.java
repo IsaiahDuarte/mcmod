@@ -227,8 +227,7 @@ final class TerminalStorageView {
     stack.active = kind == 0 ? one.active : kind == 2;
     one.setMessage(Component.translatable("gui.factorycore.terminal.action." + kind + ".one"));
     stack.setMessage(Component.translatable("gui.factorycore.terminal.action." + kind + ".two"));
-    returning.active =
-        !view.busy() && !view.staged().equals("0") && !view.status().equals("uncertain");
+    returning.active = !view.busy() && !view.staged().equals("0") && !view.uncertain();
   }
 
   void tickVisibility(boolean jobsMode) {

@@ -248,7 +248,11 @@ the other mods feel finished.
 | M140 | Facade details for Q30: a wrench cycles the facade block's states, facades turn see-through while the network view (Q12) is on, and a facade can be spread over a run or a whole network with a confirm. | AE2 wrench and network tool; SFM spread modes and confirms | Q30 scope |
 | M141 | A cell's advanced tooltip (F3+H) does not show its handle ID for support. | RS2 storage UUID, AE2 serial in advanced tooltips | `CellItem.java` |
 
-M142 onward is for findings from Q51.
+M142 onward are follow-ups from slices and findings from Q51.
+
+| ID | Finding | Evidence |
+| --- | --- | --- |
+| M142 | Q54 typed the job, rule and staging reasons only. Other menus still send a status string that their screens compare with `.equals` (`"ready"`, `"applied"`, `"valid"`, `"filled"`, `"running"`, …): Signal, Port, Drive, Network Access, Program, Connector, Buffer and the Terminal's grid and search status. A typo there still compiles. | `grep 'equals("' platform/client` after Q54 |
 
 ## Decision gates (user)
 
@@ -327,7 +331,16 @@ New gates:
   Done when: a test sets, replaces and removes rules many times and both maps stay at the number
   of live rules.
 
-- [ ] **Q54 — Typed job and rule reasons (M52).** Size M.
+- [x] **Q54 — Typed job and rule reasons (M52).** Size M. Done 2026-10-26 (commit subject
+  `Q54:`). `JobReason`, `JobStatus`, `TerminalJobPackets.StepStatus` and `StagingClass`, keyed
+  by `EnumKeys` and sent through `WireEnums` (bounded, unknown refused); job state travels as
+  `CraftingJob.State`; the Terminal and Buffer views gained a typed `uncertain` flag. Saved
+  reason keys are unchanged. Found and fixed: ten movement-refusal job reasons (`rate_limit`
+  and others) and the `no_power` status had no lang entry and showed raw keys;
+  `LangKeysTest.everyTypedReasonAndStatusHasItsKey` failed on them first. Packet tests
+  round-trip every value and refuse unknown keys; `CraftingJobPersistenceTest` loads every
+  reason and refuses an unknown one. ADR 0031 and ADR 0055 amendments. Other menus' status
+  strings (Signal, Port, Drive, Access, Program, Connector, grid) are follow-up M142.
   An enum (or enums) for crafting job, rule and staging reasons, mapped to lang keys in one
   place, sent over the wire by ordinal or name with a bounded decoder. Client screens compare
   enum values, not strings.
@@ -375,6 +388,12 @@ New gates:
 - [ ] **Q60 — Code-health re-check.** Size S. After Q52–Q58.
   Re-run the review's searches (string reason comparisons, raw fills, duplicated energy
   storages, inline codec checks) and record the counts.
+
+- [ ] **Q104 — Typed menu statuses (M142).** Size M. After Q54.
+  The same `EnumKeys`/`WireEnums` pattern for each remaining menu status (one enum per menu, or
+  `OperationResult.Reason` plus the menu's own states), with a LangKeysTest entry per enum.
+  Done when: no string-status `.equals` remains in `platform/client`; packet tests refuse an
+  unknown status.
 
 ## Wave A — Crafter and patterns (lane C)
 

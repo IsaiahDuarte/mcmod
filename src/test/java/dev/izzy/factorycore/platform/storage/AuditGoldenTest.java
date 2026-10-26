@@ -312,7 +312,7 @@ class AuditGoldenTest {
             Map.of(new UUID(0, 6), Map.of(KEY, 3L)),
             Map.of(KEY, 4L),
             CraftingJob.State.WAITING,
-            "offline");
+            dev.izzy.factorycore.core.crafting.JobReason.OFFLINE);
     assertGolden(
         "processing-journal",
         DeviceRecoveryAudit.preserveProcessingJournal(

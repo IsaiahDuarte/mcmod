@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -102,7 +104,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
     view =
         new BufferSettingsPackets.View(
             id, nonce, revision, "PAUSED", "ALL", 64, 64, List.of(), List.of(), status, false,
-            false, false, 0, 0, 0);
+            false, false, 0, 0, 0, false);
     deviceStatus = DeviceStatus.View.pending(id, nonce);
   }
 
@@ -551,11 +553,10 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
     }
     var operation = unresolved();
     long staged = operation == null ? 0 : saved().transfers().get(operation).staged();
-    String displayStatus =
+    boolean uncertain =
         operation != null
-                && saved().transfers().get(operation).state() == StagedTransfer.State.QUARANTINED
-            ? "uncertain"
-            : status;
+            && saved().transfers().get(operation).state() == StagedTransfer.State.QUARANTINED;
+    String displayStatus = uncertain ? EnumKeys.key(OperationResult.Reason.UNCERTAIN) : status;
     var packet =
         new BufferSettingsPackets.View(
             containerId,
@@ -573,7 +574,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
             dirty,
             staged,
             moved,
-            requested);
+            requested,
+            uncertain);
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);

@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.testing.crafting;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -188,7 +189,7 @@ public final class ProcessingJobGameTests {
               var job = f.saved.craftingJobs().get(id[0]);
               h.assertTrue(
                   job.state() == CraftingJob.State.WAITING
-                      && job.reason().equals("output_not_clean")
+                      && job.reason() == JobReason.OUTPUT_NOT_CLEAN
                       && job.dispatch() == null
                       && f.furnace.getItem(0).isEmpty(),
                   "A machine already holding the output is never dispatched");
@@ -219,7 +220,7 @@ public final class ProcessingJobGameTests {
             () -> {
               var first = f.saved.craftingJobs().get(ids[0]);
               var second = f.saved.craftingJobs().get(ids[1]);
-              if (second != null && second.reason().equals("busy")) sawBusy[0] = true;
+              if (second != null && second.reason() == JobReason.BUSY) sawBusy[0] = true;
               h.assertTrue(first == null && second == null, "Both jobs finish one after another");
             })
         .thenExecute(
@@ -481,7 +482,7 @@ public final class ProcessingJobGameTests {
               var job = f.saved.craftingJobs().get(id[0]);
               h.assertTrue(
                   job.state() == CraftingJob.State.WAITING
-                      && job.reason().equals("machine_missing")
+                      && job.reason() == JobReason.MACHINE_MISSING
                       && job.dispatch() == null
                       && f.furnace.getItem(0).isEmpty(),
                   "A blast furnace has no fluid port, so the fluid pattern is never dispatched: "
@@ -572,7 +573,7 @@ public final class ProcessingJobGameTests {
               h.assertTrue(
                   first != null
                       && other != null
-                      && (first.reason().equals("busy") || other.reason().equals("busy")),
+                      && (first.reason() == JobReason.BUSY || other.reason() == JobReason.BUSY),
                   "Second interface waits for the same physical machine");
             })
         // The furnace lighting up is a neighbor change that briefly rebuilds the network, during
@@ -729,7 +730,7 @@ public final class ProcessingJobGameTests {
         .thenWaitUntil(
             () ->
                 h.assertTrue(
-                    f.saved.craftingJobs().get(id[0]).reason().equals("machine_replaced"),
+                    f.saved.craftingJobs().get(id[0]).reason() == JobReason.MACHINE_REPLACED,
                     "Replacement machine cannot inherit the old dispatch even at identical coordinates"))
         .thenExecute(
             () -> {
@@ -835,7 +836,7 @@ public final class ProcessingJobGameTests {
         .thenWaitUntil(
             () ->
                 h.assertTrue(
-                    f.saved.craftingJobs().get(id[0]).reason().equals("machine_identity"),
+                    f.saved.craftingJobs().get(id[0]).reason() == JobReason.MACHINE_IDENTITY,
                     "Capability presence cannot establish independent persistent machine ownership"))
         .thenExecute(
             () -> {

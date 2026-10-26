@@ -1023,7 +1023,7 @@ public final class WorldPrograms {
     var key = new PlatformResourceCodec(server.registryAccess()).itemKey(new ItemStack(item.get()));
     var submission = jobs.submitLinked(actor, controller.origin(), key, craft.amount(), link);
     if (submission.job() == null)
-      controller.log(rule + ": craft " + craft.item() + " " + submission.reason());
+      controller.log(rule + ": craft " + craft.item() + " " + submission.reason().key());
   }
 
   /** Name-based link for one deployment's rule/item craft request (never a random rule ID). */

@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -118,7 +120,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             0,
             0,
             TerminalJobPackets.NONE,
-            "",
+            null,
             0,
             0,
             List.of(),
@@ -127,7 +129,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             List.of(),
             List.of(),
             TerminalJobPackets.NO_DETAIL,
-            "ready");
+            dev.izzy.factorycore.core.crafting.JobStatus.READY);
     if (terminal != null)
       jobs = new TerminalJobs((ServerPlayer) viewer, terminal, id, protocol.id(), jobView);
     gridView =
@@ -922,9 +924,11 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     UUID operation = unresolved();
     String staged =
         operation == null ? "0" : Long.toString(saved().transfers().get(operation).staged());
+    boolean uncertain =
+        operation != null
+            && saved().transfers().get(operation).state() == StagedTransfer.State.QUARANTINED;
     if (operation != null && !busy) {
-      if (saved().transfers().get(operation).state() == StagedTransfer.State.QUARANTINED)
-        status = "uncertain";
+      if (uncertain) status = EnumKeys.key(OperationResult.Reason.UNCERTAIN);
       else if (status.equals("ready")) status = "reserved";
     }
     var packet =
@@ -947,7 +951,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             capacity,
             infinite,
             external,
-            showCraftable);
+            showCraftable,
+            uncertain);
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);

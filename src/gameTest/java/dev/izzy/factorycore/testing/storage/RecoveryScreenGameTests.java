@@ -10,6 +10,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.StagingClass;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.io.IOException;
@@ -170,8 +171,8 @@ public final class RecoveryScreenGameTests {
                   "Two records own 17 staged items; the cell keeps 28");
               var mine = menus[0] = open(owner);
               h.assertTrue(
-                  "legacy".equals(row(mine, legacy).classification())
-                      && "uncertain".equals(row(mine, uncertain).classification())
+                  row(mine, legacy).classification() == StagingClass.LEGACY
+                      && row(mine, uncertain).classification() == StagingClass.UNCERTAIN
                       && row(mine, legacy).mine()
                       && !mine.view().operator(),
                   "The original owner sees both records with their safe class: " + mine.view());
@@ -254,9 +255,9 @@ public final class RecoveryScreenGameTests {
               var ops = menus[2] = open(operator);
               h.assertTrue(
                   ops.view().operator()
-                      && "complete".equals(row(ops, legacy).classification())
+                      && row(ops, legacy).classification() == StagingClass.COMPLETE
                       && !row(ops, legacy).mine()
-                      && "uncertain".equals(row(ops, uncertain).classification()),
+                      && row(ops, uncertain).classification() == StagingClass.UNCERTAIN,
                   "Operators page every record: " + ops.view());
               send(ops, operator, RecoveryPackets.SETTLE, uncertain);
               h.assertTrue(
