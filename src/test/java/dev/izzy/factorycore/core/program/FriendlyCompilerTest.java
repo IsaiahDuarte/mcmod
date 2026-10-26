@@ -225,6 +225,33 @@ class FriendlyCompilerTest {
   }
 
   @Test
+  void wholeInventoryWordsCompileToTheSameFiltersAsAGlob() {
+    var words =
+        FriendlyCompiler.compile(
+            "every 10 ticks { move everything from machines(\"a\") to storage\n"
+                + " move items from machines(\"a\") to storage\n"
+                + " move fluids from machines(\"a\") to storage\n"
+                + " move everything except item(\"minecraft:dirt\") from machines(\"a\") to storage }");
+    assertTrue(words.ok(), words.diagnostics()::toString);
+    var globs =
+        FriendlyCompiler.compile(
+            "every 10 ticks { move item(\"*\") from machines(\"a\") to storage\n"
+                + " move item(\"*\") from machines(\"a\") to storage\n"
+                + " move fluid(\"*\") from machines(\"a\") to storage\n"
+                + " move item(\"*\") except item(\"minecraft:dirt\") from machines(\"a\") to storage }");
+    assertTrue(globs.ok(), globs.diagnostics()::toString);
+    assertEquals(globs.program(), words.program(), "H9 words are sugar for the glob");
+    assertTrue(
+        error("every 10 ticks { for items in machines(\"m\") { log \"x\" } }")
+            .message()
+            .contains("'items' is a reserved word"));
+    assertTrue(
+        error("every 10 ticks { move everything except energy from machines(\"a\") to storage }")
+            .message()
+            .contains("energy cannot take except"));
+  }
+
+  @Test
   void globsAndExceptCompileWithinTheirBounds() {
     var ok =
         FriendlyCompiler.compile(

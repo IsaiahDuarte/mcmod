@@ -407,6 +407,9 @@ every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage
 - **Patterns:** one `*` matches any part of an ID: `item("*_ingot")` is every mod's
   ingots, `item("minecraft:raw_*")` only vanilla raw ores. `except` removes items:
   `item("*_ingot") except item("iron_ingot")`.
+- **Whole inventories:** `everything` (or `items`) means every item and `fluids` every
+  fluid, so `move everything from machines("chest") to storage` empties a chest. They take
+  `except` too: `move everything except item("dirt") from machines("chest") to storage`.
 - **Redstone:** `redstone(machines("button"))` is true while that Machine Interface is
   powered. `emit redstone 15 on machines("alarm")` sets every Signal-mode Interface
   labelled "alarm" (set the label in its screen) while the program runs. Stopping or

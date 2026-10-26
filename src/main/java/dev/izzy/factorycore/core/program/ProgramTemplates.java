@@ -87,6 +87,14 @@ public final class ProgramTemplates {
               }
               """),
           new Template(
+              "Empty containers",
+              """
+              # Move everything out of each container labeled "unload" into storage, except dirt.
+              every 20 ticks as "unload" {
+                  move everything except item("minecraft:dirt") from machines("unload") to storage limit 64
+              }
+              """),
+          new Template(
               "Refuel when low",
               """
               # Top each furnace up with coal only while it holds fewer than 8.

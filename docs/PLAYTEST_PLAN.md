@@ -133,7 +133,7 @@ before Machine-mode ports go away.
   Done when: GameTests cover one Crafter between two furnaces, two Crafters sharing one furnace
   (one dispatch at a time) and a machine broken mid-job (existing interruption rules).
 
-- [ ] **H9 — Whole-inventory moves in programs (K8).** Size S.
+- [x] **H9 — Whole-inventory moves in programs (K8).** Done 2026-10-26 (commit subject `H9:`). [Evidence](evidence/playtest-h9-whole-inventory-2026-10-26.md).
   `everything` as a filter (`move everything from machines("a") to storage`), plus `items`,
   `fluids` and `energy` as kind-wide shorthands. Same IR as `item("*")`, so the v1 and v2 pins
   are unchanged. Editor completion and a template.

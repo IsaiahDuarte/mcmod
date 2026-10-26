@@ -141,7 +141,8 @@ D3, `side`/`slots` per endpoint (`ProgramIr.MachineAt`,
 binding; refused with a logged reason outside the window, on another face of a narrowed
 binding, or on a partitioned provider). D4, conditions (`ProgramIr.Branch` with a `Condition`
 tree; `Host.contents` reads at most 16 pages per machine, each charged to the host budget).
-D5, globs and `except` (program-only filter terms).
+D5, globs and `except` (program-only filter terms); H9, the whole-inventory words
+`everything`/`items` and `fluids` (sugar for `item("*")`/`fluid("*")`).
 D6, `redstone(...)` and `emit` (`WorldSignals.emit`/`release`, expiring per-deployment
 overrides on Signal-mode Interfaces). Every v2 language form is implemented; the Wasm
 imports (D7) and editor support (D9) are not yet. `src/test/resources/program/v2/` holds one fixture per form and

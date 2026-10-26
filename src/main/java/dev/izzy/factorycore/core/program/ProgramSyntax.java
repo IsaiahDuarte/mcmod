@@ -46,7 +46,10 @@ public final class ProgramSyntax {
           "emit",
           "redstone",
           "on",
-          "except");
+          "except",
+          "everything",
+          "items",
+          "fluids");
 
   public static final java.util.List<String> CALL_WORDS =
       java.util.List.of("item", "fluid", "energy", "tag", "stock", "machines");

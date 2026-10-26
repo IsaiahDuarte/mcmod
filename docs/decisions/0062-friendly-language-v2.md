@@ -131,6 +131,15 @@ ADR 0035/0056 set them. New: at most 16 operators per condition, 8 terms per fil
 - **User functions, general loops and variables beyond loop machines.** These are still
   rejected for the termination reasons in ADR 0035.
 
+## Amendment — whole-inventory words (playtest H9, 2026-10-26)
+
+`everything` and `items` stand for `item("*")`, and `fluids` for `fluid("*")`, wherever a filter
+term may appear, including before and after `except`. They compile to the identical
+`ResourceFilter.Glob("*")`, so the IR, the glob bounds and the Wasm ABI are unchanged. The Rust
+SDK keeps using `item("*")`. The three words become reserved: a v1 program that used one as a loop
+variable no longer compiles and gets the reserved-word error. No template or fixture used them,
+and `FriendlyV1PinTest` still pins every v1 IR. The "Empty containers" template shows the form.
+
 ## Alternatives
 
 - **A separate v2 language with a header.** Rejected by PD2. It would split templates,

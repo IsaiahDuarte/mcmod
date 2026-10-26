@@ -1997,7 +1997,12 @@ public final class PresentationClientVerification {
         player ->
             ((dev.izzy.factorycore.platform.program.ProgramControllerEntity)
                     player.serverLevel().getBlockEntity(base.east(5)))
-                .draft(dev.izzy.factorycore.core.program.ProgramTemplates.ALL.get(9).source()));
+                .draft(
+                    dev.izzy.factorycore.core.program.ProgramTemplates.ALL.stream()
+                        .filter(t -> t.name().equals("Redstone-triggered export"))
+                        .findFirst()
+                        .orElseThrow()
+                        .source()));
     use(base.east(5), Direction.SOUTH, false);
     step(
         client -> {

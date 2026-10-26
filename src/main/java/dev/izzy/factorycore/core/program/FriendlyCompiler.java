@@ -89,6 +89,10 @@ public final class FriendlyCompiler {
           "on",
           // ADR 0062 (D5)
           "except",
+          // ADR 0062 (H9): whole-inventory filters
+          "everything",
+          "items",
+          "fluids",
           // ADR 0062 (D4)
           "else",
           "and",
@@ -699,6 +703,15 @@ public final class FriendlyCompiler {
   }
 
   private Term term(Token token) {
+    // H9: every item ("everything" or "items") or every fluid: the same filter as item("*").
+    if (at("everything") || at("items")) {
+      next();
+      return new Term(ResourceKind.ITEM, new ResourceFilter.Glob("*"));
+    }
+    if (at("fluids")) {
+      next();
+      return new Term(ResourceKind.FLUID, new ResourceFilter.Glob("*"));
+    }
     ResourceKind kind;
     boolean tag = false;
     if (at("item")) kind = ResourceKind.ITEM;
@@ -707,7 +720,9 @@ public final class FriendlyCompiler {
       kind = ResourceKind.ITEM;
       tag = true;
     } else
-      throw new SyntaxError(token, "Expected item(\"id\"), fluid(\"id\"), tag(\"id\") or energy");
+      throw new SyntaxError(
+          token,
+          "Expected item(\"id\"), fluid(\"id\"), tag(\"id\"), everything, items, fluids or energy");
     next();
     expect("(");
     var textToken = peek();
