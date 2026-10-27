@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.ClientScreens;
@@ -27,6 +28,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -81,9 +83,75 @@ public final class LabelToolItem extends Item {
    */
   @Override
   public InteractionResult onItemUseFirst(ItemStack stack, UseOnContext context) {
-    return machine(context.getLevel(), context.getClickedPos())
-        ? useOn(context)
-        : InteractionResult.PASS;
+    var level = context.getLevel();
+    var entity = level.getBlockEntity(context.getClickedPos());
+    var tool = data(stack);
+    // Q13: copying from, or pasting onto, a Buffer, Signal, Drive, Gateway, Program Controller
+    // or Crafter comes before the block's own use (a Drive or Crafter takes held items).
+    boolean device = entity != null && DeviceCopy.kind(entity) != null;
+    boolean copying = device && context.getPlayer() != null && context.getPlayer().isShiftKeyDown();
+    boolean pasting = device && !copying && tool.copied();
+    if (!copying && !pasting)
+      return machine(level, context.getClickedPos()) ? useOn(context) : InteractionResult.PASS;
+    if (level.isClientSide()) return InteractionResult.SUCCESS;
+    if (!(context.getPlayer() instanceof ServerPlayer player)) return InteractionResult.FAIL;
+    Component message;
+    try {
+      message =
+          copying ? copyDevice(player, stack, tool, entity) : pasteDevice(player, tool, entity);
+    } catch (IllegalArgumentException | IllegalStateException refused) {
+      message = Component.translatable("message.factorycore.label_tool.invalid");
+    }
+    player.displayClientMessage(message, true);
+    return InteractionResult.CONSUME;
+  }
+
+  private static Component copyDevice(
+      ServerPlayer player, ItemStack stack, LabelToolContent.Data tool, BlockEntity entity) {
+    var copy = DeviceCopy.copy(player, entity);
+    if (copy == null) return Component.translatable("message.factorycore.label_tool.denied");
+    stack.set(LabelToolContent.DATA.get(), new LabelToolContent.Data(tool.label(), copy));
+    PENDING.get(player.server).remove(player.getUUID());
+    return Component.translatable("message.factorycore.label_tool.copied");
+  }
+
+  /** Q13: the same confirm-once and batch rule as port pastes, keyed on the device's settings. */
+  private static Component pasteDevice(
+      ServerPlayer player, LabelToolContent.Data tool, BlockEntity entity) {
+    if (DeviceCopy.kind(tool.copy()) != DeviceCopy.kind(entity))
+      return Component.translatable("message.factorycore.label_tool.paste_mismatch");
+    var refusal = confirm(player, entity.getBlockPos(), DeviceCopy.fingerprint(entity));
+    if (refusal != null) return Component.translatable("message.factorycore.label_tool." + refusal);
+    var outcome = DeviceCopy.paste(player, tool.copy(), entity);
+    if (outcome.key().startsWith("pasted")) batch(player, entity.getBlockPos());
+    return Component.translatable(
+        "message.factorycore.label_tool." + outcome.key(), outcome.arguments());
+  }
+
+  /**
+   * Null when a paste at {@code at} may go ahead now (confirmed, or inside a batch window), else
+   * {@code confirm} or {@code stale}, having recorded the prompt. {@code generation} is whatever
+   * changes when the target's settings do.
+   */
+  private static String confirm(ServerPlayer player, BlockPos at, long generation) {
+    var pending = PENDING.get(player.server);
+    long now = player.server.getTickCount();
+    var before = pending.get(player.getUUID());
+    if (before != null && before.batchUntil() >= now) return null;
+    if (before == null || !before.at().equals(at) || before.confirmUntil() < now) {
+      pending.put(player.getUUID(), new Pending(at, generation, now + CONFIRM_TICKS, -1));
+      return "confirm";
+    }
+    if (before.generation() != generation) {
+      pending.put(player.getUUID(), new Pending(at, generation, now + CONFIRM_TICKS, -1));
+      return "stale";
+    }
+    return null;
+  }
+
+  private static void batch(ServerPlayer player, BlockPos at) {
+    long now = player.server.getTickCount();
+    PENDING.get(player.server).put(player.getUUID(), new Pending(at, 0, -1, now + BATCH_TICKS));
   }
 
   @Override
@@ -155,6 +223,7 @@ public final class LabelToolItem extends Item {
     copy.putInt("FirstSlot", settings.firstSlot());
     copy.putInt("SlotCount", settings.slotCount());
     copy.putInt("Rate", settings.rate());
+    copy.putString("Tier", port.tier().name());
     if (settings.insert() != null) copy.put("Insert", FilterCodec.encode(settings.insert()));
     copy.putString("Label", port.label());
     stack.set(
@@ -198,6 +267,12 @@ public final class LabelToolItem extends Item {
         return "stale";
       }
     }
+    // Q13: the copied upgrades go in first, from the player's inventory.
+    int missing =
+        tool.copy().contains("Tier")
+            ? DeviceCopy.installUpgrades(
+                player, port, ThroughputTier.valueOf(tool.copy().getString("Tier")))
+            : 0;
     var copied = settings(tool.copy());
     // The target's own throughput tier bounds the rate; a higher copied rate is lowered to fit.
     int rate = Math.min(copied.rate(), port.tier().portRate(copied.kind()));
@@ -218,6 +293,7 @@ public final class LabelToolItem extends Item {
             : port.configure(actor, applied);
     if (decision != NetworkAuthority.Decision.ALLOWED) return "denied";
     pending.put(player.getUUID(), new Pending(at, port.generation(), -1, now + BATCH_TICKS));
+    if (missing > 0) return "pasted_upgrades_missing";
     return rate < copied.rate() ? "pasted_rate" : "pasted";
   }
 

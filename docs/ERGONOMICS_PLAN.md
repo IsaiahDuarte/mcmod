@@ -556,7 +556,14 @@ New gates:
   apart; the snapshot is bounded and VIEW-checked; a GameTest checks the generated lines for a
   furnace.
 
-- [ ] **Q13 — Copy settings everywhere (M13).** Size M.
+- [x] **Q13 — Copy settings everywhere (M13).** Size M. Done 2026-10-26 (commit subject
+  `Q13:`). `DeviceCopy`; `DeviceCopyGameTests` through the real interaction path: Drive
+  priority (and no paste onto another kind), Signal rule, resource and label, a Program draft
+  without deploying, a Buffer with its upgrade installed from the inventory, a Gateway policy
+  refused with Edit but no Manage, and a Crafter paste that uses a Blank Pattern and reports the
+  missing one. Port copies now also install upgrades. TESTING.md: pause working devices before a
+  test ends (a stocking Buffer left behind failed a stock test in 4 of 6 runs). ADR 0065
+  amendment.
   Extend Label Tool copy/paste to Buffer (mode, filter, rate, goal, redstone), Signal (watch,
   condition, output, label), Drive (priority), Crafter (upgrade tier is not copied; nothing
   else to copy until Q2 adds settings), Gateway (policy, needs Manage) and Program Controller

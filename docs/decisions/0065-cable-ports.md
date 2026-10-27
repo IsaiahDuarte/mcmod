@@ -135,3 +135,22 @@ machine-labelling flow added in H5 never reached `useOn` in play; the GameTests 
 directly. `LabelToolUseGameTests` goes through `ServerPlayerGameMode.useItemOn` and failed before
 the change. Factory Core's own blocks already pass while an item is in hand.
 
+## Amendment — copying settings to every device (2026-10-26, ergonomics plan Q13)
+
+The Label Tool's copy and paste cover Buffers, Signal Interfaces, Drives, Gateways, Program
+Controllers and Crafters (`DeviceCopy`), next to the existing port and Storage Interface copies.
+A device copy is a compound with `Schema` 1 and `Device` (`buffer`, `signal`, `drive`, `gateway`,
+`program`, `crafter`); port copies, which have no `Device`, are unchanged except that they also
+record the port's `Tier`. Copying needs VIEW; pasting goes through the device's own authority
+(EDIT, plus DEPLOY for a Buffer, or MANAGE for a Gateway) and refuses a different kind. The
+confirm-once and 30-second batch rule applies to every kind, with a hash of the target's
+settings as its change check. Device copies and pastes are handled in `onItemUseFirst`, before
+a Drive or Crafter takes the held item.
+
+As AE2's Memory Card and RS2's Configuration Card do, a paste first installs the copied
+throughput tier from the player's inventory, one step's item at a time, and reports any step it
+could not install. A Crafter paste copies the source's patterns exactly (one pattern may be held
+by several Crafters) into empty slots, using one Blank Pattern each, and reports how many it
+could not add. A Crafter's own upgrade is not copied, and a Program Controller receives the draft
+only.
+

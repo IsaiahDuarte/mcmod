@@ -527,15 +527,20 @@ applies.
   Factory Core) on a labelled machine, cable port or Signal Interface. The tool takes that label,
   ready to put on the next machine. You need View access on that network.
 - **Label a Signal Interface:** use it on a Signal Interface to give it the label.
-- **Copy:** sneak and use it on a cable port, Importer, Exporter or Storage Interface to copy
-  its settings
-  (resource kind, access, priority, slots, rate and, for Storage, its insert filter) and
-  label.
+- **Copy:** sneak and use it on a device to copy its settings: a cable port, Importer, Exporter
+  or Storage Interface (resource kind, access, priority, slots, rate and, for Storage, its insert
+  filter, and label); a Buffer (mode and filter, rate and goal); a Signal Interface (what it
+  watches, its condition and output, and its label); a Drive (priority); a Gateway (its policy);
+  a Program Controller (the program in its editor); or a Crafter (its patterns).
 - **Paste:** use it on another of the same kind (a machine port, or a Storage Interface). The first use asks you to use
   it again to confirm. After that, other Interfaces paste straight away for 30 seconds.
   If someone changed the Interface between the prompt and your confirming use, nothing is
   pasted and it asks again. A rate higher than the target's upgrade allows is lowered to
-  fit, and the message says so. You need Edit access on each Interface's network.
+  fit, and the message says so. You need Edit access on each device's network, and Manage for a
+  Gateway. A paste also installs the copied throughput upgrades from your inventory first, and
+  says so if some were missing. A Crafter paste adds the copied patterns it lacks to empty slots,
+  using one Blank Pattern from your inventory for each, and says how many it could not add. A
+  Program Controller gets the program in its editor only; deploy it there.
 - **Forget copy** in its screen makes it label again.
 
 ## Lamps and status
