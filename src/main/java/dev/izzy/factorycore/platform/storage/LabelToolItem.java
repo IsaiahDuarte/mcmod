@@ -74,6 +74,18 @@ public final class LabelToolItem extends Item {
     return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
   }
 
+  /**
+   * Machines are handled before the block's own use: otherwise a furnace or chest opens its screen
+   * and the tool never reaches {@link #useOn}. Factory Core's own blocks already pass while an item
+   * is in hand, so they keep the normal order.
+   */
+  @Override
+  public InteractionResult onItemUseFirst(ItemStack stack, UseOnContext context) {
+    return machine(context.getLevel(), context.getClickedPos())
+        ? useOn(context)
+        : InteractionResult.PASS;
+  }
+
   @Override
   public InteractionResult useOn(UseOnContext context) {
     var level = context.getLevel();
@@ -86,6 +98,15 @@ public final class LabelToolItem extends Item {
         return InteractionResult.PASS;
       if (level.isClientSide()) return InteractionResult.SUCCESS;
       if (!(context.getPlayer() instanceof ServerPlayer player)) return InteractionResult.FAIL;
+      // Q12: in the network view, using the tool on a machine inspects it instead.
+      if (LabelOverlay.mode(player) == LabelOverlay.Mode.NETWORK) {
+        var view = MachineInspection.inspect(player, context.getClickedPos());
+        if (view == null)
+          player.displayClientMessage(
+              Component.translatable("message.factorycore.label_tool.inspect_none"), true);
+        else net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, view);
+        return InteractionResult.CONSUME;
+      }
       String outcome;
       try {
         outcome =

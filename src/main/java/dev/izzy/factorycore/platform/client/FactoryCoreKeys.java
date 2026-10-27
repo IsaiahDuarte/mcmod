@@ -44,7 +44,7 @@ public final class FactoryCoreKeys {
           GLFW.GLFW_MOUSE_BUTTON_MIDDLE,
           CATEGORY);
 
-  /** Q11: shows or hides the label overlay while the tool is held (unbound by default). */
+  /** Q11/Q12: cycles the overlay (labels, network view, off) with the tool held; unbound. */
   public static final KeyMapping LABEL_OVERLAY =
       new KeyMapping(
           "key.factorycore.label_overlay",
@@ -84,7 +84,7 @@ public final class FactoryCoreKeys {
   public static void tick(ClientTickEvent.Post event) {
     var minecraft = Minecraft.getInstance();
     while (LABEL_PICK.consumeClick()) if (minecraft.screen == null) pick(minecraft);
-    while (LABEL_OVERLAY.consumeClick()) LabelOverlayRenderer.toggle(minecraft);
+    while (LABEL_OVERLAY.consumeClick()) LabelOverlayRenderer.cycle(minecraft);
   }
 
   /**

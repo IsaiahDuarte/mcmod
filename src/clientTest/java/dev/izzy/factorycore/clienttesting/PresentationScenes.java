@@ -534,6 +534,38 @@ final class PresentationScenes {
   /** Puts the crosshair on {@link #ROW_TARGET}: the eye is 1.62 above the view's position. */
   static final View ROW = View.looking(-6.5, 66.6, 9.5, -5.5, 65.5 - 1.62, 7.5);
 
+  /** Q12: a root and cable, a gateway facing east, and a branch with a furnace beside it. */
+  static final BlockPos NET_ROOT = new BlockPos(-8, 65, 13);
+
+  static final BlockPos NET_FURNACE = NET_ROOT.offset(4, 0, 1);
+
+  static final View NET = View.looking(-5.5, 67.2, 17.5, -5.5, 65.5 - 1.62, 13.5);
+
+  static void networkView(ServerPlayer player) {
+    var level = player.serverLevel();
+    floor(
+        level,
+        NET_ROOT.getX() - 1,
+        NET_ROOT.getZ() - 1,
+        NET_ROOT.getX() + 5,
+        NET_ROOT.getZ() + 2,
+        64);
+    root(level, NET_ROOT, player);
+    level.setBlock(NET_ROOT.east(), NetworkContent.CABLE.get().defaultBlockState(), 3);
+    level.setBlock(
+        NET_ROOT.east(2),
+        NetworkContent.GATEWAY
+            .get()
+            .defaultBlockState()
+            .setValue(BlockStateProperties.FACING, Direction.EAST),
+        3);
+    ((NetworkNodeEntity) level.getBlockEntity(NET_ROOT.east(2))).commission(null);
+    for (int x = 3; x <= 4; x++)
+      level.setBlock(NET_ROOT.east(x), NetworkContent.CABLE.get().defaultBlockState(), 3);
+    level.setBlock(NET_FURNACE, Blocks.FURNACE.defaultBlockState(), 3);
+    teleport(player, NET);
+  }
+
   /** The Label Tool's label in the player's hand. */
   static String toolLabel(ServerPlayer player) {
     return player

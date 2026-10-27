@@ -118,3 +118,20 @@ client draws labels as see-through tags and markers as faint dots, and a key (un
 hides them. The work per holding player is bounded by the block entities in about 25 loaded
 chunks every half second.
 
+## Amendment — network view and real use on machines (2026-10-26, ergonomics plan Q12)
+
+The overlay key cycles labels, network view and off; the client tells the server (`SetMode`).
+In the network view the server ray-casts 16 blocks from the player (keeping the last block seen
+while they look at air) and walks from there along wired faces through loaded chunks, at most
+1,024 entries, VIEW-checked per block. Each entry is a cable, port, device or gateway with a
+branch number (segments in the order met) for colour, plus the machines cable ports are aimed at.
+Using the tool on a machine in this view sends `MachineInspection.View`: per side, the item slots,
+tanks or energy the machine offers there, and `move everything` / `fluids` / `energy` lines in
+both directions, at most 48 lines of 160 characters, under VIEW where its cable is.
+
+The tool now handles machines in `onItemUseFirst`, before the block's own use. Through the
+server's real interaction path, a furnace or chest used to open its screen first, so the
+machine-labelling flow added in H5 never reached `useOn` in play; the GameTests called `useOn`
+directly. `LabelToolUseGameTests` goes through `ServerPlayerGameMode.useItemOn` and failed before
+the change. Factory Core's own blocks already pass while an item is in hand.
+

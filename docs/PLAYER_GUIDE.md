@@ -516,8 +516,13 @@ applies.
   needed a new port show their label once the network has rebuilt, a moment later.
 - **See labels:** while you hold the tool, labels float over labelled machines and Signal
   Interfaces within 32 blocks, and unlabelled machines that touch a cable show a faint dot. Only
-  networks you can view are shown. Bind **Label Tool: show or hide labels** under Controls →
-  Factory Core to turn the overlay off and on.
+  networks you can view are shown. Bind **Label Tool: labels, network view or off** under
+  Controls → Factory Core to switch between the label view, the network view and nothing.
+- **Network view:** outlines the network you look at (within 16 blocks): cables, ports, devices
+  and gateways, one colour per branch, and a white box on each machine a port reaches. In this
+  view, using the tool on a machine shows what it offers on each side and the `move` lines a
+  program needs for it; **Copy move lines** puts them on the clipboard. An unlabelled machine's
+  lines say `machines("label")`: label it and replace the word.
 - **Pick a label:** with the tool in hand, press the **middle mouse button** (Controls →
   Factory Core) on a labelled machine, cable port or Signal Interface. The tool takes that label,
   ready to put on the next machine. You need View access on that network.

@@ -2195,6 +2195,49 @@ public final class PresentationClientVerification {
           return true;
         });
     serverUntil(player -> PresentationScenes.toolLabel(player).equals("row"));
+    // Q12: the overlay key (bound here; unbound by default) switches to the network view, which
+    // outlines both branches of a gateway in different colours.
+    server(PresentationScenes::networkView);
+    step(
+        client -> {
+          if (!aim(client, PresentationScenes.NET) || waited() < 10) return false;
+          FactoryCoreKeys.LABEL_OVERLAY.setKey(
+              com.mojang.blaze3d.platform.InputConstants.getKey(org.lwjgl.glfw.GLFW.GLFW_KEY_O, 0));
+          KeyMapping.resetMapping();
+          KeyMapping.click(FactoryCoreKeys.LABEL_OVERLAY.getKey());
+          return true;
+        });
+    step(
+        client -> {
+          aim(client, PresentationScenes.NET);
+          var branches =
+              dev.izzy.factorycore.platform.client.LabelOverlayRenderer.entries().stream()
+                  .filter(
+                      entry ->
+                          entry.kind()
+                              == dev.izzy.factorycore.platform.storage.LabelOverlay.Kind.CABLE)
+                  .map(dev.izzy.factorycore.platform.storage.LabelOverlay.Entry::branch)
+                  .distinct()
+                  .count();
+          return branches >= 2 && waited() > 4;
+        });
+    step(
+        client -> {
+          aim(client, PresentationScenes.NET);
+          captures.grab(client, "network-view.png");
+          return true;
+        });
+    // Using the tool on the furnace in the network view opens its inspection.
+    use(PresentationScenes.NET_FURNACE, Direction.UP, false);
+    step(client -> client.screen instanceof dev.izzy.factorycore.platform.client.InspectScreen);
+    scales("inspect", dev.izzy.factorycore.platform.client.InspectScreen.class, false);
+    // Back to labels for the rest of the tour: network, off, labels.
+    step(
+        client -> {
+          KeyMapping.click(FactoryCoreKeys.LABEL_OVERLAY.getKey());
+          KeyMapping.click(FactoryCoreKeys.LABEL_OVERLAY.getKey());
+          return true;
+        });
     server(player -> player.getInventory().setItem(0, new ItemStack(GuideContent.GUIDE.get())));
     step(
         client -> {

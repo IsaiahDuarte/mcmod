@@ -39,16 +39,22 @@ class LabelOverlayTest {
 
   @Test
   void payloadRoundTripsAndRefusesMoreThanTheBound() {
-    var full =
-        new LabelOverlay.Snapshot(
-            Collections.nCopies(LabelOverlay.MAX_ENTRIES, new LabelOverlay.Entry(7, "oven")));
+    // The network view carries up to MAX_NETWORK entries; label mode keeps the nearest 256.
+    var full = new ArrayList<LabelOverlay.Entry>();
+    for (int index = 0; index < LabelOverlay.MAX_NETWORK; index++)
+      full.add(
+          index % 2 == 0
+              ? new LabelOverlay.Entry(index, "oven")
+              : new LabelOverlay.Entry(
+                  index, "", LabelOverlay.Kind.values()[index % 7], index % 256));
+    var snapshot = new LabelOverlay.Snapshot(full);
     var buffer =
         new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
     try {
-      LabelOverlay.Snapshot.CODEC.encode(buffer, full);
-      assertEquals(full, LabelOverlay.Snapshot.CODEC.decode(buffer));
+      LabelOverlay.Snapshot.CODEC.encode(buffer, snapshot);
+      assertEquals(snapshot, LabelOverlay.Snapshot.CODEC.decode(buffer));
       buffer.clear();
-      buffer.writeVarInt(LabelOverlay.MAX_ENTRIES + 1);
+      buffer.writeVarInt(LabelOverlay.MAX_NETWORK + 1);
       assertThrows(
           IllegalArgumentException.class, () -> LabelOverlay.Snapshot.CODEC.decode(buffer));
     } finally {
@@ -58,7 +64,10 @@ class LabelOverlayTest {
         IllegalArgumentException.class,
         () ->
             new LabelOverlay.Snapshot(
-                Collections.nCopies(LabelOverlay.MAX_ENTRIES + 1, new LabelOverlay.Entry(7, ""))));
+                Collections.nCopies(LabelOverlay.MAX_NETWORK + 1, new LabelOverlay.Entry(7, ""))));
     assertThrows(IllegalArgumentException.class, () -> new LabelOverlay.Entry(7, "x".repeat(65)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new LabelOverlay.Entry(7, "", LabelOverlay.Kind.CABLE, 256));
   }
 }

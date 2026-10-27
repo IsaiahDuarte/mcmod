@@ -23,6 +23,7 @@ public final class TerminalClient {
     dev.izzy.factorycore.platform.crafting.JobNotice.sink(JobToast::receive);
     dev.izzy.factorycore.platform.ClientScreens.install(new ItemScreens());
     dev.izzy.factorycore.platform.storage.LabelOverlay.sink(LabelOverlayRenderer::receive);
+    dev.izzy.factorycore.platform.storage.MachineInspection.sink(InspectScreen::open);
   }
 
   @SubscribeEvent

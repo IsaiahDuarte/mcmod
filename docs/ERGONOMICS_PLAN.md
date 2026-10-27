@@ -537,7 +537,14 @@ New gates:
   Done when: screenshots show labels and markers; a native test bounds the snapshot; another
   player's network sends nothing.
 
-- [ ] **Q12 — Network view (M12).** Size M. After Q11.
+- [x] **Q12 — Network view (M12).** Size M. After Q11. Done 2026-10-26 (commit subject
+  `Q12:`). `LabelOverlay.network`, `MachineInspection`, `InspectScreen`.
+  `NetworkViewGameTests` (two branches of a gateway coloured apart, a stranger sees nothing;
+  a furnace's exact lines; no inspection without VIEW), `LabelOverlayTest` (payload bound 1,024);
+  the presentation tour switches with the real key and captures `network-view.png` and
+  `inspect-scale-1/4.png`. Found and fixed: the Label Tool never labelled a furnace through real
+  use (the furnace screen opened first); `LabelToolUseGameTests` failed before
+  `onItemUseFirst`. ADR 0065 amendment.
   A second overlay mode on the Label Tool outlines the cables, ports, Importers, Exporters and
   Crafters of the network the player looks at, and the machines programs can reach. No new
   item.
