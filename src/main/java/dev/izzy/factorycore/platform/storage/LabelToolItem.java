@@ -273,7 +273,7 @@ public final class LabelToolItem extends Item {
   }
 
   /** True when the block at {@code at} is a machine the Label Tool labels by itself (H5). */
-  private static boolean machine(Level level, BlockPos at) {
+  static boolean machine(Level level, BlockPos at) {
     var entity = level.getBlockEntity(at);
     return entity != null
         && !(entity instanceof ConnectorEntity)
@@ -283,7 +283,7 @@ public final class LabelToolItem extends Item {
   }
 
   /** Cables and cable ports form a cable run; devices end it. */
-  private static boolean run(BlockState state) {
+  static boolean run(BlockState state) {
     return state.getBlock() instanceof dev.izzy.factorycore.platform.network.NetworkCableBlock
         || state.getBlock() instanceof CablePortBlock;
   }

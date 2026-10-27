@@ -549,7 +549,7 @@ final class PresentationScenes {
     floor(
         level,
         ROW_ROOT.getX() - 1,
-        ROW_ROOT.getZ() - 1,
+        ROW_ROOT.getZ() - 2,
         ROW_ROOT.getX() + 4,
         ROW_ROOT.getZ() + 3,
         64);
@@ -558,6 +558,8 @@ final class PresentationScenes {
       level.setBlock(ROW_ROOT.east(x), NetworkContent.CABLE.get().defaultBlockState(), 3);
       level.setBlock(ROW_ROOT.east(x).south(), Blocks.FURNACE.defaultBlockState(), 3);
     }
+    // Another kind of machine on the run: the row leaves it alone and the overlay marks it.
+    level.setBlock(ROW_ROOT.east(3).north(), Blocks.CHEST.defaultBlockState(), 3);
     var tool = new ItemStack(dev.izzy.factorycore.platform.storage.LabelToolContent.ITEM.get());
     tool.set(
         dev.izzy.factorycore.platform.storage.LabelToolContent.DATA.get(),

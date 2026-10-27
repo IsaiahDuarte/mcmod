@@ -110,4 +110,5 @@ guide-smelting.png
 label-tool-scale-1.png
 label-tool-scale-4.png
 label-row.png
+label-overlay.png
 program-templates-scale-4.png

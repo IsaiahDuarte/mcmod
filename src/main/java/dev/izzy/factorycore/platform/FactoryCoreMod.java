@@ -67,6 +67,7 @@ public final class FactoryCoreMod {
         net.neoforged.bus.api.EventPriority.HIGH,
         dev.izzy.factorycore.platform.storage.MachineInterfaceEntity::drainLabels);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::postTick);
+    NeoForge.EVENT_BUS.addListener(dev.izzy.factorycore.platform.storage.LabelOverlay::tick);
     NeoForge.EVENT_BUS.addListener(WorldCraftingJobs::postTick);
     NeoForge.EVENT_BUS.addListener(WorldPrograms::postTick);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::playerLeft);

@@ -514,6 +514,10 @@ applies.
   message says how many were labelled and how many were not (for example a machine whose only
   cable already serves another machine, or one on a network where you lack Edit). Machines that
   needed a new port show their label once the network has rebuilt, a moment later.
+- **See labels:** while you hold the tool, labels float over labelled machines and Signal
+  Interfaces within 32 blocks, and unlabelled machines that touch a cable show a faint dot. Only
+  networks you can view are shown. Bind **Label Tool: show or hide labels** under Controls →
+  Factory Core to turn the overlay off and on.
 - **Pick a label:** with the tool in hand, press the **middle mouse button** (Controls →
   Factory Core) on a labelled machine, cable port or Signal Interface. The tool takes that label,
   ready to put on the next machine. You need View access on that network.

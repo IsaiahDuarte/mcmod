@@ -187,6 +187,7 @@ public final class LabelToolContent {
   }
 
   public static void register(IEventBus bus) {
+    bus.addListener(LabelOverlay::register);
     bus.addListener(
         (RegisterPayloadHandlersEvent event) ->
             event

@@ -2155,6 +2155,26 @@ public final class PresentationClientVerification {
         });
     serverUntil(PresentationScenes::labelRowDone);
     view(PresentationScenes.ROW, "label-row.png", 10);
+    // Q11: holding the tool shows the three labels and a marker on the chest.
+    step(
+        client -> {
+          aim(client, PresentationScenes.ROW);
+          var entries = dev.izzy.factorycore.platform.client.LabelOverlayRenderer.entries();
+          return entries.stream().filter(entry -> entry.label().equals("row")).count() == 3
+              && entries.stream()
+                  .anyMatch(
+                      entry ->
+                          entry.label().isEmpty()
+                              && entry.pos()
+                                  == PresentationScenes.ROW_ROOT.east(3).north().asLong());
+        });
+    step(
+        client -> {
+          aim(client, PresentationScenes.ROW);
+          if (waited() < 4) return false;
+          captures.grab(client, "label-overlay.png");
+          return true;
+        });
     // Q10: with the crosshair on the labelled furnace, the pick key takes its label.
     server(
         player ->

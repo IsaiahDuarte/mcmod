@@ -106,3 +106,15 @@ port or Interface, a Signal Interface, or (for a machine) a cable port aimed at 
 player's VIEW where that device is, and sets it on the tool. While the pick key shares vanilla
 Pick Block's key, Pick Block is skipped with the tool in hand so the hotbar does not change.
 
+## Amendment — label overlay (2026-10-26, ergonomics plan Q11)
+
+While a player holds the Label Tool, the server builds a snapshot every 10 ticks from the block
+entities of loaded chunks within 32 blocks: the label of each cable port, placed over the machine
+it is aimed at; each Signal Interface's label; and an empty entry for each unlabelled machine
+that touches a cable or cable port. Every entry needs the player's VIEW where the label or cable
+is. The nearest 256 are kept, and the snapshot is sent only when it changed (an empty one when the
+tool is put away). The payload is optional and its decoder refuses more than 256 entries. The
+client draws labels as see-through tags and markers as faint dots, and a key (unbound by default)
+hides them. The work per holding player is bounded by the block entities in about 25 loaded
+chunks every half second.
+

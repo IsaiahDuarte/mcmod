@@ -22,6 +22,7 @@ public final class TerminalClient {
   public static void setup(net.neoforged.fml.event.lifecycle.FMLClientSetupEvent event) {
     dev.izzy.factorycore.platform.crafting.JobNotice.sink(JobToast::receive);
     dev.izzy.factorycore.platform.ClientScreens.install(new ItemScreens());
+    dev.izzy.factorycore.platform.storage.LabelOverlay.sink(LabelOverlayRenderer::receive);
   }
 
   @SubscribeEvent

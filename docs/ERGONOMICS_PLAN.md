@@ -523,7 +523,12 @@ New gates:
   Files: `LabelToolItem.java`, the key mapping from Q9.
   Done when: a GameTest picks a label and applies it to a second machine.
 
-- [ ] **Q11 — Label overlay (M11).** Size M.
+- [x] **Q11 — Label overlay (M11).** Size M. Done 2026-10-26 (commit subject `Q11:`).
+  `LabelOverlay` (server snapshot, bounded payload) and `LabelOverlayRenderer` (client).
+  `LabelOverlayTest` bounds the snapshot to the nearest 256 and the payload on decode;
+  `LabelOverlayGameTests` shows the owner a label and a marker and a stranger nothing; the
+  presentation tour waits for the snapshot and captures `label-overlay.png` (three labels, the
+  chest's dot). ADR 0065 amendment.
   While a Label Tool is held, labels float over labelled machines and Signal Interfaces within
   32 blocks, and unlabelled machines touching a cable show a faint marker. The server sends a
   bounded list (at most 256 entries) when the tool is selected and when labels change; the

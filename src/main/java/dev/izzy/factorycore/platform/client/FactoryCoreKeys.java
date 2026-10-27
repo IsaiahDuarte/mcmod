@@ -44,12 +44,21 @@ public final class FactoryCoreKeys {
           GLFW.GLFW_MOUSE_BUTTON_MIDDLE,
           CATEGORY);
 
+  /** Q11: shows or hides the label overlay while the tool is held (unbound by default). */
+  public static final KeyMapping LABEL_OVERLAY =
+      new KeyMapping(
+          "key.factorycore.label_overlay",
+          KeyConflictContext.IN_GAME,
+          InputConstants.UNKNOWN,
+          CATEGORY);
+
   private FactoryCoreKeys() {}
 
   @SubscribeEvent
   public static void register(RegisterKeyMappingsEvent event) {
     event.register(LABEL_ROW);
     event.register(LABEL_PICK);
+    event.register(LABEL_OVERLAY);
   }
 
   /** The hand holding a Label Tool, or null. */
@@ -75,6 +84,7 @@ public final class FactoryCoreKeys {
   public static void tick(ClientTickEvent.Post event) {
     var minecraft = Minecraft.getInstance();
     while (LABEL_PICK.consumeClick()) if (minecraft.screen == null) pick(minecraft);
+    while (LABEL_OVERLAY.consumeClick()) LabelOverlayRenderer.toggle(minecraft);
   }
 
   /**
