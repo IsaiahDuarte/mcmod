@@ -288,6 +288,47 @@ public final class LabelToolItem extends Item {
         || state.getBlock() instanceof CablePortBlock;
   }
 
+  /**
+   * Q10: the label to pick from {@code at}: a cable port or Interface's own label, a Signal
+   * Interface's, or for a machine the label of a cable port aimed at it. Empty when there is none;
+   * reading a label needs VIEW where the labelled device is.
+   */
+  public static String pick(ServerPlayer player, BlockPos at) {
+    var level = player.serverLevel();
+    var actor = Actors.of(player);
+    var networks = WorldNetworks.get(player.server);
+    var entity = level.getBlockEntity(at);
+    if (entity instanceof ConnectorEntity port)
+      return networks.allows(actor, port.position(), NetworkPermissions.Permission.VIEW)
+          ? port.label()
+          : "";
+    if (entity instanceof SignalInterfaceEntity signal)
+      return networks.allows(actor, signal.origin(), NetworkPermissions.Permission.VIEW)
+          ? signal.label()
+          : "";
+    if (!machine(level, at)) return "";
+    for (var side : Direction.values()) {
+      var next = at.relative(side);
+      var state = level.getBlockState(next);
+      if (state.getBlock() instanceof CablePortBlock
+          && state.getValue(BlockStateProperties.FACING) == side.getOpposite()
+          && level.getBlockEntity(next) instanceof MachineInterfaceEntity port
+          && !port.label().isEmpty()
+          && networks.allows(actor, port.position(), NetworkPermissions.Permission.VIEW))
+        return port.label();
+    }
+    return "";
+  }
+
+  /** Q10: sets the tool's label to the one picked from {@code at}; false when there is none. */
+  public static boolean pickInto(ServerPlayer player, ItemStack stack, BlockPos at) {
+    if (!(stack.getItem() instanceof LabelToolItem)) return false;
+    var label = clean(pick(player, at));
+    if (label.isEmpty() || label.length() > MAX_LABEL) return false;
+    stack.set(LabelToolContent.DATA.get(), new LabelToolContent.Data(label, data(stack).copy()));
+    return true;
+  }
+
   /** Q9: how a row label went. */
   public record RowResult(int labelled, int refused, boolean capped) {}
 
@@ -303,37 +344,37 @@ public final class LabelToolItem extends Item {
     if (!(stack.getItem() instanceof LabelToolItem) || !machine(level, clicked)) return null;
     var tool = data(stack);
     var type = level.getBlockState(clicked).getBlock();
-    // Each machine with the face toward the run cable it was found from.
-    var machines = new java.util.LinkedHashMap<BlockPos, Direction>();
-    var visited = new java.util.HashSet<BlockPos>();
-    var queue = new java.util.ArrayDeque<BlockPos>();
-    for (var side : Direction.values()) {
-      var at = clicked.relative(side);
-      if (level.isLoaded(at) && run(level.getBlockState(at)) && visited.add(at)) {
-        machines.putIfAbsent(clicked, side);
-        queue.add(at);
-      }
-    }
-    machines.putIfAbsent(clicked, Direction.UP);
-    while (!queue.isEmpty() && machines.size() <= MAX_ROW) {
-      var cable = queue.poll();
-      var state = level.getBlockState(cable);
-      for (var side : Direction.values()) {
-        var next = cable.relative(side);
-        if (!level.isLoaded(next)) continue;
-        var nextState = level.getBlockState(next);
-        if (run(nextState)) {
-          if (visited.size() < MAX_RUN
-              && dev.izzy.factorycore.platform.network.NetworkedBlock.wired(state, side)
-              && dev.izzy.factorycore.platform.network.NetworkedBlock.wired(
-                  nextState, side.getOpposite())
-              && visited.add(next)) queue.add(next);
-        } else if (nextState.getBlock() == type && machine(level, next))
-          machines.putIfAbsent(next.immutable(), side.getOpposite());
-      }
-    }
-    // Every machine is planned (and authorized) while the network is valid; relabels run next,
-    // and new ports last, because each new port makes the network rebuild.
+    var machines =
+        RowWalk.machines(
+            new RowWalk.World() {
+              @Override
+              public boolean loaded(BlockPos at) {
+                return level.isLoaded(at);
+              }
+
+              @Override
+              public boolean run(BlockPos at) {
+                return LabelToolItem.run(level.getBlockState(at));
+              }
+
+              @Override
+              public boolean connected(BlockPos from, Direction side) {
+                return dev.izzy.factorycore.platform.network.NetworkedBlock.wired(
+                        level.getBlockState(from), side)
+                    && dev.izzy.factorycore.platform.network.NetworkedBlock.wired(
+                        level.getBlockState(from.relative(side)), side.getOpposite());
+              }
+
+              @Override
+              public boolean sameMachine(BlockPos at) {
+                return level.getBlockState(at).getBlock() == type && machine(level, at);
+              }
+            },
+            clicked,
+            MAX_ROW,
+            MAX_RUN);
+    // Every machine is planned (and authorized) while the network is valid; relabels then commit
+    // as one batch, and new ports come last, because each change makes the network rebuild.
     int labelled = 0, refused = 0, done = 0;
     var plans = new java.util.ArrayList<Plan>();
     for (var entry : machines.entrySet()) {
@@ -342,15 +383,24 @@ public final class LabelToolItem extends Item {
       if (plan.refusal() != null) refused++;
       else plans.add(plan);
     }
-    plans.sort(java.util.Comparator.comparing(plan -> plan.port() == null));
+    var relabels = new java.util.ArrayList<MachineInterfaceEntity.LabelChange>();
+    for (var plan : plans)
+      if (plan.port() != null)
+        relabels.add(
+            new MachineInterfaceEntity.LabelChange(
+                plan.port(), Actors.of(player), plan.port().settings(), tool.label()));
+    for (var outcome : MachineInterfaceEntity.applyLabels(relabels))
+      if (outcome.equals("labeled")) labelled++;
+      else refused++;
     for (var plan : plans) {
+      if (plan.port() != null) continue;
       String outcome;
       try {
         outcome = apply(player, tool, plan);
       } catch (IllegalArgumentException | IllegalStateException failed) {
         outcome = "invalid";
       }
-      if (outcome.equals("labeled") || outcome.equals("port_made")) labelled++;
+      if (outcome.equals("port_made")) labelled++;
       else refused++;
     }
     return new RowResult(labelled, refused, machines.size() > MAX_ROW);

@@ -19,8 +19,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -32,7 +34,15 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
 public final class LabelRowGameTests {
-  private static final BlockPos ROOT = new BlockPos(1, 1, 1), DRIVE = new BlockPos(1, 1, 2);
+  /**
+   * These fixtures sit high above the template, away from the positions every batch reuses (a
+   * controller at 1, 1, 1): built there, a row's ports and network records disturbed later batches'
+   * tests even after removal.
+   */
+  private static final int LIFT = 40;
+
+  private static final BlockPos ROOT = new BlockPos(1, 1 + LIFT, 1),
+      DRIVE = new BlockPos(1, 1 + LIFT, 2);
   private static final int LINE = 8;
 
   private LabelRowGameTests() {}
@@ -59,11 +69,11 @@ public final class LabelRowGameTests {
     net.drive(DRIVE, CellTier.STARTER_ITEM);
     var furnaces = new ArrayList<BlockPos>();
     for (int x = 2; x < 2 + LINE; x++) {
-      net.cable(new BlockPos(x, 1, 1));
-      h.setBlock(new BlockPos(x, 1, 2), Blocks.FURNACE);
-      furnaces.add(new BlockPos(x, 1, 2));
+      net.cable(new BlockPos(x, 1 + LIFT, 1));
+      h.setBlock(new BlockPos(x, 1 + LIFT, 2), Blocks.FURNACE);
+      furnaces.add(new BlockPos(x, 1 + LIFT, 2));
     }
-    h.setBlock(new BlockPos(2, 1, 0), Blocks.CHEST);
+    h.setBlock(new BlockPos(2, 1 + LIFT, 0), Blocks.CHEST);
     return furnaces;
   }
 
@@ -78,6 +88,21 @@ public final class LabelRowGameTests {
 
   private static void end(ServerPlayer player) {
     player.connection.disconnect(Component.literal("Label row fixture complete"));
+  }
+
+  /**
+   * These fixtures reach past the template, which the next batch's placement does not clear, so
+   * each test removes what it built; left behind, its cables would join later tests' networks.
+   */
+  private static void clear(GameTestHelper h, int x0, int y0, int z0, int x1, int y1, int z1) {
+    for (int x = x0; x <= x1; x++)
+      for (int y = y0; y <= y1; y++)
+        for (int z = z0; z <= z1; z++) h.setBlock(new BlockPos(x, y, z), Blocks.AIR);
+  }
+
+  /** Everything {@link #line} builds. */
+  private static void clearLine(GameTestHelper h) {
+    clear(h, 1, 1 + LIFT, 0, 2 + LINE, 1 + LIFT, 2);
   }
 
   @GameTest(template = "empty", batch = "label_row_line", timeoutTicks = 400)
@@ -108,7 +133,7 @@ public final class LabelRowGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  h.getBlockState(new BlockPos(2, 1, 0)).is(Blocks.CHEST),
+                  h.getBlockState(new BlockPos(2, 1 + LIFT, 0)).is(Blocks.CHEST),
                   "The chest is untouched");
               for (var cable : cables)
                 h.assertTrue(
@@ -116,7 +141,123 @@ public final class LabelRowGameTests {
                     "Each port is aimed at its furnace, not the chest");
             })
         .thenWaitUntil(() -> net.assertValid(cables.getLast()))
-        .thenExecute(() -> end(player))
+        .thenExecute(
+            () -> {
+              // Relabelling a row of existing ports changes all of them in one batch. Checked one
+              // at a time, the first relabel's rebuild refused the other seven.
+              tool.set(
+                  LabelToolContent.DATA.get(),
+                  new LabelToolContent.Data("kiln", new CompoundTag()));
+              var again = LabelToolItem.labelRow(player, tool, h.absolutePos(furnaces.get(5)));
+              h.assertTrue(
+                  again != null && again.labelled() == LINE && again.refused() == 0,
+                  "All eight relabelled: " + again);
+              h.assertTrue(labelledPorts(h, cables, "kiln") == LINE, "Relabelled at once");
+            })
+        .thenWaitUntil(() -> net.assertValid(cables.getLast()))
+        .thenExecute(
+            () -> {
+              clearLine(h);
+              end(player);
+            })
+        .thenSucceed();
+  }
+
+  private static void useOn(ServerPlayer player, ItemStack tool, BlockPos at) {
+    tool.getItem()
+        .useOn(
+            new UseOnContext(
+                player,
+                InteractionHand.MAIN_HAND,
+                new BlockHitResult(Vec3.atCenterOf(at), Direction.UP, at, false)));
+  }
+
+  private static String toolLabel(ItemStack tool) {
+    return tool.getOrDefault(LabelToolContent.DATA.get(), LabelToolContent.Data.EMPTY).label();
+  }
+
+  /** Q10: the pick key takes a machine's label onto the tool, which then labels another. */
+  @GameTest(template = "empty", batch = "label_pick", timeoutTicks = 400)
+  public static void aPickedLabelLabelsTheNextMachine(GameTestHelper h) {
+    var player = player(h);
+    var net = Net.in(h, player.getUUID());
+    var furnaces = line(h, net);
+    var first = furnaces.get(0);
+    var second = furnaces.get(4);
+    var tool = tool(player, "oven");
+    h.startSequence()
+        .thenWaitUntil(() -> net.assertValid(first.north(), second.north()))
+        .thenExecute(() -> useOn(player, tool, h.absolutePos(first)))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    labelledPorts(h, List.of(first.north()), "oven") == 1, "First is labelled"))
+        .thenWaitUntil(() -> net.assertValid(first.north()))
+        .thenExecute(
+            () -> {
+              tool.set(
+                  LabelToolContent.DATA.get(),
+                  new LabelToolContent.Data("kiln", new CompoundTag()));
+              h.assertTrue(
+                  !LabelToolItem.pickInto(
+                      player, tool, h.absolutePos(new BlockPos(2, 1 + LIFT, 0))),
+                  "A chest has no label to pick");
+              h.assertTrue(toolLabel(tool).equals("kiln"), "A failed pick keeps the label");
+              h.assertTrue(
+                  LabelToolItem.pickInto(player, tool, h.absolutePos(first.north())),
+                  "Picked from the port");
+              h.assertTrue(toolLabel(tool).equals("oven"), "The port's label: " + toolLabel(tool));
+              tool.set(
+                  LabelToolContent.DATA.get(),
+                  new LabelToolContent.Data("kiln", new CompoundTag()));
+              h.assertTrue(
+                  LabelToolItem.pickInto(player, tool, h.absolutePos(first)),
+                  "Picked from the machine");
+              h.assertTrue(
+                  toolLabel(tool).equals("oven"), "The machine's label: " + toolLabel(tool));
+              useOn(player, tool, h.absolutePos(second));
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    labelledPorts(h, List.of(second.north()), "oven") == 1,
+                    "The picked label went on the second machine"))
+        .thenExecute(
+            () -> {
+              clearLine(h);
+              end(player);
+            })
+        .thenSucceed();
+  }
+
+  /** Q10: a stranger cannot read another network's labels. */
+  @GameTest(template = "empty", batch = "label_pick_foreign", timeoutTicks = 400)
+  public static void aStrangerPicksNothing(GameTestHelper h) {
+    var owner = player(h);
+    var stranger = player(h);
+    var net = Net.in(h, owner.getUUID());
+    var furnaces = line(h, net);
+    var first = furnaces.getFirst();
+    var ownerTool = tool(owner, "oven");
+    var strangerTool = tool(stranger, "kiln");
+    h.startSequence()
+        .thenWaitUntil(() -> net.assertValid(first.north()))
+        .thenExecute(() -> useOn(owner, ownerTool, h.absolutePos(first)))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    labelledPorts(h, List.of(first.north()), "oven") == 1, "First is labelled"))
+        .thenWaitUntil(() -> net.assertValid(first.north()))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  !LabelToolItem.pickInto(stranger, strangerTool, h.absolutePos(first)),
+                  "No VIEW, no pick");
+              h.assertTrue(toolLabel(strangerTool).equals("kiln"), "Label unchanged");
+              clearLine(h);
+              end(owner);
+              end(stranger);
+            })
         .thenSucceed();
   }
 
@@ -139,59 +280,7 @@ public final class LabelRowGameTests {
                 h.assertTrue(
                     !(h.getBlockState(cable).getBlock() instanceof CablePortBlock),
                     "No cable became a port");
-              end(player);
-            })
-        .thenSucceed();
-  }
-
-  /**
-   * A tower of 17 levels: a cable spine with an arm cable and a furnace on each side per level, 68
-   * furnaces in all, each with its own cable.
-   */
-  @GameTest(template = "empty", batch = "label_row_cap", timeoutTicks = 600)
-  public static void aRowStopsAtSixtyFourMachines(GameTestHelper h) {
-    var player = player(h);
-    var net = Net.in(h, player.getUUID());
-    var root = new BlockPos(2, 1, 2);
-    net.controller(root);
-    net.drive(new BlockPos(3, 1, 3), CellTier.STARTER_ITEM);
-    var arms = new ArrayList<BlockPos>();
-    var furnaces = new ArrayList<BlockPos>();
-    for (int y = 2; y < 19; y++) {
-      net.cable(new BlockPos(2, y, 2));
-      for (int[] side : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-        var arm = new BlockPos(2 + side[0], y, 2 + side[1]);
-        var furnace = new BlockPos(2 + 2 * side[0], y, 2 + 2 * side[1]);
-        net.cable(arm);
-        h.setBlock(furnace, Blocks.FURNACE);
-        arms.add(arm);
-        furnaces.add(furnace);
-      }
-    }
-    var tool = tool(player, "oven");
-    h.startSequence()
-        .thenWaitUntil(() -> net.assertValid(new BlockPos(2, 18, 2)))
-        .thenExecute(
-            () -> {
-              var result = LabelToolItem.labelRow(player, tool, h.absolutePos(furnaces.getFirst()));
-              h.assertTrue(
-                  result != null
-                      && result.capped()
-                      && result.labelled() == LabelToolItem.MAX_ROW
-                      && result.refused() == 0,
-                  "Stops at 64 of 68: " + result);
-            })
-        .thenWaitUntil(
-            () ->
-                h.assertTrue(
-                    labelledPorts(h, arms, "oven") == LabelToolItem.MAX_ROW,
-                    "64 labelled ports, found " + labelledPorts(h, arms, "oven")))
-        .thenExecute(
-            () -> {
-              int ports = 0;
-              for (var arm : arms)
-                if (h.getBlockState(arm).getBlock() instanceof CablePortBlock) ports++;
-              h.assertTrue(ports == LabelToolItem.MAX_ROW, "Exactly 64 cables became ports");
+              clearLine(h);
               end(player);
             })
         .thenSucceed();

@@ -255,6 +255,7 @@ M142 onward are follow-ups from slices and findings from Q51.
 | M142 | Q54 typed the job, rule and staging reasons only. Other menus still send a status string that their screens compare with `.equals` (`"ready"`, `"applied"`, `"valid"`, `"filled"`, `"running"`, …): Signal, Port, Drive, Network Access, Program, Connector, Buffer and the Terminal's grid and search status. A typo there still compiles. | `grep 'equals("' platform/client` after Q54 |
 | M143 | Raw `fill` calls and colour literals remain outside the Terminal: Drive bay fill bars, `FilterSlots` (inactive veil, tag badge), `SlotPicker`, the `StatusStrip` lamp. The program editor's dark code field is deliberate (ADR 0064 H3c). | Q60 evidence |
 | M144 | `runAutomaticThroughputServer` (in `--full`) requires Endgame import to beat Advanced on one 1,728-item chest, where fixed overhead leaves 1–3 ticks between the tiers; a tie fails it. Measured 2026-10-26: 2 failures in 12 runs at `ca56f9c` (ticks Endgame 14–16, Advanced 15–18) and 0 in 11 at `9c155c7` (14–15, 15–17). The distributions overlap, so this is a marginal assertion, not a regression; it is the flaky-test kind PD7 also covers. | `AutomaticThroughputGameTests`, `MachinePresetGameTests.paidTiersIncreaseAutomaticChestImport` |
+| M145 | One large network rebuild disturbed GameTests in other networks running at the same time: with a 68-furnace row test (a 150-block run, 64 new ports at once) 5 of 6 full GameTest runs failed in unrelated program and storage tests ("storage: denied", "Physical graph identity collision"), and 0 of 4 without it. Check whether one network's rebuild delays other networks' revalidation (shared discovery budget), which would also be a real-server effect; PD7-adjacent. | Q10 commit; `RowWalkTest` replaced the GameTest |
 
 ## Decision gates (user)
 
@@ -493,12 +494,15 @@ New gates:
 
 ## Wave B — labels and copying (lane L)
 
-- [x] **Q9 — Label a whole row (M9).** Size M. Done 2026-10-26 (commit subject `Q9:`).
-  `LabelRowGameTests` (8 furnaces in one use with a chest skipped; a 68-furnace tower stopping
-  at 64; a stranger refused on all 8) and the presentation tour's step that holds the key and
-  fires the client's real use event (`label-row.png`). Pending port labels now wait by time
-  (1,200 ticks) rather than 20 retries, found when only 20 of 64 labels landed. Diagonals (M129)
-  are not a separate case: the row follows the cable run. ADR 0065 amendment.
+- [x] **Q9 — Label a whole row (M9).** Size M. Done 2026-10-26 (commit subject `Q9:`, with
+  fixes in `Q10:`). `LabelRowGameTests` (8 furnaces in one use with a chest skipped, then the
+  same row relabelled at once; a stranger refused on all 8), `RowWalkTest` (the 64-machine stop,
+  the 2,048-block bound, unloaded and unwired blocks, off-run machines) and the presentation
+  tour's step that holds the key and fires the client's real use event (`label-row.png`). In
+  `Q10:` labels became batched (one rebuild per row, not one per label; a row relabel had
+  labelled one of eight), and the 68-furnace GameTest moved to `RowWalkTest` because its rebuild
+  failed other tests running alongside (M145). Diagonals (M129) are not a separate case: the row
+  follows the cable run. ADR 0065 amendment.
   Holding a key (default Left Alt, rebindable) while using the Label Tool labels every machine
   of the same block type that touches the same connected cable run, up to 64 machines, each
   through the existing per-machine authorization. The action-bar says how many were labelled
@@ -508,7 +512,12 @@ New gates:
   Done when: GameTests label 8 furnaces on one run in one use, stop at 64, skip a chest, and
   refuse machines on another player's network.
 
-- [ ] **Q10 — Pick a label (M10).** Size S.
+- [x] **Q10 — Pick a label (M10).** Size S. Done 2026-10-26 (commit subject `Q10:`).
+  `LabelRowGameTests.aPickedLabelLabelsTheNextMachine` (picks from the port and from the
+  machine, a chest gives nothing, the label goes on a second furnace) and
+  `aStrangerPicksNothing` (VIEW required); the presentation tour presses the real pick key with
+  the crosshair on a labelled furnace. Also fixes Q9 (see there); the row fixtures now remove
+  what they build and sit above the template; TESTING.md states both rules. ADR 0065 amendment.
   Using the Label Tool with the pick key (default middle mouse, rebindable) on a labelled
   machine, port or Signal Interface sets the tool's label to that one.
   Files: `LabelToolItem.java`, the key mapping from Q9.

@@ -93,9 +93,10 @@ public final class MachineInterfaceEntity extends ConnectorEntity
   }
 
   /**
-   * H5: binds the resource the machine offers on the touched face and applies the requested label
-   * under the live player who asked, with that player's current EDIT. True while the network is
-   * still settling and the caller should try again.
+   * H5: once the network is valid, queues this port's requested label for {@link #drainLabels},
+   * which binds the resource the machine offers on the touched face and applies the label under the
+   * live player who asked, with that player's current EDIT. True while the network is still
+   * settling and the caller should try again.
    */
   public boolean applyPendingLabel() {
     if (pendingLabeller == null || handle() == null) return false;
@@ -107,21 +108,112 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     }
     if (WorldNetworks.get(server).membership(position()).status() != NetworkTopology.Status.VALID)
       return true;
-    var label = pendingLabel;
-    pendingLabeller = null;
-    pendingLabel = null;
-    try {
-      var kind = offeredKind();
-      var settings = kind == settings().kind() ? settings() : ConnectorSettings.defaults(kind);
-      if (applySettings(dev.izzy.factorycore.platform.Actors.of(player), settings, label)
-          != NetworkAuthority.Decision.ALLOWED)
-        player.displayClientMessage(
-            Component.translatable("message.factorycore.label_tool.denied"), true);
-    } catch (IllegalArgumentException | IllegalStateException refused) {
-      player.displayClientMessage(
-          Component.translatable("message.factorycore.label_tool.invalid"), true);
-    }
+    var queue = LABEL_QUEUE.get(server);
+    if (!queue.contains(this)) queue.add(this);
     return false;
+  }
+
+  /** Ports whose pending label is ready this tick; drained before the networks tick. */
+  private static final dev.izzy.factorycore.platform.ServerScoped<List<MachineInterfaceEntity>>
+      LABEL_QUEUE =
+          dev.izzy.factorycore.platform.ServerScoped.of(
+              (net.minecraft.server.MinecraftServer server) -> new java.util.ArrayList<>());
+
+  /**
+   * Q9: applies every queued pending label in one batch, so a row of new ports needs one network
+   * rebuild instead of one per label. Runs at high priority after the level tick, before {@code
+   * WorldNetworks.postTick} starts a rebuild. A port whose network is no longer valid waits again.
+   */
+  public static void drainLabels(net.neoforged.neoforge.event.tick.ServerTickEvent.Post event) {
+    var queue = LABEL_QUEUE.get(event.getServer());
+    if (queue.isEmpty()) return;
+    var ready = List.copyOf(queue);
+    queue.clear();
+    var changes = new java.util.ArrayList<LabelChange>();
+    var players = new java.util.ArrayList<ServerPlayer>();
+    for (var port : ready) {
+      if (port.isRemoved() || port.pendingLabeller == null || port.handle() == null) continue;
+      var server = port.serverLevel().getServer();
+      var player = server.getPlayerList().getPlayer(port.pendingLabeller);
+      if (player == null) {
+        port.pendingLabeller = null;
+        continue;
+      }
+      if (WorldNetworks.get(server).membership(port.position()).status()
+          != NetworkTopology.Status.VALID) {
+        port.serverLevel()
+            .scheduleTick(port.getBlockPos(), port.getBlockState().getBlock(), RESUME_TICKS);
+        continue;
+      }
+      var label = port.pendingLabel;
+      port.pendingLabeller = null;
+      port.pendingLabel = null;
+      try {
+        var kind = port.offeredKind();
+        var settings =
+            kind == port.settings().kind() ? port.settings() : ConnectorSettings.defaults(kind);
+        changes.add(
+            new LabelChange(
+                port, dev.izzy.factorycore.platform.Actors.of(player), settings, label));
+        players.add(player);
+      } catch (IllegalArgumentException | IllegalStateException refused) {
+        player.displayClientMessage(
+            Component.translatable("message.factorycore.label_tool.invalid"), true);
+      }
+    }
+    var outcomes = applyLabels(changes);
+    for (int index = 0; index < outcomes.size(); index++)
+      if (!outcomes.get(index).equals("labeled"))
+        players
+            .get(index)
+            .displayClientMessage(
+                Component.translatable("message.factorycore.label_tool." + outcomes.get(index)),
+                true);
+  }
+
+  /** Q9: one port's settings and label in a batch, under {@code actor}. */
+  public record LabelChange(
+      MachineInterfaceEntity port,
+      NetworkPermissions.Actor actor,
+      ConnectorSettings settings,
+      String label) {}
+
+  /**
+   * Q9: applies several ports' settings and labels as their own configure would, but checks every
+   * port's EDIT before changing any: a new label starts a network rebuild, which would fail the
+   * checks after it. The batch then needs one rebuild. Returns {@code labeled}, {@code denied} or
+   * {@code invalid} per change, in order.
+   */
+  public static List<String> applyLabels(List<LabelChange> changes) {
+    var outcomes = new java.util.ArrayList<String>(changes.size());
+    var commits = new java.util.ArrayList<Runnable>();
+    for (var change : changes) {
+      var port = change.port();
+      try {
+        port.validatePlaced();
+        var presets = DeviceSavedData.get(port.serverLevel().getServer()).machinePresets();
+        presets.prepareInvalidation(port.handle().id());
+        var before = presets.get(port.handle().id());
+        long next = presets.nextConfiguration(port.handle(), port.generation());
+        var candidate = port.candidate(change.settings(), change.label(), next);
+        if (port.authorizeEdit(change.actor()) != NetworkAuthority.Decision.ALLOWED) {
+          outcomes.add("denied");
+          continue;
+        }
+        outcomes.add("labeled");
+        commits.add(
+            () -> {
+              port.commit(candidate);
+              presets.observeConfiguration(port.handle(), port.generation());
+              presets.invalidate(port.handle().id());
+              if (deployedBy(change.actor(), before)) port.resumeIfDeployer(change.actor());
+            });
+      } catch (IllegalArgumentException | IllegalStateException refused) {
+        outcomes.add("invalid");
+      }
+    }
+    for (var commit : commits) commit.run();
+    return outcomes;
   }
 
   /**

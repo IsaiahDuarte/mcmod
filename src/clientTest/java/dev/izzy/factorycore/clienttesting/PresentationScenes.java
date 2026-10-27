@@ -531,7 +531,18 @@ final class PresentationScenes {
   /** The middle furnace, which the tour uses the tool on. */
   static final BlockPos ROW_TARGET = ROW_ROOT.offset(2, 0, 1);
 
-  static final View ROW = View.looking(-6.5, 66.6, 9.5, -5.5, 65.5, 7.5);
+  /** Puts the crosshair on {@link #ROW_TARGET}: the eye is 1.62 above the view's position. */
+  static final View ROW = View.looking(-6.5, 66.6, 9.5, -5.5, 65.5 - 1.62, 7.5);
+
+  /** The Label Tool's label in the player's hand. */
+  static String toolLabel(ServerPlayer player) {
+    return player
+        .getMainHandItem()
+        .getOrDefault(
+            dev.izzy.factorycore.platform.storage.LabelToolContent.DATA.get(),
+            dev.izzy.factorycore.platform.storage.LabelToolContent.Data.EMPTY)
+        .label();
+  }
 
   static void labelRow(ServerPlayer player) {
     var level = player.serverLevel();

@@ -2155,6 +2155,26 @@ public final class PresentationClientVerification {
         });
     serverUntil(PresentationScenes::labelRowDone);
     view(PresentationScenes.ROW, "label-row.png", 10);
+    // Q10: with the crosshair on the labelled furnace, the pick key takes its label.
+    server(
+        player ->
+            player
+                .getMainHandItem()
+                .set(
+                    LabelToolContent.DATA.get(),
+                    new LabelToolContent.Data("other", new net.minecraft.nbt.CompoundTag())));
+    step(
+        client -> {
+          aim(client, PresentationScenes.ROW);
+          if (waited() < 4) return false;
+          check(
+              client.hitResult instanceof BlockHitResult hit
+                  && hit.getBlockPos().equals(PresentationScenes.ROW_TARGET),
+              "The crosshair is on the furnace: " + client.hitResult);
+          KeyMapping.click(FactoryCoreKeys.LABEL_PICK.getKey());
+          return true;
+        });
+    serverUntil(player -> PresentationScenes.toolLabel(player).equals("row"));
     server(player -> player.getInventory().setItem(0, new ItemStack(GuideContent.GUIDE.get())));
     step(
         client -> {

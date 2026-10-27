@@ -512,9 +512,11 @@ applies.
   using the tool on a machine. Every machine of the same kind that touches the same cable run
   gets the label, up to 64, nearest first; a chest beside a row of furnaces is left alone. The
   message says how many were labelled and how many were not (for example a machine whose only
-  cable already serves another machine, or one on a network where you lack Edit). New ports take
-  their label one after another while the network rebuilds, so a long row fills in over a few
-  seconds.
+  cable already serves another machine, or one on a network where you lack Edit). Machines that
+  needed a new port show their label once the network has rebuilt, a moment later.
+- **Pick a label:** with the tool in hand, press the **middle mouse button** (Controls →
+  Factory Core) on a labelled machine, cable port or Signal Interface. The tool takes that label,
+  ready to put on the next machine. You need View access on that network.
 - **Label a Signal Interface:** use it on a Signal Interface to give it the label.
 - **Copy:** sneak and use it on a cable port, Importer, Exporter or Storage Interface to copy
   its settings

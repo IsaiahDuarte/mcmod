@@ -116,6 +116,12 @@ Use deterministic clocks and recorded random seeds. Prefer observable output and
   its own batch.
 - A test that changes the world or the network must wait for the network to be valid again
   before asserting. Ports truthfully report OFFLINE while a network rebuilds.
+- A fixture that reaches past its template (6×4×6 for `empty`) needs its own batch and must
+  remove what it built when it ends. Placing the next batch does not clear blocks outside the
+  template, and left-behind cables join later tests' networks.
+- Batches run at the same time, not one after another (the whole suite takes about 20 s). A
+  fixture with a large network rebuild disturbs tests running alongside it (M145); test large
+  bounds in a unit test of the bounded code, as `RowWalkTest` does.
 
 ## Performance verification
 

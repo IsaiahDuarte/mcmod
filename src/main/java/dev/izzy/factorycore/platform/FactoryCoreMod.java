@@ -62,6 +62,10 @@ public final class FactoryCoreMod {
         (net.neoforged.neoforge.event.server.ServerStoppedEvent event) ->
             ServerScoped.stopped(event));
     NeoForge.EVENT_BUS.addListener(AccessCommands::register);
+    // Before WorldNetworks.postTick: queued port labels are checked while networks are valid.
+    NeoForge.EVENT_BUS.addListener(
+        net.neoforged.bus.api.EventPriority.HIGH,
+        dev.izzy.factorycore.platform.storage.MachineInterfaceEntity::drainLabels);
     NeoForge.EVENT_BUS.addListener(WorldNetworks::postTick);
     NeoForge.EVENT_BUS.addListener(WorldCraftingJobs::postTick);
     NeoForge.EVENT_BUS.addListener(WorldPrograms::postTick);

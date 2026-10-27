@@ -83,13 +83,26 @@ hand, the item and reach, then walks the cable run from the machine: network cab
 ports only, through wired faces, at most 2,048 loaded blocks, never loading a chunk. It collects
 machines of the clicked machine's block type that touch the run, nearest first, at most 64.
 Every machine is planned with the single-machine rules and the player's EDIT while the network is
-still valid; relabels apply first and new ports last, because each new port starts a rebuild.
+still valid; relabels of existing ports then commit as one batch, and new ports come last.
 
-A port's pending label now waits up to 1,200 ticks for a valid network instead of 20 retries:
-each applied label rebuilds the network, so a row of 64 new ports applies one label per rebuild
-and the last waits about 320 ticks. The wait is runtime-only, as before.
+A new label republishes the topology, so it starts a network rebuild, and EDIT checks fail until
+the rebuild ends. Labels are therefore applied in batches: `MachineInterfaceEntity.applyLabels`
+checks EDIT for every port of a batch before committing any, and pending labels of new ports are
+queued when their network is valid and drained in one batch each tick (at high priority, before
+`WorldNetworks.postTick`). A row of 64 new ports costs one rebuild for the ports and one for the
+labels, instead of one per label; checked one at a time, relabelling a row of eight existing
+ports labelled one and refused seven. A pending label waits up to 1,200 ticks for a valid network
+instead of 20 retries. The wait is runtime-only, as before.
 
 SFM's contiguous fill also reaches diagonal neighbours (M129). Here the row follows the cable
 run, and a machine needs its own touching cable to get a port, so diagonal neighbours are not a
 separate case.
+
+## Amendment — picking a label (2026-10-26, ergonomics plan Q10)
+
+A second key mapping, **Pick a label** (default middle mouse), sends the looked-at position while
+the Label Tool is in hand. The server checks hand, item and reach, then reads the label of a cable
+port or Interface, a Signal Interface, or (for a machine) a cable port aimed at it, under the
+player's VIEW where that device is, and sets it on the tool. While the pick key shares vanilla
+Pick Block's key, Pick Block is skipped with the tool in hand so the hotbar does not change.
 

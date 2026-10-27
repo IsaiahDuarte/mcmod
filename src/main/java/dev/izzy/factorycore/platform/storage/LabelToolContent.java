@@ -108,7 +108,42 @@ public final class LabelToolContent {
     }
   }
 
+  /** Q10: the player pressed the pick key on {@code pos} while holding the tool. */
+  public record PickLabel(boolean mainHand, BlockPos pos) implements CustomPacketPayload {
+    public static final Type<PickLabel> TYPE =
+        new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "label_tool_pick"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, PickLabel> CODEC =
+        StreamCodec.composite(
+            ByteBufCodecs.BOOL,
+            PickLabel::mainHand,
+            BlockPos.STREAM_CODEC,
+            PickLabel::pos,
+            PickLabel::new);
+
+    @Override
+    public Type<PickLabel> type() {
+      return TYPE;
+    }
+  }
+
   private LabelToolContent() {}
+
+  private static void handle(PickLabel packet, ServerPlayer player) {
+    var stack =
+        player.getItemInHand(
+            packet.mainHand() ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND);
+    var pos = packet.pos();
+    if (!stack.is(ITEM.get())
+        || !player.serverLevel().isLoaded(pos)
+        || !player.canInteractWithBlock(pos, 1.0)) return;
+    player.displayClientMessage(
+        LabelToolItem.pickInto(player, stack, pos)
+            ? Component.translatable(
+                "message.factorycore.label_tool.picked",
+                stack.getOrDefault(DATA.get(), Data.EMPTY).label())
+            : Component.translatable("message.factorycore.label_tool.pick_none"),
+        true);
+  }
 
   private static void handle(LabelRow packet, ServerPlayer player) {
     var stack =
@@ -160,6 +195,12 @@ public final class LabelToolContent {
                     SetLabel.TYPE,
                     SetLabel.CODEC,
                     // Handlers run on the server thread, as in MenuPayloads.
+                    (packet, context) -> {
+                      if (context.player() instanceof ServerPlayer player) handle(packet, player);
+                    })
+                .playToServer(
+                    PickLabel.TYPE,
+                    PickLabel.CODEC,
                     (packet, context) -> {
                       if (context.player() instanceof ServerPlayer player) handle(packet, player);
                     })

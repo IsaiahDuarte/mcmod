@@ -321,6 +321,16 @@ public class ConnectorEntity extends BlockEntity
 
   protected NetworkAuthority.Decision configure(
       NetworkPermissions.Actor actor, ConnectorSettings settings, String label, long generation) {
+    var candidate = candidate(settings, label, generation);
+    var result = authorizeEdit(actor);
+    if (result != NetworkAuthority.Decision.ALLOWED) return result;
+    commit(candidate);
+    return result;
+  }
+
+  /** The state a configuration would produce; throws before anything changes when invalid. */
+  protected ConnectorData.State candidate(
+      ConnectorSettings settings, String label, long generation) {
     Objects.requireNonNull(settings);
     validatePlaced();
     if (generation <= state.generation())
@@ -330,18 +340,26 @@ public class ConnectorEntity extends BlockEntity
           "Rate exceeds the installed throughput upgrade (max "
               + state.tier().portRate(settings.kind())
               + ")");
-    var candidate =
-        new ConnectorData.State(state.lease(), settings, generation, "", label, state.tier());
-    var result = runtime().authorize(actor, position(), NetworkPermissions.Permission.EDIT);
-    if (result != NetworkAuthority.Decision.ALLOWED) return result;
-    boolean relabel = !label.equals(label());
+    return new ConnectorData.State(state.lease(), settings, generation, "", label, state.tier());
+  }
+
+  /** The actor's EDIT here; read-only. */
+  protected NetworkAuthority.Decision authorizeEdit(NetworkPermissions.Actor actor) {
+    return runtime().authorize(actor, position(), NetworkPermissions.Permission.EDIT);
+  }
+
+  /**
+   * Commits an authorized {@link #candidate}. A new label republishes the topology, which starts a
+   * network rebuild: authorize every port of a batch before committing any (Q9).
+   */
+  protected void commit(ConnectorData.State candidate) {
+    boolean relabel = !candidate.label().equals(label());
     WorldNetworks.connectorInvalidated(level, this);
     cache = null;
     providerToken = UUID.randomUUID();
     state = candidate;
     write();
     if (relabel) changed();
-    return result;
   }
 
   /**
