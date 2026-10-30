@@ -49,3 +49,16 @@ handheld's 64 FE action cost. The handheld need not be held, unlike opening the 
 pick is one bounded move, not a session, so the access point's per-tick cost does not apply.
 Alternatives: requiring the handheld in hand (rejected: then Pick Block could not land in that
 slot) and taking a single item (rejected: vanilla creative pick gives a stack).
+
+## Amendment — open key (2026-10-30, ergonomics plan Q14)
+
+An unbound-by-default key, "Open Wireless Terminal", sends `WirelessPick.OpenKey`. The server
+looks through the main inventory and offhand for bound handhelds holding at least one action's
+FE (64). With exactly one it opens that handheld's terminal under the usual checks. With none it
+says so, and with more than one it says so rather than guessing which. A session opened this
+way is tied to the inventory slot the handheld was in (instead of a hand): moving the handheld
+out of that slot closes the terminal, as letting go of it does for a hand-opened one. Pressing
+the key again with the terminal screen open, and its search box not focused, closes it. Curios
+slots are not searched yet (Q110, gated by QD1). Alternatives: using the first one found
+(rejected: with two handhelds bound to different points the choice would surprise the player)
+and requiring the handheld in the hotbar (rejected: the key exists so it need not be held).

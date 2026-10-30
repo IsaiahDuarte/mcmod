@@ -10,12 +10,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.capabilities.Capabilities;
 
 /** Rechargeable handheld terminal: bind it to an access point, then use it within range. */
 public final class WirelessTerminalItem extends Item {
@@ -62,7 +64,35 @@ public final class WirelessTerminalItem extends Item {
 
   /** Opens the bound access point's terminal; returns an empty string or a refusal reason. */
   public static String open(ServerPlayer player, InteractionHand hand) {
-    var binding = player.getItemInHand(hand).get(WirelessContent.BINDING.get());
+    return open(player, held -> held.getItemInHand(hand));
+  }
+
+  /**
+   * Q14: opens the one charged, bound handheld in the main inventory or offhand; refuses with
+   * "no_handheld" when there is none and "several_handhelds" when there are more, rather than
+   * guessing. The session then needs the handheld to stay in that slot.
+   */
+  public static String openFromInventory(ServerPlayer player) {
+    var inventory = player.getInventory();
+    int found = -1;
+    for (int slot = 0; slot <= Inventory.SLOT_OFFHAND; slot++) {
+      if (slot >= inventory.items.size() && slot < Inventory.SLOT_OFFHAND) continue;
+      var stack = inventory.getItem(slot);
+      if (!stack.is(WirelessContent.HANDHELD.get())
+          || stack.get(WirelessContent.BINDING.get()) == null) continue;
+      var energy = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+      if (energy == null || energy.getEnergyStored() < WirelessAccess.ACTION_COST) continue;
+      if (found >= 0) return "several_handhelds";
+      found = slot;
+    }
+    if (found < 0) return "no_handheld";
+    int slot = found;
+    return open(player, held -> held.getInventory().getItem(slot));
+  }
+
+  private static String open(
+      ServerPlayer player, java.util.function.Function<ServerPlayer, ItemStack> handheld) {
+    var binding = handheld.apply(player).get(WirelessContent.BINDING.get());
     if (binding == null) return "unbound";
     if (!player.level().dimension().location().toString().equals(binding.dimension()))
       return "out_of_range";
@@ -71,7 +101,7 @@ public final class WirelessTerminalItem extends Item {
     if (Loaded.chunk(level, pos) == null
         || !(level.getBlockEntity(pos) instanceof AccessPointEntity point)) return "missing";
     if (point.energy() < point.tickCost()) return "no_power";
-    var access = new WirelessAccess(point, hand);
+    var access = new WirelessAccess(point, handheld);
     if (!access.canUse(player)) return "out_of_range";
     return TerminalMenu.open(
             player, access, Component.translatable("item.factorycore.wireless_terminal"))

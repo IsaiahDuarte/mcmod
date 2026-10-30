@@ -611,13 +611,21 @@ New gates:
 
 ## Wave C — terminal and wireless (lane T)
 
-- [ ] **Q14 — Open the Wireless Terminal with a key (M14; Curios part needs QD1).** Size M.
+- [x] **Q14 — Open the Wireless Terminal with a key (M14; Curios part needs QD1).** Size M.
+  Done 2026-10-30 for the inventory (commit subject `Q14:`); the Curios part moved to Q110.
+  ADR 0039 amendment; `WirelessGameTests.openKeyFindsTheOneChargedHandheld`; `runTerminalClient`
+  opens and closes by key. [Evidence](evidence/ergonomics-q14-open-key-2026-10-30.md).
   A key (default unbound, as AE2 and RS2 do) opens the first charged, bound Wireless Terminal
   found in the inventory, then in a Curios slot when Curios is present. Pressing it again closes
   the terminal (AE2). If two terminals are found, it says so rather than guessing (RS2).
   Files: `platform/wireless`, a key mapping, new optional `client/integration/curios`, an ADR.
   Done when: client runs with and without Curios open the terminal by key; the ArchUnit rule
   keeps Curios off mandatory loading.
+
+- [ ] **Q110 — Open key finds Curios slots (M14, needs QD1).** Size S. Lane T.
+  The Q14 key also searches Curios slots when Curios is present, through a new optional
+  `client/integration/curios` (server side too) that ArchUnit keeps off mandatory loading.
+  Done when: client runs with and without Curios open the terminal by key.
 
 - [x] **Q15 — Wireless range upgrade (M15).** Size S. Done 2026-10-30 (commit subject `Q15:`).
   Access Point takes Throughput/Overdrive: 64/128/256 blocks, 16/32/64 FE per open tick (ADR

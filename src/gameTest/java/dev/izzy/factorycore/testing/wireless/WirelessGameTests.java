@@ -367,4 +367,76 @@ public final class WirelessGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Q14: the open key opens the single charged, bound handheld in the inventory (not in hand);
+   * moving it out of that slot closes the terminal; two charged handhelds, or only an empty one,
+   * are refused rather than guessed.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void openKeyFindsTheOneChargedHandheld(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+    player.getInventory().clearContent();
+    Net.in(h, player.getUUID()).controller(ROOT);
+    var cell = CellHandleData.read(Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM).cell(0));
+    h.setBlock(POINT, WirelessContent.ACCESS_POINT.get());
+    AccessPointEntity point = h.getBlockEntity(POINT);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    var cobble =
+        new PlatformResourceCodec(h.getLevel().registryAccess())
+            .itemKey(new ItemStack(Items.COBBLESTONE));
+    var handheld = new ItemStack(WirelessContent.HANDHELD.get());
+    handheld.set(
+        WirelessContent.BINDING.get(),
+        new WirelessContent.Binding(
+            h.getLevel().dimension().location().toString(), h.absolutePos(POINT).asLong()));
+    var empty = handheld.copy();
+    handheld.getCapability(Capabilities.EnergyStorage.ITEM).receiveEnergy(1_000, false);
+    h.startSequence()
+        .thenWaitUntil(
+            () -> {
+              point.energyStorage().receiveEnergy(1_000, false);
+              h.assertTrue(
+                  point.current() && saved.registry().stock(cell, cobble).loaded(),
+                  "Network ready");
+            })
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  WirelessTerminalItem.openFromInventory(player).equals("no_handheld"),
+                  "Nothing carried: refused");
+              player.getInventory().setItem(30, empty);
+              h.assertTrue(
+                  WirelessTerminalItem.openFromInventory(player).equals("no_handheld"),
+                  "An uncharged handheld does not count");
+              player.getInventory().setItem(20, handheld);
+              player.getInventory().setItem(21, handheld.copy());
+              h.assertTrue(
+                  WirelessTerminalItem.openFromInventory(player).equals("several_handhelds"),
+                  "Two charged handhelds: refused rather than guessed");
+              player.getInventory().setItem(21, ItemStack.EMPTY);
+              var reason = WirelessTerminalItem.openFromInventory(player);
+              h.assertTrue(
+                  reason.isEmpty() && player.containerMenu instanceof TerminalMenu,
+                  "The one charged handheld in slot 20 opens the terminal: " + reason);
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              player.containerMenu.broadcastChanges();
+              h.assertTrue(
+                  player.containerMenu instanceof TerminalMenu, "Still open while it stays put");
+              player.getInventory().setItem(22, player.getInventory().removeItemNoUpdate(20));
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    !(player.containerMenu instanceof TerminalMenu),
+                    "Moving the handheld out of its slot closes the terminal"))
+        .thenExecute(() -> player.connection.disconnect(Component.literal("done")))
+        .thenSucceed();
+  }
 }

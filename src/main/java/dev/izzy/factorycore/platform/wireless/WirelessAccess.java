@@ -5,31 +5,39 @@ import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.TerminalAccess;
+import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
 
 /**
  * Handheld session through one access point: same level, within the point's {@link
- * AccessPointEntity#range()} (64 blocks, more with upgrades), the bound handheld still in hand,
- * View at the access point, its {@link AccessPointEntity#tickCost()} (16 FE or more) per open tick
- * and 64 FE per action from the handheld.
+ * AccessPointEntity#range()} (64 blocks, more with upgrades), the bound handheld still where it was
+ * opened from (the hand, or for the open key (Q14) its inventory slot), View at the access point,
+ * its {@link AccessPointEntity#tickCost()} (16 FE or more) per open tick and 64 FE per action from
+ * the handheld.
  */
 final class WirelessAccess implements TerminalAccess {
   static final long ACTION_COST = 64;
   private final AccessPointEntity point;
-  private final InteractionHand hand;
+  private final Function<ServerPlayer, ItemStack> handheld;
 
   WirelessAccess(AccessPointEntity point, InteractionHand hand) {
+    this(point, player -> player.getItemInHand(hand));
+  }
+
+  /** Q14: {@code handheld} finds the handheld where it was opened from. */
+  WirelessAccess(AccessPointEntity point, Function<ServerPlayer, ItemStack> handheld) {
     this.point = point;
-    this.hand = hand;
+    this.handheld = handheld;
   }
 
   @Override
   public boolean canUse(ServerPlayer player) {
-    var held = player.getItemInHand(hand);
+    var held = handheld.apply(player);
     var binding = held.get(WirelessContent.BINDING.get());
     double range = (double) point.range() * point.range();
     return player.isAlive()
@@ -62,7 +70,7 @@ final class WirelessAccess implements TerminalAccess {
 
   @Override
   public boolean spendAction(ServerPlayer player) {
-    var energy = player.getItemInHand(hand).getCapability(Capabilities.EnergyStorage.ITEM);
+    var energy = handheld.apply(player).getCapability(Capabilities.EnergyStorage.ITEM);
     if (energy == null || energy.extractEnergy((int) ACTION_COST, true) < ACTION_COST) return false;
     energy.extractEnergy((int) ACTION_COST, false);
     return true;

@@ -52,6 +52,14 @@ public final class FactoryCoreKeys {
           InputConstants.UNKNOWN,
           CATEGORY);
 
+  /** Q14: opens the one charged, bound Wireless Terminal carried, and closes it again; unbound. */
+  public static final KeyMapping OPEN_WIRELESS =
+      new KeyMapping(
+          "key.factorycore.open_wireless",
+          KeyConflictContext.UNIVERSAL,
+          InputConstants.UNKNOWN,
+          CATEGORY);
+
   private FactoryCoreKeys() {}
 
   @SubscribeEvent
@@ -59,6 +67,7 @@ public final class FactoryCoreKeys {
     event.register(LABEL_ROW);
     event.register(LABEL_PICK);
     event.register(LABEL_OVERLAY);
+    event.register(OPEN_WIRELESS);
   }
 
   /** The hand holding a Label Tool, or null. */
@@ -85,6 +94,10 @@ public final class FactoryCoreKeys {
     var minecraft = Minecraft.getInstance();
     while (LABEL_PICK.consumeClick()) if (minecraft.screen == null) pick(minecraft);
     while (LABEL_OVERLAY.consumeClick()) LabelOverlayRenderer.cycle(minecraft);
+    while (OPEN_WIRELESS.consumeClick())
+      if (minecraft.screen == null && minecraft.player != null)
+        PacketDistributor.sendToServer(
+            new dev.izzy.factorycore.platform.wireless.WirelessPick.OpenKey());
   }
 
   /**

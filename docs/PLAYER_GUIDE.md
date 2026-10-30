@@ -463,6 +463,10 @@ storage terminal.
   move costs 64 FE from the handheld.
 - **Closing:** the screen closes if you leave range, lose View or the access point
   runs dry.
+- **Open key:** bind **Open Wireless Terminal** under Controls → Factory Core. It opens the one
+  charged, bound Wireless Terminal in your inventory without holding it, and closes the terminal
+  when pressed again. With two charged ones it asks you to keep one. Leave the handheld where it
+  is while the screen is open: moving it closes the terminal.
 - **Pick Block:** with a bound Wireless Terminal anywhere in your inventory, Pick Block (middle
   click) on a block you have none of takes a stack of it from the network into your hotbar and
   selects it, if you are in the access point's range and may withdraw there. Each pick costs

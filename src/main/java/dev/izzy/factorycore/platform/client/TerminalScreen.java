@@ -680,6 +680,13 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       searchDelay = 0;
       return true;
     }
+    // Q14: the open key closes the terminal again (not while typing in the search box).
+    if (!search.isFocused()
+        && FactoryCoreKeys.OPEN_WIRELESS.matches(key, scan)
+        && !FactoryCoreKeys.OPEN_WIRELESS.isUnbound()) {
+      onClose();
+      return true;
+    }
     var amount = jobs.amountKey(key, scan, modifiers);
     if (amount != null) return amount;
     if (!search.isFocused() && crafting.craftKey(key)) return true;

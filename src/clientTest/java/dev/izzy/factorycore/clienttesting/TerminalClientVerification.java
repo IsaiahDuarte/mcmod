@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.clienttesting;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
@@ -10,6 +11,7 @@ import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.client.BufferSettingsScreen;
+import dev.izzy.factorycore.platform.client.FactoryCoreKeys;
 import dev.izzy.factorycore.platform.client.GatewayPolicyScreen;
 import dev.izzy.factorycore.platform.client.PortScreen;
 import dev.izzy.factorycore.platform.client.ProgramScreen;
@@ -32,6 +34,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -1256,18 +1259,52 @@ public final class TerminalClientVerification {
                 + view.rows().size()
                 + "\n");
         client.player.closeContainer();
+        // Q14: move the handheld out of the hand so only the open key can reach it.
         server.execute(
             () -> {
               var player = server.getPlayerList().getPlayer(principal);
-              player.getInventory().setItem(0, ItemStack.EMPTY);
+              player.getInventory().setItem(20, player.getInventory().removeItemNoUpdate(0));
+            });
+        jump(84);
+      }
+      case 84 -> {
+        powerAccessPoint(server);
+        if (client.screen != null
+            || !client.player.getInventory().getItem(0).isEmpty()
+            || !client.player.getInventory().getItem(20).is(WirelessContent.HANDHELD.get())) return;
+        FactoryCoreKeys.OPEN_WIRELESS.setKey(
+            InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_O));
+        KeyMapping.resetMapping();
+        KeyMapping.click(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_O));
+        next();
+      }
+      case 85 -> {
+        powerAccessPoint(server);
+        if (!(client.screen instanceof TerminalScreen screen)
+            || screen.getMenu().view().status() != TerminalPackets.Status.READY) return;
+        screen.keyPressed(GLFW.GLFW_KEY_O, 0, 0);
+        evidence.append(
+            "wireless: the open key opened the terminal from inventory slot 20 (hand empty)"
+                + " and closed it again\n");
+        next();
+      }
+      case 86 -> {
+        if (client.screen != null) return;
+        FactoryCoreKeys.OPEN_WIRELESS.setKey(InputConstants.UNKNOWN);
+        KeyMapping.resetMapping();
+        server.execute(
+            () -> {
+              var player = server.getPlayerList().getPlayer(principal);
+              player.getInventory().setItem(20, ItemStack.EMPTY);
               player.teleportTo(4.5, 65, 4.5);
               player.setYRot(135);
               player.setXRot(10);
             });
-        next();
+        jump(83);
       }
       case 83 -> {
         if (client.screen != null
+            || !client.player.getInventory().getItem(20).isEmpty()
             || !client.player.getInventory().getItem(0).isEmpty()
             || client.player.distanceToSqr(4.5, 65, 4.5) > 1) return;
         jump(60);

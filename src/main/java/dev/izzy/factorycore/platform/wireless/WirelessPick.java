@@ -27,9 +27,22 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
  * anywhere in the inventory, takes a stack of it from the network into the hotbar (the selected
  * slot when empty, else the first empty hotbar slot) and selects it. Same rules as a terminal
  * withdrawal through that handheld: its access point in range and powered, Withdraw there, and the
- * handheld's {@link WirelessAccess#ACTION_COST} FE per pick.
+ * handheld's {@link WirelessAccess#ACTION_COST} FE per pick. Also carries the open key (Q14).
  */
 public final class WirelessPick {
+  /** Q14: the open key was pressed; the server finds the handheld. */
+  public record OpenKey() implements CustomPacketPayload {
+    public static final Type<OpenKey> TYPE =
+        new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "wireless_key"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, OpenKey> CODEC =
+        StreamCodec.unit(new OpenKey());
+
+    @Override
+    public Type<OpenKey> type() {
+      return TYPE;
+    }
+  }
+
   /** The block the player picked; the server reads the block itself. */
   public record Pick(BlockPos pos) implements CustomPacketPayload {
     public static final Type<Pick> TYPE =
@@ -47,7 +60,7 @@ public final class WirelessPick {
 
   static void register(RegisterPayloadHandlersEvent event) {
     event
-        .registrar("1")
+        .registrar("2")
         .playToServer(
             Pick.TYPE,
             Pick.CODEC,
@@ -58,6 +71,17 @@ public final class WirelessPick {
                 if (!reason.isEmpty())
                   player.displayClientMessage(
                       Component.translatable("message.factorycore.wireless_pick." + reason), true);
+              }
+            })
+        .playToServer(
+            OpenKey.TYPE,
+            OpenKey.CODEC,
+            (packet, context) -> {
+              if (context.player() instanceof ServerPlayer player) {
+                var reason = WirelessTerminalItem.openFromInventory(player);
+                if (!reason.isEmpty())
+                  player.displayClientMessage(
+                      Component.translatable("message.factorycore.wireless_" + reason), true);
               }
             });
   }
