@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.crafting.GridRequirement;
+import dev.izzy.factorycore.core.crafting.ProcessingTransfer;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.ArrayList;
@@ -302,6 +303,82 @@ public final class TerminalCraftingPackets {
               for (int cell = 0; cell < GridRequirement.CELLS; cell++)
                 items.add(buffer.readUtf(MAX_ID));
               return new Fill(menu, session, items);
+            });
+  }
+
+  /**
+   * Q5: recipe-viewer transfer of any non-crafting recipe into the processing grid: up to nine
+   * inputs and three outputs, each a registry ID of an item or fluid and its grid units (items one
+   * each, fluids 250 mB each, 1–64). Ghost cells move nothing.
+   */
+  public record ProcessingFill(int menu, UUID session, List<Cell> inputs, List<Cell> outputs)
+      implements CustomPacketPayload {
+    public static final Type<ProcessingFill> TYPE =
+        new Type<>(
+            ResourceLocation.fromNamespaceAndPath(
+                FactoryCoreMod.MOD_ID, "terminal_grid_processing_fill"));
+
+    /** One cell: a fluid or item registry ID and its grid units. */
+    public record Cell(boolean fluid, String id, int units) {
+      public Cell {
+        if (id.isEmpty()
+            || id.length() > Fill.MAX_ID
+            || ResourceLocation.tryParse(id) == null
+            || units < 1
+            || units > ProcessingTransfer.MAX_UNITS)
+          throw new IllegalArgumentException("Invalid processing fill cell");
+      }
+
+      static void write(RegistryFriendlyByteBuf buffer, Cell cell) {
+        buffer.writeBoolean(cell.fluid);
+        buffer.writeUtf(cell.id, Fill.MAX_ID);
+        buffer.writeVarInt(cell.units);
+      }
+
+      static Cell read(RegistryFriendlyByteBuf buffer) {
+        return new Cell(buffer.readBoolean(), buffer.readUtf(Fill.MAX_ID), buffer.readVarInt());
+      }
+    }
+
+    public ProcessingFill {
+      inputs = List.copyOf(inputs);
+      outputs = List.copyOf(outputs);
+      if (inputs.isEmpty()
+          || outputs.isEmpty()
+          || inputs.size() > ProcessingTransfer.MAX_INPUTS
+          || outputs.size() > ProcessingTransfer.MAX_OUTPUTS)
+        throw new IllegalArgumentException("Invalid processing fill bounds");
+    }
+
+    @Override
+    public Type<ProcessingFill> type() {
+      return TYPE;
+    }
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, ProcessingFill> CODEC =
+        StreamCodec.of(
+            (buffer, value) -> {
+              buffer.writeVarInt(value.menu);
+              buffer.writeUUID(value.session);
+              buffer.writeVarInt(value.inputs.size());
+              for (var cell : value.inputs) Cell.write(buffer, cell);
+              buffer.writeVarInt(value.outputs.size());
+              for (var cell : value.outputs) Cell.write(buffer, cell);
+            },
+            buffer -> {
+              int menu = buffer.readVarInt();
+              var session = buffer.readUUID();
+              int in = buffer.readVarInt();
+              if (in < 1 || in > ProcessingTransfer.MAX_INPUTS)
+                throw new IllegalArgumentException("Invalid processing fill bounds");
+              var inputs = new ArrayList<Cell>(in);
+              for (int index = 0; index < in; index++) inputs.add(Cell.read(buffer));
+              int out = buffer.readVarInt();
+              if (out < 1 || out > ProcessingTransfer.MAX_OUTPUTS)
+                throw new IllegalArgumentException("Invalid processing fill bounds");
+              var outputs = new ArrayList<Cell>(out);
+              for (int index = 0; index < out; index++) outputs.add(Cell.read(buffer));
+              return new ProcessingFill(menu, session, inputs, outputs);
             });
   }
 }

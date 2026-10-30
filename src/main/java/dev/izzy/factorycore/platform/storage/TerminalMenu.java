@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.crafting.GridRequirement;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.resource.OperationResult;
@@ -727,7 +728,47 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     publish();
   }
 
-  /** Ghost edits and bounded crafting; ingredients come only from the player's own inventory. */
+  /**
+   * Q5: applies a recipe-viewer transfer as processing-mode ghost cells with their units: inputs
+   * from cell 0, outputs from cell 9. Unknown IDs leave their cell empty.
+   */
+  public void gridProcessingFill(ServerPlayer sender, TerminalCraftingPackets.ProcessingFill fill) {
+    if (!protocol.fromViewer(sender, fill.menu(), fill.session()) || !authorized() || busy) return;
+    int tick = sender.server.getTickCount();
+    if (editWindow == Integer.MIN_VALUE || tick - editWindow >= 20) {
+      editWindow = tick;
+      edits = 0;
+    }
+    if (edits++ >= MAX_EDITS_PER_SECOND) return;
+    var codec = new PlatformResourceCodec(sender.registryAccess());
+    crafting.clear();
+    if (!crafting.processing()) crafting.processing(true);
+    for (int index = 0; index < fill.inputs().size(); index++)
+      fillCell(codec, index, fill.inputs().get(index));
+    for (int index = 0; index < fill.outputs().size(); index++)
+      fillCell(codec, GridRequirement.CELLS + index, fill.outputs().get(index));
+    gridStatus = TerminalCraftingPackets.GridStatus.FILLED;
+    publish();
+  }
+
+  private void fillCell(
+      PlatformResourceCodec codec, int index, TerminalCraftingPackets.ProcessingFill.Cell cell) {
+    var id = ResourceLocation.tryParse(cell.id());
+    if (id == null) return;
+    ResourceKey key;
+    if (cell.fluid()) {
+      var fluid = BuiltInRegistries.FLUID.get(id);
+      if (fluid == net.minecraft.world.level.material.Fluids.EMPTY) return;
+      key = codec.fluidKey(new net.neoforged.neoforge.fluids.FluidStack(fluid, 1));
+    } else {
+      var item = BuiltInRegistries.ITEM.get(id);
+      if (item == Items.AIR) return;
+      key = codec.itemKey(new ItemStack(item));
+    }
+    crafting.set(index, key);
+    crafting.count(index, cell.units());
+  }
+
   /** Applies a recipe-viewer transfer as crafting-mode ghost cells; unknown IDs clear a cell. */
   public void gridFill(ServerPlayer sender, TerminalCraftingPackets.Fill fill) {
     if (!protocol.fromViewer(sender, fill.menu(), fill.session()) || !authorized() || busy) return;

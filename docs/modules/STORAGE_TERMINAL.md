@@ -252,7 +252,12 @@ Status keys: `filled`, `emptied`, `charged`, `discharged`, `no_container`, `empt
 
 `TerminalCraftingPackets.Fill(menu, session, items[9])` is applied by `TerminalMenu.gridFill`.
 It sets crafting-mode ghost cells by registry identity; unknown IDs clear a cell. It shares
-the ghost-edit budget and moves nothing. The JEI handler is in
+the ghost-edit budget and moves nothing. `ProcessingFill(menu, session, inputs[1–9],
+outputs[1–3])` (Q5, protocol 10), each `Cell(fluid, id, units)` with units 1–64, is applied by
+`TerminalMenu.gridProcessingFill`: it clears the grid, switches to processing mode and sets inputs
+from cell 0 and outputs from cell 9 with their counts; unknown IDs leave a cell empty. The client
+shapes recipes with `core.crafting.ProcessingTransfer` (first three outputs kept and reported,
+items one unit each, fluids rounded up to 250 mB units). The JEI handler is in
 `platform.client.integration.jei` ([ADR0043](../decisions/0043-jei-integration.md)).
 
 

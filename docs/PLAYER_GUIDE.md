@@ -513,7 +513,10 @@ Commands for the same rights are in the [admin guide](ADMIN_GUIDE.md#access-comm
 ## JEI (optional)
 
 With JEI installed, the **+** button on a crafting recipe fills the terminal's Table
-grid with ghosts. Dragging an item or fluid onto the program editor types its
+grid with ghosts. On any other recipe (furnace, blasting, or another mod's machine) it fills
+**Inputs** and **Outputs** for a Processing Pattern, items and fluids with their amounts (fluids
+rounded up to 250 mB steps). A recipe with more than three outputs keeps the first three, and a
+message says so; one with more than nine inputs cannot be transferred. Dragging an item or fluid onto the program editor types its
 expression. Everything also works without JEI.
 
 ## Label Tool

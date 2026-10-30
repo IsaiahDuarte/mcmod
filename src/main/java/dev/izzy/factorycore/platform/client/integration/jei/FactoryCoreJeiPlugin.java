@@ -24,6 +24,9 @@ public final class FactoryCoreJeiPlugin implements IModPlugin {
   public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
     registration.addRecipeTransferHandler(
         new TerminalTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
+    // Q5: every other recipe JEI shows fills the processing grid.
+    registration.addUniversalRecipeTransferHandler(
+        new ProcessingTransferHandler(registration.getTransferHelper()));
   }
 
   @Override

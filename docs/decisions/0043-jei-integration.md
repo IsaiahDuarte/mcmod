@@ -52,3 +52,16 @@ the user need not expand it before using recipe transfer. The payload and server
 fill path are unchanged. The JEI fixture additionally exercises Craft, table Encode,
 Inputs/Outputs and processing Encode with JEI installed, preserving real stock.
 Physical recipe-plus clicks and ingredient dragging remain separate verification gaps.
+
+## Amendment — processing transfer from any recipe (2026-10-30, ergonomics plan Q5)
+
+A universal transfer handler (`ProcessingTransferHandler`, JEI's
+`addUniversalRecipeTransferHandler`) serves every recipe category without a specific handler, so
+furnace, blasting, smoking, campfire and other mods' machine recipes fill the processing grid.
+JEI keeps preferring the crafting-table handler for crafting recipes. The handler reads each
+slot's displayed item or fluid by role (INPUT, OUTPUT; catalysts and other ingredient types are
+ignored), so it needs no per-category code. Outputs past three are dropped with an action-bar
+message; more than nine inputs is a transfer error shown on the button, as is a recipe without
+an item or fluid on both sides. Fluid amounts round up to the grid's 250 mB unit; the player
+sees and can change the amounts before encoding. Alternative: one handler per known category
+(rejected: it misses other mods' categories, which is the point of the slice).

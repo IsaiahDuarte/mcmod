@@ -491,7 +491,10 @@ New gates:
   encode, and the blank recipe works; `RecipeGameTests` count updated.
   Also: sneak-use an encoded pattern in the air to wipe it to a blank, as AE2 and RS2 do.
 
-- [ ] **Q5 — Recipe-viewer transfer for processing patterns (M5).** Size M.
+- [x] **Q5 — Recipe-viewer transfer for processing patterns (M5).** Size M. Done 2026-10-30
+  (commit subject `Q5:`). Universal JEI handler fills Inputs/Outputs with amounts (ADR 0043
+  amendment); `runJeiClient` transfers sand→glass smelting and raw-iron blasting;
+  `ProcessingTransferTest` covers truncation. [Evidence](evidence/ergonomics-q5-processing-transfer-2026-10-30.md).
   JEI's **+** on any non-crafting recipe fills Inputs and Outputs, including fluids and amounts,
   for every category JEI knows. Recipes with more than three outputs keep the first three and
   say so.

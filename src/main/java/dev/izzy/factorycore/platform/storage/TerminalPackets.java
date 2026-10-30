@@ -390,7 +390,7 @@ public final class TerminalPackets {
   }
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("9");
+    var registrar = event.registrar("10");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, TerminalMenu.class, TerminalMenu::command);
     MenuPayloads.toServer(
@@ -429,6 +429,12 @@ public final class TerminalPackets {
         TerminalCraftingPackets.Fill.CODEC,
         TerminalMenu.class,
         TerminalMenu::gridFill);
+    MenuPayloads.toServer(
+        registrar,
+        TerminalCraftingPackets.ProcessingFill.TYPE,
+        TerminalCraftingPackets.ProcessingFill.CODEC,
+        TerminalMenu.class,
+        TerminalMenu::gridProcessingFill);
     MenuPayloads.toClient(
         registrar,
         TerminalCraftingPackets.View.TYPE,

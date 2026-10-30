@@ -92,6 +92,7 @@ final class JeiClientVerification {
   private RecipeHolder<CraftingRecipe> recipe;
   private volatile DeviceRegistry.Handle cell;
   private int stage, ticks, entered, panelStage, panelEntered;
+  private long processingRevision;
 
   void register() {
     NeoForge.EVENT_BUS.addListener(this::tick);
@@ -352,6 +353,40 @@ final class JeiClientVerification {
     }
   }
 
+  /** Q5: transfers vanilla recipe {@code id} of {@code type} through the handler JEI resolves. */
+  private <R extends net.minecraft.world.item.crafting.Recipe<?>> void transferProcessing(
+      Minecraft client,
+      TerminalMenu menu,
+      mezz.jei.api.recipe.RecipeType<RecipeHolder<R>> type,
+      String id) {
+    var runtime = RuntimeCapture.runtime;
+    var processing = runtime.getRecipeManager().getRecipeCategory(type);
+    var holder =
+        runtime
+            .getRecipeManager()
+            .createRecipeLookup(type)
+            .get()
+            .filter(candidate -> candidate.id().equals(ResourceLocation.withDefaultNamespace(id)))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("JEI lists " + id));
+    var handler =
+        runtime
+            .getRecipeTransferManager()
+            .getRecipeTransferHandler(menu, processing)
+            .orElseThrow(() -> new IllegalStateException("JEI resolves a handler for " + id));
+    var layout =
+        runtime
+            .getRecipeManager()
+            .createRecipeLayoutDrawable(
+                processing, holder, runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup())
+            .orElseThrow();
+    @SuppressWarnings("removal")
+    var result =
+        handler.transferRecipe(
+            menu, holder, layout.getRecipeSlotsView(), client.player, false, true);
+    check(result == null, "JEI processing transfer reports no error: " + result);
+  }
+
   private String transfer(Minecraft client, TerminalMenu menu) {
     var runtime = RuntimeCapture.runtime;
     var handler =
@@ -527,6 +562,37 @@ final class JeiClientVerification {
         evidence.append(
             "jei: Ctrl-click request opens Jobs with the recipe's output (crafting table)"
                 + " selected for an amount.\n");
+        // Q5: a furnace recipe through JEI's universal handler fills the processing grid.
+        processingRevision = grid.gridRevision();
+        transferProcessing(client, screen.getMenu(), RecipeTypes.SMELTING, "glass");
+      }
+      case 12 -> {
+        if (grid.gridRevision() == processingRevision
+            || grid.status() != TerminalCraftingPackets.GridStatus.FILLED) return false;
+        check(
+            grid.processing()
+                && grid.cells().get(0).equals("minecraft:sand")
+                && grid.amount(0) == 1
+                && grid.cells().get(9).equals("minecraft:glass")
+                && grid.amount(9) == 1
+                && grid.cells().get(1).isEmpty(),
+            "A furnace recipe fills processing Inputs and Outputs: " + grid);
+        capture(client, "jei-processing-transfer.png");
+        processingRevision = grid.gridRevision();
+        transferProcessing(
+            client, screen.getMenu(), RecipeTypes.BLASTING, "iron_ingot_from_blasting_raw_iron");
+      }
+      case 13 -> {
+        if (grid.gridRevision() == processingRevision
+            || grid.status() != TerminalCraftingPackets.GridStatus.FILLED) return false;
+        check(
+            grid.processing()
+                && grid.cells().get(0).equals("minecraft:raw_iron")
+                && grid.cells().get(9).equals("minecraft:iron_ingot"),
+            "A blasting recipe replaces it: " + grid);
+        evidence.append(
+            "jei: the universal handler fills processing Inputs/Outputs from a furnace recipe"
+                + " (sand -> glass) and a blasting recipe (raw iron -> iron ingot).\n");
         return true;
       }
       default -> throw new IllegalStateException("Unknown panel stage " + panelStage);
