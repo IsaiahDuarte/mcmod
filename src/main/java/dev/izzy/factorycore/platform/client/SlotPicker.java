@@ -1,5 +1,7 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
 import java.util.function.BiConsumer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -51,15 +53,15 @@ final class SlotPicker extends AbstractWidget {
   protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     int columns = SlotSelection.columns(slots), rows = SlotSelection.rows(slots);
     int cellWidth = width / columns, cellHeight = height / rows;
-    graphics.fill(getX(), getY(), getX() + width, getY() + height, 0xff151b20);
+    Panels.picker(graphics, new Rect(getX(), getY(), width, height));
     for (int slot = 0; slot < slots; slot++) {
       int x = getX() + (slot % SlotSelection.COLUMNS) * cellWidth;
       int y = getY() + (slot / SlotSelection.COLUMNS) * cellHeight;
-      int color =
-          SlotSelection.selected(first, count, slot)
-              ? active ? 0xffbb8659 : 0xff8a6a50
-              : 0xff59626b;
-      graphics.fill(x + 1, y + 1, x + cellWidth - 1, y + cellHeight - 1, color);
+      Panels.pickerCell(
+          graphics,
+          new Rect(x + 1, y + 1, cellWidth - 2, cellHeight - 2),
+          SlotSelection.selected(first, count, slot),
+          active);
     }
     int slot = isHovered() ? slotAt(mouseX, mouseY) : -1;
     if (slot != hovered) {

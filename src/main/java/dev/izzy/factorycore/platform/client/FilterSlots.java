@@ -1,6 +1,8 @@
 package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.storage.FilterEdits;
 import java.util.List;
 import java.util.function.IntConsumer;
@@ -89,9 +91,9 @@ final class FilterSlots extends AbstractWidget {
     var font = Minecraft.getInstance().font;
     for (int slot = 0; slot < SLOTS; slot++) {
       int x = getX() + (slot % COLUMNS) * 18, y = getY() + (slot / COLUMNS) * 18;
-      dev.izzy.factorycore.platform.client.ui.Panels.slot(graphics, x, y);
-      if (slot == selection) graphics.renderOutline(x, y, 18, 18, 0xffb5683c);
-      if (!active) graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x60c6c6c6);
+      Panels.slot(graphics, x, y);
+      if (slot == selection) Panels.selectedEdge(graphics, new Rect(x, y, 18, 18));
+      if (!active) Panels.disabled(graphics, new Rect(x + 1, y + 1, 16, 16));
       if (slot >= rules.size()) continue;
       var rule = rules.get(slot);
       if (kind == ResourceKind.FLUID) {
@@ -104,8 +106,7 @@ final class FilterSlots extends AbstractWidget {
       if (!badge.isEmpty()) {
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 200);
-        graphics.fill(x + 1, y + 1, x + 7, y + 8, 0xd01a1d21);
-        graphics.drawString(font, badge, x + 2, y + 1, 0xffe4a050, false);
+        Panels.badge(graphics, font, badge, new Rect(x + 1, y + 1, 6, 7));
         graphics.pose().popPose();
       }
     }

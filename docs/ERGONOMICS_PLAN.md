@@ -438,7 +438,11 @@ New gates:
   Done when: 20 consecutive `runAutomaticThroughputServer` runs pass and the evidence lists
   their ticks; the assertion is no weaker than today's.
 
-- [ ] **Q105 — Remaining screen fills on the kit (M143).** Size S.
+- [x] **Q105 — Remaining screen fills on the kit (M143).** Size S. Done 2026-10-30 (commit subject
+  `Q105:`). Drive bars, `FilterSlots`, `SlotPicker`, the status strip lamp and the remaining
+  colour literals (Port field, job toast, label overlay, Drive focus) go through `Panels`; only
+  `ProgramTextEditor` keeps raw fills. Screenshots match except the intended kit lamp (25 px at
+  scale 1, 400 at scale 4). [Evidence](evidence/ergonomics-q105-screen-fills-2026-10-30.md).
   Move the Drive bay bars, `FilterSlots` marks, `SlotPicker` and the `StatusStrip` lamp to
   `Panels` calls (reuse `Panels.lamp` and `meter`), with screenshots matching before and after.
   Done when: no raw `fill` or colour literal remains in `platform/client` outside `ui/` and the

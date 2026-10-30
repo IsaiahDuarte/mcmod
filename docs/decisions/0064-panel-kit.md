@@ -128,3 +128,11 @@ Ergonomics plan Q55 (M53, M54). No behaviour or layout change.
   `LIST_*` and `FIELD_*` text colours. No terminal class calls `fill` or holds a colour value.
 - The job list, plan and job steps keep shadowed light text on the grey inset (`LIST_*`), as H2
   shipped them; a restyle would be a separate, visible change.
+
+## Amendment — the last fills on the kit (2026-10-30, ergonomics plan Q105)
+
+Every fill and colour in `platform/client` outside `ui/` now goes through `Panels`, except the
+program editor's code field (H3c). The status strip draws `Panels.lamp`, so every device screen
+shows the same framed lamp as the Terminal. New kit parts: `track`, a two-colour `meter`,
+`disabled`, `badge`, `picker`, `pickerCell` and `lightFocusEdge`, plus named colours for the job
+toast and the in-world label overlay.

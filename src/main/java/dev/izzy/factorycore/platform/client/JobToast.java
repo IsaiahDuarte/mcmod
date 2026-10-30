@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.crafting.JobNotice;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -73,9 +74,9 @@ public final class JobToast implements Toast {
   public Visibility render(GuiGraphics graphics, ToastComponent toasts, long shownFor) {
     graphics.blitSprite(BACKGROUND, 0, 0, width(), height());
     var font = toasts.getMinecraft().font;
-    graphics.drawString(font, title, 30, 7, 0xff500050, false);
+    graphics.drawString(font, title, 30, 7, Panels.TOAST_TITLE, false);
     graphics.drawString(
-        font, font.plainSubstrByWidth(line.getString(), 124), 30, 18, 0xff000000, false);
+        font, font.plainSubstrByWidth(line.getString(), 124), 30, 18, Panels.TOAST_TEXT, false);
     if (!icon.isEmpty()) graphics.renderFakeItem(icon, 8, 8);
     return shownFor >= SHOWN_MILLIS * toasts.getNotificationDisplayTimeMultiplier()
         ? Visibility.HIDE

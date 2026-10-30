@@ -43,6 +43,12 @@ public final class Panels {
   /** Text in an edit box (vanilla's), and in one whose value was refused. */
   public static final int FIELD_TEXT = 0xe0e0e0, FIELD_ERROR = 0xff8080;
 
+  /** A job toast's title and line, on vanilla's toast sprite. */
+  public static final int TOAST_TITLE = 0xff500050, TOAST_TEXT = 0xff000000;
+
+  /** In-world label overlay text, and the fainter marker for an unlabelled device. */
+  public static final int OVERLAY_LABEL = 0xffffffff, OVERLAY_MARKER = 0x90ffffff;
+
   /** The copper selection: a translucent fill for slots and rows, and an outline. */
   private static final int SELECTED_FILL = 0x60b5683c, SELECTED_EDGE = 0xffb5683c;
 
@@ -52,6 +58,16 @@ public final class Panels {
       VEIL = 0xa08b8b8b,
       MARKER = 0xffd9822b,
       METER = 0xff2f8fb5,
+      METER_FULL = 0xffc0392b,
+      TRACK = 0xff555555,
+      DISABLED = 0x60c6c6c6,
+      BADGE_FILL = 0xd01a1d21,
+      BADGE_TEXT = 0xffe4a050,
+      LIGHT_FOCUS_EDGE = 0xffffffff,
+      PICKER = 0xff151b20,
+      PICKER_CELL = 0xff59626b,
+      PICKER_CHOSEN = 0xffbb8659,
+      PICKER_CHOSEN_INACTIVE = 0xff8a6a50,
       THUMB = 0xff555555,
       LIGHT_THUMB = 0xffe0e0e0,
       LAMP_FRAME = 0xff181a1d,
@@ -73,6 +89,11 @@ public final class Panels {
   /** Outlines a control that has keyboard focus. */
   public static void focusEdge(GuiGraphics graphics, Rect area) {
     graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), FOCUS_EDGE);
+  }
+
+  /** Outlines a focused control drawn on a dark or icon background. */
+  public static void lightFocusEdge(GuiGraphics graphics, Rect area) {
+    graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), LIGHT_FOCUS_EDGE);
   }
 
   /** Lightens the row or bay under the mouse. */
@@ -104,6 +125,37 @@ public final class Panels {
   /** The filled part of a meter (the Terminal's capacity bar) inside a sunken track. */
   public static void meter(GuiGraphics graphics, Rect filled) {
     fill(graphics, filled, METER);
+  }
+
+  /** A meter's filled part, red when {@code nearlyFull} (a Drive bay at 90 % or more). */
+  public static void meter(GuiGraphics graphics, Rect filled, boolean nearlyFull) {
+    fill(graphics, filled, nearlyFull ? METER_FULL : METER);
+  }
+
+  /** A flat meter track for a bar too thin for an inset (a Drive bay's capacity). */
+  public static void track(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, TRACK);
+  }
+
+  /** Washes out a control that cannot be used now. */
+  public static void disabled(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, DISABLED);
+  }
+
+  /** A one-character badge on a slot's corner ("=" exact, "#" tag); {@code area} is its box. */
+  public static void badge(GuiGraphics graphics, Font font, String text, Rect area) {
+    fill(graphics, area, BADGE_FILL);
+    graphics.drawString(font, text, area.x() + 1, area.y(), BADGE_TEXT, false);
+  }
+
+  /** The dark field behind a slot picker's cells. */
+  public static void picker(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, PICKER);
+  }
+
+  /** One slot picker cell: copper when {@code chosen}, dimmer when the picker is inactive. */
+  public static void pickerCell(GuiGraphics graphics, Rect area, boolean chosen, boolean active) {
+    fill(graphics, area, chosen ? active ? PICKER_CHOSEN : PICKER_CHOSEN_INACTIVE : PICKER_CELL);
   }
 
   /** A flat thumb for a thin scrollbar that has no room for a bevel. */

@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.storage.LabelOverlay;
 import dev.izzy.factorycore.platform.storage.LabelToolContent;
 import java.util.List;
@@ -27,7 +28,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 @EventBusSubscriber(modid = FactoryCoreMod.MOD_ID, value = Dist.CLIENT)
 public final class LabelOverlayRenderer {
   /** Text colours: a label, and the faint marker of an unlabelled machine. */
-  private static final int LABEL = 0xffffffff, MARKER = 0x90ffffff;
 
   /** Branch colours as RGB, cycled for networks with more branches. */
   private static final float[][] BRANCHES = {
@@ -132,7 +132,7 @@ public final class LabelOverlayRenderer {
           shown,
           -font.width(shown) / 2f,
           0,
-          labelled ? LABEL : MARKER,
+          labelled ? Panels.OVERLAY_LABEL : Panels.OVERLAY_MARKER,
           false,
           pose.last().pose(),
           buffers,

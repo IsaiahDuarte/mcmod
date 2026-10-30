@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.platform.client.ui.Panels;
+import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.session.DeviceStatus;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,11 +34,6 @@ public final class StatusStrip {
     return parts;
   }
 
-  /** Online is green; anything else (rebuilding, unloaded, invalid) is amber. */
-  public static int color(DeviceStatus.View status) {
-    return status.online() ? 0x9fd49b : 0xe4bc83;
-  }
-
   /** Shows the full status when the mouse is over a strip drawn at absolute {@code x, y}. */
   public static void tooltip(
       GuiGraphics graphics,
@@ -52,31 +48,20 @@ public final class StatusStrip {
       graphics.renderTooltip(font, text(status), mouseX, mouseY);
   }
 
-  public static void draw(
-      GuiGraphics graphics, Font font, DeviceStatus.View status, int x, int y, int width) {
-    draw(graphics, font, status, x, y, width, color(status));
-  }
-
   /**
-   * Draws the strip on a light kit panel (ADR 0064), where the dark-screen colors are unreadable:
-   * green when online, amber otherwise.
+   * Draws the strip on a light kit panel (ADR 0064): the kit's lamp and text, green when online,
+   * amber otherwise.
    */
   public static void drawOnPanel(
       GuiGraphics graphics, Font font, DeviceStatus.View status, int x, int y, int width) {
-    draw(graphics, font, status, x, y, width, status.online() ? Panels.GOOD : Panels.WARN);
-  }
-
-  private static void draw(
-      GuiGraphics graphics,
-      Font font,
-      DeviceStatus.View status,
-      int x,
-      int y,
-      int width,
-      int color) {
     if (width < 16) return;
-    graphics.fill(x, y + 2, x + 4, y + 6, 0xff000000 | color);
+    Panels.lamp(graphics, new Rect(x, y + 1, 5, 5), status.online());
     graphics.drawString(
-        font, FitText.fit(parts(status), width - 7, font::width), x + 7, y, color, false);
+        font,
+        FitText.fit(parts(status), width - 7, font::width),
+        x + 7,
+        y,
+        status.online() ? Panels.GOOD : Panels.WARN,
+        false);
   }
 }

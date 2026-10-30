@@ -200,7 +200,7 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
                 protected void renderWidget(
                     GuiGraphics graphics, int mouseX, int mouseY, float partial) {
                   if (isFocused())
-                    graphics.renderOutline(getX(), getY(), width, height, 0xffffffff);
+                    Panels.lightFocusEdge(graphics, new Rect(getX(), getY(), width, height));
                 }
               }));
     }
@@ -336,12 +336,11 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
           x + 4,
           y + 4);
       int barX = x + 25, barY = y + 21, barWidth = ROW_WIDTH - 50;
-      graphics.fill(barX, barY, barX + barWidth, barY + 2, 0xff555555);
+      Panels.track(graphics, new Rect(barX, barY, barWidth, 2));
       if (!row.infinite() && row.capacity() > 0) {
         int filled = (int) Math.min(barWidth, (double) row.total() / row.capacity() * barWidth);
         if (row.total() > 0) filled = Math.max(1, filled);
-        int color = filled * 10 >= barWidth * 9 ? 0xffc0392b : 0xff2f8fbf;
-        graphics.fill(barX, barY, barX + filled, barY + 2, color);
+        Panels.meter(graphics, new Rect(barX, barY, filled, 2), filled * 10 >= barWidth * 9);
       }
     }
     for (var slot : menu.slots) Panels.slot(graphics, leftPos + slot.x - 1, topPos + slot.y - 1);

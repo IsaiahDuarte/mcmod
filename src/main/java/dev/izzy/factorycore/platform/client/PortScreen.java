@@ -253,10 +253,10 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
       amount = -1;
     }
     if (amount < 0) {
-      keep.setTextColor(0xff8080);
+      keep.setTextColor(Panels.FIELD_ERROR);
       return;
     }
-    keep.setTextColor(0xe0e0e0);
+    keep.setTextColor(Panels.FIELD_TEXT);
     var mode = amount > 0 ? MachinePresets.Mode.STOCK : MachinePresets.Mode.EXPORT;
     send(MachinePresetPackets.DEPLOY_AS, mode.ordinal(), Long.toString(amount));
   }
