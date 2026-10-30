@@ -37,6 +37,9 @@ public final class WorldStorageSearch {
   /** Q109: at most this many recently crafted keys are ordered first. */
   public static final int MAX_PINNED = 9;
 
+  /** Q63: the charge for remembering that a key was read. */
+  private static final long SEEN_BYTES = 64;
+
   public record Result(
       OperationResult.Reason reason,
       boolean complete,
@@ -62,7 +65,8 @@ public final class WorldStorageSearch {
       BigInteger used,
       BigInteger capacity,
       boolean infinite,
-      boolean external) {
+      boolean external,
+      int all) {
     public Window {
       rows = List.copyOf(rows);
       names = List.copyOf(names);
@@ -83,6 +87,9 @@ public final class WorldStorageSearch {
     final long grantsGeneration;
     final java.util.Set<ResourceKey> craftable;
     final boolean ghosts;
+
+    /** Q63: every distinct key the view shows before the text filter ("showing X of Y"). */
+    final java.util.Set<ResourceKey> seen = new java.util.HashSet<>();
 
     /** Q62: show only craftable keys. */
     final boolean craftableOnly;
@@ -314,7 +321,8 @@ public final class WorldStorageSearch {
           BigInteger.ZERO,
           BigInteger.ZERO,
           false,
-          false);
+          false,
+          0);
     int start = Math.min(offset, Math.max(0, search.index.size() - 1));
     return new Window(
         state.reason(),
@@ -337,7 +345,8 @@ public final class WorldStorageSearch {
         search.used,
         search.capacity,
         search.infinite,
-        search.external);
+        search.external,
+        search.seen.size());
   }
 
   public boolean close(UUID id, NetworkPermissions.Actor actor) {
@@ -405,6 +414,7 @@ public final class WorldStorageSearch {
                     search.used = search.used.add(BigInteger.valueOf(row.total()));
                 for (var row : page.rows()) {
                   if (search.craftableOnly && !search.craftable.contains(row.key())) continue;
+                  if (!see(search, row.key())) return;
                   var codec = new PlatformResourceCodec(server.registryAccess());
                   String name;
                   try {
@@ -459,6 +469,22 @@ public final class WorldStorageSearch {
   }
 
   /**
+   * Q63: counts {@code key} once among the keys this view shows before the text filter ("showing X
+   * of Y"), charged like a small index entry; false (and the search failed) when over budget.
+   */
+  private boolean see(Search search, ResourceKey key) {
+    if (search.seen.contains(key)) return true;
+    if (bytes > MAX_BYTES - SEEN_BYTES) {
+      fail(search, OperationResult.Reason.TECHNICAL_LIMIT);
+      return false;
+    }
+    search.seen.add(key);
+    bytes += SEEN_BYTES;
+    search.charge += SEEN_BYTES;
+    return true;
+  }
+
+  /**
    * Adds a zero-count row for each craftable key of this kind with no stock that matches the text.
    * Bounded by {@link #MAX_CRAFTABLE}, charged like a stocked row; false when it failed.
    */
@@ -467,6 +493,7 @@ public final class WorldStorageSearch {
     var codec = new PlatformResourceCodec(server.registryAccess());
     for (var key : search.craftable) {
       if (key.kind() != search.kind || search.counts.row(key) != null) continue;
+      if (!see(search, key)) return false;
       String name;
       try {
         // Ghost rows have no stock, so count terms see zero (Q61: "=0" finds them).

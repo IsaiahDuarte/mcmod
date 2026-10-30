@@ -37,10 +37,21 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   private DeviceStatus.View deviceStatus;
   private final Player viewer;
 
-  /** Q18: main-inventory slots a DEPOSIT_ALL still has to deposit, and their key. */
-  private final java.util.ArrayDeque<Integer> depositAll = new java.util.ArrayDeque<>();
+  /**
+   * One queued move of a multi-step command (Q18 DEPOSIT_ALL, Q63 region deposits and swaps):
+   * {@code amount} of {@code key} between own slot {@code slot} (36 is the cursor) and storage. A
+   * deposit re-reads the slot when it starts and is skipped if the key is gone; a withdrawal with
+   * {@code intoEmpty} is skipped unless the slot is empty by then.
+   */
+  private record Step(
+      int slot,
+      ResourceKey key,
+      long amount,
+      WorldStorageRoutes.Direction direction,
+      boolean intoEmpty) {}
 
-  private ResourceKey depositAllKey;
+  /** Moves still to start, one route at a time, while each one completes with OK. */
+  private final java.util.ArrayDeque<Step> chain = new java.util.ArrayDeque<>();
 
   /** Q109: items crafted here this session, newest first; their rows lead the Items grid. */
   private final List<ResourceKey> recent = new ArrayList<>();
@@ -61,6 +72,9 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   /** A3 "Show craftable" preference: zero-count rows for craftables that have no stock. */
   /** Q62: the Items view, {@link TerminalPackets#VIEW_STORED} and so on. */
   private int itemsView = TerminalPackets.VIEW_STORED;
+
+  /** Q63: distinct keys the search read before filtering. */
+  private int allRows;
 
   private String text = "";
   private TerminalPackets.Status status = TerminalPackets.Status.LOADING;
@@ -379,6 +393,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         selectionCraftable = List.of();
         next = null;
         totalRows = 0;
+        allRows = 0;
         offset = 0;
         used = "0";
         capacity = "0";
@@ -407,6 +422,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
           || result.complete()
               && (offset != result.offset()
                   || totalRows != result.total()
+                  || allRows != result.all()
                   || !used.equals(result.used().toString())
                   || !capacity.equals(result.capacity().toString())
                   || infinite != result.infinite()
@@ -416,6 +432,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         selectionCraftable = result.craftable();
         offset = result.offset();
         totalRows = result.total();
+        allRows = result.all();
         used = result.used().toString();
         capacity = result.capacity().toString();
         infinite = result.infinite();
@@ -429,6 +446,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       } else if (result.complete() && status == TerminalPackets.Status.LOADING) {
         offset = result.offset();
         totalRows = result.total();
+        allRows = result.all();
         used = result.used().toString();
         capacity = result.capacity().toString();
         infinite = result.infinite();
@@ -539,7 +557,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             || action == TerminalPackets.TAKE_CURSOR
             || action == TerminalPackets.HALF_CURSOR
             || action == TerminalPackets.DEPOSIT_CURSOR
-            || action == TerminalPackets.DEPOSIT_ALL
+            || action >= TerminalPackets.DEPOSIT_ALL
             || (action >= TerminalPackets.FILL && action <= TerminalPackets.DISCHARGE);
     if (mutating && !terminal.spendAction(sender)) {
       status = TerminalPackets.Status.NO_POWER;
@@ -730,14 +748,86 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         return;
       }
       if (!MessageDigest.isEqual(TerminalPackets.fingerprint(key), command.fingerprint())) return;
-      depositAll.clear();
+      chain.clear();
       for (int slot = 0; slot < 36; slot++) {
         var stack = sender.getInventory().getItem(slot);
-        if (stack.isEmpty()) continue;
-        if (ItemStack.isSameItemSameComponents(stack, clicked)) depositAll.add(slot);
+        if (!stack.isEmpty() && ItemStack.isSameItemSameComponents(stack, clicked))
+          chain.add(
+              new Step(
+                  slot, key, stack.getCount(), WorldStorageRoutes.Direction.TO_STORAGE, false));
       }
-      depositAllKey = key;
-      if (!nextDepositAll()) publish();
+      if (!nextStep()) publish();
+      return;
+    } else if (command.action() == TerminalPackets.DEPOSIT_REGION) {
+      // Q63: every stack in the hotbar (selection 0) or the main inventory (1), any item.
+      var codec = new PlatformResourceCodec(sender.registryAccess());
+      chain.clear();
+      int from = command.selection() == 0 ? 0 : 9, to = command.selection() == 0 ? 9 : 36;
+      for (int slot = from; slot < to; slot++) {
+        var stack = sender.getInventory().getItem(slot);
+        // An unrepresentable stack stays in the inventory.
+        var stackKey = stack.isEmpty() ? null : keyOrNull(codec, stack);
+        if (stackKey != null)
+          chain.add(
+              new Step(
+                  slot,
+                  stackKey,
+                  stack.getCount(),
+                  WorldStorageRoutes.Direction.TO_STORAGE,
+                  false));
+      }
+      if (!nextStep()) publish();
+      return;
+    } else if (command.action() == TerminalPackets.DEPOSIT_ROW
+        || command.action() == TerminalPackets.CURSOR_ONE
+        || command.action() == TerminalPackets.SWAP) {
+      // Q63: moves named by a visible row; the row's key is read before anything changes.
+      var rowKey = rowKey(command.selection());
+      if (rowKey == null) return;
+      var codec = new PlatformResourceCodec(sender.registryAccess());
+      chain.clear();
+      if (command.action() == TerminalPackets.CURSOR_ONE)
+        chain.add(new Step(36, rowKey, 1, WorldStorageRoutes.Direction.FROM_STORAGE, false));
+      else if (command.action() == TerminalPackets.DEPOSIT_ROW) {
+        for (int slot = 0; slot < 36 && chain.isEmpty(); slot++) {
+          var stack = sender.getInventory().getItem(slot);
+          if (!stack.isEmpty() && rowKey.equals(keyOrNull(codec, stack)))
+            chain.add(
+                new Step(
+                    slot,
+                    rowKey,
+                    Math.min(command.amount(), stack.getCount()),
+                    WorldStorageRoutes.Direction.TO_STORAGE,
+                    false));
+        }
+      } else {
+        int hotbar = command.amount() - 1;
+        var held = sender.getInventory().getItem(hotbar);
+        if (!held.isEmpty()) {
+          var heldKey = keyOrNull(codec, held);
+          if (heldKey == null) {
+            status = TerminalPackets.Status.UNSUPPORTED;
+            publish();
+            return;
+          }
+          chain.add(
+              new Step(
+                  hotbar,
+                  heldKey,
+                  held.getCount(),
+                  WorldStorageRoutes.Direction.TO_STORAGE,
+                  false));
+        }
+        var stack = codec.itemStack(rowKey, 1);
+        chain.add(
+            new Step(
+                hotbar,
+                rowKey,
+                Math.min(64, stack.getMaxStackSize()),
+                WorldStorageRoutes.Direction.FROM_STORAGE,
+                true));
+      }
+      if (!nextStep()) publish();
       return;
     } else if (command.action() == TerminalPackets.DEPOSIT
         || command.action() == TerminalPackets.DEPOSIT_CURSOR) {
@@ -1052,23 +1142,45 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     return stored == null ? null : stored.id();
   }
 
+  private static ResourceKey keyOrNull(PlatformResourceCodec codec, ItemStack stack) {
+    try {
+      return codec.itemKey(stack);
+    } catch (IllegalArgumentException unsupported) {
+      return null;
+    }
+  }
+
   /**
-   * Q18: starts the next queued DEPOSIT_ALL stack, if one still holds the key; returns false (and
-   * clears the queue) when none is left or the route is refused.
+   * Q63: the key of visible row {@code selection}, revalidating the observation as WITHDRAW does;
+   * null (after a refresh when stale) when there is none.
    */
-  private boolean nextDepositAll() {
+  private ResourceKey rowKey(int selection) {
+    if (selection >= selections.size()) return null;
+    if (query == null
+        || transfers().search().window(query, actor(), offset, pageSize).reason()
+            != OperationResult.Reason.OK) {
+      refresh();
+      publish();
+      return null;
+    }
+    return selections.get(selection).key();
+  }
+
+  /**
+   * Starts the next queued {@link Step} that still applies; returns false (and clears the chain)
+   * when none is left or a route is refused.
+   */
+  private boolean nextStep() {
     var sender = player();
-    while (!depositAll.isEmpty()) {
-      int slot = depositAll.poll();
-      var stack = sender.getInventory().getItem(slot);
-      if (stack.isEmpty()) continue;
-      try {
-        if (!new PlatformResourceCodec(sender.registryAccess())
-            .itemKey(stack)
-            .equals(depositAllKey)) continue;
-      } catch (IllegalArgumentException unsupported) {
-        continue;
-      }
+    var codec = new PlatformResourceCodec(sender.registryAccess());
+    while (!chain.isEmpty()) {
+      var step = chain.poll();
+      long amount = step.amount();
+      if (step.direction() == WorldStorageRoutes.Direction.TO_STORAGE) {
+        var stack = step.slot() == 36 ? getCarried() : sender.getInventory().getItem(step.slot());
+        if (stack.isEmpty() || !step.key().equals(keyOrNull(codec, stack))) continue;
+        amount = Math.min(amount, stack.getCount());
+      } else if (step.intoEmpty() && !sender.getInventory().getItem(step.slot()).isEmpty()) break;
       if (unresolved() != null) {
         status = TerminalPackets.Status.RESERVED;
         break;
@@ -1083,10 +1195,10 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                   route,
                   actor(),
                   terminal.origin(),
-                  transfers().inventory(sender, slot),
-                  depositAllKey,
-                  stack.getCount(),
-                  WorldStorageRoutes.Direction.TO_STORAGE,
+                  transfers().inventory(sender, step.slot()),
+                  step.key(),
+                  amount,
+                  step.direction(),
                   result -> finish(result.move()),
                   () -> authorized() && revision == selectedRevision,
                   () -> unresolved() == null);
@@ -1099,7 +1211,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       status = TerminalPackets.Status.of(admission.rejection());
       break;
     }
-    depositAll.clear();
+    chain.clear();
     return false;
   }
 
@@ -1117,15 +1229,15 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         if (result.transfer() != null && result.transfer().delivered() > 0) continueCraft();
         else finishCraft(partialCraft());
       }
-      // Q18: the next stack of a deposit-all, while the last one went in.
-      if (!depositAll.isEmpty()) {
-        if (result.reason() == OperationResult.Reason.OK && nextDepositAll()) return;
-        depositAll.clear();
+      // Q18/Q63: the next queued move, while the last one completed.
+      if (!chain.isEmpty()) {
+        if (result.reason() == OperationResult.Reason.OK && nextStep()) return;
+        chain.clear();
       }
       publish();
     } else {
       pendingCrafts = 0;
-      depositAll.clear();
+      chain.clear();
     }
   }
 
@@ -1176,7 +1288,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             infinite,
             external,
             itemsView,
-            uncertain);
+            uncertain,
+            Math.min(allRows, TerminalPackets.MAX_ALL));
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);

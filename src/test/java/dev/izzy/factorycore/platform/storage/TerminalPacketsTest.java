@@ -56,7 +56,8 @@ class TerminalPacketsTest {
             false,
             false,
             TerminalPackets.VIEW_CRAFTABLE,
-            true);
+            true,
+            40);
     var output = buffer();
     try {
       TerminalPackets.View.CODEC.encode(output, view);
@@ -64,6 +65,7 @@ class TerminalPacketsTest {
       assertEquals(view, decoded);
       assertTrue(decoded.craftables() && decoded.rows().getFirst().craftable());
       assertEquals(TerminalPackets.VIEW_CRAFTABLE, decoded.view());
+      assertEquals(40, decoded.all(), "Q63: the unfiltered count round-trips");
       assertFalse(decoded.rows().get(1).craftable());
     } finally {
       output.release();
@@ -95,7 +97,7 @@ class TerminalPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.DEPOSIT_ALL + 1, 0, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.SWAP + 1, 0, 1, "", new byte[32]));
   }
 
   private static RegistryFriendlyByteBuf buffer() {
@@ -201,7 +203,8 @@ class TerminalPacketsTest {
             true,
             false,
             TerminalPackets.VIEW_ALL,
-            false);
+            false,
+            1_000);
     var output = buffer();
     try {
       TerminalPackets.View.CODEC.encode(output, view);
@@ -256,7 +259,7 @@ class TerminalPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.DEPOSIT_ALL + 1, 0, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.SWAP + 1, 0, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalPackets.Command(1, session, 1, 4, 36, 1, "", new byte[32]));

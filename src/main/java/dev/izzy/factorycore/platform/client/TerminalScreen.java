@@ -94,6 +94,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     while (HISTORY.size() > HISTORY_SIZE) HISTORY.removeLast();
   }
 
+  private boolean holdOrder;
+
   /** Q18: whether the auto-focus preference was applied for this opening. */
   private boolean focusChecked;
 
@@ -750,6 +752,17 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     var amount = jobs.amountKey(key, scan, modifiers);
     if (amount != null) return amount;
     if (!search.isFocused() && crafting.craftKey(key)) return true;
+    // Q63: a hotbar key over a grid entry swaps that entry into the hotbar slot.
+    if (!search.isFocused() && kind() == 0 && !storageHidden() && !jobsMode && !patternsMode) {
+      var window = minecraft.getWindow();
+      double mouseX =
+          minecraft.mouseHandler.xpos() * window.getGuiScaledWidth() / window.getScreenWidth();
+      double mouseY =
+          minecraft.mouseHandler.ypos() * window.getGuiScaledHeight() / window.getScreenHeight();
+      for (int hotbar = 0; hotbar < 9; hotbar++)
+        if (minecraft.options.keyHotbarSlots[hotbar].matches(key, scan)
+            && storage.swap(mouseX, mouseY, hotbar)) return true;
+    }
     if (!search.isFocused() && key >= GLFW.GLFW_KEY_1 && key <= GLFW.GLFW_KEY_8) {
       int index = key - GLFW.GLFW_KEY_1;
       if (jobsMode) jobs.selectCraftable(index);
@@ -790,6 +803,20 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /** Test hook: the search text, as typed. */
+  /** Test hook (Q63): holds the grid order as if Shift were down. */
+  public void holdOrder(boolean hold) {
+    holdOrder = hold;
+  }
+
+  boolean holdOrder() {
+    return holdOrder;
+  }
+
+  /** Test hook (Q63): the Items grid entries as shown. */
+  public java.util.List<TerminalPackets.Row> shownEntries() {
+    return storage.entries();
+  }
+
   public String searchText() {
     return search.getValue();
   }

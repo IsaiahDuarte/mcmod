@@ -821,4 +821,136 @@ public final class TerminalGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Q63: Shift+wheel takes one out (WITHDRAW 1) and puts one back (DEPOSIT_ROW); Ctrl+wheel puts
+   * one on the cursor twice (CURSOR_ONE); a hotbar key over the row swaps it in (SWAP), storing
+   * what the slot held first.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void gridShortcutsMoveOneAndSwapIntoTheHotbar(GameTestHelper helper) {
+    var f = setup(helper);
+    var inventory = f.player.getInventory();
+    var codec = new PlatformResourceCodec(f.player.registryAccess());
+    var cobble = codec.itemKey(new ItemStack(Items.COBBLESTONE));
+    var dirt = codec.itemKey(new ItemStack(Items.DIRT));
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, cobble, 10);
+              inventory.setItem(2, new ItemStack(Items.DIRT, 3));
+              open(helper, f);
+            })
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenExecute(() -> command(f, TerminalPackets.WITHDRAW, row(f, cobble), 1, new byte[32]))
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    shown(f)
+                        && inventory.countItem(Items.COBBLESTONE) == 1
+                        && f.saved.registry().stock(f.cell, cobble).total() == 9,
+                    "Shift+wheel up takes exactly one"))
+        .thenIdle(3)
+        .thenExecute(() -> command(f, TerminalPackets.DEPOSIT_ROW, row(f, cobble), 1, new byte[32]))
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    shown(f)
+                        && inventory.countItem(Items.COBBLESTONE) == 0
+                        && f.saved.registry().stock(f.cell, cobble).total() == 10,
+                    "Shift+wheel down stores exactly one"))
+        .thenIdle(3)
+        .thenExecute(() -> command(f, TerminalPackets.CURSOR_ONE, row(f, cobble), 1, new byte[32]))
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    shown(f) && menu(f).getCarried().getCount() == 1, "One on the cursor"))
+        .thenIdle(3)
+        .thenExecute(() -> command(f, TerminalPackets.CURSOR_ONE, row(f, cobble), 1, new byte[32]))
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    shown(f)
+                        && menu(f).getCarried().is(Items.COBBLESTONE)
+                        && menu(f).getCarried().getCount() == 2
+                        && f.saved.registry().stock(f.cell, cobble).total() == 8,
+                    "A second Ctrl+wheel adds a second to the cursor"))
+        .thenIdle(3)
+        .thenExecute(() -> command(f, TerminalPackets.SWAP, row(f, cobble), 3, new byte[32]))
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    inventory.getItem(2).is(Items.COBBLESTONE)
+                        && inventory.getItem(2).getCount() == 8
+                        && f.saved.registry().stock(f.cell, dirt).total() == 3
+                        && f.saved.registry().stock(f.cell, cobble).total() == 0,
+                    "Hotbar key 3 stores the dirt and fills slot 2 with the row: "
+                        + inventory.getItem(2)))
+        .thenExecute(() -> logout(f))
+        .thenSucceed();
+  }
+
+  /**
+   * Q63: Space-click on a main-inventory slot stores the whole main inventory until storage is
+   * full; the stack that only partly fits keeps the rest, later stacks and the hotbar stay.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void regionDepositStopsWhenStorageFills(GameTestHelper helper) {
+    var f = setup(helper);
+    var inventory = f.player.getInventory();
+    var codec = new PlatformResourceCodec(f.player.registryAccess());
+    var cobble = codec.itemKey(new ItemStack(Items.COBBLESTONE));
+    var dirt = codec.itemKey(new ItemStack(Items.DIRT));
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(
+            () -> {
+              // 100 units of room left in the 8,192-unit starter cell.
+              f.saved.registry().insert(f.cell, cobble, 8_092);
+              inventory.setItem(0, new ItemStack(Items.DIRT, 5));
+              inventory.setItem(9, new ItemStack(Items.DIRT, 64));
+              inventory.setItem(10, new ItemStack(Items.DIRT, 64));
+              inventory.setItem(11, new ItemStack(Items.DIRT, 64));
+              open(helper, f);
+            })
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenExecute(() -> command(f, TerminalPackets.DEPOSIT_REGION, 1, 1, new byte[32]))
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    !menu(f).view().busy()
+                        && f.saved.registry().stock(f.cell, dirt).total() == 100
+                        && inventory.getItem(9).isEmpty()
+                        && inventory.getItem(10).getCount() == 28,
+                    "64 + 36 stored, 28 kept: "
+                        + f.saved.registry().stock(f.cell, dirt).total()
+                        + " "
+                        + inventory.getItem(10)))
+        .thenIdle(10)
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  inventory.getItem(11).getCount() == 64 && inventory.getItem(0).getCount() == 5,
+                  "The later stack and the hotbar stay");
+              logout(f);
+            })
+        .thenSucceed();
+  }
+
+  /** Whether the menu has settled with rows listed again after a move. */
+  private static boolean shown(Fixture f) {
+    menu(f).broadcastChanges();
+    return !menu(f).view().busy() && !menu(f).view().rows().isEmpty();
+  }
+
+  /** The visible row of {@code key}. */
+  private static int row(Fixture f, ResourceKey key) {
+    var rows = menu(f).view().rows();
+    for (int index = 0; index < rows.size(); index++)
+      if (rows.get(index).icon().equals(key.registryId())) return index;
+    throw new IllegalStateException("No row for " + key.registryId() + ": " + rows);
+  }
 }

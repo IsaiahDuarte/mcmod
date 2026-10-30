@@ -467,7 +467,32 @@ public final class TerminalClientVerification {
         if (view.sort() != TerminalSearchSupport.QUANTITY) return;
         check(view.rows().getFirst().total().equals("23"), "Exact quantity sort puts23 ahead of3");
         captures.grab(client, "terminal-sort-quantity.png");
+        // Q63: hold the order (as Shift does) while the top entry drops to 2 on the server.
+        screen.holdOrder(true);
+        screen.shownEntries();
+        changeHopperVariant(client, -21);
+        searchStep = 21;
+      }
+      case 22 -> {
+        if (view.rows().getFirst().total().equals("23")
+            || view.rows().stream().noneMatch(row -> row.total().equals("2"))) return;
+        var shown = screen.shownEntries();
+        check(
+            shown.getFirst().name().equals("Client hopper variant")
+                && shown.getFirst().total().equals("2")
+                && !view.rows().getFirst().name().equals("Client hopper variant"),
+            "Held order keeps the entry in place with its new count while the server re-sorts");
+        captures.grab(client, "terminal-sort-frozen.png");
+        evidence.append(
+            "terminal-sort: held order kept Client hopper variant first at 2 while Qty order moved"
+                + " it\n");
+        screen.holdOrder(false);
+        changeHopperVariant(client, 21);
+      }
+      case 23 -> {
+        if (!view.rows().getFirst().total().equals("23")) return;
         client.player.closeContainer();
+        searchStep = 5;
       }
       case 7 -> {
         if (!view.search().equals("@minecraft") || view.sort() != TerminalSearchSupport.QUANTITY)
@@ -509,6 +534,18 @@ public final class TerminalClientVerification {
 
   private static final String SYNTAX_QUERY =
       "(#minecraft:coals | \"hopper variant\") !@factorycore >5";
+
+  /** Q63: adds (or with a negative amount, removes) named iron in the cell, on the server. */
+  private void changeHopperVariant(Minecraft client, int amount) {
+    var server = client.getSingleplayerServer();
+    server.execute(
+        () -> {
+          var registry = DeviceSavedData.get(server).registry();
+          var key = new PlatformResourceCodec(server.registryAccess()).itemKey(named(1));
+          if (amount > 0) registry.insert(cell, key, amount);
+          else registry.extract(cell, key, -amount, null);
+        });
+  }
 
   private int plankSlot = -1;
 

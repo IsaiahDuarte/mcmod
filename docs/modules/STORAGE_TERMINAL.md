@@ -133,6 +133,22 @@ This is partial client evidence: Shift gesture, tooltips/focus, other resolution
 Return/Take64/denied/full/stale messages and full release acceptance remain pending.
 
 
+## Grid shortcuts (Q63)
+
+Actions 19–22 (protocol 13) are row- or region-based moves: `DEPOSIT_ROW` stores `amount` of a
+visible row's key from the first own main-inventory slot holding it; `CURSOR_ONE` withdraws one
+of a row onto the cursor (merging with a carried stack of the same key); `DEPOSIT_REGION`
+stores every stack of the hotbar (selection 0) or main inventory (1); `SWAP` stores hotbar slot
+`amount` − 1, then withdraws a stack of the row into it if it is empty by then. Row actions
+revalidate the observation like `WITHDRAW` and read the row's key before anything moves. Multi-
+move commands (these and `DEPOSIT_ALL`) queue `Step`s and start one priority route at a time;
+the next starts only after the previous completes with OK, so a deposit that fills storage stops
+the chain and later stacks stay put. Each command spends one terminal action. Shift+wheel up is a
+`WITHDRAW` of one. The view's `all` field counts the distinct keys the view would show without
+the text search (stored rows passing the Craftable view, plus ghost craftables), charged 64 bytes
+each to the search budget, for "Showing X of Y". Holding Shift freezes the client's displayed
+order (rows keep their positions with fresh counts; commands carry each row's server `token`).
+
 ## Deposit all and search focus (Q18)
 
 `TerminalPackets.DEPOSIT_ALL` (action 18, protocol 11) names one own main-inventory slot and its

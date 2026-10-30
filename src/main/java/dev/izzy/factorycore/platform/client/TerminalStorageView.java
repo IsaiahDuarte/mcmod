@@ -54,12 +54,54 @@ final class TerminalStorageView {
     return rows;
   }
 
+  /** The server row index of the selected entry (its position differs while frozen). */
   int selected() {
-    return selected;
+    var entries = entries();
+    return selected < entries.size() ? entries.get(selected).token() : selected;
   }
 
   void select(int index) {
-    if (index < menu().view().rows().size()) selected = index;
+    if (index < entries().size()) selected = index;
+  }
+
+  /** Q63: the order shown while Shift is held; counts still update. */
+  private List<TerminalPackets.Row> frozen;
+
+  /**
+   * The Items/Fluids/Energy entries as shown. While Shift is held the order of the moment it was
+   * pressed is kept: rows still listed keep their place with fresh counts, gone rows drop out and
+   * new rows go last. Commands use each row's {@code token} (its server index).
+   */
+  List<TerminalPackets.Row> entries() {
+    var rows = menu().view().rows();
+    if (!Screen.hasShiftDown() && !screen.holdOrder()) {
+      frozen = null;
+      return rows;
+    }
+    if (frozen == null) {
+      frozen = rows;
+      return rows;
+    }
+    var latest = new java.util.LinkedHashMap<String, TerminalPackets.Row>();
+    for (var row : rows) latest.putIfAbsent(row.icon() + "\0" + row.name(), row);
+    var shown = new ArrayList<TerminalPackets.Row>(rows.size());
+    for (var row : frozen) {
+      var now = latest.remove(row.icon() + "\0" + row.name());
+      if (now != null) shown.add(now);
+    }
+    shown.addAll(latest.values());
+    frozen = shown;
+    return shown;
+  }
+
+  /** Q63: number key {@code hotbar} (0–8) over grid entry {@code index} swaps it in. */
+  boolean swap(double mouseX, double mouseY, int hotbar) {
+    int index = rowAt(mouseX, mouseY);
+    var entries = entries();
+    if (screen.kind() != 0 || index < 0 || index >= entries.size() || menu().view().busy())
+      return false;
+    screen.send(TerminalPackets.SWAP, entries.get(index).token(), hotbar + 1, new byte[32]);
+    return true;
   }
 
   boolean windowSettled() {
@@ -205,14 +247,13 @@ final class TerminalStorageView {
   void tick(boolean jobsMode) {
     var view = menu().view();
     int kind = screen.kind();
+    var entries = entries();
     for (int i = 0; i < cells.size(); i++) {
       var cell = cells.get(i);
       cell.visible = !jobsMode;
-      cell.active = !view.busy() && i < view.rows().size() && view.kind() == kind;
+      cell.active = !view.busy() && i < entries.size() && view.kind() == kind;
       cell.setMessage(
-          i < view.rows().size()
-              ? Component.literal(view.rows().get(i).name())
-              : Component.empty());
+          i < entries.size() ? Component.literal(entries.get(i).name()) : Component.empty());
     }
   }
 
@@ -245,7 +286,7 @@ final class TerminalStorageView {
 
   void renderBg(GuiGraphics graphics) {
     int left = screen.left(), top = screen.top(), kind = screen.kind();
-    var entries = menu().view().rows();
+    var entries = entries();
     for (int index = 0; index < COLUMNS * rows; index++) {
       int x = itemX(index) - 1, y = itemY(index) - 1;
       Panels.slot(graphics, x, y);
@@ -331,17 +372,24 @@ final class TerminalStorageView {
       return;
     }
     if (screen.kind() != 0) return;
+    // Q63: under a search, how many of the view's entries match.
     var capacityText =
-        view.external()
+        !view.search().isBlank()
             ? Component.translatable(
-                "gui.factorycore.terminal.capacity.unknown", CountText.compact(view.used()))
-            : view.infinite()
+                "gui.factorycore.terminal.showing",
+                view.total(),
+                Math.max(view.all(), view.total()))
+            : view.external()
                 ? Component.translatable(
-                    "gui.factorycore.terminal.capacity.infinite", CountText.compact(view.used()))
-                : Component.translatable(
-                    "gui.factorycore.terminal.capacity",
-                    CountText.compact(view.used()),
-                    CountText.compact(view.capacity()));
+                    "gui.factorycore.terminal.capacity.unknown", CountText.compact(view.used()))
+                : view.infinite()
+                    ? Component.translatable(
+                        "gui.factorycore.terminal.capacity.infinite",
+                        CountText.compact(view.used()))
+                    : Component.translatable(
+                        "gui.factorycore.terminal.capacity",
+                        CountText.compact(view.used()),
+                        CountText.compact(view.capacity()));
     graphics.drawString(
         font,
         font.plainSubstrByWidth(capacityText.getString(), Math.max(10, infoTextWidth())),
@@ -356,8 +404,22 @@ final class TerminalStorageView {
     var font = screen.font();
     int kind = screen.kind(), left = screen.left(), top = screen.top();
     int row = rowAt(mouseX, mouseY);
-    if (row >= 0 && row < menu().view().rows().size()) {
-      var value = menu().view().rows().get(row);
+    // Q63: with items on the cursor, the grid says what a click stores.
+    if (row >= 0 && kind == 0 && !menu().getCarried().isEmpty()) {
+      var carried = menu().getCarried();
+      graphics.renderTooltip(
+          font,
+          Component.translatable(
+              "gui.factorycore.terminal.deposit.cursor",
+              Math.min(64, carried.getCount()),
+              carried.getHoverName()),
+          mouseX,
+          mouseY);
+      return true;
+    }
+    var entries = entries();
+    if (row >= 0 && row < entries.size()) {
+      var value = entries.get(row);
       graphics.renderTooltip(
           font,
           List.of(
@@ -449,8 +511,9 @@ final class TerminalStorageView {
       return true;
     }
     int row = rowAt(mouseX, mouseY);
-    if (row >= 0 && screen.kind() == 0 && row < menu().view().rows().size()) {
-      var value = menu().view().rows().get(row);
+    var entries = entries();
+    if (row >= 0 && screen.kind() == 0 && row < entries.size()) {
+      var value = entries.get(row);
       boolean ghost = value.craftable() && value.none();
       if (value.craftable() && (button == 2 || ghost && menu().getCarried().isEmpty())) {
         request(row);
@@ -469,10 +532,10 @@ final class TerminalStorageView {
    * the screen switches to Jobs, selects it and focuses the amount box.
    */
   private void request(int index) {
-    var rows = menu().view().rows();
+    var rows = entries();
     if (index >= rows.size() || !rows.get(index).craftable()) return;
     var icon = rows.get(index).icon();
-    screen.send(TerminalPackets.REQUEST, index, 1, new byte[32]);
+    screen.send(TerminalPackets.REQUEST, rows.get(index).token(), 1, new byte[32]);
     screen.showJobs(icon);
   }
 
@@ -520,6 +583,18 @@ final class TerminalStorageView {
     var slot = screen.getSlotUnderMouse();
     var player = screen.client().player;
     int left = screen.left(), top = screen.top(), kind = screen.kind();
+    // Q63: Space-click on an inventory slot stores its whole region (hotbar or main inventory).
+    if (button == 0
+        && kind == 0
+        && slot != null
+        && slot.container == player.getInventory()
+        && slot.getContainerSlot() < 36
+        && com.mojang.blaze3d.platform.InputConstants.isKeyDown(
+            screen.client().getWindow().getWindow(), org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE)) {
+      screen.send(
+          TerminalPackets.DEPOSIT_REGION, slot.getContainerSlot() < 9 ? 0 : 1, 1, new byte[32]);
+      return true;
+    }
     if (button == 0
         && Screen.hasShiftDown()
         && kind == 0
@@ -559,6 +634,35 @@ final class TerminalStorageView {
   }
 
   boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+    // Q63: Shift+wheel moves one of the hovered item in (down) or out (up); Ctrl+wheel up puts
+    // one on the cursor and down stores one from it.
+    int row = rowAt(mouseX, mouseY);
+    if (row >= 0
+        && scrollY != 0
+        && screen.kind() == 0
+        && (Screen.hasShiftDown() || Screen.hasControlDown())) {
+      var entries = entries();
+      if (menu().view().busy()) return true;
+      if (Screen.hasControlDown() && scrollY < 0) {
+        var carried = menu().getCarried();
+        if (!carried.isEmpty())
+          try {
+            var key =
+                new PlatformResourceCodec(screen.client().level.registryAccess()).itemKey(carried);
+            screen.send(TerminalPackets.DEPOSIT_CURSOR, 0, 1, TerminalPackets.fingerprint(key));
+          } catch (IllegalArgumentException unsupported) {
+            return true;
+          }
+      } else if (row < entries.size())
+        screen.send(
+            Screen.hasControlDown()
+                ? TerminalPackets.CURSOR_ONE
+                : scrollY > 0 ? TerminalPackets.WITHDRAW : TerminalPackets.DEPOSIT_ROW,
+            entries.get(row).token(),
+            1,
+            new byte[32]);
+      return true;
+    }
     if ((rowAt(mouseX, mouseY) >= 0 || overScrollbar(mouseX, mouseY)) && scrollY != 0) {
       desiredOffset =
           Math.max(0, Math.min(maxOffset(), desiredOffset + (scrollY > 0 ? -COLUMNS : COLUMNS)));
@@ -602,14 +706,14 @@ final class TerminalStorageView {
             .displayClientMessage(
                 Component.translatable("gui.factorycore.terminal.status.unsupported"), true);
       }
-    } else if (index < view.rows().size()) {
+    } else if (index < entries().size()) {
       selected = index;
       if (kind == 0 && !Screen.hasControlDown())
         screen.send(
             Screen.hasShiftDown()
                 ? TerminalPackets.WITHDRAW
                 : button == 1 ? TerminalPackets.HALF_CURSOR : TerminalPackets.TAKE_CURSOR,
-            index,
+            entries().get(index).token(),
             64,
             new byte[32]);
     }

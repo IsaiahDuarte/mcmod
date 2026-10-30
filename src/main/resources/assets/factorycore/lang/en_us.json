@@ -214,6 +214,8 @@
   "gui.factorycore.terminal.next.help": "Show the next eight exact item identities.",
   "gui.factorycore.terminal.return.help": "Send items stuck in transit back where they came from. Transfers that could not be confirmed need an admin.",
   "gui.factorycore.terminal.deposit.help": "Shift-click to deposit up to 64 from this slot. Requires Deposit permission.",
+  "gui.factorycore.terminal.deposit.cursor": "Click to store %s × %s",
+  "gui.factorycore.terminal.showing": "Showing %s of %s",
   "gui.factorycore.terminal.counts.1": "Total %s mB · Reserved %s mB · Available %s mB",
   "gui.factorycore.terminal.counts.2": "Total %s FE · Reserved %s FE · Available %s FE",
   "gui.factorycore.terminal.select.help.1": "Select a fluid, then Fill a container. Shift-click an inventory container to empty it.",

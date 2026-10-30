@@ -879,7 +879,10 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   last changed, if the catalog tracks it; record the decision if it does not.
   Done when: preference round trip and sort-order GameTests; screenshots of each view.
 
-- [ ] **Q63 — Grid shortcuts (M63, M64).** Size M.
+- [x] **Q63 — Grid shortcuts (M63, M64).** Size M. Done 2026-10-30 (commit subject `Q63:`).
+  Actions 19–22 on a shared move chain (STORAGE_TERMINAL); `TerminalGameTests` one-item moves,
+  swap and partial region fill; `runTerminalClient` captures the freeze.
+  [Evidence](evidence/ergonomics-q63-grid-shortcuts-2026-10-30.md).
   Shift+scroll moves one item in or out; Ctrl+scroll puts one on the cursor; Space-click on an
   inventory slot deposits that whole region (hotbar or main); number keys swap a hovered grid
   entry with the hotbar; holding Shift freezes the sort order; hovering the grid with an item

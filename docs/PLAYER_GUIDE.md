@@ -134,9 +134,15 @@ Deposit and withdrawing needs Withdraw.
   (gold), or only craftable items (aqua). Click a **+** item (or middle-click any craftable
   item) to open it in Jobs, ready to type an amount. The view is remembered.
 - **Taking items:** left-click takes a stack and right-click takes half. Shift-click
-  sends the stack to your inventory.
+  sends the stack to your inventory. Over an item, Shift+wheel up takes one and Shift+wheel
+  down stores one; Ctrl+wheel up adds one to your cursor and Ctrl+wheel down stores one from
+  it. A hotbar key (1–9) over an item fills that hotbar slot with a stack of it, storing what
+  was there first. Holding Shift keeps the grid's order still while counts change.
 - **Depositing:** click the grid with items on your cursor, or Shift-click an
-  inventory slot. Shift-double-click deposits every stack of that item in your inventory.
+  inventory slot. Shift-double-click deposits every stack of that item in your inventory;
+  Space-click stores the whole hotbar or the whole main inventory, whichever you clicked in.
+  With items on your cursor the grid's tooltip says what a click stores. Under a search the
+  line below the grid reads "Showing X of Y".
   Things you craft at the terminal (in its grid, or jobs you start in its Jobs tab) show first
   in the Items grid until you close the screen. If
   storage is full, the rest stays with you.

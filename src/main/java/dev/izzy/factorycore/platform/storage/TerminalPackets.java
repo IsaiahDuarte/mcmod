@@ -97,7 +97,22 @@ public final class TerminalPackets {
    */
   public static final int DEPOSIT_ALL = 18;
 
+  /**
+   * Q63 grid shortcuts. DEPOSIT_ROW stores {@code amount} of visible row {@code selection}'s item
+   * from the first own slot holding it; CURSOR_ONE adds one of row {@code selection} to the cursor;
+   * DEPOSIT_REGION stores every stack of the hotbar ({@code selection} 0) or the main inventory
+   * (1); SWAP stores hotbar slot {@code amount} − 1 and fills it with a stack of row {@code
+   * selection}.
+   */
+  public static final int DEPOSIT_ROW = 19, CURSOR_ONE = 20, DEPOSIT_REGION = 21, SWAP = 22;
+
   public static final int MAX_ROWS = 256, MAX_OFFSET = 65536;
+
+  /**
+   * Q63: the most distinct keys a view reports as read before filtering ("showing X of Y"); the
+   * search's byte budget keeps the real count far lower.
+   */
+  public static final int MAX_ALL = 1 << 20;
 
   public record Command(
       int menu,
@@ -116,7 +131,7 @@ public final class TerminalPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > DEPOSIT_ALL
+          || action > SWAP
           || selection < 0
           || selection
               >= (action == WINDOW
@@ -126,11 +141,16 @@ public final class TerminalPackets {
                           || action == HALF_CURSOR
                           || action == FILL
                           || action == REQUEST
+                          || action == DEPOSIT_ROW
+                          || action == CURSOR_ONE
+                          || action == SWAP
                       ? MAX_ROWS
-                      : action == CRAFTABLES ? 3 : action == SORT ? 128 : 36)
+                      : action == CRAFTABLES
+                          ? 3
+                          : action == SORT ? 128 : action == DEPOSIT_REGION ? 2 : 36)
           || (action == SORT && !TerminalSearchSupport.validSort(selection))
           || amount < 1
-          || amount > (action == WINDOW ? MAX_ROWS : 64)
+          || amount > (action == WINDOW ? MAX_ROWS : action == SWAP ? 9 : 64)
           || text.length() > 128
           || fingerprint.length != 32)
         throw new IllegalArgumentException("Invalid terminal command bounds");
@@ -223,7 +243,8 @@ public final class TerminalPackets {
       boolean infinite,
       boolean external,
       int view,
-      boolean uncertain)
+      boolean uncertain,
+      int all)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_view"));
@@ -281,7 +302,8 @@ public final class TerminalPackets {
           false,
           false,
           VIEW_STORED,
-          false);
+          false,
+          rows.size());
     }
 
     /** Whether craftable items without stock are shown (the All or Craftable view). */
@@ -302,6 +324,8 @@ public final class TerminalPackets {
           || kind > 2
           || view < VIEW_STORED
           || view > VIEW_CRAFTABLE
+          || all < 0
+          || all > MAX_ALL
           || used.length() > 32
           || capacity.length() > 32) throw new IllegalArgumentException("Invalid terminal window");
       rows = List.copyOf(rows);
@@ -352,6 +376,7 @@ public final class TerminalPackets {
               buffer.writeBoolean(value.external);
               buffer.writeVarInt(value.view);
               buffer.writeBoolean(value.uncertain);
+              buffer.writeVarInt(value.all);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -392,7 +417,8 @@ public final class TerminalPackets {
                   buffer.readBoolean(),
                   buffer.readBoolean(),
                   buffer.readVarInt(),
-                  buffer.readBoolean());
+                  buffer.readBoolean(),
+                  buffer.readVarInt());
             });
   }
 
@@ -410,7 +436,7 @@ public final class TerminalPackets {
   }
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("12");
+    var registrar = event.registrar("13");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, TerminalMenu.class, TerminalMenu::command);
     MenuPayloads.toServer(
