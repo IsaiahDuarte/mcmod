@@ -98,7 +98,7 @@ public final class TerminalContainerGameTests {
               var m = (TerminalMenu) player.containerMenu;
               m.broadcastChanges();
               h.assertTrue(
-                  m.view().status().equals("ready")
+                  m.view().status() == TerminalPackets.Status.READY
                       && m.view().rows().size() == 1
                       && m.view().rows().getFirst().total().equals("2500"),
                   "Fluid view lists 2500 mB of water: " + m.view());
@@ -131,7 +131,8 @@ public final class TerminalContainerGameTests {
             () -> {
               command(player, TerminalPackets.EMPTY, 0);
               h.assertTrue(
-                  ((TerminalMenu) player.containerMenu).view().status().equals("empty")
+                  ((TerminalMenu) player.containerMenu).view().status()
+                          == TerminalPackets.Status.EMPTY
                       && saved.registry().stock(cell, water).total() == 2_500,
                   "Empty buckets have nothing to empty");
             })
@@ -163,7 +164,8 @@ public final class TerminalContainerGameTests {
             () -> {
               command(player, TerminalPackets.CHARGE, 0);
               h.assertTrue(
-                  ((TerminalMenu) player.containerMenu).view().status().equals("no_energy_item")
+                  ((TerminalMenu) player.containerMenu).view().status()
+                          == TerminalPackets.Status.NO_ENERGY_ITEM
                       && bank.getEnergyStored() == 900,
                   "A bucket stack is not an energy item; nothing moves");
               player.closeContainer();

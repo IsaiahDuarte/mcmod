@@ -61,7 +61,7 @@ class MachinePresetPacketsTest {
                       FilterEdits.EXACT,
                       "minecraft:iron_ingot",
                       "= minecraft:iron_ingot · Named iron")),
-              "draft",
+              MachinePresetPackets.Status.DRAFT,
               MachinePresets.Mode.PAUSED,
               "ok",
               true,

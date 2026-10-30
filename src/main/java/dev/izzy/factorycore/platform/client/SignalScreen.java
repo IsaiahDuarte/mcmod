@@ -329,7 +329,8 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
 
   private void sync() {
     var view = menu.view();
-    if (shown != view.revision() && view.status().equals("applied")) load(view.rule());
+    if (shown != view.revision() && view.status() == SignalPackets.Status.APPLIED)
+      load(view.rule());
     if (shown != view.revision()) shown = view.revision();
     if (!view.label().equals(shownLabel) && !labelBox.isFocused()) {
       labelBox.setValue(view.label());
@@ -459,16 +460,19 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
         false);
     caption(g, "label", labelRow);
     InterfaceModeRow.caption(g, font, modeRow);
-    String key = invalid ? "invalid" : view.editable() ? view.status() : "denied";
-    if (!key.equals("ready"))
+    var status =
+        invalid
+            ? SignalPackets.Status.INVALID
+            : view.editable() ? view.status() : SignalPackets.Status.DENIED;
+    if (status != SignalPackets.Status.READY)
       g.drawString(
           font,
           font.plainSubstrByWidth(
-              Component.translatable("gui.factorycore.signal.status." + key).getString(),
+              Component.translatable("gui.factorycore.signal.status." + status.key()).getString(),
               messageRow.width()),
           messageRow.x(),
           messageRow.y(),
-          key.equals("applied") || key.equals("labeled") ? Panels.GOOD : Panels.WARN,
+          status.good() ? Panels.GOOD : Panels.WARN,
           false);
     StatusStrip.drawOnPanel(g, font, menu.deviceStatus(), footer.x(), footer.y() + 5, statusWidth);
   }

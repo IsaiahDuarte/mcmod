@@ -1,9 +1,12 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.BufferPolicy;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -12,6 +15,53 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 public final class BufferSettingsPackets {
+  /**
+   * The last edit's or move's outcome, shown as {@code gui.factorycore.buffer.status.<key>}. The
+   * second group mirrors {@link OperationResult.Reason} for a move or a refused admission.
+   */
+  public enum Status {
+    READY,
+    DRAFT,
+    APPLIED,
+    INVALID,
+    STALE,
+    REDSTONE_SET,
+    REDSTONE_DENIED,
+    SWITCH_SAME,
+    SWITCH_DENIED,
+    SWITCH_BUSY,
+    SWITCH_NOT_EMPTY,
+    SWITCH_UPGRADED,
+    SWITCH_FAULT,
+    /** The move worked but moved less than asked. */
+    PARTIAL,
+    OK,
+    FULL,
+    TECHNICAL_LIMIT,
+    CATALOG_LIMIT,
+    RESERVATION_LIMIT,
+    SHORTAGE,
+    RESERVED,
+    OFFLINE,
+    WRONG_RESOURCE,
+    DENIED,
+    HANDLER_FAULT,
+    UNCERTAIN,
+    RATE_LIMIT,
+    OVERLAP,
+    UNSUPPORTED,
+    BUSY,
+    REDSTONE;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+
+    public static Status of(OperationResult.Reason reason) {
+      return EnumKeys.require(Status.class, EnumKeys.key(reason));
+    }
+  }
+
   public static final int MODE = 0,
       FILTER = 1,
       RATE = 2,
@@ -122,7 +172,7 @@ public final class BufferSettingsPackets {
       int target,
       List<FilterEdits.Rule> rules,
       List<Row> slots,
-      String status,
+      Status status,
       boolean editable,
       boolean busy,
       boolean dirty,
@@ -138,6 +188,7 @@ public final class BufferSettingsPackets {
     public View {
       rules = List.copyOf(rules);
       slots = List.copyOf(slots);
+      Objects.requireNonNull(status);
       if (mode.length() > 16
           || filter.length() > 16
           || rate < 1
@@ -146,7 +197,6 @@ public final class BufferSettingsPackets {
           || target > BufferPolicy.MAX_TARGET
           || rules.size() > 16
           || slots.size() > 9
-          || status.length() > 64
           || staged < 0
           || moved < 0
           || requested < 0
@@ -177,7 +227,7 @@ public final class BufferSettingsPackets {
                 b.writeUtf(row.name, 96);
                 b.writeVarInt(row.count);
               }
-              b.writeUtf(v.status, 64);
+              WireEnums.write(b, v.status);
               b.writeBoolean(v.editable);
               b.writeBoolean(v.busy);
               b.writeBoolean(v.dirty);
@@ -210,7 +260,7 @@ public final class BufferSettingsPackets {
                   target,
                   rules,
                   rows,
-                  b.readUtf(64),
+                  WireEnums.read(b, Status.class),
                   b.readBoolean(),
                   b.readBoolean(),
                   b.readBoolean(),

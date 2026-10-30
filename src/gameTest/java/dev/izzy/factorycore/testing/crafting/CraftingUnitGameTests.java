@@ -259,7 +259,7 @@ public final class CraftingUnitGameTests {
                       new byte[32]));
               menu.broadcastChanges();
               h.assertTrue(
-                  menu.gridView().status().equals("no_blank"),
+                  menu.gridView().status() == TerminalCraftingPackets.GridStatus.NO_BLANK,
                   "Encoding without a blank pattern changes nothing");
               inventory.setItem(10, new ItemStack(CraftingContent.BLANK_PATTERN.get(), 2));
             })
@@ -280,7 +280,9 @@ public final class CraftingUnitGameTests {
                       1,
                       new byte[32]));
               menu.broadcastChanges();
-              h.assertTrue(menu.gridView().status().equals("encoded"), "Pattern encoded");
+              h.assertTrue(
+                  menu.gridView().status() == TerminalCraftingPackets.GridStatus.ENCODED,
+                  "Pattern encoded");
               ItemStack encoded = ItemStack.EMPTY;
               for (int slot = 0; slot < 36; slot++)
                 if (inventory.getItem(slot).is(CraftingContent.CRAFTING_PATTERN.get()))

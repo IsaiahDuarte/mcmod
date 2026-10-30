@@ -207,8 +207,8 @@ public final class RecoveryCommands {
     UUID id = parse(source, text);
     if (id == null) return 0;
     var outcome = RecoveryActions.retire(source.getServer(), id);
-    if (!outcome.reason().equals("retired")) {
-      fail(source, outcome.reason());
+    if (outcome.reason() != RecoveryActions.Result.RETIRED) {
+      fail(source, outcome.reason().key());
       return 0;
     }
     source.sendSuccess(
@@ -245,8 +245,8 @@ public final class RecoveryCommands {
                         completed.transfer() == null ? 0 : completed.transfer().staged()),
                 false);
     var outcome = RecoveryActions.request(player, id, settle, report);
-    if (!outcome.reason().equals("queued")) {
-      fail(source, outcome.reason());
+    if (outcome.reason() != RecoveryActions.Result.QUEUED) {
+      fail(source, outcome.reason().key());
       return 0;
     }
     source.sendSuccess(

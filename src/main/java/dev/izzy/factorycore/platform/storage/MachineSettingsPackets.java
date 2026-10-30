@@ -1,10 +1,13 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -14,6 +17,30 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 /** Bounded configuration values, never client-supplied actor/root/provider authority. */
 public final class MachineSettingsPackets {
+  /**
+   * The last settings edit's outcome on a Machine or Connector Interface, shown as {@code
+   * gui.factorycore.machine.status.<key>}.
+   */
+  public enum Status {
+    READY,
+    STALE,
+    DENIED,
+    INVALID,
+    LIMIT,
+    DRAFT,
+    UPGRADE,
+    SWITCH_SAME,
+    SWITCH_DENIED,
+    SWITCH_BUSY,
+    SWITCH_NOT_EMPTY,
+    SWITCH_UPGRADED,
+    SWITCH_FAULT;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+  }
+
   public record Form(
       String label,
       ResourceKind kind,
@@ -82,7 +109,7 @@ public final class MachineSettingsPackets {
       long generation,
       Form form,
       String side,
-      String status,
+      Status status,
       boolean editable,
       String tier,
       int maxRate,
@@ -95,8 +122,8 @@ public final class MachineSettingsPackets {
             ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "machine_settings_view"));
 
     public View {
+      Objects.requireNonNull(status);
       if (side.length() > 16
-          || status.length() > 32
           || tier.length() > 16
           || maxRate < 1
           || maxRate > ThroughputTier.maxQuantum(form.kind())
@@ -120,7 +147,7 @@ public final class MachineSettingsPackets {
               b.writeLong(v.generation());
               write(b, v.form());
               b.writeUtf(v.side(), 16);
-              b.writeUtf(v.status(), 32);
+              WireEnums.write(b, v.status());
               b.writeBoolean(v.editable());
               b.writeUtf(v.tier(), 16);
               b.writeVarInt(v.maxRate());
@@ -135,7 +162,7 @@ public final class MachineSettingsPackets {
                     b.readLong(),
                     read(b),
                     b.readUtf(16),
-                    b.readUtf(32),
+                    WireEnums.read(b, Status.class),
                     b.readBoolean(),
                     b.readUtf(16),
                     b.readVarInt(),

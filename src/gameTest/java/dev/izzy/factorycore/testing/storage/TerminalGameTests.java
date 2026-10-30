@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.HashMap;
@@ -85,7 +86,8 @@ public final class TerminalGameTests {
   private static void loaded(GameTestHelper helper, Fixture f) {
     menu(f).broadcastChanges();
     helper.assertTrue(
-        menu(f).view().status().equals("ready"), "Bounded asynchronous menu search ready");
+        menu(f).view().status() == TerminalPackets.Status.READY,
+        "Bounded asynchronous menu search ready");
   }
 
   private static void command(Fixture f, int action, int selected, int amount, byte[] fingerprint) {
@@ -472,7 +474,7 @@ public final class TerminalGameTests {
             () -> {
               helper.assertTrue(
                   f.saved.registry().stock(f.cell, f.key).total() == 32
-                      && menu(f).view().status().equals("full"),
+                      && menu(f).view().status() == TerminalPackets.Status.FULL,
                   "Full main inventory keeps source untouched and reports full");
               logout(f);
             })
@@ -675,14 +677,14 @@ public final class TerminalGameTests {
               menu(f).broadcastChanges();
               menu(owner).broadcastChanges();
               helper.assertTrue(
-                  menu(owner).view().status().equals("ready")
+                  menu(owner).view().status() == TerminalPackets.Status.READY
                       && menu(owner).view().rows().size() == 1
                       && menu(owner).view().rows().getFirst().total().equals("20"),
                   "A grant edit re-reads instead of leaving the owner denied: "
                       + menu(owner).view());
               helper.assertTrue(
                   !menu(f).view().busy()
-                      && menu(f).view().status().equals("ok")
+                      && menu(f).view().status() == TerminalPackets.Status.OK
                       && menu(f).view().rows().size() == 1
                       && menu(f).view().rows().getFirst().total().equals("20"),
                   "The acting session retains its successful result while refreshing current stock");

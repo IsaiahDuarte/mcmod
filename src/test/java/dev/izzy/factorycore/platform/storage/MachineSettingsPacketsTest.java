@@ -42,7 +42,18 @@ class MachineSettingsPacketsTest {
       assertFalse(output.isReadable());
       var view =
           new MachineSettingsPackets.View(
-              17, packet.session(), 42, form, "west", "stale", true, "ENDGAME", 1024, true, 27, 2);
+              17,
+              packet.session(),
+              42,
+              form,
+              "west",
+              MachineSettingsPackets.Status.STALE,
+              true,
+              "ENDGAME",
+              1024,
+              true,
+              27,
+              2);
       MachineSettingsPackets.View.CODEC.encode(output, view);
       assertEquals(view, MachineSettingsPackets.View.CODEC.decode(output));
       assertFalse(output.isReadable());

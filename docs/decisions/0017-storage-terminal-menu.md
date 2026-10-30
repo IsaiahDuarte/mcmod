@@ -127,3 +127,21 @@ amount, hover and +/− help use mB explicitly. Actual processing declarations r
 changing accepted quantities would alter the processing contract without improving
 this display fix. No saved format changes. Graphical fit, real crafting/encoding,
 processing authoring and JEI callback verification are required before U4 is complete.
+
+## Amendment — typed menu statuses (2026-10-30, ergonomics plan Q104)
+
+Every menu view's status is a keyed enum (`EnumKeys`) sent with `WireEnums`, as Q54 did for
+job reasons, instead of a free string that screens compared with `.equals` (M142). One enum per
+menu, nested in its packets class: `TerminalPackets.Status`, `TerminalCraftingPackets.GridStatus`,
+`SignalPackets.Status`, `MachineSettingsPackets.Status` (Machine and Connector Interfaces),
+`MachinePresetPackets.Status`, `BufferSettingsPackets.Status`, `DrivePackets.Status`,
+`AccessPackets.Status` and `RecoveryPackets.Status`; the Program view carries
+`ProgramControllerEntity.State` and `WorldPrograms.RuntimeStatus`, and the shared status strip
+carries `NetworkTopology.Status` (null until the first publication). A status that reports a
+storage refusal includes every `OperationResult.Reason` and maps through `Status.of`
+(`EnumKeys.require`); the Interface menus map `InterfaceSwitch.Outcome` through `Outcome.as`;
+`RecoveryActions.Result` types the recovery outcome that commands and the screen share. Each key
+equals the string sent before, so lang keys do not change and nothing is saved. An unknown key
+is refused at the packet. `LangKeysTest.everyMenuStatusHasItsKey` found six values without a
+lang entry, now added; one was reachable: a handheld terminal out of FE during a grid craft
+showed `gui.factorycore.terminal.grid.status.no_power` as raw text.

@@ -53,7 +53,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
   private int pendingUntil;
   private long pendingGeneration, revision = 1;
   private boolean hadManage;
-  private String status = "ready";
+  private AccessPackets.Status status = AccessPackets.Status.READY;
   private AccessPackets.View view;
 
   /** Client constructor. */
@@ -69,7 +69,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
     this.anchor = anchor;
     this.position = position;
     lease = anchor == null ? null : anchor.handle();
-    view = empty(id, session, 0, "loading");
+    view = empty(id, session, 0, AccessPackets.Status.LOADING);
     deviceStatus = DeviceStatus.View.pending(id, session);
     if (anchor != null) {
       var membership = WorldNetworks.get(player().server).membership(anchor.position());
@@ -93,7 +93,8 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
         });
   }
 
-  private static AccessPackets.View empty(int id, UUID session, long revision, String status) {
+  private static AccessPackets.View empty(
+      int id, UUID session, long revision, AccessPackets.Status status) {
     return new AccessPackets.View(
         id,
         session,
@@ -207,7 +208,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
     var server = sender.server;
     int tick = server.getTickCount();
     if (!protocol.admitRate()) {
-      status = "rate";
+      status = AccessPackets.Status.RATE;
       publish();
       return;
     }
@@ -219,7 +220,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
         if (packet.action() != AccessPackets.REVOKE_ALL
             && packet.value() >= Permission.values().length) return;
         if (!listed(actor, principal)) {
-          status = "unknown";
+          status = AccessPackets.Status.UNKNOWN;
           break;
         }
         Set<Permission> named =
@@ -230,7 +231,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
             packet.action() == AccessPackets.GRANT
                 ? AccessAdministration.change(server, actor, origin, principal, named, Set.of())
                 : AccessAdministration.change(server, actor, origin, principal, Set.of(), named);
-        status = key(result.outcome(), "updated");
+        status = status(result.outcome(), AccessPackets.Status.UPDATED);
         if (result.outcome() == AccessAdministration.Outcome.OK)
           AccessAdministration.notifyChanged(
               server, sender.getName(), sender, principal, position, result.permissions());
@@ -239,7 +240,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
         var roles = NetworkPermissions.AccessRole.values();
         if (packet.value() >= roles.length) return;
         if (!listed(actor, principal)) {
-          status = "unknown";
+          status = AccessPackets.Status.UNKNOWN;
           break;
         }
         var role = roles[packet.value()];
@@ -247,7 +248,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
         others.removeAll(role.grants());
         var result =
             AccessAdministration.change(server, actor, origin, principal, role.grants(), others);
-        status = key(result.outcome(), "updated");
+        status = status(result.outcome(), AccessPackets.Status.UPDATED);
         if (result.outcome() == AccessAdministration.Outcome.OK)
           AccessAdministration.notifyChanged(
               server, sender.getName(), sender, principal, position, result.permissions());
@@ -256,45 +257,45 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
       case AccessPackets.TRANSFER -> {
         var state = WorldNetworks.get(server).grants(actor, origin);
         if (state == null || !mayTransfer(sender, state)) {
-          status = "denied";
+          status = AccessPackets.Status.DENIED;
           break;
         }
         if (principal.equals(state.owner()) || !listed(actor, principal)) {
-          status = "unknown";
+          status = AccessPackets.Status.UNKNOWN;
           break;
         }
         pending = principal;
         pendingUntil = tick + CONFIRM_TICKS;
         pendingGeneration = state.generation();
-        status = "confirm";
+        status = AccessPackets.Status.CONFIRM;
       }
       case AccessPackets.CONFIRM -> {
         if (pending.equals(AccessPackets.NONE) || !pending.equals(principal)) {
           // A confirmation for anyone but the requested principal withdraws the request.
           pending = AccessPackets.NONE;
-          status = "unconfirmed";
+          status = AccessPackets.Status.UNCONFIRMED;
           break;
         }
         var state = WorldNetworks.get(server).grants(actor, origin);
         var target = pending;
         pending = AccessPackets.NONE;
         if (tick > pendingUntil) {
-          status = "expired";
+          status = AccessPackets.Status.EXPIRED;
           break;
         }
         if (state == null || state.generation() != pendingGeneration) {
-          status = "changed";
+          status = AccessPackets.Status.CHANGED;
           break;
         }
         var previous = state.owner();
         var outcome = AccessAdministration.transfer(server, actor, origin, target);
-        status = key(outcome, "transferred");
+        status = status(outcome, AccessPackets.Status.TRANSFERRED);
         if (outcome == AccessAdministration.Outcome.OK)
           AccessAdministration.notifyTransferred(
               server, sender.getName(), sender, previous, target, position);
       }
       case AccessPackets.CANCEL -> {
-        if (!pending.equals(AccessPackets.NONE)) status = "cancelled";
+        if (!pending.equals(AccessPackets.NONE)) status = AccessPackets.Status.CANCELLED;
         pending = AccessPackets.NONE;
       }
       case AccessPackets.RECOVERY -> {
@@ -308,13 +309,14 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
     publish();
   }
 
-  private static String key(AccessAdministration.Outcome outcome, String ok) {
+  private static AccessPackets.Status status(
+      AccessAdministration.Outcome outcome, AccessPackets.Status ok) {
     return switch (outcome) {
       case OK -> ok;
-      case NO_NETWORK -> "no_network";
-      case DENIED -> "denied";
-      case LIMIT -> "limit";
-      case OWNER_IMPLICIT -> "owner";
+      case NO_NETWORK -> AccessPackets.Status.NO_NETWORK;
+      case DENIED -> AccessPackets.Status.DENIED;
+      case LIMIT -> AccessPackets.Status.LIMIT;
+      case OWNER_IMPLICIT -> AccessPackets.Status.OWNER;
     };
   }
 
@@ -348,7 +350,7 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
     var membership = networks.membership(origin);
     if (membership.status() != NetworkTopology.Status.VALID) {
       pending = AccessPackets.NONE;
-      return empty(containerId, protocol.id(), revision, "rebuilding");
+      return empty(containerId, protocol.id(), revision, AccessPackets.Status.REBUILDING);
     }
     var actor = AccessAdministration.actor(player());
     int self = 0;
@@ -368,17 +370,18 @@ public final class NetworkAccessMenu extends AbstractContainerMenu implements De
     var canonical = DeviceSavedData.get(server).network(membership.scope().network()).snapshot();
     boolean ownerSelf = canonical.owner().equals(viewer.getUUID());
     // The actor who just gave ownership away keeps that result; anyone else learns of the loss.
-    if (hadManage && !manage && !status.equals("transferred")) status = "manage_revoked";
+    if (hadManage && !manage && status != AccessPackets.Status.TRANSFERRED)
+      status = AccessPackets.Status.MANAGE_REVOKED;
     hadManage = manage;
     int tick = server.getTickCount();
     if (!pending.equals(AccessPackets.NONE)) {
       if (!manage) pending = AccessPackets.NONE;
       else if (tick > pendingUntil) {
         pending = AccessPackets.NONE;
-        status = "expired";
+        status = AccessPackets.Status.EXPIRED;
       } else if (canonical.generation() != pendingGeneration) {
         pending = AccessPackets.NONE;
-        status = "changed";
+        status = AccessPackets.Status.CHANGED;
       }
     }
     if (!manage)

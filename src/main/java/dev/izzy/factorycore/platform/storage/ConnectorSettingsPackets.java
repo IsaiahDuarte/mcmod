@@ -5,7 +5,9 @@ import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -64,7 +66,7 @@ public final class ConnectorSettingsPackets {
 
   /**
    * {@code binding} names a {@code reason.factorycore.*} key for the container registration; {@code
-   * status} names a {@code gui.factorycore.machine.status.*} key for the last edit.
+   * status} is the last edit's outcome.
    */
   public record View(
       int menu,
@@ -73,7 +75,7 @@ public final class ConnectorSettingsPackets {
       MachineSettingsPackets.Form form,
       String side,
       String binding,
-      String status,
+      MachineSettingsPackets.Status status,
       boolean editable,
       String tier,
       int maxRate,
@@ -89,9 +91,9 @@ public final class ConnectorSettingsPackets {
                 FactoryCoreMod.MOD_ID, "connector_settings_view"));
 
     public View {
+      Objects.requireNonNull(status);
       if (side.length() > 16
           || binding.length() > 32
-          || status.length() > 32
           || tier.length() > 16
           || maxRate < 1
           || insertMode.length() > 16
@@ -118,7 +120,7 @@ public final class ConnectorSettingsPackets {
               write(b, v.form());
               b.writeUtf(v.side(), 16);
               b.writeUtf(v.binding(), 32);
-              b.writeUtf(v.status(), 32);
+              WireEnums.write(b, v.status());
               b.writeBoolean(v.editable());
               b.writeUtf(v.tier(), 16);
               b.writeVarInt(v.maxRate());
@@ -137,7 +139,7 @@ public final class ConnectorSettingsPackets {
                     read(b),
                     b.readUtf(16),
                     b.readUtf(32),
-                    b.readUtf(32),
+                    WireEnums.read(b, MachineSettingsPackets.Status.class),
                     b.readBoolean(),
                     b.readUtf(16),
                     b.readVarInt(),

@@ -413,7 +413,14 @@ New gates:
   Re-run the review's searches (string reason comparisons, raw fills, duplicated energy
   storages, inline codec checks) and record the counts.
 
-- [ ] **Q104 — Typed menu statuses (M142).** Size M. After Q54.
+- [x] **Q104 — Typed menu statuses (M142).** Size M. After Q54. Done 2026-10-30 (commit subject
+  `Q104:`). One keyed enum per menu view (Terminal, grid, Signal, Machine/Connector, preset,
+  Buffer, Drive, Access, Recovery, Program state and runtime status, status strip network), sent
+  through `WireEnums`; no `.equals("…")` remains in `platform/client` (29 before).
+  `MenuStatusPacketsTest` round-trips every value and refuses an unknown key on the wire;
+  `LangKeysTest.everyMenuStatusHasItsKey` found six values without text, one reachable (grid
+  `no_power` showed a raw key). ADR 0017 and ADR 0055 amendments.
+  [Evidence](evidence/ergonomics-q104-typed-menu-statuses-2026-10-30.md).
   The same `EnumKeys`/`WireEnums` pattern for each remaining menu status (one enum per menu, or
   `OperationResult.Reason` plus the menu's own states), with a LangKeysTest entry per enum.
   Done when: no string-status `.equals` remains in `platform/client`; packet tests refuse an

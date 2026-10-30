@@ -34,6 +34,7 @@ import dev.izzy.factorycore.platform.storage.LabelToolContent;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
+import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
@@ -519,7 +520,10 @@ public final class PresentationClientVerification {
     panelCaptures("crafting-table");
     step(client -> press(client, "Encode"));
     step(
-        client -> terminal(client).getMenu().gridView().status().equals("encoded") && waited() > 4);
+        client ->
+            terminal(client).getMenu().gridView().status()
+                    == TerminalCraftingPackets.GridStatus.ENCODED
+                && waited() > 4);
     server(
         player -> {
           var patterns =
@@ -537,7 +541,10 @@ public final class PresentationClientVerification {
         });
     step(client -> press(client, "Craft"));
     step(
-        client -> terminal(client).getMenu().gridView().status().equals("crafted") && waited() > 4);
+        client ->
+            terminal(client).getMenu().gridView().status()
+                    == TerminalCraftingPackets.GridStatus.CRAFTED
+                && waited() > 4);
     server(
         player ->
             check(
@@ -603,7 +610,10 @@ public final class PresentationClientVerification {
         });
     step(client -> terminal(client).craftingOpen() && waited() > 6 && press(client, "Encode"));
     step(
-        client -> terminal(client).getMenu().gridView().status().equals("encoded") && waited() > 4);
+        client ->
+            terminal(client).getMenu().gridView().status()
+                    == TerminalCraftingPackets.GridStatus.ENCODED
+                && waited() > 4);
     server(
         player -> {
           var pattern =

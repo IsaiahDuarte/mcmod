@@ -180,12 +180,11 @@ public final class RedstoneControlGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  RedstoneMenu.click(guest, buffer, RedstoneMenu.BUTTON + 2)
-                          .equals("redstone_denied")
+                  !RedstoneMenu.click(guest, buffer, RedstoneMenu.BUTTON + 2)
                       && buffer.redstone().control() == RedstoneGate.Control.IGNORE,
                   "Without EDIT the setting is refused");
               h.assertTrue(
-                  RedstoneMenu.click(owner, buffer, RedstoneMenu.BUTTON + 2).equals("redstone_set")
+                  RedstoneMenu.click(owner, buffer, RedstoneMenu.BUTTON + 2)
                       && buffer.redstone().control() == RedstoneGate.Control.UNPOWERED
                       && buffer.redstone().powered(),
                   "The owner sets Unpowered; the input reads on");

@@ -91,3 +91,10 @@ A Transfer Recovery row's safe next step is `StagingClass` (`UNCERTAIN`, `COMPLE
 command prints the same class. The Terminal and Buffer views carry a typed `uncertain` flag
 (their unresolved staged move is quarantined) that disables **Return**, instead of the screens
 comparing the status text with `"uncertain"`. The shown status and its lang text are unchanged.
+
+## Amendment — typed statuses (2026-10-30, ergonomics plan Q104)
+
+The Network Access view's status is `AccessPackets.Status` and the Transfer Recovery view's is
+`RecoveryPackets.Status`, sent by key and refused if unknown. `RecoveryActions.Outcome.reason`
+is a `RecoveryActions.Result`; the recovery commands print its key as before. See the
+[ADR 0017 amendment](0017-storage-terminal-menu.md#amendment--typed-menu-statuses-2026-10-30-ergonomics-plan-q104).

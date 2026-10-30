@@ -13,6 +13,7 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.testing.Net;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -223,7 +224,9 @@ public final class SubstituteCraftingGameTests {
                   1,
                   new byte[32]);
               menu.broadcastChanges();
-              h.assertTrue(menu.gridView().status().equals("encoded"), "Encoded with substitutes");
+              h.assertTrue(
+                  menu.gridView().status() == TerminalCraftingPackets.GridStatus.ENCODED,
+                  "Encoded with substitutes");
             })
         .thenIdle(3)
         .thenExecute(

@@ -263,7 +263,7 @@ public final class ProgramLimitsGameTests {
             () -> {
               conserved(h, f);
               h.assertTrue(
-                  programs(h).status(f.controller).equals("throttled")
+                  programs(h).status(f.controller) == WorldPrograms.RuntimeStatus.THROTTLED
                       && f.controller.logs().stream()
                           .anyMatch(
                               line ->
@@ -310,7 +310,7 @@ public final class ProgramLimitsGameTests {
               h.assertTrue(
                   f.stored() == 20
                       && f.inChest() == 0
-                      && !programs(h).status(f.controller).equals("throttled"),
+                      && programs(h).status(f.controller) != WorldPrograms.RuntimeStatus.THROTTLED,
                   "Once the overload drains the program runs again: "
                       + f.stored()
                       + " "

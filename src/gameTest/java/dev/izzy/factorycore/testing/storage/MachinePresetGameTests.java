@@ -8,6 +8,7 @@ import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.MachinePresetPackets;
 import dev.izzy.factorycore.testing.ConnectorFixture;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -1217,7 +1218,7 @@ public final class MachinePresetGameTests {
               menu.broadcastChanges();
               recoveryDeploy(menu, player);
               h.assertTrue(
-                  menu.presetView().status().equals("denied")
+                  menu.presetView().status() == MachinePresetPackets.Status.DENIED
                       && accepted[0].equals(f.saved.machinePresets().get(old.id())),
                   "Native redeploy cannot bypass revoked current DEPLOY grant");
               f.saved
@@ -1233,7 +1234,7 @@ public final class MachinePresetGameTests {
               recoveryDeploy(menu, player);
               var next = f.saved.machinePresets().get(old.id());
               h.assertTrue(
-                  menu.presetView().status().equals("applied")
+                  menu.presetView().status() == MachinePresetPackets.Status.APPLIED
                       && next.authority().principal().equals(deployer.id())
                       && next.leaseGeneration() == f.machine.handle().generation()
                       && next.filter().equals(accepted[0].filter())

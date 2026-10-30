@@ -13,6 +13,7 @@ import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.math.BigInteger;
@@ -88,7 +89,7 @@ public final class TerminalGridGameTests {
     f.menu().broadcastChanges();
     h.assertTrue(
         !f.menu().view().rows().isEmpty()
-            && !f.menu().view().status().equals("loading")
+            && f.menu().view().status() != TerminalPackets.Status.LOADING
             && !f.menu().view().busy(),
         "Observation ready");
   }
@@ -293,7 +294,8 @@ public final class TerminalGridGameTests {
               var menu = f.menu();
               menu.broadcastChanges();
               h.assertTrue(
-                  menu.view().status().equals("ready") && menu.view().rows().isEmpty(),
+                  menu.view().status() == TerminalPackets.Status.READY
+                      && menu.view().rows().isEmpty(),
                   "Search has no matches");
               h.assertTrue(
                   menu.view().used().equals(used) && menu.view().capacity().equals(capacity),

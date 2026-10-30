@@ -8,7 +8,6 @@ import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.wireless.LinkModule;
-import java.util.Locale;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -120,9 +119,7 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
     return new DeviceStatus.View(
         containerId,
         new UUID(0, 0),
-        state < 1 || state > statuses.length
-            ? ""
-            : statuses[state - 1].name().toLowerCase(Locale.ROOT),
+        state < 1 || state > statuses.length ? null : statuses[state - 1],
         linkState().isEmpty() ? "" : "status.factorycore.link." + linkState(),
         "");
   }

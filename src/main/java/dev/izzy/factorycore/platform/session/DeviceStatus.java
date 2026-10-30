@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.session;
 
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
@@ -29,11 +30,11 @@ public final class DeviceStatus {
   }
 
   /**
-   * {@code network} is a {@code status.factorycore.*} topology key suffix ({@code valid}, {@code
-   * rebuilding}, ...); {@code reason} is a full translation key or empty; {@code power} is
-   * preformatted numbers or empty.
+   * {@code network} is the device's topology status, null before the first publication; {@code
+   * reason} is a full translation key or empty; {@code power} is preformatted numbers or empty.
    */
-  public record View(int menu, UUID session, String network, String reason, String power)
+  public record View(
+      int menu, UUID session, NetworkTopology.Status network, String reason, String power)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "device_status"));
@@ -43,23 +44,32 @@ public final class DeviceStatus {
             (b, v) -> {
               b.writeVarInt(v.menu);
               b.writeUUID(v.session);
-              b.writeUtf(v.network, 24);
+              WireEnums.write(b, v.network);
               b.writeUtf(v.reason, 96);
               b.writeUtf(v.power, 48);
             },
             b ->
                 new View(
-                    b.readVarInt(), b.readUUID(), b.readUtf(24), b.readUtf(96), b.readUtf(48)));
+                    b.readVarInt(),
+                    b.readUUID(),
+                    WireEnums.readNullable(b, NetworkTopology.Status.class),
+                    b.readUtf(96),
+                    b.readUtf(48)));
 
     public View {
       Objects.requireNonNull(session);
-      if (network.length() > 24 || reason.length() > 96 || power.length() > 48)
+      if (reason.length() > 96 || power.length() > 48)
         throw new IllegalArgumentException("Device status bounds");
+    }
+
+    /** Whether the device's network is online. */
+    public boolean online() {
+      return network == NetworkTopology.Status.VALID;
     }
 
     /** Placeholder before the first server publication. */
     public static View pending(int menu, UUID session) {
-      return new View(menu, session, "", "", "");
+      return new View(menu, session, null, "", "");
     }
 
     @Override
@@ -78,9 +88,8 @@ public final class DeviceStatus {
       NodeRegistry.Position position,
       String reason,
       String power) {
-    var network =
-        WorldNetworks.get(server).membership(position).status().name().toLowerCase(Locale.ROOT);
-    return new View(menu, session, network, reason, power);
+    return new View(
+        menu, session, WorldNetworks.get(server).membership(position).status(), reason, power);
   }
 
   /** "stored / capacity FE" with grouping, for powered devices. */

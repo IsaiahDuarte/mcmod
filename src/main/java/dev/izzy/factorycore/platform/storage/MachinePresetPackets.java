@@ -1,10 +1,13 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -14,6 +17,54 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 /** Opaque session/draft commands and bounded display rows; no principal, topology or raw keys. */
 public final class MachinePresetPackets {
+  /**
+   * The last preset action's outcome, shown as {@code gui.factorycore.preset.status.<key>}. The
+   * second group mirrors {@link OperationResult.Reason} for a refused or finished cleanup.
+   */
+  public enum Status {
+    READY,
+    STALE,
+    RESUMABLE,
+    CHOOSE,
+    APPLIED,
+    DRAFT,
+    INVALID,
+    LIMIT,
+    SAMPLE_EMPTY,
+    REDSTONE_SET,
+    REDSTONE_DENIED,
+    OK,
+    FULL,
+    TECHNICAL_LIMIT,
+    CATALOG_LIMIT,
+    RESERVATION_LIMIT,
+    SHORTAGE,
+    RESERVED,
+    OFFLINE,
+    WRONG_RESOURCE,
+    DENIED,
+    HANDLER_FAULT,
+    UNCERTAIN,
+    RATE_LIMIT,
+    OVERLAP,
+    UNSUPPORTED,
+    BUSY,
+    REDSTONE;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+
+    /** An action that worked or is a step toward one. */
+    public boolean good() {
+      return this == APPLIED || this == DRAFT || this == REDSTONE_SET;
+    }
+
+    public static Status of(OperationResult.Reason reason) {
+      return EnumKeys.require(Status.class, EnumKeys.key(reason));
+    }
+  }
+
   public static final int MODE = 0,
       FILTER = 1,
       GOAL = 2,
@@ -97,7 +148,7 @@ public final class MachinePresetPackets {
       ResourceFilter.Mode filter,
       long goal,
       List<FilterEdits.Rule> rules,
-      String status,
+      Status status,
       MachinePresets.Mode running,
       String reason,
       boolean editable,
@@ -112,11 +163,9 @@ public final class MachinePresetPackets {
 
     public View {
       rules = List.copyOf(rules);
-      if (goal < 0
-          || rules.size() > 16
-          || status.length() > 32
-          || reason.length() > 32
-          || staged < 0) throw new IllegalArgumentException("Machine preset view bounds");
+      Objects.requireNonNull(status);
+      if (goal < 0 || rules.size() > 16 || reason.length() > 32 || staged < 0)
+        throw new IllegalArgumentException("Machine preset view bounds");
     }
 
     @Override
@@ -136,7 +185,7 @@ public final class MachinePresetPackets {
               b.writeLong(v.goal());
               b.writeVarInt(v.rules().size());
               for (var rule : v.rules()) FilterEdits.Rule.write(b, rule);
-              b.writeUtf(v.status(), 32);
+              WireEnums.write(b, v.status());
               b.writeEnum(v.running());
               b.writeUtf(v.reason(), 32);
               b.writeBoolean(v.editable());
@@ -166,7 +215,7 @@ public final class MachinePresetPackets {
                   filter,
                   goal,
                   rules,
-                  b.readUtf(32),
+                  WireEnums.read(b, Status.class),
                   b.readEnum(MachinePresets.Mode.class),
                   b.readUtf(32),
                   b.readBoolean(),

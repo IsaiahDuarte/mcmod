@@ -36,12 +36,12 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   private final NetworkTopology.Scope scope;
   private final Direction facing;
   private MachineSettingsPackets.View view;
-  private String status = "ready";
+  private MachineSettingsPackets.Status status = MachineSettingsPackets.Status.READY;
   private MachinePresets.Deployment presetBase;
   private long presetConfiguration, presetRevision = 1, presetGoal = 64;
   private MachinePresets.Mode presetMode = MachinePresets.Mode.PAUSED;
   private ResourceFilter presetFilter = ResourceFilter.all(ResourceKind.ITEM);
-  private String presetStatus = "ready";
+  private MachinePresetPackets.Status presetStatus = MachinePresetPackets.Status.READY;
   private final net.minecraft.world.inventory.DataSlot redstone;
 
   /** C2: the redstone control and input, decoded with {@link RedstoneMenu}. */
@@ -87,7 +87,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
     lease = machine == null ? null : machine.handle();
     facing = machine == null ? null : machine.targetDirection();
     scope = machine == null ? null : runtime().membership(machine.position()).scope();
-    if (machine != null && resetPreset()) presetStatus = "resumable";
+    if (machine != null && resetPreset()) presetStatus = MachinePresetPackets.Status.RESUMABLE;
     deviceStatus = DeviceStatus.View.pending(id, protocol.id());
     redstone = addDataSlot(RedstoneMenu.slot(machine));
     presetView =
@@ -100,7 +100,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
             ResourceFilter.Mode.ALL,
             64,
             List.of(),
-            "ready",
+            MachinePresetPackets.Status.READY,
             MachinePresets.Mode.PAUSED,
             "ok",
             false,
@@ -116,7 +116,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
             new MachineSettingsPackets.Form(
                 "", ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 64),
             "north",
-            "ready",
+            MachineSettingsPackets.Status.READY,
             false,
             "base",
             ThroughputTier.BASE.portRate(ResourceKind.ITEM),
@@ -210,10 +210,12 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
     super.broadcastChanges();
     // Native initMenu broadcasts before assigning the new container to the player.
     if (!protocol.due(this::current)) return;
-    if (view.generation() != 0 && view.generation() != machine.generation()) status = "stale";
+    if (view.generation() != 0 && view.generation() != machine.generation())
+      status = MachineSettingsPackets.Status.STALE;
     if (!Objects.equals(presetBase, saved().machinePresets().get(lease.id()))
         || presetConfiguration != machine.generation()) {
-      presetStatus = resetPreset() ? "resumable" : "stale";
+      presetStatus =
+          resetPreset() ? MachinePresetPackets.Status.RESUMABLE : MachinePresetPackets.Status.STALE;
     }
     publish();
     publishPreset();
@@ -240,25 +242,25 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
     if (!protocol.fromViewer(sender, packet.menu(), packet.session()) || !current() || presetBusy)
       return;
     if (packet.generation() != machine.generation()) {
-      status = "stale";
+      status = MachineSettingsPackets.Status.STALE;
       publish();
       return;
     }
     if (!editable()) {
-      status = "denied";
+      status = MachineSettingsPackets.Status.DENIED;
       publish();
       return;
     }
     try {
       if (!packet.form().settings().fits(machine.tier())) {
-        status = "upgrade";
+        status = MachineSettingsPackets.Status.UPGRADE;
         publish();
         return;
       }
       var before = machine.settings().kind();
       if (machine.applySettings(actor(), packet.form().settings(), packet.form().label())
           != NetworkAuthority.Decision.ALLOWED) {
-        status = "denied";
+        status = MachineSettingsPackets.Status.DENIED;
         publish();
         return;
       }
@@ -267,11 +269,11 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
       if (machine.role() == PortBlock.Role.IMPORTER && machine.settings().kind() != before)
         machine.importEverything(actor());
     } catch (IllegalArgumentException invalid) {
-      status = "invalid";
+      status = MachineSettingsPackets.Status.INVALID;
       publish();
       return;
     } catch (ArithmeticException limit) {
-      status = "limit";
+      status = MachineSettingsPackets.Status.LIMIT;
       publish();
       return;
     }
@@ -296,7 +298,10 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
           || !current()
           || !(player instanceof ServerPlayer sender)
           || sender != viewer) return false;
-      presetStatus = RedstoneMenu.click(sender, machine, button);
+      presetStatus =
+          RedstoneMenu.click(sender, machine, button)
+              ? MachinePresetPackets.Status.REDSTONE_SET
+              : MachinePresetPackets.Status.REDSTONE_DENIED;
       presetRevision++;
       publishPreset();
       return true;
@@ -319,7 +324,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
           true);
       return true;
     }
-    status = outcome.key();
+    status = outcome.as(MachineSettingsPackets.Status.class);
     publish();
     return false;
   }
@@ -432,19 +437,20 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
         || !protocol.admitRate()) return;
     if (!Objects.equals(presetBase, saved().machinePresets().get(lease.id()))
         || presetConfiguration != machine.generation()) {
-      presetStatus = resetPreset() ? "resumable" : "stale";
+      presetStatus =
+          resetPreset() ? MachinePresetPackets.Status.RESUMABLE : MachinePresetPackets.Status.STALE;
       publishPreset();
       return;
     }
     if (packet.revision() != presetRevision) {
-      presetStatus = "stale";
+      presetStatus = MachinePresetPackets.Status.STALE;
       publishPreset();
       return;
     }
     if (packet.action() == MachinePresetPackets.RETURN) {
       var value = ownedStaging();
       if (value == null) {
-        presetStatus = "reserved";
+        presetStatus = MachinePresetPackets.Status.RESERVED;
         publishPreset();
         return;
       }
@@ -467,7 +473,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
                         && saved().transfers().contains(result.id()))
                       saved().transfers().retire(result.id());
                     if (current() && player().containerMenu == this) {
-                      presetStatus = result.reason().name().toLowerCase(Locale.ROOT);
+                      presetStatus = MachinePresetPackets.Status.of(result.reason());
                       presetRevision++;
                       publishPreset();
                     }
@@ -476,13 +482,13 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
       if (submission.rejection() != OperationResult.Reason.OK) {
         presetBusy = false;
         cleanupRequest = null;
-        presetStatus = submission.rejection().name().toLowerCase(Locale.ROOT);
+        presetStatus = MachinePresetPackets.Status.of(submission.rejection());
       }
       publishPreset();
       return;
     }
     if (!presetEditable()) {
-      presetStatus = "denied";
+      presetStatus = MachinePresetPackets.Status.DENIED;
       publishPreset();
       return;
     }
@@ -529,14 +535,14 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
           else {
             var stack = sender.getInventory().getItem(packet.selection());
             if (stack.isEmpty()) {
-              presetStatus = "sample_empty";
+              presetStatus = MachinePresetPackets.Status.SAMPLE_EMPTY;
               publishPreset();
               return;
             }
             var codec = new PlatformResourceCodec(sender.registryAccess());
             if (!MessageDigest.isEqual(
                 TerminalPackets.fingerprint(codec.itemKey(stack)), packet.fingerprint())) {
-              presetStatus = "stale";
+              presetStatus = MachinePresetPackets.Status.STALE;
               publishPreset();
               return;
             }
@@ -544,7 +550,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
             else {
               var contents = FluidUtil.getFluidContained(stack.copyWithCount(1));
               if (contents.isEmpty()) {
-                presetStatus = "sample_empty";
+                presetStatus = MachinePresetPackets.Status.SAMPLE_EMPTY;
                 publishPreset();
                 return;
               }
@@ -561,7 +567,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
         case MachinePresetPackets.CARRIED -> {
           var term = FilterEdits.carried(presetFilter.kind(), getCarried());
           if (term == null) {
-            presetStatus = "sample_empty";
+            presetStatus = MachinePresetPackets.Status.SAMPLE_EMPTY;
             publishPreset();
             return;
           }
@@ -577,7 +583,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
                   packet.text(),
                   new PlatformResourceCodec(sender.registryAccess()));
           if (next == null) {
-            presetStatus = "stale";
+            presetStatus = MachinePresetPackets.Status.STALE;
             publishPreset();
             return;
           }
@@ -588,7 +594,10 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
           filterMode = ResourceFilter.Mode.ALL;
         }
         case MachinePresetPackets.RESET -> {
-          presetStatus = resetPreset() ? "resumable" : "ready";
+          presetStatus =
+              resetPreset()
+                  ? MachinePresetPackets.Status.RESUMABLE
+                  : MachinePresetPackets.Status.READY;
           publishPreset();
           return;
         }
@@ -600,7 +609,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
           }
           // H6: an Importer only imports; an Exporter exports or keeps a stock.
           if (machine.role() != null && !machine.role().allows(presetMode)) {
-            presetStatus = "denied";
+            presetStatus = MachinePresetPackets.Status.DENIED;
             publishPreset();
             return;
           }
@@ -609,7 +618,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
               && presetMode != MachinePresets.Mode.IMPORT
               && machine.role() == PortBlock.Role.EXPORTER
               && presetFilter.mode() == ResourceFilter.Mode.ALL) {
-            presetStatus = "choose";
+            presetStatus = MachinePresetPackets.Status.CHOOSE;
             publishPreset();
             return;
           }
@@ -620,13 +629,13 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
                 List.of(
                     NetworkPermissions.Permission.WITHDRAW, NetworkPermissions.Permission.DEPOSIT))
               if (!runtime().allows(actor(), machine.position(), permission)) {
-                presetStatus = "denied";
+                presetStatus = MachinePresetPackets.Status.DENIED;
                 publishPreset();
                 return;
               }
           machine.deployPreset(actor(), presetMode, presetFilter, goal);
           resetPreset();
-          presetStatus = "applied";
+          presetStatus = MachinePresetPackets.Status.APPLIED;
           publishPreset();
           return;
         }
@@ -637,13 +646,13 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
       presetGoal = goal;
       presetDirty = true;
       presetRevision++;
-      presetStatus = "draft";
+      presetStatus = MachinePresetPackets.Status.DRAFT;
     } catch (IllegalArgumentException invalid) {
-      presetStatus = "invalid";
+      presetStatus = MachinePresetPackets.Status.INVALID;
     } catch (ArithmeticException overflow) {
-      presetStatus = "limit";
+      presetStatus = MachinePresetPackets.Status.LIMIT;
     } catch (IllegalStateException limit) {
-      presetStatus = "limit";
+      presetStatus = MachinePresetPackets.Status.LIMIT;
     }
     publishPreset();
   }

@@ -510,12 +510,15 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
     Panels.title(g, font, title, 0, 0);
     var view = menu.view();
     InterfaceModeRow.caption(g, font, modeRow);
-    String state = invalid ? "invalid" : view.editable() ? view.status() : "denied";
-    if (!state.equals("ready"))
+    var state =
+        invalid
+            ? MachineSettingsPackets.Status.INVALID
+            : view.editable() ? view.status() : MachineSettingsPackets.Status.DENIED;
+    if (state != MachineSettingsPackets.Status.READY)
       Panels.wrapped(
           g,
           font,
-          Component.translatable("gui.factorycore.machine.status." + state),
+          Component.translatable("gui.factorycore.machine.status." + state.key()),
           messageRow,
           Panels.WARN);
     StatusStrip.drawOnPanel(g, font, menu.deviceStatus(), footer.x(), footer.y() + 5, statusWidth);

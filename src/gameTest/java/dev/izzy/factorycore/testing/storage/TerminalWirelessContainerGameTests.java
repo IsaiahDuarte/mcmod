@@ -11,6 +11,7 @@ import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.platform.wireless.LinkModule;
 import dev.izzy.factorycore.platform.wireless.LinkPairing;
 import dev.izzy.factorycore.testing.EnergyFixture;
@@ -70,7 +71,7 @@ public final class TerminalWirelessContainerGameTests {
             1,
             "",
             new byte[32]));
-    return menu.view().status();
+    return menu.view().status().key();
   }
 
   @GameTest(template = "empty", timeoutTicks = 500)
@@ -144,7 +145,8 @@ public final class TerminalWirelessContainerGameTests {
               var menu = (TerminalMenu) player.containerMenu;
               menu.broadcastChanges();
               h.assertTrue(
-                  menu.view().status().equals("ready") && menu.view().rows().size() == 1,
+                  menu.view().status() == TerminalPackets.Status.READY
+                      && menu.view().rows().size() == 1,
                   "Real child terminal fluid catalog is ready");
             })
         .thenExecute(

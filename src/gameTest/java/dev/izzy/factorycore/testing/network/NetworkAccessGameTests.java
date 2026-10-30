@@ -136,14 +136,14 @@ public final class NetworkAccessGameTests {
                   "The View toggle grants exactly View");
               h.assertTrue(
                   state(h, root).generation() == generation[0] + 1
-                      && menu.view().status().equals("updated")
+                      && menu.view().status() == AccessPackets.Status.UPDATED
                       && listed(menu, guest.getUUID(), view),
                   "One generation step; the view shows the grant");
               // A second click inside the 2-tick command window is dropped, not applied.
               send(menu, owner, AccessPackets.GRANT, guest.getUUID(), Permission.CRAFT.ordinal());
               h.assertTrue(
                   !allowed(h, guest, CABLE, Permission.CRAFT)
-                      && menu.view().status().equals("rate"),
+                      && menu.view().status() == AccessPackets.Status.RATE,
                   "Rate-limited commands change nothing");
             })
         .thenIdle(3)
@@ -170,7 +170,7 @@ public final class NetworkAccessGameTests {
                   Permission.MANAGE.ordinal());
               h.assertTrue(
                   !allowed(h, guest, CABLE, Permission.MANAGE)
-                      && guestMenu.view().status().equals("denied")
+                      && guestMenu.view().status() == AccessPackets.Status.DENIED
                       && state(h, root).generation() == before,
                   "A forged self-grant from a read-only session is refused");
               // Forged: the guest sends into the owner's session; wrong sender is ignored.
@@ -221,7 +221,7 @@ public final class NetworkAccessGameTests {
                   "Revoke removes one permission");
               send(menus[1], guest, AccessPackets.TRANSFER, guest.getUUID(), 0);
               h.assertTrue(
-                  menus[1].view().status().equals("denied")
+                  menus[1].view().status() == AccessPackets.Status.DENIED
                       && state(h, root).owner().equals(owner.getUUID()),
                   "A non-manager cannot request ownership transfer");
             })
@@ -231,7 +231,7 @@ public final class NetworkAccessGameTests {
               var menu = menus[0];
               send(menu, owner, AccessPackets.TRANSFER, guest.getUUID(), 0);
               h.assertTrue(
-                  menu.view().status().equals("confirm")
+                  menu.view().status() == AccessPackets.Status.CONFIRM
                       && menu.view().pending().equals(guest.getUUID())
                       && state(h, root).owner().equals(owner.getUUID()),
                   "Requesting a transfer only asks for confirmation");
@@ -242,7 +242,7 @@ public final class NetworkAccessGameTests {
               var menu = menus[0];
               send(menu, owner, AccessPackets.CONFIRM, third.getUUID(), 0);
               h.assertTrue(
-                  menu.view().status().equals("unconfirmed")
+                  menu.view().status() == AccessPackets.Status.UNCONFIRMED
                       && menu.view().pending().equals(AccessPackets.NONE)
                       && state(h, root).owner().equals(owner.getUUID()),
                   "Confirming a different principal than requested transfers nothing");
@@ -256,7 +256,7 @@ public final class NetworkAccessGameTests {
               var menu = menus[0];
               send(menu, owner, AccessPackets.GRANT, third.getUUID(), 0);
               h.assertTrue(
-                  menu.view().status().equals("changed")
+                  menu.view().status() == AccessPackets.Status.CHANGED
                       && menu.view().pending().equals(AccessPackets.NONE),
                   "A grant change withdraws the pending confirmation: " + menu.view().status());
             })
@@ -266,7 +266,7 @@ public final class NetworkAccessGameTests {
               var menu = menus[0];
               send(menu, owner, AccessPackets.CONFIRM, guest.getUUID(), 0);
               h.assertTrue(
-                  menu.view().status().equals("unconfirmed")
+                  menu.view().status() == AccessPackets.Status.UNCONFIRMED
                       && state(h, root).owner().equals(owner.getUUID()),
                   "A stale confirmation after a grant change transfers nothing");
             })
@@ -296,7 +296,7 @@ public final class NetworkAccessGameTests {
               h.assertTrue(
                   !menu.view().manage()
                       && menu.view().rows().isEmpty()
-                      && menu.view().status().equals("transferred"),
+                      && menu.view().status() == AccessPackets.Status.TRANSFERRED,
                   "The former owner's open session reports the transfer read-only: " + menu.view());
               send(menu, owner, AccessPackets.GRANT, owner.getUUID(), Permission.VIEW.ordinal());
               h.assertTrue(
@@ -319,7 +319,7 @@ public final class NetworkAccessGameTests {
                   "Delegated Manage administers grants but is not offered transfer");
               send(thirdMenu, third, AccessPackets.TRANSFER, third.getUUID(), 0);
               h.assertTrue(
-                  thirdMenu.view().status().equals("denied")
+                  thirdMenu.view().status() == AccessPackets.Status.DENIED
                       && state(h, root).owner().equals(guest.getUUID()),
                   "A delegated manager's forged transfer request is refused");
               var networks = WorldNetworks.get(h.getLevel().getServer());
@@ -348,7 +348,7 @@ public final class NetworkAccessGameTests {
               h.assertTrue(
                   !thirdMenu.view().manage()
                       && thirdMenu.view().rows().isEmpty()
-                      && thirdMenu.view().status().equals("manage_revoked"),
+                      && thirdMenu.view().status() == AccessPackets.Status.MANAGE_REVOKED,
                   "Revocation feedback reaches the open session: " + thirdMenu.view());
               for (var player : new ServerPlayer[] {owner, guest, third})
                 player.connection.disconnect(Component.literal("done"));

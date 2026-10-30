@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
@@ -42,6 +43,14 @@ public final class InterfaceSwitch {
     /** Lower-case status suffix for screen text. */
     public String key() {
       return "switch_" + name().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * This refusal as a menu's status constant of the same key ({@code SWITCH_BUSY} for {@link
+     * #BUSY}); each Interface menu's status enum has one per refusal.
+     */
+    public <E extends Enum<E>> E as(Class<E> status) {
+      return EnumKeys.require(status, key());
     }
   }
 

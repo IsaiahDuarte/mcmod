@@ -245,7 +245,7 @@ public final class BufferImportGameTests {
                       "",
                       new byte[32]));
               h.assertTrue(
-                  menu.view().status().equals("denied")
+                  menu.view().status() == BufferSettingsPackets.Status.DENIED
                       && accepted[0].equals(f.saved.buffers().deployment(old.id())),
                   "Native Apply cannot bypass current revoked DEPLOY grant");
               f.saved
@@ -270,7 +270,7 @@ public final class BufferImportGameTests {
                       "",
                       new byte[32]));
               h.assertTrue(
-                  menu.view().status().equals("applied"),
+                  menu.view().status() == BufferSettingsPackets.Status.APPLIED,
                   "Native Apply republishes recovered policy");
               var reapplied = f.saved.buffers().deployment(old.id());
               h.assertTrue(

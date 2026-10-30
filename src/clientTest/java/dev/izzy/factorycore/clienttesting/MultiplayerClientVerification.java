@@ -371,15 +371,17 @@ public final class MultiplayerClientVerification {
         var view = terminal(client).getMenu().view();
         // An admission refusal changes the status without a new revision. A background rescan
         // can bump the revision first, so the server drops the request as stale; resend then.
-        if (!view.status().equals("denied") && !view.busy() && ticks - mark > 40) {
+        if (view.status() != TerminalPackets.Status.DENIED && !view.busy() && ticks - mark > 40) {
           retries++;
           require(retries <= 5, "View-only withdrawal kept losing its revision");
           takeOne(client);
           mark = ticks;
           return false;
         }
-        if (!view.status().equals("denied")) return false;
-        require(view.status().equals("denied"), "View-only withdrawal is denied: " + view.status());
+        if (view.status() != TerminalPackets.Status.DENIED) return false;
+        require(
+            view.status() == TerminalPackets.Status.DENIED,
+            "View-only withdrawal is denied: " + view.status());
         require(iron(client) == 0, "No item reached the view-only stranger");
         mark = ticks;
         sub++;
@@ -538,7 +540,8 @@ public final class MultiplayerClientVerification {
         // session uses "ready". Both must remain usable after somebody else's grants change.
         if (ticks - mark < 40
             || view.busy()
-            || !(view.status().equals("ready") || view.status().equals("ok"))
+            || !(view.status() == TerminalPackets.Status.READY
+                || view.status() == TerminalPackets.Status.OK)
             || ironTotal(client) != 61) return false;
         captures.grab(client, "owner-after-revoke.png");
         evidence.append("owner: own session remains usable with 61 after revoking the stranger\n");
@@ -697,7 +700,7 @@ public final class MultiplayerClientVerification {
     if (view.busy()) return -1;
     for (var row : view.rows())
       if (row.icon().equals("minecraft:iron_ingot")) return Long.parseLong(row.total());
-    return view.status().equals("loading") ? -1 : 0;
+    return view.status() == TerminalPackets.Status.LOADING ? -1 : 0;
   }
 
   private static int iron(Minecraft client) {

@@ -23,4 +23,16 @@ public final class EnumKeys {
     for (var value : type.getEnumConstants()) if (key(value).equals(key)) return value;
     return null;
   }
+
+  /**
+   * The constant whose key is {@code key}; for an enum that mirrors another's keys, such as a menu
+   * status that includes every {@code OperationResult.Reason}.
+   *
+   * @throws IllegalArgumentException when {@code type} has no such constant
+   */
+  public static <E extends Enum<E>> E require(Class<E> type, String key) {
+    var value = parse(type, key);
+    if (value == null) throw new IllegalArgumentException(type.getSimpleName() + " lacks " + key);
+    return value;
+  }
 }

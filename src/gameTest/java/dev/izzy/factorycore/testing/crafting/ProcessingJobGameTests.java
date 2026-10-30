@@ -315,7 +315,7 @@ public final class ProcessingJobGameTests {
               var m = (TerminalMenu) player.containerMenu;
               grid(m, player, TerminalCraftingPackets.CRAFT, -1, 0, 1, new byte[32]);
               h.assertTrue(
-                  m.gridView().status().equals("processing_mode"),
+                  m.gridView().status() == TerminalCraftingPackets.GridStatus.PROCESSING_MODE,
                   "No manual craft in processing mode");
             })
         .thenIdle(3)
@@ -324,7 +324,8 @@ public final class ProcessingJobGameTests {
               var m = (TerminalMenu) player.containerMenu;
               grid(m, player, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]);
               h.assertTrue(
-                  m.gridView().status().equals("encoded"), "Encoded: " + m.gridView().status());
+                  m.gridView().status() == TerminalCraftingPackets.GridStatus.ENCODED,
+                  "Encoded: " + m.gridView().status());
               var encoded = inventory.getItem(2);
               var contents = encoded.get(CraftingContent.PROCESSING.get());
               h.assertTrue(contents != null, "Blank became a processing pattern");

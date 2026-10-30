@@ -217,7 +217,8 @@ public final class ConnectorSettingsGameTests {
                   f.connector.generation() == generation, "A wrong session nonce edits nothing");
               apply(f.player, m, form(ResourceKind.ITEM, 1024));
               h.assertTrue(
-                  f.connector.generation() == generation && m.view().status().equals("upgrade"),
+                  f.connector.generation() == generation
+                      && m.view().status() == MachineSettingsPackets.Status.UPGRADE,
                   "A rate above the installed tier asks for an upgrade");
               f.connector.configure(
                   new NetworkPermissions.Actor(f.player.getUUID(), false),
@@ -228,7 +229,7 @@ public final class ConnectorSettingsGameTests {
                   new ConnectorSettingsPackets.Apply(
                       m.containerId, m.session(), generation, form(ResourceKind.ITEM, 8)));
               h.assertTrue(
-                  m.view().status().equals("stale")
+                  m.view().status() == MachineSettingsPackets.Status.STALE
                       && f.connector.settings().rate() == 16
                       && m.view().form().rate() == 16,
                   "An old form cannot replace newer settings; the current form reloads");
@@ -256,7 +257,7 @@ public final class ConnectorSettingsGameTests {
               apply(guest, m, form(ResourceKind.ITEM, 8));
               h.assertTrue(
                   f.connector.generation() == generation
-                      && m.view().status().equals("denied")
+                      && m.view().status() == MachineSettingsPackets.Status.DENIED
                       && guest.containerMenu == m,
                   "Apply without EDIT is denied and changes nothing");
               h.useBlock(CONNECTOR, stranger);

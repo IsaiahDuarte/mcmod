@@ -116,7 +116,7 @@ public final class WirelessGameTests {
             () -> {
               menu(player).broadcastChanges();
               h.assertTrue(
-                  menu(player).view().status().equals("ready")
+                  menu(player).view().status() == TerminalPackets.Status.READY
                       && menu(player).view().rows().size() == 1,
                   "Wireless view lists stock: " + menu(player).view());
             })
@@ -138,7 +138,7 @@ public final class WirelessGameTests {
             () -> {
               command(player, TerminalPackets.WITHDRAW, 0, 4);
               h.assertTrue(
-                  menu(player).view().status().equals("no_power")
+                  menu(player).view().status() == TerminalPackets.Status.NO_POWER
                       && handheldEnergy(player) == 36
                       && saved.registry().stock(cell, key).total() == 6,
                   "Without 64 FE the action is refused with no effect");

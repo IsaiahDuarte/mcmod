@@ -41,12 +41,32 @@ class ProgramPacketsTest {
         () -> new ProgramPackets.Command(1, id, 0, 0, 1, "a".repeat(2049)));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ProgramPackets.View(1, id, 1, "running", "", -1, "", true, List.of(), List.of()));
+        () ->
+            new ProgramPackets.View(
+                1,
+                id,
+                1,
+                ProgramControllerEntity.State.RUNNING,
+                "",
+                -1,
+                null,
+                true,
+                List.of(),
+                List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new ProgramPackets.View(
-                1, id, 1, "running", "", 0, "", true, Collections.nCopies(9, "x"), List.of()));
+                1,
+                id,
+                1,
+                ProgramControllerEntity.State.RUNNING,
+                "",
+                0,
+                null,
+                true,
+                Collections.nCopies(9, "x"),
+                List.of()));
   }
 
   @Test

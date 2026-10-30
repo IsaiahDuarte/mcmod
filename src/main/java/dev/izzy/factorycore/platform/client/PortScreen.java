@@ -355,16 +355,14 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
           Panels.TEXT,
           false);
     }
-    String key = view.status();
-    if (!key.equals("ready")) {
-      boolean problem =
-          !key.equals("applied") && !key.equals("draft") && !key.equals("redstone_set");
+    var outcome = view.status();
+    if (outcome != MachinePresetPackets.Status.READY) {
       Panels.wrapped(
           graphics,
           font,
-          Component.translatable("gui.factorycore.preset.status." + key),
+          Component.translatable("gui.factorycore.preset.status." + outcome.key()),
           message,
-          problem ? Panels.WARN : Panels.MUTED);
+          outcome.good() ? Panels.MUTED : Panels.WARN);
     }
     StatusStrip.drawOnPanel(
         graphics, font, menu.deviceStatus(), status.x(), status.y() + 5, status.width());

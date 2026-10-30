@@ -8,6 +8,8 @@ import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.MachinePresetPackets;
+import dev.izzy.factorycore.platform.storage.MachineSettingsPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.*;
@@ -114,7 +116,7 @@ public final class MachineSettingsGameTests {
                       ResourceKind.ITEM, ConnectorSettings.Access.WRITE_ONLY, 3, 0, 4, 16));
               apply(f, m, original, m.session());
               h.assertTrue(
-                  m.view().status().equals("stale")
+                  m.view().status() == MachineSettingsPackets.Status.STALE
                       && m.view().form().rate() == 16
                       && f.machine.label().isEmpty()
                       && f.machine.settings().rate() == 16,
@@ -173,7 +175,7 @@ public final class MachineSettingsGameTests {
               apply(f, m, generation, m.session());
               h.assertTrue(
                   f.machine.generation() == generation
-                      && m.view().status().equals("denied")
+                      && m.view().status() == MachineSettingsPackets.Status.DENIED
                       && !m.view().editable(),
                   "Execution-time EDIT revocation rejects saved form without losing VIEW");
               grants.setGrants(actor, guest.getUUID(), Set.of());
@@ -242,7 +244,7 @@ public final class MachineSettingsGameTests {
                       && saved.target() == 8
                       && saved.filter().terms().size() == 1
                       && saved.authority().principal().equals(f.player.getUUID())
-                      && menu[0].presetView().status().equals("applied")
+                      && menu[0].presetView().status() == MachinePresetPackets.Status.APPLIED
                       && !menu[0].presetView().dirty(),
                   "Explicit deploy saves exact filter and typed goal under authenticated principal");
               end(f);
@@ -272,7 +274,8 @@ public final class MachineSettingsGameTests {
               h.assertTrue(!m.presetView().dirty(), "Wrong nonce does not mutate draft");
               preset(f, m, MachinePresetPackets.GOAL, "-1");
               h.assertTrue(
-                  m.presetView().goal() == 64 && m.presetView().status().equals("invalid"),
+                  m.presetView().goal() == 64
+                      && m.presetView().status() == MachinePresetPackets.Status.INVALID,
                   "Negative goal leaves draft unchanged");
             })
         .thenIdle(3)
@@ -290,7 +293,7 @@ public final class MachineSettingsGameTests {
                       "8",
                       new byte[32]));
               h.assertTrue(
-                  m.presetView().status().equals("stale")
+                  m.presetView().status() == MachinePresetPackets.Status.STALE
                       && DeviceSavedData.get(f.player.server)
                               .machinePresets()
                               .get(f.machine.handle().id())
@@ -307,7 +310,7 @@ public final class MachineSettingsGameTests {
                       ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 1, 8));
               preset(f, m, MachinePresetPackets.DEPLOY, "8");
               h.assertTrue(
-                  m.presetView().status().equals("stale")
+                  m.presetView().status() == MachinePresetPackets.Status.STALE
                       && !m.presetView().dirty()
                       && DeviceSavedData.get(f.player.server)
                               .machinePresets()
@@ -419,7 +422,7 @@ public final class MachineSettingsGameTests {
                       ResourceKind.ENERGY, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 1000));
               preset(f, menu[0], MachinePresetPackets.SAMPLE, "");
               h.assertTrue(
-                  menu[0].presetView().status().equals("stale"),
+                  menu[0].presetView().status() == MachinePresetPackets.Status.STALE,
                   "Kind change discards incompatible fluid draft");
             })
         .thenIdle(3)
@@ -442,7 +445,7 @@ public final class MachineSettingsGameTests {
             () -> {
               preset(f, menu[0], MachinePresetPackets.TAG, "minecraft:water");
               h.assertTrue(
-                  menu[0].presetView().status().equals("invalid")
+                  menu[0].presetView().status() == MachinePresetPackets.Status.INVALID
                       && menu[0].presetView().rules().size() == 1,
                   "Unsupported energy tags reject without changing valid draft");
               end(f);
@@ -478,7 +481,7 @@ public final class MachineSettingsGameTests {
                   Set.of(NetworkPermissions.Permission.VIEW, NetworkPermissions.Permission.EDIT));
               preset(f, menu[0], MachinePresetPackets.DEPLOY, "8");
               h.assertTrue(
-                  menu[0].presetView().status().equals("denied")
+                  menu[0].presetView().status() == MachinePresetPackets.Status.DENIED
                       && !menu[0].presetView().editable()
                       && DeviceSavedData.get(guest.server)
                               .machinePresets()

@@ -10,6 +10,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.RecoveryPackets;
 import dev.izzy.factorycore.platform.storage.StagingClass;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -182,7 +183,7 @@ public final class RecoveryScreenGameTests {
                   "Another player sees none of the owner's records");
               send(theirs, other, RecoveryPackets.SETTLE, legacy);
               h.assertTrue(
-                  theirs.view().status().equals("missing")
+                  theirs.view().status() == RecoveryPackets.Status.MISSING
                       && saved.transfers().get(legacy).staged() == 12
                       && !evidence(owner, legacy),
                   "A forged id that is not on the session's page is refused without evidence");
@@ -192,11 +193,11 @@ public final class RecoveryScreenGameTests {
               h.assertTrue(
                   saved.transfers().get(legacy).staged() == 12
                       && saved.transfers().contains(legacy)
-                      && theirs.view().status().equals("missing"),
+                      && theirs.view().status() == RecoveryPackets.Status.MISSING,
                   "Wrong-session and rate-limited commands change nothing");
               send(mine, owner, RecoveryPackets.RETURN, legacy);
               h.assertTrue(
-                  mine.view().status().equals("legacy") && !evidence(owner, legacy),
+                  mine.view().status() == RecoveryPackets.Status.LEGACY && !evidence(owner, legacy),
                   "Return refuses a record without endpoint context: " + mine.view().status());
             })
         .thenIdle(3)
@@ -206,7 +207,7 @@ public final class RecoveryScreenGameTests {
               var before = saved.transfers().get(uncertain);
               send(mine, owner, RecoveryPackets.SETTLE, uncertain);
               h.assertTrue(
-                  mine.view().status().equals("uncertain")
+                  mine.view().status() == RecoveryPackets.Status.UNCERTAIN
                       && before.equals(saved.transfers().get(uncertain))
                       && !evidence(owner, uncertain),
                   "Uncertain outcomes are never replayed or refunded");
@@ -217,7 +218,8 @@ public final class RecoveryScreenGameTests {
               var mine = menus[0];
               send(mine, owner, RecoveryPackets.RETIRE, legacy);
               h.assertTrue(
-                  mine.view().status().equals("operator") && saved.transfers().contains(legacy),
+                  mine.view().status() == RecoveryPackets.Status.OPERATOR
+                      && saved.transfers().contains(legacy),
                   "A non-operator cannot retire");
             })
         .thenIdle(3)
@@ -226,7 +228,7 @@ public final class RecoveryScreenGameTests {
               var mine = menus[0];
               send(mine, owner, RecoveryPackets.SETTLE, legacy);
               h.assertTrue(
-                  mine.view().status().equals("queued")
+                  mine.view().status() == RecoveryPackets.Status.QUEUED
                       && !mine.view().evidence().isEmpty()
                       && evidence(owner, legacy),
                   "The owner's settlement preserves evidence before it is queued: " + mine.view());
@@ -261,7 +263,7 @@ public final class RecoveryScreenGameTests {
                   "Operators page every record: " + ops.view());
               send(ops, operator, RecoveryPackets.SETTLE, uncertain);
               h.assertTrue(
-                  ops.view().status().equals("owner"),
+                  ops.view().status() == RecoveryPackets.Status.OWNER,
                   "Operators cannot adopt another player's cleanup");
             })
         .thenIdle(3)
@@ -270,7 +272,7 @@ public final class RecoveryScreenGameTests {
               var ops = menus[2];
               send(ops, operator, RecoveryPackets.RETIRE, uncertain);
               h.assertTrue(
-                  ops.view().status().equals("not_complete")
+                  ops.view().status() == RecoveryPackets.Status.NOT_COMPLETE
                       && saved.transfers().contains(uncertain),
                   "Uncertain staging cannot be retired");
             })
@@ -280,7 +282,7 @@ public final class RecoveryScreenGameTests {
               var ops = menus[2];
               send(ops, operator, RecoveryPackets.RETIRE, legacy);
               h.assertTrue(
-                  ops.view().status().equals("retired")
+                  ops.view().status() == RecoveryPackets.Status.RETIRED
                       && !saved.transfers().contains(legacy)
                       && row(ops, legacy) == null
                       && saved.registry().stock(source, KEY).total() == 40,

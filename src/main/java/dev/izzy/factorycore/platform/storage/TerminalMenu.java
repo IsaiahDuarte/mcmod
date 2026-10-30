@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.resource.OperationResult;
@@ -49,7 +48,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   /** A3 "Show craftable" preference: zero-count rows for craftables that have no stock. */
   private boolean showCraftable;
 
-  private String text = "", status = "loading";
+  private String text = "";
+  private TerminalPackets.Status status = TerminalPackets.Status.LOADING;
   private ResourceKind kind = ResourceKind.ITEM;
   private int sort = TerminalSearchSupport.NAME;
   private long revision = 1;
@@ -67,7 +67,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   private TerminalPackets.View view;
   private final TerminalCrafting crafting = new TerminalCrafting();
   private TerminalCraftingPackets.View gridView;
-  private String gridStatus = "empty";
+  private TerminalCraftingPackets.GridStatus gridStatus = TerminalCraftingPackets.GridStatus.EMPTY;
   private int pendingCrafts, gatherAttempts, crafted, editWindow = Integer.MIN_VALUE, edits;
   static final int MAX_GATHERS = 18, MAX_EDITS_PER_SECOND = 32;
   private TerminalJobPackets.View jobView;
@@ -332,7 +332,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         selectionNames = List.of();
         selectionCraftable = List.of();
         next = null;
-        status = result.reason().name().toLowerCase(Locale.ROOT);
+        status = TerminalPackets.Status.of(result.reason());
         closeSearch();
         revision++;
       } else if (result.complete() && !selections.equals(result.rows())
@@ -356,9 +356,9 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             offset + result.rows().size() < result.total() && !result.rows().isEmpty()
                 ? result.rows().getLast().key()
                 : null;
-        if (status.equals("loading")) status = "ready";
+        if (status == TerminalPackets.Status.LOADING) status = TerminalPackets.Status.READY;
         revision++;
-      } else if (result.complete() && status.equals("loading")) {
+      } else if (result.complete() && status == TerminalPackets.Status.LOADING) {
         offset = result.offset();
         totalRows = result.total();
         used = result.used().toString();
@@ -369,7 +369,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             offset + result.rows().size() < result.total() && !result.rows().isEmpty()
                 ? result.rows().getLast().key()
                 : null;
-        status = "ready";
+        status = TerminalPackets.Status.READY;
         revision++;
       }
       if (result != null && result.complete() && tick - scanned >= RESCAN_TICKS) rescan(tick);
@@ -401,7 +401,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       selectionCraftable = List.of();
       next = null;
       revision++;
-      status = submission.rejection().name().toLowerCase(Locale.ROOT);
+      status = TerminalPackets.Status.of(submission.rejection());
     }
   }
 
@@ -432,7 +432,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     selectionNames = List.of();
     selectionCraftable = List.of();
     revision++;
-    status = "loading";
+    status = TerminalPackets.Status.LOADING;
     scanned = player().server.getTickCount();
     query = UUID.randomUUID();
     var submission =
@@ -449,7 +449,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                 showCraftable);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
-      status = submission.rejection().name().toLowerCase(Locale.ROOT);
+      status = TerminalPackets.Status.of(submission.rejection());
     }
   }
 
@@ -468,7 +468,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             || action == TerminalPackets.DEPOSIT_CURSOR
             || (action >= TerminalPackets.FILL && action <= TerminalPackets.DISCHARGE);
     if (mutating && !terminal.spendAction(sender)) {
-      status = "no_power";
+      status = TerminalPackets.Status.NO_POWER;
       revision++;
       publish();
       return;
@@ -525,7 +525,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       selections = List.of();
       selectionNames = List.of();
       selectionCraftable = List.of();
-      status = "loading";
+      status = TerminalPackets.Status.LOADING;
       revision++;
       protocol.pollNow();
       broadcastChanges();
@@ -537,7 +537,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       selections = List.of();
       selectionNames = List.of();
       selectionCraftable = List.of();
-      status = "loading";
+      status = TerminalPackets.Status.LOADING;
       revision++;
       protocol.pollNow();
       broadcastChanges();
@@ -551,7 +551,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         selectionNames = List.of();
         selectionCraftable = List.of();
         next = null;
-        status = "loading";
+        status = TerminalPackets.Status.LOADING;
         revision++;
         protocol.pollNow();
         broadcastChanges();
@@ -568,7 +568,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     }
     if (command.action() >= TerminalPackets.FILL && command.action() <= TerminalPackets.DISCHARGE) {
       var containers = new TerminalContainers(sender, terminal.origin());
-      String outcome;
+      TerminalPackets.Status outcome;
       if (command.action() == TerminalPackets.FILL) {
         if (command.revision() != revision
             || kind != ResourceKind.FLUID
@@ -601,7 +601,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
           transfers().progressGuarded(operation, actor(), true, this::finish, this::authorized);
       if (admission.rejection() != OperationResult.Reason.OK) {
         busy = false;
-        status = admission.rejection().name().toLowerCase(Locale.ROOT);
+        status = TerminalPackets.Status.of(admission.rejection());
       }
       publish();
       return;
@@ -650,7 +650,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       try {
         key = new PlatformResourceCodec(sender.registryAccess()).itemKey(stack);
       } catch (IllegalArgumentException unsupported) {
-        status = "unsupported";
+        status = TerminalPackets.Status.UNSUPPORTED;
         publish();
         return;
       }
@@ -660,7 +660,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       direction = WorldStorageRoutes.Direction.TO_STORAGE;
     } else return;
     if (unresolved() != null) {
-      status = "reserved";
+      status = TerminalPackets.Status.RESERVED;
       publish();
       return;
     }
@@ -684,7 +684,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     if (admission.rejection() != OperationResult.Reason.OK) {
       busy = false;
       route = null;
-      status = admission.rejection().name().toLowerCase(Locale.ROOT);
+      status = TerminalPackets.Status.of(admission.rejection());
     }
     publish();
   }
@@ -708,7 +708,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       if (item == Items.AIR) continue;
       crafting.set(cell, codec.itemKey(new ItemStack(item)));
     }
-    gridStatus = "filled";
+    gridStatus = TerminalCraftingPackets.GridStatus.FILLED;
     publish();
   }
 
@@ -736,13 +736,13 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         try {
           key = codec.itemKey(stack);
         } catch (IllegalArgumentException unsupported) {
-          gridStatus = "unsupported";
+          gridStatus = TerminalCraftingPackets.GridStatus.UNSUPPORTED;
           publish();
           return;
         }
         if (!MessageDigest.isEqual(TerminalPackets.fingerprint(key), command.fingerprint())) return;
         crafting.set(command.cell(), key);
-        gridStatus = "ready";
+        gridStatus = TerminalCraftingPackets.GridStatus.READY;
       }
       case TerminalCraftingPackets.SET_ROW -> {
         if (command.cell() < 0
@@ -756,25 +756,25 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         if (key.kind() == ResourceKind.ENERGY
             || key.kind() == ResourceKind.FLUID && !crafting.processing()) return;
         crafting.set(command.cell(), key);
-        gridStatus = "ready";
+        gridStatus = TerminalCraftingPackets.GridStatus.READY;
       }
       case TerminalCraftingPackets.CLEAR -> {
         if (command.cell() < 0) crafting.clear();
         else crafting.set(command.cell(), null);
-        gridStatus = "ready";
+        gridStatus = TerminalCraftingPackets.GridStatus.READY;
       }
       case TerminalCraftingPackets.MODE -> {
         crafting.processing(command.cell() == 1);
-        gridStatus = "ready";
+        gridStatus = TerminalCraftingPackets.GridStatus.READY;
       }
       case TerminalCraftingPackets.COUNT -> {
         if (command.cell() < 0 || !crafting.processing()) return;
         crafting.count(command.cell(), command.crafts());
-        gridStatus = "ready";
+        gridStatus = TerminalCraftingPackets.GridStatus.READY;
       }
       case TerminalCraftingPackets.ENCODE -> {
         if (!terminal.spendAction(sender)) {
-          gridStatus = "no_power";
+          gridStatus = TerminalCraftingPackets.GridStatus.NO_POWER;
           publish();
           return;
         }
@@ -788,7 +788,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       }
       case TerminalCraftingPackets.CRAFT -> {
         if (!terminal.spendAction(sender)) {
-          gridStatus = "no_power";
+          gridStatus = TerminalCraftingPackets.GridStatus.NO_POWER;
           publish();
           return;
         }
@@ -827,7 +827,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     }
     gatherAttempts++;
     if (unresolved() != null) {
-      finishCraft(new TerminalCrafting.Outcome(0, "reserved", null));
+      finishCraft(
+          new TerminalCrafting.Outcome(0, TerminalCraftingPackets.GridStatus.RESERVED, null));
       return;
     }
     busy = true;
@@ -853,7 +854,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       finishCraft(partialCraft());
       return;
     }
-    gridStatus = "gathering";
+    gridStatus = TerminalCraftingPackets.GridStatus.GATHERING;
     publish();
   }
 
@@ -864,10 +865,12 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     long possible = pendingCrafts;
     for (var entry : requirement.perCraft().entrySet())
       possible = Math.min(possible, owned.getOrDefault(entry.getKey(), 0L) / entry.getValue());
-    if (possible < 1) return new TerminalCrafting.Outcome(0, "shortage", null);
+    if (possible < 1)
+      return new TerminalCrafting.Outcome(0, TerminalCraftingPackets.GridStatus.SHORTAGE, null);
     var outcome = crafting.craft(player(), (int) possible);
-    return outcome.crafted() > 0 && outcome.status().equals("crafted")
-        ? new TerminalCrafting.Outcome(outcome.crafted(), "partial", null)
+    return outcome.crafted() > 0 && outcome.status() == TerminalCraftingPackets.GridStatus.CRAFTED
+        ? new TerminalCrafting.Outcome(
+            outcome.crafted(), TerminalCraftingPackets.GridStatus.PARTIAL, null)
         : outcome;
   }
 
@@ -896,7 +899,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         && result.transfer().staged() == 0) saved().transfers().retire(result.id());
     if (authorized()) {
       refresh();
-      status = result.reason().name().toLowerCase(Locale.ROOT);
+      status = TerminalPackets.Status.of(result.reason());
       if (pendingCrafts > 0) {
         if (result.transfer() != null && result.transfer().delivered() > 0) continueCraft();
         else finishCraft(partialCraft());
@@ -928,8 +931,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         operation != null
             && saved().transfers().get(operation).state() == StagedTransfer.State.QUARANTINED;
     if (operation != null && !busy) {
-      if (uncertain) status = EnumKeys.key(OperationResult.Reason.UNCERTAIN);
-      else if (status.equals("ready")) status = "reserved";
+      if (uncertain) status = TerminalPackets.Status.UNCERTAIN;
+      else if (status == TerminalPackets.Status.READY) status = TerminalPackets.Status.RESERVED;
     }
     var packet =
         new TerminalPackets.View(

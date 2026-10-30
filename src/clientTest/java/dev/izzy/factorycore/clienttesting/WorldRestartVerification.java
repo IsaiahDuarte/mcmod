@@ -11,6 +11,7 @@ import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.Properties;
@@ -302,7 +303,7 @@ final class WorldRestartVerification {
     }
     if (stage == 6 && ticks - entered > 10 && client.screen instanceof TerminalScreen screen) {
       var view = screen.getMenu().view();
-      if (!view.status().equals("ready") || view.rows().isEmpty()) return;
+      if (view.status() != TerminalPackets.Status.READY || view.rows().isEmpty()) return;
       require(
           view.search().equals("@minecraft") && view.sort() == TerminalSearchSupport.QUANTITY,
           "Fresh JVM terminal projects saved nondefault player query and quantity sort");

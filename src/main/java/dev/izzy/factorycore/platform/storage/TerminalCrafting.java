@@ -32,7 +32,8 @@ final class TerminalCrafting {
   static final int SLOTS = 36;
 
   /** Result of one bounded request. A deficit means more ingredients must be gathered first. */
-  record Outcome(int crafted, String status, GridRequirement.Deficit deficit) {}
+  record Outcome(
+      int crafted, TerminalCraftingPackets.GridStatus status, GridRequirement.Deficit deficit) {}
 
   /** Nine input cells plus three processing output cells. */
   static final int ALL_CELLS = GridRequirement.CELLS + 3;
@@ -179,13 +180,14 @@ final class TerminalCrafting {
    * cannot cover every requested craft, so the caller may gather and retry.
    */
   Outcome craft(ServerPlayer player, int crafts) {
-    if (processing) return new Outcome(0, "processing_mode", null);
+    if (processing) return new Outcome(0, TerminalCraftingPackets.GridStatus.PROCESSING_MODE, null);
     var requirement = requirement();
-    if (requirement.empty()) return new Outcome(0, "empty", null);
+    if (requirement.empty()) return new Outcome(0, TerminalCraftingPackets.GridStatus.EMPTY, null);
     var holder = recipe(player);
-    if (holder.isEmpty()) return new Outcome(0, "no_recipe", null);
+    if (holder.isEmpty()) return new Outcome(0, TerminalCraftingPackets.GridStatus.NO_RECIPE, null);
     var deficit = requirement.deficit(crafts, owned(player));
-    if (deficit != null) return new Outcome(0, "shortage", deficit);
+    if (deficit != null)
+      return new Outcome(0, TerminalCraftingPackets.GridStatus.SHORTAGE, deficit);
     var codec = new PlatformResourceCodec(player.registryAccess());
     var inventory = player.getInventory();
     var committed = new ArrayList<ItemStack>(SLOTS);
@@ -193,7 +195,7 @@ final class TerminalCrafting {
     var recipe = holder.get().value();
     int done = 0;
     ItemStack first = ItemStack.EMPTY;
-    String status = "crafted";
+    var status = TerminalCraftingPackets.GridStatus.CRAFTED;
     for (; done < crafts; done++) {
       var trial = new ArrayList<ItemStack>(SLOTS);
       for (var stack : committed) trial.add(stack.copy());
@@ -213,7 +215,7 @@ final class TerminalCrafting {
       }
       var input = missing ? null : CraftingInput.of(3, 3, used);
       if (missing || !recipe.matches(input, player.serverLevel())) {
-        status = "shortage";
+        status = TerminalCraftingPackets.GridStatus.SHORTAGE;
         break;
       }
       var output = recipe.assemble(input, player.registryAccess());
@@ -222,7 +224,7 @@ final class TerminalCrafting {
       for (var remainder : remainders)
         if (fits && !remainder.isEmpty()) fits = add(trial, remainder.copy());
       if (!fits) {
-        status = "full";
+        status = TerminalCraftingPackets.GridStatus.FULL;
         break;
       }
       if (first.isEmpty()) first = output.copy();
@@ -255,7 +257,7 @@ final class TerminalCrafting {
   Outcome encode(ServerPlayer player, boolean substitutes) {
     if (processing) return encodeProcessing(player);
     var holder = recipe(player);
-    if (holder.isEmpty()) return new Outcome(0, "no_recipe", null);
+    if (holder.isEmpty()) return new Outcome(0, TerminalCraftingPackets.GridStatus.NO_RECIPE, null);
     var codec = new PlatformResourceCodec(player.registryAccess());
     var ghosts = ghosts(cells, codec);
     var input = CraftingInput.of(3, 3, ghosts);
@@ -292,7 +294,7 @@ final class TerminalCrafting {
       encoded = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
       encoded.set(CraftingContent.PATTERN.get(), contents);
     } catch (IllegalArgumentException unsupported) {
-      return new Outcome(0, "unsupported", null);
+      return new Outcome(0, TerminalCraftingPackets.GridStatus.UNSUPPORTED, null);
     }
     return write(player, encoded);
   }
@@ -325,13 +327,13 @@ final class TerminalCrafting {
           else out.add(codec.itemStack(outputs[index], count));
         }
       if (in.isEmpty() && fluidIn.isEmpty() || out.isEmpty() && fluidOut.isEmpty())
-        return new Outcome(0, "no_recipe", null);
+        return new Outcome(0, TerminalCraftingPackets.GridStatus.NO_RECIPE, null);
       var contents = new ProcessingContents(UUID.randomUUID(), 1, 0, in, out, fluidIn, fluidOut);
       contents.pattern(codec);
       encoded = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
       encoded.set(CraftingContent.PROCESSING.get(), contents);
     } catch (IllegalArgumentException unsupported) {
-      return new Outcome(0, "unsupported", null);
+      return new Outcome(0, TerminalCraftingPackets.GridStatus.UNSUPPORTED, null);
     }
     return write(player, encoded);
   }
@@ -348,13 +350,13 @@ final class TerminalCrafting {
         blank = true;
         break;
       }
-    if (!blank) return new Outcome(0, "no_blank", null);
-    if (!add(trial, encoded)) return new Outcome(0, "full", null);
+    if (!blank) return new Outcome(0, TerminalCraftingPackets.GridStatus.NO_BLANK, null);
+    if (!add(trial, encoded)) return new Outcome(0, TerminalCraftingPackets.GridStatus.FULL, null);
     for (int slot = 0; slot < SLOTS; slot++)
       if (!ItemStack.matches(inventory.getItem(slot), trial.get(slot)))
         inventory.setItem(slot, trial.get(slot).isEmpty() ? ItemStack.EMPTY : trial.get(slot));
     inventory.setChanged();
-    return new Outcome(0, "encoded", null);
+    return new Outcome(0, TerminalCraftingPackets.GridStatus.ENCODED, null);
   }
 
   private static ResourceKey keyOf(PlatformResourceCodec codec, ItemStack stack) {

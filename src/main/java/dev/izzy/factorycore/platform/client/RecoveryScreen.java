@@ -214,16 +214,12 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
   }
 
   private Component status(RecoveryPackets.View view) {
+    var key = view.status().translation();
     return switch (view.status()) {
-      case "ready", "loading" ->
-          Component.translatable("gui.factorycore.recovery.status." + view.status());
-      case "queued" ->
-          Component.translatable("gui.factorycore.recovery.queued", view.detail(), view.evidence());
-      case "retired" -> Component.translatable("gui.factorycore.recovery.retired", view.evidence());
-      case "result", "settled" ->
-          Component.translatable("gui.factorycore.recovery." + view.status(), view.detail());
-      case "operator" -> Component.translatable("gui.factorycore.recovery.operator");
-      default -> Component.translatable("command.factorycore.recovery." + view.status());
+      case QUEUED -> Component.translatable(key, view.detail(), view.evidence());
+      case RETIRED -> Component.translatable(key, view.evidence());
+      case RESULT, SETTLED -> Component.translatable(key, view.detail());
+      default -> Component.translatable(key);
     };
   }
 
@@ -274,7 +270,7 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
                   + (row.mine() || row.classification() == StagingClass.UNCERTAIN ? "" : ".other")),
           new Rect(list.x() + 1, STEP_Y, list.width(), 3 * PanelLayout.LINE),
           row.classification() == StagingClass.UNCERTAIN ? Panels.WARN : Panels.TEXT);
-    if (!view.status().equals("ready"))
+    if (view.status() != RecoveryPackets.Status.READY)
       Panels.wrapped(
           graphics,
           font,

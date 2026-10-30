@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.BufferSettingsPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.UUID;
@@ -110,7 +111,8 @@ public final class BufferSettingsGameTests {
                   new BufferPolicy(ResourceFilter.all(ResourceKind.ITEM), 4, 32));
               command(f, BufferSettingsPackets.APPLY, 0, 0, "", new byte[32]);
               helper.assertTrue(
-                  menu(f).view().status().equals("stale") && menu(f).view().rate() == 4,
+                  menu(f).view().status() == BufferSettingsPackets.Status.STALE
+                      && menu(f).view().rate() == 4,
                   "External edits invalidate old draft before Apply");
               end(f);
             })
@@ -150,7 +152,7 @@ public final class BufferSettingsGameTests {
             () -> {
               command(f, BufferSettingsPackets.CYCLE, 0, 0, "minecraft:stone", new byte[32]);
               helper.assertTrue(
-                  menu(f).view().status().equals("stale")
+                  menu(f).view().status() == BufferSettingsPackets.Status.STALE
                       && menu(f).view().rules().getFirst().type() == FilterEdits.ITEM,
                   "A shown ID that does not match the slot changes nothing");
             })
@@ -345,7 +347,7 @@ public final class BufferSettingsGameTests {
         .thenExecute(
             () -> {
               helper.assertTrue(
-                  menu(f).view().status().equals("partial")
+                  menu(f).view().status() == BufferSettingsPackets.Status.PARTIAL
                       && menu(f).view().moved() == 8
                       && menu(f).view().requested() == 64
                       && f.buffer.inventory().total(key) == 1,
@@ -364,7 +366,8 @@ public final class BufferSettingsGameTests {
         .thenWaitUntil(
             () ->
                 helper.assertTrue(
-                    !menu(f).view().busy() && menu(f).view().status().equals("full"),
+                    !menu(f).view().busy()
+                        && menu(f).view().status() == BufferSettingsPackets.Status.FULL,
                     "Live Stock goal rejects deposit before extraction"))
         .thenExecute(
             () -> {
@@ -460,7 +463,7 @@ public final class BufferSettingsGameTests {
             () -> {
               command(f, BufferSettingsPackets.MODE, 0, 9, "", new byte[32]);
               helper.assertTrue(
-                  menu(f).view().status().equals("invalid")
+                  menu(f).view().status() == BufferSettingsPackets.Status.INVALID
                       && menu(f).view().mode().equals("PAUSED"),
                   "An unknown choice changes nothing");
             })

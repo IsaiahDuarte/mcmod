@@ -41,7 +41,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
   private final NetworkTopology.Scope scope;
   private final Direction facing;
   private ConnectorSettingsPackets.View view;
-  private String status = "ready";
+  private MachineSettingsPackets.Status status = MachineSettingsPackets.Status.READY;
   private DeviceStatus.View deviceStatus;
 
   /** B2: the insert-filter draft, saved by Apply; reloaded when the saved settings change. */
@@ -71,7 +71,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
                 "", ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 64),
             "north",
             "ok",
-            "ready",
+            MachineSettingsPackets.Status.READY,
             false,
             "base",
             ThroughputTier.BASE.portRate(ResourceKind.ITEM),
@@ -184,7 +184,8 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
     super.broadcastChanges();
     // Native initMenu broadcasts before assigning the new container to the player.
     if (!protocol.due(this::current)) return;
-    if (view.generation() != 0 && view.generation() != connector.generation()) status = "stale";
+    if (view.generation() != 0 && view.generation() != connector.generation())
+      status = MachineSettingsPackets.Status.STALE;
     publish();
   }
 
@@ -206,7 +207,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
         || !current()
         || !protocol.admitRate()) return;
     if (!editable()) {
-      status = "denied";
+      status = MachineSettingsPackets.Status.DENIED;
       publish();
       return;
     }
@@ -231,7 +232,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
                   new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
                       sender.registryAccess()));
           if (next == null) {
-            status = "stale";
+            status = MachineSettingsPackets.Status.STALE;
             publish();
             return;
           }
@@ -269,9 +270,9 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
           mode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE;
       } else if (mode == dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL) terms.clear();
       insertDraft = new dev.izzy.factorycore.core.resource.ResourceFilter(kind, mode, terms);
-      status = "draft";
+      status = MachineSettingsPackets.Status.DRAFT;
     } catch (IllegalArgumentException invalid) {
-      status = "invalid";
+      status = MachineSettingsPackets.Status.INVALID;
     }
     publish();
   }
@@ -279,12 +280,12 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
   public void apply(ServerPlayer sender, ConnectorSettingsPackets.Apply packet) {
     if (!protocol.fromViewer(sender, packet.menu(), packet.session()) || !current()) return;
     if (packet.generation() != connector.generation()) {
-      status = "stale";
+      status = MachineSettingsPackets.Status.STALE;
       publish();
       return;
     }
     if (!editable()) {
-      status = "denied";
+      status = MachineSettingsPackets.Status.DENIED;
       publish();
       return;
     }
@@ -294,21 +295,21 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
       var settings =
           form.withInsert(draft() != null && draft().kind() == form.kind() ? draft() : null);
       if (!settings.fits(connector.tier())) {
-        status = "upgrade";
+        status = MachineSettingsPackets.Status.UPGRADE;
         publish();
         return;
       }
       if (connector.configure(actor(), settings) != NetworkAuthority.Decision.ALLOWED) {
-        status = "denied";
+        status = MachineSettingsPackets.Status.DENIED;
         publish();
         return;
       }
     } catch (IllegalArgumentException invalid) {
-      status = "invalid";
+      status = MachineSettingsPackets.Status.INVALID;
       publish();
       return;
     } catch (ArithmeticException limit) {
-      status = "limit";
+      status = MachineSettingsPackets.Status.LIMIT;
       publish();
       return;
     }
@@ -340,7 +341,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
           true);
       return true;
     }
-    status = outcome.key();
+    status = outcome.as(MachineSettingsPackets.Status.class);
     publish();
     return false;
   }

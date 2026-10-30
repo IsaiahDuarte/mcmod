@@ -155,7 +155,7 @@ public final class CraftableGridGameTests {
     menu(f).broadcastChanges();
     var view = menu(f).view();
     h.assertTrue(
-        view.status().equals("ready") && !view.busy() && view.total() == size,
+        view.status() == TerminalPackets.Status.READY && !view.busy() && view.total() == size,
         "Grid shows " + size + " rows: " + view.rows());
   }
 

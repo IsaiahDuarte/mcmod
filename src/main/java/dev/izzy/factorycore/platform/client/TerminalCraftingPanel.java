@@ -233,7 +233,8 @@ final class TerminalCraftingPanel {
    */
   void tick() {
     var gridView = menu().gridView();
-    if (gridView.gridRevision() != seenGridRevision && gridView.status().equals("filled")) {
+    if (gridView.gridRevision() != seenGridRevision
+        && gridView.status() == TerminalCraftingPackets.GridStatus.FILLED) {
       requestedMode = -1;
       gridPage = 0;
       target = 0;
@@ -254,7 +255,8 @@ final class TerminalCraftingPanel {
     if (gridView.gridRevision() != seenGridRevision) {
       seenGridRevision = gridView.gridRevision();
       // Recipe-viewer fills must reveal their ghosts even when the panel was collapsed.
-      if (!screen.craftingOpen() && gridView.status().equals("filled")) screen.openCrafting();
+      if (!screen.craftingOpen() && gridView.status() == TerminalCraftingPackets.GridStatus.FILLED)
+        screen.openCrafting();
     }
     update();
   }
@@ -377,10 +379,10 @@ final class TerminalCraftingPanel {
     if (gridPage != 0 && !view.cells().get(target).isEmpty()) {
       graphics.drawString(font, ghostAmount(target), x, GRID_Y + 54 + 6, Panels.TEXT, false);
     }
-    if (!view.status().equals("empty") && !view.status().equals("ready")) {
+    if (!view.status().quiet()) {
       var status =
           Component.translatable(
-              "gui.factorycore.terminal.grid.status." + view.status(), view.crafted());
+              "gui.factorycore.terminal.grid.status." + view.status().key(), view.crafted());
       Panels.wrapped(graphics, font, status, new Rect(x, y, width, CRAFT_Y - 4 - y), Panels.WARN);
     }
   }
@@ -419,7 +421,7 @@ final class TerminalCraftingPanel {
           List.of(
               Component.literal(menu().gridView().resultName()),
               Component.translatable(
-                  "gui.factorycore.terminal.grid.status." + menu().gridView().status(),
+                  "gui.factorycore.terminal.grid.status." + menu().gridView().status().key(),
                   menu().gridView().crafted()),
               Component.translatable("gui.factorycore.terminal.grid.result.help")),
           Optional.empty(),

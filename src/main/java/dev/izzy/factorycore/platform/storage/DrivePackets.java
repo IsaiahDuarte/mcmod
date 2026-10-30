@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -17,6 +19,25 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
  * only carries what the four bays hold, since cell totals do not fit vanilla data slots.
  */
 public final class DrivePackets {
+  /** The last bay action's outcome, shown as {@code gui.factorycore.drive.status.<key>}. */
+  public enum Status {
+    LOADING,
+    READY,
+    INSTALLED,
+    REMOVED,
+    UPGRADED,
+    WRONG_ITEM,
+    REFUSED,
+    PARTITIONED,
+    PRIORITY,
+    DENIED,
+    STALE;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+  }
+
   public static final int BAYS = 4;
 
   /**
@@ -105,15 +126,13 @@ public final class DrivePackets {
                     b.readUtf(256)));
   }
 
-  /**
-   * {@code status} names a {@code gui.factorycore.drive.status.*} key; {@code detail} is a refusal.
-   */
+  /** {@code status} is the last bay action's outcome; {@code detail} is a refusal. */
   public record View(
       int menu,
       UUID session,
       long revision,
       List<Bay> bays,
-      String status,
+      Status status,
       String detail,
       int priority)
       implements CustomPacketPayload {
@@ -122,8 +141,9 @@ public final class DrivePackets {
 
     public View {
       Objects.requireNonNull(session);
+      Objects.requireNonNull(status);
       bays = List.copyOf(bays);
-      if (bays.size() != BAYS || status.length() > 16 || detail.length() > 128)
+      if (bays.size() != BAYS || detail.length() > 128)
         throw new IllegalArgumentException("Invalid drive view");
     }
 
@@ -149,7 +169,7 @@ public final class DrivePackets {
                 b.writeVarInt(bay.partition.size());
                 for (var rule : bay.partition) FilterEdits.Rule.write(b, rule);
               }
-              b.writeUtf(v.status, 16);
+              WireEnums.write(b, v.status);
               b.writeUtf(v.detail, 128);
               b.writeVarInt(v.priority);
             },
@@ -173,7 +193,13 @@ public final class DrivePackets {
                 bays.add(new Bay(item, fluid, total, capacity, infinite, types, mode, rules));
               }
               return new View(
-                  menu, session, revision, bays, b.readUtf(16), b.readUtf(128), b.readVarInt());
+                  menu,
+                  session,
+                  revision,
+                  bays,
+                  WireEnums.read(b, Status.class),
+                  b.readUtf(128),
+                  b.readVarInt());
             });
   }
 

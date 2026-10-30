@@ -46,17 +46,17 @@ public final class RedstoneMenu {
     return button >= BUTTON && button < BUTTON + RedstoneGate.Control.values().length;
   }
 
-  /** Applies a requested control; returns the status key ("redstone_set" or "redstone_denied"). */
-  public static <E extends BlockEntity & RedstoneControlled> String click(
+  /** Applies a requested control; false when the sender lacks EDIT and nothing changed. */
+  public static <E extends BlockEntity & RedstoneControlled> boolean click(
       ServerPlayer sender, E owner, int button) {
     if (!WorldNetworks.get(sender.server)
         .allows(
             Actors.of(sender),
             dev.izzy.factorycore.platform.Positions.of(owner.getLevel(), owner.getBlockPos()),
-            NetworkPermissions.Permission.EDIT)) return "redstone_denied";
+            NetworkPermissions.Permission.EDIT)) return false;
     owner.redstone().control(RedstoneGate.Control.values()[button - BUTTON]);
     owner.redstone().observe(owner.getLevel().hasNeighborSignal(owner.getBlockPos()));
     owner.redstoneWake();
-    return "redstone_set";
+    return true;
   }
 }

@@ -1,13 +1,17 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
+import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -16,6 +20,51 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 public final class TerminalPackets {
+  /**
+   * The storage view's state or last action's outcome, shown as {@code
+   * gui.factorycore.terminal.status.<key>}. The first group belongs to the terminal and its
+   * container actions; the second mirrors {@link OperationResult.Reason}.
+   */
+  public enum Status {
+    LOADING,
+    READY,
+    NO_POWER,
+    EMPTY,
+    FILLED,
+    EMPTIED,
+    CHARGED,
+    DISCHARGED,
+    NO_CONTAINER,
+    NO_ENERGY_ITEM,
+    ITEM_FULL,
+    ITEM_EMPTY,
+    OK,
+    FULL,
+    TECHNICAL_LIMIT,
+    CATALOG_LIMIT,
+    RESERVATION_LIMIT,
+    SHORTAGE,
+    RESERVED,
+    OFFLINE,
+    WRONG_RESOURCE,
+    DENIED,
+    HANDLER_FAULT,
+    UNCERTAIN,
+    RATE_LIMIT,
+    OVERLAP,
+    UNSUPPORTED,
+    BUSY,
+    REDSTONE;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+
+    public static Status of(OperationResult.Reason reason) {
+      return EnumKeys.require(Status.class, EnumKeys.key(reason));
+    }
+  }
+
   public static final int SEARCH = 0, HOME = 1, NEXT = 2, WITHDRAW = 3, DEPOSIT = 4, RETURN = 5;
 
   /**
@@ -134,13 +183,18 @@ public final class TerminalPackets {
           || available.length() > 32)
         throw new IllegalArgumentException("Invalid terminal row bounds");
     }
+
+    /** None stored: a craftable ghost row. */
+    public boolean none() {
+      return total.equals("0");
+    }
   }
 
   public record View(
       int menu,
       UUID session,
       long revision,
-      String status,
+      Status status,
       List<Row> rows,
       boolean next,
       boolean busy,
@@ -165,7 +219,7 @@ public final class TerminalPackets {
         int menu,
         UUID session,
         long revision,
-        String status,
+        Status status,
         List<Row> rows,
         boolean next,
         boolean busy,
@@ -187,7 +241,7 @@ public final class TerminalPackets {
         int menu,
         UUID session,
         long revision,
-        String status,
+        Status status,
         List<Row> rows,
         boolean next,
         boolean busy,
@@ -231,8 +285,14 @@ public final class TerminalPackets {
           || used.length() > 32
           || capacity.length() > 32) throw new IllegalArgumentException("Invalid terminal window");
       rows = List.copyOf(rows);
-      if (rows.size() > MAX_ROWS || status.length() > 64 || staged.length() > 32)
+      Objects.requireNonNull(status);
+      if (rows.size() > MAX_ROWS || staged.length() > 32)
         throw new IllegalArgumentException("Invalid terminal view bounds");
+    }
+
+    /** Something waits in the player's staging record to be returned. */
+    public boolean staging() {
+      return !staged.equals("0");
     }
 
     @Override
@@ -246,7 +306,7 @@ public final class TerminalPackets {
               buffer.writeVarInt(value.menu);
               buffer.writeUUID(value.session);
               buffer.writeLong(value.revision);
-              buffer.writeUtf(value.status, 64);
+              WireEnums.write(buffer, value.status);
               buffer.writeVarInt(value.rows.size());
               for (var row : value.rows) {
                 buffer.writeVarInt(row.token);
@@ -277,7 +337,7 @@ public final class TerminalPackets {
               int menu = buffer.readVarInt();
               UUID session = buffer.readUUID();
               long revision = buffer.readLong();
-              String status = buffer.readUtf(64);
+              var status = WireEnums.read(buffer, Status.class);
               int size = buffer.readVarInt();
               if (size < 0 || size > MAX_ROWS)
                 throw new IllegalArgumentException("Terminal row count");

@@ -140,9 +140,9 @@ gridRevision, action, cell, source, crafts, fingerprint)` actions are SET_OWN
 `gridRevision`). Stale revisions, mismatched fingerprints, busy sessions and edits
 over 32 per second are ignored. `View` carries twelve base registry IDs (nine inputs/three outputs), per-cell counts,
 a 12-bit fluid-kind mask, processing mode, the result
-icon/name/count, status (`empty`, `ready`, `filled`, `no_recipe`, `gathering`, `crafted`,
-`partial`, `shortage`, `full`, `reserved`, `unsupported`) and the last crafted
-count. The server resolves keys, matches recipes and owns all quantities.
+icon/name/count, status (`TerminalCraftingPackets.GridStatus`: `empty`, `ready`, `filled`,
+`no_recipe`, `gathering`, `crafted`, `partial`, `encoded`, `no_blank`, `shortage`, `full`,
+`reserved`, `no_power`, `processing_mode`, `unsupported`) and the last crafted count. The server resolves keys, matches recipes and owns all quantities.
 
 `TerminalCrafting.craft(player, crafts)` returns a deficit with nothing consumed
 when owned main-inventory units cannot cover all crafts; the menu then gathers

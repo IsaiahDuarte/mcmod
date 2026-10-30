@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
 import dev.izzy.factorycore.core.resource.TransferRegistry;
@@ -27,12 +28,35 @@ public final class RecoveryActions {
   private static final Map<MinecraftServer, Integer> RETIRE_TIMES = new WeakHashMap<>();
 
   /**
-   * {@code reason} is a {@code command.factorycore.recovery.*} key suffix: {@code queued} or {@code
-   * retired} on success, otherwise the refusal. {@code evidence} names the preserved audit file
-   * when one was written; {@code admission} is the scheduler's admission for queued work.
+   * What a recovery request did, shown as {@code command.factorycore.recovery.<key>}: {@code
+   * QUEUED} or {@code RETIRED} on success, otherwise the refusal.
    */
-  public record Outcome(String reason, String evidence, OperationResult.Reason admission) {
-    static Outcome refused(String reason) {
+  public enum Result {
+    QUEUED,
+    RETIRED,
+    OWNER,
+    UNCERTAIN,
+    COMPLETE,
+    LEGACY,
+    SETTLE_SCOPED,
+    RATE,
+    LIMIT,
+    AUDIT,
+    UNAVAILABLE,
+    MISSING,
+    NOT_COMPLETE;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+  }
+
+  /**
+   * {@code evidence} names the preserved audit file when one was written; {@code admission} is the
+   * scheduler's admission for queued work.
+   */
+  public record Outcome(Result reason, String evidence, OperationResult.Reason admission) {
+    static Outcome refused(Result reason) {
       return new Outcome(reason, "", OperationResult.Reason.OK);
     }
   }
@@ -62,26 +86,25 @@ public final class RecoveryActions {
       ServerPlayer player, UUID id, boolean settle, Consumer<WorldStorageTransfers.Result> report) {
     var server = player.server;
     if (server.getPlayerList().getPlayer(player.getUUID()) != player || !player.isAlive())
-      return Outcome.refused("owner");
+      return Outcome.refused(Result.OWNER);
     try {
       var saved = DeviceSavedData.get(server);
       var records = saved.transfers();
       if (!records.contains(id) || !records.get(id).owner().equals(player.getUUID()))
-        return Outcome.refused("owner");
+        return Outcome.refused(Result.OWNER);
       var move = records.get(id);
       if (move.pending() != StagedTransfer.PendingCall.NONE
           || move.state() == StagedTransfer.State.QUARANTINED)
-        return Outcome.refused(StagingClass.UNCERTAIN.key());
-      if (move.state() == StagedTransfer.State.COMPLETE)
-        return Outcome.refused(StagingClass.COMPLETE.key());
+        return Outcome.refused(Result.UNCERTAIN);
+      if (move.state() == StagedTransfer.State.COMPLETE) return Outcome.refused(Result.COMPLETE);
       if ((records.context(id) == null) != settle)
-        return Outcome.refused(settle ? "settle_scoped" : StagingClass.LEGACY.key());
+        return Outcome.refused(settle ? Result.SETTLE_SCOPED : Result.LEGACY);
       var times = REQUESTS.computeIfAbsent(server, s -> new HashMap<>());
       int tick = server.getTickCount();
       var previous = times.get(player.getUUID());
-      if (previous != null && tick - previous < 20) return Outcome.refused("rate");
+      if (previous != null && tick - previous < 20) return Outcome.refused(Result.RATE);
       times.entrySet().removeIf(entry -> tick - entry.getValue() >= 20);
-      if (previous == null && times.size() >= 256) return Outcome.refused("limit");
+      if (previous == null && times.size() >= 256) return Outcome.refused(Result.LIMIT);
       times.put(player.getUUID(), tick);
       var path =
           RecoveryAudit.preserve(
@@ -94,11 +117,11 @@ public final class RecoveryActions {
           settle
               ? transfers.settleLegacy(id, actor, report)
               : transfers.progress(id, actor, true, report);
-      return new Outcome("queued", path.getFileName().toString(), result.rejection());
+      return new Outcome(Result.QUEUED, path.getFileName().toString(), result.rejection());
     } catch (IOException evidenceFailure) {
-      return Outcome.refused("audit");
+      return Outcome.refused(Result.AUDIT);
     } catch (IllegalStateException quarantined) {
-      return Outcome.refused("unavailable");
+      return Outcome.refused(Result.UNAVAILABLE);
     }
   }
 
@@ -107,14 +130,14 @@ public final class RecoveryActions {
     try {
       var saved = DeviceSavedData.get(server);
       var records = saved.transfers();
-      if (!records.contains(id)) return Outcome.refused("missing");
+      if (!records.contains(id)) return Outcome.refused(Result.MISSING);
       var move = records.get(id);
       if (move.state() != StagedTransfer.State.COMPLETE
           || move.pending() != StagedTransfer.PendingCall.NONE
-          || move.staged() != 0) return Outcome.refused("not_complete");
+          || move.staged() != 0) return Outcome.refused(Result.NOT_COMPLETE);
       int tick = server.getTickCount();
       var previous = RETIRE_TIMES.get(server);
-      if (previous != null && tick - previous < 20) return Outcome.refused("rate");
+      if (previous != null && tick - previous < 20) return Outcome.refused(Result.RATE);
       RETIRE_TIMES.put(server, tick);
       var path =
           RecoveryAudit.preserve(
@@ -122,11 +145,11 @@ public final class RecoveryActions {
               saved.registry().world(),
               new TransferRegistry.Stored(id, move, records.context(id)));
       records.retire(id);
-      return new Outcome("retired", path.getFileName().toString(), OperationResult.Reason.OK);
+      return new Outcome(Result.RETIRED, path.getFileName().toString(), OperationResult.Reason.OK);
     } catch (IOException evidenceFailure) {
-      return Outcome.refused("audit");
+      return Outcome.refused(Result.AUDIT);
     } catch (IllegalStateException unavailable) {
-      return Outcome.refused("unavailable");
+      return Outcome.refused(Result.UNAVAILABLE);
     }
   }
 }

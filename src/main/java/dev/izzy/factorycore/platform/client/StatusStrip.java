@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.client;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.session.DeviceStatus;
 import java.util.ArrayList;
@@ -21,11 +22,12 @@ public final class StatusStrip {
   }
 
   private static List<String> parts(DeviceStatus.View status) {
-    if (status.network().isEmpty())
+    if (status.network() == null)
       return List.of(Component.translatable("gui.factorycore.status.loading").getString());
     var parts = new ArrayList<String>();
     parts.add(
-        Component.translatable("gui.factorycore.status.network." + status.network()).getString());
+        Component.translatable("gui.factorycore.status.network." + EnumKeys.key(status.network()))
+            .getString());
     if (!status.reason().isEmpty()) parts.add(Component.translatable(status.reason()).getString());
     if (!status.power().isEmpty()) parts.add(status.power());
     return parts;
@@ -33,7 +35,7 @@ public final class StatusStrip {
 
   /** Online is green; anything else (rebuilding, unloaded, invalid) is amber. */
   public static int color(DeviceStatus.View status) {
-    return status.network().equals("valid") ? 0x9fd49b : 0xe4bc83;
+    return status.online() ? 0x9fd49b : 0xe4bc83;
   }
 
   /** Shows the full status when the mouse is over a strip drawn at absolute {@code x, y}. */
@@ -61,14 +63,7 @@ public final class StatusStrip {
    */
   public static void drawOnPanel(
       GuiGraphics graphics, Font font, DeviceStatus.View status, int x, int y, int width) {
-    draw(
-        graphics,
-        font,
-        status,
-        x,
-        y,
-        width,
-        status.network().equals("valid") ? Panels.GOOD : Panels.WARN);
+    draw(graphics, font, status, x, y, width, status.online() ? Panels.GOOD : Panels.WARN);
   }
 
   private static void draw(

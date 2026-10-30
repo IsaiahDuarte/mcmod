@@ -75,7 +75,7 @@ class TerminalCraftingPacketsTest {
             "minecraft:stone",
             "Stone",
             2,
-            "ready",
+            TerminalCraftingPackets.GridStatus.READY,
             0,
             (1 << 0) | (1 << 9));
     var output = buffer();
@@ -98,12 +98,34 @@ class TerminalCraftingPacketsTest {
           IllegalArgumentException.class,
           () ->
               new TerminalCraftingPackets.View(
-                  1, view.session(), 3, cells, counts, true, "", "", 0, "ready", 0, mask));
+                  1,
+                  view.session(),
+                  3,
+                  cells,
+                  counts,
+                  true,
+                  "",
+                  "",
+                  0,
+                  TerminalCraftingPackets.GridStatus.READY,
+                  0,
+                  mask));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new TerminalCraftingPackets.View(
-                1, view.session(), 3, cells, counts, false, "", "", 0, "ready", 0, 1));
+                1,
+                view.session(),
+                3,
+                cells,
+                counts,
+                false,
+                "",
+                "",
+                0,
+                TerminalCraftingPackets.GridStatus.READY,
+                0,
+                1));
   }
 
   @Test
@@ -135,7 +157,17 @@ class TerminalCraftingPacketsTest {
     var counts = Collections.nCopies(TerminalCraftingPackets.CELLS, 3);
     var view =
         new TerminalCraftingPackets.View(
-            1, id, 3, cells, counts, true, "minecraft:oak_planks", "Oak Planks", 4, "ready", 0);
+            1,
+            id,
+            3,
+            cells,
+            counts,
+            true,
+            "minecraft:oak_planks",
+            "Oak Planks",
+            4,
+            TerminalCraftingPackets.GridStatus.READY,
+            0);
     var output = buffer();
     try {
       TerminalCraftingPackets.View.CODEC.encode(output, view);
@@ -147,7 +179,17 @@ class TerminalCraftingPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalCraftingPackets.View(
-                1, id, 3, List.of(""), counts, false, "", "", 0, "ready", 0));
+                1,
+                id,
+                3,
+                List.of(""),
+                counts,
+                false,
+                "",
+                "",
+                0,
+                TerminalCraftingPackets.GridStatus.READY,
+                0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -161,17 +203,25 @@ class TerminalCraftingPacketsTest {
                 "",
                 "",
                 0,
-                "ready",
+                TerminalCraftingPackets.GridStatus.READY,
                 0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new TerminalCraftingPackets.View(
-                1, id, 3, cells, counts, false, "", "", 65, "ready", 0));
+                1,
+                id,
+                3,
+                cells,
+                counts,
+                false,
+                "",
+                "",
+                65,
+                TerminalCraftingPackets.GridStatus.READY,
+                0));
     assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new TerminalCraftingPackets.View(
-                1, id, 3, cells, counts, false, "", "", 0, "x".repeat(65), 0));
+        NullPointerException.class,
+        () -> new TerminalCraftingPackets.View(1, id, 3, cells, counts, false, "", "", 0, null, 0));
   }
 }

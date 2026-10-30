@@ -77,7 +77,7 @@ public final class TerminalCraftingGameTests {
   private static void loaded(GameTestHelper helper, Fixture f) {
     helper.assertTrue(f.player.containerMenu instanceof TerminalMenu, "Terminal still open");
     menu(f).broadcastChanges();
-    helper.assertTrue(menu(f).view().status().equals("ready"), "Search ready");
+    helper.assertTrue(menu(f).view().status() == TerminalPackets.Status.READY, "Search ready");
   }
 
   private static void grid(Fixture f, int action, int cell, int source, int crafts, byte[] print) {
@@ -150,7 +150,7 @@ public final class TerminalCraftingGameTests {
                       && count(f, Items.SUGAR) == 3
                       && count(f, Items.EGG) == 1
                       && count(f, Items.WHEAT) == 1
-                      && menu(f).gridView().status().equals("crafted"),
+                      && menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.CRAFTED,
                   "One cake, three bucket remainders and exact ingredient use");
             })
         .thenIdle(3)
@@ -159,7 +159,7 @@ public final class TerminalCraftingGameTests {
             () -> {
               menu(f).broadcastChanges();
               h.assertTrue(
-                  menu(f).gridView().status().equals("shortage"),
+                  menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.SHORTAGE,
                   "Gathering finds no milk: " + menu(f).gridView().status());
             })
         .thenExecute(
@@ -195,7 +195,7 @@ public final class TerminalCraftingGameTests {
               h.assertTrue(
                   count(f, Items.OAK_PLANKS) == 64
                       && count(f, Items.STICK) == 0
-                      && menu(f).gridView().status().equals("full"),
+                      && menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.FULL,
                   "No room for output means nothing is consumed");
               inventory.setItem(35, ItemStack.EMPTY);
             })
@@ -208,7 +208,7 @@ public final class TerminalCraftingGameTests {
             () -> {
               menu(f).broadcastChanges();
               h.assertTrue(
-                  menu(f).gridView().status().equals("full"),
+                  menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.FULL,
                   "Gathering finds no planks, then crafting fills the free slot");
             })
         .thenExecute(
@@ -255,7 +255,8 @@ public final class TerminalCraftingGameTests {
             () -> {
               menu(f).broadcastChanges();
               h.assertTrue(
-                  count(f, Items.OAK_PLANKS) == 16 && menu(f).gridView().status().equals("crafted"),
+                  count(f, Items.OAK_PLANKS) == 16
+                      && menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.CRAFTED,
                   "Gathered logs are crafted: " + menu(f).gridView().status());
             })
         .thenExecute(
@@ -272,7 +273,7 @@ public final class TerminalCraftingGameTests {
             () -> {
               menu(f).broadcastChanges();
               h.assertTrue(
-                  menu(f).gridView().status().equals("partial")
+                  menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.PARTIAL
                       && menu(f).gridView().crafted() == 1
                       && count(f, Items.OAK_PLANKS) == 20,
                   "Storage shortage crafts what was gathered: " + menu(f).gridView().status());
@@ -376,7 +377,7 @@ public final class TerminalCraftingGameTests {
               var view = m.gridView();
               h.assertTrue(
                   !view.processing()
-                      && view.status().equals("filled")
+                      && view.status() == TerminalCraftingPackets.GridStatus.FILLED
                       && view.result().equals("minecraft:crafting_table")
                       && view.cells().get(0).equals(planks)
                       && view.cells().get(8).isEmpty(),
@@ -440,7 +441,8 @@ public final class TerminalCraftingGameTests {
             () -> {
               menu(f).broadcastChanges();
               h.assertTrue(
-                  menu(f).view().status().equals("ready") && menu(f).view().rows().size() == 1,
+                  menu(f).view().status() == TerminalPackets.Status.READY
+                      && menu(f).view().rows().size() == 1,
                   "Fluid view lists water");
             })
         .thenExecute(

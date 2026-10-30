@@ -42,8 +42,9 @@ every 5 seconds {
 `logs()`. Trusted runtime transitions `deploy/state/undeploy` are called only by
 `WorldPrograms` (server thread): `deploy(actor, controller)` returns compiler or
 permission diagnostics (empty on success); `control(actor, controller, state)` pauses,
-resumes or stops (false without DEPLOY or deployment); `status(controller)` is
-`running`, `no_power` or `offline`. Costs: `BASE_COST` 4 FE, `STEPS_PER_FE` 256; queue
+resumes or stops (false without DEPLOY or deployment); `status(controller)` is a
+`WorldPrograms.RuntimeStatus` (`RUNNING`, `DELAYED`, `THROTTLED`, `NO_POWER`, `OFFLINE`), or
+null before any rule has run. Costs: `BASE_COST` 4 FE, `STEPS_PER_FE` 256; queue
 `MAX_QUEUE` 64.
 
 

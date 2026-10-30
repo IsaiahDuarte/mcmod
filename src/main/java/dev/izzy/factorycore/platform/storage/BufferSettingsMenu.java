@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.storage;
 
-import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.resource.OperationResult;
@@ -49,7 +48,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
   private long moved;
   private int requested;
   private boolean returning;
-  private String status = "ready";
+  private BufferSettingsPackets.Status status = BufferSettingsPackets.Status.READY;
   private BufferSettingsPackets.View view;
 
   public BufferSettingsMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
@@ -191,7 +190,10 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
           || !current()
           || !(player instanceof ServerPlayer sender)
           || sender != viewer) return false;
-      status = RedstoneMenu.click(sender, holder, button);
+      status =
+          RedstoneMenu.click(sender, holder, button)
+              ? BufferSettingsPackets.Status.REDSTONE_SET
+              : BufferSettingsPackets.Status.REDSTONE_DENIED;
       revision++;
       publish();
       return true;
@@ -214,7 +216,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
           true);
       return true;
     }
-    status = outcome.key();
+    status = outcome.as(BufferSettingsPackets.Status.class);
     publish();
     return false;
   }
@@ -246,7 +248,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
     if (!protocol.due(this::current)) return;
     if (holder.reference().configuration() != configuration) {
       reset();
-      status = "stale";
+      status = BufferSettingsPackets.Status.STALE;
     }
     if (!busy) {
       var actual = holder.inventory().snapshot().slots();
@@ -278,12 +280,12 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
         || !protocol.admitRate()) return;
     if (holder.reference().configuration() != configuration) {
       reset();
-      status = "stale";
+      status = BufferSettingsPackets.Status.STALE;
       publish();
       return;
     }
     if (packet.revision() != revision) {
-      status = "stale";
+      status = BufferSettingsPackets.Status.STALE;
       publish();
       return;
     }
@@ -293,7 +295,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
       return;
     }
     if (!editable()) {
-      status = "denied";
+      status = BufferSettingsPackets.Status.DENIED;
       publish();
       return;
     }
@@ -345,7 +347,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
           if (stack.isEmpty()) return;
           var key = new PlatformResourceCodec(sender.registryAccess()).itemKey(stack);
           if (!MessageDigest.isEqual(TerminalPackets.fingerprint(key), packet.fingerprint())) {
-            status = "stale";
+            status = BufferSettingsPackets.Status.STALE;
             publish();
             return;
           }
@@ -371,7 +373,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
                   packet.text(),
                   new PlatformResourceCodec(sender.registryAccess()));
           if (next == null) {
-            status = "stale";
+            status = BufferSettingsPackets.Status.STALE;
             publish();
             return;
           }
@@ -384,13 +386,13 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
         case BufferSettingsPackets.APPLY -> {
           holder.configure(actor(), mode, draft);
           reset();
-          status = "applied";
+          status = BufferSettingsPackets.Status.APPLIED;
           publish();
           return;
         }
         case BufferSettingsPackets.RESET -> {
           reset();
-          status = "ready";
+          status = BufferSettingsPackets.Status.READY;
           publish();
           return;
         }
@@ -400,13 +402,13 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
           new BufferPolicy(new ResourceFilter(ResourceKind.ITEM, filterMode, terms), rate, target);
       dirty = true;
       revision++;
-      status = "draft";
+      status = BufferSettingsPackets.Status.DRAFT;
     } catch (IllegalArgumentException invalid) {
-      status = "invalid";
+      status = BufferSettingsPackets.Status.INVALID;
     } catch (IllegalStateException denied) {
-      status = "denied";
+      status = BufferSettingsPackets.Status.DENIED;
     } catch (ArithmeticException overflow) {
-      status = "technical_limit";
+      status = BufferSettingsPackets.Status.TECHNICAL_LIMIT;
     }
     publish();
   }
@@ -427,7 +429,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
       var operation = unresolved();
       if (operation == null) return;
       if (!saved().transfers().get(operation).owner().equals(viewer.getUUID())) {
-        status = "denied";
+        status = BufferSettingsPackets.Status.DENIED;
         publish();
         return;
       }
@@ -441,14 +443,14 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
       if (admission.rejection() != OperationResult.Reason.OK) {
         busy = false;
         ticket = null;
-        status = admission.rejection().name().toLowerCase(Locale.ROOT);
+        status = BufferSettingsPackets.Status.of(admission.rejection());
       }
       publish();
       return;
     }
     if (packet.value() < 1 || packet.value() > 64) return;
     if (unresolved() != null) {
-      status = "reserved";
+      status = BufferSettingsPackets.Status.RESERVED;
       publish();
       return;
     }
@@ -468,12 +470,12 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
       try {
         key = new PlatformResourceCodec(player().registryAccess()).itemKey(stack);
       } catch (IllegalArgumentException invalid) {
-        status = "unsupported";
+        status = BufferSettingsPackets.Status.UNSUPPORTED;
         publish();
         return;
       }
       if (!MessageDigest.isEqual(TerminalPackets.fingerprint(key), packet.fingerprint())) {
-        status = "stale";
+        status = BufferSettingsPackets.Status.STALE;
         publish();
         return;
       }
@@ -510,7 +512,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
     if (admission.rejection() != OperationResult.Reason.OK) {
       busy = false;
       ticket = null;
-      status = admission.rejection().name().toLowerCase(Locale.ROOT);
+      status = BufferSettingsPackets.Status.of(admission.rejection());
     }
     publish();
   }
@@ -531,8 +533,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
               : returning ? result.transfer().returned() : result.transfer().delivered();
       status =
           result.reason() == OperationResult.Reason.OK && requested > moved
-              ? "partial"
-              : result.reason().name().toLowerCase(Locale.ROOT);
+              ? BufferSettingsPackets.Status.PARTIAL
+              : BufferSettingsPackets.Status.of(result.reason());
       revision++;
       publish();
     }
@@ -556,7 +558,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
     boolean uncertain =
         operation != null
             && saved().transfers().get(operation).state() == StagedTransfer.State.QUARANTINED;
-    String displayStatus = uncertain ? EnumKeys.key(OperationResult.Reason.UNCERTAIN) : status;
+    var displayStatus = uncertain ? BufferSettingsPackets.Status.UNCERTAIN : status;
     var packet =
         new BufferSettingsPackets.View(
             containerId,

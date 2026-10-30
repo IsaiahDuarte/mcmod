@@ -38,7 +38,7 @@ class TerminalPacketsTest {
             3,
             UUID.randomUUID(),
             7,
-            "ready",
+            TerminalPackets.Status.READY,
             List.of(
                 new TerminalPackets.Row(0, "minecraft:stick", "Stick", "0", "0", "0", true),
                 new TerminalPackets.Row(1, "minecraft:stone", "Stone", "5", "0", "5", false)),
@@ -137,7 +137,7 @@ class TerminalPacketsTest {
             17,
             UUID.randomUUID(),
             42,
-            "ready",
+            TerminalPackets.Status.READY,
             List.of(
                 new TerminalPackets.Row(
                     0,
@@ -182,7 +182,7 @@ class TerminalPacketsTest {
             17,
             session,
             42,
-            "ready",
+            TerminalPackets.Status.READY,
             rows,
             true,
             false,
@@ -271,7 +271,8 @@ class TerminalPacketsTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new TerminalPackets.View(1, session, 1, "ready", List.of(), false, false, "0", "", 7));
+            new TerminalPackets.View(
+                1, session, 1, TerminalPackets.Status.READY, List.of(), false, false, "0", "", 7));
     var output = buffer();
     try {
       output.writeVarInt(1);
@@ -294,6 +295,8 @@ class TerminalPacketsTest {
             new TerminalPackets.Row(0, "minecraft:iron_ingot", "Iron", "1", "0", "1"));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminalPackets.View(1, session, 1, "ready", rows, false, false, "0"));
+        () ->
+            new TerminalPackets.View(
+                1, session, 1, TerminalPackets.Status.READY, rows, false, false, "0"));
   }
 }

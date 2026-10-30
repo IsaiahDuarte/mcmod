@@ -12,7 +12,6 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -86,12 +85,12 @@ final class TerminalContainers {
     final boolean take;
     final List<Leg> legs = new ArrayList<>();
     long amount;
-    String failure;
+    TerminalPackets.Status failure;
 
     Plan(ResourceKey key, boolean take) {
       this.key = key;
       this.take = take;
-      failure = take ? "shortage" : "full";
+      failure = take ? TerminalPackets.Status.SHORTAGE : TerminalPackets.Status.FULL;
     }
 
     void release() {
@@ -160,7 +159,7 @@ final class TerminalContainers {
       var location = saved.registry().definition(cell.handle()).location();
       var position = new NodeRegistry.Position(location.dimension(), location.position());
       var permit = runtime.movement(take ? position : origin, take ? origin : position, key, offer);
-      if (permit.amount() < offer) plan.failure = permit.reason().name().toLowerCase(Locale.ROOT);
+      if (permit.amount() < offer) plan.failure = TerminalPackets.Status.of(permit.reason());
       if (permit.amount() == 0) {
         permit.finish(0);
         continue;
@@ -191,8 +190,8 @@ final class TerminalContainers {
   }
 
   /** Fills the first main-inventory container that accepts {@code key}. */
-  String fill(ResourceKey key) {
-    if (key.kind() != ResourceKind.FLUID) return "wrong_resource";
+  TerminalPackets.Status fill(ResourceKey key) {
+    if (key.kind() != ResourceKind.FLUID) return TerminalPackets.Status.WRONG_RESOURCE;
     var inventory = player.getInventory();
     var fluid = codec.fluidStack(key, 1);
     long have = 0;
@@ -201,7 +200,7 @@ final class TerminalContainers {
           Math.min(FLUID_PER_ACTION - have, saved.registry().stock(cell.handle(), key).available());
       if (have == FLUID_PER_ACTION) break;
     }
-    if (have == 0) return "shortage";
+    if (have == 0) return TerminalPackets.Status.SHORTAGE;
     for (int slot = 0; slot < 36; slot++) {
       var stack = inventory.getItem(slot);
       if (stack.isEmpty()) continue;
@@ -211,66 +210,66 @@ final class TerminalContainers {
       int offer = (int) Math.min(have, FLUID_PER_ACTION);
       int accept = handler.fill(fluid.copyWithAmount(offer), IFluidHandler.FluidAction.SIMULATE);
       if (accept <= 0) continue;
-      if (accept > offer) return "handler_fault";
+      if (accept > offer) return TerminalPackets.Status.HANDLER_FAULT;
       // Simulate on a disposable copy to learn the resulting container before moving fluid.
       var trial = stack.copyWithCount(1).getCapability(Capabilities.FluidHandler.ITEM);
       if (trial == null
           || trial.fill(fluid.copyWithAmount(accept), IFluidHandler.FluidAction.EXECUTE) != accept)
-        return "handler_fault";
-      if (!replaceOne(slot, trial.getContainer(), true)) return "full";
+        return TerminalPackets.Status.HANDLER_FAULT;
+      if (!replaceOne(slot, trial.getContainer(), true)) return TerminalPackets.Status.FULL;
       var plan = plan(key, accept, true);
       if (plan.amount != accept) {
         plan.release();
         return plan.failure;
       }
-      if (!plan.commit()) return "handler_fault";
+      if (!plan.commit()) return TerminalPackets.Status.HANDLER_FAULT;
       replaceOne(slot, trial.getContainer(), false);
       inventory.setChanged();
-      return "filled";
+      return TerminalPackets.Status.FILLED;
     }
-    return "no_container";
+    return TerminalPackets.Status.NO_CONTAINER;
   }
 
   /** Empties the fluid container in {@code slot} into storage. */
-  String empty(int slot) {
+  TerminalPackets.Status empty(int slot) {
     var inventory = player.getInventory();
     var stack = inventory.getItem(slot);
-    if (stack.isEmpty()) return "no_container";
+    if (stack.isEmpty()) return TerminalPackets.Status.NO_CONTAINER;
     var handler = stack.copyWithCount(1).getCapability(Capabilities.FluidHandler.ITEM);
-    if (handler == null) return "no_container";
+    if (handler == null) return TerminalPackets.Status.NO_CONTAINER;
     var simulated = handler.drain(FLUID_PER_ACTION, IFluidHandler.FluidAction.SIMULATE);
-    if (simulated.isEmpty()) return "empty";
-    if (simulated.getAmount() > FLUID_PER_ACTION) return "handler_fault";
+    if (simulated.isEmpty()) return TerminalPackets.Status.EMPTY;
+    if (simulated.getAmount() > FLUID_PER_ACTION) return TerminalPackets.Status.HANDLER_FAULT;
     var key = codec.fluidKey(simulated);
     var drained = handler.drain(simulated.copy(), IFluidHandler.FluidAction.EXECUTE);
     if (drained.getAmount() != simulated.getAmount() || !codec.fluidKey(drained).equals(key))
-      return "handler_fault";
-    if (!replaceOne(slot, handler.getContainer(), true)) return "full";
+      return TerminalPackets.Status.HANDLER_FAULT;
+    if (!replaceOne(slot, handler.getContainer(), true)) return TerminalPackets.Status.FULL;
     var plan = plan(key, drained.getAmount(), false);
     if (plan.amount != drained.getAmount()) {
       plan.release();
       return plan.failure;
     }
-    if (!plan.commit()) return "handler_fault";
+    if (!plan.commit()) return TerminalPackets.Status.HANDLER_FAULT;
     replaceOne(slot, handler.getContainer(), false);
     inventory.setChanged();
-    return "emptied";
+    return TerminalPackets.Status.EMPTIED;
   }
 
   /** Moves FE between storage banks and the single energy item in {@code slot}. */
-  String energy(int slot, boolean charge) {
+  TerminalPackets.Status energy(int slot, boolean charge) {
     var inventory = player.getInventory();
     var stack = inventory.getItem(slot);
-    if (stack.isEmpty() || stack.getCount() != 1) return "no_energy_item";
+    if (stack.isEmpty() || stack.getCount() != 1) return TerminalPackets.Status.NO_ENERGY_ITEM;
     var changed = stack.copy();
     var item = changed.getCapability(Capabilities.EnergyStorage.ITEM);
-    if (item == null) return "no_energy_item";
+    if (item == null) return TerminalPackets.Status.NO_ENERGY_ITEM;
     var key = ResourceKey.ENERGY;
     if (charge) {
-      if (!item.canReceive()) return "no_energy_item";
+      if (!item.canReceive()) return TerminalPackets.Status.NO_ENERGY_ITEM;
       int want = item.receiveEnergy((int) ENERGY_PER_ACTION, true);
-      if (want <= 0) return "item_full";
-      if (want > ENERGY_PER_ACTION) return "handler_fault";
+      if (want <= 0) return TerminalPackets.Status.ITEM_FULL;
+      if (want > ENERGY_PER_ACTION) return TerminalPackets.Status.HANDLER_FAULT;
       var plan = plan(key, want, true);
       if (plan.amount == 0) {
         plan.release();
@@ -279,17 +278,17 @@ final class TerminalContainers {
       int received = item.receiveEnergy((int) plan.amount, false);
       if (received != plan.amount) {
         plan.release();
-        return "handler_fault";
+        return TerminalPackets.Status.HANDLER_FAULT;
       }
-      if (!plan.commit()) return "handler_fault";
+      if (!plan.commit()) return TerminalPackets.Status.HANDLER_FAULT;
       inventory.setItem(slot, changed);
       inventory.setChanged();
-      return "charged";
+      return TerminalPackets.Status.CHARGED;
     }
-    if (!item.canExtract()) return "no_energy_item";
+    if (!item.canExtract()) return TerminalPackets.Status.NO_ENERGY_ITEM;
     int offer = item.extractEnergy((int) ENERGY_PER_ACTION, true);
-    if (offer <= 0) return "item_empty";
-    if (offer > ENERGY_PER_ACTION) return "handler_fault";
+    if (offer <= 0) return TerminalPackets.Status.ITEM_EMPTY;
+    if (offer > ENERGY_PER_ACTION) return TerminalPackets.Status.HANDLER_FAULT;
     var plan = plan(key, offer, false);
     if (plan.amount == 0) {
       plan.release();
@@ -298,11 +297,11 @@ final class TerminalContainers {
     int extracted = item.extractEnergy((int) plan.amount, false);
     if (extracted != plan.amount) {
       plan.release();
-      return "handler_fault";
+      return TerminalPackets.Status.HANDLER_FAULT;
     }
-    if (!plan.commit()) return "handler_fault";
+    if (!plan.commit()) return TerminalPackets.Status.HANDLER_FAULT;
     inventory.setItem(slot, changed);
     inventory.setChanged();
-    return "discharged";
+    return TerminalPackets.Status.DISCHARGED;
   }
 }

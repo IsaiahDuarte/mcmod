@@ -2,9 +2,12 @@ package dev.izzy.factorycore.platform.program;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
+import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -62,15 +65,18 @@ public final class ProgramPackets {
                     buffer.readUtf(CHUNK_CHARS * 3)));
   }
 
-  /** Status, compiler diagnostics ("line:column message") and recent logs. */
+  /**
+   * The requested {@code state}, the runtime {@code status} (null while no rule has run), compiler
+   * diagnostics ("line:column message") and recent logs.
+   */
   public record View(
       int menu,
       UUID session,
       long revision,
-      String state,
+      ProgramControllerEntity.State state,
       String message,
       long energy,
-      String status,
+      WorldPrograms.RuntimeStatus status,
       boolean deployed,
       List<String> diagnostics,
       List<String> logs)
@@ -81,9 +87,8 @@ public final class ProgramPackets {
     public View {
       diagnostics = List.copyOf(diagnostics);
       logs = List.copyOf(logs);
-      if (state.length() > 32
-          || message.length() > 256
-          || status.length() > 32
+      Objects.requireNonNull(state);
+      if (message.length() > 256
           || energy < 0
           || diagnostics.size() > LINES
           || logs.size() > LINES
@@ -116,10 +121,10 @@ public final class ProgramPackets {
               buffer.writeVarInt(value.menu);
               buffer.writeUUID(value.session);
               buffer.writeLong(value.revision);
-              buffer.writeUtf(value.state, 32);
+              WireEnums.write(buffer, value.state);
               buffer.writeUtf(value.message, 256 * 3);
               buffer.writeVarLong(value.energy);
-              buffer.writeUtf(value.status, 32);
+              WireEnums.write(buffer, value.status);
               buffer.writeBoolean(value.deployed);
               lines(buffer, value.diagnostics);
               lines(buffer, value.logs);
@@ -129,10 +134,10 @@ public final class ProgramPackets {
                     buffer.readVarInt(),
                     buffer.readUUID(),
                     buffer.readLong(),
-                    buffer.readUtf(32),
+                    WireEnums.read(buffer, ProgramControllerEntity.State.class),
                     buffer.readUtf(256 * 3),
                     buffer.readVarLong(),
-                    buffer.readUtf(32),
+                    WireEnums.readNullable(buffer, WorldPrograms.RuntimeStatus.class),
                     buffer.readBoolean(),
                     lines(buffer),
                     lines(buffer)));

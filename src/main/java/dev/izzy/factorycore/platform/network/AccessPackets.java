@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.network;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -18,6 +20,36 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
  * match the open session. Views are bounded pages computed from canonical state.
  */
 public final class AccessPackets {
+  /** The last access edit's outcome, shown as {@code gui.factorycore.access.status.<key>}. */
+  public enum Status {
+    READY,
+    LOADING,
+    REBUILDING,
+    UPDATED,
+    TRANSFERRED,
+    DENIED,
+    LIMIT,
+    OWNER,
+    NO_NETWORK,
+    UNKNOWN,
+    CONFIRM,
+    UNCONFIRMED,
+    CANCELLED,
+    EXPIRED,
+    CHANGED,
+    MANAGE_REVOKED,
+    RATE;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+
+    /** An edit that worked. */
+    public boolean good() {
+      return this == UPDATED || this == TRANSFERRED;
+    }
+  }
+
   public static final int GRANT = 0,
       REVOKE = 1,
       REVOKE_ALL = 2,
@@ -101,7 +133,7 @@ public final class AccessPackets {
       int page,
       UUID pending,
       String pendingName,
-      String status,
+      Status status,
       long generation)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
@@ -109,6 +141,7 @@ public final class AccessPackets {
 
     public View {
       rows = List.copyOf(rows);
+      Objects.requireNonNull(status);
       if (owner.length() > 48
           || self < 0
           || self >= 1 << 7
@@ -126,7 +159,6 @@ public final class AccessPackets {
           || page < 0
           || page >= MAX_PAGES
           || pendingName.length() > 48
-          || status.length() > 32
           || generation < 0) throw new IllegalArgumentException("Invalid access view");
       Objects.requireNonNull(pending);
     }
@@ -163,7 +195,7 @@ public final class AccessPackets {
               b.writeVarInt(v.page);
               b.writeUUID(v.pending);
               b.writeUtf(v.pendingName, 48);
-              b.writeUtf(v.status, 32);
+              WireEnums.write(b, v.status);
               b.writeVarLong(v.generation);
             },
             b -> {
@@ -203,7 +235,7 @@ public final class AccessPackets {
                   b.readVarInt(),
                   b.readUUID(),
                   b.readUtf(48),
-                  b.readUtf(32),
+                  WireEnums.read(b, Status.class),
                   b.readVarLong());
             });
   }

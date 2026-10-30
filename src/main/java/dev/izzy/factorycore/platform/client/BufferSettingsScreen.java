@@ -552,17 +552,18 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     Component message;
     int color = Panels.WARN;
     if (view.requested() != 0) {
-      if (view.status().equals("ok")) color = Panels.GOOD;
+      if (view.status() == BufferSettingsPackets.Status.OK) color = Panels.GOOD;
       message =
           Component.translatable(
               "gui.factorycore.buffer.result",
-              Component.translatable("gui.factorycore.buffer.status." + view.status()),
+              Component.translatable("gui.factorycore.buffer.status." + view.status().key()),
               view.moved(),
               view.requested());
     } else if (view.dirty()) message = Component.translatable("gui.factorycore.buffer.draft");
-    else if (!view.status().equals("ready")) {
-      message = Component.translatable("gui.factorycore.buffer.status." + view.status());
-      if (view.status().equals("applied") || view.status().equals("ok")) color = Panels.GOOD;
+    else if (view.status() != BufferSettingsPackets.Status.READY) {
+      message = Component.translatable("gui.factorycore.buffer.status." + view.status().key());
+      if (view.status() == BufferSettingsPackets.Status.APPLIED
+          || view.status() == BufferSettingsPackets.Status.OK) color = Panels.GOOD;
     } else message = Component.empty();
     graphics.drawString(
         font,

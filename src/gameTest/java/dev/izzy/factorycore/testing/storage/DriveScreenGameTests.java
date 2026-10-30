@@ -142,7 +142,7 @@ public final class DriveScreenGameTests {
     h.assertTrue(
         player.getInventory().getItem(0).getCount() == 1, "A full drive leaves the cell in hand");
     menu.broadcastChanges();
-    h.assertTrue(menu.view().status().equals("refused"), "The refusal is shown");
+    h.assertTrue(menu.view().status() == DrivePackets.Status.REFUSED, "The refusal is shown");
 
     var fluid = CellHandleData.read(drive.cell(0));
     menu.setCarried(new ItemStack(StorageContent.ADVANCED.get()));

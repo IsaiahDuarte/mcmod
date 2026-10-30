@@ -51,14 +51,14 @@ public final class DeviceStatusGameTests {
               var access = (NetworkAccessMenu) player.containerMenu;
               access.broadcastChanges();
               h.assertTrue(
-                  access.deviceStatus().network().equals("valid"),
+                  access.deviceStatus().online(),
                   "The controller screen's status strip reports the network online");
               player.closeContainer();
               h.useBlock(CONNECTOR, player);
               var settings = (ConnectorSettingsMenu) player.containerMenu;
               settings.broadcastChanges();
               h.assertTrue(
-                  settings.deviceStatus().network().equals("valid")
+                  settings.deviceStatus().online()
                       && settings.deviceStatus().reason().startsWith("reason.factorycore.")
                       && !settings.deviceStatus().reason().equals("reason.factorycore.ok"),
                   "With no container behind it the connector strip explains why it is not ready");

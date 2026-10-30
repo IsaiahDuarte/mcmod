@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.Failures;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
@@ -54,6 +55,23 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * the same catalog, connector, route and crafting paths as presets and terminals.
  */
 public final class WorldPrograms {
+  /**
+   * How a running controller's last rule went, shown as {@code
+   * gui.factorycore.program.status.<key>}.
+   */
+  public enum RuntimeStatus {
+    RUNNING,
+    /** Ran, but at least {@code DELAY_TICKS} late. */
+    DELAYED,
+    THROTTLED,
+    NO_POWER,
+    OFFLINE;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+  }
+
   public static final int TASK_COST = 16;
   public static final long BASE_COST = 4;
   public static final int STEPS_PER_FE = 256;
@@ -96,7 +114,7 @@ public final class WorldPrograms {
     final Map<String, Long> scheduled = new HashMap<>();
 
     UUID deployment, request;
-    String status = "";
+    RuntimeStatus status;
 
     /** A storage search saw matching stock that crafting reservations fully held. */
     boolean reservedSeen;
@@ -221,9 +239,10 @@ public final class WorldPrograms {
     return true;
   }
 
-  public String status(ProgramControllerEntity controller) {
+  /** The controller's runtime status, or null before any rule has run. */
+  public RuntimeStatus status(ProgramControllerEntity controller) {
     var runtime = controllers.get(controller);
-    return runtime == null ? "" : runtime.status;
+    return runtime == null ? null : runtime.status;
   }
 
   public void tick() {
@@ -247,7 +266,7 @@ public final class WorldPrograms {
       }
       var member = networks().membership(controller.origin());
       if (member.status() != NetworkTopology.Status.VALID) {
-        runtime.status = "offline";
+        runtime.status = RuntimeStatus.OFFLINE;
         continue;
       }
       for (var rule : rules(controller)) {
@@ -283,14 +302,14 @@ public final class WorldPrograms {
       Runtime runtime,
       String rule,
       FairScheduler.Admission admission) {
-    if (!runtime.status.equals("throttled"))
+    if (runtime.status != RuntimeStatus.THROTTLED)
       controller.log(
           "rule "
               + rule
               + " throttled: server work "
               + admission.name().toLowerCase(Locale.ROOT)
               + "; retrying at its next interval");
-    runtime.status = "throttled";
+    runtime.status = RuntimeStatus.THROTTLED;
   }
 
   /** Latest scheduling latency of this controller's rule invocations, in ticks. */
@@ -312,7 +331,7 @@ public final class WorldPrograms {
     // nothing about the deployer's grants: skip this run and retry at the next interval.
     if (!controller.current()
         || networks().membership(controller.origin()).status() != NetworkTopology.Status.VALID) {
-      runtime.status = "offline";
+      runtime.status = RuntimeStatus.OFFLINE;
       return;
     }
     if (!allowed(actor, controller)) {
@@ -326,7 +345,7 @@ public final class WorldPrograms {
         BASE_COST
             + (guest ? WasmProgram.RULE_INSTRUCTIONS : ProgramEvaluator.MAX_STEPS) / STEPS_PER_FE;
     if (controller.energy() < worst) {
-      runtime.status = "no_power";
+      runtime.status = RuntimeStatus.NO_POWER;
       return;
     }
     List<ProgramCommand> commands;
@@ -358,10 +377,10 @@ public final class WorldPrograms {
     controller.spend(BASE_COST + (work + STEPS_PER_FE - 1) / STEPS_PER_FE);
     runtime.lag = lag;
     if (lag >= DELAY_TICKS) {
-      if (!runtime.status.equals("delayed"))
+      if (runtime.status != RuntimeStatus.DELAYED)
         controller.log("rule " + rule.key() + " ran " + lag + " ticks late: server busy");
-      runtime.status = "delayed";
-    } else runtime.status = "running";
+      runtime.status = RuntimeStatus.DELAYED;
+    } else runtime.status = RuntimeStatus.RUNNING;
     runtime.queue.removeIf(pending -> pending.rule().equals(rule.key()));
     var lines = new ArrayList<String>();
     for (var command : commands)

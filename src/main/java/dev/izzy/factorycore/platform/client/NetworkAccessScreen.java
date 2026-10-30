@@ -539,13 +539,11 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
           footer.x() + 38,
           footer.y() + 5,
           Panels.TEXT);
-    if (!view.status().equals("ready"))
+    if (view.status() != AccessPackets.Status.READY)
       line(
           graphics,
-          Component.translatable("gui.factorycore.access.status." + view.status()),
+          Component.translatable("gui.factorycore.access.status." + view.status().key()),
           MESSAGE_Y,
-          view.status().equals("updated") || view.status().equals("transferred")
-              ? Panels.GOOD
-              : Panels.WARN);
+          view.status().good() ? Panels.GOOD : Panels.WARN);
   }
 }

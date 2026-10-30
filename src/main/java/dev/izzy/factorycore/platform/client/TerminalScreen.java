@@ -496,7 +496,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   boolean online() {
-    return menu.deviceStatus().network().equals("valid");
+    return menu.deviceStatus().online();
   }
 
   @Override

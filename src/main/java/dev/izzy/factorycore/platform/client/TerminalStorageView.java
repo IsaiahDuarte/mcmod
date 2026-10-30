@@ -227,7 +227,7 @@ final class TerminalStorageView {
     stack.active = kind == 0 ? one.active : kind == 2;
     one.setMessage(Component.translatable("gui.factorycore.terminal.action." + kind + ".one"));
     stack.setMessage(Component.translatable("gui.factorycore.terminal.action." + kind + ".two"));
-    returning.active = !view.busy() && !view.staged().equals("0") && !view.uncertain();
+    returning.active = !view.busy() && view.staging() && !view.uncertain();
   }
 
   void tickVisibility(boolean jobsMode) {
@@ -235,7 +235,7 @@ final class TerminalStorageView {
     int kind = screen.kind();
     one.visible = !jobsMode && kind != 0;
     stack.visible = !jobsMode && kind == 2;
-    returning.visible = !jobsMode && !view.staged().equals("0");
+    returning.visible = !jobsMode && view.staging();
     // The crafting grid takes items or fluids, so the Energy tab has no Crafting button.
     craftingToggle.visible = !jobsMode && kind != 2;
   }
@@ -255,7 +255,7 @@ final class TerminalStorageView {
       var shown = rowIcon(value.icon()).getDefaultInstance();
       if (kind != 1 || !ResourceIcons.renderFluid(graphics, value.icon(), x + 1, y + 1))
         graphics.renderItem(shown, x + 1, y + 1);
-      if (value.craftable() && value.total().equals("0")) {
+      if (value.craftable() && value.none()) {
         // A ghost: nothing stored, but a pattern can make it.
         Panels.veil(graphics, icon);
         screen.drawCount(graphics, shown, x, y, "+");
@@ -272,7 +272,7 @@ final class TerminalStorageView {
         view.total(),
         desiredOffset,
         maxOffset());
-    if (kind == 0 && view.status().equals("ready")) {
+    if (kind == 0 && view.status() == TerminalPackets.Status.READY) {
       var bar = capacityBar();
       Panels.inset(graphics, bar.offset(left, top));
       var capacity = new BigInteger(view.capacity());
@@ -302,7 +302,7 @@ final class TerminalStorageView {
 
   /** Problems show over the grid, where the player is looking. */
   void renderProblems(GuiGraphics graphics) {
-    if (!screen.online() && !menu().deviceStatus().network().isEmpty())
+    if (!screen.online() && menu().deviceStatus().network() != null)
       Panels.wrapped(
           graphics,
           screen.font(),
@@ -316,11 +316,11 @@ final class TerminalStorageView {
     var view = menu().view();
     var font = screen.font();
     int textY = infoY() + 2;
-    if (!view.status().equals("ready")) {
+    if (view.status() != TerminalPackets.Status.READY) {
       graphics.drawString(
           font,
           font.plainSubstrByWidth(
-              Component.translatable("gui.factorycore.terminal.status." + view.status())
+              Component.translatable("gui.factorycore.terminal.status." + view.status().key())
                   .getString(),
               Math.max(10, infoTextWidth())),
           GRID_X + 1,
@@ -369,7 +369,7 @@ final class TerminalStorageView {
                   value.available()),
               Component.translatable(
                   value.craftable()
-                      ? value.total().equals("0")
+                      ? value.none()
                           ? "gui.factorycore.terminal.craftable.ghost"
                           : "gui.factorycore.terminal.craftable.stocked"
                       : "gui.factorycore.terminal.select.help" + (kind == 0 ? "" : "." + kind))),
@@ -387,14 +387,15 @@ final class TerminalStorageView {
       graphics.renderTooltip(
           font,
           List.of(
-              view.status().equals("ready")
+              view.status() == TerminalPackets.Status.READY
                   ? Component.translatable(
                       view.infinite()
                           ? "gui.factorycore.terminal.capacity.infinite"
                           : "gui.factorycore.terminal.capacity",
                       view.used(),
                       view.capacity())
-                  : Component.translatable("gui.factorycore.terminal.status." + view.status()),
+                  : Component.translatable(
+                      "gui.factorycore.terminal.status." + view.status().key()),
               Component.translatable(
                   view.external()
                       ? "gui.factorycore.terminal.capacity.external"
@@ -449,7 +450,7 @@ final class TerminalStorageView {
     int row = rowAt(mouseX, mouseY);
     if (row >= 0 && screen.kind() == 0 && row < menu().view().rows().size()) {
       var value = menu().view().rows().get(row);
-      boolean ghost = value.craftable() && value.total().equals("0");
+      boolean ghost = value.craftable() && value.none();
       if (value.craftable() && (button == 2 || ghost && menu().getCarried().isEmpty())) {
         request(row);
         return true;

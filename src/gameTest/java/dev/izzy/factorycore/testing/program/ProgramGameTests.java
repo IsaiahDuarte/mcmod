@@ -224,7 +224,7 @@ public final class ProgramGameTests {
         .thenExecute(
             () -> {
               h.assertTrue(
-                  programs(h).status(f.controller).equals("no_power")
+                  programs(h).status(f.controller) == WorldPrograms.RuntimeStatus.NO_POWER
                       && f.chestCount(Items.IRON_INGOT) == 5,
                   "No FE means no invocation");
               f.controller.energyStorage().receiveEnergy(100, false);

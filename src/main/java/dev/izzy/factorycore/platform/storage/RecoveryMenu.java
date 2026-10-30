@@ -32,7 +32,8 @@ public final class RecoveryMenu extends AbstractContainerMenu {
   private final List<UUID> history = new ArrayList<>();
   private UUID cursor, next;
   private long revision = 1;
-  private String status = "ready", evidence = "", detail = "";
+  private RecoveryPackets.Status status = RecoveryPackets.Status.READY;
+  private String evidence = "", detail = "";
   private RecoveryPackets.View view;
 
   /** Client constructor. */
@@ -43,7 +44,9 @@ public final class RecoveryMenu extends AbstractContainerMenu {
   private RecoveryMenu(int id, Inventory inventory, UUID session, boolean server) {
     super(RecoveryContent.MENU.get(), id);
     this.session = new MenuSession(this, inventory.player, session, server, POLL_TICKS);
-    view = new RecoveryPackets.View(id, session, 0, false, List.of(), 0, false, "loading", "", "");
+    view =
+        new RecoveryPackets.View(
+            id, session, 0, false, List.of(), 0, false, RecoveryPackets.Status.LOADING, "", "");
   }
 
   /** Opens the screen for a connected player; what it lists depends on operator status. */
@@ -108,19 +111,19 @@ public final class RecoveryMenu extends AbstractContainerMenu {
       case RecoveryPackets.HOME -> {
         history.clear();
         cursor = null;
-        status = "ready";
+        status = RecoveryPackets.Status.READY;
       }
       case RecoveryPackets.NEXT -> {
         if (next != null) {
           history.add(cursor);
           cursor = next;
-          status = "ready";
+          status = RecoveryPackets.Status.READY;
         }
       }
       case RecoveryPackets.RETURN, RecoveryPackets.SETTLE -> {
         var row = visible(packet.record());
         if (row == null) {
-          status = "missing";
+          status = RecoveryPackets.Status.MISSING;
           break;
         }
         boolean settle = packet.action() == RecoveryPackets.SETTLE;
@@ -132,25 +135,25 @@ public final class RecoveryMenu extends AbstractContainerMenu {
                 settle,
                 completed -> {
                   if (!session.active() || player().containerMenu != this) return;
-                  status = settle ? "settled" : "result";
+                  status = settle ? RecoveryPackets.Status.SETTLED : RecoveryPackets.Status.RESULT;
                   detail = completed.reason().name();
                   publish();
                 });
-        status = outcome.reason();
+        status = RecoveryPackets.Status.of(outcome.reason());
         evidence = outcome.evidence();
-        if (status.equals("queued")) detail = outcome.admission().name();
+        if (status == RecoveryPackets.Status.QUEUED) detail = outcome.admission().name();
       }
       case RecoveryPackets.RETIRE -> {
         if (!sender.hasPermissions(Actors.OPERATOR_LEVEL)) {
-          status = "operator";
+          status = RecoveryPackets.Status.OPERATOR;
           break;
         }
         if (visible(packet.record()) == null) {
-          status = "missing";
+          status = RecoveryPackets.Status.MISSING;
           break;
         }
         var outcome = RecoveryActions.retire(sender.server, packet.record());
-        status = outcome.reason();
+        status = RecoveryPackets.Status.of(outcome.reason());
         evidence = outcome.evidence();
       }
       default -> {
@@ -214,7 +217,7 @@ public final class RecoveryMenu extends AbstractContainerMenu {
           List.of(),
           history.size(),
           false,
-          "unavailable",
+          RecoveryPackets.Status.UNAVAILABLE,
           "",
           "");
     }

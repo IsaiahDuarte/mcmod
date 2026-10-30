@@ -153,7 +153,7 @@ public final class MachinePresetResumeGameTests {
               var menu = (MachineSettingsMenu) editor.containerMenu;
               menu.broadcastChanges();
               h.assertTrue(
-                  menu.presetView().status().equals("resumable")
+                  menu.presetView().status() == MachinePresetPackets.Status.RESUMABLE
                       && menu.presetView().mode() == MachinePresets.Mode.IMPORT
                       && menu.presetView().dirty(),
                   "The Presets page offers the paused preset back for one Apply");

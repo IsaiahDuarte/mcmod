@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.program;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
 import dev.izzy.factorycore.core.program.ProgramPreview;
@@ -12,7 +13,6 @@ import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -70,7 +70,16 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
     this.position = position;
     view =
         new ProgramPackets.View(
-            id, protocol.id(), 0, "stopped", "", 0, "", false, List.of(), List.of());
+            id,
+            protocol.id(),
+            0,
+            ProgramControllerEntity.State.STOPPED,
+            "",
+            0,
+            null,
+            false,
+            List.of(),
+            List.of());
     deviceStatus = DeviceStatus.View.pending(id, protocol.id());
   }
 
@@ -310,7 +319,7 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
             containerId,
             protocol.id(),
             revision,
-            controller.state().name().toLowerCase(Locale.ROOT),
+            controller.state(),
             message.length() > 256 ? message.substring(0, 256) : message,
             controller.energy(),
             WorldPrograms.get(player().server).status(controller),
@@ -333,10 +342,9 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
                 protocol.id(),
                 controller.origin(),
                 // A runtime problem (no FE, offline) explains more than the requested state.
-                packet.status().isEmpty() || packet.status().equals("running")
-                    ? "status.factorycore.program."
-                        + controller.state().name().toLowerCase(Locale.ROOT)
-                    : "gui.factorycore.program.status." + packet.status(),
+                packet.status() == null || packet.status() == WorldPrograms.RuntimeStatus.RUNNING
+                    ? "status.factorycore.program." + EnumKeys.key(controller.state())
+                    : "gui.factorycore.program.status." + packet.status().key(),
                 DeviceStatus.energy(controller.energy(), ProgramControllerEntity.CAPACITY)));
   }
 }

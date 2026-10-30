@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
 import dev.izzy.factorycore.platform.session.WireEnums;
@@ -19,6 +20,48 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
  * status or record state.
  */
 public final class RecoveryPackets {
+  /**
+   * The last action's outcome. The first group belongs to the screen; the rest mirror {@link
+   * RecoveryActions.Result}.
+   */
+  public enum Status {
+    READY,
+    LOADING,
+    RESULT,
+    SETTLED,
+    OPERATOR,
+    QUEUED,
+    RETIRED,
+    OWNER,
+    UNCERTAIN,
+    COMPLETE,
+    LEGACY,
+    SETTLE_SCOPED,
+    RATE,
+    LIMIT,
+    AUDIT,
+    UNAVAILABLE,
+    MISSING,
+    NOT_COMPLETE;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+
+    /** The lang key the screen shows; refusals share the recovery commands' text. */
+    public String translation() {
+      return switch (this) {
+        case READY, LOADING -> "gui.factorycore.recovery.status." + key();
+        case RESULT, SETTLED, OPERATOR, QUEUED, RETIRED -> "gui.factorycore.recovery." + key();
+        default -> "command.factorycore.recovery." + key();
+      };
+    }
+
+    public static Status of(RecoveryActions.Result result) {
+      return EnumKeys.require(Status.class, result.key());
+    }
+  }
+
   public static final int HOME = 0, NEXT = 1, RETURN = 2, SETTLE = 3, RETIRE = 4;
   public static final int PAGE_ROWS = 6;
   public static final UUID NONE = new UUID(0, 0);
@@ -90,7 +133,7 @@ public final class RecoveryPackets {
       List<Row> rows,
       int page,
       boolean more,
-      String status,
+      Status status,
       String evidence,
       String detail)
       implements CustomPacketPayload {
@@ -99,10 +142,10 @@ public final class RecoveryPackets {
 
     public View {
       rows = List.copyOf(rows);
+      Objects.requireNonNull(status);
       if (rows.size() > PAGE_ROWS
           || page < 0
           || page > 1024
-          || status.length() > 32
           || evidence.length() > 128
           || detail.length() > 32) throw new IllegalArgumentException("Invalid recovery view");
     }
@@ -135,7 +178,7 @@ public final class RecoveryPackets {
               }
               b.writeVarInt(v.page);
               b.writeBoolean(v.more);
-              b.writeUtf(v.status, 32);
+              WireEnums.write(b, v.status);
               b.writeUtf(v.evidence, 128);
               b.writeUtf(v.detail, 32);
             },
@@ -169,7 +212,7 @@ public final class RecoveryPackets {
                   rows,
                   b.readVarInt(),
                   b.readBoolean(),
-                  b.readUtf(32),
+                  WireEnums.read(b, Status.class),
                   b.readUtf(128),
                   b.readUtf(32));
             });

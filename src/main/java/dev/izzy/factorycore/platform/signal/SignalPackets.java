@@ -1,8 +1,10 @@
 package dev.izzy.factorycore.platform.signal;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.storage.SignalRule;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -13,10 +15,36 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 /** C1 Signal Interface screen payloads; the client never names a resource with components. */
 public final class SignalPackets {
+  /** The last edit's outcome, shown as {@code gui.factorycore.signal.status.<key>}. */
+  public enum Status {
+    READY,
+    LOADING,
+    DRAFT,
+    LABELED,
+    APPLIED,
+    INVALID,
+    DENIED,
+    SWITCH_SAME,
+    SWITCH_DENIED,
+    SWITCH_BUSY,
+    SWITCH_NOT_EMPTY,
+    SWITCH_UPGRADED,
+    SWITCH_FAULT;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+
+    /** An edit that worked. */
+    public boolean good() {
+      return this == APPLIED || this == LABELED;
+    }
+  }
+
   /**
    * The screen's state. {@code resource} is the watched registry ID ("" for none), {@code fluid}
    * its kind, {@code power} the strength now emitted and {@code reason} why it is off (a key
-   * suffix, "" when evaluated). {@code status} names the last edit's outcome.
+   * suffix, "" when evaluated). {@code status} is the last edit's outcome.
    */
   public record View(
       int menu,
@@ -29,7 +57,7 @@ public final class SignalPackets {
       int power,
       String reason,
       boolean editable,
-      String status,
+      Status status,
       String label)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
@@ -37,12 +65,12 @@ public final class SignalPackets {
 
     public View {
       Objects.requireNonNull(rule);
+      Objects.requireNonNull(status);
       if (resource.length() > 256
           || name.length() > 96
           || power < 0
           || power > SignalRule.MAX
           || reason.length() > 32
-          || status.length() > 32
           || label.length() > SignalInterfaceEntity.MAX_LABEL)
         throw new IllegalArgumentException("Invalid signal view");
     }
@@ -65,7 +93,7 @@ public final class SignalPackets {
               b.writeVarInt(v.power);
               b.writeUtf(v.reason, 32);
               b.writeBoolean(v.editable);
-              b.writeUtf(v.status, 32);
+              WireEnums.write(b, v.status);
               b.writeUtf(v.label, SignalInterfaceEntity.MAX_LABEL);
             },
             b ->
@@ -80,7 +108,7 @@ public final class SignalPackets {
                     b.readVarInt(),
                     b.readUtf(32),
                     b.readBoolean(),
-                    b.readUtf(32),
+                    WireEnums.read(b, Status.class),
                     b.readUtf(SignalInterfaceEntity.MAX_LABEL)));
   }
 

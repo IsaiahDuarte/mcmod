@@ -36,7 +36,7 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
   private final SignalInterfaceEntity signal;
   private ResourceKey draft;
   private boolean drafted;
-  private String status = "ready";
+  private SignalPackets.Status status = SignalPackets.Status.READY;
   private long revision;
   private SignalPackets.View view;
   private DeviceStatus.View deviceStatus;
@@ -51,7 +51,18 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
     this.signal = signal;
     view =
         new SignalPackets.View(
-            id, nonce, 0, SignalRule.DEFAULT, "", "", false, 0, "unset", false, "loading", "");
+            id,
+            nonce,
+            0,
+            SignalRule.DEFAULT,
+            "",
+            "",
+            false,
+            0,
+            "unset",
+            false,
+            SignalPackets.Status.LOADING,
+            "");
     deviceStatus = DeviceStatus.View.pending(id, nonce);
   }
 
@@ -100,7 +111,7 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
         || !session.admitCommand(sender, packet.menu(), packet.session())
         || !signal.canUse(sender)) return;
     if (!allowed(sender, NetworkPermissions.Permission.EDIT)) {
-      status = "denied";
+      status = SignalPackets.Status.DENIED;
       publish();
       return;
     }
@@ -123,7 +134,7 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
             draft = codec.itemKey(new ItemStack(item));
           }
           drafted = true;
-          status = "draft";
+          status = SignalPackets.Status.DRAFT;
         }
         case SignalPackets.Command.CARRIED -> {
           var carried = getCarried();
@@ -135,24 +146,24 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
                   ? codec.fluidKey(fluid.get())
                   : codec.itemKey(carried);
           drafted = true;
-          status = "draft";
+          status = SignalPackets.Status.DRAFT;
         }
         case SignalPackets.Command.LABEL -> {
           signal.label(packet.text());
-          status = "labeled";
+          status = SignalPackets.Status.LABELED;
         }
         case SignalPackets.Command.APPLY -> {
           signal.configure(sender.getUUID(), packet.rule(), watched());
           drafted = false;
           draft = null;
-          status = "applied";
+          status = SignalPackets.Status.APPLIED;
         }
         default -> {
           return;
         }
       }
     } catch (IllegalArgumentException invalid) {
-      status = "invalid";
+      status = SignalPackets.Status.INVALID;
     }
     revision++;
     publish();
@@ -230,7 +241,7 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
                   "gui.factorycore.interface.mode." + target.getSerializedName())),
           true);
     } else {
-      status = outcome.key();
+      status = outcome.as(SignalPackets.Status.class);
       revision++;
       publish();
     }

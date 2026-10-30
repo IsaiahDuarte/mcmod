@@ -413,10 +413,10 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
     int priorityX = priority.getX() - leftPos - 6 - font.width(priorityLabel);
     graphics.drawString(font, priorityLabel, priorityX, PRIORITY_Y + 5, Panels.TEXT, false);
     // The result of the last bay click (instructions are in the bay tooltips).
-    if (view.status().equals("ready") && view.detail().isEmpty()) return;
+    if (view.status() == DrivePackets.Status.READY && view.detail().isEmpty()) return;
     var status =
         view.detail().isEmpty()
-            ? Component.translatable("gui.factorycore.drive.status." + view.status())
+            ? Component.translatable("gui.factorycore.drive.status." + view.status().key())
             : Component.literal(view.detail());
     Panels.wrapped(
         graphics,

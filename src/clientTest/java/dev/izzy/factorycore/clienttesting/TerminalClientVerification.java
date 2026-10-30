@@ -20,7 +20,10 @@ import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.BufferSettingsPackets;
 import dev.izzy.factorycore.platform.storage.PortContent;
+import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
+import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import java.io.IOException;
@@ -272,7 +275,7 @@ public final class TerminalClientVerification {
     }
     if (stage == 4
         && view.revision() > previousRevision
-        && view.status().equals("ready")
+        && view.status() == TerminalPackets.Status.READY
         && view.rows().size() == 2) {
       int selected = -1;
       for (int i = 0; i < view.rows().size(); i++)
@@ -394,7 +397,7 @@ public final class TerminalClientVerification {
   /** Real typed queries, native sort button, and a physically reopened terminal. */
   private void searchTick(Minecraft client, TerminalScreen screen) {
     var view = screen.getMenu().view();
-    if (!view.status().equals("ready") || view.busy() || ticks - entered < 5) return;
+    if (view.status() != TerminalPackets.Status.READY || view.busy() || ticks - entered < 5) return;
     switch (searchStep) {
       case 0 -> {
         if (view.rows().size() != Math.min(view.size(), 110) || view.total() != 110) return;
@@ -535,7 +538,9 @@ public final class TerminalClientVerification {
       }
       case 3 -> {
         if (grid.cells().get(1).isEmpty() || !grid.result().isEmpty()) return;
-        check(grid.status().equals("ready"), "Row ghost breaks the recipe without moving stock");
+        check(
+            grid.status() == TerminalCraftingPackets.GridStatus.READY,
+            "Row ghost breaks the recipe without moving stock");
         screen.mouseClicked(left + screen.gridX() + 27, top + screen.gridY() + 9, 1);
         craftStep++;
       }
@@ -547,7 +552,7 @@ public final class TerminalClientVerification {
       case 5 -> {
         var inventory = client.player.getInventory();
         plankSlot = inventory.findSlotMatchingItem(new ItemStack(Items.OAK_PLANKS));
-        if (!grid.status().equals("crafted") || plankSlot < 0) return;
+        if (grid.status() != TerminalCraftingPackets.GridStatus.CRAFTED || plankSlot < 0) return;
         check(
             inventory.getItem(20).isEmpty()
                 && inventory.countItem(Items.OAK_LOG) == 0
@@ -702,7 +707,7 @@ public final class TerminalClientVerification {
       }
       case 25 -> {
         if (view.dirty()
-            || !view.status().equals("applied")
+            || view.status() != BufferSettingsPackets.Status.APPLIED
             || view.slots().getFirst().count() != 8) return;
         click(screen, "Inventory");
         next();
@@ -722,7 +727,7 @@ public final class TerminalClientVerification {
         next();
       }
       case 28 -> {
-        if (!view.status().equals("full")) return;
+        if (view.status() != BufferSettingsPackets.Status.FULL) return;
         check(
             client.player.getInventory().getItem(9).getCount() == 3
                 && view.slots().getFirst().count() == 8,
@@ -740,7 +745,7 @@ public final class TerminalClientVerification {
         next();
       }
       case 30 -> {
-        if (view.dirty() || !view.status().equals("applied")) return;
+        if (view.dirty() || view.status() != BufferSettingsPackets.Status.APPLIED) return;
         deposit(client, menu, 9, 1);
         next();
       }
@@ -754,7 +759,9 @@ public final class TerminalClientVerification {
         if (client.player.getInventory().getItem(9).getCount() != 10
             || view.slots().getFirst().count() != 1) return;
         check(
-            view.status().equals("partial") && view.moved() == 8 && view.requested() == 64,
+            view.status() == BufferSettingsPackets.Status.PARTIAL
+                && view.moved() == 8
+                && view.requested() == 64,
             "Take64 reports actual eight of64 under shared rate");
         deposit(client, menu, 9, 8);
         next();
@@ -1237,7 +1244,9 @@ public final class TerminalClientVerification {
         powerAccessPoint(server);
         if (!(client.screen instanceof TerminalScreen screen)) return;
         var view = screen.getMenu().view();
-        if (!view.status().equals("ready") || view.rows().isEmpty() || ticks - entered < 10) return;
+        if (view.status() != TerminalPackets.Status.READY
+            || view.rows().isEmpty()
+            || ticks - entered < 10) return;
         checkNoOverlap(screen);
         captures.grab(client, "wireless-terminal-scale-2.png");
         evidence.append(
@@ -1273,7 +1282,7 @@ public final class TerminalClientVerification {
       }
       case 73 -> {
         if (!(client.screen instanceof TerminalScreen screen)
-            || !screen.getMenu().view().status().equals("ready")) return;
+            || screen.getMenu().view().status() != TerminalPackets.Status.READY) return;
         previousRevision = screen.getMenu().view().revision();
         click(screen, "Fluids");
         next();
@@ -1400,7 +1409,7 @@ public final class TerminalClientVerification {
         }
         if (searchStep == 3 || !(client.screen instanceof TerminalScreen screen)) return;
         var view = screen.getMenu().view();
-        if (!view.status().equals("ready") || view.busy()) return;
+        if (view.status() != TerminalPackets.Status.READY || view.busy()) return;
         if (searchStep == 0) {
           search(screen, "@minecraft");
           searchStep++;

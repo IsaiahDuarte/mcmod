@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.program.ProgramTemplates;
 import dev.izzy.factorycore.core.program.ResourceExpressions;
 import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.client.ui.Rect;
+import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.program.ProgramMenu;
 import dev.izzy.factorycore.platform.program.ProgramPackets;
 import java.io.IOException;
@@ -389,7 +390,10 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
   }
 
   private void togglePause() {
-    action(menu.view().state().equals("running") ? ProgramPackets.PAUSE : ProgramPackets.RESUME);
+    action(
+        menu.view().state() == ProgramControllerEntity.State.RUNNING
+            ? ProgramPackets.PAUSE
+            : ProgramPackets.RESUME);
   }
 
   @Override
@@ -408,7 +412,8 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     pause.active = view.deployed();
     pause.setMessage(
         Component.translatable(
-            "gui.factorycore.program." + (view.state().equals("running") ? "pause" : "resume")));
+            "gui.factorycore.program."
+                + (view.state() == ProgramControllerEntity.State.RUNNING ? "pause" : "resume")));
   }
 
   @Override

@@ -7,8 +7,21 @@ import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.crafting.JobStatus;
+import dev.izzy.factorycore.core.network.NetworkTopology;
+import dev.izzy.factorycore.platform.network.AccessPackets;
+import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
+import dev.izzy.factorycore.platform.signal.SignalPackets;
+import dev.izzy.factorycore.platform.storage.BufferSettingsPackets;
+import dev.izzy.factorycore.platform.storage.DrivePackets;
+import dev.izzy.factorycore.platform.storage.MachinePresetPackets;
+import dev.izzy.factorycore.platform.storage.MachineSettingsPackets;
+import dev.izzy.factorycore.platform.storage.RecoveryActions;
+import dev.izzy.factorycore.platform.storage.RecoveryPackets;
 import dev.izzy.factorycore.platform.storage.StagingClass;
+import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
+import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -87,6 +100,46 @@ class LangKeysTest {
     var missing = new TreeSet<>(expected);
     missing.removeAll(lang);
     assertEquals(Set.of(), missing);
+  }
+
+  /**
+   * M142: each menu's typed status is shown through a key built from the value, so every value
+   * needs its entry.
+   */
+  @Test
+  void everyMenuStatusHasItsKey() throws Exception {
+    Set<String> lang;
+    try (var stream = getClass().getResourceAsStream("/assets/factorycore/lang/en_us.json")) {
+      assertNotNull(stream, "lang on the test classpath");
+      lang =
+          JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+              .getAsJsonObject()
+              .keySet();
+    }
+    var expected = new TreeSet<String>();
+    keys(expected, "gui.factorycore.signal.status.", SignalPackets.Status.class);
+    keys(expected, "gui.factorycore.machine.status.", MachineSettingsPackets.Status.class);
+    keys(expected, "gui.factorycore.preset.status.", MachinePresetPackets.Status.class);
+    keys(expected, "gui.factorycore.buffer.status.", BufferSettingsPackets.Status.class);
+    keys(expected, "gui.factorycore.drive.status.", DrivePackets.Status.class);
+    keys(expected, "gui.factorycore.access.status.", AccessPackets.Status.class);
+    keys(expected, "command.factorycore.recovery.", RecoveryActions.Result.class);
+    for (var value : RecoveryPackets.Status.values()) expected.add(value.translation());
+    keys(expected, "gui.factorycore.program.status.", WorldPrograms.RuntimeStatus.class);
+    keys(expected, "status.factorycore.program.", ProgramControllerEntity.State.class);
+    keys(expected, "gui.factorycore.terminal.status.", TerminalPackets.Status.class);
+    keys(
+        expected,
+        "gui.factorycore.terminal.grid.status.",
+        TerminalCraftingPackets.GridStatus.class);
+    keys(expected, "gui.factorycore.status.network.", NetworkTopology.Status.class);
+    var missing = new TreeSet<>(expected);
+    missing.removeAll(lang);
+    assertEquals(Set.of(), missing);
+  }
+
+  private static void keys(Set<String> into, String prefix, Class<? extends Enum<?>> type) {
+    for (var value : type.getEnumConstants()) into.add(prefix + EnumKeys.key(value));
   }
 
   /**

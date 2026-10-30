@@ -1,9 +1,12 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.crafting.GridRequirement;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -15,6 +18,37 @@ import net.minecraft.resources.ResourceLocation;
  * only; the server resolves exact keys and never trusts a client stack, recipe or quantity.
  */
 public final class TerminalCraftingPackets {
+  /**
+   * The crafting grid's state or last craft's outcome, shown as {@code
+   * gui.factorycore.terminal.grid.status.<key>}.
+   */
+  public enum GridStatus {
+    EMPTY,
+    FILLED,
+    READY,
+    GATHERING,
+    CRAFTED,
+    PARTIAL,
+    ENCODED,
+    NO_RECIPE,
+    SHORTAGE,
+    RESERVED,
+    FULL,
+    NO_BLANK,
+    NO_POWER,
+    PROCESSING_MODE,
+    UNSUPPORTED;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+
+    /** Nothing to report: an empty grid, or one ready to craft. */
+    public boolean quiet() {
+      return this == EMPTY || this == READY;
+    }
+  }
+
   /**
    * Ghost from own slot (source=slot, fingerprint), current row (source=row), clear, craft, and
    * encode the current recipe onto a blank pattern from the player's main inventory.
@@ -103,7 +137,7 @@ public final class TerminalCraftingPackets {
       String result,
       String resultName,
       int resultCount,
-      String status,
+      GridStatus status,
       int crafted,
       int fluidMask)
       implements CustomPacketPayload {
@@ -121,7 +155,7 @@ public final class TerminalCraftingPackets {
         String result,
         String resultName,
         int resultCount,
-        String status,
+        GridStatus status,
         int crafted) {
       this(
           menu,
@@ -151,6 +185,7 @@ public final class TerminalCraftingPackets {
     public View {
       cells = List.copyOf(cells);
       counts = List.copyOf(counts);
+      Objects.requireNonNull(status);
       if (fluidMask < 0
           || fluidMask >= (1 << CELLS)
           || !processing && fluidMask != 0
@@ -162,7 +197,6 @@ public final class TerminalCraftingPackets {
           || resultName.length() > 96
           || resultCount < 0
           || resultCount > 64
-          || status.length() > 64
           || crafted < 0
           || crafted > GridRequirement.MAX_CRAFTS)
         throw new IllegalArgumentException("Invalid grid view bounds");
@@ -188,7 +222,7 @@ public final class TerminalCraftingPackets {
               buffer.writeUtf(value.result, 256);
               buffer.writeUtf(value.resultName, 96);
               buffer.writeVarInt(value.resultCount);
-              buffer.writeUtf(value.status, 64);
+              WireEnums.write(buffer, value.status);
               buffer.writeVarInt(value.crafted);
               buffer.writeVarInt(value.fluidMask);
             },
@@ -211,7 +245,7 @@ public final class TerminalCraftingPackets {
                   buffer.readUtf(256),
                   buffer.readUtf(96),
                   buffer.readVarInt(),
-                  buffer.readUtf(64),
+                  WireEnums.read(buffer, GridStatus.class),
                   buffer.readVarInt(),
                   buffer.readVarInt());
             });

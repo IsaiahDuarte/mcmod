@@ -35,7 +35,8 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
   private static final int POLL_TICKS = 10;
   private final MenuSession session;
   private final StorageDriveEntity drive;
-  private String status = "ready", detail = "";
+  private DrivePackets.Status status = DrivePackets.Status.READY;
+  private String detail = "";
   private DrivePackets.View view;
   private DeviceStatus.View deviceStatus;
 
@@ -60,7 +61,7 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
       addSlot(new Slot(inventory, column, INVENTORY_X + 18 * column, HOTBAR_Y));
     var empty = new ArrayList<DrivePackets.Bay>();
     for (int bay = 0; bay < DrivePackets.BAYS; bay++) empty.add(DrivePackets.Bay.EMPTY);
-    view = new DrivePackets.View(id, session, 0, empty, "loading", "", 0);
+    view = new DrivePackets.View(id, session, 0, empty, DrivePackets.Status.LOADING, "", 0);
     deviceStatus = DeviceStatus.View.pending(id, session);
   }
 
@@ -109,22 +110,22 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
         var removed = drive.removeCell(bay);
         if (toInventory) give(player, removed);
         else setCarried(removed);
-        status = "removed";
+        status = DrivePackets.Status.REMOVED;
       } else if (carried.getItem() instanceof CellItem) {
         drive.installCell(bay, carried.copyWithCount(1));
         // Even creative installation consumes the physical lease item (see StorageDriveBlock).
         carried.shrink(1);
-        status = "installed";
+        status = DrivePackets.Status.INSTALLED;
       } else if (carried.getItem() instanceof CellUpgradeItem module) {
         var result = drive.upgradeCell(bay, module.targetLevel());
         if (!result.portable().isEmpty()) give(player, result.portable());
         if (result.upgraded() && !player.getAbilities().instabuild) carried.shrink(1);
-        status = result.upgraded() ? "upgraded" : "refused";
+        status = result.upgraded() ? DrivePackets.Status.UPGRADED : DrivePackets.Status.REFUSED;
       } else {
-        status = "wrong_item";
+        status = DrivePackets.Status.WRONG_ITEM;
       }
     } catch (IllegalArgumentException | IllegalStateException refused) {
-      status = "refused";
+      status = DrivePackets.Status.REFUSED;
       detail = String.valueOf(refused.getMessage());
     }
     session.pollNow();
@@ -142,17 +143,17 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
         dev.izzy.factorycore.platform.Actors.of(sender),
         Positions.of(sender.serverLevel(), drive.getBlockPos()),
         dev.izzy.factorycore.core.network.NetworkPermissions.Permission.EDIT)) {
-      status = "denied";
+      status = DrivePackets.Status.DENIED;
       session.pollNow();
       return;
     }
     if (packet.action() == DrivePackets.FilterCommand.PRIORITY) {
       try {
         drive.setPriority(Integer.parseInt(packet.text().strip()));
-        status = "priority";
+        status = DrivePackets.Status.PRIORITY;
         detail = "";
       } catch (IllegalArgumentException | IllegalStateException refused) {
-        status = "refused";
+        status = DrivePackets.Status.REFUSED;
         detail = "Priority must be a whole number from -1000 to 1000";
       }
       session.pollNow();
@@ -186,7 +187,7 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
                   new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
                       sender.registryAccess()));
           if (next == null) {
-            status = "stale";
+            status = DrivePackets.Status.STALE;
             session.pollNow();
             return;
           }
@@ -227,9 +228,9 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
         mode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL;
       drive.setPartition(
           packet.bay(), new dev.izzy.factorycore.core.resource.ResourceFilter(kind, mode, terms));
-      status = "partitioned";
+      status = DrivePackets.Status.PARTITIONED;
     } catch (IllegalArgumentException | IllegalStateException refused) {
-      status = "refused";
+      status = DrivePackets.Status.REFUSED;
       detail = String.valueOf(refused.getMessage());
     }
     session.pollNow();
@@ -251,9 +252,9 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
       drive.installCell(stack.copyWithCount(1));
       stack.shrink(1);
       slot.setChanged();
-      status = "installed";
+      status = DrivePackets.Status.INSTALLED;
     } catch (IllegalArgumentException | IllegalStateException refused) {
-      status = "refused";
+      status = DrivePackets.Status.REFUSED;
       detail = String.valueOf(refused.getMessage());
     }
     session.pollNow();
@@ -331,13 +332,13 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
                       new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
                           session.player().registryAccess()))));
     }
-    boolean faulted = !drive.diagnostic().isEmpty() && status.equals("ready");
+    boolean faulted = !drive.diagnostic().isEmpty() && status == DrivePackets.Status.READY;
     return new DrivePackets.View(
         containerId,
         session.id(),
         revision,
         bays,
-        faulted ? "refused" : status,
+        faulted ? DrivePackets.Status.REFUSED : status,
         faulted ? truncate(drive.diagnostic()) : truncate(detail),
         drive.priority());
   }

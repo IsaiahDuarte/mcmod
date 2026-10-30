@@ -15,8 +15,10 @@ import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageContent;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
+import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
+import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -185,7 +187,7 @@ final class JeiClientVerification {
       }
       case 3 -> {
         if (!(client.screen instanceof TerminalScreen screen)
-            || !screen.getMenu().view().status().equals("ready")
+            || screen.getMenu().view().status() != TerminalPackets.Status.READY
             || screen.getMenu().view().rows().isEmpty()
             || ticks - entered < 20) return;
         var runtime = RuntimeCapture.runtime;
@@ -399,7 +401,7 @@ final class JeiClientVerification {
         if (!press(screen, "Encode")) return false;
       }
       case 2 -> {
-        if (!grid.status().equals("encoded")
+        if (grid.status() != TerminalCraftingPackets.GridStatus.ENCODED
             || client.player.getInventory().countItem(CraftingContent.CRAFTING_PATTERN.get()) != 1)
           return false;
         check(
@@ -408,7 +410,7 @@ final class JeiClientVerification {
         if (!press(screen, "Craft")) return false;
       }
       case 3 -> {
-        if (!grid.status().equals("crafted")
+        if (grid.status() != TerminalCraftingPackets.GridStatus.CRAFTED
             || client.player.getInventory().countItem(Items.CRAFTING_TABLE) != 1) return false;
         check(
             client.player.getInventory().countItem(Items.CRAFTING_TABLE) == 1,
@@ -434,7 +436,7 @@ final class JeiClientVerification {
         if (!press(screen, "Encode")) return false;
       }
       case 7 -> {
-        if (!grid.status().equals("encoded")) return false;
+        if (grid.status() != TerminalCraftingPackets.GridStatus.ENCODED) return false;
         var patterns =
             client.player.getInventory().items.stream()
                 .filter(stack -> stack.has(CraftingContent.PROCESSING.get()))
@@ -482,8 +484,9 @@ final class JeiClientVerification {
         transfer(client, screen.getMenu());
       }
       case 10 -> {
-        if (grid.processing() || !grid.status().equals("filled") || !screen.craftingOpen())
-          return false;
+        if (grid.processing()
+            || grid.status() != TerminalCraftingPackets.GridStatus.FILLED
+            || !screen.craftingOpen()) return false;
         check(
             grid.result().equals("minecraft:crafting_table"),
             "A second JEI transfer replaces the processing declaration with its table recipe");
