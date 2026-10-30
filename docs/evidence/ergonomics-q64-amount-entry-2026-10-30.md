@@ -1,7 +1,7 @@
 # Q64 — Amount entry
 
-Scope: [ergonomics plan](../ERGONOMICS_PLAN.md) Q64, the amount entry (M65). The JEI bulk
-requests (M66) are Q111. Design:
+Scope: [ergonomics plan](../ERGONOMICS_PLAN.md) Q64, the amount entry (M66). The JEI bulk
+requests (M65) are Q111. Design:
 [ADR 0031 amendment](../decisions/0031-crafting-jobs.md#amendment--amount-entry-2026-10-30-ergonomics-plan-q64);
 player guide under Preview and Start.
 

@@ -58,7 +58,7 @@ display, one lock), so batch the screenshot step at the end of a slice.
 | K — Code health | Q52–Q60 | `WorldCraftingJobs`, `CraftingJobs`, `TerminalScreen`, `client/ui`, energy buffers, `WasmProgram` | None |
 | C — Crafting | Q2–Q8, Q68–Q71 | `CrafterBlock`, `CrafterEntity`, `TerminalCrafting`, `Pattern`, `CraftingPlanner`, `WorldMachinePresets`, `client/integration/jei` | QD3, QD4, QD18, QD19, QD21 |
 | L — Labels and copying | Q9–Q13, Q94–Q95 | `LabelToolItem`, `LabelToolContent`, `LabelToolScreen`, `CablePortBlock`, new client overlays | None |
-| T — Terminal and wireless | Q14–Q18, Q61–Q67 | `TerminalScreen` (after Q55), `TerminalMenu`, `TerminalJobs`, `platform/wireless`, `client/integration` | QD1, QD2, QD20 |
+| T — Terminal and wireless | Q14–Q18, Q61–Q67, Q109–Q111 | `TerminalScreen` (after Q55), `TerminalMenu`, `TerminalJobs`, `platform/wireless`, `client/integration` | QD1, QD2, QD20, QD25 |
 | D — Device consistency | Q19–Q27, Q72–Q79 | `platform/upgrade`, `EnergyBankBlock`, `DriveMenu`, `CellItem`, `SignalMenu`, `OverviewMenu`, `BufferPolicy`, `WorldStorageRoutes`, new wrench | UD3, QD13, QD14, QD23 |
 | B — New blocks | Q28–Q33, Q96–Q98 | `NetworkCableBlock`, `WorldWireReader`, new blocks | QD5–QD8, QD14, QD24 |
 | G — World interaction | Q34–Q35 | new blocks | QD9 |
@@ -296,6 +296,7 @@ New gates:
 | QD22 | Which numbers become server config (energy costs, wireless range, tick rates, rule interval limits, "energy not required", program emergency stop)? Configurable balance amends [ADR 0048](decisions/0048-final-balance.md) and the admin guide. | Yes, a bounded list with the current values as defaults | Open |
 | QD23 | Separate insert and extract priority, and a redstone switch per storage. Amends [ADR 0013](decisions/0013-external-connectors.md) routing. | Yes | Open |
 | QD24 | Tunnelled and explosion-proof cables (M107). | No for now | Open |
+| QD25 | Which JEI chord does "fill what I have and request each missing ingredient" (M65, Q111) use? Ctrl+click on **+** already opens the recipe's output in Jobs (A5, [ADR 0043](decisions/0043-jei-integration.md), player guide), so taking Ctrl for M65 changes a shipped binding. Options: (a) Ctrl+click becomes M65 and the output request moves to another chord or a Jobs button; (b) M65 uses Ctrl+Shift+click (Shift alone is JEI's "max"), A5 unchanged; (c) Ctrl+click asks which. Found 2026-10-30 while starting Q111. | (b): keeps A5 and its tests, and both intents stay one click away | Open |
 
 ## Wave 0 — reliability (lane R)
 
@@ -891,8 +892,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   Done when: GameTests cover the one-item moves and a region deposit (with a partial fill); a
   client step shows the freeze.
 
-- [x] **Q64 — Amount entry and bulk requests (M65, M66).** Size M. Done 2026-10-30 for M65
-  (commit subject `Q64:`); the JEI bulk requests (M66) moved to Q111. ADR 0031 amendment;
+- [x] **Q64 — Amount entry and bulk requests (M65, M66).** Size M. Done 2026-10-30 for M66
+  (commit subject `Q64:`); the JEI bulk requests (M65) moved to Q111. ADR 0031 amendment;
   `CraftAmountTest`, `TerminalJobGameTests.targetsPreviewOnlyTheShortfallAndQuickStarts`.
   [Evidence](evidence/ergonomics-q64-amount-entry-2026-10-30.md).
   The amount box accepts `+ - * /` and parentheses (bounded, integer result), `=N` meaning "craft
@@ -903,8 +904,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   Done when: `CraftAmountTest` covers expressions, `=N`, overflow and junk; a JEI client step
   requests two missing ingredients.
 
-- [ ] **Q111 — Bulk requests from JEI (M66).** Size M. Lane T, after Q64.
-  From JEI, Ctrl+click on **+** fills what the player has and opens one request per missing
+- [ ] **Q111 — Bulk requests from JEI (M65, needs QD25).** Size M. Lane T, after Q64.
+  From JEI, Ctrl+click (or the chord QD25 picks) on **+** fills what the player has and opens one request per missing
   craftable ingredient, stepped through in a side list in Jobs (each preselected with the
   missing amount; Start or Skip moves to the next).
   Done when: a JEI client step requests two missing ingredients.
