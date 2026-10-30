@@ -30,6 +30,21 @@ public final class TabButton extends Button {
     return font.width(label) + PADDING;
   }
 
+  /**
+   * Widths for a row of tabs {@code gap} apart within {@code available} pixels: each label in full
+   * with the usual padding when that fits, otherwise with the padding shrunk evenly (to no less
+   * than 4, which keeps two pixels either side of the text inside the tab's border).
+   */
+  public static int[] widths(Font font, java.util.List<Component> labels, int available, int gap) {
+    int text = 0;
+    for (var label : labels) text += font.width(label);
+    int spare = available - text - gap * Math.max(0, labels.size() - 1);
+    int padding = Math.max(4, Math.min(PADDING, spare / Math.max(1, labels.size())));
+    int[] widths = new int[labels.size()];
+    for (int i = 0; i < widths.length; i++) widths[i] = font.width(labels.get(i)) + padding;
+    return widths;
+  }
+
   public boolean selected() {
     return selected;
   }

@@ -55,9 +55,16 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private final TerminalStorageView storage = new TerminalStorageView(this);
   private final TerminalCraftingPanel crafting = new TerminalCraftingPanel(this);
   private final TerminalJobsView jobs = new TerminalJobsView(this);
+  private final TerminalPatternsView patterns = new TerminalPatternsView(this);
 
   private EditBox search;
   private boolean jobsMode;
+
+  /** Q3: the Patterns view replaces the grid; the inventory stays, to carry patterns. */
+  private boolean patternsMode;
+
+  /** The tabs: Items, Fluids, Energy (storage kinds 0–2), Jobs, then Patterns. */
+  private static final int JOBS_TAB = 3, PATTERNS_TAB = 4;
 
   /** Client-selected storage kind (0 items, 1 fluids, 2 energy); the server switches its search. */
   private int kind;
@@ -92,6 +99,25 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   /** Whether the Jobs view is shown (for verification). */
   public boolean jobsMode() {
     return jobsMode;
+  }
+
+  /** Whether the Patterns view is shown (for verification). */
+  public boolean patternsMode() {
+    return patternsMode;
+  }
+
+  /** Absolute centre of pattern slot {@code slot} of visible Crafter {@code row}. */
+  public int patternSlotX(int slot) {
+    return patterns.slotCenterX(slot);
+  }
+
+  public int patternSlotY(int row) {
+    return patterns.slotCenterY(row);
+  }
+
+  /** The storage grid, its tools and the crafting panel are hidden behind Jobs or Patterns. */
+  private boolean storageHidden() {
+    return jobsMode || patternsMode;
   }
 
   /** Called by an optional recipe-viewer integration after it sent the request packet. */
@@ -133,7 +159,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   public boolean craftingOpen() {
-    return craftingOpen && !jobsMode;
+    return craftingOpen && !storageHidden();
   }
 
   public int gridX() {
@@ -211,13 +237,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     jobs.request(request);
     boolean previousJobs = jobsMode;
     jobsMode = true;
+    patternsMode = false;
     if (!previousJobs) rebuildWidgets();
   }
 
   /** The Crafting button: opens the panel from Jobs, otherwise opens or closes it. */
   void toggleCrafting() {
-    if (jobsMode) {
+    if (storageHidden()) {
       jobsMode = false;
+      patternsMode = false;
       craftingOpen = true;
     } else craftingOpen = !craftingOpen;
     rebuildWidgets();
@@ -227,6 +255,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   void openCrafting() {
     craftingOpen = true;
     jobsMode = false;
+    patternsMode = false;
     rebuildWidgets();
   }
 
@@ -280,12 +309,16 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     super.init();
     tabs.clear();
 
-    // Tabs on the top edge.
+    // Tabs on the top edge, across the panel's width (Q3 added a fifth).
     int tabX = PanelLayout.EDGE - 3;
-    for (int tab = 0; tab < 4; tab++) {
+    var labels = new ArrayList<Component>();
+    for (int tab = 0; tab <= PATTERNS_TAB; tab++)
+      labels.add(Component.translatable("gui.factorycore.terminal.tab." + tab));
+    int[] widths = TabButton.widths(font, labels, MAIN - 2 * tabX, 1);
+    for (int tab = 0; tab <= PATTERNS_TAB; tab++) {
       int choice = tab;
-      var label = Component.translatable("gui.factorycore.terminal.tab." + tab);
-      int width = TabButton.width(font, label);
+      var label = labels.get(tab);
+      int width = widths[tab];
       tabs.add(
           addRenderableWidget(
               new TabButton(
@@ -294,19 +327,23 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                   width,
                   label,
                   button -> {
-                    boolean previousJobs = jobsMode;
-                    jobsMode = choice == 3;
-                    if (!jobsMode) {
+                    boolean previousJobs = jobsMode, previousPatterns = patternsMode;
+                    jobsMode = choice == JOBS_TAB;
+                    patternsMode = choice == PATTERNS_TAB;
+                    if (!storageHidden()) {
                       kind = choice;
                       storage.resetOffset();
                     }
-                    if (previousJobs != jobsMode) rebuildWidgets();
+                    if (patternsMode && !previousPatterns) patterns.show();
+                    if (previousJobs != jobsMode || previousPatterns != patternsMode)
+                      rebuildWidgets();
                   })));
       tabX += width + 1;
     }
 
-    // Search row: search, then show-craftable, sort, direction and tall.
-    var searchRow = new Rect(GRID_X, SEARCH_Y, MAIN - 2 * GRID_X, PanelLayout.ROW);
+    // Search row: search, then show-craftable, sort, direction and tall; the status lamp ends it.
+    var searchRow =
+        new Rect(GRID_X, SEARCH_Y, MAIN - 2 * GRID_X - LAMP - PanelLayout.GAP, PanelLayout.ROW);
     var tools = PanelLayout.alignRight(searchRow, new int[] {16, 30, 14, 14}, 2);
     search =
         addRenderableWidget(
@@ -431,27 +468,28 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
     if (searchDelay > 0) searchDelay--;
     if (!view.busy() && clock - lastCommand >= 4) {
-      if (!jobsMode && view.kind() != kind) {
+      if (!storageHidden() && view.kind() != kind) {
         send(TerminalPackets.KIND, kind, 1, new byte[32]);
         lastCommand = clock;
       } else if (searchDelay == 0 && !search.getValue().equals(view.search())) {
         send(TerminalPackets.SEARCH, 0, 1, new byte[32]);
         storage.resetOffset();
         lastCommand = clock;
-      } else if (!jobsMode && search.getValue().equals(view.search()) && !windowSettled()) {
+      } else if (!storageHidden() && search.getValue().equals(view.search()) && !windowSettled()) {
         storage.requestWindow();
         lastCommand = clock;
       }
     }
     syncedSearch = view.search();
-    for (int i = 0; i < tabs.size(); i++) tabs.get(i).setSelected((jobsMode ? 3 : kind) == i);
-    storage.tick(jobsMode);
+    int shown = jobsMode ? JOBS_TAB : patternsMode ? PATTERNS_TAB : kind;
+    for (int i = 0; i < tabs.size(); i++) tabs.get(i).setSelected(shown == i);
+    storage.tick(storageHidden());
     search.visible = true;
     sortButton.setMessage(sortLabel());
     sortButton.active = !view.busy();
     directionButton.setMessage(directionLabel());
     craftablesButton.setMessage(craftablesLabel());
-    craftablesButton.visible = kind == 0 && !jobsMode;
+    craftablesButton.visible = kind == 0 && !storageHidden();
     directionButton.active = !view.busy();
     tallButton.active = !view.busy();
     storage.tickActions();
@@ -460,7 +498,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     var request = VIEWER.take(menu);
     if (request != null) showJobs(request);
     jobs.tick(jobsMode);
-    storage.tickVisibility(jobsMode);
+    storage.tickVisibility(storageHidden());
     jobs.tickButtons(jobsMode);
   }
 
@@ -487,13 +525,22 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       return;
     }
     for (var slot : menu.slots) Panels.slot(graphics, leftPos + slot.x - 1, topPos + slot.y - 1);
+    if (patternsMode) {
+      patterns.renderBg(graphics);
+      return;
+    }
     storage.renderBg(graphics);
   }
 
-  /** The status lamp sits at the right end of the tab strip; its tooltip has the full status. */
+  /**
+   * The status lamp ends the search row (the tab strip is full since Q3); its tooltip has the full
+   * status.
+   */
   private Rect lamp() {
-    return new Rect(MAIN - PanelLayout.EDGE - 8, 4, 8, 8);
+    return new Rect(MAIN - GRID_X - LAMP, SEARCH_Y + (PanelLayout.ROW - LAMP) / 2, LAMP, LAMP);
   }
+
+  private static final int LAMP = 8;
 
   boolean online() {
     return menu.deviceStatus().online();
@@ -504,6 +551,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     Panels.lamp(graphics, lamp(), online());
     if (jobsMode) {
       jobs.renderLabels(graphics);
+      return;
+    }
+    if (patternsMode) {
+      patterns.renderLabels(graphics);
       return;
     }
     storage.renderProblems(graphics);
@@ -525,6 +576,10 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       jobs.renderTooltip(graphics, mouseX, mouseY);
       return;
     }
+    if (patternsMode) {
+      patterns.renderTooltip(graphics, mouseX, mouseY);
+      return;
+    }
     if (storage.renderTooltip(graphics, mouseX, mouseY)) return;
     if (crafting.renderTooltip(graphics, mouseX, mouseY)) return;
     if (hoveredSlot != null
@@ -538,10 +593,12 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   @Override
   public boolean mouseClicked(double mouseX, double mouseY, int button) {
-    if (!jobsMode && storage.mouseClicked(mouseX, mouseY, button)) return true;
+    if (!storageHidden() && storage.mouseClicked(mouseX, mouseY, button)) return true;
     if (jobsMode && jobs.mouseClicked(mouseX, mouseY, button)) return true;
+    if (patternsMode && patterns.mouseClicked(mouseX, mouseY, button)) return true;
     if (crafting.mouseClicked(mouseX, mouseY, button)) return true;
-    if (storage.depositClicked(mouseX, mouseY, button)) return true;
+    // Shift-clicking the inventory deposits into storage, except while carrying patterns around.
+    if (!patternsMode && storage.depositClicked(mouseX, mouseY, button)) return true;
     return super.mouseClicked(mouseX, mouseY, button);
   }
 
@@ -552,7 +609,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   @Override
   public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
     if (jobsMode && jobs.mouseScrolled(mouseX, mouseY, scrollY)) return true;
-    if (!jobsMode && storage.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+    if (patternsMode && patterns.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+    if (!storageHidden() && storage.mouseScrolled(mouseX, mouseY, scrollY)) return true;
     if (crafting.mouseScrolled(mouseX, mouseY, scrollY)) return true;
     return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
   }
@@ -581,7 +639,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     if (!search.isFocused() && key >= GLFW.GLFW_KEY_1 && key <= GLFW.GLFW_KEY_8) {
       int index = key - GLFW.GLFW_KEY_1;
       if (jobsMode) jobs.selectCraftable(index);
-      else storage.select(index);
+      else if (!patternsMode) storage.select(index);
       return true;
     }
     return super.keyPressed(key, scan, modifiers);

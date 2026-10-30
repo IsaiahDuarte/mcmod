@@ -133,6 +133,20 @@ class LangKeysTest {
         "gui.factorycore.terminal.grid.status.",
         TerminalCraftingPackets.GridStatus.class);
     keys(expected, "gui.factorycore.status.network.", NetworkTopology.Status.class);
+    keys(
+        expected,
+        "gui.factorycore.crafter.activity.",
+        dev.izzy.factorycore.platform.crafting.CrafterPackets.Activity.class);
+    keys(
+        expected,
+        "gui.factorycore.crafter.machine.",
+        dev.izzy.factorycore.platform.crafting.CrafterPackets.MachineState.class);
+    for (var side : net.minecraft.core.Direction.values())
+      expected.add("gui.factorycore.crafter.side." + side.getSerializedName());
+    keys(
+        expected,
+        "gui.factorycore.terminal.patterns.status.",
+        dev.izzy.factorycore.platform.storage.TerminalPatternPackets.Status.class);
     var missing = new TreeSet<>(expected);
     missing.removeAll(lang);
     assertEquals(Set.of(), missing);

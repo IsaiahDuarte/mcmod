@@ -1108,6 +1108,57 @@ public final class PresentationClientVerification {
                     != dev.izzy.factorycore.platform.crafting.CrafterPackets.Activity.LOADING
                 && waited() > 4);
     scales("crafter", dev.izzy.factorycore.platform.client.CrafterScreen.class, false);
+    // Q3: the terminal's Patterns tab; a pattern is taken onto the cursor and put back by clicks.
+    use(base.east(2), Direction.SOUTH, false);
+    step(
+        client ->
+            client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Patterns"));
+    step(
+        client ->
+            terminal(client).patternsMode()
+                && !terminal(client).getMenu().patternView().crafters().isEmpty()
+                && waited() > 4);
+    step(
+        client -> {
+          var screen = terminal(client);
+          var first = screen.getMenu().patternView().crafters().getFirst().patterns().getFirst();
+          check(!first.icon().isEmpty(), "The first Crafter's first slot holds a pattern");
+          return screen.mouseClicked(screen.patternSlotX(0), screen.patternSlotY(0), 0);
+        });
+    step(
+        client -> {
+          var menu = terminal(client).getMenu();
+          if (menu.getCarried().isEmpty() || waited() < 2) return false;
+          check(
+              menu.patternView().status()
+                      == dev.izzy.factorycore.platform.storage.TerminalPatternPackets.Status.TAKEN
+                  && menu.patternView()
+                      .crafters()
+                      .getFirst()
+                      .patterns()
+                      .getFirst()
+                      .icon()
+                      .isEmpty(),
+              "Clicking a pattern takes it onto the cursor: " + menu.patternView().status());
+          var screen = terminal(client);
+          return screen.mouseClicked(screen.patternSlotX(0), screen.patternSlotY(0), 0);
+        });
+    step(
+        client -> {
+          var menu = terminal(client).getMenu();
+          if (!menu.getCarried().isEmpty() || waited() < 2) return false;
+          check(
+              !menu.patternView().crafters().getFirst().patterns().getFirst().icon().isEmpty(),
+              "Clicking again puts it back");
+          evidence
+              .append("patterns: total=")
+              .append(menu.patternView().total())
+              .append(" status=")
+              .append(menu.patternView().status())
+              .append('\n');
+          return true;
+        });
+    scales("terminal-patterns", TerminalScreen.class, false);
     use(base.east(2), Direction.SOUTH, false);
     step(
         client -> client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Jobs"));

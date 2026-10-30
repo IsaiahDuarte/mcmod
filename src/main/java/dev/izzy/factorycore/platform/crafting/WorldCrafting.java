@@ -122,12 +122,20 @@ public final class WorldCrafting {
     return false;
   }
 
-  public Index index(NetworkTopology.Scope scope) {
+  /**
+   * A loaded holder that offers patterns to a segment; {@code published} when it sits in a
+   * descendant branch and offers them through its gateways.
+   */
+  public record Visible(PatternHolderEntity unit, boolean published) {}
+
+  /**
+   * Current, VALID holders whose patterns {@code scope}'s segment can use, in stable order
+   * (dimension, then position): its own, plus those of descendant branches that publish to it.
+   */
+  public List<Visible> visible(NetworkTopology.Scope scope) {
     ServerThread.require(server, "Crafting");
     var networks = WorldNetworks.get(server);
-    var codec = new PlatformResourceCodec(server.registryAccess());
-    var members = new ArrayList<PatternHolderEntity>();
-    var published = new HashSet<PatternHolderEntity>();
+    var members = new ArrayList<Visible>();
     var iterator = units.iterator();
     while (iterator.hasNext()) {
       var unit = iterator.next();
@@ -138,15 +146,24 @@ public final class WorldCrafting {
       var membership = networks.membership(unit.origin());
       if (membership.status() != NetworkTopology.Status.VALID
           || !membership.scope().network().equals(scope.network())) continue;
-      if (membership.scope().segment().equals(scope.segment())) members.add(unit);
-      else if (publishes(networks, unit, scope)) {
-        members.add(unit);
-        published.add(unit);
-      }
+      if (membership.scope().segment().equals(scope.segment()))
+        members.add(new Visible(unit, false));
+      else if (publishes(networks, unit, scope)) members.add(new Visible(unit, true));
     }
     members.sort(
-        Comparator.comparing((PatternHolderEntity unit) -> unit.origin().dimension())
-            .thenComparingLong(unit -> unit.origin().block()));
+        Comparator.comparing((Visible visible) -> visible.unit().origin().dimension())
+            .thenComparingLong(visible -> visible.unit().origin().block()));
+    return members;
+  }
+
+  public Index index(NetworkTopology.Scope scope) {
+    var codec = new PlatformResourceCodec(server.registryAccess());
+    var members = new ArrayList<PatternHolderEntity>();
+    var published = new HashSet<PatternHolderEntity>();
+    for (var visible : visible(scope)) {
+      members.add(visible.unit());
+      if (visible.published()) published.add(visible.unit());
+    }
     var byOutput = new LinkedHashMap<ResourceKey, List<Offer>>();
     var seen = new HashMap<UUID, Boolean>();
     var first = new HashMap<UUID, Offer>();

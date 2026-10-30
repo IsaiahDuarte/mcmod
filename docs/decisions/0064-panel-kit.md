@@ -136,3 +136,13 @@ program editor's code field (H3c). The status strip draws `Panels.lamp`, so ever
 shows the same framed lamp as the Terminal. New kit parts: `track`, a two-colour `meter`,
 `disabled`, `badge`, `picker`, `pickerCell` and `lightFocusEdge`, plus named colours for the job
 toast and the in-world label overlay.
+
+## Amendment — fitting tabs and the terminal lamp (2026-10-30, ergonomics plan Q3)
+
+`TabButton.widths(font, labels, available, gap)` sizes a row of tabs: each label in full with the
+usual 10-pixel padding when the row fits, otherwise with the padding shrunk evenly to no less
+than 4. The terminal's fifth tab (Patterns) needed it: five labels with full padding are about
+210 pixels on a 192-pixel panel. The terminal's network lamp moved from the end of the tab strip
+to the end of the search row, eight pixels square, with the search box eight pixels narrower,
+so tabs and lamp no longer compete for the strip. The presentation tour's terminal captures
+show both at scales 1 and 4.

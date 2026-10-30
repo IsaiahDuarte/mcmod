@@ -2,12 +2,9 @@ package dev.izzy.factorycore.platform.crafting;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.JobReason;
-import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NodeRegistry;
 import dev.izzy.factorycore.core.resource.ResourceKind;
-import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Positions;
-import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
@@ -118,10 +115,7 @@ public final class CrafterMenu extends AbstractContainerMenu implements DeviceSt
   /** May the viewer move patterns: EDIT on the server, the last view on the client. */
   public boolean editable() {
     if (!session.server()) return view.editable();
-    return crafter != null
-        && WorldNetworks.get(session.player().server)
-            .allows(
-                Actors.of(session.player()), crafter.origin(), NetworkPermissions.Permission.EDIT);
+    return crafter != null && crafter.editableBy(session.player());
   }
 
   /** A pattern slot: takes and accepts one pattern, only while the viewer may edit. */

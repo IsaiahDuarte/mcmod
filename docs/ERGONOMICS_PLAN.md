@@ -255,7 +255,8 @@ M142 onward are follow-ups from slices and findings from Q51.
 | M142 | Q54 typed the job, rule and staging reasons only. Other menus still send a status string that their screens compare with `.equals` (`"ready"`, `"applied"`, `"valid"`, `"filled"`, `"running"`, …): Signal, Port, Drive, Network Access, Program, Connector, Buffer and the Terminal's grid and search status. A typo there still compiles. | `grep 'equals("' platform/client` after Q54 |
 | M143 | Raw `fill` calls and colour literals remain outside the Terminal: Drive bay fill bars, `FilterSlots` (inactive veil, tag badge), `SlotPicker`, the `StatusStrip` lamp. The program editor's dark code field is deliberate (ADR 0064 H3c). | Q60 evidence |
 | M144 | `runAutomaticThroughputServer` (in `--full`) requires Endgame import to beat Advanced on one 1,728-item chest, where fixed overhead leaves 1–3 ticks between the tiers; a tie fails it. Measured 2026-10-26: 2 failures in 12 runs at `ca56f9c` (ticks Endgame 14–16, Advanced 15–18) and 0 in 11 at `9c155c7` (14–15, 15–17). The distributions overlap, so this is a marginal assertion, not a regression; it is the flaky-test kind PD7 also covers. | `AutomaticThroughputGameTests`, `MachinePresetGameTests.paidTiersIncreaseAutomaticChestImport` |
-| M145 | One large network rebuild disturbed GameTests in other networks running at the same time: with a 68-furnace row test (a 150-block run, 64 new ports at once) 5 of 6 full GameTest runs failed in unrelated program and storage tests ("storage: denied", "Physical graph identity collision"), and 0 of 4 without it. Check whether one network's rebuild delays other networks' revalidation (shared discovery budget), which would also be a real-server effect; PD7-adjacent. | Q10 commit; `RowWalkTest` replaced the GameTest |
+| M145 | One large network rebuild disturbed GameTests in other networks running at the same time: with a 68-furnace row test (a 150-block run, 64 new ports at once) 5 of 6 full GameTest runs failed in unrelated program and storage tests ("storage: denied", "Physical graph identity collision"), and 0 of 4 without it. Check whether one network's rebuild delays other networks' revalidation (shared discovery budget), which would also be a real-server effect; PD7-adjacent. 2026-10-30 (Q3): the same two symptoms without any large network. At `dc9f59d` `BufferExportGameTests.stockStopsAndReplenishesWithoutOverwithdrawing` failed 1 of 3 full runs ("Physical graph identity collision"); with Q3's tests added, `SideAndSlotsGameTests.oneInterfaceFeedsFurnaceTopAndSideAndEmptiesItsBottom` failed in 12 of 16 runs ("storage: denied", its output never moved), three times together with the stock test, and in 1 of 2 runs with Q3's five tests replaced by empty ones. Where both failed, the two structures were neighbours in the test grid, 11 blocks apart on one row, and shared chunk x = 91547; neither places blocks outside its 6×4×6 template. The collision means one discovery saw the same node UUID twice. So the trigger looks like neighbouring structures in a shared chunk (cf. M1's chunk-load rebuilds), and adding tests only changes which pair are neighbours. | Q10 commit; `RowWalkTest` replaced the GameTest; [Q3 evidence](evidence/ergonomics-q3-patterns-view-2026-10-30.md) |
+| M146 | Crafters cannot be named: the Label Tool does not label them, so the Crafter screen and the terminal's Patterns view name them by position only. | AE2 named pattern providers | `LabelToolItem.java`, `CrafterEntity.java` |
 
 ## Decision gates (user)
 
@@ -463,7 +464,11 @@ New gates:
   Done when: GameTests cover taking the third of three patterns, inserting from the cursor,
   denial without Edit and a busy machine shown as busy; screenshots at scales 1 and 4.
 
-- [ ] **Q3 — Patterns view (M3).** Size M. After Q2.
+- [x] **Q3 — Patterns view (M3).** Size M. After Q2. Done 2026-10-30 (commit subject `Q3:`).
+  Terminal **Patterns** tab over `WorldCrafting.visible`, take/insert/swap through the cursor
+  under the Q2 EDIT rule, search by output, a bounded scrolled window; tabs fit the panel and the
+  lamp moved to the search row. `TerminalPatternGameTests` (5) and a clicked client tour step.
+  Crafter names are Q107. [Evidence](evidence/ergonomics-q3-patterns-view-2026-10-30.md).
   A **Patterns** tab in the terminal lists every Crafter visible to the player (gateway CRAFT
   policy applies, as for craftables), its label or position, and its patterns. Players with
   Edit take or insert patterns there through the same path as Q2. Search filters by output.
@@ -1033,6 +1038,13 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Q17); scrolling long titles; a buckets/mB toggle saved with the terminal preferences; a
   finished-job toast while a charged, bound Wireless Terminal is carried.
   Done when: each has a client step or GameTest.
+
+- [ ] **Q107 — Crafter names (M146).** Size S. Lane C, after Q3.
+  The Label Tool labels a Crafter (EDIT, as for Signal Interfaces); the Crafter screen title and
+  the Patterns view rows show the label, falling back to the position. The label is saved with the
+  Crafter and kept when it is broken and placed again, like other labelled blocks.
+  Done when: a GameTest labels a Crafter and finds the label in the Patterns view, and a reload
+  keeps it.
 
 - [ ] **Q100 — Crafting nits (M113–M118).** Size M. Lane C, after Q3 and Q5.
   Recipe-viewer encoding prefers plentiful, undamaged items and warns about the wrong mode or a

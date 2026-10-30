@@ -73,6 +73,12 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   private TerminalJobPackets.View jobView;
   private TerminalJobs jobs;
 
+  /** Q3: the Patterns view, the client's copy or the server's helper, and its last refresh. */
+  private TerminalPatternPackets.View patternView;
+
+  private TerminalPatterns patterns;
+  private int patternsPolled = Integer.MIN_VALUE;
+
   public TerminalMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
     this(id, inventory, null, buffer.readBlockPos(), MenuSession.read(buffer));
   }
@@ -132,6 +138,9 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             dev.izzy.factorycore.core.crafting.JobStatus.READY);
     if (terminal != null)
       jobs = new TerminalJobs((ServerPlayer) viewer, terminal, id, protocol.id(), jobView);
+    patternView = TerminalPatternPackets.View.empty(id, protocol.id());
+    if (terminal != null)
+      patterns = new TerminalPatterns((ServerPlayer) viewer, terminal, this, protocol.id());
     gridView =
         new TerminalCraftingPackets.View(
             id,
@@ -150,6 +159,30 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   /** The client's received Jobs view, or on the server the view most recently sent to it. */
   public TerminalJobPackets.View jobView() {
     return jobs != null ? jobs.view() : jobView;
+  }
+
+  /** The client's received Patterns view, or on the server the view most recently sent. */
+  public TerminalPatternPackets.View patternView() {
+    return patterns != null ? patterns.view() : patternView;
+  }
+
+  public void accept(TerminalPatternPackets.View packet) {
+    if (terminal == null
+        && protocol.owns(packet.menu(), packet.session())
+        && packet.revision() >= patternView.revision()) patternView = packet;
+  }
+
+  /**
+   * Q3: scrolls the Patterns view, or takes, inserts or swaps a pattern there through the cursor. A
+   * click spends a wireless terminal's action energy, as storage actions do.
+   */
+  public void patternCommand(ServerPlayer sender, TerminalPatternPackets.Command command) {
+    if (!protocol.fromViewer(sender, command.menu(), command.session())
+        || !authorized()
+        || !protocol.admitRate()) return;
+    if (command.action() == TerminalPatternPackets.CLICK && !terminal.spendAction(sender))
+      patterns.noPower(text);
+    else patterns.command(command, text);
   }
 
   public void accept(TerminalJobPackets.View packet) {
@@ -296,6 +329,10 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             DeviceStatus.of(
                 player().server, containerId, protocol.id(), terminal.origin(), "", ""));
     int tick = player().server.getTickCount();
+    if (tick - patternsPolled >= RESCAN_TICKS) {
+      patternsPolled = tick;
+      patterns.publish(text, false);
+    }
     if (!loaded) {
       loaded = true;
       refresh();
@@ -479,6 +516,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       savePreferences();
       refresh();
       publish();
+      patterns.publish(text, false);
       return;
     }
     if (command.action() == TerminalPackets.CRAFTABLES) {

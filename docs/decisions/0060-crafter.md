@@ -82,3 +82,16 @@ dispatch from this Crafter targets it; a legacy dispatch without a target holds 
 client names them, so a dedicated server translates nothing. The view refreshes every 10 ticks
 and after a slot change. `CrafterScreenGameTests` covers taking the third of three patterns,
 inserting from the cursor, refusals without EDIT and a furnace shown busy during a job.
+
+## Amendment — the terminal's Patterns view (2026-10-30, ergonomics plan Q3)
+
+A **Patterns** tab in the terminal lists every Crafter the terminal's segment can use, with its
+nine slots, and moves patterns through the cursor. "Can use" is exactly what autocrafting uses:
+`WorldCrafting.visible(scope)`, extracted from `index`, lists the segment's own VALID, current
+holders and those of descendant branches whose gateways publish CRAFT, in stable order. A
+gateway that withholds CRAFT therefore hides its branch's Crafters here as it hides their
+recipes. The rule for moving a pattern is shared with the Crafter screen as
+`PatternHolderEntity.editableBy(player)`: EDIT where the Crafter is, which for a published
+branch Crafter is checked in its own branch. Inserts go through the holder's own validation.
+Crafters have no player label, so rows show positions; naming them is ergonomics Q107.
+Payloads and limits are in [STORAGE_TERMINAL](../modules/STORAGE_TERMINAL.md#patterns-view-q3).

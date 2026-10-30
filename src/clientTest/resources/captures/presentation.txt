@@ -21,6 +21,8 @@ drive-scale-1.png
 drive-scale-4.png
 crafter-scale-1.png
 crafter-scale-4.png
+terminal-patterns-scale-1.png
+terminal-patterns-scale-4.png
 connector-scale-1.png
 connector-scale-4.png
 buffer-scale-1.png

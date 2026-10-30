@@ -62,12 +62,15 @@ The screen (playtest H2, [ADR 0064](../decisions/0064-panel-kit.md)) shows a 9-c
 whose columns line up with the player inventory docked under it. It has six rows, or as many
 as fit the window when the player's Tall preference is on (at least 3 rows; 4 at the minimum
 supported 427×240 GUI), bounded to 256 cells. The mouse wheel scrolls by a row; the scrollbar
-supports direct clicks and dragging. Items/Fluids/Energy/Jobs are tabs on the panel's top edge.
+supports direct clicks and dragging. Items/Fluids/Energy/Jobs/Patterns are tabs on the panel's
+top edge, padded to fit its width (`TabButton.widths`); the status lamp ends the search row.
 The crafting grid opens as a panel to the right. The Jobs view replaces the grid and hides the
 inventory slots while shown (they are neither drawn nor clickable; contents are unchanged).
+The Patterns view (Q3) also replaces the grid but keeps the inventory, so patterns can be carried
+to and from it; Shift-click does not deposit into storage while it is shown.
 In code, `TerminalScreen` is a shell (tabs, search, lamp, mode switches, command packet) over
-three parts: `TerminalStorageView` (grid and info row), `TerminalCraftingPanel` and
-`TerminalJobsView` (ADR 0064, Q55 amendment).
+four parts: `TerminalStorageView` (grid and info row), `TerminalCraftingPanel`,
+`TerminalJobsView` (ADR 0064, Q55 amendment) and `TerminalPatternsView`.
 Search coalesces typing after four idle client ticks, retains unsent typing while busy,
 and retries when the shared two-tick command gate admits it. Name/Qty and saved per-player
 preferences retain their existing meaning. Main inventory slot identities/order remain
@@ -173,7 +176,7 @@ no stock are added once at completion as zero-count rows, charged like stocked r
 cleared with the session; paging after one works because anchors also resolve ghosts.
 `CRAFTABLES` sets the preference; `REQUEST` (visible row, current revision) asks
 `TerminalJobs.focus` to scroll the Jobs list to that key, and the client selects it and
-focuses the amount box. A request names a visible row, never a resource key. Protocol 6.
+focuses the amount box. A request names a visible row, never a resource key. Protocol 6 (7 since Q3).
 
 ## Autocrafting jobs view
 
@@ -202,6 +205,30 @@ so quick scrolling is not lost before the server replies. Protocol 5 (parity sli
 replaced the HOME/NEXT commands and the `next` flag with WINDOW and `offset`/`total`. Preview/start/cancel delegate to
 [`WorldCraftingJobs`](CRAFTING.md#jobs); the client never names a resource key.
 
+
+## Patterns view (Q3)
+
+`TerminalPatternPackets.Command(menu, session, revision, action, selection, slot)` actions:
+WINDOW (scroll so Crafter `selection`, 0–1,024, is first; the server clamps to the last Crafter so
+a short screen that shows fewer than three rows can reach the end) and CLICK (slot 0–8 of visible
+row 0–2 under the current pattern `revision`; a stale revision republishes instead). The server
+lists `WorldCrafting.visible` for the terminal's segment: VALID, current holders in the segment
+plus those of branches whose gateways publish CRAFT, in dimension and position order, bounded by
+`WorldCrafting.MAX_UNITS`. A non-blank terminal search keeps the Crafters with a pattern whose
+output or a byproduct matches it (`TerminalSearchSupport.matches`), and marks matching slots.
+`View` carries up to three `Crafter` rows (position, dimension, `published`, `editable`, nine
+`Entry` slots with the output's registry ID, fluid and processing flags, and `match`), the
+window `offset`, `total` and the last click's `Status`.
+
+A CLICK re-reads the row's Crafter, refuses it as GONE if it is no longer current or listed,
+and checks `PatternHolderEntity.editableBy` (EDIT where the Crafter is, the same rule as the
+Crafter screen). An empty cursor takes the slot's pattern; a cursor pattern goes into an empty
+slot through the holder's own validation, or swaps with the slot when the cursor holds exactly
+one; anything else is REFUSED. Clicks spend a wireless terminal's action energy as storage
+actions do. The server builds nothing until the client first opens the view, then refreshes it
+every 20 ticks, after each command and after a search change; an unchanged window is not
+resent. Crafters carry no player label yet, so rows are named by position. Protocol 7 added these
+payloads.
 
 ## Fluids and energy
 

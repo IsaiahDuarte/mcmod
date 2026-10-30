@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.platform.crafting;
 
+import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
@@ -12,6 +14,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -67,6 +70,15 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
 
   public ItemStackHandler patterns() {
     return patterns;
+  }
+
+  /**
+   * Whether {@code player} may take or insert patterns here: EDIT where this holder is. The Crafter
+   * screen (Q2) and the terminal's Patterns view (Q3) both ask this before each change.
+   */
+  public boolean editableBy(ServerPlayer player) {
+    return WorldNetworks.get(player.server)
+        .allows(Actors.of(player), origin(), NetworkPermissions.Permission.EDIT);
   }
 
   public int patternCount() {

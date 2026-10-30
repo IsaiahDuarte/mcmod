@@ -132,8 +132,8 @@ Deposit and withdrawing needs Withdraw.
   inventory slot. If storage is full, the rest stays with you.
 - **Counts:** hover an item for its total, reserved and available counts. The bar
   under the grid shows how full your item cells are.
-- **Status:** the lamp at the top right is green when the network is online; hover it for
-  details. If the network is offline, the reason shows over the grid.
+- **Status:** the lamp at the end of the search row is green when the network is online;
+  hover it for details. If the network is offline, the reason shows over the grid.
 - **Fluids and energy:** the **Fluids** tab fills buckets and tanks (**Fill**), or
   empties them when you Shift-click a filled container. The **Energy** tab charges or
   drains FE items, up to 1,000 FE per click.
@@ -151,6 +151,15 @@ cells: nothing moves into the grid, so closing never loses items.
 - **Running short:** if storage runs out, it crafts what it can and shows
   *Partial*. A craft whose output would not fit in your inventory is refused before
   anything is used.
+
+**Patterns.** Press the **Patterns** tab to see every Crafter this terminal can use and the
+patterns in each, a row of nine slots per Crafter, labelled by position. Crafters in a
+subnetwork appear while its gateway lets it share crafting. Click a pattern to take it onto
+your cursor; click an empty slot with a pattern to put it there, or a full one to swap. Your
+inventory stays open below, so you can move patterns between Crafters or back to your
+inventory. Moving patterns needs Edit where that Crafter is; otherwise its row says *view
+only*. The search box keeps only Crafters with a pattern that makes what you typed, and greys
+the other slots. Scroll over the list to see more Crafters.
 
 **Jobs.** Press the **Jobs** tab to list what your Crafters can make in the strip at the top.
 Scroll over the strip (Shift: eight at a time) or click its scrollbar to see more. Your
