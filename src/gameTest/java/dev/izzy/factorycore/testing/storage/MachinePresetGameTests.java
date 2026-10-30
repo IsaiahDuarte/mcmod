@@ -50,6 +50,11 @@ public final class MachinePresetGameTests {
   private MachinePresetGameTests() {}
 
   private static Fixture setup(GameTestHelper h, ResourceKind kind) {
+    return setup(
+        h, kind, kind == ResourceKind.ITEM ? CellTier.STARTER_ITEM : CellTier.STARTER_FLUID);
+  }
+
+  private static Fixture setup(GameTestHelper h, ResourceKind kind, CellTier tier) {
     var actor = new NetworkPermissions.Actor(UUID.randomUUID(), false);
     NetworkNodeEntity root = Net.in(h, actor.id()).controller(ROOT);
     MachineInterfaceEntity machine = Net.in(h).machine(MACHINE, Direction.EAST);
@@ -68,10 +73,7 @@ public final class MachinePresetGameTests {
     } else {
       h.setBlock(DRIVE, StorageContent.DRIVE.get());
       StorageDriveEntity drive = h.getBlockEntity(DRIVE);
-      drive.installCell(
-          new ItemStack(
-              StorageContent.cell(
-                  kind == ResourceKind.ITEM ? CellTier.STARTER_ITEM : CellTier.STARTER_FLUID)));
+      drive.installCell(new ItemStack(StorageContent.cell(tier)));
       cell = CellHandleData.read(drive.cell(0));
     }
     return new Fixture(
@@ -94,10 +96,19 @@ public final class MachinePresetGameTests {
         f.key.kind(), ResourceFilter.Mode.INCLUDE, List.of(new ResourceFilter.Exact(f.key)));
   }
 
+  /** Items each tier imports: eight chest loads, so tier rates dominate the fixed overhead. */
+  public static final int THROUGHPUT_ITEMS = 8 * 27 * 64;
+
+  /**
+   * M144: each tier imports {@link #THROUGHPUT_ITEMS} from a chest refilled whenever a slot
+   * empties. At 1,728 items fixed overhead left 1–3 ticks between tiers; at this total the tier
+   * rates set the time.
+   */
   public static void paidTiersIncreaseAutomaticChestImport(GameTestHelper h) {
-    var f = setup(h, ResourceKind.ITEM);
+    var f = setup(h, ResourceKind.ITEM, CellTier.EXPANDED_ITEM);
     int[] elapsed = new int[3];
     int[] started = new int[1];
+    int[] supplied = new int[1];
     var sequence = h.startSequence().thenWaitUntil(() -> ready(h, f));
     for (var tier : ThroughputTier.values()) {
       sequence.thenExecute(
@@ -112,19 +123,24 @@ public final class MachinePresetGameTests {
       sequence.thenWaitUntil(() -> ready(h, f));
       sequence.thenExecute(
           () -> {
-            ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
-            for (int slot = 0; slot < 27; slot++)
-              chest.setItem(slot, new ItemStack(Items.IRON_INGOT, 64));
+            supplied[0] = 0;
+            refill(h, supplied);
             started[0] = h.getLevel().getServer().getTickCount();
             f.machine.deployPreset(f.actor, MachinePresets.Mode.IMPORT, exact(f), 0);
           });
       sequence.thenWaitUntil(
-          () -> h.assertTrue(resident(h, ResourceKind.ITEM) == 0, "Whole chest imported"));
+          () -> {
+            refill(h, supplied);
+            h.assertTrue(
+                supplied[0] == THROUGHPUT_ITEMS && resident(h, ResourceKind.ITEM) == 0,
+                "Every chest load imported");
+          });
       sequence.thenExecute(
           () -> {
             elapsed[tier.ordinal()] = h.getLevel().getServer().getTickCount() - started[0];
             h.assertTrue(
-                f.saved.registry().stock(f.cell, f.key).total() == (tier.ordinal() + 1L) * 1728,
+                f.saved.registry().stock(f.cell, f.key).total()
+                    == (tier.ordinal() + 1L) * THROUGHPUT_ITEMS,
                 "Every imported item remains conserved across tier changes");
             f.machine.deployPreset(f.actor, MachinePresets.Mode.PAUSED, exact(f), 0);
           });
@@ -135,7 +151,9 @@ public final class MachinePresetGameTests {
               System.out.println(
                   "FACTORYCORE_AUTOMATIC_THROUGHPUT ticks="
                       + Arrays.toString(elapsed)
-                      + " itemsPerTier=1728 source=vanilla_chest");
+                      + " itemsPerTier="
+                      + THROUGHPUT_ITEMS
+                      + " source=vanilla_chest_refilled");
               h.assertTrue(
                   elapsed[1] < elapsed[0],
                   "Advanced import must beat base: " + Arrays.toString(elapsed));
@@ -144,6 +162,18 @@ public final class MachinePresetGameTests {
                   "Endgame import must beat Advanced: " + Arrays.toString(elapsed));
             })
         .thenSucceed();
+  }
+
+  /**
+   * Fills each empty chest slot with a stack until {@link #THROUGHPUT_ITEMS} have been supplied.
+   */
+  private static void refill(GameTestHelper h, int[] supplied) {
+    ChestBlockEntity chest = h.getBlockEntity(PROVIDER);
+    for (int slot = 0; slot < 27 && supplied[0] < THROUGHPUT_ITEMS; slot++)
+      if (chest.getItem(slot).isEmpty()) {
+        chest.setItem(slot, new ItemStack(Items.IRON_INGOT, 64));
+        supplied[0] += 64;
+      }
   }
 
   private static void seed(GameTestHelper h, ResourceKind kind, int amount) {

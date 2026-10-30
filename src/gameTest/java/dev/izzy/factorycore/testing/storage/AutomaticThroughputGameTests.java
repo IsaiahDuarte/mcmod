@@ -11,7 +11,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 public final class AutomaticThroughputGameTests {
   private AutomaticThroughputGameTests() {}
 
-  @GameTest(template = "empty", timeoutTicks = 600)
+  @GameTest(template = "empty", timeoutTicks = 1200)
   public static void paidTiersIncreaseAutomaticChestImport(GameTestHelper helper) {
     MachinePresetGameTests.paidTiersIncreaseAutomaticChestImport(helper);
   }

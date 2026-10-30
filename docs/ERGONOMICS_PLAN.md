@@ -426,7 +426,11 @@ New gates:
   Done when: no string-status `.equals` remains in `platform/client`; packet tests refuse an
   unknown status.
 
-- [ ] **Q106 — A throughput check with a real margin (M144).** Size S.
+- [x] **Q106 — A throughput check with a real margin (M144).** Size S. Done 2026-10-30 (commit
+  subject `Q106:`). Each tier now imports 13,824 items from a chest refilled as slots empty, into
+  an Expanded Item Cell; same strict assertions. 20 consecutive runs passed with ticks Base
+  218–220, Advanced 62–64, Endgame 36–37 (smallest gap 25 ticks, was 1–3).
+  [Evidence](evidence/ergonomics-q106-throughput-margin-2026-10-30.md).
   Keep the strict Base > Advanced > Endgame ordering, but measure a workload where the tiers'
   rates dominate fixed overhead (for example refilling the chest until a fixed total such as
   13,824 items has been imported, or timing steady-state ticks after the first transfer), so the

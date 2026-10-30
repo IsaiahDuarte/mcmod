@@ -56,7 +56,7 @@ fresh flat world:
 | `runSaveOrderRestoreServer`, `runSaveOrderChunksRestoreServer` | Independent-save skew in both orders leaves exactly one inert ledger that an operator can adopt |
 | `runWirelessLifecycleServer` | A partner chunk unload/reload keeps stock, reservations and identities, with no implicit chunk loads |
 | `runGatewayDepthServer` | Configured gateway depth applies after a restart |
-| `runAutomaticThroughputServer` | Paid upgrades make real chest import faster (Base > Advanced > Endgame ticks) with exact conservation |
+| `runAutomaticThroughputServer` | Paid upgrades make real chest import faster (Base > Advanced > Endgame ticks, 13,824 items per tier from a refilled chest) with exact conservation |
 | `runInterruptionKill/DataOld/ChunksOldServer` | A seed SIGKILLs itself mid-processing-job (exit 137 required). Restores prove exact resume, a `save_mismatch` quarantine for older SavedData, and an orphan-journal block for older chunks ([ADR 0057](decisions/0057-processing-journal-and-interruption.md)) |
 
 The CI workflow only runs when started manually from the Actions tab. Pushes and pull requests
