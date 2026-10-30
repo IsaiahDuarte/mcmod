@@ -70,7 +70,7 @@ public final class WirelessTerminalItem extends Item {
     var level = player.serverLevel();
     if (Loaded.chunk(level, pos) == null
         || !(level.getBlockEntity(pos) instanceof AccessPointEntity point)) return "missing";
-    if (point.energy() < AccessPointEntity.TICK_COST) return "no_power";
+    if (point.energy() < point.tickCost()) return "no_power";
     var access = new WirelessAccess(point, hand);
     if (!access.canUse(player)) return "out_of_range";
     return TerminalMenu.open(

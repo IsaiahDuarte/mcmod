@@ -12,9 +12,10 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
 
 /**
- * Handheld session through one access point: same level, within {@link AccessPointEntity#RANGE}
- * blocks, the bound handheld still in hand, View at the access point, 16 FE per open tick from the
- * access point and 64 FE per action from the handheld.
+ * Handheld session through one access point: same level, within the point's {@link
+ * AccessPointEntity#range()} (64 blocks, more with upgrades), the bound handheld still in hand,
+ * View at the access point, its {@link AccessPointEntity#tickCost()} (16 FE or more) per open tick
+ * and 64 FE per action from the handheld.
  */
 final class WirelessAccess implements TerminalAccess {
   static final long ACTION_COST = 64;
@@ -30,7 +31,7 @@ final class WirelessAccess implements TerminalAccess {
   public boolean canUse(ServerPlayer player) {
     var held = player.getItemInHand(hand);
     var binding = held.get(WirelessContent.BINDING.get());
-    double range = (double) AccessPointEntity.RANGE * AccessPointEntity.RANGE;
+    double range = (double) point.range() * point.range();
     return player.isAlive()
         && point.current()
         && player.level() == point.getLevel()
@@ -56,7 +57,7 @@ final class WirelessAccess implements TerminalAccess {
 
   @Override
   public boolean upkeep(ServerPlayer player) {
-    return point.spend(AccessPointEntity.TICK_COST);
+    return point.spend(point.tickCost());
   }
 
   @Override
@@ -69,6 +70,6 @@ final class WirelessAccess implements TerminalAccess {
 
   @Override
   public double reachSquared() {
-    return (double) AccessPointEntity.RANGE * AccessPointEntity.RANGE;
+    return (double) point.range() * point.range();
   }
 }

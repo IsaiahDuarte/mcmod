@@ -797,6 +797,7 @@
   "block.factorycore.wireless_access_point": "Wireless Access Point",
   "item.factorycore.wireless_terminal": "Wireless Terminal",
   "message.factorycore.access_point_status": "Access point: %s / %s FE; range %s blocks; network %s. 16 FE per tick while a terminal is open.",
+  "message.factorycore.access_point_throughput": "Access Point range %s blocks, %s FE per tick while a terminal is open",
   "message.factorycore.wireless_bound": "Wireless Terminal bound to this access point",
   "message.factorycore.wireless_unbound": "Use the Wireless Terminal on an access point to bind it first",
   "message.factorycore.wireless_out_of_range": "Out of range, in another dimension, or no View permission at the access point",

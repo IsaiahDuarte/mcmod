@@ -151,3 +151,18 @@ above, and crafts rotate across them, each checked as current and using its own 
 for movement permits. Processing patterns still run one dispatch per job (one machine
 lease). Different patterns for the same output are still chosen by priority, not split.
 
+## Amendment — Access Point range (2026-10-30, ergonomics plan Q15)
+
+The Wireless Access Point takes Throughput, then Overdrive, under the same install rules
+(`ThroughputUpgradeable`: EDIT where it is, one step at a time, refused steps consume nothing,
+saved as `FactoryCoreThroughput`, returned on break). Each step doubles its range (64 → 128 →
+256 blocks, same dimension) and its cost per open-session tick (16 → 32 → 64 FE); it still costs
+nothing while no terminal is open, so "idle cost" in the plan is this per-session cost. Doubling
+both keeps FE per block of reach constant; the 20,000 FE buffer and 1,000 FE/tick input are
+unchanged, so an Overdrive point sustains about 15 sessions from its input.
+
+The upgrade item now acts in `onItemUseFirst` on any `ThroughputUpgradeable` device, so a block
+whose plain use opens a screen or a status message (Access Point, Crafter) takes the upgrade
+instead. Before, the block's own use won and the upgrade could only be installed while sneaking.
+Alternative: a separate range-module item (rejected: Throughput and Overdrive are already the
+"faster/farther" pair players craft, and a new item would need its own balance row).

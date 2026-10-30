@@ -486,6 +486,8 @@ denied consume nothing, and upgrades stay when the Interface moves.
 | Storage, Importer, Exporter, cable port mB per tick | 1,000 | 4,000 | 16,000 |
 | Storage, Importer, Exporter, cable port FE per tick | 1,000 | 8,000 | 32,000 |
 | Buffer items per tick | 64 | 256 | 576 |
+| Wireless Access Point range (blocks) | 64 | 128 | 256 |
+| Wireless Access Point FE per tick while a terminal is open | 16 | 32 | 64 |
 
 - **Importers and Exporters:** your own upgrade keeps them running; an upgrade by
   someone else pauses it.
@@ -494,6 +496,9 @@ denied consume nothing, and upgrades stay when the Interface moves.
   the Crafter gives the upgrades back.
 - **More Crafters:** put copies of the same crafting pattern in several Crafters and a
   job shares its crafts between them (up to 32 crafts per run in total).
+- **Access Points:** use Throughput, then Overdrive, on a Wireless Access Point to reach
+  farther; each step doubles the range and the FE it uses while a terminal is open. Breaking
+  it gives the upgrades back.
 - **Links:** linked gateways take Overdrive directly. Both ends need it to raise the
   pair's limit to 1,024 items, 16,000 mB and 32,000 FE per tick.
 - **Busy servers:** a busy server can still slow transfers below these numbers.

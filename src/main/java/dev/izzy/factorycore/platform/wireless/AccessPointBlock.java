@@ -4,12 +4,15 @@ import com.mojang.serialization.MapCodec;
 import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
+import java.util.List;
 import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -53,7 +56,7 @@ public final class AccessPointBlock extends NetworkedBlock implements EntityBloc
                       .membership(point.origin())
                       .status();
               var lamp = DeviceLamp.of(status, tickState.getValue(DeviceLamp.PROPERTY));
-              if (lamp == DeviceLamp.ACTIVE && point.energy() < AccessPointEntity.TICK_COST)
+              if (lamp == DeviceLamp.ACTIVE && point.energy() < point.tickCost())
                 lamp = DeviceLamp.FAULT;
               DeviceLamp.show(tickLevel, position, tickState, lamp);
             });
@@ -87,9 +90,23 @@ public final class AccessPointBlock extends NetworkedBlock implements EntityBloc
             "message.factorycore.access_point_status",
             point.energy(),
             AccessPointEntity.CAPACITY,
-            AccessPointEntity.RANGE,
+            point.range(),
             Component.translatable("status.factorycore." + status.name().toLowerCase(Locale.ROOT))),
         true);
     return InteractionResult.CONSUME;
+  }
+
+  /** Q15: installed range upgrades come back with the Access Point. */
+  @Override
+  protected List<ItemStack> dropsOnBreak(BlockEntity blockEntity) {
+    if (!(blockEntity instanceof AccessPointEntity point)) return List.of();
+    return switch (point.tier()) {
+      case BASE -> List.of();
+      case ADVANCED -> List.of(new ItemStack(ThroughputContent.THROUGHPUT.get()));
+      case ENDGAME ->
+          List.of(
+              new ItemStack(ThroughputContent.THROUGHPUT.get()),
+              new ItemStack(ThroughputContent.OVERDRIVE.get()));
+    };
   }
 }

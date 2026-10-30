@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.testing.wireless;
 
+import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -8,12 +9,14 @@ import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import dev.izzy.factorycore.platform.wireless.WirelessTerminalItem;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -21,6 +24,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -151,6 +156,121 @@ public final class WirelessGameTests {
               h.assertTrue(
                   WirelessTerminalItem.open(player, InteractionHand.MAIN_HAND).equals("no_power"),
                   "A drained access point refuses again");
+              player.connection.disconnect(Component.literal("done"));
+            })
+        .thenSucceed();
+  }
+
+  private static void click(GameTestHelper h, ServerPlayer player, ItemStack held) {
+    player.setItemInHand(InteractionHand.MAIN_HAND, held);
+    var at = h.absolutePos(POINT);
+    player.gameMode.useItemOn(
+        player,
+        h.getLevel(),
+        held,
+        InteractionHand.MAIN_HAND,
+        new BlockHitResult(Vec3.atCenterOf(at), Direction.UP, at, false));
+  }
+
+  /**
+   * Q15: Throughput and Overdrive, used on the Access Point like any device, take its range from 64
+   * to 128 to 256 blocks and its cost per open tick from 16 to 32 to 64 FE. The tier survives a
+   * reload, and breaking the point returns both upgrades.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void rangeUpgradesWidenReachAndRaiseTheCost(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    // Survival, so an installed upgrade is used up.
+    player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+    player.getInventory().clearContent();
+    Net.in(h, player.getUUID()).controller(ROOT);
+    Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    h.setBlock(POINT, WirelessContent.ACCESS_POINT.get());
+    AccessPointEntity point = h.getBlockEntity(POINT);
+    var handheld = new ItemStack(WirelessContent.HANDHELD.get());
+    handheld.set(
+        WirelessContent.BINDING.get(),
+        new WirelessContent.Binding(
+            h.getLevel().dimension().location().toString(), h.absolutePos(POINT).asLong()));
+    handheld.getCapability(Capabilities.EnergyStorage.ITEM).receiveEnergy(1_000, false);
+    var centre = Vec3.atCenterOf(h.absolutePos(POINT));
+    long[] before = {0};
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    dev.izzy.factorycore.platform.network.WorldNetworks.get(player.server)
+                            .membership(point.origin())
+                            .status()
+                        == dev.izzy.factorycore.core.network.NetworkTopology.Status.VALID,
+                    "Network ready"))
+        .thenExecute(
+            () -> {
+              point.energyStorage().receiveEnergy(1_000, false);
+              player.moveTo(centre.add(100, 0, 0));
+              player.setItemInHand(InteractionHand.MAIN_HAND, handheld);
+              h.assertTrue(
+                  WirelessTerminalItem.open(player, InteractionHand.MAIN_HAND)
+                      .equals("out_of_range"),
+                  "A base point does not reach 100 blocks");
+              player.moveTo(centre.add(2, 0, 0));
+              click(h, player, new ItemStack(ThroughputContent.THROUGHPUT.get()));
+              h.assertTrue(
+                  point.tier() == ThroughputTier.ADVANCED
+                      && player.getMainHandItem().isEmpty()
+                      && player.containerMenu == player.inventoryMenu,
+                  "Using Throughput installs it (no status message instead): " + point.tier());
+              player.setItemInHand(InteractionHand.MAIN_HAND, handheld);
+              player.moveTo(centre.add(100, 0, 0));
+              h.assertTrue(
+                  WirelessTerminalItem.open(player, InteractionHand.MAIN_HAND).isEmpty(),
+                  "Throughput reaches 100 blocks");
+              before[0] = point.energy();
+            })
+        .thenIdle(1)
+        .thenExecute(
+            () -> {
+              menu(player).broadcastChanges();
+              long drained = before[0] - point.energy();
+              h.assertTrue(
+                  point.tickCost() == 32 && drained >= 32 && drained % 32 == 0,
+                  "An open session costs 32 FE per tick: " + drained);
+              player.closeContainer();
+              player.moveTo(centre.add(2, 0, 0));
+              click(h, player, new ItemStack(ThroughputContent.OVERDRIVE.get()));
+              h.assertTrue(point.tier() == ThroughputTier.ENDGAME, "Overdrive installed");
+              player.setItemInHand(InteractionHand.MAIN_HAND, handheld);
+              point.energyStorage().receiveEnergy(1_000, false);
+              player.moveTo(centre.add(300, 0, 0));
+              h.assertTrue(
+                  WirelessTerminalItem.open(player, InteractionHand.MAIN_HAND)
+                      .equals("out_of_range"),
+                  "Overdrive stops at 256 blocks");
+              player.moveTo(centre.add(200, 0, 0));
+              h.assertTrue(
+                  WirelessTerminalItem.open(player, InteractionHand.MAIN_HAND).isEmpty()
+                      && point.tickCost() == 64
+                      && point.range() == 256,
+                  "Overdrive reaches 200 blocks at 64 FE per tick");
+              player.closeContainer();
+              var access = h.getLevel().registryAccess();
+              var reloaded =
+                  (AccessPointEntity)
+                      BlockEntity.loadStatic(
+                          h.absolutePos(POINT),
+                          point.getBlockState(),
+                          point.saveWithFullMetadata(access),
+                          access);
+              h.assertTrue(
+                  reloaded != null && reloaded.tier() == ThroughputTier.ENDGAME,
+                  "A reload keeps the tier");
+              h.getLevel().destroyBlock(h.absolutePos(POINT), true);
+            })
+        .thenExecute(
+            () -> {
+              h.assertItemEntityPresent(ThroughputContent.THROUGHPUT.get(), POINT, 2);
+              h.assertItemEntityPresent(ThroughputContent.OVERDRIVE.get(), POINT, 2);
               player.connection.disconnect(Component.literal("done"));
             })
         .thenSucceed();

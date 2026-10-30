@@ -29,6 +29,18 @@ public final class ThroughputUpgradeItem extends Item {
     return tier;
   }
 
+  /**
+   * Q15: installs before the block's own use, so devices that open a screen or report status when
+   * used (Access Point, Crafter) take the upgrade without sneaking.
+   */
+  @Override
+  public InteractionResult onItemUseFirst(ItemStack stack, UseOnContext context) {
+    return context.getLevel().getBlockEntity(context.getClickedPos())
+            instanceof ThroughputUpgradeable
+        ? useOn(context)
+        : InteractionResult.PASS;
+  }
+
   @Override
   public InteractionResult useOn(UseOnContext context) {
     var level = context.getLevel();

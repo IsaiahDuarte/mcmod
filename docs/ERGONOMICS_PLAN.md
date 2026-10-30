@@ -619,7 +619,10 @@ New gates:
   Done when: client runs with and without Curios open the terminal by key; the ArchUnit rule
   keeps Curios off mandatory loading.
 
-- [ ] **Q15 — Wireless range upgrade (M15).** Size S.
+- [x] **Q15 — Wireless range upgrade (M15).** Size S. Done 2026-10-30 (commit subject `Q15:`).
+  Access Point takes Throughput/Overdrive: 64/128/256 blocks, 16/32/64 FE per open tick (ADR
+  0054 amendment); upgrades install before the block's own use. `WirelessGameTests`.
+  [Evidence](evidence/ergonomics-q15-access-point-range-2026-10-30.md).
   Throughput and Overdrive installed on an Access Point raise its range (for example 64 → 128
   → 256) and its idle cost. Same install rules as other devices (ADR 0054).
   Files: `AccessPointEntity.java`, `WirelessAccess.java`, ADR 0054 amendment, balance table.
