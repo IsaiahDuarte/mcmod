@@ -133,6 +133,18 @@ This is partial client evidence: Shift gesture, tooltips/focus, other resolution
 Return/Take64/denied/full/stale messages and full release acceptance remain pending.
 
 
+## Deposit all and search focus (Q18)
+
+`TerminalPackets.DEPOSIT_ALL` (action 18, protocol 11) names one own main-inventory slot and its
+key fingerprint. The menu queues every main-inventory slot holding that exact key and routes them
+one at a time through the same priority deposit as DEPOSIT, starting the next when the previous
+completes with OK and stopping on the first refusal or when the session closes. It spends one
+terminal action for the whole batch. The client sends it on a second Shift-click on the same
+slot within 250 ms (naming any slot that still holds the item, since the first click may
+already have emptied that one). `TerminalSearchSupport.FOCUS` (bit 32) is a further client-only
+preference flag in the saved sort, toggled by right-clicking the search box; SORT commands now
+accept selections up to 63 for these flags.
+
 ## Manual crafting grid
 
 [ADR0028](../decisions/0028-terminal-manual-crafting.md) defines the session-owned

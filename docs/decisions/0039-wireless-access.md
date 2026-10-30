@@ -36,3 +36,16 @@ server-side).
 Wireless throughput is the same scheduled path as wired, so equivalent-tier wired
 throughput is never lower (A16). Paired wireless links (network-to-network) are a
 separate slice.
+
+## Amendment — Pick Block from the network (2026-10-30, ergonomics plan Q18)
+
+A survival player's Pick Block on a block they have none of, with a bound Wireless Terminal
+anywhere in the main inventory, sends `WirelessPick.Pick(pos)`. The server reads the block itself
+(within the player's reach), finds the bound handheld and checks what a handheld withdrawal
+checks: same dimension, access point loaded and current, within its range (Q15), holding a tick
+of FE, and Withdraw at the point. It then routes up to one stack into the selected hotbar slot
+if empty, else the first empty hotbar slot, selects it when items arrive, and charges the
+handheld's 64 FE action cost. The handheld need not be held, unlike opening the terminal; the
+pick is one bounded move, not a session, so the access point's per-tick cost does not apply.
+Alternatives: requiring the handheld in hand (rejected: then Pick Block could not land in that
+slot) and taking a single item (rejected: vanilla creative pick gives a stack).

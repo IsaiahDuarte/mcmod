@@ -15,11 +15,14 @@ public final class TerminalSearchSupport {
    * then name), optionally combined with {@link #REVERSED}, which flips that mode's direction. Old
    * saved values 0 and 1 keep their meaning. {@link #TALL} rides in the same saved preference: it
    * changes only the client's grid height (H2), never the order. So does {@link #SYNC} (Q17): the
-   * client mirrors the terminal search with a recipe viewer's search box.
+   * client mirrors the terminal search with a recipe viewer's search box. {@link #FOCUS} (Q18) puts
+   * the cursor in the search box when the terminal opens.
    */
   public static final int NAME = 0, QUANTITY = 1, MOD = 2, REVERSED = 4, TALL = 8, SYNC = 16;
 
-  private static final int FLAGS = REVERSED | TALL | SYNC;
+  public static final int FOCUS = 32;
+
+  private static final int FLAGS = REVERSED | TALL | SYNC | FOCUS;
 
   public static boolean validSort(int sort) {
     return sort >= 0 && (sort & ~FLAGS) <= MOD;
@@ -31,6 +34,10 @@ public final class TerminalSearchSupport {
 
   public static boolean sync(int sort) {
     return (sort & SYNC) != 0;
+  }
+
+  public static boolean focus(int sort) {
+    return (sort & FOCUS) != 0;
   }
 
   public static boolean reversed(int sort) {

@@ -23,6 +23,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
@@ -475,11 +476,56 @@ final class TerminalStorageView {
     screen.showJobs(icon);
   }
 
-  /** Shift-click on an inventory stack empties a fluid container, drains energy or deposits. */
+  /** Q18: the last Shift-click deposit (slot, item, time), for Shift-double-click. */
+  private int lastDepositSlot = -1;
+
+  private ItemStack lastDeposit = ItemStack.EMPTY;
+  private long lastDepositAt;
+
+  /**
+   * Q18: a second Shift-click on the same slot within 250 ms deposits every matching stack. The
+   * first click's stack may already be gone, so any slot still holding the same item is named.
+   */
+  private boolean depositAllClicked(net.minecraft.world.inventory.Slot slot) {
+    long now = net.minecraft.Util.getMillis();
+    boolean repeat =
+        slot.getContainerSlot() == lastDepositSlot
+            && now - lastDepositAt <= 250
+            && !lastDeposit.isEmpty();
+    var remembered = lastDeposit;
+    lastDepositSlot = slot.getContainerSlot();
+    lastDeposit = slot.getItem().copy();
+    lastDepositAt = now;
+    if (!repeat) return false;
+    lastDepositSlot = -1;
+    var inventory = screen.client().player.getInventory();
+    for (int index = 0; index < 36; index++)
+      if (ItemStack.isSameItemSameComponents(inventory.getItem(index), remembered))
+        try {
+          var key =
+              new PlatformResourceCodec(screen.client().level.registryAccess()).itemKey(remembered);
+          screen.send(TerminalPackets.DEPOSIT_ALL, index, 1, TerminalPackets.fingerprint(key));
+          return true;
+        } catch (IllegalArgumentException unsupported) {
+          return false;
+        }
+    return true;
+  }
+
+  /**
+   * Shift-click on an inventory stack empties a fluid container, drains energy or deposits;
+   * Shift-double-click deposits every matching stack (Q18).
+   */
   boolean depositClicked(double mouseX, double mouseY, int button) {
     var slot = screen.getSlotUnderMouse();
     var player = screen.client().player;
     int left = screen.left(), top = screen.top(), kind = screen.kind();
+    if (button == 0
+        && Screen.hasShiftDown()
+        && kind == 0
+        && slot != null
+        && slot.container == player.getInventory()
+        && depositAllClicked(slot)) return true;
     if (button != 0
         || !Screen.hasShiftDown()
         || slot == null

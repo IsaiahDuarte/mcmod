@@ -119,7 +119,8 @@ Place a terminal on the network and use it. You need View access; depositing nee
 Deposit and withdrawing needs Withdraw.
 
 - **Search:** type a name or ID; `@minecraft` matches a mod and
-  `#minecraft:planks` matches a tag.
+  `#minecraft:planks` matches a tag. Right-click the search box to have it take the cursor
+  whenever the terminal opens (right-click again to stop); this is remembered.
 - **Sort:** the sort button cycles Name, Qty and Mod; the arrow beside it reverses the
   order. **⇕** makes the grid fill the window's height instead of six rows. Your search,
   sort and grid height are remembered.
@@ -129,7 +130,8 @@ Deposit and withdrawing needs Withdraw.
 - **Taking items:** left-click takes a stack and right-click takes half. Shift-click
   sends the stack to your inventory.
 - **Depositing:** click the grid with items on your cursor, or Shift-click an
-  inventory slot. If storage is full, the rest stays with you.
+  inventory slot. Shift-double-click deposits every stack of that item in your inventory. If
+  storage is full, the rest stays with you.
 - **Counts:** hover an item for its total, reserved and available counts. The bar
   under the grid shows how full your item cells are.
 - **Status:** the lamp at the end of the search row is green when the network is online;
@@ -459,6 +461,10 @@ storage terminal.
   move costs 64 FE from the handheld.
 - **Closing:** the screen closes if you leave range, lose View or the access point
   runs dry.
+- **Pick Block:** with a bound Wireless Terminal anywhere in your inventory, Pick Block (middle
+  click) on a block you have none of takes a stack of it from the network into your hotbar and
+  selects it, if you are in the access point's range and may withdraw there. Each pick costs
+  64 FE from the handheld, like any move.
 
 ## Wireless links
 

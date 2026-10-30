@@ -55,3 +55,6 @@ Q16), so the terminal never loads JEI classes. The **J** tool appears only when 
 so the search row is unchanged without JEI. Alternatives: a client-only config option (rejected:
 the other terminal preferences are per player and saved on the server, ADR 0052), and syncing
 only from the terminal to JEI (rejected: the slice asks for both ways).
+
+`FOCUS` (bit 32, ergonomics Q18) is a further client-only flag in the same integer: when the
+first server view arrives, the client focuses the search box. Bit 64 and up are refused.

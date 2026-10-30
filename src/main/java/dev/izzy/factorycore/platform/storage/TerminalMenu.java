@@ -36,6 +36,11 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   private final MenuSession protocol;
   private DeviceStatus.View deviceStatus;
   private final Player viewer;
+
+  /** Q18: main-inventory slots a DEPOSIT_ALL still has to deposit, and their key. */
+  private final java.util.ArrayDeque<Integer> depositAll = new java.util.ArrayDeque<>();
+
+  private ResourceKey depositAllKey;
   private final TerminalAccess terminal;
   private final BlockPos position;
   private UUID query, route;
@@ -66,6 +71,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
 
   private boolean loaded, busy, reachRegistered;
   private TerminalPackets.View view;
+  private boolean viewReceived;
   private final TerminalCrafting crafting = new TerminalCrafting();
   private TerminalCraftingPackets.View gridView;
   private TerminalCraftingPackets.GridStatus gridStatus = TerminalCraftingPackets.GridStatus.EMPTY;
@@ -242,7 +248,15 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   public void accept(TerminalPackets.View packet) {
     if (terminal == null
         && protocol.owns(packet.menu(), packet.session())
-        && packet.revision() >= view.revision()) view = packet;
+        && packet.revision() >= view.revision()) {
+      view = packet;
+      viewReceived = true;
+    }
+  }
+
+  /** Client: whether a server view (with the saved preferences) has arrived yet. */
+  public boolean viewReceived() {
+    return viewReceived;
   }
 
   private ServerPlayer player() {
@@ -504,6 +518,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             || action == TerminalPackets.TAKE_CURSOR
             || action == TerminalPackets.HALF_CURSOR
             || action == TerminalPackets.DEPOSIT_CURSOR
+            || action == TerminalPackets.DEPOSIT_ALL
             || (action >= TerminalPackets.FILL && action <= TerminalPackets.DISCHARGE);
     if (mutating && !terminal.spendAction(sender)) {
       status = TerminalPackets.Status.NO_POWER;
@@ -681,6 +696,28 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       endpoint =
           transfers().inventory(sender, command.action() == TerminalPackets.WITHDRAW ? -1 : 36);
       direction = WorldStorageRoutes.Direction.FROM_STORAGE;
+    } else if (command.action() == TerminalPackets.DEPOSIT_ALL) {
+      // Q18: every main-inventory stack of the clicked stack's exact key, one route at a time.
+      var codec = new PlatformResourceCodec(sender.registryAccess());
+      var clicked = sender.getInventory().getItem(command.selection());
+      if (clicked.isEmpty()) return;
+      try {
+        key = codec.itemKey(clicked);
+      } catch (IllegalArgumentException unsupported) {
+        status = TerminalPackets.Status.UNSUPPORTED;
+        publish();
+        return;
+      }
+      if (!MessageDigest.isEqual(TerminalPackets.fingerprint(key), command.fingerprint())) return;
+      depositAll.clear();
+      for (int slot = 0; slot < 36; slot++) {
+        var stack = sender.getInventory().getItem(slot);
+        if (stack.isEmpty()) continue;
+        if (ItemStack.isSameItemSameComponents(stack, clicked)) depositAll.add(slot);
+      }
+      depositAllKey = key;
+      if (!nextDepositAll()) publish();
+      return;
     } else if (command.action() == TerminalPackets.DEPOSIT
         || command.action() == TerminalPackets.DEPOSIT_CURSOR) {
       boolean cursor = command.action() == TerminalPackets.DEPOSIT_CURSOR;
@@ -970,6 +1007,57 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     return stored == null ? null : stored.id();
   }
 
+  /**
+   * Q18: starts the next queued DEPOSIT_ALL stack, if one still holds the key; returns false (and
+   * clears the queue) when none is left or the route is refused.
+   */
+  private boolean nextDepositAll() {
+    var sender = player();
+    while (!depositAll.isEmpty()) {
+      int slot = depositAll.poll();
+      var stack = sender.getInventory().getItem(slot);
+      if (stack.isEmpty()) continue;
+      try {
+        if (!new PlatformResourceCodec(sender.registryAccess())
+            .itemKey(stack)
+            .equals(depositAllKey)) continue;
+      } catch (IllegalArgumentException unsupported) {
+        continue;
+      }
+      if (unresolved() != null) {
+        status = TerminalPackets.Status.RESERVED;
+        break;
+      }
+      busy = true;
+      route = UUID.randomUUID();
+      long selectedRevision = revision;
+      var admission =
+          transfers()
+              .routes()
+              .priorityGuarded(
+                  route,
+                  actor(),
+                  terminal.origin(),
+                  transfers().inventory(sender, slot),
+                  depositAllKey,
+                  stack.getCount(),
+                  WorldStorageRoutes.Direction.TO_STORAGE,
+                  result -> finish(result.move()),
+                  () -> authorized() && revision == selectedRevision,
+                  () -> unresolved() == null);
+      if (admission.rejection() == OperationResult.Reason.OK) {
+        publish();
+        return true;
+      }
+      busy = false;
+      route = null;
+      status = TerminalPackets.Status.of(admission.rejection());
+      break;
+    }
+    depositAll.clear();
+    return false;
+  }
+
   private void finish(WorldStorageTransfers.Result result) {
     busy = false;
     route = null;
@@ -984,8 +1072,16 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         if (result.transfer() != null && result.transfer().delivered() > 0) continueCraft();
         else finishCraft(partialCraft());
       }
+      // Q18: the next stack of a deposit-all, while the last one went in.
+      if (!depositAll.isEmpty()) {
+        if (result.reason() == OperationResult.Reason.OK && nextDepositAll()) return;
+        depositAll.clear();
+      }
       publish();
-    } else pendingCrafts = 0;
+    } else {
+      pendingCrafts = 0;
+      depositAll.clear();
+    }
   }
 
   private void publish() {

@@ -92,7 +92,7 @@ class TerminalPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.REQUEST + 1, 0, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.DEPOSIT_ALL + 1, 0, 1, "", new byte[32]));
   }
 
   private static RegistryFriendlyByteBuf buffer() {
@@ -253,7 +253,7 @@ class TerminalPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.REQUEST + 1, 0, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.DEPOSIT_ALL + 1, 0, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalPackets.Command(1, session, 1, 4, 36, 1, "", new byte[32]));

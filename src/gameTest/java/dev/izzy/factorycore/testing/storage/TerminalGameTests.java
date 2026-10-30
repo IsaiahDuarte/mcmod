@@ -266,7 +266,8 @@ public final class TerminalGameTests {
                   TerminalSearchSupport.QUANTITY
                       | TerminalSearchSupport.REVERSED
                       | TerminalSearchSupport.TALL
-                      | TerminalSearchSupport.SYNC,
+                      | TerminalSearchSupport.SYNC
+                      | TerminalSearchSupport.FOCUS,
                   1,
                   new byte[32]);
             })
@@ -288,9 +289,10 @@ public final class TerminalGameTests {
               helper.assertTrue(
                   TerminalSearchSupport.tall(menu(f).view().sort())
                       && TerminalSearchSupport.reversed(menu(f).view().sort())
-                      && TerminalSearchSupport.sync(menu(f).view().sort()),
-                  "Tall and recipe-viewer sync (Q17) are persisted per player with the sort and"
-                      + " restored on reopen");
+                      && TerminalSearchSupport.sync(menu(f).view().sort())
+                      && TerminalSearchSupport.focus(menu(f).view().sort()),
+                  "Tall, recipe-viewer sync (Q17) and search auto-focus (Q18) are persisted per"
+                      + " player with the sort and restored on reopen");
               logout(f);
             })
         .thenSucceed();
@@ -773,6 +775,47 @@ public final class TerminalGameTests {
               helper.assertTrue(
                   f.player.containerMenu instanceof TerminalMenu,
                   "New native menu remains installed");
+              logout(f);
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Q18(b): DEPOSIT_ALL on one cobblestone stack deposits all three stacks of it, one route after
+   * another, and leaves other items alone.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void depositAllTakesEveryMatchingStack(GameTestHelper helper) {
+    var f = setup(helper);
+    var inventory = f.player.getInventory();
+    inventory.setItem(0, new ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64));
+    inventory.setItem(5, new ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 20));
+    inventory.setItem(20, new ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 7));
+    inventory.setItem(8, new ItemStack(net.minecraft.world.item.Items.DIRT, 3));
+    var cobble =
+        new PlatformResourceCodec(f.player.registryAccess())
+            .itemKey(new ItemStack(net.minecraft.world.item.Items.COBBLESTONE));
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(() -> open(helper, f))
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenExecute(
+            () ->
+                command(f, TerminalPackets.DEPOSIT_ALL, 5, 1, TerminalPackets.fingerprint(cobble)))
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    f.saved.registry().stock(f.cell, cobble).total() == 91
+                        && inventory.countItem(net.minecraft.world.item.Items.COBBLESTONE) == 0,
+                    "All three stacks (91) are deposited: "
+                        + f.saved.registry().stock(f.cell, cobble).total()))
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  inventory.getItem(8).is(net.minecraft.world.item.Items.DIRT)
+                      && inventory.getItem(8).getCount() == 3,
+                  "Other items stay");
               logout(f);
             })
         .thenSucceed();

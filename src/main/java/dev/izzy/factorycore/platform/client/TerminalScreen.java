@@ -78,6 +78,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private String viewerOurs, viewerTheirs;
 
+  /** Q18: whether the auto-focus preference was applied for this opening. */
+  private boolean focusChecked;
+
   /** Whether the grid was laid out tall; a synced preference change rebuilds the layout. */
   private boolean laidOutTall;
 
@@ -482,6 +485,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     clock++;
     storage.clampOffset();
     syncViewer(view.sort());
+    // Q18: once the saved preferences arrive, auto-focus puts the cursor in the search box.
+    if (!focusChecked && menu.viewReceived()) {
+      focusChecked = true;
+      if (TerminalSearchSupport.focus(view.sort()) && !storageHidden()) {
+        setFocused(search);
+        search.setFocused(true);
+      }
+    }
     if (!view.search().equals(syncedSearch)) {
       if (!searchDirty) {
         syncingSearch = true;
@@ -617,6 +628,18 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   @Override
   public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    // Q18: right-clicking the search box turns search auto-focus on or off.
+    if (button == 1 && search.isMouseOver(mouseX, mouseY)) {
+      boolean on = !TerminalSearchSupport.focus(menu.view().sort());
+      send(TerminalPackets.SORT, menu.view().sort() ^ TerminalSearchSupport.FOCUS, 1, new byte[32]);
+      client()
+          .player
+          .displayClientMessage(
+              Component.translatable(
+                  "gui.factorycore.terminal.search.focus." + (on ? "on" : "off")),
+              true);
+      return true;
+    }
     if (!storageHidden() && storage.mouseClicked(mouseX, mouseY, button)) return true;
     if (jobsMode && jobs.mouseClicked(mouseX, mouseY, button)) return true;
     if (patternsMode && patterns.mouseClicked(mouseX, mouseY, button)) return true;

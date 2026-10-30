@@ -84,6 +84,12 @@ public final class TerminalPackets {
    */
   public static final int CRAFTABLES = 16, REQUEST = 17;
 
+  /**
+   * Q18: DEPOSIT_ALL deposits every main-inventory stack matching own slot {@code selection} (exact
+   * key, checked by {@code fingerprint}), one stack after another.
+   */
+  public static final int DEPOSIT_ALL = 18;
+
   public static final int MAX_ROWS = 256, MAX_OFFSET = 65536;
 
   public record Command(
@@ -103,7 +109,7 @@ public final class TerminalPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > REQUEST
+          || action > DEPOSIT_ALL
           || selection < 0
           || selection
               >= (action == WINDOW
@@ -114,7 +120,7 @@ public final class TerminalPackets {
                           || action == FILL
                           || action == REQUEST
                       ? MAX_ROWS
-                      : action == CRAFTABLES ? 2 : 36)
+                      : action == CRAFTABLES ? 2 : action == SORT ? 64 : 36)
           || (action == SORT && !TerminalSearchSupport.validSort(selection))
           || amount < 1
           || amount > (action == WINDOW ? MAX_ROWS : 64)
@@ -390,7 +396,7 @@ public final class TerminalPackets {
   }
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("10");
+    var registrar = event.registrar("11");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, TerminalMenu.class, TerminalMenu::command);
     MenuPayloads.toServer(

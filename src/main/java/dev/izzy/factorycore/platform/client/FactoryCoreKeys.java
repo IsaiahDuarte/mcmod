@@ -102,6 +102,22 @@ public final class FactoryCoreKeys {
       event.setCanceled(true);
       return;
     }
+    // Q18(d): survival Pick Block with a Wireless Terminal also asks the network; the server
+    // does nothing when the player already holds the block or has no bound terminal.
+    if (event.isPickBlock()
+        && minecraft.player != null
+        && !minecraft.player.isCreative()
+        && minecraft.hitResult instanceof BlockHitResult pick
+        && pick.getType() == HitResult.Type.BLOCK
+        && minecraft
+            .player
+            .getInventory()
+            .contains(
+                stack ->
+                    stack.is(
+                        dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get())))
+      PacketDistributor.sendToServer(
+          new dev.izzy.factorycore.platform.wireless.WirelessPick.Pick(pick.getBlockPos()));
     if (!event.isUseItem()
         || !LABEL_ROW.isDown()
         || minecraft.player == null

@@ -12,6 +12,7 @@ import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.platform.upgrade.ThroughputContent;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.WirelessContent;
+import dev.izzy.factorycore.platform.wireless.WirelessPick;
 import dev.izzy.factorycore.platform.wireless.WirelessTerminalItem;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -272,6 +273,97 @@ public final class WirelessGameTests {
               h.assertItemEntityPresent(ThroughputContent.THROUGHPUT.get(), POINT, 2);
               h.assertItemEntityPresent(ThroughputContent.OVERDRIVE.get(), POINT, 2);
               player.connection.disconnect(Component.literal("done"));
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Q18(d): Pick Block on stone the player has none of pulls a stack from the network into the
+   * selected empty hotbar slot through a bound Wireless Terminal kept in the inventory, for 64 FE
+   * from the handheld; with stone already held, or without Withdraw, nothing moves.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void pickBlockPullsFromTheNetwork(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+    player.getInventory().clearContent();
+    Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    var cell = CellHandleData.read(drive.cell(0));
+    h.setBlock(POINT, WirelessContent.ACCESS_POINT.get());
+    AccessPointEntity point = h.getBlockEntity(POINT);
+    var stoneAt = new BlockPos(3, 1, 3);
+    h.setBlock(stoneAt, net.minecraft.world.level.block.Blocks.STONE);
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    var stone =
+        new PlatformResourceCodec(h.getLevel().registryAccess())
+            .itemKey(new ItemStack(Items.STONE));
+    var handheld = new ItemStack(WirelessContent.HANDHELD.get());
+    handheld.set(
+        WirelessContent.BINDING.get(),
+        new WirelessContent.Binding(
+            h.getLevel().dimension().location().toString(), h.absolutePos(POINT).asLong()));
+    handheld.getCapability(Capabilities.EnergyStorage.ITEM).receiveEnergy(1_000, false);
+    player.getInventory().setItem(20, handheld);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(stoneAt)).add(0, 0, 2));
+    var stranger = TestPlayers.mock(h);
+    TestPlayers.connect(stranger);
+    stranger.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+    stranger.getInventory().clearContent();
+    stranger.getInventory().setItem(20, handheld.copy());
+    stranger.moveTo(Vec3.atCenterOf(h.absolutePos(stoneAt)).add(0, 0, 2));
+    var picked = h.absolutePos(stoneAt);
+    int[] before = {0};
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(saved.registry().stock(cell, stone).loaded(), "Ready"))
+        .thenExecute(
+            () -> {
+              saved.registry().insert(cell, stone, 10);
+              point.energyStorage().receiveEnergy(1_000, false);
+              var refused = WirelessPick.pick(stranger, picked);
+              h.assertTrue(
+                  refused.equals("denied"), "Without Withdraw the pick is refused: " + refused);
+              player.getInventory().selected = 3;
+              before[0] =
+                  player
+                      .getInventory()
+                      .getItem(20)
+                      .getCapability(Capabilities.EnergyStorage.ITEM)
+                      .getEnergyStored();
+              h.assertTrue(WirelessPick.pick(player, picked).isEmpty(), "The pick starts");
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    player.getInventory().getItem(3).is(Items.STONE)
+                        && player.getInventory().getItem(3).getCount() == 10
+                        && player.getInventory().selected == 3,
+                    "Ten stone land in the selected empty slot: "
+                        + player.getInventory().getItem(3)))
+        .thenExecute(
+            () -> {
+              int after =
+                  player
+                      .getInventory()
+                      .getItem(20)
+                      .getCapability(Capabilities.EnergyStorage.ITEM)
+                      .getEnergyStored();
+              h.assertTrue(
+                  before[0] - after == 64 && saved.registry().stock(cell, stone).total() == 0,
+                  "One pick costs 64 FE from the handheld: " + (before[0] - after));
+              saved.registry().insert(cell, stone, 5);
+              h.assertTrue(WirelessPick.pick(player, picked).isEmpty(), "Holding stone: no-op");
+            })
+        .thenIdle(5)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  saved.registry().stock(cell, stone).total() == 5
+                      && player.getInventory().countItem(Items.STONE) == 10,
+                  "With stone already held, nothing is taken");
+              player.connection.disconnect(Component.literal("done"));
+              stranger.connection.disconnect(Component.literal("done"));
             })
         .thenSucceed();
   }

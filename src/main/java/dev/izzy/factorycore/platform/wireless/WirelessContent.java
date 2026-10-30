@@ -99,5 +99,6 @@ public final class WirelessContent {
 
   public static void register(IEventBus bus) {
     bus.addListener(WirelessContent::capabilities);
+    bus.addListener(WirelessPick::register);
   }
 }

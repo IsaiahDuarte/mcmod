@@ -642,7 +642,11 @@ New gates:
   EMI after Q16) and back.
   Done when: a JEI client run shows the search mirrored both ways; the preference round-trips.
 
-- [ ] **Q18 — Terminal conveniences (M18).** Size M. Check each first.
+- [x] **Q18 — Terminal conveniences (M18).** Size M. Check each first. Done 2026-10-30 for
+  (b), (c) and (d) (commit subject `Q18:`); (a) moved to Q109. All four were missing.
+  DEPOSIT_ALL, FOCUS preference, `WirelessPick` (ADR 0039 amendment). GameTests in
+  `TerminalGameTests` and `WirelessGameTests`.
+  [Evidence](evidence/ergonomics-q18-terminal-conveniences-2026-10-30.md).
   (a) Items crafted in the last session are pinned to the top of the grid until the screen
   closes. (b) Shift-double-click on an inventory stack deposits every matching stack. (c) An
   auto-focus-search option. (d) Pick-block with a Wireless Terminal in the inventory pulls the
@@ -650,6 +654,14 @@ New gates:
   Files: `TerminalScreen.java`, `TerminalMenu.java`, `platform/wireless`.
   Done when: each part has a GameTest or client step, and (d) charges the handheld's normal
   move cost and needs Withdraw.
+
+- [ ] **Q109 — Recently crafted items first (M18a).** Size M. Lane T.
+  Items crafted in the terminal (grid crafts and finished jobs started there) show first in the
+  Items grid until the screen closes. The grid is a server-paged window over a sorted index (ADR
+  0052), so pinned rows need their own place in the window and in the page offsets: decide in an
+  ADR amendment whether they take the first page's leading slots or a separate strip.
+  Done when: a GameTest crafts an item and finds it first on page one, then gone from the pin
+  after reopening; paging still visits every row exactly once.
 
 ## Wave D — device consistency (lane D)
 
