@@ -255,7 +255,8 @@ public final class TerminalGameTests {
                   "Sort direction is persisted per player and restored on reopen");
               boolean refused = false;
               try {
-                command(f, TerminalPackets.SORT, 3, 1, new byte[32]);
+                // 3 is the ID mode and 64 Recent since Q62; 65 is no mode.
+                command(f, TerminalPackets.SORT, 65, 1, new byte[32]);
               } catch (IllegalArgumentException expected) {
                 refused = true;
               }

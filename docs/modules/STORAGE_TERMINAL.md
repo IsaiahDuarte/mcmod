@@ -297,8 +297,10 @@ page anchor also returns Home. No raw catalog cursor is sent to clients.
 
 The Name/Qty button is keyboard-focusable. Search/sort state is stored per player
 under `ForgeData.PlayerPersisted.FactoryCoreTerminal`, schema 1 (`Search`, at most
-128 UTF-16 characters; `Sort`: a mode 0–2, plus 4 for reversed and 8 for the Tall grid,
-which changes only the client layout). Missing data uses empty search/name order;
+128 UTF-16 characters; `Sort`: a mode 0–3 or 64 (Name, Qty, Mod, ID, Recent), plus 4 for
+reversed and 8 for the Tall grid, 16 for recipe-viewer sync and 32 for search auto-focus,
+which change only the client; `View`: 0 Stored, 1 All, 2 Craftable, Q62, with the older
+`Craftable` boolean still written and read as All/Stored when `View` is absent). Missing data uses empty search/name order;
 invalid known fields default without granting authority. Unknown schemas are left
 untouched until the player explicitly changes a preference. Each authenticated
 change writes only this preference compound. It survives screen closure, normal

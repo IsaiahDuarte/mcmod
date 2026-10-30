@@ -70,9 +70,11 @@ class TerminalSearchSupportTest {
                 TerminalSearchSupport.order(
                     TerminalSearchSupport.NAME | TerminalSearchSupport.REVERSED, names::get))
             .toList());
-    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(3, names::get));
-    // 8 is Tall (H2), 16 recipe-viewer sync (Q17), 32 search auto-focus (Q18); 64 is unknown.
-    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(64, names::get));
+    // Mode 3 is ID and 64 Recent (Q62); 8 is Tall (H2), 16 recipe-viewer sync (Q17), 32 search
+    // auto-focus (Q18). Mode 64 | 1 and bit 128 are unknown.
+    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(65, names::get));
+    assertThrows(
+        IllegalArgumentException.class, () -> TerminalSearchSupport.order(128, names::get));
     assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(-1, names::get));
   }
 
@@ -133,19 +135,66 @@ class TerminalSearchSupportTest {
     assertTrue(TerminalSearchSupport.tall(sort));
     assertFalse(TerminalSearchSupport.tall(TerminalSearchSupport.MOD));
     assertFalse(
-        TerminalSearchSupport.validSort(3 | TerminalSearchSupport.TALL), "mode 3 is unknown");
+        TerminalSearchSupport.validSort(65 | TerminalSearchSupport.TALL), "mode 65 is unknown");
     // Q17: 16 is the recipe-viewer sync bit; the next bit is still unknown.
     assertTrue(TerminalSearchSupport.validSort(TerminalSearchSupport.SYNC));
     assertTrue(TerminalSearchSupport.sync(TerminalSearchSupport.SYNC | TerminalSearchSupport.MOD));
     assertEquals(
         TerminalSearchSupport.MOD,
         TerminalSearchSupport.mode(TerminalSearchSupport.SYNC | TerminalSearchSupport.MOD));
-    // Q18: 32 is search auto-focus; 64 is still unknown.
+    // Q18: 32 is search auto-focus; Q62: 64 is the Recent mode, 128 is unknown.
     assertTrue(TerminalSearchSupport.focus(TerminalSearchSupport.FOCUS));
     assertEquals(
         TerminalSearchSupport.NAME, TerminalSearchSupport.mode(TerminalSearchSupport.FOCUS));
-    assertFalse(TerminalSearchSupport.validSort(64), "unknown bits are refused");
+    assertTrue(TerminalSearchSupport.validSort(TerminalSearchSupport.RECENT));
+    assertFalse(TerminalSearchSupport.validSort(128), "unknown bits are refused");
     assertFalse(TerminalSearchSupport.validSort(-1));
+  }
+
+  @Test
+  void idAndRecentSortsAndTheButtonCycle() {
+    var apple = new ResourceKey(ResourceKind.ITEM, "minecraft:apple", new byte[0]);
+    var zinc = new ResourceKey(ResourceKind.ITEM, "alpha:zinc", new byte[0]);
+    var old = new ResourceKey(ResourceKind.ITEM, "beta:old", new byte[0]);
+    // Names would put Old first; IDs put alpha:zinc first.
+    var names = Map.of(apple, "Apple", zinc, "Zinc", old, "Old");
+    var changed = Map.of(apple, 7L, zinc, 9L);
+    var a = row(apple, BigInteger.ONE);
+    var z = row(zinc, BigInteger.ONE);
+    var o = row(old, BigInteger.ONE);
+    assertEquals(
+        List.of(z, o, a),
+        List.of(a, o, z).stream()
+            .sorted(TerminalSearchSupport.order(TerminalSearchSupport.ID, names::get))
+            .toList());
+    var recent =
+        TerminalSearchSupport.order(
+            TerminalSearchSupport.RECENT, names::get, key -> changed.getOrDefault(key, 0L));
+    assertEquals(
+        List.of(z, a, o),
+        List.of(o, a, z).stream().sorted(recent).toList(),
+        "Latest change first; never-changed rows last");
+    var oldest =
+        TerminalSearchSupport.order(
+            TerminalSearchSupport.RECENT | TerminalSearchSupport.REVERSED,
+            names::get,
+            key -> changed.getOrDefault(key, 0L));
+    assertEquals(List.of(o, a, z), List.of(z, a, o).stream().sorted(oldest).toList());
+    int sort = TerminalSearchSupport.NAME | TerminalSearchSupport.TALL;
+    var seen = new java.util.ArrayList<Integer>();
+    for (int step = 0; step < 5; step++) {
+      sort = TerminalSearchSupport.nextMode(sort);
+      seen.add(TerminalSearchSupport.mode(sort));
+      assertTrue(TerminalSearchSupport.tall(sort), "Flags survive the cycle");
+    }
+    assertEquals(
+        List.of(
+            TerminalSearchSupport.QUANTITY,
+            TerminalSearchSupport.MOD,
+            TerminalSearchSupport.ID,
+            TerminalSearchSupport.RECENT,
+            TerminalSearchSupport.NAME),
+        seen);
   }
 
   private static CatalogCounts.Row row(ResourceKey key, BigInteger amount) {

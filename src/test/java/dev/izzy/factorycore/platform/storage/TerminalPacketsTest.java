@@ -55,7 +55,7 @@ class TerminalPacketsTest {
             "0",
             false,
             false,
-            true,
+            TerminalPackets.VIEW_CRAFTABLE,
             true);
     var output = buffer();
     try {
@@ -63,19 +63,22 @@ class TerminalPacketsTest {
       var decoded = TerminalPackets.View.CODEC.decode(output);
       assertEquals(view, decoded);
       assertTrue(decoded.craftables() && decoded.rows().getFirst().craftable());
+      assertEquals(TerminalPackets.VIEW_CRAFTABLE, decoded.view());
       assertFalse(decoded.rows().get(1).craftable());
     } finally {
       output.release();
     }
     var session = UUID.randomUUID();
     new TerminalPackets.Command(1, session, 1, TerminalPackets.CRAFTABLES, 1, 1, "", new byte[32]);
+    // Q62: 2 is the Craftable-only view; 3 is unknown.
+    new TerminalPackets.Command(1, session, 1, TerminalPackets.CRAFTABLES, 2, 1, "", new byte[32]);
     new TerminalPackets.Command(
         1, session, 1, TerminalPackets.REQUEST, TerminalPackets.MAX_ROWS - 1, 1, "", new byte[32]);
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.CRAFTABLES, 2, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.CRAFTABLES, 3, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -197,7 +200,7 @@ class TerminalPacketsTest {
             "9223372036854792191",
             true,
             false,
-            true,
+            TerminalPackets.VIEW_ALL,
             false);
     var output = buffer();
     try {
@@ -267,12 +270,12 @@ class TerminalPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.SORT, 3, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.SORT, 65, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.View(
-                1, session, 1, TerminalPackets.Status.READY, List.of(), false, false, "0", "", 7));
+                1, session, 1, TerminalPackets.Status.READY, List.of(), false, false, "0", "", 65));
     var output = buffer();
     try {
       output.writeVarInt(1);

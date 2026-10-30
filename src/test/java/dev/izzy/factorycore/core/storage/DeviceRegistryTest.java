@@ -480,4 +480,29 @@ class DeviceRegistryTest {
             .failure(),
         "A portable lease cannot prove its item is gone");
   }
+
+  /** Q62: inserts and extracts stamp a rising sequence; a refused move or emptied key does not. */
+  @Test
+  void changesAreSequencedPerDeviceAndKey() {
+    var registry = registry(() -> {});
+    var handle = placed(registry);
+    var other = new ResourceKey(ResourceKind.ITEM, "minecraft:gold_ingot", new byte[0]);
+    assertEquals(0, registry.changed(handle, KEY), "Never changed");
+    registry.insert(handle, KEY, 10);
+    long first = registry.changed(handle, KEY);
+    registry.insert(handle, other, 5);
+    assertTrue(registry.changed(handle, other) > first, "The later change is higher");
+    registry.extract(handle, KEY, 3, null);
+    assertTrue(registry.changed(handle, KEY) > registry.changed(handle, other));
+    registry.insert(handle, KEY, 5_000);
+    long latest = registry.changed(handle, KEY);
+    assertTrue(latest > 0, "A partial fill is a change");
+    assertEquals(
+        OperationResult.Reason.FULL, registry.insert(handle, KEY, 1).reason(), "The cell is full");
+    assertEquals(latest, registry.changed(handle, KEY), "A move refused for space changes nothing");
+    registry.extract(handle, other, 5, null);
+    assertEquals(0, registry.changed(handle, other), "An emptied key is forgotten");
+    var stale = new DeviceRegistry.Handle(WORLD, handle.backing(), handle.generation() + 1);
+    assertEquals(0, registry.changed(stale, KEY), "A stale handle reads nothing");
+  }
 }

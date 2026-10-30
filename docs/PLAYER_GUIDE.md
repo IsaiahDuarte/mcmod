@@ -126,12 +126,13 @@ Deposit and withdrawing needs Withdraw.
 - **Search box:** Up and Down recall your last 16 searches, right-click clears it, and
   **Ctrl+F** (rebindable as "Focus terminal search") puts the cursor in it. Shift-right-click
   makes it take the cursor whenever the terminal opens (again to stop); this is remembered.
-- **Sort:** the sort button cycles Name, Qty and Mod; the arrow beside it reverses the
-  order. **⇕** makes the grid fill the window's height instead of six rows. Your search,
+- **Sort:** the sort button cycles Name, Qty, Mod, ID and New (most recently stored or
+  taken first, since the server started); the arrow beside it reverses the order. **⇕** makes the grid fill the window's height instead of six rows. Your search,
   sort and grid height are remembered.
-- **Craftable items:** items your Crafters can make have an orange corner. **⚒** also
-  lists craftable items you have none of, marked **+**. Click one (or middle-click any
-  craftable item) to open it in Jobs, ready to type an amount. The setting is remembered.
+- **Craftable items:** items your Crafters can make have an orange corner. **⚒** switches
+  the view: stored items (grey), stored plus craftable items you have none of, marked **+**
+  (gold), or only craftable items (aqua). Click a **+** item (or middle-click any craftable
+  item) to open it in Jobs, ready to type an amount. The view is remembered.
 - **Taking items:** left-click takes a stack and right-click takes half. Shift-click
   sends the stack to your inventory.
 - **Depositing:** click the grid with items on your cursor, or Shift-click an

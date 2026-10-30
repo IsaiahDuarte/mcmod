@@ -92,3 +92,31 @@ right-click to clear and a focus key (Ctrl+F) are client-only; Q18's auto-focus 
 Shift-right-click. Alternatives: matching on the client (rejected: the server pages and counts
 rows, ADR 0052), and treating a malformed query as plain text (rejected: the slice asks for it
 to be marked, not ignored).
+
+## Amendment — ID and Recent sorts, Items view (2026-10-30, ergonomics plan Q62)
+
+Two sort modes join Name, Qty and Mod: **ID** (registry ID, then exact identity) uses the free
+mode value 3, and **Recent** uses 64, a mode bit above the flags because 4 to 32 are taken.
+Bit 128 and up, and any other value, are refused. The button cycles Name → Qty → Mod → ID →
+Recent.
+
+Recent orders by the latest change of each key in the cells this search reads. `DeviceRegistry`
+gives each insert or extract that moves something a rising sequence number per device and key,
+and forgets a key whose stock reaches zero. The search keeps the maximum over its own digital
+cells, merged while the row is out of the ordered set, so the order stays consistent. Never
+changed keys and foreign storage sort last, by name. The sequence is in memory only: after a
+restart everything is "never changed" until it moves again. Using only the search's own cells
+means another network's activity cannot leak through the order.
+
+The Show craftable toggle becomes a three-way **View**: Stored (0, old off), All (1, old on) and
+Craftable (2: only keys some visible pattern makes, stocked or not). It is sent as the
+CRAFTABLES selection, saved as `View`, and the old `Craftable` boolean is still written. A
+saved preference without `View` reads that boolean as All or Stored. The view packet carries
+the view as an int (terminal protocol 12).
+
+The slice also asked for a tooltip saying when and by whom an entry last changed, if the
+catalog tracks it. It does not: the catalog keeps exact stock, not history, and the registry's
+sequence has no time, actor or device (the registry is core and sees only handles). Tracking
+those per key would add per-entry storage and a persistence change for little play value, so
+the tooltip is not added. If a later slice wants it, an actor and game time would have to be
+carried into `insert`/`extract` from the transfer layer.

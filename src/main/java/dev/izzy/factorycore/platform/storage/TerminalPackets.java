@@ -85,6 +85,13 @@ public final class TerminalPackets {
   public static final int CRAFTABLES = 16, REQUEST = 17;
 
   /**
+   * Q62: the Items view, sent as the CRAFTABLES selection and saved with the preferences. STORED
+   * shows stock only, ALL adds craftable items without stock, CRAFTABLE shows only craftable items
+   * (stocked or not). STORED and ALL keep the old off/on values.
+   */
+  public static final int VIEW_STORED = 0, VIEW_ALL = 1, VIEW_CRAFTABLE = 2;
+
+  /**
    * Q18: DEPOSIT_ALL deposits every main-inventory stack matching own slot {@code selection} (exact
    * key, checked by {@code fingerprint}), one stack after another.
    */
@@ -120,7 +127,7 @@ public final class TerminalPackets {
                           || action == FILL
                           || action == REQUEST
                       ? MAX_ROWS
-                      : action == CRAFTABLES ? 2 : action == SORT ? 64 : 36)
+                      : action == CRAFTABLES ? 3 : action == SORT ? 128 : 36)
           || (action == SORT && !TerminalSearchSupport.validSort(selection))
           || amount < 1
           || amount > (action == WINDOW ? MAX_ROWS : 64)
@@ -215,7 +222,7 @@ public final class TerminalPackets {
       String capacity,
       boolean infinite,
       boolean external,
-      boolean craftables,
+      int view,
       boolean uncertain)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
@@ -273,8 +280,13 @@ public final class TerminalPackets {
           "0",
           false,
           false,
-          false,
+          VIEW_STORED,
           false);
+    }
+
+    /** Whether craftable items without stock are shown (the All or Craftable view). */
+    public boolean craftables() {
+      return view != VIEW_STORED;
     }
 
     public View {
@@ -288,6 +300,8 @@ public final class TerminalPackets {
           || size > MAX_ROWS
           || kind < 0
           || kind > 2
+          || view < VIEW_STORED
+          || view > VIEW_CRAFTABLE
           || used.length() > 32
           || capacity.length() > 32) throw new IllegalArgumentException("Invalid terminal window");
       rows = List.copyOf(rows);
@@ -336,7 +350,7 @@ public final class TerminalPackets {
               buffer.writeUtf(value.capacity, 32);
               buffer.writeBoolean(value.infinite);
               buffer.writeBoolean(value.external);
-              buffer.writeBoolean(value.craftables);
+              buffer.writeVarInt(value.view);
               buffer.writeBoolean(value.uncertain);
             },
             buffer -> {
@@ -377,7 +391,7 @@ public final class TerminalPackets {
                   buffer.readUtf(32),
                   buffer.readBoolean(),
                   buffer.readBoolean(),
-                  buffer.readBoolean(),
+                  buffer.readVarInt(),
                   buffer.readBoolean());
             });
   }
@@ -396,7 +410,7 @@ public final class TerminalPackets {
   }
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("11");
+    var registrar = event.registrar("12");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, TerminalMenu.class, TerminalMenu::command);
     MenuPayloads.toServer(

@@ -74,6 +74,10 @@ terminal-sort-mod-scale-4.png
 terminal-sort-mod-reversed-scale-4.png
 terminal-sort-name-reversed-scale-4.png
 terminal-sort-name-scale-4.png
+terminal-sort-id-scale-4.png
+terminal-sort-new-scale-4.png
+items-craftable-only-scale-4.png
+items-stored-scale-4.png
 terminal-fluids-scale-4.png
 terminal-fluids-scale-1.png
 jobs-scroll-top-scale-4.png

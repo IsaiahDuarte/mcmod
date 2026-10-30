@@ -399,10 +399,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 tools.get(0),
                 craftablesLabel(),
                 "gui.factorycore.terminal.craftables.help",
+                // Q62: Stored → All → Craftable.
                 () ->
                     send(
                         TerminalPackets.CRAFTABLES,
-                        menu.view().craftables() ? 0 : 1,
+                        (menu.view().view() + 1) % 3,
                         1,
                         new byte[32])));
     sortButton =
@@ -412,11 +413,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 sortLabel(),
                 "gui.factorycore.terminal.sort.help",
                 () -> {
-                  int sort = menu.view().sort();
-                  int mode = (TerminalSearchSupport.mode(sort) + 1) % 3;
                   send(
                       TerminalPackets.SORT,
-                      mode | (sort & ~TerminalSearchSupport.mode(sort)),
+                      TerminalSearchSupport.nextMode(menu.view().sort()),
                       1,
                       new byte[32]);
                 }));
@@ -477,13 +476,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         "gui.factorycore.terminal.sort." + TerminalSearchSupport.mode(menu.view().sort()));
   }
 
-  /** Gold while craftable items without stock are shown in the grid. */
+  /** The view tool: grey for Stored, gold for All, aqua for Craftable only (Q62). */
   private Component craftablesLabel() {
     return Component.literal("⚒")
         .withStyle(
-            menu.view().craftables()
-                ? net.minecraft.ChatFormatting.GOLD
-                : net.minecraft.ChatFormatting.GRAY);
+            switch (menu.view().view()) {
+              case TerminalPackets.VIEW_ALL -> net.minecraft.ChatFormatting.GOLD;
+              case TerminalPackets.VIEW_CRAFTABLE -> net.minecraft.ChatFormatting.AQUA;
+              default -> net.minecraft.ChatFormatting.GRAY;
+            });
   }
 
   /** The arrow shows the visible order: down is the mode's natural order, up is reversed. */

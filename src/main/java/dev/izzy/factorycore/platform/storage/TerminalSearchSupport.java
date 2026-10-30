@@ -20,16 +20,27 @@ public final class TerminalSearchSupport {
    * saved values 0 and 1 keep their meaning. {@link #TALL} rides in the same saved preference: it
    * changes only the client's grid height (H2), never the order. So does {@link #SYNC} (Q17): the
    * client mirrors the terminal search with a recipe viewer's search box. {@link #FOCUS} (Q18) puts
-   * the cursor in the search box when the terminal opens.
+   * the cursor in the search box when the terminal opens. Q62 adds the modes {@link #ID} and {@link
+   * #RECENT} (most recently changed first); RECENT needs a mode bit above the flags.
    */
   public static final int NAME = 0, QUANTITY = 1, MOD = 2, REVERSED = 4, TALL = 8, SYNC = 16;
 
-  public static final int FOCUS = 32;
+  public static final int FOCUS = 32, ID = 3, RECENT = 64;
+
+  /** The sort button's cycle. */
+  public static final java.util.List<Integer> MODES =
+      java.util.List.of(NAME, QUANTITY, MOD, ID, RECENT);
 
   private static final int FLAGS = REVERSED | TALL | SYNC | FOCUS;
 
   public static boolean validSort(int sort) {
-    return sort >= 0 && (sort & ~FLAGS) <= MOD;
+    return sort >= 0 && MODES.contains(sort & ~FLAGS);
+  }
+
+  /** The mode after {@code sort}'s in the button cycle, keeping the flags. */
+  public static int nextMode(int sort) {
+    int next = MODES.get((MODES.indexOf(mode(sort)) + 1) % MODES.size());
+    return next | (sort & FLAGS);
   }
 
   public static int mode(int sort) {
@@ -132,6 +143,15 @@ public final class TerminalSearchSupport {
   }
 
   public static Comparator<CatalogCounts.Row> order(int sort, Function<ResourceKey, String> name) {
+    return order(sort, name, key -> 0L);
+  }
+
+  /**
+   * The row order for {@code sort}; {@code changed} gives a key's latest change sequence (higher is
+   * more recent) for {@link #RECENT}.
+   */
+  public static Comparator<CatalogCounts.Row> order(
+      int sort, Function<ResourceKey, String> name, Function<ResourceKey, Long> changed) {
     if (!validSort(sort)) throw new IllegalArgumentException("Invalid terminal sort");
     Comparator<CatalogCounts.Row> names =
         Comparator.comparing(row -> name.apply(row.key()).toLowerCase(Locale.ROOT));
@@ -145,6 +165,12 @@ public final class TerminalSearchSupport {
                               row.key()
                                   .registryId()
                                   .substring(0, Math.max(0, row.key().registryId().indexOf(':'))))
+                      .thenComparing(names);
+              case ID ->
+                  Comparator.<CatalogCounts.Row, String>comparing(row -> row.key().registryId());
+              case RECENT ->
+                  Comparator.<CatalogCounts.Row, Long>comparing(row -> changed.apply(row.key()))
+                      .reversed()
                       .thenComparing(names);
               default -> names;
             })

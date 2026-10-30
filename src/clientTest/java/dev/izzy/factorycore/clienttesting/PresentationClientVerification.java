@@ -708,7 +708,15 @@ public final class PresentationClientVerification {
           setScale(client, 4);
           return true;
         });
-    String[][] orders = {{"Qty", "↓"}, {"Mod", "↓"}, {"Mod", "↑"}, {"Name", "↑"}, {"Name", "↓"}};
+    String[][] orders = {
+      {"Qty", "↓"},
+      {"Mod", "↓"},
+      {"Mod", "↑"},
+      {"ID", "↓"},
+      {"New", "↓"},
+      {"Name", "↑"},
+      {"Name", "↓"}
+    };
     for (var order : orders) {
       String mode = order[0], arrow = order[1];
       step(
@@ -958,7 +966,7 @@ public final class PresentationClientVerification {
 
   /** The sort button's current label: whichever of the three mode names is shown. */
   private static String labelOfSort(Minecraft client) {
-    for (var label : new String[] {"Name", "Qty", "Mod"})
+    for (var label : new String[] {"Name", "Qty", "Mod", "ID", "New"})
       if (hasButton(client, label)) return label;
     return "";
   }
@@ -1277,8 +1285,34 @@ public final class PresentationClientVerification {
           return true;
         });
     step(client -> press(client, "Items"));
+    // Q62: the view tool cycles All → Craftable → Stored.
     step(client -> waited() > 4 && press(client, "⚒"));
-    step(client -> !terminal(client).getMenu().view().craftables() && waited() > 4);
+    step(
+        client -> {
+          var view = terminal(client).getMenu().view();
+          if (view.view() != TerminalPackets.VIEW_CRAFTABLE || view.busy() || waited() < 8)
+            return false;
+          if (view.rows().isEmpty()
+              || !view.rows().stream().allMatch(TerminalPackets.Row::craftable))
+            throw new IllegalStateException("Craftable view shows only craftables: " + view.rows());
+          captures.grab(client, "items-craftable-only-scale-4.png");
+          evidence
+              .append("items view craftable: ")
+              .append(view.rows().stream().map(row -> row.icon() + "=" + row.total()).toList())
+              .append('\n');
+          return press(client, "⚒");
+        });
+    step(
+        client -> {
+          var view = terminal(client).getMenu().view();
+          if (view.view() != TerminalPackets.VIEW_STORED || view.busy() || waited() < 8)
+            return false;
+          if (view.rows().stream().anyMatch(row -> row.total().equals("0")))
+            throw new IllegalStateException("Stored view shows no zero rows: " + view.rows());
+          captures.grab(client, "items-stored-scale-4.png");
+          evidence.append("items view stored: ").append(view.rows().size()).append(" rows\n");
+          return true;
+        });
     step(
         client -> client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Jobs"));
     step(

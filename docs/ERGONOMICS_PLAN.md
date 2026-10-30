@@ -870,7 +870,10 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   Done when: a parser test covers each operator, precedence, a malformed query and the bounds;
   a client step shows a coloured query.
 
-- [ ] **Q62 — Sort and view filters (M61, M62).** Size S.
+- [x] **Q62 — Sort and view filters (M61, M62).** Size S. Done 2026-10-30 (commit subject
+  `Q62:`). ID and Recent sorts, Stored / All / Craftable view; no "last changed by" tooltip, as
+  the catalog does not track it (ADR 0052 amendment).
+  [Evidence](evidence/ergonomics-q62-sorts-and-views-2026-10-30.md).
   Add **ID** and **Recently changed** sorts and a **View: All / Stored / Craftable** button,
   saved with ADR 0052 preferences. The tooltip says when and by whom (or which device) an entry
   last changed, if the catalog tracks it; record the decision if it does not.

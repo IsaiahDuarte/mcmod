@@ -477,11 +477,14 @@ public final class TerminalClientVerification {
         click(screen, "Qty");
       }
       case 8 -> {
-        // The sort button cycles Name → Qty → Mod → Name.
+        // The sort button cycles Name → Qty → Mod → ID → New → Name (Q62 added ID and New).
         if (view.sort() != TerminalSearchSupport.MOD) return;
         click(screen, "Mod");
       }
       case 9 -> {
+        // Each click sends the mode after the one shown, so a repeat before the reply is harmless.
+        if (view.sort() == TerminalSearchSupport.ID) click(screen, "ID");
+        else if (view.sort() == TerminalSearchSupport.RECENT) click(screen, "New");
         if (view.sort() != TerminalSearchSupport.NAME) return;
         search(screen, "");
       }

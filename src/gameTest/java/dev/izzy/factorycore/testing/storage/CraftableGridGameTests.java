@@ -21,6 +21,7 @@ import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.platform.storage.TerminalSearchSupport;
 import dev.izzy.factorycore.platform.storage.WorldStorageSearch;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -379,6 +381,90 @@ public final class CraftableGridGameTests {
               h.assertTrue(
                   last.icon().equals("minecraft:stick") && last.craftable(),
                   "Name order puts Stick last, still flagged: " + last);
+              end(f);
+            })
+        .thenSucceed();
+  }
+
+  private static List<String> icons(Fixture f) {
+    return menu(f).view().rows().stream().map(TerminalPackets.Row::icon).toList();
+  }
+
+  /** Waits until the grid shows exactly {@code ids}, in order. */
+  private static void order(GameTestHelper h, Fixture f, String... ids) {
+    shows(h, f, ids.length);
+    h.assertTrue(icons(f).equals(List.of(ids)), "Grid order: " + icons(f));
+  }
+
+  /**
+   * Q62: the Recent and ID sorts, the Stored / All / Craftable view, the view saved per player, and
+   * an old saved "Craftable" flag read as the All view.
+   */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void recentAndIdSortsAndTheThreeViews(GameTestHelper h) {
+    var f = setup(h);
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var planks = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
+    var zeta = new ItemStack(Items.DIRT);
+    zeta.set(DataComponents.CUSTOM_NAME, Component.literal("Zeta"));
+    var dirt = codec.itemKey(zeta);
+    String log = "minecraft:oak_log", plank = "minecraft:oak_planks", soil = "minecraft:dirt";
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Terminal ready"))
+        .thenExecute(
+            () -> {
+              // Changed in the order planks, Zeta, logs (the extract is the last change).
+              f.saved.registry().insert(f.cell, f.log, 2);
+              f.saved.registry().insert(f.cell, planks, 3);
+              f.saved.registry().insert(f.cell, dirt, 1);
+              f.saved.registry().extract(f.cell, f.log, 1, null);
+              open(h, f);
+            })
+        .thenWaitUntil(() -> order(h, f, log, plank, soil))
+        .thenExecute(() -> command(f, TerminalPackets.SORT, TerminalSearchSupport.RECENT, 1))
+        .thenWaitUntil(() -> order(h, f, log, soil, plank))
+        .thenIdle(GAP)
+        .thenExecute(() -> command(f, TerminalPackets.SORT, TerminalSearchSupport.ID, 1))
+        // By name Zeta is last; by ID minecraft:dirt is first.
+        .thenWaitUntil(() -> order(h, f, soil, log, plank))
+        .thenIdle(GAP)
+        .thenExecute(
+            () -> command(f, TerminalPackets.CRAFTABLES, TerminalPackets.VIEW_CRAFTABLE, 1))
+        .thenWaitUntil(() -> order(h, f, plank, "minecraft:stick"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  row(f, plank).total().equals("3")
+                      && row(f, "minecraft:stick").total().equals("0"),
+                  "Craftable shows stocked and unstocked craftables only");
+              f.player.closeContainer();
+              open(h, f);
+            })
+        .thenWaitUntil(() -> order(h, f, plank, "minecraft:stick"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  menu(f).view().view() == TerminalPackets.VIEW_CRAFTABLE
+                      && TerminalSearchSupport.mode(menu(f).view().sort())
+                          == TerminalSearchSupport.ID,
+                  "The view and the ID sort are remembered per player");
+              f.player.closeContainer();
+              // A preference saved before Q62 has only the Craftable flag.
+              var saved =
+                  f.player
+                      .getPersistentData()
+                      .getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG)
+                      .getCompound("FactoryCoreTerminal");
+              saved.remove("View");
+              saved.putBoolean("Craftable", true);
+              open(h, f);
+            })
+        .thenWaitUntil(() -> order(h, f, soil, log, plank, "minecraft:stick"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  menu(f).view().view() == TerminalPackets.VIEW_ALL,
+                  "An old Craftable flag reads as the All view");
               end(f);
             })
         .thenSucceed();

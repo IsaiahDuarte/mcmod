@@ -59,7 +59,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   private List<Boolean> selectionCraftable = List.of();
 
   /** A3 "Show craftable" preference: zero-count rows for craftables that have no stock. */
-  private boolean showCraftable;
+  /** Q62: the Items view, {@link TerminalPackets#VIEW_STORED} and so on. */
+  private int itemsView = TerminalPackets.VIEW_STORED;
 
   private String text = "";
   private TerminalPackets.Status status = TerminalPackets.Status.LOADING;
@@ -120,7 +121,15 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         if (stored.length() <= 128) text = stored;
         int storedSort = preferences.getInt("Sort");
         if (TerminalSearchSupport.validSort(storedSort)) sort = storedSort;
-        showCraftable = preferences.getBoolean("Craftable");
+        // Q62: "View" replaces the old "Craftable" flag, whose on/off map to All/Stored.
+        int storedView =
+            preferences.contains("View")
+                ? preferences.getInt("View")
+                : preferences.getBoolean("Craftable")
+                    ? TerminalPackets.VIEW_ALL
+                    : TerminalPackets.VIEW_STORED;
+        if (storedView >= TerminalPackets.VIEW_STORED
+            && storedView <= TerminalPackets.VIEW_CRAFTABLE) itemsView = storedView;
       }
     }
     for (int row = 0; row < 3; row++)
@@ -452,7 +461,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                 text,
                 sort,
                 TerminalJobs.craftableKeys(player().server, terminal.origin()),
-                showCraftable,
+                itemsView != TerminalPackets.VIEW_STORED,
+                itemsView == TerminalPackets.VIEW_CRAFTABLE,
                 recent);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
@@ -472,7 +482,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     preferences.putInt("Schema", 1);
     preferences.putString("Search", text);
     preferences.putInt("Sort", sort);
-    preferences.putBoolean("Craftable", showCraftable);
+    preferences.putBoolean("Craftable", itemsView != TerminalPackets.VIEW_STORED);
+    preferences.putInt("View", itemsView);
     kept.put("FactoryCoreTerminal", preferences);
     persistent.put(Player.PERSISTED_NBT_TAG, kept);
   }
@@ -506,7 +517,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                 text,
                 sort,
                 TerminalJobs.craftableKeys(player().server, terminal.origin()),
-                showCraftable,
+                itemsView != TerminalPackets.VIEW_STORED,
+                itemsView == TerminalPackets.VIEW_CRAFTABLE,
                 recent);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
@@ -546,7 +558,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     }
     if (command.action() == TerminalPackets.CRAFTABLES) {
       offset = 0;
-      showCraftable = command.selection() == 1;
+      itemsView = command.selection();
       savePreferences();
       refresh();
       publish();
@@ -1163,7 +1175,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             capacity,
             infinite,
             external,
-            showCraftable,
+            itemsView,
             uncertain);
     if (!packet.equals(view)) {
       view = packet;

@@ -83,6 +83,13 @@ public final class WorldStorageSearch {
     final long grantsGeneration;
     final java.util.Set<ResourceKey> craftable;
     final boolean ghosts;
+
+    /** Q62: show only craftable keys. */
+    final boolean craftableOnly;
+
+    /** Q62: each key's latest change sequence over this search's own cells (RECENT sort). */
+    final Map<ResourceKey, Long> changed = new HashMap<>();
+
     final Map<ResourceKey, CatalogCounts.Row> ghostRows = new HashMap<>();
     CatalogCounts counts = new CatalogCounts();
     final Map<UUID, WorldStorageTransfers.Endpoint> sources = new HashMap<>();
@@ -108,6 +115,7 @@ public final class WorldStorageSearch {
         long grantsGeneration,
         java.util.Set<ResourceKey> craftable,
         boolean ghosts,
+        boolean craftableOnly,
         List<ResourceKey> pinned,
         int tick) {
       this.id = id;
@@ -125,11 +133,14 @@ public final class WorldStorageSearch {
           new TreeSet<>(
               java.util.Comparator.<CatalogCounts.Row>comparingInt(
                       row -> pins.getOrDefault(row.key(), Integer.MAX_VALUE))
-                  .thenComparing(TerminalSearchSupport.order(sort, names::get)));
+                  .thenComparing(
+                      TerminalSearchSupport.order(
+                          sort, names::get, key -> changed.getOrDefault(key, 0L))));
       this.scope = scope;
       this.grantsGeneration = grantsGeneration;
       this.craftable = craftable;
       this.ghosts = ghosts;
+      this.craftableOnly = craftableOnly;
       touched = tick;
     }
   }
@@ -177,7 +188,7 @@ public final class WorldStorageSearch {
       int sort,
       java.util.Set<ResourceKey> craftable,
       boolean ghosts) {
-    return start(id, actor, origin, kind, text, sort, craftable, ghosts, List.of());
+    return start(id, actor, origin, kind, text, sort, craftable, ghosts, false, List.of());
   }
 
   /**
@@ -185,7 +196,8 @@ public final class WorldStorageSearch {
    * {@code ghosts}, craftable keys of this kind that match the text but have no stock become
    * zero-count rows, so they can be requested from the grid. The caller supplies only keys that
    * patterns visible to this segment produce (gateway CRAFT publishing already applied). Rows whose
-   * key is in {@code pinned} come first, in that order (Q109).
+   * key is in {@code pinned} come first, in that order (Q109). With {@code craftableOnly}, rows
+   * whose key is not in {@code craftable} are left out (Q62).
    */
   public WorldStorageTransfers.Submission start(
       UUID id,
@@ -196,6 +208,7 @@ public final class WorldStorageSearch {
       int sort,
       java.util.Set<ResourceKey> craftable,
       boolean ghosts,
+      boolean craftableOnly,
       List<ResourceKey> pinned) {
     if (craftable.size() > MAX_CRAFTABLE)
       throw new IllegalArgumentException("Too many craftable keys");
@@ -226,6 +239,7 @@ public final class WorldStorageSearch {
             saved.network(member.scope().network()).generation(),
             java.util.Set.copyOf(craftable),
             ghosts,
+            craftableOnly,
             List.copyOf(pinned),
             server.getTickCount());
     if (!valid(search, actor)) return rejected(OperationResult.Reason.DENIED);
@@ -390,6 +404,7 @@ public final class WorldStorageSearch {
                   for (var row : page.rows())
                     search.used = search.used.add(BigInteger.valueOf(row.total()));
                 for (var row : page.rows()) {
+                  if (search.craftableOnly && !search.craftable.contains(row.key())) continue;
                   var codec = new PlatformResourceCodec(server.registryAccess());
                   String name;
                   try {
@@ -416,7 +431,13 @@ public final class WorldStorageSearch {
                     return;
                   }
                   if (previousRow != null) search.ordered.remove(previousRow);
-                  else {
+                  // Q62: the latest change over this search's cells, merged while the row is out.
+                  if (page.source() instanceof WorldStorageTransfers.Digital digital)
+                    search.changed.merge(
+                        row.key(),
+                        saved.registry().changed(digital.handle(), row.key()),
+                        Math::max);
+                  if (previousRow == null) {
                     search.names.put(row.key(), name.substring(0, Math.min(256, name.length())));
                   }
                   search.ordered.add(search.counts.row(row.key()));

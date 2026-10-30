@@ -218,6 +218,12 @@ public final class DeviceRegistry {
     Location location;
     boolean conflict;
 
+    /**
+     * Q62: each stocked key's sequence number at its last insert or extract here. In memory only
+     * (restarts start over at zero) and dropped when the key's stock reaches zero.
+     */
+    final Map<ResourceKey, Long> changes = new HashMap<>();
+
     Device(Stored stored) {
       ledger = ResourceLedger.restore(stored.ledger());
       generation = stored.generation();
@@ -233,6 +239,7 @@ public final class DeviceRegistry {
   private final NavigableMap<UUID, Device> devices = new TreeMap<>();
   private final Map<Location, UUID> placements = new HashMap<>();
   private long placementRevision;
+  private long changeSequence;
   private Predicate<Location> routing = location -> true;
   private long bytes;
   private long entries;
@@ -408,7 +415,25 @@ public final class DeviceRegistry {
             ? ResourceLedger.stockEntryBytes(key)
             : 0;
     if (!fits(device, extra)) return new OperationResult(0, OperationResult.Reason.TECHNICAL_LIMIT);
-    return account(device, () -> device.ledger.insert(key, amount));
+    return noteChange(device, key, account(device, () -> device.ledger.insert(key, amount)));
+  }
+
+  /**
+   * Q62: the sequence number of {@code key}'s last insert or extract in this device, higher being
+   * more recent; 0 when unknown (not changed since the server started, or the handle is stale).
+   */
+  public long changed(Handle handle, ResourceKey key) {
+    checkThread();
+    if (validate(handle) != Failure.OK) return 0;
+    return devices.get(handle.backing()).changes.getOrDefault(key, 0L);
+  }
+
+  private OperationResult noteChange(Device device, ResourceKey key, OperationResult result) {
+    if (result.amount() > 0) {
+      if (device.ledger.stock(key).total() == 0) device.changes.remove(key);
+      else device.changes.put(key, ++changeSequence);
+    }
+    return result;
   }
 
   public OperationResult reserve(Handle handle, UUID owner, ResourceKey key, long amount) {
@@ -431,7 +456,8 @@ public final class DeviceRegistry {
     OperationResult.requireQuantity(amount);
     Device device = available(handle);
     if (device == null) return denied(handle);
-    return account(device, () -> device.ledger.extract(key, amount, owner));
+    return noteChange(
+        device, key, account(device, () -> device.ledger.extract(key, amount, owner)));
   }
 
   public OperationResult release(Handle handle, UUID owner, ResourceKey key) {
