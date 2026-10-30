@@ -478,7 +478,11 @@ New gates:
   CRAFT hidden, a pattern taken remotely, and denial without Edit; the list is bounded and
   scrolls.
 
-- [ ] **Q4 — Edit and clear patterns (M4).** Size S.
+- [x] **Q4 — Edit and clear patterns (M4).** Size S. Done 2026-10-30 (commit subject `Q4:`).
+  Ctrl-click an encoded pattern to load it (the panel holds no items, so no slot; ADR 0030
+  amendment); Encode rewrites it in place; a wipe recipe and sneak-use make a blank.
+  `TerminalCraftingGameTests` (3 new), `RecipeGameTests` 26.
+  [Evidence](evidence/ergonomics-q4-edit-patterns-2026-10-30.md).
   Placing an encoded pattern in the crafting panel's pattern slot loads its grid (Table,
   Substitutes, or Inputs/Outputs with amounts); **Encode** overwrites it. Crafting an encoded
   pattern alone in a crafting table returns a blank.

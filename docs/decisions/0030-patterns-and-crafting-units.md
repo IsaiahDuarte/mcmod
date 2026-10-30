@@ -50,3 +50,18 @@ need invalidation; per-query rebuilding stays bounded and exact.
 
 Patterns are segment-local until gateway publication exists. Units do not execute
 jobs yet; the index supplies the planner's producer function for the next slice.
+
+## Amendment — editing and wiping patterns (2026-10-30, ergonomics plan Q4)
+
+An encoded pattern can be loaded back into the terminal's crafting grid and rewritten, and wiped
+to a blank. The grid has no item slot, so loading is a Ctrl-click on the pattern in the player's
+inventory, the gesture that already places ghost ingredients; the server reads the pattern from
+that main-inventory slot. Encode then replaces that stack while it still holds the same pattern
+id, so no blank is needed and no second copy appears. The rewritten pattern gets a fresh id,
+like any new encoding: Crafters index patterns by id, and a copy of the old pattern elsewhere
+must not be taken for the new recipe. A pattern the grid cannot represent exactly is refused
+rather than rounded. Wiping is a shapeless recipe (either encoded pattern → one Blank Pattern,
+`blank_pattern_from_pattern`, the only second recipe for an item) and a sneak-use in the air.
+Alternatives: a real pattern slot in the panel (rejected for now: the panel holds no items, and
+a slot would need item custody and return-on-close rules for one gesture), and rewriting in
+place under the old id (rejected as above).

@@ -166,3 +166,15 @@ quartz. Existing worlds keep their items, because only the crafting cost changes
   [ADR 0054](0054-throughput-upgrades.md); integrated results belong in the plan.
   Controlled achieved-throughput, full factory power demand and human pacing
   validation remain open.
+
+## Amendment — reversals (2026-10-30, ergonomics plan Q4)
+
+"One source per item" exists so no second, cheaper way to make an item appears. A reversal is a
+recipe that only gives back what an encoding consumed: `blank_pattern_from_pattern` turns either
+encoded pattern (each made from one Blank Pattern) back into one Blank Pattern. It adds no source
+and cannot lower any stage, so `RecipeProgressionTest` lists it in `REVERSALS`, leaves it out of
+the source, stage and grid checks, and checks it on its own: one shapeless ingredient whose every
+option is an encoding of exactly the result, yielding one. `RecipeGameTests` still loads it
+through the `RecipeManager` (canonical grid, unlock, unbound result) and names it as the one
+exception to its one-recipe-per-item check. Alternative: wiping only by sneak-use (rejected: the
+plan asks for the crafting-grid wipe AE2 and RS2 players expect).

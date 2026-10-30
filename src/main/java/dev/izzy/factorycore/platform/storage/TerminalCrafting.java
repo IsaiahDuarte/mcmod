@@ -44,6 +44,14 @@ final class TerminalCrafting {
   private boolean processing;
   private long revision = 1;
 
+  /**
+   * Q4: the main-inventory slot and pattern id of the encoded pattern loaded into the grid, which
+   * Encode rewrites instead of using a blank; -1 when none.
+   */
+  private int editingSlot = -1;
+
+  private UUID editingId;
+
   TerminalCrafting() {
     Arrays.fill(counts, 1);
   }
@@ -97,7 +105,87 @@ final class TerminalCrafting {
     Arrays.fill(cells, null);
     Arrays.fill(outputs, null);
     Arrays.fill(counts, 1);
+    editingSlot = -1;
+    editingId = null;
     revision++;
+  }
+
+  /** Whether an encoded pattern is loaded for Encode to rewrite. */
+  boolean editing() {
+    return editingSlot >= 0;
+  }
+
+  /**
+   * Q4: loads the encoded pattern in main-inventory {@code slot} into the grid: a crafting pattern
+   * as the Table grid, a processing pattern as Inputs and Outputs with their amounts. Returns
+   * LOADED or LOADED_SUBSTITUTES, or a refusal with the grid unchanged: NO_RECIPE for anything
+   * else, UNSUPPORTED for a pattern the grid cannot show (a fluid amount that is not whole 250 mB
+   * units, or a count over 64).
+   */
+  TerminalCraftingPackets.GridStatus load(ServerPlayer player, int slot) {
+    var stack = player.getInventory().getItem(slot);
+    var codec = new PlatformResourceCodec(player.registryAccess());
+    var nextCells = new ResourceKey[cells.length];
+    var nextOutputs = new ResourceKey[outputs.length];
+    var nextCounts = new int[ALL_CELLS];
+    Arrays.fill(nextCounts, 1);
+    boolean nextProcessing;
+    UUID id;
+    var status = TerminalCraftingPackets.GridStatus.LOADED;
+    try {
+      var crafting = stack.get(CraftingContent.PATTERN.get());
+      var declared = stack.get(CraftingContent.PROCESSING.get());
+      if (stack.is(CraftingContent.CRAFTING_PATTERN.get()) && crafting != null) {
+        nextProcessing = false;
+        id = crafting.id();
+        var ghosts = crafting.cells();
+        for (int index = 0; index < cells.length; index++)
+          if (!ghosts.get(index).isEmpty()) nextCells[index] = codec.itemKey(ghosts.get(index));
+        if (crafting.substitutes()) status = TerminalCraftingPackets.GridStatus.LOADED_SUBSTITUTES;
+      } else if (stack.is(CraftingContent.PROCESSING_PATTERN.get()) && declared != null) {
+        nextProcessing = true;
+        id = declared.id();
+        int in = 0;
+        for (var item : declared.inputs()) {
+          if (in == cells.length) return TerminalCraftingPackets.GridStatus.UNSUPPORTED;
+          nextCells[in] = codec.itemKey(item);
+          nextCounts[in++] = units(item.getCount(), 1);
+        }
+        for (var fluid : declared.fluidInputs()) {
+          if (in == cells.length) return TerminalCraftingPackets.GridStatus.UNSUPPORTED;
+          nextCells[in] = codec.fluidKey(fluid);
+          nextCounts[in++] = units(fluid.getAmount(), FLUID_UNIT);
+        }
+        int out = 0;
+        for (var item : declared.outputs()) {
+          if (out == outputs.length) return TerminalCraftingPackets.GridStatus.UNSUPPORTED;
+          nextOutputs[out] = codec.itemKey(item);
+          nextCounts[cells.length + out++] = units(item.getCount(), 1);
+        }
+        for (var fluid : declared.fluidOutputs()) {
+          if (out == outputs.length) return TerminalCraftingPackets.GridStatus.UNSUPPORTED;
+          nextOutputs[out] = codec.fluidKey(fluid);
+          nextCounts[cells.length + out++] = units(fluid.getAmount(), FLUID_UNIT);
+        }
+      } else return TerminalCraftingPackets.GridStatus.NO_RECIPE;
+    } catch (IllegalArgumentException unsupported) {
+      return TerminalCraftingPackets.GridStatus.UNSUPPORTED;
+    }
+    System.arraycopy(nextCells, 0, cells, 0, cells.length);
+    System.arraycopy(nextOutputs, 0, outputs, 0, outputs.length);
+    System.arraycopy(nextCounts, 0, counts, 0, ALL_CELLS);
+    processing = nextProcessing;
+    editingSlot = slot;
+    editingId = id;
+    revision++;
+    return status;
+  }
+
+  /** {@code amount} as whole grid units of {@code unit}, 1–64; throws when it is not exact. */
+  private static int units(long amount, int unit) {
+    if (amount % unit != 0 || amount / unit < 1 || amount / unit > 64)
+      throw new IllegalArgumentException("Pattern amount the grid cannot show");
+    return (int) (amount / unit);
   }
 
   GridRequirement requirement() {
@@ -338,9 +426,20 @@ final class TerminalCrafting {
     return write(player, encoded);
   }
 
-  /** Replaces one blank pattern in the main inventory with {@code encoded}, or changes nothing. */
+  /**
+   * Replaces the loaded pattern (Q4) with {@code encoded} when it is still in its slot, else one
+   * blank pattern in the main inventory, or changes nothing.
+   */
   private Outcome write(ServerPlayer player, ItemStack encoded) {
     var inventory = player.getInventory();
+    if (editingSlot >= 0 && editingId.equals(patternId(inventory.getItem(editingSlot)))) {
+      inventory.setItem(editingSlot, encoded);
+      inventory.setChanged();
+      editingId = patternId(encoded);
+      return new Outcome(0, TerminalCraftingPackets.GridStatus.REWRITTEN, null);
+    }
+    editingSlot = -1;
+    editingId = null;
     var trial = new ArrayList<ItemStack>(SLOTS);
     for (int slot = 0; slot < SLOTS; slot++) trial.add(inventory.getItem(slot).copy());
     boolean blank = false;
@@ -357,6 +456,16 @@ final class TerminalCrafting {
         inventory.setItem(slot, trial.get(slot).isEmpty() ? ItemStack.EMPTY : trial.get(slot));
     inventory.setChanged();
     return new Outcome(0, TerminalCraftingPackets.GridStatus.ENCODED, null);
+  }
+
+  /** The id of an encoded pattern stack, or null for anything else. */
+  private static UUID patternId(ItemStack stack) {
+    var crafting = stack.get(CraftingContent.PATTERN.get());
+    if (stack.is(CraftingContent.CRAFTING_PATTERN.get()) && crafting != null) return crafting.id();
+    var declared = stack.get(CraftingContent.PROCESSING.get());
+    if (stack.is(CraftingContent.PROCESSING_PATTERN.get()) && declared != null)
+      return declared.id();
+    return null;
   }
 
   private static ResourceKey keyOf(PlatformResourceCodec codec, ItemStack stack) {

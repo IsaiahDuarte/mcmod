@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 
@@ -90,6 +91,12 @@ class RecipeProgressionTest {
           Map.entry("factorycore:crafting_pattern", List.of("factorycore:blank_pattern")),
           Map.entry("factorycore:processing_pattern", List.of("factorycore:blank_pattern")));
 
+  /**
+   * Recipes that only undo an encoding (ADR 0048 amendment, ergonomics Q4): their result is the
+   * item an encoded input was made from, so they add no source and are checked on their own.
+   */
+  private static final Set<String> REVERSALS = Set.of("blank_pattern_from_pattern.json");
+
   /** The ADR 0048 stage of every survival item; it must equal the computed stage. */
   private static final Map<String, Stage> EXPECTED =
       Map.ofEntries(
@@ -147,6 +154,7 @@ class RecipeProgressionTest {
     try (var files = Files.list(Path.of(url.toURI()))) {
       for (var file : files.sorted().toList()) {
         assertTrue(file.toString().endsWith(".json"), "Only recipe JSON: " + file);
+        if (REVERSALS.contains(file.getFileName().toString())) continue;
         var json =
             JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
                 .getAsJsonObject();
@@ -371,6 +379,37 @@ class RecipeProgressionTest {
           ThroughputTier.ENDGAME.portRate(kind)
               >= WirelessBudget.limit(kind) * ThroughputTier.ENDGAME.linkScale(),
           "Overdrive wired port >= Overdrive link pair: " + kind);
+    }
+  }
+
+  /**
+   * Q4: each reversal is one shapeless ingredient, every option of which is an encoding whose only
+   * input is the result, and it yields exactly one. So it gives back what was spent, nothing more.
+   */
+  @Test
+  void reversalsOnlyGiveBackWhatAnEncodingConsumed() throws Exception {
+    var url = RecipeProgressionTest.class.getResource("/data/factorycore/recipe");
+    assertNotNull(url, "Recipe directory on the test classpath");
+    for (var name : REVERSALS) {
+      var json =
+          JsonParser.parseString(
+                  Files.readString(Path.of(url.toURI()).resolve(name), StandardCharsets.UTF_8))
+              .getAsJsonObject();
+      assertEquals("minecraft:crafting_shapeless", json.get("type").getAsString(), name);
+      var ingredients = json.getAsJsonArray("ingredients");
+      assertEquals(1, ingredients.size(), "One ingredient: " + name);
+      var options = new ArrayList<JsonElement>();
+      if (ingredients.get(0).isJsonArray())
+        ingredients.get(0).getAsJsonArray().forEach(options::add);
+      else options.add(ingredients.get(0));
+      var result = json.getAsJsonObject("result");
+      var id = result.get("id").getAsString();
+      assertEquals(1, result.get("count").getAsInt(), "Exactly one back: " + name);
+      for (var option : options)
+        assertEquals(
+            List.of(id),
+            NON_RECIPE.get(item(option, name)),
+            "Each option is an encoding made from exactly the result: " + name);
     }
   }
 

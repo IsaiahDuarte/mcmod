@@ -37,7 +37,13 @@ public final class TerminalCraftingPackets {
     NO_BLANK,
     NO_POWER,
     PROCESSING_MODE,
-    UNSUPPORTED;
+    UNSUPPORTED,
+    /** Q4: an encoded pattern was loaded into the grid; Encode rewrites it. */
+    LOADED,
+    /** As LOADED, for a crafting pattern that allows substitutes. */
+    LOADED_SUBSTITUTES,
+    /** Q4: Encode rewrote the loaded pattern in place. */
+    REWRITTEN;
 
     public String key() {
       return EnumKeys.key(this);
@@ -57,6 +63,9 @@ public final class TerminalCraftingPackets {
 
   /** MODE: cell 0 = crafting, 1 = processing. COUNT: cell 0–11, crafts = units 1–64. */
   public static final int MODE = 5, COUNT = 6;
+
+  /** Q4: load the encoded pattern in main-inventory slot {@code source} into the grid. */
+  public static final int LOAD = 7;
 
   /** Nine input cells plus three processing output cells (indices 9–11). */
   public static final int CELLS = TerminalCrafting.ALL_CELLS;
@@ -79,7 +88,7 @@ public final class TerminalCraftingPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < SET_OWN
-          || action > COUNT
+          || action > LOAD
           || cell < -1
           || cell >= CELLS
           || source < 0

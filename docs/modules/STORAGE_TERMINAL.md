@@ -139,13 +139,22 @@ Return/Take64/denied/full/stale messages and full release acceptance remain pend
 ghost grid. `TerminalCraftingPackets.Command(menu, session, viewRevision,
 gridRevision, action, cell, source, crafts, fingerprint)` actions are SET_OWN
 (source = own slot 0–35, exact-key fingerprint), SET_ROW (source = current row under
-`viewRevision`), CLEAR (cell -1 clears all) and CRAFT (1–64 crafts under the current
-`gridRevision`). Stale revisions, mismatched fingerprints, busy sessions and edits
+`viewRevision`), CLEAR (cell -1 clears all), CRAFT (1–64 crafts under the current
+`gridRevision`), ENCODE, MODE, COUNT and LOAD (Q4: source = own slot holding an encoded pattern).
+LOAD fills the grid from a crafting pattern (Table cells; status `loaded_substitutes` when it
+allows substitutes, so the client restores its toggle) or a processing pattern (inputs, then fluid
+inputs, in cells 0–8; outputs in 9–11; counts as items or 250 mB units). A pattern the grid
+cannot show (amounts not whole units or over 64 units, too many entries) is refused as
+`unsupported` with the grid unchanged. The grid remembers the slot and pattern id: ENCODE then
+replaces that stack (status `rewritten`, a fresh pattern id) while the same pattern is still in
+that slot, otherwise it falls back to a blank. CLEAR forgets it. Protocol 9 added LOAD and the
+three statuses. Stale revisions, mismatched fingerprints, busy sessions and edits
 over 32 per second are ignored. `View` carries twelve base registry IDs (nine inputs/three outputs), per-cell counts,
 a 12-bit fluid-kind mask, processing mode, the result
 icon/name/count, status (`TerminalCraftingPackets.GridStatus`: `empty`, `ready`, `filled`,
 `no_recipe`, `gathering`, `crafted`, `partial`, `encoded`, `no_blank`, `shortage`, `full`,
-`reserved`, `no_power`, `processing_mode`, `unsupported`) and the last crafted count. The server resolves keys, matches recipes and owns all quantities.
+`reserved`, `no_power`, `processing_mode`, `unsupported`, `loaded`, `loaded_substitutes`,
+`rewritten`) and the last crafted count. The server resolves keys, matches recipes and owns all quantities.
 
 `TerminalCrafting.craft(player, crafts)` returns a deficit with nothing consumed
 when owned main-inventory units cannot cover all crafts; the menu then gathers

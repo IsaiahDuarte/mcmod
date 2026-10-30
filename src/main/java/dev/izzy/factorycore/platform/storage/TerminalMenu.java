@@ -810,6 +810,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         crafting.count(command.cell(), command.crafts());
         gridStatus = TerminalCraftingPackets.GridStatus.READY;
       }
+      case TerminalCraftingPackets.LOAD -> gridStatus = crafting.load(sender, command.source());
       case TerminalCraftingPackets.ENCODE -> {
         if (!terminal.spendAction(sender)) {
           gridStatus = TerminalCraftingPackets.GridStatus.NO_POWER;

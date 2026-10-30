@@ -254,6 +254,13 @@ final class TerminalCraftingPanel {
     }
     if (gridView.gridRevision() != seenGridRevision) {
       seenGridRevision = gridView.gridRevision();
+      // Q4: a loaded crafting pattern brings back its Substitutes choice.
+      if (gridView.status() == TerminalCraftingPackets.GridStatus.LOADED
+          || gridView.status() == TerminalCraftingPackets.GridStatus.LOADED_SUBSTITUTES) {
+        substitutes = gridView.status() == TerminalCraftingPackets.GridStatus.LOADED_SUBSTITUTES;
+        substitutesButton.setOn(substitutes);
+        target = 0;
+      }
       // Recipe-viewer fills must reveal their ghosts even when the panel was collapsed.
       if (!screen.craftingOpen() && gridView.status() == TerminalCraftingPackets.GridStatus.FILLED)
         screen.openCrafting();
@@ -436,7 +443,8 @@ final class TerminalCraftingPanel {
 
   /**
    * A cell click targets it (right-click clears it); Ctrl-click on an inventory stack puts it in
-   * the target cell and moves the target on.
+   * the target cell and moves the target on. Ctrl-click on an encoded pattern loads it instead
+   * (Q4), so Encode rewrites it.
    */
   boolean mouseClicked(double mouseX, double mouseY, int button) {
     int cell = cellAt(mouseX, mouseY);
@@ -458,6 +466,13 @@ final class TerminalCraftingPanel {
         && slot != null
         && slot.container == client.player.getInventory()
         && slot.hasItem()) {
+      var held = slot.getItem();
+      if (held.is(dev.izzy.factorycore.platform.crafting.CraftingContent.CRAFTING_PATTERN.get())
+          || held.is(
+              dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING_PATTERN.get())) {
+        grid(TerminalCraftingPackets.LOAD, -1, slot.getContainerSlot(), 1, new byte[32]);
+        return true;
+      }
       try {
         var key = new PlatformResourceCodec(client.level.registryAccess()).itemKey(slot.getItem());
         grid(

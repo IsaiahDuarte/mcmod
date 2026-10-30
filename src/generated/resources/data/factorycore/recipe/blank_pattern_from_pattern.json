@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    [
+      {
+        "item": "factorycore:crafting_pattern"
+      },
+      {
+        "item": "factorycore:processing_pattern"
+      }
+    ]
+  ],
+  "result": {
+    "count": 1,
+    "id": "factorycore:blank_pattern"
+  }
+}

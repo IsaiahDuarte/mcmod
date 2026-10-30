@@ -6,14 +6,32 @@ import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.Level;
 
 /** Encoded crafting-table pattern. The item itself is an ordinary stack; it owns no resources. */
 public final class PatternItem extends Item {
   public PatternItem() {
     super(new Item.Properties().stacksTo(1));
+  }
+
+  /** Q4: sneak-use in the air wipes the pattern back to a blank. */
+  @Override
+  public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    return PatternItem.wipe(level, player, hand);
+  }
+
+  /** Sneak-use in the air replaces an encoded pattern (either kind) with one Blank Pattern. */
+  static InteractionResultHolder<ItemStack> wipe(Level level, Player player, InteractionHand hand) {
+    var held = player.getItemInHand(hand);
+    if (!player.isShiftKeyDown()) return InteractionResultHolder.pass(held);
+    if (level.isClientSide()) return InteractionResultHolder.success(held);
+    return InteractionResultHolder.consume(new ItemStack(CraftingContent.BLANK_PATTERN.get()));
   }
 
   @Override

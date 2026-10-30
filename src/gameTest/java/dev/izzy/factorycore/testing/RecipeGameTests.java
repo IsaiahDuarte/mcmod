@@ -93,9 +93,9 @@ public final class RecipeGameTests {
       unlocked.addAll(advancement.value().rewards().recipes());
     var recipes = modRecipes(h);
     h.assertTrue(
-        recipes.size() == 25,
-        "All 25 Factory Core crafting recipes, including speed upgrades, the Label Tool, the"
-            + " Importer and the Exporter, load");
+        recipes.size() == 26,
+        "All 26 Factory Core crafting recipes, including speed upgrades, the Label Tool, the"
+            + " Importer, the Exporter and the pattern wipe (Q4), load");
     for (var holder : recipes) {
       var input = input(holder.value());
       var found = manager.getRecipeFor(RecipeType.CRAFTING, input, h.getLevel());
@@ -109,7 +109,10 @@ public final class RecipeGameTests {
               && BuiltInRegistries.ITEM.containsKey(key)
               && result.get(DataComponents.CUSTOM_DATA) == null,
           "Recipe yields a registered, unbound Factory Core item: " + holder.id());
-      h.assertTrue(results.add(key.getPath()), "One recipe per item: " + key);
+      // Q4: wiping an encoded pattern is the one second way to a blank; it makes nothing new.
+      if (!holder.id().getPath().equals("blank_pattern_from_pattern"))
+        h.assertTrue(results.add(key.getPath()), "One recipe per item: " + key);
+      else h.assertTrue(key.getPath().equals("blank_pattern"), "The wipe yields a blank");
       h.assertTrue(unlocked.contains(holder.id()), "Recipe-book unlock exists: " + holder.id());
       for (var ingredient : holder.value().getIngredients())
         for (var option : ingredient.getItems())

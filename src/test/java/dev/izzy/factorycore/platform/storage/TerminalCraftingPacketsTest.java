@@ -132,11 +132,11 @@ class TerminalCraftingPacketsTest {
   void commandAndViewBoundsReject() {
     var id = UUID.randomUUID();
     var empty = new byte[32];
-    // Actions now run through COUNT and cells through the three processing outputs (9–11).
+    // Actions now run through LOAD (Q4) and cells through the three processing outputs (9–11).
     for (int[] bad :
         new int[][] {
           {-1, 0, 0, 1},
-          {TerminalCraftingPackets.COUNT + 1, 0, 0, 1},
+          {TerminalCraftingPackets.LOAD + 1, 0, 0, 1},
           {0, TerminalCraftingPackets.CELLS, 0, 1},
           {0, -2, 0, 1},
           {0, 0, 36, 1},

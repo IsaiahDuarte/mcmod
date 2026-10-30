@@ -330,6 +330,12 @@ Craft Blank Patterns.
   faster.
 - **Fluids:** switch the browser to **Fluids** and use **Use selected**. Amounts go
   from 250 to 16,000 mB.
+- **Editing a pattern:** with the crafting panel open, Ctrl-click an encoded pattern in your
+  inventory. Its recipe, Substitutes choice, or inputs and outputs with amounts fill the grid.
+  Change them and press **Encode** to rewrite that pattern; no blank is needed while it stays in
+  the same slot. **Clear** forgets it.
+- **Wiping a pattern:** put an encoded pattern alone in a crafting grid, or sneak and use it in
+  the air, to get a Blank Pattern back.
 
 A **Crafter** holds nine patterns of either kind. Place it on the network next to the
 machines its processing patterns use, on any side. Then use patterns on it or feed them

@@ -28,6 +28,7 @@ import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.LootPool;
@@ -480,6 +481,14 @@ public final class FactoryCoreData {
           .requires(Items.REDSTONE)
           .unlockedBy("has_item", has(Items.REDSTONE))
           .save(out);
+      // Q4: an encoded pattern alone wipes back to a blank (the only second recipe for an item).
+      ShapelessRecipeBuilder.shapeless(misc, item("blank_pattern"))
+          .requires(Ingredient.of(item("crafting_pattern"), item("processing_pattern")))
+          .unlockedBy("has_item", has(item("crafting_pattern")))
+          .save(
+              out,
+              ResourceLocation.fromNamespaceAndPath(
+                  FactoryCoreMod.MOD_ID, "blank_pattern_from_pattern"));
     }
 
     /** Rows are {@code /}-separated; {@code keys} alternate symbol and ingredient. */

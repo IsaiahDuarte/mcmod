@@ -3,6 +3,7 @@ package dev.izzy.factorycore.testing.storage;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
+import dev.izzy.factorycore.platform.crafting.ProcessingContents;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.CellHandleData;
@@ -17,14 +18,18 @@ import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -487,5 +492,190 @@ public final class TerminalCraftingGameTests {
               logout(f);
             })
         .thenSucceed();
+  }
+
+  private static int slotOf(Fixture f, Item item) {
+    for (int slot = 0; slot < 36; slot++)
+      if (f.player.getInventory().getItem(slot).is(item)) return slot;
+    return -1;
+  }
+
+  /**
+   * Q4: an encoded crafting pattern loads back into the Table grid with its Substitutes choice;
+   * after a change, Encode rewrites that pattern in its slot without needing a blank.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void aCraftingPatternLoadsAndEncodeRewritesIt(GameTestHelper h) {
+    var f = setup(h);
+    var inventory = f.player.getInventory();
+    inventory.setItem(0, new ItemStack(Items.OAK_PLANKS));
+    inventory.setItem(1, new ItemStack(CraftingContent.BLANK_PATTERN.get()));
+    inventory.setItem(2, new ItemStack(Items.OAK_LOG));
+    int[] patternSlot = {-1};
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenExecute(() -> open(h, f))
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              ghost(f, 0, 0);
+              ghost(f, 3, 0);
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.ENCODE, -1, 1, 1, new byte[32]);
+              patternSlot[0] = slotOf(f, CraftingContent.CRAFTING_PATTERN.get());
+              h.assertTrue(
+                  patternSlot[0] >= 0 && count(f, CraftingContent.BLANK_PATTERN.get()) == 0,
+                  "A stick pattern with substitutes is encoded on the only blank");
+              grid(f, TerminalCraftingPackets.CLEAR, -1, 0, 1, new byte[32]);
+              grid(f, TerminalCraftingPackets.LOAD, -1, patternSlot[0], 1, new byte[32]);
+              var view = menu(f).gridView();
+              h.assertTrue(
+                  view.status() == TerminalCraftingPackets.GridStatus.LOADED_SUBSTITUTES
+                      && !view.processing()
+                      && view.cells().get(0).equals("minecraft:oak_planks")
+                      && view.cells().get(3).equals("minecraft:oak_planks")
+                      && view.cells().get(1).isEmpty()
+                      && view.result().equals("minecraft:stick"),
+                  "Loading restores the Table grid and its substitutes: " + view);
+              grid(f, TerminalCraftingPackets.CLEAR, 3, 0, 1, new byte[32]);
+              ghost(f, 0, 2);
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]);
+              var rewritten = inventory.getItem(patternSlot[0]);
+              var contents = rewritten.get(CraftingContent.PATTERN.get());
+              h.assertTrue(
+                  menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.REWRITTEN
+                      && contents != null
+                      && contents.output().is(Items.OAK_PLANKS)
+                      && !contents.substitutes()
+                      && count(f, CraftingContent.CRAFTING_PATTERN.get()) == 1,
+                  "Encode rewrites the loaded pattern in place, without a blank: "
+                      + menu(f).gridView().status());
+              logout(f);
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Q4: a processing pattern loads as Inputs and Outputs with item counts and quarter-bucket fluid
+   * units; a changed count is rewritten. A fluid amount the grid cannot show is refused and the
+   * grid is left as it was.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void aProcessingPatternLoadsWithAmountsAndIsRewritten(GameTestHelper h) {
+    var f = setup(h);
+    var inventory = f.player.getInventory();
+    var declared = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    declared.set(
+        CraftingContent.PROCESSING.get(),
+        new ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.RAW_IRON, 2)),
+            List.of(new ItemStack(Items.IRON_INGOT, 2)),
+            List.of(new FluidStack(Fluids.WATER, 500)),
+            List.of()));
+    var odd = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    odd.set(
+        CraftingContent.PROCESSING.get(),
+        new ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.SAND)),
+            List.of(new ItemStack(Items.GLASS)),
+            List.of(new FluidStack(Fluids.WATER, 300)),
+            List.of()));
+    inventory.setItem(4, declared);
+    inventory.setItem(5, odd);
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenExecute(() -> open(h, f))
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.LOAD, -1, 4, 1, new byte[32]);
+              var view = menu(f).gridView();
+              h.assertTrue(
+                  view.status() == TerminalCraftingPackets.GridStatus.LOADED
+                      && view.processing()
+                      && view.cells().get(0).equals("minecraft:raw_iron")
+                      && view.amount(0) == 2
+                      && view.cells().get(1).equals("minecraft:water")
+                      && view.fluid(1)
+                      && view.amount(1) == 500
+                      && view.cells().get(9).equals("minecraft:iron_ingot")
+                      && view.amount(9) == 2,
+                  "Inputs and outputs load with their amounts: " + view);
+              grid(f, TerminalCraftingPackets.LOAD, -1, 5, 1, new byte[32]);
+              var refused = menu(f).gridView();
+              h.assertTrue(
+                  refused.status() == TerminalCraftingPackets.GridStatus.UNSUPPORTED
+                      && refused.cells().get(0).equals("minecraft:raw_iron"),
+                  "300 mB is not whole grid units: refused, grid unchanged: " + refused);
+              grid(f, TerminalCraftingPackets.COUNT, 9, 0, 3, new byte[32]);
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]);
+              var contents = inventory.getItem(4).get(CraftingContent.PROCESSING.get());
+              h.assertTrue(
+                  menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.REWRITTEN
+                      && contents != null
+                      && contents.outputs().getFirst().getCount() == 3
+                      && contents.inputs().getFirst().getCount() == 2
+                      && contents.fluidInputs().getFirst().getAmount() == 500,
+                  "The changed output count is rewritten into the same pattern: "
+                      + menu(f).gridView().status());
+              logout(f);
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Q4: an encoded pattern alone in a crafting grid makes a blank, and sneak-use in the air wipes
+   * it to a blank too.
+   */
+  @GameTest(template = "empty")
+  public static void anEncodedPatternWipesToABlank(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    var encoded = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    encoded.set(
+        CraftingContent.PROCESSING.get(),
+        new ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.SAND)),
+            List.of(new ItemStack(Items.GLASS))));
+    var input = CraftingInput.of(1, 1, List.of(encoded.copy()));
+    var recipe =
+        h.getLevel().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, h.getLevel());
+    h.assertTrue(
+        recipe.isPresent()
+            && recipe
+                .get()
+                .value()
+                .assemble(input, h.getLevel().registryAccess())
+                .is(CraftingContent.BLANK_PATTERN.get()),
+        "A pattern alone in a crafting grid makes a blank");
+    player.setItemInHand(InteractionHand.MAIN_HAND, encoded);
+    player.setShiftKeyDown(true);
+    var wiped = encoded.getItem().use(h.getLevel(), player, InteractionHand.MAIN_HAND);
+    h.assertTrue(
+        wiped.getObject().is(CraftingContent.BLANK_PATTERN.get()),
+        "Sneak-use in the air wipes it to a blank");
+    player.setShiftKeyDown(false);
+    var kept = encoded.getItem().use(h.getLevel(), player, InteractionHand.MAIN_HAND);
+    h.assertTrue(kept.getObject() == encoded, "A plain use leaves the pattern alone");
+    h.succeed();
   }
 }
