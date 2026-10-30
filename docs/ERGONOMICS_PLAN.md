@@ -634,7 +634,10 @@ New gates:
   Files: new `client/integration/emi`.
   Done when: a client run with EMI covers each feature; ArchUnit keeps EMI isolated.
 
-- [ ] **Q17 — Recipe-viewer search sync (M17).** Size S.
+- [x] **Q17 — Recipe-viewer search sync (M17).** Size S. Done 2026-10-30 (commit subject
+  `Q17:`). `SYNC` sort-preference bit and a **J** tool shown with JEI; `RecipeViewerSearch` bridge
+  (ADR 0052 amendment). `runJeiClient` mirrors both ways; `TerminalGameTests` round-trips it.
+  [Evidence](evidence/ergonomics-q17-search-sync-2026-10-30.md).
   A terminal setting (saved with ADR 0052 preferences) copies the terminal search into JEI (and
   EMI after Q16) and back.
   Done when: a JEI client run shows the search mirrored both ways; the preference round-trips.

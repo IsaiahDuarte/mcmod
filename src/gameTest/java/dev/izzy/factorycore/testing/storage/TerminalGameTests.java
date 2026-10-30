@@ -265,7 +265,8 @@ public final class TerminalGameTests {
                   TerminalPackets.SORT,
                   TerminalSearchSupport.QUANTITY
                       | TerminalSearchSupport.REVERSED
-                      | TerminalSearchSupport.TALL,
+                      | TerminalSearchSupport.TALL
+                      | TerminalSearchSupport.SYNC,
                   1,
                   new byte[32]);
             })
@@ -286,8 +287,10 @@ public final class TerminalGameTests {
             () -> {
               helper.assertTrue(
                   TerminalSearchSupport.tall(menu(f).view().sort())
-                      && TerminalSearchSupport.reversed(menu(f).view().sort()),
-                  "Tall is persisted per player with the sort and restored on reopen");
+                      && TerminalSearchSupport.reversed(menu(f).view().sort())
+                      && TerminalSearchSupport.sync(menu(f).view().sort()),
+                  "Tall and recipe-viewer sync (Q17) are persisted per player with the sort and"
+                      + " restored on reopen");
               logout(f);
             })
         .thenSucceed();

@@ -9,6 +9,8 @@
   "gui.factorycore.terminal.sort.direction.help": "Reverse the sort order.",
   "gui.factorycore.terminal.tall": "⇕",
   "gui.factorycore.terminal.tall.help": "Tall: the grid fills the window's height. Click again for six rows.",
+  "gui.factorycore.terminal.viewer_sync": "J",
+  "gui.factorycore.terminal.viewer_sync.help": "Sync the search with JEI both ways (green: on).",
   "block.factorycore.storage_drive": "Storage Drive",
   "item.factorycore.expansion_module": "Expansion Module",
   "item.factorycore.advanced_module": "Advanced Module",

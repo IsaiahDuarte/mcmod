@@ -73,6 +73,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private Button directionButton;
   private Button tallButton;
 
+  /** Q17: the recipe-viewer sync tool (null without a viewer) and the texts last mirrored. */
+  private Button syncButton;
+
+  private String viewerOurs, viewerTheirs;
+
   /** Whether the grid was laid out tall; a synced preference change rebuilds the layout. */
   private boolean laidOutTall;
 
@@ -344,7 +349,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     // Search row: search, then show-craftable, sort, direction and tall; the status lamp ends it.
     var searchRow =
         new Rect(GRID_X, SEARCH_Y, MAIN - 2 * GRID_X - LAMP - PanelLayout.GAP, PanelLayout.ROW);
-    var tools = PanelLayout.alignRight(searchRow, new int[] {16, 30, 14, 14}, 2);
+    // Q17: with a recipe viewer installed, a fifth tool syncs the search with it.
+    boolean viewer = RecipeViewerSearch.bridge() != null;
+    var tools =
+        PanelLayout.alignRight(
+            searchRow, viewer ? new int[] {16, 30, 14, 14, 14} : new int[] {16, 30, 14, 14}, 2);
     search =
         addRenderableWidget(
             new EditBox(
@@ -415,6 +424,20 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                         menu.view().sort() ^ TerminalSearchSupport.TALL,
                         1,
                         new byte[32])));
+    syncButton =
+        viewer
+            ? addRenderableWidget(
+                tool(
+                    tools.get(4),
+                    syncLabel(),
+                    "gui.factorycore.terminal.viewer_sync.help",
+                    () ->
+                        send(
+                            TerminalPackets.SORT,
+                            menu.view().sort() ^ TerminalSearchSupport.SYNC,
+                            1,
+                            new byte[32])))
+            : null;
 
     storage.init();
     crafting.init();
@@ -458,6 +481,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
     clock++;
     storage.clampOffset();
+    syncViewer(view.sort());
     if (!view.search().equals(syncedSearch)) {
       if (!searchDirty) {
         syncingSearch = true;
@@ -643,5 +667,45 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       return true;
     }
     return super.keyPressed(key, scan, modifiers);
+  }
+
+  /** Q17: the sync tool's label: lit while the search follows the recipe viewer. */
+  private Component syncLabel() {
+    return Component.translatable("gui.factorycore.terminal.viewer_sync")
+        .withStyle(
+            TerminalSearchSupport.sync(menu.view().sort())
+                ? net.minecraft.ChatFormatting.GREEN
+                : net.minecraft.ChatFormatting.GRAY);
+  }
+
+  /**
+   * Q17: while sync is on, a change typed here is copied into the recipe viewer's search, and a
+   * change typed there is copied here (and so searched). Turning sync on copies this search there.
+   */
+  private void syncViewer(int sort) {
+    if (syncButton != null) syncButton.setMessage(syncLabel());
+    var bridge = RecipeViewerSearch.bridge();
+    if (bridge == null || !TerminalSearchSupport.sync(sort)) {
+      viewerOurs = viewerTheirs = null;
+      return;
+    }
+    String ours = search.getValue(), theirs = bridge.text();
+    if (!ours.equals(viewerOurs)) {
+      if (!ours.equals(theirs)) bridge.text(ours);
+      viewerOurs = viewerTheirs = ours;
+    } else if (!theirs.equals(viewerTheirs)) {
+      viewerOurs = viewerTheirs = theirs;
+      search.setValue(theirs);
+    }
+  }
+
+  /** Test hook: the search text, as typed. */
+  public String searchText() {
+    return search.getValue();
+  }
+
+  /** Test hook: types {@code text} into the search box. */
+  public void typeSearch(String text) {
+    search.setValue(text);
   }
 }

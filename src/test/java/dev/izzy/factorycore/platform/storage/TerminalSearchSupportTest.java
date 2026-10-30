@@ -71,8 +71,8 @@ class TerminalSearchSupportTest {
                     TerminalSearchSupport.NAME | TerminalSearchSupport.REVERSED, names::get))
             .toList());
     assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(3, names::get));
-    // 8 is the Tall layout bit (H2); the first unknown bit is 16.
-    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(16, names::get));
+    // 8 is the Tall layout bit (H2), 16 the recipe-viewer sync bit (Q17); 32 is unknown.
+    assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(32, names::get));
     assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(-1, names::get));
   }
 
@@ -134,7 +134,13 @@ class TerminalSearchSupportTest {
     assertFalse(TerminalSearchSupport.tall(TerminalSearchSupport.MOD));
     assertFalse(
         TerminalSearchSupport.validSort(3 | TerminalSearchSupport.TALL), "mode 3 is unknown");
-    assertFalse(TerminalSearchSupport.validSort(16), "unknown bits are refused");
+    // Q17: 16 is the recipe-viewer sync bit; the next bit is still unknown.
+    assertTrue(TerminalSearchSupport.validSort(TerminalSearchSupport.SYNC));
+    assertTrue(TerminalSearchSupport.sync(TerminalSearchSupport.SYNC | TerminalSearchSupport.MOD));
+    assertEquals(
+        TerminalSearchSupport.MOD,
+        TerminalSearchSupport.mode(TerminalSearchSupport.SYNC | TerminalSearchSupport.MOD));
+    assertFalse(TerminalSearchSupport.validSort(32), "unknown bits are refused");
     assertFalse(TerminalSearchSupport.validSort(-1));
   }
 

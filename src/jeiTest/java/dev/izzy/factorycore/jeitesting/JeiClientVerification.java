@@ -19,6 +19,7 @@ import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.platform.storage.TerminalSearchSupport;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -593,6 +594,31 @@ final class JeiClientVerification {
         evidence.append(
             "jei: the universal handler fills processing Inputs/Outputs from a furnace recipe"
                 + " (sand -> glass) and a blasting recipe (raw iron -> iron ingot).\n");
+        // Q17: the J tool turns on search sync.
+        check(press(screen, "J"), "The search-sync tool is shown with JEI installed");
+      }
+      case 14 -> {
+        if (!TerminalSearchSupport.sync(screen.getMenu().view().sort())) return false;
+        screen.typeSearch("cobble");
+      }
+      case 15 -> {
+        var filter = RuntimeCapture.runtime.getIngredientFilter();
+        if (!filter.getFilterText().equals("cobble")) return false;
+        filter.setFilterText("stone");
+      }
+      case 16 -> {
+        if (!screen.searchText().equals("stone")
+            || !screen.getMenu().view().search().equals("stone")) return false;
+        capture(client, "jei-search-sync.png");
+        evidence.append(
+            "jei: search sync copies the terminal search into JEI (cobble) and JEI's back into"
+                + " the terminal, which searches it on the server (stone).\n");
+        check(press(screen, "J"), "Sync turns off");
+      }
+      case 17 -> {
+        if (TerminalSearchSupport.sync(screen.getMenu().view().sort())) return false;
+        RuntimeCapture.runtime.getIngredientFilter().setFilterText("");
+        screen.typeSearch("");
         return true;
       }
       default -> throw new IllegalStateException("Unknown panel stage " + panelStage);

@@ -528,7 +528,9 @@ grid with ghosts. On any other recipe (furnace, blasting, or another mod's machi
 **Inputs** and **Outputs** for a Processing Pattern, items and fluids with their amounts (fluids
 rounded up to 250 mB steps). A recipe with more than three outputs keeps the first three, and a
 message says so; one with more than nine inputs cannot be transferred. Dragging an item or fluid onto the program editor types its
-expression. Everything also works without JEI.
+expression. With JEI installed the terminal's search row also has a **J** button: while it is
+green, what you type in the terminal search is copied into JEI's search and the other way
+round. The setting is remembered with your sort. Everything also works without JEI.
 
 ## Label Tool
 

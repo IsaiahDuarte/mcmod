@@ -9,3 +9,4 @@ jei-processing-panel-scale-4.png
 jei-request-jobs.png
 jei-buffer-ghost.png
 jei-processing-transfer.png
+jei-search-sync.png

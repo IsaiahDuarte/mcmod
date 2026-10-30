@@ -29,6 +29,29 @@ public final class FactoryCoreJeiPlugin implements IModPlugin {
         new ProcessingTransferHandler(registration.getTransferHelper()));
   }
 
+  /** Q17: the terminal's search sync reads and writes JEI's ingredient filter. */
+  @Override
+  public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime runtime) {
+    var filter = runtime.getIngredientFilter();
+    dev.izzy.factorycore.platform.client.RecipeViewerSearch.install(
+        new dev.izzy.factorycore.platform.client.RecipeViewerSearch.Bridge() {
+          @Override
+          public String text() {
+            return filter.getFilterText();
+          }
+
+          @Override
+          public void text(String value) {
+            filter.setFilterText(value);
+          }
+        });
+  }
+
+  @Override
+  public void onRuntimeUnavailable() {
+    dev.izzy.factorycore.platform.client.RecipeViewerSearch.clear();
+  }
+
   @Override
   public void registerGuiHandlers(IGuiHandlerRegistration registration) {
     registration.addGhostIngredientHandler(ProgramScreen.class, new ProgramGhostHandler());

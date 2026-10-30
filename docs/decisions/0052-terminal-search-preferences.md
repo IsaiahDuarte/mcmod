@@ -41,3 +41,17 @@ NeoForge persisted-player data. The graphical tour and
 fresh-JVM restart fixture now require display/mod/tag queries, name/quantity
 buttons and persisted nondefault preference projection, with required captures.
 They passed on 2026-10-19 ([evidence](../evidence/program-authoring-client-v1-2026-10-19.md)); this is partial R08/A11 evidence.
+
+## Amendment — recipe-viewer search sync (2026-10-30, ergonomics plan Q17)
+
+A third flag, `SYNC` (bit 16), rides in the saved `Sort` integer like `TALL`: it never changes
+order or schema, `mode` masks it out, and bit 32 and up are still refused. While it is set, the
+client mirrors the terminal search with a recipe viewer's search box both ways: a change typed
+in the terminal is written to the viewer, and a change in the viewer is written to the terminal
+search box, which then searches through the normal debounced SEARCH command. Turning it on copies
+the terminal search to the viewer. The viewer is reached through `RecipeViewerSearch`, a client
+bridge the optional JEI plugin installs when its runtime is ready (EMI can install one after
+Q16), so the terminal never loads JEI classes. The **J** tool appears only when a bridge exists,
+so the search row is unchanged without JEI. Alternatives: a client-only config option (rejected:
+the other terminal preferences are per player and saved on the server, ADR 0052), and syncing
+only from the terminal to JEI (rejected: the slice asks for both ways).
