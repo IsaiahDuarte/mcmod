@@ -17,6 +17,7 @@ import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.StagedTransfer;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
+import dev.izzy.factorycore.core.scheduling.RuleQueue;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.core.wasm.WasmProgram;
 import dev.izzy.factorycore.platform.Loaded;
@@ -28,7 +29,6 @@ import dev.izzy.factorycore.platform.program.ProgramControllerEntity;
 import dev.izzy.factorycore.platform.program.ProgramMenu;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -108,7 +108,9 @@ public final class WorldPrograms {
   /** Transient runtime state of one loaded controller; persisted state lives in the entity. */
   private static final class Runtime {
     final Map<String, Long> due = new HashMap<>();
-    final ArrayDeque<Pending> queue = new ArrayDeque<>();
+
+    /** Pending commands by rule, taken round-robin (M145). */
+    final RuleQueue<ProgramCommand> queue = new RuleQueue<>(MAX_QUEUE);
 
     /** Tick each rule's queued invocation became due; used to expose scheduling latency. */
     final Map<String, Long> scheduled = new HashMap<>();
@@ -288,8 +290,10 @@ public final class WorldPrograms {
           runtime.scheduled.putIfAbsent(rule.key(), now);
         else throttled(controller, runtime, rule.key(), admission);
       }
-      if (runtime.request == null && !runtime.queue.isEmpty())
-        execute(controller, runtime, runtime.queue.poll());
+      if (runtime.request == null && !runtime.queue.isEmpty()) {
+        var next = runtime.queue.poll();
+        execute(controller, runtime, new Pending(next.rule(), next.command()));
+      }
     }
   }
 
@@ -381,19 +385,15 @@ public final class WorldPrograms {
         controller.log("rule " + rule.key() + " ran " + lag + " ticks late: server busy");
       runtime.status = RuntimeStatus.DELAYED;
     } else runtime.status = RuntimeStatus.RUNNING;
-    runtime.queue.removeIf(pending -> pending.rule().equals(rule.key()));
     var lines = new ArrayList<String>();
+    var queued = new ArrayList<ProgramCommand>();
     for (var command : commands)
       if (command instanceof ProgramCommand.Log log) lines.add(log.text());
+      else queued.add(command);
     controller.logInvocation(rule.key(), lines);
-    for (var command : commands) {
-      if (command instanceof ProgramCommand.Log) continue;
-      if (runtime.queue.size() == MAX_QUEUE) {
-        controller.log(rule.key() + ": command queue full; later commands dropped");
-        break;
-      }
-      runtime.queue.add(new Pending(rule.key(), command));
-    }
+    // The rule's new batch replaces what it still had queued and keeps its turn (M145).
+    if (runtime.queue.replace(rule.key(), queued) > 0)
+      controller.log(rule.key() + ": command queue full; later commands dropped");
   }
 
   /** Evaluates one saved native draft rule against the viewer's current read-only scope. */

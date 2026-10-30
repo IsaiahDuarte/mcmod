@@ -55,3 +55,16 @@ requires visible throttling and failure isolation. Before this ADR:
     joins the network. That check failed with the reserved slot removed and passes with it.
   - A time-saturated world delays and logs, with bounded lag.
   - A host-budget trap isolates one program.
+
+## Amendment — rules take turns (2026-10-30, ergonomics plan M145)
+
+A controller's pending commands are now held per rule and taken round-robin
+(`RuleQueue`, see [PROGRAMS](../modules/PROGRAMS.md)). Coalescing is unchanged: a rule that runs
+again replaces its queued batch. The old single queue moved that batch to the end, so with rules
+re-run in source order, the first rule always re-queued ahead of the second. Once commands
+drained slower than the interval (a rebuild or busy server slowing storage replies), the second
+rule never ran and logged nothing. A full GameTest suite made this frequent: a furnace program's
+output rule failed in 12 of 16 runs. Alternatives: keeping a re-run rule's place in one queue
+(rejected: a busy rule at the front re-fills the front and still starves the rest), and running
+all of a rule's commands before the next rule (rejected: the same starvation). Order within a
+rule is kept; the order between rules was never specified.

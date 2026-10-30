@@ -394,7 +394,9 @@ availability: exact routing performs the authoritative check. Candidate rotation
 and page cursors progress without a whole network snapshot. At most256 loaded
 entries retain cursors, sharing a2MiB transient cursor charge and32768-page scan
 limit. Each discovery/route is queued; no work loads chunks or scans unboundedly.
-Pause/reconfiguration/unregister/tag wake releases stale cursor state. Source
+Pause/reconfiguration/unregister/tag wake releases stale cursor state, and so does a refused
+submission: a cursor names the network scope it was read in, so after a rebuild it is refused at
+once, and the next attempt starts from the first page (M145; before, the buffer stayed DENIED). Source
 shortage/full/goals retry after20 ticks; local physical activity wakes immediately.
 These are bounds, not measured throughput or a representative performance pass.
 

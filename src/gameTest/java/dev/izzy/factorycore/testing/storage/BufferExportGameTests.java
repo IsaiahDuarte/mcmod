@@ -150,6 +150,61 @@ public final class BufferExportGameTests {
         .thenSucceed();
   }
 
+  /** M145: as above, with a rebuild of the buffer's network before the seven are taken. */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void stockRecoversAfterANetworkRebuild(GameTestHelper helper) {
+    var f = setup(helper);
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.iron, 100);
+              f.buffer.configure(f.actor, BufferRegistry.Mode.STOCK, policy(f, 20));
+            })
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    f.buffer.inventory().total(f.iron) == 20
+                        && f.saved.registry().stock(f.cell, f.iron).total() == 80,
+                    "Stock reaches exact physical target"))
+        .thenExecute(
+            () ->
+                // A rebuild publishes a new topology generation, so a catalog cursor kept from
+                // before it is refused; the buffer must drop it and start over (M145).
+                WorldNetworks.changed(helper.getLevel(), helper.absolutePos(BUFFER)))
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenIdle(30)
+        .thenExecute(
+            () -> {
+              helper.assertTrue(
+                  f.buffer.inventory().total(f.iron) == 20
+                      && f.saved.registry().stock(f.cell, f.iron).total() == 80,
+                  "At-goal polling does not over-withdraw");
+              var extracted = f.buffer.capability().extractItem(0, 7, false);
+              helper.assertTrue(
+                  extracted.getCount() == 7, "Real physical extraction removes seven");
+            })
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    f.buffer.inventory().total(f.iron) == 20
+                        && f.saved.registry().stock(f.cell, f.iron).total() == 73,
+                    "Stock replenishes only exact deficit: buffer="
+                        + f.buffer.inventory().total(f.iron)
+                        + " cell="
+                        + f.saved.registry().stock(f.cell, f.iron).total()
+                        + " status="
+                        + f.runtime.imports().status(f.buffer)
+                        + " membership="
+                        + f.runtime.membership(f.buffer.position()).status()
+                        + " diagnostic="
+                        + f.runtime.diagnostic()
+                        + " transfer="
+                        + f.saved.transfers().unresolved(f.buffer.handle().id())))
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void fullBufferDoesNotExtractAndVacancyWakesExport(GameTestHelper helper) {
     var f = setup(helper);

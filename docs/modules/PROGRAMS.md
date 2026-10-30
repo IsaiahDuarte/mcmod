@@ -47,6 +47,15 @@ resumes or stops (false without DEPLOY or deployment); `status(controller)` is a
 null before any rule has run. Costs: `BASE_COST` 4 FE, `STEPS_PER_FE` 256; queue
 `MAX_QUEUE` 64.
 
+Each controller holds its pending commands by rule (`core.scheduling.RuleQueue`). A rule that
+runs again replaces whatever it still had queued, so missed work coalesces, and keeps its turn;
+a rule with nothing queued joins after every waiting rule. One command runs at a time, taken
+round-robin across rules, each rule's commands in their own order. So a rule whose batch never
+drains (for example twelve storage reads on a ten-tick interval) cannot keep the next rule
+waiting. Before M145 a re-run rule's batch moved to the end of one queue, and a later rule
+could starve forever behind an earlier busy one. Commands over the 64 total are dropped and
+logged as before.
+
 
 ## Editor
 

@@ -189,7 +189,8 @@ resources being guessed, copied into a ledger or silently discarded.
 Eight metadata visits/tick admit bounded preparation into the shared scheduler.
 Import observes16 positions per step; Export/Stock discover bounded storage pages.
 Only one request per holder runs at a time. Cursors share2MiB and32768 unsuccessful
-pages, reset on changes/reload, and full/empty/goal retries wait20 ticks. Stock
+pages, reset on changes/reload and on a refused submission (a cursor from before a network
+rebuild is refused at once; M145), and full/empty/goal retries wait20 ticks. Stock
 live reads cap64 selected item positions/tanks (one FE provider); larger fluid
 capabilities reject Stock as UNSUPPORTED. Physical automation can overfill a goal;
 all matching network insertions still cap to the current deficit. Matching reads

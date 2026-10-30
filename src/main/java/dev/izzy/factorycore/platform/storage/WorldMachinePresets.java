@@ -483,6 +483,9 @@ public final class WorldMachinePresets {
   private void admitted(Entry e, WorldStorageTransfers.Submission submission) {
     if (submission.rejection() != OperationResult.Reason.OK) {
       e.request = null;
+      // As for buffers (M145): a cursor from before a rebuild is refused at once; start over.
+      cursor(e, null);
+      e.pages = 0;
       retry(e, submission.rejection());
     } else activate(e);
   }

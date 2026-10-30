@@ -267,6 +267,11 @@ public final class MachinePresetGameTests {
   }
 
   private static void stock(GameTestHelper h, ResourceKind kind) {
+    stock(h, kind, false);
+  }
+
+  /** {@code rebuild}: the machine's network is rebuilt once the goal is reached (M145). */
+  private static void stock(GameTestHelper h, ResourceKind kind, boolean rebuild) {
     var f = setup(h, kind);
     int initial = kind == ResourceKind.ITEM ? 32 : 1000,
         goal = kind == ResourceKind.ITEM ? 8 : 400,
@@ -281,6 +286,11 @@ public final class MachinePresetGameTests {
             })
         .thenWaitUntil(
             () -> h.assertTrue(resident(h, kind) == goal, "Machine Stock reaches exact goal"))
+        .thenExecute(
+            () -> {
+              if (rebuild) WorldNetworks.changed(h.getLevel(), f.machine.getBlockPos());
+            })
+        .thenWaitUntil(() -> ready(h, f))
         .thenIdle(30)
         .thenExecute(
             () -> {
@@ -318,6 +328,15 @@ public final class MachinePresetGameTests {
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void energyStockStopsAndReplenishes(GameTestHelper h) {
     stock(h, ResourceKind.ENERGY);
+  }
+
+  /**
+   * M145: a rebuild publishes a new topology generation, so a catalog cursor kept from before it is
+   * refused; the preset must drop it and start over rather than stay refused.
+   */
+  @GameTest(template = "empty", timeoutTicks = 500)
+  public static void itemStockRecoversAfterANetworkRebuild(GameTestHelper h) {
+    stock(h, ResourceKind.ITEM, true);
   }
 
   @GameTest(template = "empty", timeoutTicks = 500)

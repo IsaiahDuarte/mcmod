@@ -193,6 +193,63 @@ public final class SideAndSlotsGameTests {
         .thenSucceed();
   }
 
+  /**
+   * M145: a rule whose twelve storage reads never find stock keeps the controller's queue busy for
+   * longer than its ten-tick interval. The next rule must still run: before the fix it was
+   * re-queued behind the busy rule on every interval and never ran.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void aBusyRuleDoesNotStarveTheRuleAfterIt(GameTestHelper h) {
+    var f = setup(h, Blocks.CHEST);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              label(h, f, "chest", 0, 27);
+              ((BaseContainerBlockEntity) h.getBlockEntity(MACHINE))
+                  .setItem(0, new ItemStack(Items.STONE, 8));
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () ->
+                deploy(
+                    h,
+                    f,
+                    """
+                    every 10 ticks as "busy" {
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                      move item("diamond") from storage to machines("chest") limit 1
+                    }
+                    every 10 ticks as "drain" {
+                      move item("stone") from machines("chest") to storage
+                    }
+                    """))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.stored(Items.STONE) == 8 && countOf(h, 0, Items.STONE) == 0,
+                    "The drain rule emptied the chest: stored "
+                        + f.stored(Items.STONE)
+                        + " "
+                        + f.controller.logs()))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.controller.logs().stream().anyMatch(l -> l.contains("storage: shortage")),
+                    "The busy rule ran too: " + f.controller.logs()))
+        .thenSucceed();
+  }
+
   /** Iron-ingot transfers started from this fixture's Interface, for failure messages. */
   private static List<String> transfers(GameTestHelper h, Fixture f) {
     var origin = Positions.of(h.getLevel(), h.absolutePos(PORT));

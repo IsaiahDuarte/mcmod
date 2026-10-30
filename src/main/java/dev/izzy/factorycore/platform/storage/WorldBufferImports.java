@@ -474,6 +474,10 @@ public final class WorldBufferImports {
   private void admitted(Entry entry, WorldStorageTransfers.Submission admission) {
     if (admission.rejection() != OperationResult.Reason.OK) {
       entry.request = null;
+      // A cursor names the scope it was read in; after a rebuild it is refused at once, so start
+      // again from the first page rather than offering the stale cursor forever (M145).
+      cursor(entry, null);
+      entry.pages = 0;
       retry(entry, admission.rejection());
     } else activate(entry);
   }
