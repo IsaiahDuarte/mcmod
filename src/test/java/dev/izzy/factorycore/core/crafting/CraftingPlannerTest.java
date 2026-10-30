@@ -256,4 +256,38 @@ class CraftingPlannerTest {
                 Map.of(PLANKS, List.of(birch))),
         "An alternative may not also be an input");
   }
+
+  /** Q7: nine logs make exactly 36 planks (four per craft); 37 would need a tenth log. */
+  @Test
+  void maximumIsTheLargestAmountThatPlans() {
+    var planks = pattern(1, 0, PLANKS, 4, Map.of(LOG, 1L));
+    var stock = Map.of(LOG, 9L);
+    var max = planner(planks).maximum(PLANKS, 4_096, key -> stock.getOrDefault(key, 0L));
+    assertEquals(36, max.amount());
+    assertFalse(max.capped());
+    assertEquals(CraftingPlanner.Status.OK, max.plan().status());
+    assertEquals(36, max.plan().amount());
+    var sticks = pattern(2, 0, STICK, 4, Map.of(PLANKS, 2L));
+    var chain = planner(planks, sticks).maximum(STICK, 4_096, key -> stock.getOrDefault(key, 0L));
+    assertEquals(72, chain.amount(), "9 logs -> 36 planks -> 18 stick crafts -> 72 sticks");
+  }
+
+  @Test
+  void maximumIsZeroWhenNothingCanBeMadeAndNamesWhatIsMissing() {
+    var planks = pattern(1, 0, PLANKS, 4, Map.of(LOG, 1L));
+    var max = planner(planks).maximum(PLANKS, 4_096, key -> 0L);
+    assertEquals(0, max.amount());
+    assertFalse(max.capped());
+    assertEquals(CraftingPlanner.Status.MISSING, max.plan().status());
+    assertEquals(Map.of(LOG, 1L), max.plan().missing());
+  }
+
+  @Test
+  void maximumStopsAtTheCapAndSaysSo() {
+    var planks = pattern(1, 0, PLANKS, 4, Map.of(LOG, 1L));
+    var max = planner(planks).maximum(PLANKS, 4_096, key -> 1_000_000L);
+    assertEquals(4_096, max.amount());
+    assertTrue(max.capped(), "the 4,096 cap is reported, not a shortage");
+    assertThrows(IllegalArgumentException.class, () -> planner(planks).maximum(PLANKS, 0, k -> 0L));
+  }
 }

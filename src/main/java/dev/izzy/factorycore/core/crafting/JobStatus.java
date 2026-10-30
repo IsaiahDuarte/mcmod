@@ -33,7 +33,11 @@ public enum JobStatus {
   /** A rule's or program request's job is still running. */
   IN_FLIGHT,
   /** A rule found enough stock. */
-  SATISFIED;
+  SATISFIED,
+  /** Q7: Max previewed the largest amount that can be made. */
+  MAXIMUM,
+  /** Q7: Max stopped at the 4,096 request limit; more could be made. */
+  CAPPED;
 
   public String key() {
     return EnumKeys.key(this);

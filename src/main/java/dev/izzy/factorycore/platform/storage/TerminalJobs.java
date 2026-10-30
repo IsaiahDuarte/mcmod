@@ -140,6 +140,22 @@ final class TerminalJobs {
         summarize();
         jobStatus = preview.reason() == null ? JobStatus.PREVIEWED : preview.reason();
       }
+      case TerminalJobPackets.MAX -> {
+        if (command.revision() != jobRevision || command.selection() >= craftables.size()) {
+          return true;
+        }
+        previewKey = craftables.get(command.selection());
+        var max =
+            jobs.maximum(actor(), terminal.origin(), previewKey, TerminalJobPackets.MAX_AMOUNT);
+        // None possible: preview one, whose plan names what is missing.
+        previewAmount = (int) Math.max(1, max.amount());
+        preview = max.preview();
+        summarize();
+        jobStatus =
+            max.amount() == 0
+                ? (preview.reason() == null ? JobStatus.MISSING : preview.reason())
+                : max.capped() ? JobStatus.CAPPED : JobStatus.MAXIMUM;
+      }
       case TerminalJobPackets.START -> {
         if (!terminal.spendAction(viewer)) {
           jobStatus = JobStatus.NO_POWER;

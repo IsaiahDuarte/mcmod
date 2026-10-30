@@ -722,4 +722,79 @@ public final class TerminalJobGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Q7: Max previews the most the network can make (nine logs: 36 planks); for an item with no
+   * ingredients in stock it previews one and names what is missing.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void maxPreviewsTheMostThatCanBeMade(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(UNIT);
+    unit.patterns()
+        .insertItem(0, pattern(new int[] {0}, Items.OAK_LOG, Items.OAK_PLANKS, 4), false);
+    unit.patterns()
+        .insertItem(1, pattern(new int[] {0}, Items.STONE, Items.STONE_BUTTON, 1), false);
+    h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
+    TerminalEntity terminal = h.getBlockEntity(TERMINAL);
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    DeviceRegistry.Handle cell = CellHandleData.read(drive.cell(0));
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    ResourceKey log = codec.itemKey(new ItemStack(Items.OAK_LOG));
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenExecute(
+            () -> {
+              saved.registry().insert(cell, log, 9);
+              h.useBlock(TERMINAL, player);
+              menu(h, player).broadcastChanges();
+            })
+        .thenWaitUntil(
+            () -> {
+              var m = menu(h, player);
+              m.broadcastChanges();
+              h.assertTrue(row(m, "minecraft:oak_planks") >= 0, "Planks craftable");
+            })
+        .thenExecute(
+            () ->
+                command(
+                    h,
+                    player,
+                    TerminalJobPackets.MAX,
+                    row(menu(h, player), "minecraft:oak_planks"),
+                    1))
+        .thenExecute(
+            () -> {
+              var view = menu(h, player).jobView();
+              h.assertTrue(
+                  view.status() == JobStatus.MAXIMUM
+                      && view.preview().amount().equals("36")
+                      && view.previewReason() == null,
+                  "Max previews 36 planks from nine logs: " + view);
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () ->
+                command(
+                    h,
+                    player,
+                    TerminalJobPackets.MAX,
+                    row(menu(h, player), "minecraft:stone_button"),
+                    1))
+        .thenExecute(
+            () -> {
+              var view = menu(h, player).jobView();
+              h.assertTrue(
+                  view.status() == JobStatus.MISSING
+                      && view.preview().amount().equals("1")
+                      && view.previewReason() == JobStatus.MISSING,
+                  "With no stone, Max previews one and names the shortage: " + view);
+            })
+        .thenSucceed();
+  }
 }

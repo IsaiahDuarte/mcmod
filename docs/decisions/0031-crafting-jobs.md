@@ -81,3 +81,16 @@ Loading a job whose reason no code writes now marks the save malformed instead o
 unknown string. Job state and step status travel as `CraftingJob.State` and
 `TerminalJobPackets.StepStatus`. `LangKeysTest.everyTypedReasonAndStatusHasItsKey` requires a
 lang entry for every value.
+
+## Amendment — craft as many as possible (2026-10-30, ergonomics plan Q7)
+
+A **Max** button previews the largest request the network can satisfy now, bounded by the
+4,096-unit request limit and the planner's own limits. `CraftingPlanner.maximum` plans one unit
+(none possible: amount 0, and that plan names the shortage), then the cap (reported as `capped`),
+then binary-searches between them, keeping the largest amount that plans as OK. That is at most
+about 14 plans of at most 4,096 nodes each, against one stock lookup per key per plan, run on the
+server thread like a preview and gated by the same command rate. It assumes asking for more is
+never easier, which holds for the planner's greedy pattern order; were it not to hold, Max
+would show a smaller feasible amount, never an infeasible one, because the returned plan is the
+OK plan for that amount. Alternative: computing the maximum from the plan's ratios (rejected:
+byproducts, substitutes and shared intermediates make the bottleneck nonlinear).

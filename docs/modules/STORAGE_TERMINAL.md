@@ -194,8 +194,11 @@ actions: WINDOW (scroll so craftable `selection`, 0–65,536, is first; the serv
 to the last full window), PREVIEW (visible craftable row 0–7, amount from the ×1/×8/×64
 buttons or the typed amount box, which refuses empty, zero, non-numeric and over-limit text
 on the client with a reason,
-1–4,096, current `revision`), START (the server-held preview under the current
-revision), CANCEL (job row 0–3). Stale revisions are ignored; commands share the
+1–4,096, current `revision`), MAX (Q7: the same row previewed at
+`CraftingPlanner.maximum`, the largest amount up to 4,096 that plans as OK, found by binary search
+over at most about 14 bounded plans; status `maximum`, `capped` at 4,096, or the single-unit
+plan's reason such as `missing` when none can be made; the client copies the amount into the
+box), START (the server-held preview under the current revision), CANCEL (job row 0–3). Stale revisions are ignored; commands share the
 menu's two-tick throttle. `View` carries up to eight craftable entries with their window
 `offset` and the `total` craftable count, the bounded plan breakdown (up to 64
 `PlanRow`s of stored/crafted/missing units from `core.crafting.PlanRows`, missing rows

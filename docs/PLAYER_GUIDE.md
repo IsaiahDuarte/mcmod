@@ -168,6 +168,9 @@ inventory is hidden while Jobs is open.
 - **Preview:** select an item and press **×1**, **×8** or **×64**, or type an amount
   (1–4,096) in the box beside them and press Enter. This shows the steps needed or the
   first missing ingredient. For more than 4,096, start several jobs.
+- **Max:** previews the most the network can make right now from stock and patterns, up to
+  4,096, and puts that number in the amount box. If it can make none, it shows what is missing
+  for one; if it stops at 4,096, it says more could be made.
 - **Plan:** after a preview, **Plan** lists every item the job touches: how many come
   from storage, how many are crafted and how many are missing (red, listed first). A
   **Loop** line means two recipes make each other; keep some of one in storage to break

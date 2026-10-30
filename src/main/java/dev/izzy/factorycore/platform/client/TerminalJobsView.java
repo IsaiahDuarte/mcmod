@@ -6,6 +6,7 @@ import static dev.izzy.factorycore.platform.client.TerminalScreen.MAIN;
 
 import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.platform.client.ui.PanelLayout;
 import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.client.ui.Rect;
@@ -32,7 +33,17 @@ final class TerminalJobsView {
   private static final int STRIP_Y = GRID_Y, TEXT_Y = STRIP_Y + 24, JOBS_Y = TEXT_Y + 32;
 
   private final TerminalScreen screen;
-  private Button previewOne, previewEight, previewMany, startJob, keepJob, planButton, cancelJob;
+  private Button previewOne,
+      previewEight,
+      previewMany,
+      previewMax,
+      startJob,
+      keepJob,
+      planButton,
+      cancelJob;
+
+  /** Q7: the job-view revision whose Max result was last copied into the amount box. */
+  private long maxShown;
 
   /** A1: the typed craft amount, and why it was last refused ("" when it parses). */
   private EditBox amountBox;
@@ -131,7 +142,7 @@ final class TerminalJobsView {
     var first =
         PanelLayout.fit(
             new Rect(GRID_X, y, MAIN - 2 * GRID_X, PanelLayout.ROW),
-            new int[] {20, 20, 26, 36, 34},
+            new int[] {20, 20, 26, 26, 30, 34},
             3);
     previewOne =
         jobButton(
@@ -142,8 +153,10 @@ final class TerminalJobsView {
     previewMany =
         jobButton(
             "preview_many", first.get(2), () -> job(TerminalJobPackets.PREVIEW, craftSelected, 64));
+    previewMax =
+        jobButton("preview_max", first.get(3), () -> job(TerminalJobPackets.MAX, craftSelected, 1));
     String typed = amountBox == null ? "" : amountBox.getValue();
-    var box = first.get(3);
+    var box = first.get(4);
     amountBox =
         screen.add(
             new EditBox(
@@ -161,7 +174,7 @@ final class TerminalJobsView {
             Component.translatable(
                 "gui.factorycore.terminal.job.amount.help", TerminalJobPackets.MAX_AMOUNT)));
     amountBox.setResponder(value -> amountError = "");
-    startJob = jobButton("start", first.get(4), () -> job(TerminalJobPackets.START, 0, 1));
+    startJob = jobButton("start", first.get(5), () -> job(TerminalJobPackets.START, 0, 1));
     var second =
         PanelLayout.columns(
             new Rect(GRID_X, y + PanelLayout.ROW + 4, MAIN - 2 * GRID_X, PanelLayout.ROW), 3, 4);
@@ -251,11 +264,17 @@ final class TerminalJobsView {
         }
     craftSelected = Math.min(craftSelected, Math.max(0, jobs.craftables().size() - 1));
     jobSelected = Math.min(jobSelected, Math.max(0, jobs.jobs().size() - 1));
+    // Q7: the amount Max found becomes the typed amount, so Start and Keep use it.
+    if ((jobs.status() == JobStatus.MAXIMUM || jobs.status() == JobStatus.CAPPED)
+        && jobs.revision() != maxShown) {
+      maxShown = jobs.revision();
+      amountBox.setValue(jobs.preview().amount());
+    }
   }
 
   void tickButtons(boolean jobsMode) {
     var jobs = menu().jobView();
-    for (var item : List.of(previewOne, previewEight, previewMany, startJob, keepJob))
+    for (var item : List.of(previewOne, previewEight, previewMany, previewMax, startJob, keepJob))
       item.visible = jobsMode;
     keepJob.active = craftSelected < jobs.craftables().size();
     amountBox.visible = jobsMode;
@@ -274,6 +293,7 @@ final class TerminalJobsView {
     previewOne.active = craftSelected < jobs.craftables().size();
     previewEight.active = previewOne.active;
     previewMany.active = previewOne.active;
+    previewMax.active = previewOne.active;
     startJob.active = !jobs.preview().icon().isEmpty() && jobs.previewReason() == null;
     cancelJob.visible = jobsMode;
     cancelJob.active =

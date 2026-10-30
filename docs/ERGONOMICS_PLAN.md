@@ -509,7 +509,10 @@ New gates:
   Done when: GameTests craft stone bricks by stonecutting and a netherite upgrade by smithing
   through a job; JEI transfer covers both.
 
-- [ ] **Q7 — Craft as many as possible (M7).** Size S.
+- [x] **Q7 — Craft as many as possible (M7).** Size S. Done 2026-10-30 (commit subject `Q7:`).
+  `CraftingPlanner.maximum` (binary search to 4,096) behind a Max button (ADR 0031 amendment);
+  `CraftingPlannerTest` covers 36 from nine logs, zero, and the cap; a GameTest drives MAX.
+  [Evidence](evidence/ergonomics-q7-craft-max-2026-10-30.md).
   A **Max** button beside ×64 asks the planner for the largest amount it can make from stock
   (bounded by 4,096 and the planner's limits) and previews it.
   Files: `TerminalJobs.java`, `CraftingPlanner`, `TerminalJobPackets.java`, `TerminalScreen.java`.

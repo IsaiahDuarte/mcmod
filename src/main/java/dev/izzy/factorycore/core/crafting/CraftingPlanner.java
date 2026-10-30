@@ -129,6 +129,33 @@ public final class CraftingPlanner {
     this.producers = Objects.requireNonNull(producers);
   }
 
+  /**
+   * Q7: the largest amount up to {@code cap} that plans as OK, and that plan; {@code capped} when
+   * the cap itself plans. With none possible the amount is 0 and the plan is the one for a single
+   * unit, which names what is missing. Found by binary search over at most about 2 + log2(cap)
+   * plans, each within the planner's node limits; it assumes asking for more is never easier.
+   */
+  public record Maximum(long amount, boolean capped, Plan plan) {}
+
+  public Maximum maximum(ResourceKey request, long cap, ToLongFunction<ResourceKey> stock) {
+    if (cap < 1) throw new IllegalArgumentException("Maximum cap must be positive");
+    var one = plan(request, 1, stock);
+    if (one.status() != Status.OK) return new Maximum(0, false, one);
+    var top = plan(request, cap, stock);
+    if (top.status() == Status.OK) return new Maximum(cap, true, top);
+    long low = 1, high = cap;
+    var best = one;
+    while (high - low > 1) {
+      long middle = low + (high - low) / 2;
+      var attempt = plan(request, middle, stock);
+      if (attempt.status() == Status.OK) {
+        low = middle;
+        best = attempt;
+      } else high = middle;
+    }
+    return new Maximum(low, false, best);
+  }
+
   /** Plans {@code amount} units of {@code request} against exact available stock. */
   public Plan plan(ResourceKey request, long amount, Map<ResourceKey, Long> available) {
     for (var value : available.values())

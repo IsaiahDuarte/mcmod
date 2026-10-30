@@ -34,6 +34,12 @@ public final class TerminalJobPackets {
    */
   public static final int DETAIL = 5;
 
+  /**
+   * Q7: MAX previews craftable row {@code selection} at the largest amount the network can make, up
+   * to {@link #MAX_AMOUNT}; {@code amount} is ignored.
+   */
+  public static final int MAX = 6;
+
   public static final int ROWS = 8, JOBS = 16, MISSING = 3, MAX_OFFSET = 65_536;
 
   /** A4: steps sent for the opened job; the rest are counted. */
@@ -53,7 +59,7 @@ public final class TerminalJobPackets {
 
     public Command {
       if (action < WINDOW
-          || action > DETAIL
+          || action > MAX
           || selection < 0
           || selection
               >= (action == WINDOW

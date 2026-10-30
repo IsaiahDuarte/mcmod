@@ -142,21 +142,44 @@ public final class WorldCraftingJobs {
       NetworkPermissions.Actor actor, NodeRegistry.Position origin, ResourceKey key, long amount) {
     var scope = networks().membership(origin).scope();
     var index = WorldCrafting.get(server).index(scope);
-    var stock = new HashMap<ResourceKey, Long>();
-    return new CraftingPlanner(index::producers)
-        .plan(
-            key,
-            amount,
-            resource ->
-                stock.computeIfAbsent(
-                    resource,
-                    k -> {
-                      long total = 0;
-                      for (var cell : cells(actor, origin, k))
-                        total = Math.addExact(total, cell.available());
-                      return total;
-                    }));
+    return new CraftingPlanner(index::producers).plan(key, amount, stock(actor, origin));
   }
+
+  /** Available stock per key, looked up once per key for one planning pass. */
+  private java.util.function.ToLongFunction<ResourceKey> stock(
+      NetworkPermissions.Actor actor, NodeRegistry.Position origin) {
+    var stock = new HashMap<ResourceKey, Long>();
+    return resource ->
+        stock.computeIfAbsent(
+            resource,
+            k -> {
+              long total = 0;
+              for (var cell : cells(actor, origin, k))
+                total = Math.addExact(total, cell.available());
+              return total;
+            });
+  }
+
+  /**
+   * Q7: previews the largest amount of {@code key} up to {@code cap} the network can make now; the
+   * amount is 0 (with the single-unit plan naming what is missing) when it can make none.
+   */
+  public Maximum maximum(
+      NetworkPermissions.Actor actor, NodeRegistry.Position origin, ResourceKey key, long cap) {
+    checkThread();
+    var denied = denial(actor, origin);
+    if (denied != null) return new Maximum(0, false, new Preview(null, denied));
+    if (key.kind() == ResourceKind.ENERGY)
+      return new Maximum(0, false, new Preview(null, JobStatus.UNSUPPORTED));
+    var scope = networks().membership(origin).scope();
+    var index = WorldCrafting.get(server).index(scope);
+    var found = new CraftingPlanner(index::producers).maximum(key, cap, stock(actor, origin));
+    return new Maximum(
+        found.amount(), found.capped(), new Preview(found.plan(), reason(found.plan())));
+  }
+
+  /** A Max preview: the amount found (0 for none) and its plan. */
+  public record Maximum(long amount, boolean capped, Preview preview) {}
 
   public Preview preview(
       NetworkPermissions.Actor actor, NodeRegistry.Position origin, ResourceKey key, long amount) {

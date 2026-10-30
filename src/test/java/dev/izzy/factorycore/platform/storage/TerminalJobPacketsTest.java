@@ -90,7 +90,7 @@ class TerminalJobPacketsTest {
     for (int[] bad :
         new int[][] {
           {-1, 0, 1},
-          {TerminalJobPackets.DETAIL + 1, 0, 1},
+          {TerminalJobPackets.MAX + 1, 0, 1},
           {TerminalJobPackets.PREVIEW, TerminalJobPackets.ROWS, 1},
           {TerminalJobPackets.PREVIEW, -1, 1},
           {TerminalJobPackets.PREVIEW, 0, 0},
