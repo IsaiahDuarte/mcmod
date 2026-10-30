@@ -69,6 +69,11 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     return rejected != null;
   }
 
+  /** Cell bays in this drive (a device's location slot is its bay). */
+  public int bays() {
+    return cells.length;
+  }
+
   public ItemStack cell(int slot) {
     checkSlot(slot);
     return cells[slot].copy();

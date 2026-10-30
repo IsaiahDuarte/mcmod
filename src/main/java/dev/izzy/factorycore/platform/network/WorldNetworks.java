@@ -31,13 +31,17 @@ import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import dev.izzy.factorycore.platform.wireless.LinkModule;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -88,6 +92,19 @@ public final class WorldNetworks {
     final DiscoverySeeds sources;
     final Map<UUID, Structural> structures = new HashMap<>();
     final Map<UUID, WirelessBudget.Hop> wireless = new HashMap<>();
+
+    /**
+     * Q108: positions holding registry devices (drive bays or an energy bank's slot 0), with their
+     * slot counts, and the connector handles prepared in this region, so storage discovery visits
+     * only this network's endpoints. {@code devices} caches the backings placed there for one
+     * registry revision.
+     */
+    final Map<NodeRegistry.Position, Integer> deviceSlots = new LinkedHashMap<>();
+
+    final NavigableSet<UUID> storageConnectors = new TreeSet<>();
+    NavigableSet<UUID> devices;
+    Object devicesRegistry;
+    long devicesRevision;
     NetworkAuthority authority;
     final RegionReference<Region> reference = new RegionReference<>(this);
     WiredDiscovery discovery;
@@ -412,6 +429,55 @@ public final class WorldNetworks {
     return region.reference.current();
   }
 
+  /** The prepared, valid region that owns {@code origin}, or null. */
+  private Region prepared(NodeRegistry.Position origin) {
+    var owner = owners.get(origin);
+    if (owner == null) return null;
+    var region = resolve(owner);
+    return region.valid && region.preparing == null && !region.retired ? region : null;
+  }
+
+  /**
+   * Q108: backings of the registry devices (cells and energy banks) placed in {@code origin}'s
+   * network, in UUID order, or null while the network is not prepared (callers then fall back to
+   * the world registry). Rebuilt from the network's device positions when any placement changes; a
+   * superset of what the caller may use, which still checks each endpoint.
+   */
+  public NavigableSet<UUID> storageDevices(NodeRegistry.Position origin) {
+    checkThread();
+    var region = prepared(origin);
+    if (region == null) return null;
+    var registry = saved.registry();
+    if (region.devices == null
+        || region.devicesRegistry != registry
+        || region.devicesRevision != registry.placementRevision()) {
+      var devices = new TreeSet<UUID>();
+      for (var entry : region.deviceSlots.entrySet())
+        for (int slot = 0; slot < entry.getValue(); slot++) {
+          var backing =
+              registry.placedAt(
+                  new DeviceRegistry.Location(
+                      entry.getKey().dimension(), entry.getKey().block(), slot));
+          if (backing != null) devices.add(backing);
+        }
+      region.devices = Collections.unmodifiableNavigableSet(devices);
+      region.devicesRegistry = registry;
+      region.devicesRevision = registry.placementRevision();
+    }
+    return region.devices;
+  }
+
+  /**
+   * Q108: ids of the connectors (Storage and Machine Interfaces) prepared in {@code origin}'s
+   * network, in id order, or null while it is not prepared. A superset; callers still check each
+   * one.
+   */
+  public NavigableSet<UUID> storageConnectors(NodeRegistry.Position origin) {
+    checkThread();
+    var region = prepared(origin);
+    return region == null ? null : Collections.unmodifiableNavigableSet(region.storageConnectors);
+  }
+
   private void wake() {
     if (active.isEmpty()) return;
     // Topology work uses the scheduler's reserved maintenance slots, so saturated script/job
@@ -483,6 +549,10 @@ public final class WorldNetworks {
     assign(position, region);
     if (chunk == null) return;
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
+    if (entity instanceof StorageDriveEntity drive) region.deviceSlots.put(position, drive.bays());
+    else if (entity instanceof EnergyBankEntity) region.deviceSlots.put(position, 1);
+    if (entity instanceof ConnectorEntity connector && connector.handle() != null)
+      region.storageConnectors.add(connector.handle().id());
     if (entity instanceof NetworkNodeEntity node
         && node.handle() != null
         && node.diagnostic().isEmpty()) {

@@ -287,6 +287,27 @@ public final class NodeRegistry {
     return new HandlePage(result, iterator.hasNext() ? last : null);
   }
 
+  /**
+   * As {@link #handles(UUID, int)}, visiting only the ids in {@code within} (Q108: one network's
+   * connectors), with their current generation. Ids no longer registered are skipped but still
+   * advance the page.
+   */
+  public HandlePage handles(java.util.NavigableSet<UUID> within, UUID after, int limit) {
+    checkThread();
+    if (limit < 1 || limit > 16) throw new IllegalArgumentException("Invalid node page size");
+    var iterator = (after == null ? within : within.tailSet(after, false)).iterator();
+    var result = new ArrayList<Handle>();
+    UUID last = null;
+    int visited = 0;
+    while (visited < limit && iterator.hasNext()) {
+      last = iterator.next();
+      visited++;
+      var node = nodes.get(last);
+      if (node != null) result.add(new Handle(world, last, node.generation(), node.kind()));
+    }
+    return new HandlePage(result, iterator.hasNext() ? last : null);
+  }
+
   public List<Stored> snapshot() {
     checkThread();
     return nodes.values().stream().sorted(Comparator.comparing(Stored::id)).toList();

@@ -100,6 +100,21 @@ public final class DeviceRegistry {
     return !placements.containsKey(Objects.requireNonNull(location));
   }
 
+  /** The backing of the device placed at {@code location}, or null (Q108). */
+  public UUID placedAt(Location location) {
+    checkThread();
+    return placements.get(Objects.requireNonNull(location));
+  }
+
+  /**
+   * Changes whenever any device is placed, moved or removed, so an index of placements by location
+   * (Q108) knows when to rebuild.
+   */
+  public long placementRevision() {
+    checkThread();
+    return placementRevision;
+  }
+
   public Definition definition(Handle handle) {
     checkThread();
     Failure invalid = validate(handle);
@@ -188,6 +203,7 @@ public final class DeviceRegistry {
     if (device.generation == Long.MAX_VALUE) return result(Failure.LIMIT, null);
     placements.remove(device.location);
     placements.put(target, expected.backing());
+    placementRevision++;
     device.location = target;
     device.generation++;
     device.conflict = false;
@@ -216,6 +232,7 @@ public final class DeviceRegistry {
   private final Supplier<UUID> identifiers;
   private final NavigableMap<UUID, Device> devices = new TreeMap<>();
   private final Map<Location, UUID> placements = new HashMap<>();
+  private long placementRevision;
   private Predicate<Location> routing = location -> true;
   private long bytes;
   private long entries;
@@ -301,6 +318,7 @@ public final class DeviceRegistry {
     if (placements.containsKey(location)) return result(Failure.OCCUPIED, device);
     device.location = location;
     placements.put(location, handle.backing());
+    placementRevision++;
     device.generation++;
     changed.run();
     return result(Failure.OK, device);
@@ -313,6 +331,7 @@ public final class DeviceRegistry {
     Device device = devices.get(handle.backing());
     if (device.generation == Long.MAX_VALUE) return result(Failure.LIMIT, device);
     placements.remove(device.location);
+    placementRevision++;
     device.location = null;
     device.generation++;
     device.ledger.setLoaded(false);
@@ -449,6 +468,26 @@ public final class DeviceRegistry {
       var entry = iterator.next();
       last = entry.getKey();
       result.add(new Handle(world, last, entry.getValue().generation));
+    }
+    return new HandlePage(result, iterator.hasNext() ? last : null);
+  }
+
+  /**
+   * As {@link #handles(UUID, int)}, visiting only the ids in {@code within} (Q108: one network's
+   * devices). Ids no longer registered are skipped but still advance the page.
+   */
+  public HandlePage handles(java.util.NavigableSet<UUID> within, UUID after, int limit) {
+    checkThread();
+    if (limit < 1 || limit > 16) throw new IllegalArgumentException("Invalid handle page size");
+    var iterator = (after == null ? within : within.tailSet(after, false)).iterator();
+    var result = new ArrayList<Handle>();
+    UUID last = null;
+    int visited = 0;
+    while (visited < limit && iterator.hasNext()) {
+      last = iterator.next();
+      visited++;
+      var device = devices.get(last);
+      if (device != null) result.add(new Handle(world, last, device.generation));
     }
     return new HandlePage(result, iterator.hasNext() ? last : null);
   }

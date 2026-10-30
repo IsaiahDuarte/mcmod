@@ -205,6 +205,66 @@ public final class BufferExportGameTests {
         .thenSucceed();
   }
 
+  /**
+   * Q108 (M147): discovery visits only the asking network's cells. A second network beside this one
+   * has its own cell, and the world holds every other test's cells too; the buffer's network lists
+   * exactly its own cell, and a catalog read finds the iron on its first page.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void discoveryVisitsOnlyItsOwnNetworksCells(GameTestHelper helper) {
+    var f = setup(helper);
+    Net.in(helper).controller(new BlockPos(4, 1, 4));
+    StorageDriveEntity foreign = Net.in(helper).drive(new BlockPos(4, 1, 3), CellTier.STARTER_ITEM);
+    var foreignCell = CellHandleData.read(foreign.cell(0));
+    int[] pages = {0};
+    boolean[] found = {false}, busy = {false};
+    WorldStorageCatalog.Cursor[] cursor = {null};
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenWaitUntil(
+            () -> {
+              var local = f.runtime.storageDevices(f.buffer.position());
+              helper.assertTrue(
+                  local != null
+                      && local.equals(java.util.Set.of(f.cell.backing()))
+                      && !local.contains(foreignCell.backing())
+                      && f.saved.registry().handles(null, 16).handles().size() > 1,
+                  "The network lists exactly its own cell: " + local);
+            })
+        .thenExecute(() -> f.saved.registry().insert(f.cell, f.iron, 5))
+        .thenWaitUntil(
+            () -> {
+              if (!busy[0] && !found[0]) {
+                busy[0] = true;
+                var submission =
+                    f.runtime
+                        .transfers()
+                        .allKeys()
+                        .page(
+                            UUID.randomUUID(),
+                            f.actor,
+                            f.buffer.position(),
+                            ResourceKind.ITEM,
+                            cursor[0],
+                            page -> {
+                              busy[0] = false;
+                              pages[0]++;
+                              if (page.rows().stream().anyMatch(row -> row.key().equals(f.iron)))
+                                found[0] = true;
+                              else cursor[0] = page.next();
+                            });
+                if (submission.rejection() != OperationResult.Reason.OK) busy[0] = false;
+              }
+              helper.assertTrue(found[0], "Iron found after " + pages[0] + " pages");
+            })
+        .thenExecute(
+            () ->
+                helper.assertTrue(
+                    pages[0] == 1, "The first page is this network's cell: " + pages[0]))
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 500)
   public static void fullBufferDoesNotExtractAndVacancyWakesExport(GameTestHelper helper) {
     var f = setup(helper);

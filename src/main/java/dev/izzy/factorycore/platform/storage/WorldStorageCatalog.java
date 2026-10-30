@@ -168,7 +168,12 @@ public final class WorldStorageCatalog {
       NetworkPermissions.Actor actor, NodeRegistry.Position origin, Cursor cursor) {
     WorldStorageTransfers.Digital endpoint = (WorldStorageTransfers.Digital) cursor.current();
     if (endpoint == null) {
-      var owners = saved.registry().handles(cursor.after(), 8);
+      // Q108: only this network's devices when the network is prepared, else the world's.
+      var local = networks.storageDevices(origin);
+      var owners =
+          local == null
+              ? saved.registry().handles(cursor.after(), 8)
+              : saved.registry().handles(local, cursor.after(), 8);
       for (var handle : owners.handles()) {
         if (saved.registry().validate(handle) == DeviceRegistry.Failure.OK
             && saved.registry().definition(handle).kind() == cursor.kind()
@@ -222,7 +227,11 @@ public final class WorldStorageCatalog {
       NetworkPermissions.Actor actor, NodeRegistry.Position origin, Cursor cursor) {
     WorldStorageTransfers.External endpoint = (WorldStorageTransfers.External) cursor.current();
     if (endpoint == null) {
-      var owners = saved.nodes().handles(cursor.after(), 8);
+      var local = networks.storageConnectors(origin);
+      var owners =
+          local == null
+              ? saved.nodes().handles(cursor.after(), 8)
+              : saved.nodes().handles(local, cursor.after(), 8);
       for (var handle : owners.handles()) {
         if (handle.kind() != NodeRegistry.Kind.CONNECTOR) continue;
         var found = networks.connectors().discover(actor, origin, handle, identity(cursor.kind()));

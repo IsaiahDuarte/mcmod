@@ -240,6 +240,34 @@ class NodeRegistryTest {
     assertThrows(IllegalArgumentException.class, () -> registry.handles(null, 0));
   }
 
+  /** Q108: a network's connectors page with their current generation, nobody else's. */
+  @Test
+  void pagesWithinASetVisitOnlyItsIdsWithCurrentGenerations() {
+    var registry = new NodeRegistry(WORLD, List.of(), () -> {});
+    var within = new java.util.TreeSet<UUID>();
+    NodeRegistry.Handle first = null;
+    for (int index = 1; index <= 10; index++) {
+      var handle =
+          registry
+              .create(
+                  new UUID(0, index),
+                  NodeRegistry.Kind.CONNECTOR,
+                  new NodeRegistry.Position("minecraft:overworld", index))
+              .handle();
+      if (index % 3 == 0) within.add(handle.id());
+      if (index == 3) first = handle;
+    }
+    var moved = registry.detach(first, registry.definition(first).position()).handle();
+    var page = registry.handles(within, null, 8);
+    assertEquals(
+        List.of(new UUID(0, 3), new UUID(0, 6), new UUID(0, 9)),
+        page.handles().stream().map(NodeRegistry.Handle::id).toList());
+    assertEquals(moved, page.handles().getFirst(), "the current generation, not a remembered one");
+    assertNull(page.next());
+    assertEquals(
+        new UUID(0, 6), registry.handles(within, new UUID(0, 3), 1).handles().getFirst().id());
+  }
+
   @Test
   void setPolicyReplacesOnlyAValidGatewayPolicyAndMarksDirty() {
     int[] changes = {0};

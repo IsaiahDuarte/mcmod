@@ -393,6 +393,41 @@ class DeviceRegistryTest {
     assertTrue(registry.handles(actual.getLast(), 8).handles().isEmpty());
   }
 
+  /** Q108: a network's devices page in id order without visiting the rest of the world. */
+  @Test
+  void pagesWithinASetVisitOnlyItsIdsAndPlacementsAreFoundByLocation() {
+    var registry = registry(() -> {});
+    long revision = registry.placementRevision();
+    var placed = placed(registry);
+    assertEquals(placed.backing(), registry.placedAt(FIRST));
+    assertNull(registry.placedAt(SECOND));
+    assertTrue(registry.placementRevision() > revision, "placing changes the revision");
+    var ids = new java.util.TreeSet<UUID>();
+    for (int index = 0; index < 20; index++) {
+      var id = registry.create(ResourceKind.ITEM, 1000, false, 4096, 8192).handle().backing();
+      if (index % 4 == 0) ids.add(id);
+    }
+    ids.add(new UUID(9, 9)); // no longer registered: skipped, but still advances the page
+    var actual = new ArrayList<UUID>();
+    UUID cursor = null;
+    int pages = 0;
+    do {
+      var page = registry.handles(ids, cursor, 2);
+      pages++;
+      page.handles().forEach(handle -> actual.add(handle.backing()));
+      cursor = page.next();
+    } while (cursor != null);
+    var expected = new ArrayList<>(ids);
+    expected.remove(new UUID(9, 9));
+    assertEquals(expected, actual);
+    assertEquals(3, pages, "six ids, two per page");
+    revision = registry.placementRevision();
+    registry.detach(placed, FIRST);
+    assertNull(registry.placedAt(FIRST));
+    assertTrue(registry.placementRevision() > revision, "removing changes the revision");
+    assertThrows(IllegalArgumentException.class, () -> registry.handles(ids, null, 17));
+  }
+
   @Test
   void adoptMovesTheSingleCanonicalLeaseAndStalesEveryOtherReference() {
     var dirty = new AtomicInteger();

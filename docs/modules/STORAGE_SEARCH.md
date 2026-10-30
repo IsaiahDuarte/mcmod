@@ -39,7 +39,11 @@ use item units; fluids use mB; energy uses FE. Capacity is reported for observab
 energy banks/providers only; fluid capacity attribution is intentionally absent.
 
 A scheduled task examines at most eight metadata owners, then reads at most one
-ledger page or sixteen provider indices. Continuing a source retains its exact
+ledger page or sixteen provider indices. The owners come from the asking network
+([ADR 0067](../decisions/0067-storage-discovery-by-network.md)): its devices
+(`WorldNetworks.storageDevices`, the cells in its drives and its energy banks) and its connectors
+(`storageConnectors`), so a page never visits another network's endpoints. Only while the network
+is still being prepared does the read fall back to the world registries. Continuing a source retains its exact
 lease/configuration/provider token and exclusive key or slot offset. Digital
 owners finish before structural connectors; source ordering is stable UUID order.
 Complete supported foreign enumeration covers at most sixty-four configured item
