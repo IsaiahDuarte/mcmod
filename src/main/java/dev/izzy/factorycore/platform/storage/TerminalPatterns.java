@@ -188,6 +188,7 @@ final class TerminalPatterns {
           new TerminalPatternPackets.Crafter(
               unit.getBlockPos(),
               origin.dimension(),
+              unit.label(),
               visible.published(),
               unit.editableBy(viewer),
               entries));

@@ -153,7 +153,8 @@ cells: nothing moves into the grid, so closing never loses items.
   anything is used.
 
 **Patterns.** Press the **Patterns** tab to see every Crafter this terminal can use and the
-patterns in each, a row of nine slots per Crafter, labelled by position. Crafters in a
+patterns in each, a row of nine slots per Crafter, named by its label (see
+[Label Tool](#label-tool)) or else by position. Crafters in a
 subnetwork appear while its gateway lets it share crafting. Click a pattern to take it onto
 your cursor; click an empty slot with a pattern to put it there, or a full one to swap. Your
 inventory stays open below, so you can move patterns between Crafters or back to your
@@ -520,6 +521,9 @@ applies.
   any of its sides. Using the tool on it again relabels it. Use the port with an empty hand to
   change its label or what programs move through it (items, fluids or energy). Breaking an idle
   port gives the cable back.
+- **Name a Crafter:** use the tool on a Crafter (Edit needed). Its screen and the terminal's
+  Patterns tab show the name, and the Crafter keeps it when broken. A Crafter renamed in an
+  anvil gets that name too.
 - **Label a whole row:** hold **Left Alt** (rebind it under Controls → Factory Core) while
   using the tool on a machine. Every machine of the same kind that touches the same cable run
   gets the label, up to 64, nearest first; a chest beside a row of furnaces is left alone. The

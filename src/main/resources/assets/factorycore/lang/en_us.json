@@ -160,6 +160,8 @@
   "gui.factorycore.terminal.tab.4": "Patterns",
   "gui.factorycore.terminal.patterns.crafter": "Crafter at %s, %s, %s",
   "gui.factorycore.terminal.patterns.crafter.branch": "Crafter at %s, %s, %s (subnetwork)",
+  "gui.factorycore.terminal.patterns.crafter.branch_named": "%s (subnetwork)",
+  "gui.factorycore.terminal.patterns.crafter.named": "%s",
   "gui.factorycore.terminal.patterns.locked": "%s · view only",
   "gui.factorycore.terminal.patterns.none": "No Crafters on this network. Place one and insert patterns to see them here.",
   "gui.factorycore.terminal.patterns.no_match": "No Crafter has a pattern making what you searched for.",

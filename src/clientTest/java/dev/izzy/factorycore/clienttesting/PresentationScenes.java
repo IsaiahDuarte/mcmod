@@ -301,7 +301,9 @@ final class PresentationScenes {
         CraftingContent.PATTERN.get(),
         new PatternContents(
             UUID.randomUUID(), 1, 0, cells, new ItemStack(Items.OAK_PLANKS, 4), List.of()));
-    ((CrafterEntity) level.getBlockEntity(JOB_UNIT)).patterns().insertItem(0, pattern, false);
+    var unit = (CrafterEntity) level.getBlockEntity(JOB_UNIT);
+    unit.patterns().insertItem(0, pattern, false);
+    unit.label("Planks"); // Q107: the Crafter screen and Patterns captures show a label.
   }
 
   /** Crafters added beside the Jobs scene so the craftable strip has to scroll (P4). */

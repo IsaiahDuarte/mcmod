@@ -12,6 +12,7 @@ import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.LabelToolContent;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
@@ -28,11 +29,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -425,5 +430,80 @@ public final class TerminalPatternGameTests {
               h.assertTrue(refused, "A click outside the window cannot be sent");
             })
         .thenSucceed();
+  }
+
+  /**
+   * Q107: the Label Tool labels a Crafter (instead of opening its screen), the Patterns view names
+   * it by the label, and the label survives a reload and breaking and placing the Crafter again.
+   * Without EDIT the tool is refused.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void aLabelledCrafterIsNamedByItsLabel(GameTestHelper h) {
+    var player = player(h);
+    Net.in(h, player.getUUID()).controller(ROOT);
+    var crafter = crafter(h, NORTH, pattern(Items.OAK_LOG, Items.OAK_PLANKS));
+    var terminal = terminal(h);
+    var tool = new ItemStack(LabelToolContent.ITEM.get());
+    tool.set(LabelToolContent.DATA.get(), new LabelToolContent.Data("Planks", new CompoundTag()));
+    var stranger = TestPlayers.mock(h);
+    TestPlayers.connect(stranger);
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenExecute(
+            () -> {
+              stranger.setItemInHand(InteractionHand.MAIN_HAND, tool.copy());
+              label(h, stranger);
+              h.assertTrue(crafter.label().isEmpty(), "Without EDIT nothing is labelled");
+              player.setItemInHand(InteractionHand.MAIN_HAND, tool.copy());
+              label(h, player);
+              h.assertTrue(
+                  crafter.label().equals("Planks") && player.containerMenu == player.inventoryMenu,
+                  "The tool labels the Crafter instead of opening it: " + crafter.label());
+              player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+              open(h, player);
+            })
+        .thenWaitUntil(
+            () -> {
+              var view = patterns(h, player, TerminalPatternPackets.WINDOW, 0, 0);
+              h.assertTrue(
+                  row(h, view, NORTH) >= 0
+                      && view.crafters().get(row(h, view, NORTH)).label().equals("Planks"),
+                  "The Patterns view names the Crafter by its label: " + view);
+            })
+        .thenExecute(
+            () -> {
+              player.closeContainer();
+              var access = h.getLevel().registryAccess();
+              var saved = crafter.saveWithFullMetadata(access);
+              var reloaded =
+                  (CrafterEntity)
+                      BlockEntity.loadStatic(
+                          h.absolutePos(SOUTH), crafter.getBlockState(), saved, access);
+              h.assertTrue(
+                  reloaded != null && reloaded.label().equals("Planks"),
+                  "A reload keeps the label");
+              var item = new ItemStack(CraftingContent.CRAFTER.get());
+              item.applyComponents(crafter.collectComponents());
+              h.setBlock(NORTH, net.minecraft.world.level.block.Blocks.AIR);
+              h.setBlock(SOUTH, CraftingContent.CRAFTER.get());
+              CrafterEntity placed = h.getBlockEntity(SOUTH);
+              placed.applyComponents(item.getComponents(), item.getComponentsPatch());
+              h.assertTrue(
+                  placed.label().equals("Planks")
+                      && "Planks".equals(item.getHoverName().getString()),
+                  "Breaking and placing keeps the label, carried as the item's name: "
+                      + placed.label());
+            })
+        .thenSucceed();
+  }
+
+  private static void label(GameTestHelper h, ServerPlayer player) {
+    var at = h.absolutePos(NORTH);
+    player.gameMode.useItemOn(
+        player,
+        h.getLevel(),
+        player.getMainHandItem(),
+        InteractionHand.MAIN_HAND,
+        new BlockHitResult(Vec3.atCenterOf(at), Direction.UP, at, false));
   }
 }

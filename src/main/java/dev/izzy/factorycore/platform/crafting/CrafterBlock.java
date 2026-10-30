@@ -7,6 +7,7 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Containers;
@@ -167,6 +168,6 @@ public final class CrafterBlock extends NetworkedBlock implements EntityBlock, C
 
   @Override
   public List<DataComponentType<?>> carriedComponents() {
-    return List.of(CraftingContent.RETAINED.get());
+    return List.of(CraftingContent.RETAINED.get(), DataComponents.CUSTOM_NAME);
   }
 }

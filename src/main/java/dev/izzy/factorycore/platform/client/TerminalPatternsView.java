@@ -137,14 +137,21 @@ final class TerminalPatternsView {
     for (int row = 0; row < rows; row++) {
       var crafter = view.crafters().get(row);
       var pos = crafter.position();
+      // Q107: a label names the Crafter; without one, its position does.
       var name =
-          Component.translatable(
-              crafter.published()
-                  ? "gui.factorycore.terminal.patterns.crafter.branch"
-                  : "gui.factorycore.terminal.patterns.crafter",
-              pos.getX(),
-              pos.getY(),
-              pos.getZ());
+          crafter.label().isEmpty()
+              ? Component.translatable(
+                  crafter.published()
+                      ? "gui.factorycore.terminal.patterns.crafter.branch"
+                      : "gui.factorycore.terminal.patterns.crafter",
+                  pos.getX(),
+                  pos.getY(),
+                  pos.getZ())
+              : Component.translatable(
+                  crafter.published()
+                      ? "gui.factorycore.terminal.patterns.crafter.branch_named"
+                      : "gui.factorycore.terminal.patterns.crafter.named",
+                  crafter.label());
       if (!crafter.editable())
         name = Component.translatable("gui.factorycore.terminal.patterns.locked", name);
       graphics.drawString(

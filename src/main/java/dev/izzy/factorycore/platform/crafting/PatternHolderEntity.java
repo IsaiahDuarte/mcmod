@@ -12,7 +12,9 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -31,7 +33,12 @@ import net.neoforged.neoforge.items.ItemStackHandler;
 public abstract class PatternHolderEntity extends BlockEntity implements WiredMember {
   public static final int SLOTS = 9;
   static final int SCHEMA = 1;
+
+  /** Longest label, as for Signal and Machine Interfaces. */
+  public static final int MAX_LABEL = 64;
+
   private CompoundTag unsupported;
+  private String label = "";
 
   private final ItemStackHandler patterns =
       new ItemStackHandler(SLOTS) {
@@ -79,6 +86,23 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
   public boolean editableBy(ServerPlayer player) {
     return WorldNetworks.get(player.server)
         .allows(Actors.of(player), origin(), NetworkPermissions.Permission.EDIT);
+  }
+
+  /** Q107: the Label Tool's name for this holder, or "" (then screens name it by position). */
+  public String label() {
+    return label;
+  }
+
+  /** Sets the label (EDIT checked by the caller); control characters are removed. */
+  public void label(String value) {
+    var clean = clean(value);
+    if (clean.length() > MAX_LABEL) throw new IllegalArgumentException("Label longer than 64");
+    label = clean;
+    setChanged();
+  }
+
+  private static String clean(String value) {
+    return value.replaceAll("[\\p{Cntrl}§]", "").strip();
   }
 
   public int patternCount() {
@@ -130,12 +154,14 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
     }
     tag.putInt("Schema", SCHEMA);
     tag.put("Patterns", patterns.serializeNBT(registries));
+    if (!label.isEmpty()) tag.putString("Label", label);
   }
 
   @Override
   protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.loadAdditional(tag, registries);
     unsupported = null;
+    label = "";
     if (!tag.contains("Schema")) return;
     var saved = tag.getCompound("Patterns");
     if (tag.getInt("Schema") != SCHEMA || saved.getInt("Size") != SLOTS) {
@@ -144,6 +170,8 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
       return;
     }
     patterns.deserializeNBT(registries, saved);
+    var savedLabel = clean(tag.getString("Label"));
+    label = savedLabel.length() > MAX_LABEL ? "" : savedLabel;
   }
 
   @Override
@@ -151,6 +179,12 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
     super.applyImplicitComponents(input);
     var retained = input.get(CraftingContent.RETAINED.get());
     if (retained != null) unsupported = retained.copyTag();
+    // Q107: the label travels as the item's name, so an anvil-named Crafter is labelled too.
+    var name = input.get(DataComponents.CUSTOM_NAME);
+    if (name != null && unsupported == null) {
+      var named = clean(name.getString());
+      label = named.length() > MAX_LABEL ? named.substring(0, MAX_LABEL) : named;
+    }
   }
 
   @Override
@@ -158,6 +192,7 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
     super.collectImplicitComponents(components);
     if (unsupported != null)
       components.set(CraftingContent.RETAINED.get(), CustomData.of(unsupported));
+    else if (!label.isEmpty()) components.set(DataComponents.CUSTOM_NAME, Component.literal(label));
   }
 
   @Override

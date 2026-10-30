@@ -216,7 +216,7 @@ lists `WorldCrafting.visible` for the terminal's segment: VALID, current holders
 plus those of branches whose gateways publish CRAFT, in dimension and position order, bounded by
 `WorldCrafting.MAX_UNITS`. A non-blank terminal search keeps the Crafters with a pattern whose
 output or a byproduct matches it (`TerminalSearchSupport.matches`), and marks matching slots.
-`View` carries up to three `Crafter` rows (position, dimension, `published`, `editable`, nine
+`View` carries up to three `Crafter` rows (position, dimension, `label`, `published`, `editable`, nine
 `Entry` slots with the output's registry ID, fluid and processing flags, and `match`), the
 window `offset`, `total` and the last click's `Status`.
 
@@ -227,8 +227,8 @@ slot through the holder's own validation, or swaps with the slot when the cursor
 one; anything else is REFUSED. Clicks spend a wireless terminal's action energy as storage
 actions do. The server builds nothing until the client first opens the view, then refreshes it
 every 20 ticks, after each command and after a search change; an unchanged window is not
-resent. Crafters carry no player label yet, so rows are named by position. Protocol 7 added these
-payloads.
+resent. Rows are named by the Crafter's Label Tool label (at most 64 characters), or by position
+when it has none. Protocol 7 added these payloads; protocol 8 added `label` (Q107).
 
 ## Fluids and energy
 

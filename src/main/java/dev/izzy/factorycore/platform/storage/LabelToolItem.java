@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.platform.Actors;
 import dev.izzy.factorycore.platform.ClientScreens;
 import dev.izzy.factorycore.platform.ServerScoped;
+import dev.izzy.factorycore.platform.crafting.PatternHolderEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.signal.SignalInterfaceEntity;
 import java.util.HashMap;
@@ -91,8 +92,11 @@ public final class LabelToolItem extends Item {
     boolean device = entity != null && DeviceCopy.kind(entity) != null;
     boolean copying = device && context.getPlayer() != null && context.getPlayer().isShiftKeyDown();
     boolean pasting = device && !copying && tool.copied();
+    // Q107: a Crafter is labelled here too, before its screen would open.
     if (!copying && !pasting)
-      return machine(level, context.getClickedPos()) ? useOn(context) : InteractionResult.PASS;
+      return machine(level, context.getClickedPos()) || entity instanceof PatternHolderEntity
+          ? useOn(context)
+          : InteractionResult.PASS;
     if (level.isClientSide()) return InteractionResult.SUCCESS;
     if (!(context.getPlayer() instanceof ServerPlayer player)) return InteractionResult.FAIL;
     Component message;
@@ -158,7 +162,9 @@ public final class LabelToolItem extends Item {
   public InteractionResult useOn(UseOnContext context) {
     var level = context.getLevel();
     var entity = level.getBlockEntity(context.getClickedPos());
-    if (!(entity instanceof ConnectorEntity) && !(entity instanceof SignalInterfaceEntity)) {
+    if (!(entity instanceof ConnectorEntity)
+        && !(entity instanceof SignalInterfaceEntity)
+        && !(entity instanceof PatternHolderEntity)) {
       // H5: any other block with an entity may be a machine on a cable.
       if (entity == null
           || level.getBlockState(context.getClickedPos()).getBlock()
@@ -510,6 +516,12 @@ public final class LabelToolItem extends Item {
       if (!WorldNetworks.get(player.server)
           .allows(actor, signal.origin(), NetworkPermissions.Permission.EDIT)) return "denied";
       signal.label(tool.label());
+      return "labeled";
+    }
+    // Q107: Crafters take a label too, with EDIT where they are.
+    if (entity instanceof PatternHolderEntity holder) {
+      if (!holder.editableBy(player)) return "denied";
+      holder.label(tool.label());
       return "labeled";
     }
     if (!(entity instanceof MachineInterfaceEntity machine)) return "label_storage";

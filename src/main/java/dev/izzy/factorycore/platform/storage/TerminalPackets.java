@@ -390,7 +390,7 @@ public final class TerminalPackets {
   }
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("7");
+    var registrar = event.registrar("8");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, TerminalMenu.class, TerminalMenu::command);
     MenuPayloads.toServer(

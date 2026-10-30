@@ -120,25 +120,30 @@ public final class TerminalPatternPackets {
   }
 
   /**
-   * One Crafter: where it is, whether it sits in a branch that offers its patterns through its
-   * gateways ({@code published}), whether the viewer may move its patterns, and its nine slots.
+   * One Crafter: where it is, its Label Tool label ("" for none; Q107), whether it sits in a branch
+   * that offers its patterns through its gateways ({@code published}), whether the viewer may move
+   * its patterns, and its nine slots.
    */
   public record Crafter(
       BlockPos position,
       String dimension,
+      String label,
       boolean published,
       boolean editable,
       List<Entry> patterns) {
     public Crafter {
       Objects.requireNonNull(position);
       patterns = List.copyOf(patterns);
-      if (dimension.length() > 256 || patterns.size() != SLOTS)
+      if (dimension.length() > 256
+          || label.length() > PatternHolderEntity.MAX_LABEL
+          || patterns.size() != SLOTS)
         throw new IllegalArgumentException("Invalid pattern crafter row");
     }
 
     static void write(RegistryFriendlyByteBuf buffer, Crafter value) {
       buffer.writeBlockPos(value.position);
       buffer.writeUtf(value.dimension, 256);
+      buffer.writeUtf(value.label, PatternHolderEntity.MAX_LABEL);
       buffer.writeBoolean(value.published);
       buffer.writeBoolean(value.editable);
       for (var entry : value.patterns) Entry.write(buffer, entry);
@@ -147,10 +152,11 @@ public final class TerminalPatternPackets {
     static Crafter read(RegistryFriendlyByteBuf buffer) {
       var position = buffer.readBlockPos();
       var dimension = buffer.readUtf(256);
+      var label = buffer.readUtf(PatternHolderEntity.MAX_LABEL);
       boolean published = buffer.readBoolean(), editable = buffer.readBoolean();
       var patterns = new ArrayList<Entry>(SLOTS);
       for (int slot = 0; slot < SLOTS; slot++) patterns.add(Entry.read(buffer));
-      return new Crafter(position, dimension, published, editable, patterns);
+      return new Crafter(position, dimension, label, published, editable, patterns);
     }
   }
 

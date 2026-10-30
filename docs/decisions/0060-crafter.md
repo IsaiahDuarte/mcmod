@@ -93,5 +93,20 @@ gateway that withholds CRAFT therefore hides its branch's Crafters here as it hi
 recipes. The rule for moving a pattern is shared with the Crafter screen as
 `PatternHolderEntity.editableBy(player)`: EDIT where the Crafter is, which for a published
 branch Crafter is checked in its own branch. Inserts go through the holder's own validation.
-Crafters have no player label, so rows show positions; naming them is ergonomics Q107.
+Crafters had no player label, so rows showed positions; Q107 (below) adds labels.
 Payloads and limits are in [STORAGE_TERMINAL](../modules/STORAGE_TERMINAL.md#patterns-view-q3).
+
+## Amendment — Crafter labels (2026-10-30, ergonomics plan Q107)
+
+A Crafter (any `PatternHolderEntity`) has a label of up to 64 characters, set with the Label
+Tool under EDIT where it is, as Signal Interfaces are. The tool takes the use before the Crafter's
+own screen would open; Shift-copy and paste of Crafter settings (Q13) are unchanged. The label is
+saved as an optional `Label` field in schema 1, so older Crafters load with none. It survives
+breaking as the item's vanilla `CUSTOM_NAME`, which the loot table copies; placing a named item
+labels the Crafter, so an anvil rename works too (truncated to 64). The Crafter screen's title and
+the Patterns view rows show the label and fall back to the position; the Patterns row carries it
+as `label` (terminal protocol 8). Alternatives: a mod component for the label (rejected: an anvil
+name is the vanilla way to name a block item, and one name in two places would diverge), and
+labels only through the Crafter screen (rejected: every other label comes from the tool).
+Labels do not float over Crafters while the tool is held; the overlay still covers machines and
+Signal Interfaces only.

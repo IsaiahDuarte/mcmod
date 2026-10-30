@@ -87,7 +87,10 @@ public final class CrafterMenu extends AbstractContainerMenu implements DeviceSt
   public static void open(ServerPlayer player, CrafterEntity crafter) {
     MenuSession.open(
         player,
-        Component.translatable("block.factorycore.crafter"),
+        // Q107: a labelled Crafter is titled by its label.
+        crafter.label().isEmpty()
+            ? Component.translatable("block.factorycore.crafter")
+            : Component.literal(crafter.label()),
         (id, inventory, nonce) -> new CrafterMenu(id, inventory, nonce, crafter));
   }
 
