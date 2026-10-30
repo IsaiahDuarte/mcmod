@@ -119,3 +119,7 @@ network-view.png
 inspect-scale-1.png
 inspect-scale-4.png
 program-templates-scale-4.png
+pattern-tooltip-crafting-scale-2.png
+pattern-tooltip-processing-scale-2.png
+pattern-tooltip-crafting-scale-4.png
+pattern-tooltip-processing-scale-4.png

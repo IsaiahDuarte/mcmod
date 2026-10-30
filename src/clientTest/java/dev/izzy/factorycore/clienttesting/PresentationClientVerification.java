@@ -2361,6 +2361,29 @@ public final class PresentationClientVerification {
             return true;
           });
     }
+    // Q68: pattern tooltips draw their recipe.
+    for (int scale : new int[] {2, 4})
+      for (int kind = 0; kind < 2; kind++) {
+        int targetScale = scale, targetKind = kind;
+        step(
+            client -> {
+              client.setScreen(new TooltipBoard(List.of(patternSample(targetKind)), 0));
+              setScale(client, targetScale);
+              return true;
+            });
+        step(
+            client -> {
+              if (waited() < 6) return false;
+              captures.grab(
+                  client,
+                  "pattern-tooltip-"
+                      + (targetKind == 0 ? "crafting" : "processing")
+                      + "-scale-"
+                      + targetScale
+                      + ".png");
+              return true;
+            });
+      }
     step(
         client -> {
           writeReport(client);
@@ -2376,6 +2399,54 @@ public final class PresentationClientVerification {
   private static String link(ServerLevel level, int x, int z) {
     var link = LinkModule.loaded(level, new BlockPos(x, 65, z));
     return link == null ? "none" : link.diagnostic();
+  }
+
+  /** Q68: a stick pattern with substitutes (kind 0) or a processing pattern with a fluid (1). */
+  private static ItemStack patternSample(int kind) {
+    if (kind == 0) {
+      var cells =
+          new java.util.ArrayList<ItemStack>(java.util.Collections.nCopies(9, ItemStack.EMPTY));
+      cells.set(1, new ItemStack(net.minecraft.world.item.Items.OAK_PLANKS));
+      cells.set(4, new ItemStack(net.minecraft.world.item.Items.OAK_PLANKS));
+      var alternatives = new java.util.ArrayList<List<String>>();
+      for (int cell = 0; cell < 9; cell++)
+        alternatives.add(
+            cells.get(cell).isEmpty()
+                ? List.of()
+                : List.of("minecraft:spruce_planks", "minecraft:birch_planks"));
+      var stack =
+          new ItemStack(
+              dev.izzy.factorycore.platform.crafting.CraftingContent.CRAFTING_PATTERN.get());
+      stack.set(
+          dev.izzy.factorycore.platform.crafting.CraftingContent.PATTERN.get(),
+          new dev.izzy.factorycore.platform.crafting.PatternContents(
+              java.util.UUID.randomUUID(),
+              1,
+              0,
+              cells,
+              new ItemStack(net.minecraft.world.item.Items.STICK, 4),
+              List.of(),
+              alternatives));
+      return stack;
+    }
+    var stack =
+        new ItemStack(
+            dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING_PATTERN.get());
+    stack.set(
+        dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING.get(),
+        new dev.izzy.factorycore.platform.crafting.ProcessingContents(
+            java.util.UUID.randomUUID(),
+            1,
+            0,
+            List.of(
+                new ItemStack(net.minecraft.world.item.Items.RAW_IRON, 2),
+                new ItemStack(net.minecraft.world.item.Items.COAL)),
+            List.of(new ItemStack(net.minecraft.world.item.Items.IRON_INGOT, 2)),
+            List.of(
+                new net.neoforged.neoforge.fluids.FluidStack(
+                    net.minecraft.world.level.material.Fluids.WATER, 1000)),
+            List.of()));
+    return stack;
   }
 
   private static ItemStack stack(String path) {

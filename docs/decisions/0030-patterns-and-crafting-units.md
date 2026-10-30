@@ -65,3 +65,13 @@ rather than rounded. Wiping is a shapeless recipe (either encoded pattern → on
 Alternatives: a real pattern slot in the panel (rejected for now: the panel holds no items, and
 a slot would need item custody and return-on-close rules for one gesture), and rewriting in
 place under the old id (rejected as above).
+
+## Amendment — pattern tooltips (2026-10-30, ergonomics plan Q68)
+
+Pattern items return a `PatternTooltip` tooltip image (common side, built from the stored
+contents), drawn client-side by `PatternTooltipRenderer` as slots: a crafting pattern's 3×3 grid
+with substitutes cycling once a second, an arrow and the output; a processing pattern's inputs
+(items, then fluids with mB counts, three per row) and outputs. The text lines stay, for
+screen readers and copy. While Shift is held, an item decorator draws the pattern's first output
+over its icon in every screen, as AE2 and RS do. Alternative: replacing the item model with the
+output (rejected: it needs a custom model and hides which stacks are patterns at all times).

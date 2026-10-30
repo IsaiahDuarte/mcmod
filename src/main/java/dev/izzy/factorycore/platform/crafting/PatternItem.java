@@ -20,6 +20,16 @@ public final class PatternItem extends Item {
     super(new Item.Properties().stacksTo(1));
   }
 
+  /** Q68: the tooltip draws the recipe. */
+  @Override
+  public java.util.Optional<net.minecraft.world.inventory.tooltip.TooltipComponent> getTooltipImage(
+      ItemStack stack) {
+    var contents = stack.get(CraftingContent.PATTERN.get());
+    return contents == null
+        ? java.util.Optional.empty()
+        : java.util.Optional.of(PatternTooltip.of(contents));
+  }
+
   /** Q4: sneak-use in the air wipes the pattern back to a blank. */
   @Override
   public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {

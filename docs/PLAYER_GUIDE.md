@@ -337,6 +337,9 @@ Craft Blank Patterns.
   inventory. Its recipe, Substitutes choice, or inputs and outputs with amounts fill the grid.
   Change them and press **Encode** to rewrite that pattern; no blank is needed while it stays in
   the same slot. **Clear** forgets it.
+- **Reading a pattern:** its tooltip draws the recipe: the grid and output for a Crafting
+  Pattern (cells that accept substitutes cycle through them), inputs and outputs with amounts
+  for a Processing Pattern. Hold Shift to see each pattern's output on its icon in any screen.
 - **Wiping a pattern:** put an encoded pattern alone in a crafting grid, or sneak and use it in
   the air, to get a Blank Pattern back.
 

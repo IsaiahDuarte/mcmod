@@ -880,7 +880,10 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
 
 ## Wave A2 — crafting depth (lane C)
 
-- [ ] **Q68 — Pattern tooltips (M69).** Size S.
+- [x] **Q68 — Pattern tooltips (M69).** Size S. Done 2026-10-30 (commit subject `Q68:`).
+  Tooltip image of the recipe and a Shift decorator (ADR 0030 amendment); presentation captures
+  `pattern-tooltip-{crafting,processing}-scale-{2,4}.png`.
+  [Evidence](evidence/ergonomics-q68-pattern-tooltips-2026-10-30.md).
   The pattern tooltip draws its recipe (grid → output; inputs → outputs for processing) with
   alternatives cycling, and holding Shift shows the output on pattern icons in any screen.
   Done when: screenshots of a crafting and a processing pattern tooltip.
