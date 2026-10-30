@@ -123,6 +123,15 @@ final class TerminalJobs {
    * Applies one accepted command. Returns true when the view must be republished: a change bumps
    * the revision, a stale revision republishes the current view, an ignored command does neither.
    */
+  /** Q109: the output key of the job last started here, once; null when none since. */
+  ResourceKey takeStarted() {
+    var key = started;
+    started = null;
+    return key;
+  }
+
+  private ResourceKey started;
+
   boolean command(TerminalJobPackets.Command command) {
     var jobs = WorldCraftingJobs.get(viewer.server);
     switch (command.action()) {
@@ -167,6 +176,7 @@ final class TerminalJobs {
         var submission = jobs.submit(actor(), terminal.origin(), previewKey, previewAmount);
         if (submission.job() != null) {
           jobStatus = JobStatus.STARTED;
+          started = previewKey;
           previewKey = null;
           preview = null;
           summarize();

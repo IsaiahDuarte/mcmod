@@ -678,4 +678,91 @@ public final class TerminalCraftingGameTests {
     h.assertTrue(kept.getObject() == encoded, "A plain use leaves the pattern alone");
     h.succeed();
   }
+
+  private static void command(Fixture f, int action, int selected, int amount, byte[] print) {
+    var m = menu(f);
+    m.command(
+        f.player,
+        new TerminalPackets.Command(
+            m.containerId, m.session(), m.view().revision(), action, selected, amount, "", print));
+    m.broadcastChanges();
+  }
+
+  private static List<String> icons(Fixture f) {
+    return menu(f).view().rows().stream().map(TerminalPackets.Row::icon).toList();
+  }
+
+  /**
+   * Q109: planks crafted in the grid and put back lead the Items grid ahead of the name order,
+   * windows over the index still show each row once, and the pin ends when the screen closes.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void craftedItemsLeadTheGridUntilClosed(GameTestHelper h) {
+    var f = setup(h);
+    var log = f.codec.itemKey(new ItemStack(Items.OAK_LOG));
+    var planks = f.codec.itemKey(new ItemStack(Items.OAK_PLANKS));
+    var named =
+        List.of(
+            "minecraft:acacia_log", "minecraft:apple", "minecraft:birch_log", "minecraft:oak_log");
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, log, 5);
+              f.saved
+                  .registry()
+                  .insert(f.cell, f.codec.itemKey(new ItemStack(Items.ACACIA_LOG)), 3);
+              f.saved.registry().insert(f.cell, f.codec.itemKey(new ItemStack(Items.APPLE)), 2);
+              f.saved.registry().insert(f.cell, f.codec.itemKey(new ItemStack(Items.BIRCH_LOG)), 1);
+              open(h, f);
+            })
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              h.assertTrue(icons(f).equals(named), "Name order before crafting: " + icons(f));
+              grid(f, TerminalCraftingPackets.SET_ROW, 0, 3, 1, new byte[32]);
+              grid(f, TerminalCraftingPackets.CRAFT, -1, 0, 1, new byte[32]);
+            })
+        .thenWaitUntil(() -> h.assertTrue(count(f, Items.OAK_PLANKS) == 4, "Four planks crafted"))
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              int slot =
+                  f.player.getInventory().findSlotMatchingItem(new ItemStack(Items.OAK_PLANKS));
+              command(f, TerminalPackets.DEPOSIT, slot, 4, TerminalPackets.fingerprint(planks));
+            })
+        .thenWaitUntil(
+            () -> {
+              menu(f).broadcastChanges();
+              h.assertTrue(
+                  icons(f).size() == 5 && icons(f).getFirst().equals("minecraft:oak_planks"),
+                  "Crafted planks lead the grid: " + icons(f));
+            })
+        .thenIdle(3)
+        .thenExecute(() -> command(f, TerminalPackets.WINDOW, 3, 2, new byte[32]))
+        .thenWaitUntil(
+            () -> {
+              menu(f).broadcastChanges();
+              h.assertTrue(
+                  menu(f).view().offset() == 3
+                      && icons(f).equals(List.of("minecraft:birch_log", "minecraft:oak_log"))
+                      && menu(f).view().total() == 5,
+                  "A window after the pin continues the name order: " + icons(f));
+            })
+        .thenExecute(
+            () -> {
+              f.player.closeContainer();
+              open(h, f);
+            })
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  icons(f).getFirst().equals("minecraft:acacia_log")
+                      && icons(f).getLast().equals("minecraft:oak_planks"),
+                  "After reopening the name order returns: " + icons(f));
+              logout(f);
+            })
+        .thenSucceed();
+  }
 }

@@ -130,7 +130,9 @@ Deposit and withdrawing needs Withdraw.
 - **Taking items:** left-click takes a stack and right-click takes half. Shift-click
   sends the stack to your inventory.
 - **Depositing:** click the grid with items on your cursor, or Shift-click an
-  inventory slot. Shift-double-click deposits every stack of that item in your inventory. If
+  inventory slot. Shift-double-click deposits every stack of that item in your inventory.
+  Things you craft at the terminal (in its grid, or jobs you start in its Jobs tab) show first
+  in the Items grid until you close the screen. If
   storage is full, the rest stays with you.
 - **Counts:** hover an item for its total, reserved and available counts. The bar
   under the grid shows how full your item cells are.

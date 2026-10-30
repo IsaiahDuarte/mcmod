@@ -41,6 +41,13 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   private final java.util.ArrayDeque<Integer> depositAll = new java.util.ArrayDeque<>();
 
   private ResourceKey depositAllKey;
+
+  /** Q109: items crafted here this session, newest first; their rows lead the Items grid. */
+  private final List<ResourceKey> recent = new ArrayList<>();
+
+  /** Q109: the grid result being crafted, pinned once a craft succeeds. */
+  private ResourceKey craftingResult;
+
   private final TerminalAccess terminal;
   private final BlockPos position;
   private UUID query, route;
@@ -445,7 +452,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                 text,
                 sort,
                 TerminalJobs.craftableKeys(player().server, terminal.origin()),
-                showCraftable);
+                showCraftable,
+                recent);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
       selections = List.of();
@@ -498,7 +506,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                 text,
                 sort,
                 TerminalJobs.craftableKeys(player().server, terminal.origin()),
-                showCraftable);
+                showCraftable,
+                recent);
     if (submission.rejection() != OperationResult.Reason.OK) {
       query = null;
       status = TerminalPackets.Status.of(submission.rejection());
@@ -916,6 +925,15 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         pendingCrafts = command.crafts();
         gatherAttempts = 0;
         crafted = 0;
+        var result = crafting.preview(sender);
+        try {
+          craftingResult =
+              result.isEmpty()
+                  ? null
+                  : new PlatformResourceCodec(sender.registryAccess()).itemKey(result);
+        } catch (IllegalArgumentException unsupported) {
+          craftingResult = null;
+        }
         continueCraft();
         return;
       }
@@ -932,7 +950,12 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     if (!protocol.fromViewer(sender, command.menu(), command.session())
         || !authorized()
         || !protocol.admitRate()) return;
-    if (jobs.command(command)) publish();
+    if (jobs.command(command)) {
+      // Q109: a job started here pins its output.
+      var started = jobs.takeStarted();
+      if (started != null && pin(started)) refresh();
+      publish();
+    }
   }
 
   /** Crafts now, or gathers one missing ingredient from authorized storage and retries. */
@@ -995,7 +1018,17 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     pendingCrafts = 0;
     crafted = outcome.crafted();
     gridStatus = outcome.status();
+    if (crafted > 0 && craftingResult != null && pin(craftingResult)) refresh();
     publish();
+  }
+
+  /** Q109: moves {@code key} to the front of the recent list; true when the order changed. */
+  private boolean pin(ResourceKey key) {
+    if (!recent.isEmpty() && recent.getFirst().equals(key)) return false;
+    recent.remove(key);
+    recent.addFirst(key);
+    while (recent.size() > WorldStorageSearch.MAX_PINNED) recent.removeLast();
+    return kind == ResourceKind.ITEM && key.kind() == ResourceKind.ITEM;
   }
 
   private UUID unresolved() {

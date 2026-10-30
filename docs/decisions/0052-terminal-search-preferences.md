@@ -58,3 +58,18 @@ only from the terminal to JEI (rejected: the slice asks for both ways).
 
 `FOCUS` (bit 32, ergonomics Q18) is a further client-only flag in the same integer: when the
 first server view arrives, the client focuses the search box. Bit 64 and up are refused.
+
+## Amendment — recently crafted items first (2026-10-30, ergonomics plan Q109)
+
+Items crafted at a terminal lead its Items grid until the screen closes. The menu keeps up to
+nine keys (`WorldStorageSearch.MAX_PINNED`), newest first: a grid craft's result once at least
+one craft succeeded, and a job's output when it is started from this terminal's Jobs tab (the
+row then appears first as soon as there is stock, or as a craftable ghost). The search orders
+pinned rows first, in pin order, then everything else by the chosen sort; Reversed applies only
+to the rest. Pins still have to match the search text, and they are not saved.
+
+Pinned rows take the first page's leading slots of the one sorted index, rather than a separate
+strip: offsets, windows and `NEXT` continuation keep working unchanged, and every row still
+appears exactly once. A separate strip was rejected because it would need its own paging and
+would show a row twice. Saving pins across openings was rejected because the slice asks for
+"until the screen closes" and saved per-player lists would need a schema change.

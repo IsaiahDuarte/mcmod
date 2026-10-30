@@ -655,7 +655,10 @@ New gates:
   Done when: each part has a GameTest or client step, and (d) charges the handheld's normal
   move cost and needs Withdraw.
 
-- [ ] **Q109 — Recently crafted items first (M18a).** Size M. Lane T.
+- [x] **Q109 — Recently crafted items first (M18a).** Size M. Lane T. Done 2026-10-30 (commit
+  subject `Q109:`). Pins lead the one sorted index (ADR 0052 amendment);
+  `TerminalCraftingGameTests.craftedItemsLeadTheGridUntilClosed`.
+  [Evidence](evidence/ergonomics-q109-recently-crafted-2026-10-30.md).
   Items crafted in the terminal (grid crafts and finished jobs started there) show first in the
   Items grid until the screen closes. The grid is a server-paged window over a sorted index (ADR
   0052), so pinned rows need their own place in the window and in the page offsets: decide in an

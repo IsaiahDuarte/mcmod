@@ -33,6 +33,9 @@ public final class WorldStorageSearch {
   /** Craftable keys one search may mark or add as zero-count rows (A3). */
   public static final int MAX_CRAFTABLE = 4096;
 
+  /** Q109: at most this many recently crafted keys are ordered first. */
+  public static final int MAX_PINNED = 9;
+
   public record Result(
       OperationResult.Reason reason,
       boolean complete,
@@ -103,13 +106,23 @@ public final class WorldStorageSearch {
         long grantsGeneration,
         java.util.Set<ResourceKey> craftable,
         boolean ghosts,
+        List<ResourceKey> pinned,
         int tick) {
       this.id = id;
       this.actor = actor;
       this.origin = origin;
       this.kind = kind;
       this.text = text;
-      ordered = new TreeSet<>(TerminalSearchSupport.order(sort, names::get));
+      // Q109: pinned rows lead in pin order, ahead of (and unaffected by reversing) the sort, so
+      // the index stays one total order and paging is unchanged.
+      var pins = new HashMap<ResourceKey, Integer>();
+      for (int index = 0; index < pinned.size(); index++)
+        pins.putIfAbsent(pinned.get(index), index);
+      ordered =
+          new TreeSet<>(
+              java.util.Comparator.<CatalogCounts.Row>comparingInt(
+                      row -> pins.getOrDefault(row.key(), Integer.MAX_VALUE))
+                  .thenComparing(TerminalSearchSupport.order(sort, names::get)));
       this.scope = scope;
       this.grantsGeneration = grantsGeneration;
       this.craftable = craftable;
@@ -152,12 +165,6 @@ public final class WorldStorageSearch {
     return start(id, actor, origin, kind, text, sort, java.util.Set.of(), false);
   }
 
-  /**
-   * Starts a search whose rows carry a craftable flag for keys in {@code craftable} (A3). With
-   * {@code ghosts}, craftable keys of this kind that match the text but have no stock become
-   * zero-count rows, so they can be requested from the grid. The caller supplies only keys that
-   * patterns visible to this segment produce (gateway CRAFT publishing already applied).
-   */
   public WorldStorageTransfers.Submission start(
       UUID id,
       NetworkPermissions.Actor actor,
@@ -167,8 +174,29 @@ public final class WorldStorageSearch {
       int sort,
       java.util.Set<ResourceKey> craftable,
       boolean ghosts) {
+    return start(id, actor, origin, kind, text, sort, craftable, ghosts, List.of());
+  }
+
+  /**
+   * Starts a search whose rows carry a craftable flag for keys in {@code craftable} (A3). With
+   * {@code ghosts}, craftable keys of this kind that match the text but have no stock become
+   * zero-count rows, so they can be requested from the grid. The caller supplies only keys that
+   * patterns visible to this segment produce (gateway CRAFT publishing already applied). Rows whose
+   * key is in {@code pinned} come first, in that order (Q109).
+   */
+  public WorldStorageTransfers.Submission start(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      ResourceKind kind,
+      String text,
+      int sort,
+      java.util.Set<ResourceKey> craftable,
+      boolean ghosts,
+      List<ResourceKey> pinned) {
     if (craftable.size() > MAX_CRAFTABLE)
       throw new IllegalArgumentException("Too many craftable keys");
+    if (pinned.size() > MAX_PINNED) throw new IllegalArgumentException("Too many pinned keys");
     if (!TerminalSearchSupport.validSort(sort))
       throw new IllegalArgumentException("Invalid terminal sort");
     checkThread();
@@ -195,6 +223,7 @@ public final class WorldStorageSearch {
             saved.network(member.scope().network()).generation(),
             java.util.Set.copyOf(craftable),
             ghosts,
+            List.copyOf(pinned),
             server.getTickCount());
     if (!valid(search, actor)) return rejected(OperationResult.Reason.DENIED);
     if (searches.containsKey(id)
