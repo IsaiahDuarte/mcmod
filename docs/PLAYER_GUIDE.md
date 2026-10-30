@@ -181,9 +181,12 @@ the other slots. Scroll over the list to see more Crafters.
 **Jobs.** Press the **Jobs** tab to list what your Crafters can make in the strip at the top.
 Scroll over the strip (Shift: eight at a time) or click its scrollbar to see more. Your
 inventory is hidden while Jobs is open.
-- **Preview:** select an item and press **×1**, **×8** or **×64**, or type an amount
-  (1–4,096) in the box beside them and press Enter. This shows the steps needed or the
-  first missing ingredient. For more than 4,096, start several jobs.
+- **Preview:** select an item and press **×64**, or type an amount (1–4,096) in the box and
+  press Enter. The box takes sums too: `64*9`, `(10+6)*4`, `128/2` (the result must be whole).
+  `=500` previews only what is needed to have 500 stored, or says there are enough already.
+  **−** and **+** (or the wheel, or Up/Down in the box) change the amount by 1, by 10 with
+  Shift or by 64 with Ctrl, and preview it. A preview shows the steps needed or the first
+  missing ingredient. For more than 4,096, start several jobs.
 - **Max:** previews the most the network can make right now from stock and patterns, up to
   4,096, and puts that number in the amount box. If it can make none, it shows what is missing
   for one; if it stops at 4,096, it says more could be made.
@@ -191,7 +194,8 @@ inventory is hidden while Jobs is open.
   from storage, how many are crafted and how many are missing (red, listed first). A
   **Loop** line means two recipes make each other; keep some of one in storage to break
   it. **Back** returns to the craftable strip and your jobs.
-- **Start:** press **Start** to run the job; you need Craft. Its ingredients are
+- **Start:** press **Start** to run the job; you need Craft. **Shift+Start** previews the typed
+  amount and starts it at once. Its ingredients are
   reserved so no one else takes them.
 - **Your jobs:** they are listed under the strip with progress and a state symbol (▶
   running, ⏸ waiting, ⇩ storing, ✕ cancelling); hover for the reason, scroll for more.

@@ -90,16 +90,23 @@ class TerminalJobPacketsTest {
     for (int[] bad :
         new int[][] {
           {-1, 0, 1},
-          {TerminalJobPackets.MAX + 1, 0, 1},
+          {TerminalJobPackets.QUICK_TARGET + 1, 0, 1},
           {TerminalJobPackets.PREVIEW, TerminalJobPackets.ROWS, 1},
           {TerminalJobPackets.PREVIEW, -1, 1},
           {TerminalJobPackets.PREVIEW, 0, 0},
           {TerminalJobPackets.PREVIEW, 0, 4097},
+          {TerminalJobPackets.QUICK, 0, 4097},
+          {TerminalJobPackets.TARGET, 0, TerminalJobPackets.MAX_TARGET + 1},
           {TerminalJobPackets.WINDOW, TerminalJobPackets.MAX_OFFSET + 1, 1}
         })
       assertThrows(
           IllegalArgumentException.class,
           () -> new TerminalJobPackets.Command(1, id, 1, bad[0], bad[1], bad[2]));
+    // Q64: a target (=N) may name more than one request can make.
+    new TerminalJobPackets.Command(
+        1, id, 1, TerminalJobPackets.TARGET, 0, TerminalJobPackets.MAX_TARGET);
+    new TerminalJobPackets.Command(
+        1, id, 1, TerminalJobPackets.QUICK_TARGET, 0, TerminalJobPackets.MAX_TARGET);
     var entry = TerminalJobPackets.NONE;
     assertThrows(
         IllegalArgumentException.class,

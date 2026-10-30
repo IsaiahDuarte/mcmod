@@ -40,6 +40,15 @@ public final class TerminalJobPackets {
    */
   public static final int MAX = 6;
 
+  /**
+   * Q64: TARGET previews craftable row {@code selection} at what is needed to reach {@code amount}
+   * stored (up to {@link #MAX_TARGET}; the preview is capped at {@link #MAX_AMOUNT}). QUICK
+   * previews {@code amount} and starts it at once; QUICK_TARGET does the same for a target.
+   */
+  public static final int TARGET = 7, QUICK = 8, QUICK_TARGET = 9;
+
+  public static final int MAX_TARGET = 1_000_000_000;
+
   public static final int ROWS = 8, JOBS = 16, MISSING = 3, MAX_OFFSET = 65_536;
 
   /** A4: steps sent for the opened job; the rest are counted. */
@@ -59,14 +68,15 @@ public final class TerminalJobPackets {
 
     public Command {
       if (action < WINDOW
-          || action > MAX
+          || action > QUICK_TARGET
           || selection < 0
           || selection
               >= (action == WINDOW
                   ? MAX_OFFSET + 1
                   : action == DETAIL || action == CANCEL ? JOBS : ROWS)
           || amount < 1
-          || amount > MAX_AMOUNT) throw new IllegalArgumentException("Invalid job command bounds");
+          || amount > (action == TARGET || action == QUICK_TARGET ? MAX_TARGET : MAX_AMOUNT))
+        throw new IllegalArgumentException("Invalid job command bounds");
     }
 
     @Override

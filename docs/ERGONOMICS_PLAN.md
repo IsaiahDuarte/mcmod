@@ -891,7 +891,10 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   Done when: GameTests cover the one-item moves and a region deposit (with a partial fill); a
   client step shows the freeze.
 
-- [ ] **Q64 — Amount entry and bulk requests (M65, M66).** Size M.
+- [x] **Q64 — Amount entry and bulk requests (M65, M66).** Size M. Done 2026-10-30 for M65
+  (commit subject `Q64:`); the JEI bulk requests (M66) moved to Q111. ADR 0031 amendment;
+  `CraftAmountTest`, `TerminalJobGameTests.targetsPreviewOnlyTheShortfallAndQuickStarts`.
+  [Evidence](evidence/ergonomics-q64-amount-entry-2026-10-30.md).
   The amount box accepts `+ - * /` and parentheses (bounded, integer result), `=N` meaning "craft
   only what is needed to reach N stored", ±1/10/64 buttons (Shift/Ctrl for larger steps) and
   scroll. Shift+Start starts without the plan view. From JEI, Ctrl+click on **+** fills what the
@@ -899,6 +902,12 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   list.
   Done when: `CraftAmountTest` covers expressions, `=N`, overflow and junk; a JEI client step
   requests two missing ingredients.
+
+- [ ] **Q111 — Bulk requests from JEI (M66).** Size M. Lane T, after Q64.
+  From JEI, Ctrl+click on **+** fills what the player has and opens one request per missing
+  craftable ingredient, stepped through in a side list in Jobs (each preselected with the
+  missing amount; Start or Skip moves to the next).
+  Done when: a JEI client step requests two missing ingredients.
 
 - [ ] **Q65 — Plan tree and notifications (M67).** Size M.
   A **Tree** toggle in Plan draws the steps as a zoomable tree (bounded by the plan's row cap).

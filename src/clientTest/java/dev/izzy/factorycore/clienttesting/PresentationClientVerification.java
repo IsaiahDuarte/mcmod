@@ -978,7 +978,13 @@ public final class PresentationClientVerification {
     use(base.east(2), Direction.SOUTH, false);
     step(
         client -> client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Jobs"));
-    step(client -> !jobView(client).craftables().isEmpty() && press(client, "×8"));
+    // Q64: the amount box takes a sum; 4*2 previews eight.
+    step(
+        client -> {
+          if (jobView(client).craftables().isEmpty()) return false;
+          terminal(client).typeAmount("4*2");
+          return true;
+        });
     step(
         client -> {
           var view = jobView(client);

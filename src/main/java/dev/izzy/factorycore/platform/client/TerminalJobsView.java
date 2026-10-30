@@ -33,8 +33,8 @@ final class TerminalJobsView {
   private static final int STRIP_Y = GRID_Y, TEXT_Y = STRIP_Y + 24, JOBS_Y = TEXT_Y + 32;
 
   private final TerminalScreen screen;
-  private Button previewOne,
-      previewEight,
+  private Button stepDown,
+      stepUp,
       previewMany,
       previewMax,
       startJob,
@@ -144,12 +144,9 @@ final class TerminalJobsView {
             new Rect(GRID_X, y, MAIN - 2 * GRID_X, PanelLayout.ROW),
             new int[] {20, 20, 26, 26, 30, 34},
             3);
-    previewOne =
-        jobButton(
-            "preview_one", first.get(0), () -> job(TerminalJobPackets.PREVIEW, craftSelected, 1));
-    previewEight =
-        jobButton(
-            "preview_eight", first.get(1), () -> job(TerminalJobPackets.PREVIEW, craftSelected, 8));
+    // Q64: − and + step the typed amount and preview it.
+    stepDown = jobButton("step_down", first.get(0), () -> step(-1));
+    stepUp = jobButton("step_up", first.get(1), () -> step(1));
     previewMany =
         jobButton(
             "preview_many", first.get(2), () -> job(TerminalJobPackets.PREVIEW, craftSelected, 64));
@@ -166,7 +163,7 @@ final class TerminalJobsView {
                 box.width() - 2,
                 16,
                 Component.translatable("gui.factorycore.terminal.job.amount")));
-    amountBox.setMaxLength(8);
+    amountBox.setMaxLength(CraftAmount.MAX_LENGTH);
     amountBox.setValue(typed);
     amountBox.setHint(Component.translatable("gui.factorycore.terminal.job.amount"));
     amountBox.setTooltip(
@@ -174,7 +171,7 @@ final class TerminalJobsView {
             Component.translatable(
                 "gui.factorycore.terminal.job.amount.help", TerminalJobPackets.MAX_AMOUNT)));
     amountBox.setResponder(value -> amountError = "");
-    startJob = jobButton("start", first.get(5), () -> job(TerminalJobPackets.START, 0, 1));
+    startJob = jobButton("start", first.get(5), this::start);
     var second =
         PanelLayout.columns(
             new Rect(GRID_X, y + PanelLayout.ROW + 4, MAIN - 2 * GRID_X, PanelLayout.ROW), 3, 4);
@@ -203,11 +200,57 @@ final class TerminalJobsView {
    * a reason instead of being capped (the server bound is the same {@code MAX_AMOUNT}).
    */
   private void previewTyped() {
+    var parsed = typed();
+    if (parsed.valid() && craftSelected < menu().jobView().craftables().size())
+      job(
+          parsed.target() ? TerminalJobPackets.TARGET : TerminalJobPackets.PREVIEW,
+          craftSelected,
+          parsed.amount());
+  }
+
+  /** The typed amount, with its refusal shown. */
+  private CraftAmount typed() {
     var parsed = CraftAmount.parse(amountBox.getValue(), TerminalJobPackets.MAX_AMOUNT);
     amountError = parsed.error();
     amountBox.setTextColor(parsed.valid() ? Panels.FIELD_TEXT : Panels.FIELD_ERROR);
-    if (parsed.valid() && craftSelected < menu().jobView().craftables().size())
-      job(TerminalJobPackets.PREVIEW, craftSelected, parsed.amount());
+    return parsed;
+  }
+
+  /**
+   * Start: starts the previewed plan. Q64: Shift+Start previews the typed amount and starts it in
+   * one step; Start with nothing previewed previews the typed amount.
+   */
+  private void start() {
+    var jobs = menu().jobView();
+    boolean previewed = !jobs.preview().icon().isEmpty() && jobs.previewReason() == null;
+    if (Screen.hasShiftDown() || !previewed) {
+      var parsed = typed();
+      if (!parsed.valid() || craftSelected >= jobs.craftables().size()) return;
+      if (!Screen.hasShiftDown()) previewTyped();
+      else
+        job(
+            parsed.target() ? TerminalJobPackets.QUICK_TARGET : TerminalJobPackets.QUICK,
+            craftSelected,
+            parsed.amount());
+      return;
+    }
+    job(TerminalJobPackets.START, 0, 1);
+  }
+
+  /** Q64: steps the typed amount by 1 (Shift 10, Ctrl 64) in {@code direction}, then previews. */
+  private void step(int direction) {
+    int size = Screen.hasControlDown() ? 64 : Screen.hasShiftDown() ? 10 : 1;
+    var parsed = CraftAmount.parse(amountBox.getValue(), TerminalJobPackets.MAX_AMOUNT);
+    int current = parsed.valid() && !parsed.target() ? parsed.amount() : 0;
+    int next = Math.max(1, Math.min(TerminalJobPackets.MAX_AMOUNT, current + direction * size));
+    amountBox.setValue(Integer.toString(next));
+    previewTyped();
+  }
+
+  /** Test hook (Q64): types {@code text} in the amount box and previews it, as Enter does. */
+  void typeAmount(String text) {
+    amountBox.setValue(text);
+    previewTyped();
   }
 
   /** Keep-stock threshold: the previewed amount, or 64 when nothing is previewed. */
@@ -274,7 +317,7 @@ final class TerminalJobsView {
 
   void tickButtons(boolean jobsMode) {
     var jobs = menu().jobView();
-    for (var item : List.of(previewOne, previewEight, previewMany, previewMax, startJob, keepJob))
+    for (var item : List.of(stepDown, stepUp, previewMany, previewMax, startJob, keepJob))
       item.visible = jobsMode;
     keepJob.active = craftSelected < jobs.craftables().size();
     amountBox.visible = jobsMode;
@@ -290,11 +333,14 @@ final class TerminalJobsView {
     planButton.setTooltip(Tooltip.create(Component.translatable(planKey + ".help")));
     planOffset = Math.max(0, Math.min(planOffset, Math.max(0, planLines() - overlayLines())));
     amountBox.setEditable(jobsMode);
-    previewOne.active = craftSelected < jobs.craftables().size();
-    previewEight.active = previewOne.active;
-    previewMany.active = previewOne.active;
-    previewMax.active = previewOne.active;
-    startJob.active = !jobs.preview().icon().isEmpty() && jobs.previewReason() == null;
+    stepDown.active = craftSelected < jobs.craftables().size();
+    stepUp.active = stepDown.active;
+    previewMany.active = stepDown.active;
+    previewMax.active = stepDown.active;
+    // Q64: with nothing previewed, Start previews (or with Shift, starts) the typed amount.
+    startJob.active =
+        (!jobs.preview().icon().isEmpty() && jobs.previewReason() == null)
+            || (craftSelected < jobs.craftables().size() && !amountBox.getValue().isBlank());
     cancelJob.visible = jobsMode;
     cancelJob.active =
         detailShown()
@@ -825,6 +871,10 @@ final class TerminalJobsView {
   /** Steps, plan, job list and the craftable strip scroll (Shift: a full strip of eight). */
   boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
     if (scrollY == 0) return false;
+    if (amountBox.visible && amountBox.isMouseOver(mouseX, mouseY)) {
+      step(scrollY > 0 ? 1 : -1);
+      return true;
+    }
     if (detailShown() && overOverlay(mouseX, mouseY)) {
       detailOffset =
           Math.max(
@@ -870,6 +920,10 @@ final class TerminalJobsView {
       return true;
     }
     if (key == GLFW.GLFW_KEY_ESCAPE) return null;
+    if (key == GLFW.GLFW_KEY_UP || key == GLFW.GLFW_KEY_DOWN) {
+      step(key == GLFW.GLFW_KEY_UP ? 1 : -1);
+      return true;
+    }
     return amountBox.keyPressed(key, scan, modifiers) || amountBox.canConsumeInput();
   }
 }

@@ -94,3 +94,18 @@ never easier, which holds for the planner's greedy pattern order; were it not to
 would show a smaller feasible amount, never an infeasible one, because the returned plan is the
 OK plan for that amount. Alternative: computing the maximum from the plan's ratios (rejected:
 byproducts, substitutes and shared intermediates make the bottleneck nonlinear).
+
+## Amendment — amount entry (2026-10-30, ergonomics plan Q64)
+
+The amount box parses a bounded expression on the client (`CraftAmount`: 32 characters, `+ - *
+/`, 8 levels of parentheses, whole results only, intermediate values over 2^40 refused as too
+many), so the server still receives one bounded integer. `=N` sends `TARGET` with N (up to
+10^9). The server previews N minus the actor's available stock of the key, the same stock its
+plans count (`WorldCraftingJobs.available`), capped at 4,096 (status CAPPED). When nothing is
+missing it answers the new status ENOUGH and clears the preview. `QUICK` and `QUICK_TARGET`
+preview and start in one command for Shift+Start, spending one terminal action like Start.
+The ×1 and ×8 preview buttons became − and + steppers that preview the stepped amount, since
+the row has no room for more buttons. Alternatives: computing `=N` on the client (rejected:
+the client does not know the actor's available stock across segments), and evaluating
+expressions on the server (rejected: nothing would gain from it, and the packet stays one
+integer).

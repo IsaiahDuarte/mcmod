@@ -145,6 +145,12 @@ public final class WorldCraftingJobs {
     return new CraftingPlanner(index::producers).plan(key, amount, stock(actor, origin));
   }
 
+  /** Q64: the available stock of {@code key} the actor's plans would count. */
+  public long available(
+      NetworkPermissions.Actor actor, NodeRegistry.Position origin, ResourceKey key) {
+    return stock(actor, origin).applyAsLong(key);
+  }
+
   /** Available stock per key, looked up once per key for one planning pass. */
   private java.util.function.ToLongFunction<ResourceKey> stock(
       NetworkPermissions.Actor actor, NodeRegistry.Position origin) {

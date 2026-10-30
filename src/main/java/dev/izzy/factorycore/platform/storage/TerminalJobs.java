@@ -123,6 +123,25 @@ final class TerminalJobs {
    * Applies one accepted command. Returns true when the view must be republished: a change bumps
    * the revision, a stale revision republishes the current view, an ignored command does neither.
    */
+  /** Submits the previewed plan, as START does. */
+  private void startPreviewed() {
+    var submission =
+        WorldCraftingJobs.get(viewer.server)
+            .submit(actor(), terminal.origin(), previewKey, previewAmount);
+    if (submission.job() != null) {
+      jobStatus = JobStatus.STARTED;
+      started = previewKey;
+      previewKey = null;
+      preview = null;
+      summarize();
+    } else {
+      jobStatus = submission.reason();
+      if (submission.plan() != null)
+        preview = new WorldCraftingJobs.Preview(submission.plan(), submission.reason());
+      summarize();
+    }
+  }
+
   /** Q109: the output key of the job last started here, once; null when none since. */
   ResourceKey takeStarted() {
     var key = started;
@@ -173,19 +192,41 @@ final class TerminalJobs {
         if (command.revision() != jobRevision || previewKey == null) {
           return true;
         }
-        var submission = jobs.submit(actor(), terminal.origin(), previewKey, previewAmount);
-        if (submission.job() != null) {
-          jobStatus = JobStatus.STARTED;
-          started = previewKey;
-          previewKey = null;
-          preview = null;
-          summarize();
-        } else {
-          jobStatus = submission.reason();
-          if (submission.plan() != null)
-            preview = new WorldCraftingJobs.Preview(submission.plan(), submission.reason());
-          summarize();
+        startPreviewed();
+      }
+      case TerminalJobPackets.TARGET, TerminalJobPackets.QUICK, TerminalJobPackets.QUICK_TARGET -> {
+        if (command.revision() != jobRevision || command.selection() >= craftables.size()) {
+          return true;
         }
+        boolean quick = command.action() != TerminalJobPackets.TARGET;
+        if (quick && !terminal.spendAction(viewer)) {
+          jobStatus = JobStatus.NO_POWER;
+          break;
+        }
+        previewKey = craftables.get(command.selection());
+        long amount = command.amount();
+        boolean capped = false;
+        if (command.action() != TerminalJobPackets.QUICK) {
+          // "=N": only what is needed to reach N available.
+          long need = amount - jobs.available(actor(), terminal.origin(), previewKey);
+          if (need <= 0) {
+            previewKey = null;
+            preview = null;
+            summarize();
+            jobStatus = JobStatus.ENOUGH;
+            break;
+          }
+          capped = need > TerminalJobPackets.MAX_AMOUNT;
+          amount = Math.min(need, TerminalJobPackets.MAX_AMOUNT);
+        }
+        previewAmount = (int) amount;
+        preview = jobs.preview(actor(), terminal.origin(), previewKey, previewAmount);
+        summarize();
+        jobStatus =
+            preview.reason() != null
+                ? preview.reason()
+                : capped ? JobStatus.CAPPED : JobStatus.PREVIEWED;
+        if (quick && preview.reason() == null) startPreviewed();
       }
       case TerminalJobPackets.KEEP -> {
         if (command.revision() != jobRevision || command.selection() >= craftables.size()) {

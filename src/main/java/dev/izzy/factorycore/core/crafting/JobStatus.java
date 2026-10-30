@@ -37,7 +37,9 @@ public enum JobStatus {
   /** Q7: Max previewed the largest amount that can be made. */
   MAXIMUM,
   /** Q7: Max stopped at the 4,096 request limit; more could be made. */
-  CAPPED;
+  CAPPED,
+  /** Q64: "=N" found N or more already stored, so there is nothing to make. */
+  ENOUGH;
 
   public String key() {
     return EnumKeys.key(this);

@@ -797,4 +797,92 @@ public final class TerminalJobGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Q64: "=N" previews only what is needed to reach N available (none when already there), and
+   * QUICK previews and starts in one command (Shift+Start).
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void targetsPreviewOnlyTheShortfallAndQuickStarts(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(UNIT);
+    unit.patterns()
+        .insertItem(0, pattern(new int[] {0}, Items.OAK_LOG, Items.OAK_PLANKS, 4), false);
+    h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
+    TerminalEntity terminal = h.getBlockEntity(TERMINAL);
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    DeviceRegistry.Handle cell = CellHandleData.read(drive.cell(0));
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    ResourceKey log = codec.itemKey(new ItemStack(Items.OAK_LOG));
+    ResourceKey planks = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenExecute(
+            () -> {
+              saved.registry().insert(cell, log, 9);
+              saved.registry().insert(cell, planks, 10);
+              h.useBlock(TERMINAL, player);
+              menu(h, player).broadcastChanges();
+            })
+        .thenWaitUntil(
+            () -> {
+              var m = menu(h, player);
+              m.broadcastChanges();
+              h.assertTrue(row(m, "minecraft:oak_planks") >= 0, "Planks craftable");
+            })
+        .thenExecute(
+            () ->
+                command(
+                    h,
+                    player,
+                    TerminalJobPackets.TARGET,
+                    row(menu(h, player), "minecraft:oak_planks"),
+                    18))
+        .thenExecute(
+            () -> {
+              var view = menu(h, player).jobView();
+              h.assertTrue(
+                  view.status() == JobStatus.PREVIEWED && view.preview().amount().equals("8"),
+                  "=18 with 10 stored previews the 8 missing: " + view.preview());
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () ->
+                command(
+                    h,
+                    player,
+                    TerminalJobPackets.TARGET,
+                    row(menu(h, player), "minecraft:oak_planks"),
+                    10))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    menu(h, player).jobView().status() == JobStatus.ENOUGH
+                        && menu(h, player).jobView().preview().icon().isEmpty(),
+                    "=10 with 10 stored has nothing to make"))
+        .thenIdle(RATE_GAP)
+        .thenExecute(
+            () ->
+                command(
+                    h,
+                    player,
+                    TerminalJobPackets.QUICK,
+                    row(menu(h, player), "minecraft:oak_planks"),
+                    4))
+        .thenExecute(
+            () -> {
+              var view = menu(h, player).jobView();
+              h.assertTrue(
+                  view.status() == JobStatus.STARTED && view.jobs().size() == 1,
+                  "Shift+Start previews and starts in one command: " + view.status());
+              player.closeContainer();
+              player.connection.disconnect(net.minecraft.network.chat.Component.literal("done"));
+            })
+        .thenSucceed();
+  }
 }

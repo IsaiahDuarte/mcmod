@@ -803,6 +803,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /** Test hook: the search text, as typed. */
+  /** Test hook (Q64): types in the Jobs amount box and previews it, as Enter does. */
+  public void typeAmount(String text) {
+    jobs.typeAmount(text);
+  }
+
   /** Test hook (Q63): holds the grid order as if Shift were down. */
   public void holdOrder(boolean hold) {
     holdOrder = hold;
