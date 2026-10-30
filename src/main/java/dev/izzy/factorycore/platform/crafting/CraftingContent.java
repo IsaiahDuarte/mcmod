@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.crafting;
 import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryRegistries;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.component.CustomData;
@@ -59,6 +60,9 @@ public final class CraftingContent {
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CrafterEntity>>
       CRAFTER_ENTITY = FactoryRegistries.entity("crafter", CrafterEntity::new, CRAFTER);
 
+  public static final DeferredHolder<MenuType<?>, MenuType<CrafterMenu>> CRAFTER_MENU =
+      FactoryRegistries.menu("crafter", CrafterMenu::new);
+
   private CraftingContent() {}
 
   private static void capabilities(RegisterCapabilitiesEvent event) {
@@ -73,5 +77,6 @@ public final class CraftingContent {
   public static void register(IEventBus bus) {
     bus.addListener(CraftingContent::capabilities);
     bus.addListener(JobNotice::register);
+    bus.addListener(CrafterPackets::register);
   }
 }

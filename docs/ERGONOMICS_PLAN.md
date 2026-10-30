@@ -450,7 +450,10 @@ New gates:
 
 ## Wave A — Crafter and patterns (lane C)
 
-- [ ] **Q2 — Crafter screen (M2).** Size M.
+- [x] **Q2 — Crafter screen (M2).** Size M. Done 2026-10-30 (commit subject `Q2:`). Kit screen
+  with real pattern slots under EDIT, speed, activity and machine rows (free, busy with the
+  output, waiting with a reason); `CrafterScreenGameTests` (3) and scale 1 and 4 captures.
+  [Evidence](evidence/ergonomics-q2-crafter-screen-2026-10-30.md).
   Empty-hand use opens a kit screen: nine pattern slots (click to take any one, cursor to
   insert), the installed speed upgrade, each adjacent machine it serves with its state (free,
   busy with job N, output blocked), and the idle reason. Sneak-use keeps taking the last

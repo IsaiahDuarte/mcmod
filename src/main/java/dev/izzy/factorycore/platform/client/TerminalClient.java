@@ -46,5 +46,8 @@ public final class TerminalClient {
     event.register(RecoveryContent.MENU.get(), RecoveryScreen::new);
     event.register(
         dev.izzy.factorycore.platform.signal.SignalContent.MENU.get(), SignalScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.crafting.CraftingContent.CRAFTER_MENU.get(),
+        CrafterScreen::new);
   }
 }

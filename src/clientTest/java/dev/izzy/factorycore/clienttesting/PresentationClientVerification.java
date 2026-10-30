@@ -1099,6 +1099,15 @@ public final class PresentationClientVerification {
             valid(player, PresentationScenes.EXTRA_UNITS[0])
                 && valid(player, PresentationScenes.EXTRA_UNITS[1])
                 && valid(player, base.east(2)));
+    // Q2: a Crafter's own screen, full of patterns, beside the terminal.
+    use(PresentationScenes.EXTRA_UNITS[0], Direction.SOUTH, false);
+    step(
+        client ->
+            client.screen instanceof dev.izzy.factorycore.platform.client.CrafterScreen screen
+                && screen.getMenu().view().activity()
+                    != dev.izzy.factorycore.platform.crafting.CrafterPackets.Activity.LOADING
+                && waited() > 4);
+    scales("crafter", dev.izzy.factorycore.platform.client.CrafterScreen.class, false);
     use(base.east(2), Direction.SOUTH, false);
     step(
         client -> client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Jobs"));

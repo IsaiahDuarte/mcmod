@@ -3,14 +3,12 @@ package dev.izzy.factorycore.platform.crafting;
 import com.mojang.serialization.MapCodec;
 import dev.izzy.factorycore.platform.CarriedComponents;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
-import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
-import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -112,7 +110,7 @@ public final class CrafterBlock extends NetworkedBlock implements EntityBlock, C
     return ItemInteractionResult.FAIL;
   }
 
-  /** Empty hand reports patterns and network state; sneaking takes the last pattern back. */
+  /** Empty hand opens the Crafter screen (Q2); sneaking takes the last pattern back. */
   @Override
   protected InteractionResult useWithoutItem(
       BlockState state, Level level, BlockPos position, Player player, BlockHitResult hit) {
@@ -131,15 +129,8 @@ public final class CrafterBlock extends NetworkedBlock implements EntityBlock, C
       }
       return InteractionResult.PASS;
     }
-    var status =
-        WorldNetworks.get(((ServerLevel) level).getServer()).membership(unit.origin()).status();
-    player.displayClientMessage(
-        Component.translatable(
-            "message.factorycore.crafting_unit_status",
-            unit.patternCount(),
-            PatternHolderEntity.SLOTS,
-            Component.translatable("status.factorycore." + status.name().toLowerCase(Locale.ROOT))),
-        true);
+    if (unit instanceof CrafterEntity crafter && player instanceof ServerPlayer server)
+      CrafterMenu.open(server, crafter);
     return InteractionResult.CONSUME;
   }
 

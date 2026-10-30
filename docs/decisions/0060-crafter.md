@@ -64,3 +64,21 @@ The pattern holder's saved data, pattern index and job journal are unchanged. Te
 and fixtures place `crafter`, and the guide and docs describe one Crafter. The
 display name "Crafter" follows the UD4 names table. Vanilla 1.21 also has a block
 called Crafter (a redstone autocrafter); see UD4 for a possible rename.
+
+## Amendment — Crafter screen (2026-10-30, ergonomics plan Q2)
+
+Empty-hand use opens a kit screen (`CrafterMenu`, `CrafterScreen`) instead of printing an
+action-bar line. Its nine pattern slots are ordinary menu slots over the Crafter's pattern
+handler: click to take, click with a pattern to insert, Shift-click to move. Taking or inserting
+needs EDIT where the Crafter is, checked on the server at each slot change; the client greys the
+slots out from the view's `editable` flag. Sneak-use with an empty hand still takes the last
+pattern, and using a pattern on the block still inserts it, both unchanged.
+
+The screen shows the installed speed (crafts per run), the Crafter's activity (no patterns,
+idle, working, or waiting with the job's reason) and each adjacent machine: free, busy with the
+output the holding job makes, or waiting with that job's reason. A machine is held when a job's
+dispatch from this Crafter targets it; a legacy dispatch without a target holds every side, as
+`WorldCraftingJobs` fences it. `CrafterPackets.View` sends block and output registry IDs; the
+client names them, so a dedicated server translates nothing. The view refreshes every 10 ticks
+and after a slot change. `CrafterScreenGameTests` covers taking the third of three patterns,
+inserting from the cursor, refusals without EDIT and a furnace shown busy during a job.

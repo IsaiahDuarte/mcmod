@@ -323,8 +323,11 @@ Craft Blank Patterns.
 
 A **Crafter** holds nine patterns of either kind. Place it on the network next to the
 machines its processing patterns use, on any side. Then use patterns on it or feed them
-with a hopper. Crafting patterns run inside it. Sneak-use with an empty hand takes the
-last pattern back.
+with a hopper. Crafting patterns run inside it. Use it with an empty hand to open its
+screen: its nine pattern slots (click one to take it, click with a pattern to insert it,
+Shift-click to move it), its speed, what it is doing or waiting for, and each machine
+beside it with the job using it. Moving patterns needs Edit there. Sneak-use with an
+empty hand still takes the last pattern back.
 - **Several machines:** a Crafter with machines on more than one side sends each
   processing step to the next free one, so two furnaces smelt twice as fast. A machine
   already holding the output is skipped. Hoppers pointing into the Crafter, cables and
