@@ -4,6 +4,8 @@ scale-2-all-items.png
 terminal-search-display-name.png
 terminal-search-mod.png
 terminal-search-tag.png
+terminal-search-syntax.png
+terminal-search-invalid.png
 terminal-sort-quantity.png
 terminal-search-reopened.png
 terminal-preferences-before-restart.png

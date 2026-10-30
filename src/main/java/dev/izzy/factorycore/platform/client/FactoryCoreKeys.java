@@ -15,6 +15,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
+import net.neoforged.neoforge.client.settings.KeyModifier;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
@@ -60,6 +61,16 @@ public final class FactoryCoreKeys {
           InputConstants.UNKNOWN,
           CATEGORY);
 
+  /** Q61: in a terminal, puts the cursor in the search box (Ctrl+F). */
+  public static final KeyMapping FOCUS_SEARCH =
+      new KeyMapping(
+          "key.factorycore.focus_search",
+          KeyConflictContext.GUI,
+          KeyModifier.CONTROL,
+          InputConstants.Type.KEYSYM,
+          GLFW.GLFW_KEY_F,
+          CATEGORY);
+
   private FactoryCoreKeys() {}
 
   @SubscribeEvent
@@ -68,6 +79,7 @@ public final class FactoryCoreKeys {
     event.register(LABEL_PICK);
     event.register(LABEL_OVERLAY);
     event.register(OPEN_WIRELESS);
+    event.register(FOCUS_SEARCH);
   }
 
   /** The hand holding a Label Tool, or null. */

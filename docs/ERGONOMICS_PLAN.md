@@ -859,7 +859,10 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
 
 ## Wave T2 — terminal depth (lane T, after Q55)
 
-- [ ] **Q61 — Search syntax (M59, M60).** Size M.
+- [x] **Q61 — Search syntax (M59, M60).** Size M. Done 2026-10-30 (commit subject `Q61:`).
+  `SearchQuery` in core (ADR 0052 amendment); `SearchQueryTest`; `runTerminalClient` captures
+  `terminal-search-syntax.png` and `terminal-search-invalid.png`.
+  [Evidence](evidence/ergonomics-q61-search-syntax-2026-10-30.md).
   Add `$tooltip`, `*id`, OR (`|`), NOT (`!`), parentheses, quoted text and count filters (`>64`,
   `<=10`, `=0`), parsed by a bounded parser in `core` (query length and node count capped).
   Up/Down history (last 16), right-click clears, a rebindable focus key, and token colours with

@@ -433,7 +433,29 @@ public final class TerminalClientVerification {
         if (!view.search().equals("#minecraft:coals") || view.rows().size() != 1) return;
         check(view.rows().getFirst().icon().equals("minecraft:coal"), "Loaded tag finds only coal");
         captures.grab(client, "terminal-search-tag.png");
+        // Q61: a query using a tag, quoted text, OR, NOT and a count; steps 20 and 21 then
+        // return to step 4.
+        search(screen, SYNTAX_QUERY);
+        searchStep = 19;
+      }
+      case 20 -> {
+        if (!view.search().equals(SYNTAX_QUERY) || view.rows().size() != 1) return;
+        check(
+            view.rows().getFirst().name().equals("Client hopper variant"),
+            "Only the named stack of 23 passes >5; coal (3) is filtered by count");
+        captures.grab(client, "terminal-search-syntax.png");
+        search(screen, "iron (coal");
+      }
+      case 21 -> {
+        if (!view.search().equals("iron (coal") || !view.rows().isEmpty()) return;
+        captures.grab(client, "terminal-search-invalid.png");
+        evidence.append(
+            "terminal-search: Q61 query "
+                + SYNTAX_QUERY
+                + " finds only the named stack of 23; malformed \"iron (coal\" shows no rows,"
+                + " marked red\n");
         search(screen, "@minecraft");
+        searchStep = 3;
       }
       case 4 -> {
         if (!view.search().equals("@minecraft")
@@ -481,6 +503,9 @@ public final class TerminalClientVerification {
     searchStep++;
     entered = ticks;
   }
+
+  private static final String SYNTAX_QUERY =
+      "(#minecraft:coals | \"hopper variant\") !@factorycore >5";
 
   private int plankSlot = -1;
 

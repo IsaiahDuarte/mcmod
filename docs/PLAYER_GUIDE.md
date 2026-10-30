@@ -118,9 +118,14 @@ A rejected upgrade consumes nothing.
 Place a terminal on the network and use it. You need View access; depositing needs
 Deposit and withdrawing needs Withdraw.
 
-- **Search:** type a name or ID; `@minecraft` matches a mod and
-  `#minecraft:planks` matches a tag. Right-click the search box to have it take the cursor
-  whenever the terminal opens (right-click again to stop); this is remembered.
+- **Search:** type a name or ID. Every word must match. `@minecraft` matches a mod,
+  `#minecraft:planks` a tag, `$fuel` a tooltip line and `*oak_` only the ID; `"oak log"` keeps
+  its space. `a | b` means either, `!a` means not, and parentheses group: `(#logs | #planks)
+  !@minecraft`. Counts filter by stock: `>64`, `>=64`, `<10`, `<=10`, `=0`. The parts are
+  coloured as you type; a mistake turns red and shows no items (hover it to see why).
+- **Search box:** Up and Down recall your last 16 searches, right-click clears it, and
+  **Ctrl+F** (rebindable as "Focus terminal search") puts the cursor in it. Shift-right-click
+  makes it take the cursor whenever the terminal opens (again to stop); this is remembered.
 - **Sort:** the sort button cycles Name, Qty and Mod; the arrow beside it reverses the
   order. **⇕** makes the grid fill the window's height instead of six rows. Your search,
   sort and grid height are remembered.

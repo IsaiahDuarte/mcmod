@@ -8,6 +8,7 @@ import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ResourceLedger;
+import dev.izzy.factorycore.core.resource.SearchQuery;
 import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
@@ -75,6 +76,7 @@ public final class WorldStorageSearch {
     final NodeRegistry.Position origin;
     final ResourceKind kind;
     final String text;
+    final SearchQuery query;
     final Map<ResourceKey, String> names = new HashMap<>();
     final TreeSet<CatalogCounts.Row> ordered;
     final NetworkTopology.Scope scope;
@@ -113,6 +115,7 @@ public final class WorldStorageSearch {
       this.origin = origin;
       this.kind = kind;
       this.text = text;
+      query = SearchQuery.parse(text);
       // Q109: pinned rows lead in pin order, ahead of (and unaffected by reversing) the sort, so
       // the index stays one total order and paging is unchanged.
       var pins = new HashMap<ResourceKey, Integer>();
@@ -390,7 +393,8 @@ public final class WorldStorageSearch {
                   var codec = new PlatformResourceCodec(server.registryAccess());
                   String name;
                   try {
-                    if (!TerminalSearchSupport.matches(codec, row.key(), search.text)) continue;
+                    if (!search.query.mayMatch(TerminalSearchSupport.subject(codec, row.key())))
+                      continue;
                     name = TerminalSearchSupport.name(codec, row.key());
                   } catch (IllegalArgumentException unsupported) {
                     fail(search, OperationResult.Reason.UNSUPPORTED);
@@ -444,7 +448,9 @@ public final class WorldStorageSearch {
       if (key.kind() != search.kind || search.counts.row(key) != null) continue;
       String name;
       try {
-        if (!TerminalSearchSupport.matches(codec, key, search.text)) continue;
+        // Ghost rows have no stock, so count terms see zero (Q61: "=0" finds them).
+        if (!search.query.matches(TerminalSearchSupport.subject(codec, key), BigInteger.ZERO))
+          continue;
         name = TerminalSearchSupport.name(codec, key);
       } catch (IllegalArgumentException unsupported) {
         continue;
@@ -480,8 +486,20 @@ public final class WorldStorageSearch {
                 return;
               }
               search.touched = server.getTickCount();
-              for (int i = 0; i < 32 && search.indexing.hasNext(); i++)
-                search.index.add(search.indexing.next());
+              var codec = new PlatformResourceCodec(server.registryAccess());
+              for (int i = 0; i < 32 && search.indexing.hasNext(); i++) {
+                var row = search.indexing.next();
+                // Q61: count terms are settled now that each row's total is summed.
+                try {
+                  if (search.query.counts()
+                      && !search.query.matches(
+                          TerminalSearchSupport.subject(codec, row.key()), row.total())) continue;
+                } catch (IllegalArgumentException unsupported) {
+                  fail(search, OperationResult.Reason.UNSUPPORTED);
+                  return;
+                }
+                search.index.add(row);
+              }
               if (search.indexing.hasNext()) index(search);
               else {
                 search.ticket = null;

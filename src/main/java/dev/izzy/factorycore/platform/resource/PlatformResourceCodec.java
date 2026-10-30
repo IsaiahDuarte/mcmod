@@ -27,6 +27,11 @@ import net.neoforged.neoforge.fluids.FluidStack;
 public final class PlatformResourceCodec {
   private final HolderLookup.Provider registries;
 
+  /** The registries keys are decoded against (Q61: item tooltips need them). */
+  public HolderLookup.Provider registries() {
+    return registries;
+  }
+
   public PlatformResourceCodec(HolderLookup.Provider registries) {
     this.registries = Objects.requireNonNull(registries);
   }

@@ -73,3 +73,22 @@ strip: offsets, windows and `NEXT` continuation keep working unchanged, and ever
 appears exactly once. A separate strip was rejected because it would need its own paging and
 would show a row twice. Saving pins across openings was rejected because the slice asks for
 "until the screen closes" and saved per-player lists would need a schema change.
+
+## Amendment — search language (2026-10-30, ergonomics plan Q61)
+
+The search text is parsed by `core.resource.SearchQuery`, a bounded recursive-descent parser
+with no Minecraft types (128 characters, 32 terms, 8 levels). It adds `$tooltip`, `*id`, OR,
+NOT, parentheses, quoted text and count comparisons to the existing `@mod` and `#tag`.
+Separate words are now ANDed instead of matched as one substring; every old single-word, `@`
+and `#` query matches as before. Multi-word text that was a contiguous substring still matches.
+A malformed query matches nothing rather than falling back to plain text, and the client
+colours tokens and underlines the fault in red with a hover reason. Count terms are evaluated
+twice: unknown while rows arrive by source page (a key's total is not summed yet), then settled
+on the summed total as the final index is built. Pinned rows (Q109) and paging therefore keep
+one exact order. Tooltip terms read `getTooltipLines` on the server with no player and the
+normal flag, so tooltip lines a mod adds only on the client cannot be searched. Up to 64 lines
+are read per item, only when a `$` term is reached. Search history (16, per client session),
+right-click to clear and a focus key (Ctrl+F) are client-only; Q18's auto-focus toggle moved to
+Shift-right-click. Alternatives: matching on the client (rejected: the server pages and counts
+rows, ADR 0052), and treating a malformed query as plain text (rejected: the slice asks for it
+to be marked, not ignored).

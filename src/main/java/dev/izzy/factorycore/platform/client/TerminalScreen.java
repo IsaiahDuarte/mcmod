@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.izzy.factorycore.platform.client.ui.PanelLayout;
 import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.client.ui.Rect;
@@ -77,6 +78,21 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private Button syncButton;
 
   private String viewerOurs, viewerTheirs;
+
+  /** Q61: the search box's token colours, and recent searches (newest first, this session). */
+  private final SearchHighlight highlight = new SearchHighlight();
+
+  private static final java.util.ArrayDeque<String> HISTORY = new java.util.ArrayDeque<>();
+  private static final int HISTORY_SIZE = 16;
+  private int historyAt = -1;
+
+  /** Q61: remembers a finished search at the front of the history. */
+  private static void remember(String text) {
+    if (text.isBlank()) return;
+    HISTORY.remove(text);
+    HISTORY.addFirst(text);
+    while (HISTORY.size() > HISTORY_SIZE) HISTORY.removeLast();
+  }
 
   /** Q18: whether the auto-focus preference was applied for this opening. */
   private boolean focusChecked;
@@ -367,6 +383,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 16,
                 Component.translatable("gui.factorycore.terminal.search")));
     search.setMaxLength(128);
+    search.setFormatter((visible, offset) -> highlight.format(search.getValue(), visible, offset));
     search.setValue(previousSearch);
     search.setHint(Component.translatable("gui.factorycore.terminal.search"));
     search.setResponder(
@@ -544,6 +561,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   @Override
   public void removed() {
     super.removed();
+    if (search != null) remember(search.getValue());
     if (minecraft == null || minecraft.player == null || minecraft.player.containerMenu != menu)
       VIEWER.drop(menu);
   }
@@ -617,6 +635,16 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
     if (storage.renderTooltip(graphics, mouseX, mouseY)) return;
     if (crafting.renderTooltip(graphics, mouseX, mouseY)) return;
+    // Q61: a malformed query says what is wrong when the search box is hovered.
+    var query = highlight.query(search.getValue());
+    if (search.isMouseOver(mouseX, mouseY) && query.error() != null) {
+      graphics.renderTooltip(
+          font,
+          Component.translatable("gui.factorycore.terminal.search.error." + query.error()),
+          mouseX,
+          mouseY);
+      return;
+    }
     if (hoveredSlot != null
         && hoveredSlot.container == minecraft.player.getInventory()
         && !hoveredSlot.hasItem())
@@ -628,7 +656,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   @Override
   public boolean mouseClicked(double mouseX, double mouseY, int button) {
-    // Q18: right-clicking the search box turns search auto-focus on or off.
+    // Q61: right-clicking the search box clears it.
+    if (button == 1 && search.isMouseOver(mouseX, mouseY) && !hasShiftDown()) {
+      remember(search.getValue());
+      search.setValue("");
+      setFocused(search);
+      search.setFocused(true);
+      return true;
+    }
+    // Q18: Shift-right-clicking the search box turns search auto-focus on or off.
     if (button == 1 && search.isMouseOver(mouseX, mouseY)) {
       boolean on = !TerminalSearchSupport.focus(menu.view().sort());
       send(TerminalPackets.SORT, menu.view().sort() ^ TerminalSearchSupport.FOCUS, 1, new byte[32]);
@@ -678,6 +714,29 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   public boolean keyPressed(int key, int scan, int modifiers) {
     if (search.isFocused() && (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER)) {
       searchDelay = 0;
+      remember(search.getValue());
+      historyAt = -1;
+      return true;
+    }
+    // Q61: Up/Down walk the search history; the focus key puts the cursor in the search box.
+    if (search.isFocused() && (key == GLFW.GLFW_KEY_UP || key == GLFW.GLFW_KEY_DOWN)) {
+      if (historyAt < 0 && key == GLFW.GLFW_KEY_DOWN) return true;
+      var entries = new ArrayList<>(HISTORY);
+      if (historyAt < 0 && !search.getValue().isBlank()) {
+        remember(search.getValue());
+        entries = new ArrayList<>(HISTORY);
+        historyAt = 0;
+      }
+      historyAt =
+          Math.max(
+              -1, Math.min(entries.size() - 1, historyAt + (key == GLFW.GLFW_KEY_UP ? 1 : -1)));
+      search.setValue(historyAt < 0 ? "" : entries.get(historyAt));
+      return true;
+    }
+    if (!search.isFocused()
+        && FactoryCoreKeys.FOCUS_SEARCH.isActiveAndMatches(InputConstants.getKey(key, scan))) {
+      setFocused(search);
+      search.setFocused(true);
       return true;
     }
     // Q14: the open key closes the terminal again (not while typing in the search box).

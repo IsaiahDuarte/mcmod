@@ -142,7 +142,8 @@ completes with OK and stopping on the first refusal or when the session closes. 
 terminal action for the whole batch. The client sends it on a second Shift-click on the same
 slot within 250 ms (naming any slot that still holds the item, since the first click may
 already have emptied that one). `TerminalSearchSupport.FOCUS` (bit 32) is a further client-only
-preference flag in the saved sort, toggled by right-clicking the search box; SORT commands now
+preference flag in the saved sort, toggled by Shift-right-clicking the search box (Q61 made a
+plain right-click clear it); SORT commands now
 accept selections up to 63 for these flags.
 
 ## Manual crafting grid
@@ -278,9 +279,16 @@ items one unit each, fluids rounded up to 250 mB units). The JEI handler is in
 
 ## Search, sort and player preferences (R08/A11)
 
-Items opens by default. Search plain text matches the registry ID or server-language
-display name, including custom names; `@minecraft` matches a mod namespace and
-`#minecraft:planks` matches a loaded item/fluid tag. Name sorts A–Z; Qty sorts exact
+Items opens by default. The search text is a `core.resource.SearchQuery` (Q61): words are
+ANDed, `|` is OR, `!` NOT, parentheses group (OR loosest, NOT tightest). A word matches the
+registry ID or server-language display name, including custom names; `"quoted text"` keeps
+spaces; `@minecraft` matches a mod namespace, `#minecraft:planks` a loaded item/fluid tag,
+`$text` a line of the item's server-side tooltip and `*text` only the ID. `>n`, `>=n`, `<n`,
+`<=n` and `=n` compare the summed total. Queries are at most 128 characters, 32 terms and 8
+levels of parentheses; a malformed one matches nothing and the client marks it. Text terms
+filter rows as source pages arrive, with count terms unknown (three-valued logic); count
+terms are settled when the finished index is built from summed totals, so windows and the
+total stay exact. Craftable ghost rows are counted as zero. Name sorts A–Z; Qty sorts exact
 total units descending (reservations remain separately visible). Matching variants
 remain distinct. Name sorting uses the first 256 characters and exact identity breaks
 ties. Search/sort are read-only and use the same VIEW authorization and bounded
