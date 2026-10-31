@@ -1099,6 +1099,17 @@ final class SentenceCompiler {
   }
 
   private SentenceError unknown(String phrase, ResourceKind kind, Token at) {
+    // "water" where an item goes: the player meant the fluid.
+    if (kind == ResourceKind.ITEM) {
+      var path = phrase.replace(' ', '_');
+      for (var fluid : vocabulary.fluids())
+        if (fluid.substring(fluid.indexOf(':') + 1).equals(path))
+          return new SentenceError(
+              at,
+              "'" + phrase + "' is a fluid",
+              "Write fluid " + phrase + ".",
+              "move 1000 fluid " + phrase + " from storage to tank");
+    }
     var names = new ArrayList<String>();
     for (var id : kind == ResourceKind.ITEM ? vocabulary.items() : vocabulary.fluids())
       names.add(id.substring(id.indexOf(':') + 1).replace('_', ' '));

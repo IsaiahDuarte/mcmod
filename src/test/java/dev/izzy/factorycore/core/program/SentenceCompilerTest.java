@@ -234,6 +234,14 @@ class SentenceCompilerTest {
   }
 
   @Test
+  void aFluidWrittenAsAnItemSaysToWriteFluid() {
+    var error = error("every second:\n    if tank has less than 4000 water: say \"low\"\n");
+    assertEquals("'water' is a fluid", error.message());
+    assertEquals("Write fluid water.", error.hint());
+    ok("every second:\n    if tank has less than 4000 fluid water: say \"low\"\n");
+  }
+
+  @Test
   void anAmbiguousNameAsksForTheMod() {
     var error = error("every second:\n    move brass ingot from storage to vault\n");
     assertEquals("More than one mod has 'brass ingot'", error.message());
