@@ -312,8 +312,8 @@ The screen sets the following:
   shows a strip of them: click a slot to use only it, Shift-click to use a range. Larger
   containers show First slot and Slot count fields instead.
 
-It also shows which side of the container is used and whether the container is
-ready. **Apply & Close** saves, and **Cancel** discards. Saving needs Edit; without
+It also shows what it is attached to (the container's name, such as *Chest* or the
+name you gave it on an anvil), which side of it is used, and whether it is ready. **Apply & Close** saves, and **Cancel** discards. Saving needs Edit; without
 it the screen is read-only. A container can be connected by only one Interface.
 
 ### Buffer mode

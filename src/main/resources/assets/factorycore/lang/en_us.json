@@ -970,6 +970,7 @@
   "gui.factorycore.connector.access.read_only": "Take only",
   "gui.factorycore.connector.access.write_only": "Store only",
   "gui.factorycore.connector.speed": "up to %s %s",
+  "gui.factorycore.connector.attached_none": "Nothing attached",
   "gui.factorycore.gateway_policy": "Gateway Policy",
   "gui.factorycore.gateway_policy.branch": "This subnetwork can…",
   "gui.factorycore.gateway_policy.inherited": "…using parent storage",

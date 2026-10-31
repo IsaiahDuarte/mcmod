@@ -71,3 +71,20 @@ handler.
 
 `CellItem.appendHoverText` already shows every bound cell's backing ID
 (`tooltip.factorycore.cell_backing`), so nothing changed.
+
+## M123: the Interface names its container (confirmed gap, fixed)
+
+**Check first.** The Storage Interface settings line showed only the side and speed
+("South · up to 128 items/tick"), never what it was attached to.
+
+**Fix.** `ConnectorSettingsPackets.View` gains `attachedKey` (the target block's translation key,
+"" for air, at most 128 characters) and `attachedName` (an anvil name, cut to 64). The protocol
+goes to "5". `ConnectorSettingsMenu` reads the block in front of the Interface each publish. The
+screen leads the line with the name: "Chest · South · up to 128 items/tick", or "Nothing attached".
+
+**Tests.** `ConnectorFilterGameTests.settingsNameTheAttachedContainer`: a chest named "Ore bin"
+reports `block.minecraft.chest` / "Ore bin"; with the chest broken the reopened screen reports
+nothing. 490 GameTests passed.
+
+**Graphical.** `runPresentationClient` (2026-10-31): `connector-scale-1.png` and
+`connector-scale-4.png` show "Chest · South · up to 128 items/tick" on one line, fitting the panel.

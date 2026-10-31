@@ -554,16 +554,23 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
       caption(g, "window_count", slotHalves.get(1));
     }
     // The side it reaches and how fast, on one muted line (details in the rate tooltip).
+    // Q101 (M123): what it is attached to comes first ("Chest · East · up to …").
     var info =
-        Component.translatable("direction.factorycore." + view.side())
-            .append(" · ")
-            .append(
+        view.attachedName().isEmpty() && view.attachedKey().isEmpty()
+            ? Component.translatable("gui.factorycore.connector.attached_none")
+            : view.attachedName().isEmpty()
+                ? Component.translatable(view.attachedKey())
+                : Component.literal(view.attachedName());
+    info.append(" · ")
+        .append(Component.translatable("direction.factorycore." + view.side()))
+        .append(" · ")
+        .append(
+            Component.translatable(
+                "gui.factorycore.connector.speed",
+                view.maxRate(),
                 Component.translatable(
-                    "gui.factorycore.connector.speed",
-                    view.maxRate(),
-                    Component.translatable(
-                        "gui.factorycore.machine.units."
-                            + view.form().kind().name().toLowerCase(Locale.ROOT))));
+                    "gui.factorycore.machine.units."
+                        + view.form().kind().name().toLowerCase(Locale.ROOT))));
     if (view.throttled())
       info.append(" · ").append(Component.translatable("throughput.factorycore.server.throttled"));
     g.drawString(

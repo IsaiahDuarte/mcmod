@@ -185,7 +185,33 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
                 FilterEdits.rules(
                     draft(),
                     new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
-                        player().registryAccess()))));
+                        player().registryAccess())),
+                attachedKey(),
+                attachedName()));
+  }
+
+  /** Q101 (M123): the attached block's translation key, or "" for air. */
+  private String attachedKey() {
+    var state =
+        connector
+            .serverLevel()
+            .getBlockState(connector.getBlockPos().relative(connector.targetDirection()));
+    if (state.isAir()) return "";
+    var key = state.getBlock().getDescriptionId();
+    return key.length() > ConnectorSettingsPackets.View.MAX_ATTACHED_KEY ? "" : key;
+  }
+
+  /** The attached container's custom name (an anvil-named chest), or "". */
+  private String attachedName() {
+    var entity =
+        connector
+            .serverLevel()
+            .getBlockEntity(connector.getBlockPos().relative(connector.targetDirection()));
+    if (!(entity instanceof net.minecraft.world.Nameable named) || !named.hasCustomName())
+      return "";
+    var name = named.getCustomName().getString();
+    return name.substring(
+        0, Math.min(name.length(), ConnectorSettingsPackets.View.MAX_ATTACHED_NAME));
   }
 
   @Override

@@ -19,6 +19,7 @@ import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -28,6 +29,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -277,5 +279,53 @@ public final class ConnectorFilterGameTests {
               end(f);
             })
         .thenSucceed();
+  }
+
+  /**
+   * Q101 (M123): the settings screen names what the Interface is attached to: an anvil-named chest
+   * by its name, a plain one by its block name, and nothing once the chest is gone.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void settingsNameTheAttachedContainer(GameTestHelper h) {
+    var f = setup(h, false);
+    h.startSequence()
+        .thenWaitUntil(() -> Net.in(h).assertValid(FILTERED))
+        .thenExecute(
+            () -> {
+              ChestBlockEntity chest = h.getBlockEntity(HOPPER);
+              var named = new ItemStack(Items.CHEST);
+              named.set(DataComponents.CUSTOM_NAME, Component.literal("Ore bin"));
+              chest.applyComponentsFromItemStack(named);
+              var menu = settings(h, f);
+              h.assertTrue(
+                  menu.view().attachedKey().equals("block.minecraft.chest")
+                      && menu.view().attachedName().equals("Ore bin"),
+                  "A named chest shows its name: "
+                      + menu.view().attachedKey()
+                      + " / "
+                      + menu.view().attachedName());
+              f.player.closeContainer();
+              h.setBlock(HOPPER, Blocks.AIR);
+            })
+        .thenIdle(GAP)
+        .thenExecute(
+            () -> {
+              var menu = settings(h, f);
+              h.assertTrue(
+                  menu.view().attachedKey().isEmpty() && menu.view().attachedName().isEmpty(),
+                  "With the chest gone it shows nothing attached: " + menu.view().attachedKey());
+              end(f);
+            })
+        .thenSucceed();
+  }
+
+  /** Opens the filtered Interface's settings; a checked cast so a failure fails only this test. */
+  private static ConnectorSettingsMenu settings(GameTestHelper h, Fixture f) {
+    h.useBlock(FILTERED, f.player);
+    if (!(f.player.containerMenu instanceof ConnectorSettingsMenu menu))
+      throw new net.minecraft.gametest.framework.GameTestAssertException(
+          "Settings screen did not open: " + f.player.containerMenu);
+    menu.broadcastChanges();
+    return menu;
   }
 }

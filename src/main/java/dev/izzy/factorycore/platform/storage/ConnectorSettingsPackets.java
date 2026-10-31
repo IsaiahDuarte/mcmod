@@ -83,8 +83,52 @@ public final class ConnectorSettingsPackets {
       int itemSlots,
       int tanks,
       String insertMode,
-      List<FilterEdits.Rule> insertRules)
+      List<FilterEdits.Rule> insertRules,
+      String attachedKey,
+      String attachedName)
       implements CustomPacketPayload {
+    /**
+     * Q101 (M123): the attached container, as its block's translation key ("" when nothing is
+     * there) and its custom name ("" when it has none), shown as "Attached to: Chest".
+     */
+    public static final int MAX_ATTACHED_KEY = 128, MAX_ATTACHED_NAME = 64;
+
+    public View(
+        int menu,
+        UUID session,
+        long generation,
+        MachineSettingsPackets.Form form,
+        String side,
+        String binding,
+        MachineSettingsPackets.Status status,
+        boolean editable,
+        String tier,
+        int maxRate,
+        boolean throttled,
+        int itemSlots,
+        int tanks,
+        String insertMode,
+        List<FilterEdits.Rule> insertRules) {
+      this(
+          menu,
+          session,
+          generation,
+          form,
+          side,
+          binding,
+          status,
+          editable,
+          tier,
+          maxRate,
+          throttled,
+          itemSlots,
+          tanks,
+          insertMode,
+          insertRules,
+          "",
+          "");
+    }
+
     public static final Type<View> TYPE =
         new Type<>(
             ResourceLocation.fromNamespaceAndPath(
@@ -97,6 +141,8 @@ public final class ConnectorSettingsPackets {
           || tier.length() > 16
           || maxRate < 1
           || insertMode.length() > 16
+          || attachedKey.length() > MAX_ATTACHED_KEY
+          || attachedName.length() > MAX_ATTACHED_NAME
           || insertRules.size() > dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS
           || maxRate > ThroughputTier.maxQuantum(form.kind())
           || itemSlots < 0
@@ -130,6 +176,8 @@ public final class ConnectorSettingsPackets {
               b.writeUtf(v.insertMode(), 16);
               b.writeVarInt(v.insertRules().size());
               for (var rule : v.insertRules()) FilterEdits.Rule.write(b, rule);
+              b.writeUtf(v.attachedKey(), MAX_ATTACHED_KEY);
+              b.writeUtf(v.attachedName(), MAX_ATTACHED_NAME);
             },
             b ->
                 new View(
@@ -147,7 +195,9 @@ public final class ConnectorSettingsPackets {
                     b.readVarInt(),
                     b.readVarInt(),
                     b.readUtf(16),
-                    rules(b)));
+                    rules(b),
+                    b.readUtf(MAX_ATTACHED_KEY),
+                    b.readUtf(MAX_ATTACHED_NAME)));
   }
 
   private static List<FilterEdits.Rule> rules(RegistryFriendlyByteBuf b) {
@@ -208,7 +258,7 @@ public final class ConnectorSettingsPackets {
   private ConnectorSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("4");
+    var registrar = event.registrar("5");
     MenuPayloads.toServer(
         registrar,
         FilterCommand.TYPE,
