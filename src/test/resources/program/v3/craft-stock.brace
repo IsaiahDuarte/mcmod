@@ -1,6 +1,0 @@
-every 5 seconds {
-  if stock(item("oak_planks")) < 64 {
-    craft 64 of item("oak_planks")
-    log "Low on planks"
-  }
-}

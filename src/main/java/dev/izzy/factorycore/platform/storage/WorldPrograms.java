@@ -429,7 +429,7 @@ public final class WorldPrograms {
                     label,
                     null,
                     ProgramEvaluator.MAX_MACHINES_PER_LABEL);
-        budget.charge(1 + query.machines().size() / 16, "machines(\"" + label + "\")");
+        budget.charge(1 + query.machines().size() / 16, "label " + label);
         if (query.decision() != NetworkAuthority.Decision.ALLOWED) return List.of();
         if (query.more()) throw new IllegalStateException("more than 64 machines labeled " + label);
         return query.machines().stream().map(NetworkTopology.Scope::node).toList();

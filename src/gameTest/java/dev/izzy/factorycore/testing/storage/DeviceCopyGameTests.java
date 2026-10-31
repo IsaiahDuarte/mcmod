@@ -166,7 +166,7 @@ public final class DeviceCopyGameTests {
     h.setBlock(SECOND, ProgramContent.BLOCK.get());
     ProgramControllerEntity first = h.getBlockEntity(FIRST);
     ProgramControllerEntity second = h.getBlockEntity(SECOND);
-    var source = "every 20 ticks {\n  move everything from machines(\"a\") to storage\n}\n";
+    var source = "every second:\n    move everything from a to storage\n";
     h.startSequence()
         .thenWaitUntil(() -> net.assertValid(FIRST, SECOND))
         .thenExecute(

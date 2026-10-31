@@ -59,8 +59,7 @@ public final class ProgramLimitsGameTests {
       MACHINE = new BlockPos(2, 1, 1),
       CHEST = new BlockPos(3, 1, 1);
   private static final String EMPTY =
-      "every 10 ticks as \"empty\" {\n"
-          + "  move item(\"iron_ingot\") from machines(\"out\") to storage limit 4\n}";
+      "every 0.5 seconds called empty:\n    move 4 iron ingot from out to storage\n";
 
   private record Fixture(
       NetworkPermissions.Actor owner,
@@ -483,16 +482,17 @@ public final class ProgramLimitsGameTests {
     var f = setup(h, 2);
     h.setBlock(SECOND, ProgramContent.BLOCK.get());
     ProgramControllerEntity heavy = h.getBlockEntity(SECOND);
-    var source = new StringBuilder("every 10 ticks as \"census\" {\n");
+    var source = new StringBuilder("every 10 ticks called census:\n");
     // Two item cells: every stock read costs two catalog pages, so 130 reads need 260 units.
-    for (int i = 0; i < 130; i++) source.append(" if stock(item(\"stone\")) < 0 { log \"x\" }\n");
+    for (int i = 0; i < 130; i++)
+      source.append("    if storage has less than 0 stone: say \"x\"\n");
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(() -> label(h, f))
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(
             () -> {
-              deploy(h, f, heavy, source.append("}").toString());
+              deploy(h, f, heavy, source.toString());
               deploy(h, f, f.controller, EMPTY);
             })
         .thenWaitUntil(
@@ -525,9 +525,7 @@ public final class ProgramLimitsGameTests {
     var f = setup(h, 1);
     var ingot = f.codec.itemKey(new ItemStack(Items.IRON_INGOT));
     var job = UUID.randomUUID();
-    String fill =
-        "every 10 ticks as \"fill\" {\n"
-            + "  move item(\"iron_ingot\") from storage to machines(\"out\") limit 4\n}";
+    String fill = "every 0.5 seconds called fill:\n    move 4 iron ingot from storage to out\n";
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(() -> label(h, f))

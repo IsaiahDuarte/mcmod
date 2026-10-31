@@ -1,6 +1,8 @@
 # ADR 0062 — Friendly language version 2 (parity D1)
 
-Status: accepted 2026-10-25 (PD2: v2 is a strict superset of v1; Wasm gains additive
+Status: **superseded 2026-10-31 by [ADR 0068](0068-sentence-programs.md)**: the brace syntax
+was removed. Its limits, IR and semantics (moves between machines, sides and slots, conditions,
+patterns, redstone) carry over unchanged in sentence form. Was: accepted 2026-10-25 (PD2: v2 is a strict superset of v1; Wasm gains additive
 `factory_v1` imports). Grammar, limits and diagnostics are frozen here before parser work.
 Slices D2–D6 implement it, and each one is complete only when its fixtures in
 `src/test/resources/program/v2/` compile and run. Implemented so far: D2–D6 (language), D7 (Wasm imports and Rust SDK).

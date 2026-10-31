@@ -156,8 +156,7 @@ public final class OverviewGameTests {
         .thenExecute(
             () -> {
               controller.energyStorage().receiveEnergy(1_000, false);
-              controller.draft(
-                  "every 10 ticks as \"beat\" { emit redstone 0 on machines(\"none\") }");
+              controller.draft("every 0.5 seconds called beat:\n    turn off none\n");
               var diagnostics =
                   WorldPrograms.get(h.getLevel().getServer())
                       .deploy(new NetworkPermissions.Actor(owner.getUUID(), false), controller);

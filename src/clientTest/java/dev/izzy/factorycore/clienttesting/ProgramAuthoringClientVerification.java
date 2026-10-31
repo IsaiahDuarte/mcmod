@@ -13,7 +13,7 @@ import org.lwjgl.glfw.GLFW;
  */
 final class ProgramAuthoringClientVerification {
   private static final String SOURCE =
-      "every 10 ticks as \"preview\" {\nmove item(\"minecraft:iron_ingot\") from machines(\"smelter\") to storage limit 4\n}";
+      "every 0.5 seconds called preview:\n    move 4 iron ingot from smelter to storage\n";
   private int step, entered;
 
   boolean tick(Minecraft client, ProgramScreen screen, int ticks, Consumer<String> capture) {

@@ -1,6 +1,7 @@
 # ADR 0035 — Friendly language version 1 (D05)
 
-Status: selected and frozen for version 1; portable compiler and evaluator have JVM
+Status: **superseded 2026-10-31 by [ADR 0068](0068-sentence-programs.md)**: the brace syntax
+was removed. Its limits, IR and semantics carry over unchanged in sentence form. Was: selected and frozen for version 1; portable compiler and evaluator have JVM
 evidence. Program Controllers, deployment, the editor and Rust host parity are later
 P5 slices.
 

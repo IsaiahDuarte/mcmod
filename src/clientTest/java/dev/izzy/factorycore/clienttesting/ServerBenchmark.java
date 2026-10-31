@@ -62,14 +62,7 @@ final class ServerBenchmark {
   static final int MEASURED = 1_000;
   static final long STOCK = 4_096;
   static final String PROGRAM =
-      """
-      every 10 ticks as "churn" {
-          for machine in machines("bench") {
-              keep machine stocked with 64 of item("minecraft:cobblestone") from storage
-          }
-          move item("minecraft:cobblestone") from machines("bench") to storage limit 16
-      }
-      """;
+      "every 0.5 seconds called churn:\n    for each machine in bench:\n        keep 64 cobblestone in machine\n    move 16 cobblestone from bench to storage\n";
 
   /** Eight staggered rules, each restocking every machine and moving up to 64 back. */
   static final String OVERLOAD_PROGRAM = overloadProgram();
@@ -80,13 +73,11 @@ final class ServerBenchmark {
       source
           .append("every ")
           .append(10 + rule)
-          .append(" ticks as \"o")
+          .append(" ticks called o")
           .append(rule)
           .append(
-              "\" {\n    for machine in machines(\"bench\") {\n        keep machine stocked with 64"
-                  + " of item(\"minecraft:cobblestone\") from storage\n    }\n    move"
-                  + " item(\"minecraft:cobblestone\") from machines(\"bench\") to storage limit"
-                  + " 64\n}\n");
+              ":\n    for each machine in bench:\n        keep 64 cobblestone in machine\n"
+                  + "    move cobblestone from bench to storage\n");
     return source.toString();
   }
 

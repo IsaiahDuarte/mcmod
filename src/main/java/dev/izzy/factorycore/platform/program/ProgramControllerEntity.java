@@ -214,7 +214,7 @@ public final class ProgramControllerEntity extends BlockEntity
   /** Replaces the deployment with an already compiled program; trusted runtime call only. */
   public void deploy(String source, ProgramIr.Program compiled, UUID by) {
     deployed = source;
-    canonical = FriendlyCompiler.canonical(source, compiled);
+    canonical = FriendlyCompiler.canonical(compiled);
     program = compiled;
     artifact = null;
     wasm = null;

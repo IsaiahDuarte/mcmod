@@ -39,10 +39,10 @@ class ProgramLimitsTest {
   }
 
   private static String checks(int count) {
-    var source = new StringBuilder("every 10 ticks {\n");
+    var source = new StringBuilder("every 10 ticks:\n");
     for (int i = 0; i < count; i++)
-      source.append("  if stock(item(\"stone\")) < 1 { craft 1 of item(\"stone\") }\n");
-    return source.append("}\n").toString();
+      source.append("    if storage has less than 1 stone: craft 1 stone\n");
+    return source.toString();
   }
 
   @Test
@@ -78,9 +78,9 @@ class ProgramLimitsTest {
 
   @Test
   void friendlyRulesAreLimitedTo512HostQueriesBeforeTheirStepBound() {
-    var source = new StringBuilder("every 10 ticks {\n  for m in machines(\"all\") {\n");
-    for (int i = 0; i < 9; i++) source.append("    if stock(item(\"stone\")) < 0 { log \"x\" }\n");
-    source.append("  }\n}\n");
+    var source = new StringBuilder("every 10 ticks:\n    for each m in all:\n");
+    for (int i = 0; i < 9; i++)
+      source.append("        if storage has less than 0 stone: say \"x\"\n");
     int[] calls = {0};
     var trap =
         assertThrows(

@@ -145,15 +145,7 @@ public final class SideAndSlotsGameTests {
                 deploy(
                     h,
                     f,
-                    """
-                    every 10 ticks as "furnace" {
-                      move item("raw_iron") from storage to machines("furnace") side up limit 4
-                      move item("coal") from storage to machines("furnace") side north limit 2
-                    }
-                    every 10 ticks as "output" {
-                      move item("iron_ingot") from machines("furnace") side down slots 0 to storage
-                    }
-                    """))
+                    "every 0.5 seconds called furnace:\n    move 4 raw iron from storage to furnace top\n    move 2 coal from storage to furnace north\nevery 0.5 seconds called output:\n    move iron ingot from furnace bottom slot 0 to storage\n"))
         .thenWaitUntil(
             () -> {
               var furnace =
@@ -215,25 +207,7 @@ public final class SideAndSlotsGameTests {
                 deploy(
                     h,
                     f,
-                    """
-                    every 10 ticks as "busy" {
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                      move item("diamond") from storage to machines("chest") limit 1
-                    }
-                    every 10 ticks as "drain" {
-                      move item("stone") from machines("chest") to storage
-                    }
-                    """))
+                    "every 0.5 seconds called busy:\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\n    move 1 diamond from storage to chest\nevery 0.5 seconds called drain:\n    move stone from chest to storage\n"))
         .thenWaitUntil(
             () ->
                 h.assertTrue(
@@ -281,13 +255,7 @@ public final class SideAndSlotsGameTests {
                 deploy(
                     h,
                     f,
-                    """
-                    every 10 ticks as "narrow" {
-                      move item("stone") from storage to machines("chest") slots 10 limit 1
-                      move item("stone") from storage to machines("chest") side up limit 1
-                      move item("stone") from storage to machines("chest") slots 2 limit 1
-                    }
-                    """))
+                    "every 0.5 seconds called narrow:\n    move 1 stone from storage to chest slot 10\n    move 1 stone from storage to chest top\n    move 1 stone from storage to chest slot 2\n"))
         .thenWaitUntil(
             () -> {
               var logs = f.controller.logs();
@@ -328,17 +296,7 @@ public final class SideAndSlotsGameTests {
                 deploy(
                     h,
                     f,
-                    """
-                    every 10 ticks as "refuel" {
-                      for f in machines("furnace") {
-                        if f has < 8 of item("coal") {
-                          move item("coal") from storage to f side north limit 4
-                        } else {
-                          log "fuel ok"
-                        }
-                      }
-                    }
-                    """))
+                    "every 0.5 seconds called refuel:\n    for each f in furnace:\n        if f has less than 8 coal:\n            move 4 coal from storage to f north\n        otherwise:\n            say \"fuel ok\"\n"))
         .thenWaitUntil(
             () ->
                 h.assertTrue(
@@ -457,7 +415,7 @@ public final class SideAndSlotsGameTests {
                 deploy(
                     h,
                     f,
-                    "every 10 ticks as \"out\" { move item(\"iron_ingot\") from machines(\"out\") to storage }"))
+                    "every 0.5 seconds called out:\n    move iron ingot from out to storage\n"))
         .thenWaitUntil(
             () ->
                 h.assertTrue(
@@ -487,7 +445,7 @@ public final class SideAndSlotsGameTests {
                 deploy(
                     h,
                     f,
-                    "every 10 ticks as \"ingots\" { move item(\"*_ingot\") except item(\"iron_ingot\") from machines(\"out\") to storage }"))
+                    "every 0.5 seconds called ingots:\n    move *_ingot except iron ingot from out to storage\n"))
         .thenWaitUntil(
             () ->
                 h.assertTrue(

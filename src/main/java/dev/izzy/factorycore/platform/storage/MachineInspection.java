@@ -138,8 +138,15 @@ public final class MachineInspection {
       if (items != null) offers.add(items.getSlots() + " item slots");
       if (fluids != null) offers.add(fluids.getTanks() + " tanks");
       if (energy != null) offers.add("energy");
-      lines.add("side " + side.getSerializedName() + ": " + String.join(", ", offers));
-      var target = "machines(\"" + label + "\") side " + side.getSerializedName();
+      // Sentence program lines (ADR 0068) the player can copy into a program.
+      var face =
+          switch (side) {
+            case UP -> "top";
+            case DOWN -> "bottom";
+            default -> side.getSerializedName();
+          };
+      lines.add(face + ": " + String.join(", ", offers));
+      var target = dev.izzy.factorycore.core.program.ProgramPrinter.label(label) + " " + face;
       if (items != null) {
         lines.add("move everything from storage to " + target);
         lines.add("move everything from " + target + " to storage");

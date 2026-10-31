@@ -1,6 +1,6 @@
 package dev.izzy.factorycore.core.program;
 
-/** Friendly-language resource expressions with escaped string literals, for editor insertion. */
+/** Sentence-program (ADR 0068) names and quoted text for editor insertion. */
 public final class ResourceExpressions {
   private ResourceExpressions() {}
 
@@ -13,10 +13,18 @@ public final class ResourceExpressions {
   }
 
   public static String item(String id) {
-    return "item(" + literal(id) + ")";
+    literal(id);
+    return ProgramPrinter.name(dev.izzy.factorycore.core.resource.ResourceKind.ITEM, id);
   }
 
   public static String fluid(String id) {
-    return "fluid(" + literal(id) + ")";
+    literal(id);
+    return ProgramPrinter.name(dev.izzy.factorycore.core.resource.ResourceKind.FLUID, id);
+  }
+
+  /** A machine label as a program names it: bare when it is one plain word, else quoted. */
+  public static String label(String label) {
+    literal(label);
+    return ProgramPrinter.label(label);
   }
 }

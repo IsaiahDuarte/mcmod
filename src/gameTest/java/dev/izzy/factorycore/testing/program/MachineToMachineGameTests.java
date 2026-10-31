@@ -54,8 +54,7 @@ public final class MachineToMachineGameTests {
       CHEST = new BlockPos(3, 1, 3);
 
   private static final String SMELTED =
-      "every 10 ticks as \"smelted\" {\n"
-          + "  move item(\"iron_ingot\") from machines(\"furnace\") to machines(\"chest\") limit 8\n}";
+      "every 0.5 seconds called smelted:\n    move 8 iron ingot from furnace to chest\n";
 
   private record Fixture(
       NetworkPermissions.Actor owner,

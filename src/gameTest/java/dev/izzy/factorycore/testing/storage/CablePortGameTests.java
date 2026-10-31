@@ -147,7 +147,7 @@ public final class CablePortGameTests {
               controller.energyStorage().receiveEnergy(1000, false);
               // The port touches the furnace's north face; "side down" reaches its output.
               controller.draft(
-                  "every 10 ticks { move everything from machines(\"oven\") side down to storage }");
+                  "every 0.5 seconds:\n    move everything from oven bottom to storage\n");
               var diagnostics =
                   WorldPrograms.get(h.getLevel().getServer()).deploy(actor, controller);
               h.assertTrue(diagnostics.isEmpty(), "Deployed: " + diagnostics);

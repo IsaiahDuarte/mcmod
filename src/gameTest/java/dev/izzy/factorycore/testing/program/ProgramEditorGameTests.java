@@ -57,9 +57,9 @@ public final class ProgramEditorGameTests {
     NetworkNodeEntity root = Net.in(h, owner.getUUID()).controller(ROOT);
     h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
     ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
-    var long_ = new StringBuilder("every 10 ticks as \"long\" {\n");
-    while (long_.length() < 5000) long_.append("  log \"padding padding padding\"\n");
-    var source = long_.append("}").toString();
+    var long_ = new StringBuilder("every 10 ticks called long:\n");
+    while (long_.length() < 5000) long_.append("    say \"padding padding padding\"\n");
+    var source = long_.toString();
     h.startSequence()
         .thenWaitUntil(
             () ->
@@ -85,11 +85,11 @@ public final class ProgramEditorGameTests {
               h.useBlock(CONTROLLER, owner);
               var m = menu(h, owner);
               for (var chunk :
-                  ProgramPackets.chunks(m.containerId, m.session(), "every 10 ticks { bogus }"))
+                  ProgramPackets.chunks(m.containerId, m.session(), "every 10 ticks: bogus"))
                 send(owner, chunk);
               h.assertTrue(
-                  controller.draft().equals("every 10 ticks { bogus }")
-                      && m.view().diagnostics().getFirst().startsWith("1:18"),
+                  controller.draft().equals("every 10 ticks: bogus")
+                      && m.view().diagnostics().getFirst().startsWith("1:17"),
                   "Draft saved with a positioned diagnostic: " + m.view().diagnostics());
               var chunks = ProgramPackets.chunks(m.containerId, m.session(), source);
               h.assertTrue(chunks.size() == 3, "A 5,000-character program needs three chunks");
@@ -152,7 +152,7 @@ public final class ProgramEditorGameTests {
               var v = menu(h, viewer);
               for (var chunk :
                   ProgramPackets.chunks(
-                      v.containerId, v.session(), "every 10 ticks { log \"mine\" }"))
+                      v.containerId, v.session(), "every 0.5 seconds:\n    say \"mine\"\n"))
                 send(viewer, chunk);
               h.assertTrue(
                   controller.draft().equals(source)
@@ -208,7 +208,7 @@ public final class ProgramEditorGameTests {
             () -> {
               controller.energyStorage().receiveEnergy(100, false);
               controller.draft(
-                  "every 10 ticks { for m in machines(\"fuel input\") { keep m stocked with 16 of item(\"coal\") from storage } craft 4 of item(\"oak_planks\") log \"never emitted\" }");
+                  "every 0.5 seconds:\n    for each m in \"fuel input\":\n        keep 16 coal in m\n    craft 4 oak planks\n    say \"never emitted\"\n");
               var network =
                   WorldNetworks.get(h.getLevel().getServer())
                       .membership(controller.origin())

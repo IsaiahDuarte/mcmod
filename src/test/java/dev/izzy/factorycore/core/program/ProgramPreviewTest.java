@@ -26,8 +26,7 @@ class ProgramPreviewTest {
   @Test
   void resolvesTargetsAndConditionsForOneRuleWithoutPublishingCommands() {
     var source =
-        "every 10 ticks as \"stock\" { for m in machines(\"fuel\") { keep m stocked with 16 of item(\"coal\") from storage } }\n"
-            + "every 20 ticks as \"craft\" { if stock(item(\"oak_planks\")) < 8 { craft 4 of item(\"oak_planks\") } }";
+        "every 0.5 seconds called stock:\n    for each m in fuel:\n        keep 16 coal in m\nevery second called \"craft\":\n    if storage has less than 8 oak planks:\n        craft 4 oak planks\n";
     var program = FriendlyCompiler.compile(source).program();
     var machine = UUID.randomUUID();
     var first = ProgramPreview.evaluate(program, 0, host(0, List.of(machine)));
@@ -50,15 +49,15 @@ class ProgramPreviewTest {
 
   @Test
   void boundedOutputAndTrapsNeverPresentPartOfAFailedInvocationAsActions() {
-    var many = new StringBuilder("every 10 ticks { ");
-    for (int index = 0; index < 20; index++) many.append("log \"line\" ");
-    var program = FriendlyCompiler.compile(many.append("}").toString()).program();
+    var many = new StringBuilder("every 10 ticks:\n");
+    for (int index = 0; index < 20; index++) many.append("    say \"line\"\n");
+    var program = FriendlyCompiler.compile(many.toString()).program();
     var preview = ProgramPreview.evaluate(program, 0, host(0, List.of()));
     assertEquals(8, preview.lines().size());
     assertTrue(preview.lines().getLast().contains("total 20"));
     var loop =
         FriendlyCompiler.compile(
-                "every 10 ticks { log \"before\" for m in machines(\"x\") { log \"machine\" } }")
+                "every 0.5 seconds:\n    say \"before\"\n    for each m in x:\n        say \"machine\"\n")
             .program();
     var failed =
         ProgramPreview.evaluate(loop, 0, host(0, Collections.nCopies(65, UUID.randomUUID())));
@@ -73,7 +72,7 @@ class ProgramPreviewTest {
     var machine = UUID.randomUUID();
     var program =
         FriendlyCompiler.compile(
-                "every 10 ticks { if machines(\"f\") has < 8 of item(\"coal\") and redstone(machines(\"f\")) { emit redstone 15 on machines(\"alarm\") } }")
+                "every 0.5 seconds:\n    if f has less than 8 coal and f is powered:\n        turn on alarm\n")
             .program();
     var host =
         new ProgramEvaluator.Host() {

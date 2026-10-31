@@ -9,7 +9,6 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,6 @@ class ProgramPrinterTest {
     var compiled = FriendlyCompiler.compile(source, vocabulary);
     assertTrue(compiled.ok(), () -> name + ": " + compiled.diagnostics());
     var printed = ProgramPrinter.print(compiled.program(), vocabulary);
-    assertTrue(SentenceCompiler.sentenceStyle(printed), name);
     var again = FriendlyCompiler.compile(printed, vocabulary);
     assertTrue(again.ok(), () -> name + " printed as\n" + printed + "\n" + again.diagnostics());
     assertEquals(compiled.program(), again.program(), name + " printed as\n" + printed);
@@ -37,18 +35,11 @@ class ProgramPrinterTest {
 
   @Test
   void everyFixtureAndTemplatePrintsToEqualIr() throws IOException {
-    var sources = new ArrayList<Path>();
-    sources.addAll(fixtures("/program/v1", ".fc"));
-    sources.addAll(fixtures("/program/v2", ".fc"));
-    sources.addAll(fixtures("/program/v3", ".fc"));
-    sources.addAll(fixtures("/program/v3", ".brace"));
-    for (var source : sources) {
-      var text = Files.readString(source, StandardCharsets.UTF_8);
-      // v3 fixtures use the test vocabulary's names; the others name items it does not know.
-      var vocabulary =
-          source.toString().contains("v3") ? SentenceCompilerTest.WORDS : Vocabulary.NONE;
-      roundTrip(source.getFileName().toString(), text, vocabulary);
-    }
+    for (var source : fixtures("/program/sentences", ".fc"))
+      roundTrip(
+          source.getFileName().toString(),
+          Files.readString(source, StandardCharsets.UTF_8),
+          SentenceCompilerTest.WORDS);
     for (var template : ProgramTemplates.ALL)
       roundTrip(template.name(), template.source(), GeneratedVocabulary.get());
   }
@@ -58,10 +49,10 @@ class ProgramPrinterTest {
     var program =
         FriendlyCompiler.compile(
                 """
-                every 30 ticks as "fuel" {
-                  move tag("c:raw_materials") except item("create:brass_ingot") from storage to machines("my furnace") side up slots 0..2 limit 8
-                  if not redstone(machines("top")) or stock(item("iron_block")) >= 3 { emit redstone 15 on machines("lamp") }
-                }
+                every 1.5 seconds called fuel:
+                    move 8 tag c:raw_materials except create:brass_ingot from storage to "my furnace" top slots 0 to 2
+                    if not top is powered or storage has at least 3 iron_block:
+                        turn on lamp
                 """)
             .program();
     assertEquals(
@@ -82,7 +73,7 @@ class ProgramPrinterTest {
 
   @Test
   void anEmptyBlockHasNoSentenceSpelling() {
-    var program = FriendlyCompiler.compile("every 20 ticks { }").program();
+    var program = new ProgramIr.Program(List.of(new ProgramIr.Rule("empty", 20, List.of())));
     assertThrows(
         IllegalArgumentException.class, () -> ProgramPrinter.print(program, Vocabulary.NONE));
   }

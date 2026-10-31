@@ -44,12 +44,7 @@ public final class ProgramRedstoneGameTests {
       LAMP = new BlockPos(1, 2, 4);
 
   private static final String RELAY =
-      """
-      every 10 ticks as "relay" {
-        if redstone(machines("button")) { emit redstone 15 on machines("lamp") }
-        else { emit redstone 0 on machines("lamp") }
-      }
-      """;
+      "every 0.5 seconds called relay:\n    if button is powered:\n        turn on lamp\n    otherwise:\n        turn off lamp\n";
 
   private ProgramRedstoneGameTests() {}
 

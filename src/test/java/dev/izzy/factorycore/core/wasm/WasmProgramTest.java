@@ -48,20 +48,7 @@ class WasmProgramTest {
         guest.rules());
     var friendly =
         FriendlyCompiler.compile(
-            """
-            every 10 ticks as "smelt" {
-                for machine in machines("smelter_in") {
-                    keep machine stocked with 64 of item("minecraft:raw_iron") from storage
-                }
-                move item("minecraft:iron_ingot") from machines("smelter_out") to storage limit 64
-            }
-            every 5 seconds as "planks" {
-                if stock(item("minecraft:oak_planks")) < 32 {
-                    craft 16 of item("minecraft:oak_planks")
-                    log "Low on planks"
-                }
-            }
-            """);
+            "every 0.5 seconds called smelt:\n    for each machine in smelter_in:\n        keep 64 raw iron in machine\n    move iron ingot from smelter_out to storage\nevery 5 seconds called planks:\n    if storage has less than 32 oak planks:\n        craft 16 oak planks\n        say \"Low on planks\"\n");
     assertTrue(friendly.ok(), friendly.diagnostics()::toString);
     for (long planks : new long[] {0, 31, 32, 500})
       for (int rule = 0; rule < 2; rule++) {
@@ -87,23 +74,7 @@ class WasmProgramTest {
             System::nanoTime);
     var friendly =
         FriendlyCompiler.compile(
-            """
-            every 10 ticks as "furnace" {
-                for f in machines("furnace") {
-                    if f has < 8 of item("minecraft:coal") {
-                        move item("minecraft:coal") from storage to f side north limit 4
-                    }
-                    move item("*_ingot") except item("iron_ingot") from f side down slots 0 to storage limit 64
-                }
-            }
-            every 20 ticks as "pass" {
-                move item("minecraft:cobblestone") from machines("left") to machines("right") limit 16
-            }
-            every 10 ticks as "relay" {
-                if redstone(machines("button")) { emit redstone 15 on machines("alarm") }
-                else { emit redstone 0 on machines("alarm") }
-            }
-            """);
+            "every 0.5 seconds called furnace:\n    for each f in furnace:\n        if f has less than 8 coal:\n            move 4 coal from storage to f north\n        move *_ingot except iron ingot from f bottom slot 0 to storage\nevery second called pass:\n    move 16 cobblestone from left to right\nevery 0.5 seconds called relay:\n    if button is powered:\n        turn on alarm\n    otherwise:\n        turn off alarm\n");
     assertTrue(friendly.ok(), friendly.diagnostics()::toString);
     assertEquals(
         List.of(

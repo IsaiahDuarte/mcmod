@@ -36,15 +36,7 @@ class ProgramEvaluatorTest {
   void loopsConditionsAndPlacesStageExactCommandsInOrder() {
     var rule =
         rule(
-            """
-            every 10 ticks {
-              for m in machines("in") { keep m stocked with 64 of item("raw_iron") }
-              move item("iron_ingot") from machines("out") to storage limit 32
-              move item("coal") from storage to machines("in")
-              if stock(item("log")) < 8 { craft 4 of item("oak_planks") }
-              if stock(item("log")) >= 8 { log "enough" }
-            }
-            """);
+            "every 0.5 seconds:\n    for each m in \"in\":\n        keep 64 raw iron in m\n    move 32 iron ingot from out to storage\n    move coal from storage to \"in\"\n    if storage has less than 8 log:\n        craft 4 oak planks\n    if storage has at least 8 log:\n        say \"enough\"\n");
     var commands =
         ProgramEvaluator.invoke(rule, host(Map.of("in", List.of(A, B), "out", List.of(OUT)), 3));
     assertEquals(6, commands.size(), "Two keeps, three moves and one craft");
@@ -68,14 +60,14 @@ class ProgramEvaluatorTest {
   void boundsAndHostFailuresTrapAndPublishNothing() {
     var many = new ArrayList<UUID>();
     for (int i = 0; i < ProgramEvaluator.MAX_MACHINES_PER_LABEL + 1; i++) many.add(new UUID(1, i));
-    var keep = rule("every 10 ticks { keep machines(\"m\") stocked with 1 of item(\"stone\") }");
+    var keep = rule("every 0.5 seconds:\n    keep 1 stone in m\n");
     assertThrows(
         ProgramEvaluator.Trap.class,
         () -> ProgramEvaluator.invoke(keep, host(Map.of("m", many), 0)));
     var sixtyFour = many.subList(0, 64);
     var nested =
         rule(
-            "every 10 ticks { for a in machines(\"m\") { for b in machines(\"m\") { keep b stocked with 1 of item(\"stone\") } } }");
+            "every 0.5 seconds:\n    for each a in m:\n        for each b in m:\n            keep 1 stone in b\n");
     var trap =
         assertThrows(
             ProgramEvaluator.Trap.class,
@@ -96,15 +88,14 @@ class ProgramEvaluatorTest {
           }
         };
     assertThrows(ProgramEvaluator.Trap.class, () -> ProgramEvaluator.invoke(keep, failing));
-    var condition = rule("every 10 ticks { if stock(item(\"stone\")) == 0 { log \"x\" } }");
+    var condition =
+        rule("every 0.5 seconds:\n    if storage has exactly 0 stone:\n        say \"x\"\n");
     assertThrows(ProgramEvaluator.Trap.class, () -> ProgramEvaluator.invoke(condition, failing));
   }
 
   @Test
   void machineToMachineMovesPairEverySourceWithEveryOtherTargetWithinTheBound() {
-    var rule =
-        rule(
-            "every 10 ticks { move item(\"iron_ingot\") from machines(\"out\") to machines(\"in\") limit 16 }");
+    var rule = rule("every 0.5 seconds:\n    move 16 iron ingot from out to \"in\"\n");
     var commands =
         ProgramEvaluator.invoke(rule, host(Map.of("out", List.of(OUT, A), "in", List.of(A, B)), 0));
     var filter = ((ProgramCommand.Move) commands.getFirst()).filter();
@@ -158,7 +149,11 @@ class ProgramEvaluatorTest {
 
   private static List<ProgramCommand> logs(String condition, Counting host) {
     return ProgramEvaluator.invoke(
-        rule("every 10 ticks { if " + condition + " { log \"yes\" } else { log \"no\" } }"), host);
+        rule(
+            "every 10 ticks:\n    if "
+                + condition
+                + ":\n        say \"yes\"\n    otherwise:\n        say \"no\"\n"),
+        host);
   }
 
   @Test
@@ -166,27 +161,25 @@ class ProgramEvaluatorTest {
     var yes = List.<ProgramCommand>of(new ProgramCommand.Log("yes"));
     var no = List.<ProgramCommand>of(new ProgramCommand.Log("no"));
     var host = new Counting();
-    assertEquals(yes, logs("stock(item(\"a\")) == 5", host));
-    assertEquals(no, logs("not stock(item(\"a\")) == 5", host));
-    assertEquals(yes, logs("machines(\"two\") has == 6 of item(\"a\")", host), "3 + 3");
+    assertEquals(yes, logs("storage has exactly 5 a", host));
+    assertEquals(no, logs("not storage has exactly 5 a", host));
+    assertEquals(yes, logs("two has exactly 6 a", host), "3 + 3");
     assertEquals(2, host.contentReads, "One contents read per machine");
 
     host = new Counting();
-    assertEquals(
-        no, logs("stock(item(\"a\")) < 1 and machines(\"two\") has > 0 of item(\"a\")", host));
+    assertEquals(no, logs("storage has less than 1 a and two has more than 0 a", host));
     assertEquals(1, host.stockReads);
     assertEquals(0, host.contentReads, "A false left side skips the right of and");
 
     host = new Counting();
-    assertEquals(
-        yes, logs("stock(item(\"a\")) > 1 or machines(\"two\") has > 0 of item(\"a\")", host));
+    assertEquals(yes, logs("storage has more than 1 a or two has more than 0 a", host));
     assertEquals(0, host.contentReads, "A true left side skips the right of or");
 
     host = new Counting();
     assertEquals(
         yes,
         logs(
-            "not (stock(item(\"a\")) < 1 or stock(item(\"b\")) < 1) and stock(item(\"c\")) >= 5",
+            "not (storage has less than 1 a or storage has less than 1 b) and storage has at least 5 c",
             host),
         "not binds tighter than and; parentheses group");
     assertEquals(3, host.stockReads);
@@ -196,15 +189,7 @@ class ProgramEvaluatorTest {
   void elseIfChainsPickTheFirstTrueBranchAndHasNeedsAMachineHost() {
     var rule =
         rule(
-            """
-            every 10 ticks {
-              for m in machines("one") {
-                if m has < 1 of item("coal") { log "empty" }
-                else if m has < 8 of item("coal") { log "low" }
-                else { log "full" }
-              }
-            }
-            """);
+            "every 0.5 seconds:\n    for each m in one:\n        if m has less than 1 coal:\n            say \"empty\"\n        otherwise if m has less than 8 coal:\n            say \"low\"\n        otherwise:\n            say \"full\"\n");
     assertEquals(
         List.of(new ProgramCommand.Log("low")), ProgramEvaluator.invoke(rule, new Counting()));
     assertThrows(
@@ -236,7 +221,7 @@ class ProgramEvaluatorTest {
         };
     var rule =
         rule(
-            "every 10 ticks { if redstone(machines(\"b\")) { emit redstone 15 on machines(\"lamp\") } else { emit redstone 0 on machines(\"lamp\") } }");
+            "every 0.5 seconds:\n    if b is powered:\n        turn on lamp\n    otherwise:\n        turn off lamp\n");
     assertEquals(List.of(new ProgramCommand.Emit("lamp", 15)), ProgramEvaluator.invoke(rule, host));
     assertEquals(2, reads[0], "Stops at the first powered machine");
   }

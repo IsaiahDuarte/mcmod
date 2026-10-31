@@ -14,7 +14,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Compiler for sentence programs (ADR 0068) into the same {@link ProgramIr} as {@link
+ * Compiler for sentence programs (ADR 0068) into {@link ProgramIr}, used through {@link
  * FriendlyCompiler}. Indentation makes blocks; item names resolve through a {@link Vocabulary}.
  * Errors say what was expected, with a hint or an example, and each line reports at most one.
  * Compilation is pure and bounded by the {@link FriendlyCompiler} limits.
@@ -146,32 +146,6 @@ final class SentenceCompiler {
 
   private SentenceCompiler(Vocabulary vocabulary) {
     this.vocabulary = vocabulary;
-  }
-
-  /**
-   * Whether a source is a sentence program: its first line that is not blank or a comment has a
-   * {@code :} and no {@code {} outside quoted text (ADR 0068).
-   */
-  static boolean sentenceStyle(String source) {
-    for (var line : source.split("\n", -1)) {
-      var code = code(line).strip();
-      if (code.isEmpty()) continue;
-      return code.indexOf(':') >= 0 && code.indexOf('{') < 0;
-    }
-    return false;
-  }
-
-  /** The line with its comment and the contents of quoted text removed. */
-  private static String code(String line) {
-    var out = new StringBuilder();
-    boolean quoted = false;
-    for (int i = 0; i < line.length(); i++) {
-      char c = line.charAt(i);
-      if (c == '"') quoted = !quoted;
-      else if (c == '#' && !quoted) break;
-      else if (!quoted) out.append(c);
-    }
-    return out.toString();
   }
 
   static Result compile(String source, Vocabulary vocabulary) {
@@ -392,6 +366,12 @@ final class SentenceCompiler {
             symbol = candidate;
             break;
           }
+        if (c == '{' || c == '}')
+          throw new SentenceError(
+              new Token(Kind.SYMBOL, "", 0, line, column),
+              "Programs don't use braces",
+              "End a line with ':' and indent the lines that belong to it.",
+              "every second:");
         if (symbol == null)
           throw fail(
               new Token(Kind.SYMBOL, "", 0, line, column), "I don't understand '" + c + "' here");

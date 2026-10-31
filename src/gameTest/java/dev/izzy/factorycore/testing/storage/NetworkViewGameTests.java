@@ -106,12 +106,12 @@ public final class NetworkViewGameTests {
               h.assertTrue(lines.getFirst().contains("oven"), "Labels first: " + lines);
               for (var expected :
                   new String[] {
-                    "side up: 1 item slots",
-                    "move everything from storage to machines(\"oven\") side up",
-                    "move everything from machines(\"oven\") side up to storage",
-                    "side down: 2 item slots",
-                    "move everything from machines(\"oven\") side down to storage",
-                    "side north: 1 item slots"
+                    "top: 1 item slots",
+                    "move everything from storage to oven top",
+                    "move everything from oven top to storage",
+                    "bottom: 2 item slots",
+                    "move everything from oven bottom to storage",
+                    "north: 1 item slots"
                   }) h.assertTrue(lines.contains(expected), "Has '" + expected + "': " + lines);
               h.assertTrue(
                   MachineInspection.inspect(stranger, h.absolutePos(FURNACE)) == null,

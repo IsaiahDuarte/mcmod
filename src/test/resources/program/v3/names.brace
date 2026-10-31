@@ -1,6 +1,0 @@
-every 1200 ticks {
-  move item("iron_block") from storage to machines("vault")
-  move tag("c:raw_materials") from storage to machines("furnace")
-  move item("create:brass_ingot") from storage to machines("vault")
-  move item("iron_nugget") from storage to machines("vault")
-}

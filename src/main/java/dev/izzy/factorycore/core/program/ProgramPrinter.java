@@ -39,6 +39,14 @@ public final class ProgramPrinter {
     return printer.out.toString();
   }
 
+  /**
+   * How a sentence program names this item or fluid ID, readable with or without a vocabulary:
+   * {@code iron ingot}, {@code fluid water}, {@code create:brass_ingot}.
+   */
+  public static String name(ResourceKind kind, String id) {
+    return new ProgramPrinter(Vocabulary.NONE).term(new ResourceFilter.Registry(id), kind);
+  }
+
   private void rule(ProgramIr.Rule rule, int ordinal) {
     out.append("every ").append(interval(rule.interval()));
     if (!rule.key().equals("rule-" + ordinal)) out.append(" called ").append(label(rule.key()));
@@ -234,7 +242,7 @@ public final class ProgramPrinter {
   }
 
   /** A label (or rule name) bare when it reads as one word that is not a word of the language. */
-  private static String label(String label) {
+  public static String label(String label) {
     return Pattern.matches("[A-Za-z_][A-Za-z0-9_/]*", label)
             && !SentenceCompiler.KEYWORDS.contains(label.toLowerCase(java.util.Locale.ROOT))
         ? label

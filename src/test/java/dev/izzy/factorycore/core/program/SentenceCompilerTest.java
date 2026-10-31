@@ -42,7 +42,7 @@ class SentenceCompilerTest {
 
   private static Path fixtures() {
     try {
-      return Path.of(SentenceCompilerTest.class.getResource("/program/v3").toURI());
+      return Path.of(SentenceCompilerTest.class.getResource("/program/sentences").toURI());
     } catch (java.net.URISyntaxException invalid) {
       throw new IllegalStateException(invalid);
     }
@@ -64,24 +64,66 @@ class SentenceCompilerTest {
     return result.diagnostics().getFirst();
   }
 
+  /**
+   * One fixture per form, pinned to its IR in {@code program/sentences-ir.txt}. The pin was first
+   * written while the brace language still existed, from programs whose IR equalled their brace
+   * spelling. Regenerate it only for a decided language change, by setting {@code
+   * FACTORYCORE_UPDATE_PIN} to that file's absolute path.
+   */
   @Test
-  void everyFixtureCompilesAndMatchesItsBraceSpelling() throws IOException {
+  void everyFixtureCompilesToItsPinnedIr() throws IOException {
     List<Path> fixtures;
     try (Stream<Path> files = Files.list(FIXTURES)) {
       fixtures = files.filter(file -> file.toString().endsWith(".fc")).sorted().toList();
     }
-    assertTrue(fixtures.size() >= 13, "one fixture per form");
-    for (var fixture : fixtures) {
-      var source = Files.readString(fixture, StandardCharsets.UTF_8);
-      assertTrue(SentenceCompiler.sentenceStyle(source), fixture + " is sentence style");
-      var program = ok(source);
-      var brace = Path.of(fixture.toString().replace(".fc", ".brace"));
-      if (Files.exists(brace)) {
-        var expected = FriendlyCompiler.compile(Files.readString(brace, StandardCharsets.UTF_8));
-        assertTrue(expected.ok(), () -> brace + ": " + expected.diagnostics());
-        assertEquals(expected.program(), program, fixture.getFileName().toString());
-      }
-    }
+    assertTrue(fixtures.size() >= 14, "one fixture per form");
+    var lines = new StringBuilder();
+    for (var fixture : fixtures)
+      lines
+          .append(fixture.getFileName())
+          .append('\t')
+          .append(ok(Files.readString(fixture, StandardCharsets.UTF_8)))
+          .append('\n');
+    var update = System.getenv("FACTORYCORE_UPDATE_PIN");
+    if (update != null && !update.isEmpty()) Files.writeString(Path.of(update), lines);
+    var pin = FIXTURES.resolveSibling("sentences-ir.txt");
+    assertTrue(Files.isRegularFile(pin), "Pinned IR exists");
+    assertEquals(Files.readString(pin, StandardCharsets.UTF_8), lines.toString(), "IR changed");
+  }
+
+  @Test
+  void limitsAndBracesGiveClearErrors() {
+    assertEquals("Programs don't use braces", error("every 20 ticks { say \"x\" }").message());
+    var rules = new StringBuilder();
+    for (int i = 0; i <= ProgramIr.MAX_RULES; i++)
+      rules.append("every second called r").append(i).append(": say \"x\"\n");
+    assertEquals("A program has at most 64 rules", error(rules.toString()).message());
+    assertEquals(
+        "Another rule is already called \"a\"",
+        error("every second called a: say \"x\"\nevery second called a: say \"y\"\n").message());
+    var deep = new StringBuilder("every second:\n");
+    for (int depth = 1; depth <= FriendlyCompiler.MAX_DEPTH; depth++)
+      deep.append("    ".repeat(depth)).append("if storage has no coal:\n");
+    deep.append("    ".repeat(FriendlyCompiler.MAX_DEPTH + 1)).append("say \"x\"\n");
+    assertEquals("Blocks nest at most 8 deep", error(deep.toString()).message());
+    assertEquals(
+        "The amount must be from 1 to 4,096",
+        error("every second: move 4097 coal from storage to a").message());
+    assertEquals(
+        "Machine labels are 1–64 characters",
+        error("every second: move coal from storage to \"" + "x".repeat(65) + "\"").message());
+    assertEquals(
+        "Text is longer than 128 characters",
+        error("every second: say \"" + "x".repeat(129) + "\"").message());
+    assertEquals(
+        "Program is longer than 16,384 characters",
+        error("#".repeat(FriendlyCompiler.MAX_SOURCE + 1)).message());
+    var many = new StringBuilder("every second:\n");
+    for (int i = 0; i < 40; i++) many.append("    fetch coal\n");
+    assertEquals(FriendlyCompiler.MAX_DIAGNOSTICS, compile(many.toString()).diagnostics().size());
+    var statements = new StringBuilder("every second:\n");
+    for (int i = 0; i <= FriendlyCompiler.MAX_STATEMENTS; i++) statements.append("    say \"x\"\n");
+    assertEquals("A program has at most 512 statements", error(statements.toString()).message());
   }
 
   @Test
@@ -97,13 +139,6 @@ class SentenceCompilerTest {
             ResourceFilter.Mode.INCLUDE,
             List.of(new ResourceFilter.Registry("minecraft:coal"))),
         keep.filter());
-  }
-
-  @Test
-  void braceProgramsAreNotSentenceStyle() {
-    assertFalse(
-        SentenceCompiler.sentenceStyle("# a: comment\nevery 20 ticks as \"a:b\" { log \"x: y\" }"));
-    assertTrue(SentenceCompiler.sentenceStyle("\n# note\nevery second: say \"hi\""));
   }
 
   @Test

@@ -1,5 +1,0 @@
-every 20 ticks {
-  move fluid("water") from machines("pump") to storage
-  move fluids from machines("tank") to storage
-  move energy from storage to machines("powered") limit 1000
-}

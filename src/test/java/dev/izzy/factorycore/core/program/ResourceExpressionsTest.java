@@ -10,17 +10,28 @@ class ResourceExpressionsTest {
   @Test
   void insertedExpressionsCompile() {
     var source =
-        "every 20 ticks {\n  move "
+        "every second:\n    move "
             + ResourceExpressions.item("minecraft:iron_ingot")
-            + " from machines(\"out\") to storage limit 64\n}\n";
-    var result = FriendlyCompiler.compile(source);
+            + " except "
+            + ResourceExpressions.item("factorycore:blank_pattern")
+            + " from "
+            + ResourceExpressions.label("smelter out")
+            + " to storage\n    move "
+            + ResourceExpressions.fluid("minecraft:water")
+            + " from "
+            + ResourceExpressions.label("pump")
+            + " to storage\n";
+    assertEquals(
+        "every second:\n    move iron ingot except factorycore:blank_pattern from \"smelter out\" to"
+            + " storage\n    move fluid water from pump to storage\n",
+        source);
+    var result = FriendlyCompiler.compile(source, GeneratedVocabulary.get());
     assertTrue(result.diagnostics().isEmpty(), () -> "Diagnostics: " + result.diagnostics());
   }
 
   @Test
   void quotesAndBackslashesAreEscaped() {
-    assertEquals("item(\"a\\\"b\\\\c\")", ResourceExpressions.item("a\"b\\c"));
-    assertEquals("fluid(\"minecraft:water\")", ResourceExpressions.fluid("minecraft:water"));
+    assertEquals("\"a\\\"b\\\\c\"", ResourceExpressions.literal("a\"b\\c"));
     assertThrows(IllegalArgumentException.class, () -> ResourceExpressions.literal("bad\nline"));
     assertThrows(
         IllegalArgumentException.class,

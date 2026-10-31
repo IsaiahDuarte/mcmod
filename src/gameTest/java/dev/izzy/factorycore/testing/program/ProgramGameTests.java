@@ -141,7 +141,7 @@ public final class ProgramGameTests {
               deploy(
                   h,
                   f,
-                  "every 10 ticks as \"empty\" {\n  move item(\"iron_ingot\") from machines(\"out\") to storage limit 64\n}");
+                  "every 0.5 seconds called empty:\n    move iron ingot from out to storage\n");
             })
         .thenWaitUntil(
             () ->
@@ -179,10 +179,7 @@ public final class ProgramGameTests {
                           .amount()
                       == 50,
                   "Coal stored");
-              deploy(
-                  h,
-                  f,
-                  "every 10 ticks { keep machines(\"fuel\") stocked with 16 of item(\"coal\") from storage }");
+              deploy(h, f, "every 0.5 seconds:\n    keep 16 coal in fuel\n");
             })
         .thenWaitUntil(
             () ->
@@ -216,11 +213,7 @@ public final class ProgramGameTests {
         .thenExecute(() -> label(h, f, "out"))
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(
-            () ->
-                deploy(
-                    h,
-                    f,
-                    "every 10 ticks { move item(\"iron_ingot\") from machines(\"out\") to storage }"))
+            () -> deploy(h, f, "every 0.5 seconds:\n    move iron ingot from out to storage\n"))
         .thenIdle(40)
         .thenExecute(
             () -> {
@@ -243,13 +236,13 @@ public final class ProgramGameTests {
         .thenWaitUntil(() -> ready(h, f))
         .thenExecute(
             () -> {
-              f.controller.draft("every 10 ticks { log \"hi\" }");
+              f.controller.draft("every 0.5 seconds:\n    say \"hi\"\n");
               var stranger = new NetworkPermissions.Actor(UUID.randomUUID(), false);
               h.assertTrue(
                   !programs(h).deploy(stranger, f.controller).isEmpty()
                       && f.controller.deployedSource() == null,
                   "A player without Deploy cannot deploy");
-              f.controller.draft("every 10 ticks { bogus }");
+              f.controller.draft("every 10 ticks: bogus");
               var errors = programs(h).deploy(f.owner, f.controller);
               h.assertTrue(
                   !errors.isEmpty()
@@ -257,9 +250,9 @@ public final class ProgramGameTests {
                       && f.controller.deployedSource() == null,
                   "Compile errors are reported and nothing deploys");
               f.controller.energyStorage().receiveEnergy(1000, false);
-              var flood = new StringBuilder("every 10 ticks as \"flood\" {\n");
-              for (int i = 0; i < 300; i++) flood.append(" log \"x\"\n");
-              deploy(h, f, flood.append("}").toString());
+              var flood = new StringBuilder("every 10 ticks called flood:\n");
+              for (int i = 0; i < 300; i++) flood.append("    say \"x\"\n");
+              deploy(h, f, flood.toString());
             })
         .thenWaitUntil(
             () ->
@@ -306,7 +299,7 @@ public final class ProgramGameTests {
               f.saved.registry().insert(f.cell, f.codec.itemKey(new ItemStack(Items.OAK_LOG)), 2);
               f.controller.energyStorage().receiveEnergy(1000, false);
               f.controller.draft(
-                  "every 10 ticks as \"planks\" { if stock(item(\"oak_planks\")) < 4 { craft 4 of item(\"oak_planks\") } }");
+                  "every 0.5 seconds called planks:\n    if storage has less than 4 oak planks:\n        craft 4 oak planks\n");
               h.assertTrue(programs(h).deploy(member, f.controller).isEmpty(), "Member deploys");
             })
         .thenWaitUntil(

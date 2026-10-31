@@ -1136,6 +1136,12 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Done when: a GameTest deploys sentences, saves and reloads them from the canonical form with
   the same program.
 
+- [x] **Q126 — Sentences are the only language.** Size M. Done 2026-10-31 (commit subject
+  `Q126:`), [Evidence](evidence/ergonomics-q126-sentences-only-2026-10-31.md). The player asked
+  for no backward compatibility in a new mod. The brace grammar was removed, and every test and
+  example program was converted mechanically with the printer, with IR equality checked per
+  program. ADRs 0035 and 0062 are superseded, and Machine Inspection prints sentence lines.
+
 - [ ] **Q123 — Editor support.** Size M.
   Highlighting; suggestions while typing: after `move`, `keep`, `craft`, `has` or `except`, the
   best item name matching the typed words shows as faint text that Tab accepts, with a short list

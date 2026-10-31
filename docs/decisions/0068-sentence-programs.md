@@ -1,7 +1,9 @@
 # 0068 — Sentence programs (friendly language v3, syntax) and the offline program helper
 
 Status: accepted 2026-10-31 (QD11, syntax part: the player chose **plain sentences** and an
-**offline MCP helper first**). The other QD11 features (pulse triggers, redstone strength,
+**offline MCP helper first**). Amended 2026-10-31: sentences are the **only** program language.
+The brace language of ADRs 0035 and 0062 is removed, because this is a new mod with no worlds
+or programs to keep working. The other QD11 features (pulse triggers, redstone strength,
 source retain, empty slots, quantifiers, relative sides, timer offsets, per-item limits, tag
 expressions) are not decided here. They stay open and will extend this grammar later.
 
@@ -26,18 +28,18 @@ Research outside Minecraft:
 
 ## Decision
 
-### One engine, two spellings
+### One language
 
-Sentence programs are a second front end (`SentenceCompiler`) that produces the existing
-`ProgramIr`. The evaluator, scheduling, permissions, Wasm and limits do not change. A program is
-in **sentence style** when its first line that is not blank and not a comment has a `:` and no
-`{` outside quoted text. Brace programs keep `:` inside quoted IDs. Otherwise it is a brace
-program (v1/v2), compiled exactly as today. The `FriendlyV1PinTest` pins
-and the v2 fixtures must not change. The two styles cannot be mixed in one program.
+`SentenceCompiler`, used through `FriendlyCompiler`, produces the existing `ProgramIr`. The
+evaluator, scheduling, permissions, Wasm and limits do not change. The brace grammar of ADRs
+0035 and 0062 was removed. A program written with braces gets "Programs don't use braces" and a
+hint. The IR records keep their names, and their meanings are unchanged.
 
-`ProgramPrinter` turns any `ProgramIr.Program` back into sentences. Every v2 program has a
-sentence spelling, so the editor's **Convert to sentences** never loses meaning. A test
-compiles every fixture and template in both styles and checks that the IR is equal.
+`ProgramPrinter` turns any `ProgramIr.Program` back into sentences. It is used for pinned
+deploys, the offline helper and the editor's inserts. Before the brace language was removed,
+every brace fixture and template was printed to sentences and compiled back to equal IR. The
+tests and examples were converted that way. The sentence fixtures are now pinned to their IR in
+`program/sentences-ir.txt`.
 
 ### Names and why meaning is pinned
 

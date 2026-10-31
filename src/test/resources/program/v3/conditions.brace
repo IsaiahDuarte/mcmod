@@ -1,9 +1,0 @@
-every 20 ticks {
-  if machines("furnace") has <= 7 of item("coal") and not (machines("chest") has == 0 of item("dirt") or machines("chest") has > 3 of item("dirt")) {
-    move item("coal") from storage to machines("furnace")
-  } else if machines("furnace") has == 9 of item("coal") {
-    move item("coal") from machines("furnace") to storage
-  } else {
-    log "ok"
-  }
-}

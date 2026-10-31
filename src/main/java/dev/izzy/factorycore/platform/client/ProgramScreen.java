@@ -303,7 +303,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
             : switch (kind) {
               case 0 -> ResourceExpressions.item(value);
               case 1 -> ResourceExpressions.fluid(value);
-              case 2 -> "machines(" + ResourceExpressions.literal(value) + ")";
+              case 2 -> ResourceExpressions.label(value);
               default -> value;
             };
     if (completing) editor.complete(text);

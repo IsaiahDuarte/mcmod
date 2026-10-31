@@ -501,7 +501,7 @@ public final class ProcessingJournalGameTests {
               // Enough stock for two jobs: only deduplication keeps a second one from starting.
               f.saved.registry().insert(f.cell, f.cobble, 4);
               controller.energyStorage().receiveEnergy(10_000, false);
-              controller.draft("every 10 ticks as \"stone\" { craft 1 of item(\"stone\") }");
+              controller.draft("every 0.5 seconds called stone:\n    craft 1 stone\n");
               h.assertTrue(programs.deploy(actor(f.owner), controller).isEmpty(), "Deployed");
             })
         .thenWaitUntil(
