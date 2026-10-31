@@ -2,7 +2,7 @@
 
 Implemented: `platform/wireless` — `AccessPointBlock`/`AccessPointEntity` (terminal role,
 20,000 FE buffer, 1,000 FE/tick input, 64-block range, 16 FE per open-session tick),
-`WirelessTerminalItem` (20,000 FE, 64 FE per mutating action, bound via use-on), and
+`WirelessTerminalItem` (20,000 FE, 64 FE plus 1 FE per block from the access point per mutating action, bound via use-on), and
 `WirelessAccess`, the `TerminalAccess` implementation re-checked every tick.
 See [ADR0039](../decisions/0039-wireless-access.md). The Access Point, the Wireless Link and
 the Program Controller take FE through one `platform.power.RateLimitedEnergyInput`

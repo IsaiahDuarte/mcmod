@@ -62,3 +62,15 @@ the key again with the terminal screen open, and its search box not focused, clo
 slots are not searched yet (Q110, gated by QD1). Alternatives: using the first one found
 (rejected: with two handhelds bound to different points the choice would surprise the player)
 and requiring the handheld in the hotbar (rejected: the key exists so it need not be held).
+
+## Amendment — action cost grows with distance (2026-10-31, Q101 / M126)
+
+A handheld action (and a wireless Pick Block) now costs 64 FE plus 1 FE per block, rounded up,
+between the player and the access point (`WirelessAccess.actionCost`). That is 64 FE beside the
+point, 128 FE at the base 64-block range, 192 FE at 128 blocks (Extended) and 320 FE at 256 blocks
+(Overdrive). AE2 also makes wireless use dearer with range; a flat cost made a far terminal as
+cheap as a near one. The access point's per-tick upkeep is unchanged, and opening still needs only
+the 64 FE minimum: each action checks its own cost and is refused with `no_power` and no effect.
+Alternatives: scaling upkeep instead (rejected: it charges idle sessions, not use) and a squared
+curve (rejected: harsh with Overdrive range and hard to explain). Evidence:
+`WirelessGameTests` (84 FE at 20 blocks, refusal below that; a pick costs 64 + its distance).

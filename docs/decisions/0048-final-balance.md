@@ -102,7 +102,7 @@ Totals, as the GameTests craft them:
 | Program Controller | 10,000 FE buffer, 1,000 FE/tick input; 4 FE per rule run plus 1 FE per begun 256 steps |
 | Gateway nesting | Per-world `network.gatewayDepth`, default 8, configurable 1–32; world reopen/server restart required |
 | Wireless Access Point | 64-block range in its own dimension; 20,000 FE buffer, 1,000 FE/tick input; 16 FE per open-session tick (128 blocks / 32 FE with Throughput, 256 / 64 with Overdrive; Q15) |
-| Wireless Terminal | 20,000 FE, 1,000 FE/tick charge; 64 FE per action (about 312 actions per charge) |
+| Wireless Terminal | 20,000 FE, 1,000 FE/tick charge; 64 FE per action plus 1 FE per block from the access point (ADR 0039 amendment; 312 actions per charge beside the point, 156 at 64 blocks) |
 | Wireless Link Endpoint | 256-block range; 20,000 FE buffer, 1,000 FE/tick input; 32 FE per connected tick on each end |
 | Wireless pair resource caps | 256 items / 4,000 mB / 8,000 FE per tick bidirectionally; 4× only with Overdrive on both ends |
 

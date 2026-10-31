@@ -530,7 +530,8 @@ Terminal** on it to bind it, and charge the handheld (for example in the termina
 Energy tab). Then use the handheld within 64 blocks in the same dimension to open the
 storage terminal.
 - **Costs:** the access point uses 16 FE per tick while you are connected, and each
-  move costs 64 FE from the handheld.
+  move costs the handheld 64 FE plus 1 FE per block between you and the access point
+  (84 FE at 20 blocks, 128 FE at the edge of the base range).
 - **Closing:** the screen closes if you leave range, lose View or the access point
   runs dry.
 - **Open key:** bind **Open Wireless Terminal** under Controls → Factory Core. It opens the one
@@ -540,7 +541,7 @@ storage terminal.
 - **Pick Block:** with a bound Wireless Terminal anywhere in your inventory, Pick Block (middle
   click) on a block you have none of takes a stack of it from the network into your hotbar and
   selects it, if you are in the access point's range and may withdraw there. Each pick costs
-  64 FE from the handheld, like any move.
+  the handheld 64 FE plus 1 per block, like any move.
 
 ## Wireless links
 

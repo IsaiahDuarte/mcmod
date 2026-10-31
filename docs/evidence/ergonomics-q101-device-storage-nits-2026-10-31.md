@@ -88,3 +88,13 @@ nothing. 490 GameTests passed.
 
 **Graphical.** `runPresentationClient` (2026-10-31): `connector-scale-1.png` and
 `connector-scale-4.png` show "Chest · South · up to 128 items/tick" on one line, fitting the panel.
+
+## M126: wireless cost grows with distance
+
+`WirelessAccess.actionCost(distance)` = 64 + ⌈distance⌉ FE, used for terminal actions and
+wireless Pick Block (ADR 0039 amendment; balance table in ADR 0048 updated). Upkeep and the
+64 FE minimum to open are unchanged. `WirelessGameTests` now expects 84 FE for an action 20 blocks
+away (100 → 16 FE, and a second action refused); this replaces the old flat 64 FE expectation
+because the balance rule changed. The pick test computes the cost from the player's real distance
+and requires it to be over 64. Guide, tooltip, guide page 13 and the pick message say
+"64 FE + 1 per block". 490 GameTests passed.

@@ -132,7 +132,8 @@ public final class WirelessGameTests {
               h.assertTrue(point.energy() < 1_000, "Open session drains access point FE");
               command(player, TerminalPackets.WITHDRAW, 0, 4);
               h.assertTrue(
-                  handheldEnergy(player) == 36, "One action costs 64 FE from the handheld");
+                  handheldEnergy(player) == 16,
+                  "One action 20 blocks away costs 64 + 20 FE from the handheld");
             })
         .thenWaitUntil(
             () ->
@@ -146,9 +147,9 @@ public final class WirelessGameTests {
               command(player, TerminalPackets.WITHDRAW, 0, 4);
               h.assertTrue(
                   menu(player).view().status() == TerminalPackets.Status.NO_POWER
-                      && handheldEnergy(player) == 36
+                      && handheldEnergy(player) == 16
                       && saved.registry().stock(cell, key).total() == 6,
-                  "Without 64 FE the action is refused with no effect");
+                  "Without 84 FE the action is refused with no effect");
               player.moveTo(Vec3.atCenterOf(h.absolutePos(POINT)).add(70, 0, 0));
               menu(player).broadcastChanges();
               h.assertFalse(
@@ -350,9 +351,14 @@ public final class WirelessGameTests {
                       .getItem(20)
                       .getCapability(Capabilities.EnergyStorage.ITEM)
                       .getEnergyStored();
+              long cost =
+                  dev.izzy.factorycore.platform.wireless.WirelessAccess.actionCost(
+                      Math.sqrt(player.distanceToSqr(Vec3.atCenterOf(h.absolutePos(POINT)))));
               h.assertTrue(
-                  before[0] - after == 64 && saved.registry().stock(cell, stone).total() == 0,
-                  "One pick costs 64 FE from the handheld: " + (before[0] - after));
+                  cost > 64
+                      && before[0] - after == cost
+                      && saved.registry().stock(cell, stone).total() == 0,
+                  "One pick costs 64 FE plus 1 per block: " + (before[0] - after) + " vs " + cost);
               saved.registry().insert(cell, stone, 5);
               h.assertTrue(WirelessPick.pick(player, picked).isEmpty(), "Holding stone: no-op");
             })

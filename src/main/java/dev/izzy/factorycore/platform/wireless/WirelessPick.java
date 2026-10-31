@@ -27,7 +27,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
  * anywhere in the inventory, takes a stack of it from the network into the hotbar (the selected
  * slot when empty, else the first empty hotbar slot) and selects it. Same rules as a terminal
  * withdrawal through that handheld: its access point in range and powered, Withdraw there, and the
- * handheld's {@link WirelessAccess#ACTION_COST} FE per pick. Also carries the open key (Q14).
+ * handheld's {@link WirelessAccess#actionCost} FE per pick. Also carries the open key (Q14).
  */
 public final class WirelessPick {
   /** Q14: the open key was pressed; the server finds the handheld. */
@@ -143,9 +143,8 @@ public final class WirelessPick {
       if (inventory.items.get(index).isEmpty()) slot = index;
     if (slot < 0) return "hotbar_full";
     var energy = handheld.getCapability(Capabilities.EnergyStorage.ITEM);
-    if (energy == null
-        || energy.extractEnergy((int) WirelessAccess.ACTION_COST, true)
-            < WirelessAccess.ACTION_COST) return "handheld_power";
+    int cost = (int) WirelessAccess.actionCost(player, point);
+    if (energy == null || energy.extractEnergy(cost, true) < cost) return "handheld_power";
     var key = new PlatformResourceCodec(player.registryAccess()).itemKey(wanted);
     int target = slot;
     var admission =
@@ -170,7 +169,7 @@ public final class WirelessPick {
                 });
     if (admission.rejection() != dev.izzy.factorycore.core.resource.OperationResult.Reason.OK)
       return "none";
-    energy.extractEnergy((int) WirelessAccess.ACTION_COST, false);
+    energy.extractEnergy(cost, false);
     return "";
   }
 }
