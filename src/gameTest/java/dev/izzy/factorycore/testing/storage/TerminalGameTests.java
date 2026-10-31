@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
+import dev.izzy.factorycore.platform.storage.StorageStats;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestMenus;
@@ -308,14 +309,26 @@ public final class TerminalGameTests {
         .thenSucceed();
   }
 
+  private static int stat(
+      Fixture f,
+      net.neoforged.neoforge.registries.DeferredHolder<
+              net.minecraft.resources.ResourceLocation, net.minecraft.resources.ResourceLocation>
+          stat) {
+    return f.player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(stat.get()));
+  }
+
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void nativeMenuSearchWithdrawAndExactShiftDeposit(GameTestHelper helper) {
     var f = setup(helper);
+    // Q79: the "Items taken" and "Items stored" statistics, counted from the start.
+    int[] before = new int[2];
     helper
         .startSequence()
         .thenWaitUntil(() -> ready(helper, f))
         .thenExecute(
             () -> {
+              before[0] = stat(f, StorageStats.ITEMS_TAKEN);
+              before[1] = stat(f, StorageStats.ITEMS_STORED);
               f.saved.registry().insert(f.cell, f.key, 32);
               open(helper, f);
             })
@@ -357,6 +370,13 @@ public final class TerminalGameTests {
                                   f.saved.registry().world(), f.player.getUUID()))
                       == null,
                   "Completed terminal operations retire without orphan player staging");
+              helper.assertTrue(
+                  stat(f, StorageStats.ITEMS_TAKEN) - before[0] == 17
+                      && stat(f, StorageStats.ITEMS_STORED) - before[1] == 17,
+                  "Statistics count 17 taken and 17 stored: "
+                      + (stat(f, StorageStats.ITEMS_TAKEN) - before[0])
+                      + "/"
+                      + (stat(f, StorageStats.ITEMS_STORED) - before[1]));
               logout(f);
             })
         .thenSucceed();

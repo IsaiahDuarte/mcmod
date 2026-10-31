@@ -1233,6 +1233,8 @@
   "gui.factorycore.filter.match.0": "Matches this item, any components",
   "gui.factorycore.filter.match.1": "Only this exact item, with its components",
   "gui.factorycore.filter.match.2": "Matches every item with this tag",
+  "stat.factorycore.items_stored": "Items stored",
+  "stat.factorycore.items_taken": "Items taken",
   "gui.factorycore.filter.match.3": "Matches this item when it has less durability left than shown",
   "gui.factorycore.filter.narration": "Filter: %s of %s slots used",
   "gui.factorycore.slot_picker": "Slots",

@@ -308,6 +308,7 @@ final class WorldPlayerInventories {
       var budget = budget(backingId());
       long accepted = insertion(key, Math.min(offered, RATE - budget.inserted), false);
       budget.inserted += accepted;
+      StorageStats.award(captured.player(), StorageStats.ITEMS_TAKEN, accepted);
       return accepted;
     }
 
@@ -326,6 +327,7 @@ final class WorldPlayerInventories {
             "Player inventory extraction did not match accepted identity/count");
       if (actual > 0) captured.player().getInventory().setChanged();
       budget(backingId()).extracted += actual;
+      StorageStats.award(captured.player(), StorageStats.ITEMS_STORED, actual);
       return actual;
     }
   }

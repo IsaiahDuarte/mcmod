@@ -93,6 +93,10 @@ shows in its tooltip how much it holds (stored / capacity, percent and types) an
 eight largest entries as icons. In creative, middle-clicking a cell gives you a fresh, empty
 cell, not a second key to the same contents.
 
+The **Statistics** screen (General) counts **Items stored** and **Items taken**: items the
+network's screens moved out of and into your inventory. A move that could not finish and
+returned its items counts both ways.
+
 **Drive priority:** type a number from -1000 to 1000 in **Priority** and press Enter.
 The network fills higher-priority storage first, counting drives and Storage-mode
 Interfaces together. With a partition, a high priority makes a cell collect its items

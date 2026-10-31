@@ -1025,7 +1025,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   handle.
   Done when: a GameTest picks a stored cell in creative and finds a fresh one.
 
-- [ ] **Q79 — Statistics (M90).** Size S. Low priority.
+- [x] **Q79 — Statistics (M90).** Size S. Low priority. Done 2026-10-31 (commit subject `Q79:`),
+  [Evidence](evidence/ergonomics-q79-statistics-2026-10-31.md).
   "Items stored" and "Items taken" player statistics.
 
 Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
