@@ -90,3 +90,22 @@ some (as the viewer would see it for a job preview), has none but a visible patt
 has none. Tag rules show nothing, because a tag can match many keys and the answer would mislead.
 The status is computed at most once a second, or when the filter changes, with one stock lookup
 per rule (at most 16). It is display only; export behavior is unchanged.
+
+## Export order — 2026-10-31 (Q74)
+
+An Exporter with two or more "Only these" slots sends them in an order: **In order** (default),
+**Round robin** or **Random** (`ExportOrder`). Each export pass starts at a slot (the first, the
+one after the slot last sent, or a random one) and walks the network's keys page by page as before.
+It keeps the stocked key whose first matching slot lies nearest after the start, ends early when
+it finds the start slot itself, and sends that key. A move the destination refuses (full, wrong
+resource, unsupported) starts the next pass after its slot, so a slot the machine refuses can't
+starve the rest. A transient refusal (rate, busy, rebuild) retries the same slot. The pass shares the
+existing page and cursor limits. "All but these" filters and single slots keep the existing
+rotation over catalog rows.
+
+The order is stored on the block entity (`ExportOrder`, omitted for In order), like its redstone
+control. It grants nothing and changes no canonical deployment, so neither the preset schema nor
+the world schema changes. It is set by menu button `320 + ordinal` with Edit access and synced
+by a data slot. The preset protocol moves to "4" for the `ORDER_SET`/`ORDER_DENIED` statuses.
+Considered: storing it in the deployment. That would need a preset schema bump and re-deploy
+authority for a setting that only affects ordering.

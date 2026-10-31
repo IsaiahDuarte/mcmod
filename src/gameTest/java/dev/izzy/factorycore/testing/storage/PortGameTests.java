@@ -415,4 +415,74 @@ public final class PortGameTests {
         .thenExecute(() -> end(owner))
         .thenSucceed();
   }
+
+  /**
+   * Q74: an Exporter with an ender pearl slot and a snowball slot, the cell holding 48 of each.
+   * Both stack to 16, so each move sends one full stack into the chest's next empty slot, and the
+   * chest's slots read back the order of the six moves ("P" pearls, "S" snowballs).
+   */
+  private static void exportTwo(
+      GameTestHelper h, dev.izzy.factorycore.core.storage.ExportOrder order, String expected) {
+    var owner = player(h);
+    var net = Net.in(h, owner.getUUID());
+    net.controller(ROOT);
+    net.drive(DRIVE, CellTier.STARTER_ITEM);
+    var cell = net.cell(DRIVE, 0);
+    h.setBlock(TARGET, Blocks.CHEST);
+    ChestBlockEntity chest = h.getBlockEntity(TARGET);
+    var exporter = place(h, PORT, PortBlock.Role.EXPORTER, Direction.EAST, owner);
+    var filter =
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.INCLUDE,
+            List.of(
+                new ResourceFilter.Exact(net.key(Items.ENDER_PEARL)),
+                new ResourceFilter.Exact(net.key(Items.SNOWBALL))));
+    h.startSequence()
+        .thenWaitUntil(() -> net.assertValid(PORT))
+        .thenExecute(
+            () -> {
+              net.saved().registry().insert(cell, net.key(Items.ENDER_PEARL), 48);
+              net.saved().registry().insert(cell, net.key(Items.SNOWBALL), 48);
+              exporter.exportOrder(order);
+              var saved = exporter.saveWithoutMetadata(h.getLevel().registryAccess());
+              h.assertTrue(
+                  order == dev.izzy.factorycore.core.storage.ExportOrder.IN_ORDER
+                      ? !saved.contains("ExportOrder")
+                      : saved.getString("ExportOrder").equals(order.name()),
+                  "The order is saved with the block: " + saved.getString("ExportOrder"));
+              exporter.deployPreset(Actors.of(owner), MachinePresets.Mode.EXPORT, filter, 0);
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    net.saved().registry().stock(cell, net.key(Items.ENDER_PEARL)).total() == 0
+                        && net.saved().registry().stock(cell, net.key(Items.SNOWBALL)).total() == 0,
+                    "Everything sent"))
+        .thenExecute(
+            () -> {
+              var moves = new StringBuilder();
+              for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                var stack = chest.getItem(slot);
+                if (stack.isEmpty()) continue;
+                h.assertTrue(stack.getCount() == 16, "Each move is one full stack");
+                moves.append(stack.is(Items.ENDER_PEARL) ? 'P' : 'S');
+              }
+              h.assertTrue(moves.toString().equals(expected), order + " sends " + moves);
+              end(owner);
+            })
+        .thenSucceed();
+  }
+
+  /** Q74: round robin takes turns between the two slots, one move each. */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void roundRobinExporterAlternatesTwoItems(GameTestHelper h) {
+    exportTwo(h, dev.izzy.factorycore.core.storage.ExportOrder.ROUND_ROBIN, "PSPSPS");
+  }
+
+  /** Q74: In order (the default) sends the first slot until storage has no more of it. */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void inOrderExporterSendsTheFirstSlotFirst(GameTestHelper h) {
+    exportTwo(h, dev.izzy.factorycore.core.storage.ExportOrder.IN_ORDER, "PPPSSS");
+  }
 }

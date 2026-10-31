@@ -3,6 +3,7 @@ package dev.izzy.factorycore.platform.client;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
+import dev.izzy.factorycore.core.storage.ExportOrder;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.client.ui.ChoiceButton;
 import dev.izzy.factorycore.platform.client.ui.PanelLayout;
@@ -40,7 +41,7 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
   private final List<ChoiceButton> kinds = new ArrayList<>(), filterModes = new ArrayList<>();
   private FilterSlots filterSlots;
   private EditBox keep;
-  private Button redstone, apply, stop, returning;
+  private Button redstone, apply, stop, returning, order;
   private Rect hint, message, status;
   private int selectedRule = -1;
 
@@ -144,20 +145,39 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
       // A resize rebuilds the screen; keep what the player typed rather than the saved goal.
       String typed = keep == null ? savedKeep() : keep.getValue();
       int labelWidth = font.width(label) + 6;
+      // Q74: the order several slots are sent in, at the row's right.
+      int orderWidth = 0;
+      for (var value : ExportOrder.values())
+        orderWidth = Math.max(orderWidth, font.width(orderName(value)) + 10);
+      var orderCell =
+          new Rect(keepRow.right() - orderWidth, keepRow.y(), orderWidth, PanelLayout.ROW);
+      order =
+          addRenderableWidget(
+              button(
+                  orderCell,
+                  orderName(menu.exportOrder()),
+                  "gui.factorycore.port.order.help",
+                  () ->
+                      minecraft.gameMode.handleInventoryButtonClick(
+                          menu.containerId,
+                          MachineSettingsMenu.ORDER_BUTTON + menu.exportOrder().next().ordinal())));
       keep =
           addRenderableWidget(
               new EditBox(
                   font,
                   leftPos + keepRow.x() + labelWidth,
                   topPos + keepRow.y() + 1,
-                  keepRow.width() - labelWidth,
+                  keepRow.width() - labelWidth - orderWidth - PanelLayout.GAP,
                   16,
                   label));
       keep.setMaxLength(12);
       keep.setHint(Component.translatable("gui.factorycore.port.keep.hint"));
       keep.setTooltip(Tooltip.create(Component.translatable("gui.factorycore.port.keep.help")));
       keep.setValue(typed);
-    } else keep = null;
+    } else {
+      keep = null;
+      order = null;
+    }
 
     var redstoneRow = rows.row();
     redstone =
@@ -206,6 +226,11 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
             footer.y(),
             cells.get(1).x() - PanelLayout.GAP - footer.x(),
             footer.height());
+  }
+
+  private static Component orderName(ExportOrder value) {
+    return Component.translatable(
+        "gui.factorycore.port.order." + value.name().toLowerCase(Locale.ROOT));
   }
 
   /** The saved Keep amount, or blank when the Exporter sends everything that matches. */
@@ -315,6 +340,10 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
     filterSlots.active = editable;
     RedstoneButton.refresh(redstone, menu.redstoneState());
     redstone.active = view.editable();
+    if (order != null) {
+      order.setMessage(orderName(menu.exportOrder()));
+      order.active = view.editable();
+    }
     boolean running = view.running() != MachinePresets.Mode.PAUSED;
     apply.active = editable;
     stop.active = editable && running;

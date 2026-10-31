@@ -36,6 +36,22 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     return redstone;
   }
 
+  /**
+   * Q74: the order an Exporter serves several "Only these" slots in. Local to this block like its
+   * redstone control: it grants nothing and changes no deployment.
+   */
+  private dev.izzy.factorycore.core.storage.ExportOrder exportOrder =
+      dev.izzy.factorycore.core.storage.ExportOrder.IN_ORDER;
+
+  public dev.izzy.factorycore.core.storage.ExportOrder exportOrder() {
+    return exportOrder;
+  }
+
+  public void exportOrder(dev.izzy.factorycore.core.storage.ExportOrder order) {
+    exportOrder = java.util.Objects.requireNonNull(order);
+    redstoneWake();
+  }
+
   @Override
   public void redstoneWake() {
     setChanged();
@@ -48,6 +64,8 @@ public final class MachineInterfaceEntity extends ConnectorEntity
       net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
     super.saveAdditional(tag, registries);
     RedstoneControlled.save(redstone, tag);
+    if (exportOrder != dev.izzy.factorycore.core.storage.ExportOrder.IN_ORDER)
+      tag.putString("ExportOrder", exportOrder.name());
   }
 
   @Override
@@ -55,6 +73,9 @@ public final class MachineInterfaceEntity extends ConnectorEntity
       net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
     super.loadAdditional(tag, registries);
     RedstoneControlled.load(redstone, tag);
+    exportOrder = dev.izzy.factorycore.core.storage.ExportOrder.IN_ORDER;
+    for (var order : dev.izzy.factorycore.core.storage.ExportOrder.values())
+      if (order.name().equals(tag.getString("ExportOrder"))) exportOrder = order;
   }
 
   UUID sessionForOpen() {

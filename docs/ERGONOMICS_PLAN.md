@@ -989,7 +989,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   stocks several items to different levels.
   Done when: GameTests stock 64 coal and 16 iron in one Buffer and survive a reload.
 
-- [ ] **Q74 — Exporter scheduling (M76).** Size S.
+- [x] **Q74 — Exporter scheduling (M76).** Size S. Done 2026-10-31 (commit subject `Q74:`),
+  [Evidence](evidence/ergonomics-q74-exporter-order-2026-10-31.md).
   **Order:** In order (default), Round robin, Random, for Exporters with several filter
   entries.
   Done when: a GameTest shows round robin alternating two items.

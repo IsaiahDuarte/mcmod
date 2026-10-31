@@ -256,6 +256,9 @@ connect to its back and sides. Use it with an empty hand to open its screen.
   everything that matches, or type a number to keep the machine stocked up to that amount.
   A dot in each item slot's corner says what storage holds: green, some; cyan, none but a
   pattern can craft it; red, none. Tag slots have no dot.
+  With several **Only these** slots, the button beside **Keep** sets the order: **In order**
+  sends the first slot storage has, **Round robin** takes turns, **Random** picks one. A slot
+  the machine refuses doesn't hold up the others.
 - **Resource:** Items, Fluids or Energy. A new one picks what the machine offers on that side.
 - **Stop** pauses it; **Apply** starts it again in your name. You need Edit and Deploy access,
   plus Deposit and Withdraw to move things.

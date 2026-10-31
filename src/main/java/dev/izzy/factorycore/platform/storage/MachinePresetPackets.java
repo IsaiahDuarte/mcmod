@@ -49,7 +49,10 @@ public final class MachinePresetPackets {
     OVERLAP,
     UNSUPPORTED,
     BUSY,
-    REDSTONE;
+    REDSTONE,
+    // Q74: the Exporter's order was changed, or the viewer lacks Edit.
+    ORDER_SET,
+    ORDER_DENIED;
 
     public String key() {
       return EnumKeys.key(this);
@@ -57,7 +60,7 @@ public final class MachinePresetPackets {
 
     /** An action that worked or is a step toward one. */
     public boolean good() {
-      return this == APPLIED || this == DRAFT || this == REDSTONE_SET;
+      return this == APPLIED || this == DRAFT || this == REDSTONE_SET || this == ORDER_SET;
     }
 
     public static Status of(OperationResult.Reason reason) {
@@ -284,7 +287,7 @@ public final class MachinePresetPackets {
   private MachinePresetPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var r = event.registrar("3");
+    var r = event.registrar("4");
     MenuPayloads.toServer(
         r,
         Command.TYPE,

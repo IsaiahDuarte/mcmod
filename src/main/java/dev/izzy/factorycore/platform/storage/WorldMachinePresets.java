@@ -3,12 +3,14 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.scheduling.FairScheduler;
+import dev.izzy.factorycore.core.storage.ExportOrder;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformFilterTags;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.server.MinecraftServer;
 
 /** Loaded-only machine presets; bounded discovery and every transfer share world scheduling. */
@@ -22,6 +24,10 @@ public final class WorldMachinePresets {
     MachinePresets.Deployment scheduledFor;
     UUID request;
     int nextTick, sourceCursor, pick, pages;
+    // Q74: the slot the next ordered pass starts at, the best stocked slot found so far in this
+    // pass (its distance after the start and key), and the slot of the move in flight (−1: none).
+    int start, bestDistance = Integer.MAX_VALUE, sent = -1;
+    ResourceKey best;
     long revision, cursorCharge;
     WorldStorageCatalog.Cursor cursor;
     WorldConnectors.Handle handle;
@@ -376,7 +382,16 @@ public final class WorldMachinePresets {
     return true;
   }
 
+  /** Q74: an "Only these" filter with several slots is served in the owner's order. */
+  private static boolean ordered(MachinePresets.Deployment d) {
+    return d.filter().mode() == ResourceFilter.Mode.INCLUDE && d.filter().terms().size() > 1;
+  }
+
   private void exportPage(Entry e, MachinePresets.Deployment d) {
+    if (e.cursor == null) {
+      e.best = null;
+      e.bestDistance = Integer.MAX_VALUE;
+    }
     long missing = room(e, d);
     if (missing <= 0) {
       retry(e, missing == 0 ? OperationResult.Reason.OK : e.reason);
@@ -415,6 +430,10 @@ public final class WorldMachinePresets {
                     retry(e, OperationResult.Reason.TECHNICAL_LIMIT);
                     return;
                   }
+                  if (ordered(d)) {
+                    orderedRows(e, d, page);
+                    return;
+                  }
                   for (int offset = 0; offset < page.rows().size(); offset++) {
                     int index = Math.floorMod(e.pick + offset, page.rows().size());
                     var row = page.rows().get(index);
@@ -434,6 +453,54 @@ public final class WorldMachinePresets {
                     retry(e, OperationResult.Reason.SHORTAGE);
                   } else wake(e);
                 }));
+  }
+
+  /**
+   * Q74: keeps the stocked row whose slot lies nearest after the pass's start. The pass ends early
+   * at the start slot itself, otherwise after the last page, and then sends the best row found.
+   */
+  private void orderedRows(Entry e, MachinePresets.Deployment d, WorldStorageCatalog.Page page) {
+    var tags = new PlatformFilterTags(server);
+    int slots = d.filter().terms().size();
+    int start = Math.floorMod(e.start, slots);
+    for (var row : page.rows()) {
+      if (row.total() == 0 || !matches(d, row.key())) continue;
+      int slot = d.filter().firstMatch(row.key(), tags);
+      if (slot < 0) continue;
+      int distance = ExportOrder.distance(slot, start, slots);
+      if (distance < e.bestDistance) {
+        e.bestDistance = distance;
+        e.best = row.key();
+      }
+    }
+    if (e.bestDistance != 0 && page.next() != null) {
+      wake(e);
+      return;
+    }
+    cursor(e, null);
+    e.pages = 0;
+    var key = e.best;
+    int slot = key == null ? -1 : Math.floorMod(start + e.bestDistance, slots);
+    e.best = null;
+    e.bestDistance = Integer.MAX_VALUE;
+    if (key == null) {
+      retry(e, OperationResult.Reason.SHORTAGE);
+      return;
+    }
+    long amount = room(e, d);
+    if (amount <= 0) {
+      retry(e, amount == 0 ? OperationResult.Reason.OK : e.reason);
+      return;
+    }
+    e.sent = slot;
+    move(e, d, key, amount, WorldStorageRoutes.Direction.FROM_STORAGE);
+  }
+
+  /** Q74: the destination will not take this resource now, unlike a rate or topology refusal. */
+  private static boolean refused(OperationResult.Reason reason) {
+    return reason == OperationResult.Reason.FULL
+        || reason == OperationResult.Reason.WRONG_RESOURCE
+        || reason == OperationResult.Reason.UNSUPPORTED;
   }
 
   private void move(
@@ -500,7 +567,19 @@ public final class WorldMachinePresets {
     if (entries.get(e.node) != e || !request.equals(e.request)) return;
     e.request = null;
     e.reason = result.reason();
-    if (move != null && move.delivered() > before) {
+    boolean delivered = move != null && move.delivered() > before;
+    if (e.sent >= 0) {
+      // Q74: a delivered move starts the next pass where the order says. One the machine refused
+      // starts it after this slot, so the slot cannot block the rest; a transient refusal (rate,
+      // busy, rebuild) retries the same slot.
+      var deployment = saved.machinePresets().get(e.node);
+      int slots = deployment == null ? 1 : Math.max(1, deployment.filter().terms().size());
+      if (delivered)
+        e.start = e.owner.exportOrder().after(e.sent, slots, ThreadLocalRandom.current());
+      else if (refused(result.reason())) e.start = (e.sent + 1) % slots;
+      e.sent = -1;
+    }
+    if (delivered) {
       e.pages = 0;
       wake(e);
       var deployment = saved.machinePresets().get(e.node);

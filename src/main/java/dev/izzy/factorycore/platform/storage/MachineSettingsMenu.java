@@ -57,6 +57,16 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
     return redstone.get();
   }
 
+  /** Q74: a menu button that sets the Exporter's order to {@code ORDER_BUTTON + ordinal}. */
+  public static final int ORDER_BUTTON = 320;
+
+  private final net.minecraft.world.inventory.DataSlot exportOrder;
+
+  public dev.izzy.factorycore.core.storage.ExportOrder exportOrder() {
+    var values = dev.izzy.factorycore.core.storage.ExportOrder.values();
+    return values[Math.floorMod(exportOrder.get(), values.length)];
+  }
+
   private boolean presetDirty, presetBusy;
   private UUID cleanupRequest;
   private MachinePresetPackets.View presetView;
@@ -98,6 +108,19 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
     if (machine != null && resetPreset()) presetStatus = MachinePresetPackets.Status.RESUMABLE;
     deviceStatus = DeviceStatus.View.pending(id, protocol.id());
     redstone = addDataSlot(RedstoneMenu.slot(machine));
+    exportOrder =
+        addDataSlot(
+            machine == null
+                ? net.minecraft.world.inventory.DataSlot.standalone()
+                : new net.minecraft.world.inventory.DataSlot() {
+                  @Override
+                  public int get() {
+                    return machine.exportOrder().ordinal();
+                  }
+
+                  @Override
+                  public void set(int ignored) {}
+                });
     upgrade = addDataSlot(dev.izzy.factorycore.platform.upgrade.UpgradeSlots.state(() -> machine));
     presetView =
         new MachinePresetPackets.View(
@@ -312,6 +335,28 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
           && player instanceof ServerPlayer upgrader
           && stillValid(upgrader)
           && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, machine);
+    int order = button - ORDER_BUTTON;
+    if (order >= 0 && order < dev.izzy.factorycore.core.storage.ExportOrder.values().length) {
+      if (machine == null
+          || !current()
+          || !(player instanceof ServerPlayer sender)
+          || sender != viewer) return false;
+      boolean allowed =
+          runtime()
+              .allows(
+                  dev.izzy.factorycore.platform.Actors.of(sender),
+                  machine.position(),
+                  dev.izzy.factorycore.core.network.NetworkPermissions.Permission.EDIT);
+      if (allowed)
+        machine.exportOrder(dev.izzy.factorycore.core.storage.ExportOrder.values()[order]);
+      presetStatus =
+          allowed
+              ? MachinePresetPackets.Status.ORDER_SET
+              : MachinePresetPackets.Status.ORDER_DENIED;
+      presetRevision++;
+      publishPreset();
+      return true;
+    }
     if (RedstoneMenu.requested(button)) {
       if (machine == null
           || !current()
