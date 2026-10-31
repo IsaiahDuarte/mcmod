@@ -138,6 +138,7 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
 
   /** Current-scope authoring snapshot; VIEW is rechecked, and no runtime commands are published. */
   public void author(ServerPlayer sender, ProgramPackets.AuthorRequest request) {
+    if (kept(sender, () -> author(sender, request))) return;
     if (!protocol.fromViewer(sender, request.menu(), request.session())
         || !authorized()
         || !authoring.admit(sender.server.getTickCount())) return;
@@ -187,12 +188,31 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
   }
 
   static boolean canView(ServerPlayer player, ProgramControllerEntity controller) {
+    return present(player, controller)
+        && WorldNetworks.get(player.server)
+            .allows(Actors.of(player), controller.origin(), NetworkPermissions.Permission.VIEW);
+  }
+
+  /** The physical half of {@link #canView}, without the network grant (Q119 rebuild grace). */
+  static boolean present(ServerPlayer player, ProgramControllerEntity controller) {
     return player.isAlive()
         && controller.current()
         && player.level() == controller.getLevel()
-        && player.distanceToSqr(Vec3.atCenterOf(controller.getBlockPos())) <= 64
-        && WorldNetworks.get(player.server)
-            .allows(Actors.of(player), controller.origin(), NetworkPermissions.Permission.VIEW);
+        && player.distanceToSqr(Vec3.atCenterOf(controller.getBlockPos())) <= 64;
+  }
+
+  private final dev.izzy.factorycore.platform.session.RebuildGrace grace =
+      new dev.izzy.factorycore.platform.session.RebuildGrace();
+
+  /** Q119: true (and the command kept) when it arrives while a rebuild holds the menu open. */
+  private boolean kept(ServerPlayer sender, Runnable replay) {
+    if (controller == null
+        || sender != viewer
+        || player().containerMenu != this
+        || authorized()
+        || !stillValid(sender)) return false;
+    grace.keep(replay);
+    return true;
   }
 
   private boolean authorized() {
@@ -201,7 +221,10 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
 
   @Override
   public boolean stillValid(Player player) {
-    return player == viewer && (controller == null || canView(player(), controller));
+    if (player != viewer) return false;
+    if (controller == null) return true;
+    if (canView(player(), controller)) return grace.valid();
+    return present(player(), controller) && grace.holds(player(), controller.origin());
   }
 
   @Override
@@ -213,10 +236,13 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
   public void broadcastChanges() {
     super.broadcastChanges();
     if (!protocol.server() || player().containerMenu != this) return;
-    if (!authorized()) {
+    if (!stillValid(player())) {
       player().closeContainer();
       return;
     }
+    // Q119: held open through a rebuild; publish nothing until authorized again.
+    if (!authorized()) return;
+    grace.drain();
     if (!draftSent) {
       draftSent = true;
       PacketDistributor.sendToPlayer(
@@ -237,6 +263,7 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
   }
 
   public void command(ServerPlayer sender, ProgramPackets.Command command) {
+    if (kept(sender, () -> command(sender, command))) return;
     if (!protocol.fromViewer(sender, command.menu(), command.session()) || !authorized()) return;
     if (command.action() == ProgramPackets.CHUNK) {
       if (command.index() == 0) {
@@ -292,6 +319,7 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
 
   /** Assembles a chunked Wasm artifact; the final chunk deploys it under the viewer's grants. */
   public void artifact(ServerPlayer sender, ProgramPackets.Artifact chunk) {
+    if (kept(sender, () -> artifact(sender, chunk))) return;
     if (!protocol.fromViewer(sender, chunk.menu(), chunk.session()) || !authorized()) return;
     if (chunk.index() == 0) {
       binary.reset();

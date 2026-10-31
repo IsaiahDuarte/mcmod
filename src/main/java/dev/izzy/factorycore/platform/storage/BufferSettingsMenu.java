@@ -45,7 +45,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
   }
 
   private final NodeRegistry.Handle lease;
-  private final NetworkTopology.Scope scope;
+  private NetworkTopology.Scope scope;
   private BufferPolicy draft = BufferPolicy.DEFAULT;
   private BufferRegistry.Mode mode = BufferRegistry.Mode.PAUSED;
   private long configuration, revision = 1;
@@ -169,7 +169,16 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
         && holder != null
         && lease.equals(holder.handle())
         && holder.canUse(player())
-        && scope.equals(WorldNetworks.get(player().server).membership(holder.position()).scope());
+        && sameScope();
+  }
+
+  /** Q119: the same network, segment and node as at opening; a rebuild refreshes the scope. */
+  private boolean sameScope() {
+    var live = WorldNetworks.get(player().server).membership(holder.position()).scope();
+    if (!dev.izzy.factorycore.platform.session.RebuildGrace.sameAuthority(scope, live))
+      return false;
+    scope = live;
+    return true;
   }
 
   private boolean authorized() {
@@ -242,7 +251,28 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
 
   @Override
   public boolean stillValid(Player player) {
-    return player == viewer && (holder == null || current());
+    if (player != viewer) return false;
+    if (holder == null) return true;
+    if (current()) return grace.valid();
+    // Q119: a rebuild elsewhere on the network; stay open while the player is still here.
+    return protocol.active()
+        && lease.equals(holder.handle())
+        && holder.present(player())
+        && grace.holds(player(), holder.position());
+  }
+
+  private final dev.izzy.factorycore.platform.session.RebuildGrace grace =
+      new dev.izzy.factorycore.platform.session.RebuildGrace();
+
+  /** Q119: true (and the command kept) when it arrives while a rebuild holds the menu open. */
+  private boolean kept(ServerPlayer sender, Runnable replay) {
+    if (holder == null
+        || sender != viewer
+        || player().containerMenu != this
+        || current()
+        || !stillValid(sender)) return false;
+    grace.keep(replay);
+    return true;
   }
 
   @Override
@@ -264,7 +294,10 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
   @Override
   public void broadcastChanges() {
     super.broadcastChanges();
+    // Q119: held open through a rebuild; publish nothing until current again.
+    if (holder != null && !current() && stillValid(player())) return;
     if (!protocol.due(this::current)) return;
+    grace.drain();
     if (holder.reference().configuration() != configuration) {
       reset();
       status = BufferSettingsPackets.Status.STALE;
@@ -293,6 +326,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
   }
 
   public void command(ServerPlayer sender, BufferSettingsPackets.Command packet) {
+    if (kept(sender, () -> command(sender, packet))) return;
     if (!protocol.fromViewer(sender, packet.menu(), packet.session())
         || !authorized()
         || busy

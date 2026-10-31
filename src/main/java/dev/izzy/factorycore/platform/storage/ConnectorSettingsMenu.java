@@ -45,7 +45,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
   private final net.minecraft.world.inventory.DataSlot upgrade;
 
   private final NodeRegistry.Handle lease;
-  private final NetworkTopology.Scope scope;
+  private NetworkTopology.Scope scope;
   private final Direction facing;
   private ConnectorSettingsPackets.View view;
   private MachineSettingsPackets.Status status = MachineSettingsPackets.Status.READY;
@@ -117,7 +117,30 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
         && lease.equals(connector.handle())
         && facing == connector.targetDirection()
         && connector.canUse(player())
-        && scope.equals(runtime().membership(connector.position()).scope());
+        && sameScope();
+  }
+
+  /** Q119: the same network, segment and node as at opening; a rebuild refreshes the scope. */
+  private boolean sameScope() {
+    var live = runtime().membership(connector.position()).scope();
+    if (!dev.izzy.factorycore.platform.session.RebuildGrace.sameAuthority(scope, live))
+      return false;
+    scope = live;
+    return true;
+  }
+
+  private final dev.izzy.factorycore.platform.session.RebuildGrace grace =
+      new dev.izzy.factorycore.platform.session.RebuildGrace();
+
+  /** Q119: true (and the command kept) when it arrives while a rebuild holds the menu open. */
+  private boolean kept(ServerPlayer sender, Runnable replay) {
+    if (connector == null
+        || sender != viewer
+        || player().containerMenu != this
+        || current()
+        || !stillValid(sender)) return false;
+    grace.keep(replay);
+    return true;
   }
 
   private boolean editable() {
@@ -218,7 +241,10 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
   public void broadcastChanges() {
     super.broadcastChanges();
     // Native initMenu broadcasts before assigning the new container to the player.
+    // Q119: held open through a rebuild; publish nothing until current again.
+    if (connector != null && !current() && stillValid(player())) return;
     if (!protocol.due(this::current)) return;
+    grace.drain();
     if (view.generation() != 0 && view.generation() != connector.generation())
       status = MachineSettingsPackets.Status.STALE;
     publish();
@@ -238,6 +264,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
 
   /** B2 insert-filter edits; each needs EDIT, like Apply, and changes only this screen's draft. */
   public void filter(ServerPlayer sender, ConnectorSettingsPackets.FilterCommand packet) {
+    if (kept(sender, () -> filter(sender, packet))) return;
     if (!protocol.fromViewer(sender, packet.menu(), packet.session())
         || !current()
         || !protocol.admitRate()) return;
@@ -313,6 +340,7 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
   }
 
   public void apply(ServerPlayer sender, ConnectorSettingsPackets.Apply packet) {
+    if (kept(sender, () -> apply(sender, packet))) return;
     if (!protocol.fromViewer(sender, packet.menu(), packet.session()) || !current()) return;
     if (packet.generation() != connector.generation()) {
       status = MachineSettingsPackets.Status.STALE;
@@ -394,7 +422,15 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
 
   @Override
   public boolean stillValid(Player player) {
-    return player == viewer && (connector == null || current());
+    if (player != viewer) return false;
+    if (connector == null) return true;
+    if (current()) return grace.valid();
+    // Q119: a rebuild elsewhere on the network; stay open while the player is still here.
+    return protocol.active()
+        && lease.equals(connector.handle())
+        && facing == connector.targetDirection()
+        && connector.present(player())
+        && grace.holds(player(), connector.position());
   }
 
   @Override

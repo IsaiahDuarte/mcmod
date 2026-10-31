@@ -1240,7 +1240,11 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Done when: a GameTest places a cable while a terminal is open and the terminal stays open and
   applies a search sent mid-rebuild; the full suite passes repeatedly.
 
-- [ ] **Q119 — Device screens survive a network rebuild (from Q118).** Size M. Lane D. Apply
+- [x] **Q119 — Device screens survive a network rebuild (from Q118).** Size M. Lane D. Done
+  2026-10-31 (commit subject `Q119:`),
+  [Evidence](evidence/ergonomics-q119-rebuild-keeps-screens-2026-10-31.md). A probe found the Buffer,
+  Machine and Program screens closing (plus the Storage Interface's same scope pin); all now stay
+  open through a rebuild via the shared `RebuildGrace`. Apply
   Q118's rule (stay open while REBUILDING and present, bounded; keep and replay commands) to the
   Drive, Buffer settings, Interface settings, Crafter, Program and Overview screens, each with a
   GameTest that places a cable while it is open.

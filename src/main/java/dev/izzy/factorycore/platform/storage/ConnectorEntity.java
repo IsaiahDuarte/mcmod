@@ -300,12 +300,18 @@ public class ConnectorEntity extends BlockEntity
     } catch (IllegalArgumentException | IllegalStateException invalid) {
       return false;
     }
-    return player.isAlive()
-        && player.serverLevel() == getLevel()
-        && player.server.getPlayerList().getPlayer(player.getUUID()) == player
-        && player.distanceToSqr(Vec3.atCenterOf(getBlockPos())) <= 64
+    return present(player)
         && WorldNetworks.get(player.server)
             .allows(Actors.of(player), position(), NetworkPermissions.Permission.VIEW);
+  }
+
+  /** The physical half of {@link #canUse}, without the network grant (Q119 rebuild grace). */
+  public boolean present(ServerPlayer player) {
+    return !isRemoved()
+        && player.isAlive()
+        && player.serverLevel() == getLevel()
+        && player.server.getPlayerList().getPlayer(player.getUUID()) == player
+        && player.distanceToSqr(Vec3.atCenterOf(getBlockPos())) <= 64;
   }
 
   public NetworkAuthority.Decision configure(

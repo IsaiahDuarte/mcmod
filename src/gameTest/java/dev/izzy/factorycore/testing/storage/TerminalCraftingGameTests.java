@@ -226,8 +226,10 @@ public final class TerminalCraftingGameTests {
         .thenWaitUntil(
             () -> {
               menu(f).broadcastChanges();
+              // FULL is also the status left by the first craft; wait for this craft's sticks too.
               h.assertTrue(
-                  menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.FULL,
+                  menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.FULL
+                      && count(f, Items.STICK) == 64,
                   "Gathering finds no planks, then crafting fills the free slot: "
                       + menu(f).gridView().status()
                       + " crafted "

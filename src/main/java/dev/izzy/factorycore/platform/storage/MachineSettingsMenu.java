@@ -41,7 +41,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   private final net.minecraft.world.inventory.DataSlot upgrade;
 
   private final NodeRegistry.Handle lease;
-  private final NetworkTopology.Scope scope;
+  private NetworkTopology.Scope scope;
   private final Direction facing;
   private MachineSettingsPackets.View view;
   private MachineSettingsPackets.Status status = MachineSettingsPackets.Status.READY;
@@ -194,7 +194,16 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
         && lease.equals(machine.handle())
         && facing == machine.targetDirection()
         && machine.canUse(player())
-        && scope.equals(runtime().membership(machine.position()).scope());
+        && sameScope();
+  }
+
+  /** Q119: the same network, segment and node as at opening; a rebuild refreshes the scope. */
+  private boolean sameScope() {
+    var live = runtime().membership(machine.position()).scope();
+    if (!dev.izzy.factorycore.platform.session.RebuildGrace.sameAuthority(scope, live))
+      return false;
+    scope = live;
+    return true;
   }
 
   private boolean editable() {
@@ -241,7 +250,10 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   public void broadcastChanges() {
     super.broadcastChanges();
     // Native initMenu broadcasts before assigning the new container to the player.
+    // Q119: held open through a rebuild; publish nothing until current again.
+    if (machine != null && !current() && stillValid(player())) return;
     if (!protocol.due(this::current)) return;
+    grace.drain();
     if (view.generation() != 0 && view.generation() != machine.generation())
       status = MachineSettingsPackets.Status.STALE;
     if (!Objects.equals(presetBase, saved().machinePresets().get(lease.id()))
@@ -271,6 +283,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   }
 
   public void apply(ServerPlayer sender, MachineSettingsPackets.Apply packet) {
+    if (kept(sender, () -> apply(sender, packet))) return;
     if (!protocol.fromViewer(sender, packet.menu(), packet.session()) || !current() || presetBusy)
       return;
     if (packet.generation() != machine.generation()) {
@@ -396,7 +409,29 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
 
   @Override
   public boolean stillValid(Player player) {
-    return player == viewer && (machine == null || current());
+    if (player != viewer) return false;
+    if (machine == null) return true;
+    if (current()) return grace.valid();
+    // Q119: a rebuild elsewhere on the network; stay open while the player is still here.
+    return protocol.active()
+        && lease.equals(machine.handle())
+        && facing == machine.targetDirection()
+        && machine.present(player())
+        && grace.holds(player(), machine.position());
+  }
+
+  private final dev.izzy.factorycore.platform.session.RebuildGrace grace =
+      new dev.izzy.factorycore.platform.session.RebuildGrace();
+
+  /** Q119: true (and the command kept) when it arrives while a rebuild holds the menu open. */
+  private boolean kept(ServerPlayer sender, Runnable replay) {
+    if (machine == null
+        || sender != viewer
+        || player().containerMenu != this
+        || current()
+        || !stillValid(sender)) return false;
+    grace.keep(replay);
+    return true;
   }
 
   @Override
@@ -558,6 +593,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   }
 
   public void presetCommand(ServerPlayer sender, MachinePresetPackets.Command packet) {
+    if (kept(sender, () -> presetCommand(sender, packet))) return;
     if (!protocol.fromViewer(sender, packet.menu(), packet.session())
         || !current()
         || presetBusy

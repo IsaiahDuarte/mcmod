@@ -76,12 +76,18 @@ public final class BufferedInterfaceEntity extends BlockEntity
     } catch (IllegalStateException | IllegalArgumentException invalid) {
       return false;
     }
-    return player.isAlive()
-        && player.serverLevel() == level
-        && player.server.getPlayerList().getPlayer(player.getUUID()) == player
-        && player.distanceToSqr(Vec3.atCenterOf(worldPosition)) <= 64
+    return present(player)
         && WorldNetworks.get(player.server)
             .allows(Actors.of(player), position(), NetworkPermissions.Permission.VIEW);
+  }
+
+  /** The physical half of {@link #canUse}, without the network grant (Q119 rebuild grace). */
+  public boolean present(ServerPlayer player) {
+    return !isRemoved()
+        && player.isAlive()
+        && player.serverLevel() == level
+        && player.server.getPlayerList().getPlayer(player.getUUID()) == player
+        && player.distanceToSqr(Vec3.atCenterOf(worldPosition)) <= 64;
   }
 
   UUID sessionForOpen() {
