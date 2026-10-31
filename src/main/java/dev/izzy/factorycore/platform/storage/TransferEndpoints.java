@@ -586,6 +586,8 @@ final class TransferEndpoints {
     OperationResult admit(ResourceKey key, long amount) {
       var entity = physical(handle);
       if (entity == null) return new OperationResult(0, OperationResult.Reason.OFFLINE);
+      if (NestedContents.refused(key, server.registryAccess()))
+        return new OperationResult(0, OperationResult.Reason.UNSUPPORTED);
       return entity instanceof EnergyBankEntity bank
           ? saved.energyBanks().receive(handle, bank.tier(), amount, true)
           : saved.registry().simulateInsert(handle, key, amount);
@@ -599,8 +601,9 @@ final class TransferEndpoints {
     @Override
     public long insert(ResourceKey key, long amount) {
       var entity = physical(handle);
-      if (entity == null || entity instanceof EnergyBankEntity && !key.equals(ResourceKey.ENERGY))
-        return 0;
+      if (entity == null
+          || entity instanceof EnergyBankEntity && !key.equals(ResourceKey.ENERGY)
+          || NestedContents.refused(key, server.registryAccess())) return 0;
       return (entity instanceof EnergyBankEntity bank
               ? saved.energyBanks().receive(handle, bank.tier(), amount, false)
               : saved.registry().insert(handle, key, amount))

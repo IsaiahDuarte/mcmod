@@ -142,6 +142,7 @@ final class TerminalContainers {
       return simulate
           ? Math.min(amount, saved.registry().stock(handle, key).available())
           : saved.registry().extract(handle, key, amount, null).amount();
+    if (NestedContents.refused(key, player.registryAccess())) return 0;
     return simulate
         ? saved.registry().simulateInsert(handle, key, amount).amount()
         : saved.registry().insert(handle, key, amount).amount();

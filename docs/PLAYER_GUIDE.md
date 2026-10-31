@@ -88,7 +88,8 @@ the drive with an empty hand to open its screen. Each bay shows its tier, the nu
 of stored types and how full it is. With a cell on your cursor, click a bay to
 install it. Click a filled bay to pick its cell up, or Shift-click it to send the
 cell to your inventory. Sneak-use with an empty hand takes out the first cell.
-Breaking the drive drops its cells with their contents. A cell taken out of a drive
+Breaking the drive drops its cells with their contents. Cells never store a filled shulker box or
+bundle, or another cell that holds a ledger; those stay where they are. A cell taken out of a drive
 shows in its tooltip how much it holds (stored / capacity, percent and types) and its
 eight largest entries as icons. In creative, middle-clicking a cell gives you a fresh, empty
 cell, not a second key to the same contents.

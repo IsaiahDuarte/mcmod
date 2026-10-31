@@ -17,12 +17,14 @@ import java.util.List;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
@@ -563,6 +565,56 @@ public final class PortGameTests {
                   net.saved().registry().stock(cell, codec.itemKey(used)).total() == 1
                       && net.saved().registry().stock(cell, codec.itemKey(fresh)).total() == 1,
                   "The fresh and lightly used pickaxes stay in storage");
+              end(owner);
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Q101 (M120): an Importer moves cobblestone and an empty shulker box into storage, but a filled
+   * shulker box and a bound cell stay in the chest: a cell never stores a hidden second store.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void cellsRefuseFilledContainersAndBoundCells(GameTestHelper h) {
+    var owner = player(h);
+    var net = Net.in(h, owner.getUUID());
+    net.controller(ROOT);
+    net.drive(DRIVE, CellTier.STARTER_ITEM);
+    var cell = net.cell(DRIVE, 0);
+    // A bound cell from a second, unwired drive.
+    var spare = Net.in(h).drive(new BlockPos(4, 2, 4), CellTier.STARTER_ITEM);
+    var bound = spare.removeCell(0);
+    var filled = new ItemStack(Items.SHULKER_BOX);
+    filled.set(
+        DataComponents.CONTAINER,
+        ItemContainerContents.fromItems(List.of(new ItemStack(Items.DIAMOND, 5))));
+    h.setBlock(TARGET, Blocks.CHEST);
+    ChestBlockEntity chest = h.getBlockEntity(TARGET);
+    chest.setItem(0, filled.copy());
+    chest.setItem(1, bound.copy());
+    chest.setItem(2, new ItemStack(Items.SHULKER_BOX));
+    chest.setItem(5, new ItemStack(Items.COBBLESTONE, 20));
+    place(h, PORT, PortBlock.Role.IMPORTER, Direction.EAST, owner);
+    var registry = net.saved().registry();
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    registry.stock(cell, net.key(Items.COBBLESTONE)).total() == 20
+                        && registry.stock(cell, net.key(Items.SHULKER_BOX)).total() == 1,
+                    "Cobblestone and the empty shulker box are imported"))
+        .thenIdle(40)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  chest.getItem(0).is(Items.SHULKER_BOX)
+                      && chest.getItem(0).has(DataComponents.CONTAINER)
+                      && ItemStack.isSameItemSameComponents(chest.getItem(1), bound),
+                  "The filled shulker box and the bound cell stay in the chest");
+              h.assertTrue(
+                  registry.stock(cell, net.key(filled)).total() == 0
+                      && registry.stock(cell, net.key(bound)).total() == 0,
+                  "Storage holds neither");
               end(owner);
             })
         .thenSucceed();
