@@ -68,3 +68,14 @@ output rule failed in 12 of 16 runs. Alternatives: keeping a re-run rule's place
 (rejected: a busy rule at the front re-fills the front and still starves the rest), and running
 all of a rule's commands before the next rule (rejected: the same starvation). Order within a
 rule is kept; the order between rules was never specified.
+
+## Amendment — Wasm command limits in a world (2026-10-31, A10)
+
+Wasm programs have no event callbacks. `factory_v1` runs only `factory_init` and scheduled
+`factory_rule` callbacks, which coalesce like friendly rules. Their commands share two bounds with
+friendly rules: 256 staged per callback (`more than 256 commands`, a trap) and 64 queued per
+controller (`RuleQueue`, cut with a "command queue full" log line). The counter example's `flood`
+rule floods only while storage holds a structure void (100 crafts) or a jigsaw (300).
+`WasmProgramGameTests.guestCommandFloodIsCutAtTheQueueAndTrapsAtTheCallbackLimit` drives both:
+the 100-command flood is cut and its sibling `count` rule keeps committing; the 300-command flood
+traps the controller with stock untouched. `WasmProgramTest` now expects the counter's four rules.

@@ -316,10 +316,10 @@ class WasmProgramTest {
   void guestPanicTrapsWithItsMessageAndLocation() throws Exception {
     var guest = new WasmProgram(counter(), System::nanoTime);
     assertEquals(
-        List.of("count", "oversize", "fail"),
+        List.of("count", "oversize", "flood", "fail"),
         guest.rules().stream().map(WasmProgram.RuleSpec::key).toList());
-    assertTrue(guest.invoke(2, host(0)).commands().isEmpty(), "No bedrock: no panic");
-    var trap = assertThrows(ProgramEvaluator.Trap.class, () -> guest.invoke(2, host(1)));
+    assertTrue(guest.invoke(3, host(0)).commands().isEmpty(), "No bedrock: no panic");
+    var trap = assertThrows(ProgramEvaluator.Trap.class, () -> guest.invoke(3, host(1)));
     assertTrue(
         trap.getMessage().matches("factory_rule: guest panicked: .*counter/src/lib\\.rs:\\d+: .*"),
         trap.getMessage());

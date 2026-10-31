@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -242,6 +243,87 @@ public final class WasmProgramGameTests {
               programs.control(owner, reloaded, ProgramControllerEntity.State.STOPPED);
               player.connection.disconnect(Component.literal("done"));
             })
+        .thenSucceed();
+  }
+
+  /**
+   * A10: a Wasm guest's commands are bounded twice. A callback that requests 100 crafts fits its
+   * 256-command limit, but the controller's queue keeps only 64, says it dropped the rest, and its
+   * other rule keeps running. A callback that requests 300 traps without queueing anything.
+   */
+  @GameTest(template = "empty", timeoutTicks = 800)
+  public static void guestCommandFloodIsCutAtTheQueueAndTrapsAtTheCallbackLimit(GameTestHelper h) {
+    var owner = new NetworkPermissions.Actor(UUID.randomUUID(), false);
+    Net.in(h, owner.id()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    var cell = CellHandleData.read(drive.cell(0));
+    h.setBlock(CONTROLLER, ProgramContent.BLOCK.get());
+    ProgramControllerEntity controller = h.getBlockEntity(CONTROLLER);
+    byte[] counter;
+    try {
+      counter = Files.readAllBytes(Path.of(System.getProperty("factorycore.test.counter")));
+    } catch (IOException failure) {
+      throw new AssertionError(failure);
+    }
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var trigger = codec.itemKey(new ItemStack(Items.STRUCTURE_VOID));
+    var trapTrigger = codec.itemKey(new ItemStack(Items.JIGSAW));
+    var programs = WorldPrograms.get(h.getLevel().getServer());
+    var networks = WorldNetworks.get(h.getLevel().getServer());
+    long[] counted = new long[1];
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    networks.membership(controller.origin()).status()
+                            == NetworkTopology.Status.VALID
+                        && saved.registry().stock(cell, trigger).loaded(),
+                    "Ready"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  saved.registry().insert(cell, trigger, 1).amount() == 1, "Trigger stored");
+              controller.energyStorage().receiveEnergy(100_000, false);
+              h.assertTrue(
+                  programs.deployWasm(owner, controller, counter).isEmpty(), "Counter deploys");
+            })
+        .thenWaitUntil(
+            () -> {
+              h.assertTrue(
+                  controller.logs().stream()
+                      .anyMatch(
+                          line ->
+                              line.contains("flood: command queue full; later commands dropped")),
+                  "The queue cuts the flood and says so: " + controller.logs());
+              counted[0] = count(controller.guestState());
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    controller.state() == ProgramControllerEntity.State.RUNNING
+                        && count(controller.guestState()) >= counted[0] + 2,
+                    "The other rule keeps running beside the flood: "
+                        + count(controller.guestState())
+                        + " "
+                        + controller.logs()))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    saved.registry().insert(cell, trapTrigger, 1).amount() == 1, "Jigsaw stored"))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    controller.state() == ProgramControllerEntity.State.TRAPPED
+                        && controller.logs().stream()
+                            .anyMatch(line -> line.contains("more than 256 commands")),
+                    "A 300-command callback traps at the callback limit: " + controller.logs()))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    saved.registry().stock(cell, trigger).total() == 1
+                        && saved.registry().stock(cell, trapTrigger).total() == 1,
+                    "Stock is untouched"))
         .thenSucceed();
   }
 }

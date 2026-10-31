@@ -3,7 +3,10 @@
 //! `count` (every second) loads an 8-byte little-endian counter, increments it, saves it and logs
 //! the new count. Two hourly rules demonstrate failure handling for tests: `oversize` saves more
 //! than the state quota when storage holds a barrier, and `fail` panics when storage holds
-//! bedrock. Both trap and leave the committed counter unchanged.
+//! bedrock. Both trap and leave the committed counter unchanged. `flood` (every second) tests the
+//! host's command limits: it requests [`FLOOD`] stick crafts while storage holds a structure void,
+//! more than one controller queues (64), and [`TRAP_FLOOD`] while storage holds a jigsaw, more
+//! than one callback may stage (256).
 #![no_std]
 
 use factorycore::prelude::*;
@@ -15,6 +18,11 @@ pub fn decode(blob: &[u8]) -> u64 {
         Err(_) => 0,
     }
 }
+
+/// Commands `flood` issues while storage holds a structure void: over the 64-command queue.
+pub const FLOOD: u32 = 100;
+/// Commands `flood` issues while storage holds a jigsaw: over the 256-command callback limit.
+pub const TRAP_FLOOD: u32 = 300;
 
 #[factorycore::program]
 mod program {
@@ -37,6 +45,20 @@ mod program {
         static TOO_BIG: [u8; factorycore::MAX_STATE + 1] = [0; factorycore::MAX_STATE + 1];
         if cx.stock(item("barrier")) > 0 {
             cx.save_state(&TOO_BIG);
+        }
+    }
+
+    #[rule(seconds = 1)]
+    fn flood(cx: &Rule) {
+        let times = if cx.stock(item("jigsaw")) > 0 {
+            TRAP_FLOOD
+        } else if cx.stock(item("structure_void")) > 0 {
+            FLOOD
+        } else {
+            0
+        };
+        for _ in 0..times {
+            cx.craft(item("stick"), 1);
         }
     }
 
@@ -84,5 +106,16 @@ mod tests {
         assert_eq!(super::decode(&7u64.to_le_bytes()), 7);
         assert_eq!(super::decode(&[1, 2, 3]), 0);
         assert_eq!(super::decode(&[]), 0);
+    }
+
+    #[test]
+    fn flood_requests_its_crafts_only_while_storage_holds_the_trigger() {
+        let mut world = World::new();
+        assert!(world.run(RULES, "flood").commands().is_empty());
+        let mut flooding = World::new().stock(item("structure_void"), 1);
+        assert_eq!(
+            flooding.run(RULES, "flood").crafts().len(),
+            super::FLOOD as usize
+        );
     }
 }

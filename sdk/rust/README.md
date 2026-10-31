@@ -161,3 +161,7 @@ and `cx.save_state(&bytes)` stages raw bytes whose layout you version yourself; 
 65,536 Wasm instructions, 512 host calls, 256 staged commands, 64 machines per label, a
 50 ms deadline, and 128 bytes per label, ID or log line (`log` truncates; other text over
 the limit traps). Amounts are 1..=1,048,576, and moves at most 4,096 per call.
+
+A controller queues at most 64 commands across its rules. A rule's new batch replaces what it
+still had queued, and commands past 64 are dropped with a "command queue full" log line; the
+rule does not trap. The `flood` rule in `examples/counter` exercises both limits.
