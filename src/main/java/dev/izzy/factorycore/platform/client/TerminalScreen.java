@@ -571,6 +571,31 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
   }
 
+  /** Q99 (M110): the player's own unfinished jobs; the list stops at its row cap. */
+  public int runningJobs() {
+    return (int) menu.jobView().jobs().stream().filter(job -> job.owner().isEmpty()).count();
+  }
+
+  /** Q99 (M110): the running-jobs count as a small badge on the Jobs tab's top-right corner. */
+  private void renderJobsBadge(GuiGraphics graphics) {
+    int count = runningJobs();
+    if (count == 0 || tabs.size() <= JOBS_TAB) return;
+    var tab = tabs.get(JOBS_TAB);
+    String text =
+        count >= dev.izzy.factorycore.platform.storage.TerminalJobPackets.JOBS
+            ? count + "+"
+            : Integer.toString(count);
+    int width = font.width(text) + 3,
+        x = tab.getX() + tab.getWidth() - width + 2,
+        y = tab.getY() - 3;
+    graphics.pose().pushPose();
+    graphics.pose().translate(0, 0, 300);
+    graphics.fill(x - 1, y - 1, x + width + 1, y + 10, 0xff1b3d1b);
+    graphics.fill(x, y, x + width, y + 9, 0xff3a8a3a);
+    graphics.drawString(font, text, x + 2, y + 1, 0xffffffff, false);
+    graphics.pose().popPose();
+  }
+
   /** Q67: what a click on saved view {@code index} does (public as a test hook). */
   public void clickView(int index, boolean right, boolean shift) {
     var saved = menu.view().saved();
@@ -642,6 +667,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         setFocused(search);
         search.setFocused(true);
       }
+      // Q99 (M111): start the recipe viewer's search empty, if the player asked for that.
+      var bridge = RecipeViewerSearch.bridge();
+      if (bridge != null && TerminalSearchSupport.clearViewer(view.sort())) bridge.text("");
     }
     if (!view.search().equals(syncedSearch)) {
       if (!searchDirty) {
@@ -757,6 +785,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   @Override
   public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     super.render(graphics, mouseX, mouseY, partial);
+    renderJobsBadge(graphics);
     renderTooltip(graphics, mouseX, mouseY);
     var lamp = lamp().offset(leftPos, topPos);
     if (mouseX >= lamp.x() - 2
@@ -795,6 +824,19 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   @Override
   public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    // Q99 (M111): right-clicking the sync tool toggles clearing the viewer's search on open.
+    if (button == 1
+        && syncButton != null
+        && syncButton.visible
+        && syncButton.isMouseOver(mouseX, mouseY)
+        && !menu.view().busy()) {
+      send(
+          TerminalPackets.SORT,
+          menu.view().sort() ^ TerminalSearchSupport.CLEAR_VIEWER,
+          1,
+          new byte[32]);
+      return true;
+    }
     // Q61: right-clicking the search box clears it.
     if (button == 1 && search.isMouseOver(mouseX, mouseY) && !hasShiftDown()) {
       remember(search.getValue());
@@ -910,11 +952,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   /** Q17: the sync tool's label: lit while the search follows the recipe viewer. */
   private Component syncLabel() {
+    // Q99: underlined while the viewer's search is emptied whenever the terminal opens.
     return Component.translatable("gui.factorycore.terminal.viewer_sync")
         .withStyle(
             TerminalSearchSupport.sync(menu.view().sort())
                 ? net.minecraft.ChatFormatting.GREEN
-                : net.minecraft.ChatFormatting.GRAY);
+                : net.minecraft.ChatFormatting.GRAY)
+        .withStyle(
+            style -> style.withUnderlined(TerminalSearchSupport.clearViewer(menu.view().sort())));
   }
 
   /**
@@ -938,7 +983,6 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
   }
 
-  /** Test hook: the search text, as typed. */
   /** Test hook (Q65): the Plan tree's zoom (½ to 1). */
   public void treeZoom(float zoom) {
     jobs.treeZoom(zoom);
@@ -963,6 +1007,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     return storage.entries();
   }
 
+  /** Test hook: the search text, as typed. */
   public String searchText() {
     return search.getValue();
   }

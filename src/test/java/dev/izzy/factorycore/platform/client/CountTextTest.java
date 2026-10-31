@@ -24,4 +24,14 @@ class CountTextTest {
     var text = CountText.compact("1" + "0".repeat(30));
     assertTrue(text.endsWith("Y"), text);
   }
+
+  /** Q99 (M125): buckets are whole and truncated, never overstated. */
+  @Test
+  void fluidAmountsInBuckets() {
+    assertEquals("0B", CountText.buckets("0"));
+    assertEquals("<1B", CountText.buckets("999"));
+    assertEquals("1B", CountText.buckets("1999"));
+    assertEquals("64B", CountText.buckets("64000"));
+    assertEquals("1.5kB", CountText.buckets("1500999"));
+  }
 }

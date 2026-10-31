@@ -190,7 +190,7 @@ public final class GatewayPolicyScreen extends AbstractContainerScreen<GatewayPo
 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-    Panels.title(graphics, font, title, 0, 0);
+    Panels.title(graphics, font, title, 0, 0, Panels.titleRoom(imageWidth));
     StatusStrip.drawOnPanel(
         graphics, font, menu.deviceStatus(), status.x(), status.y() + 5, status.width());
     String[] headers = {"branch", "inherited", "kinds"};

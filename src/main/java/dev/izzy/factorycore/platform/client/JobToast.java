@@ -47,7 +47,7 @@ public final class JobToast implements Toast {
             ? "message.factorycore.job.cancelled"
             : "message.factorycore.job.finished";
     var message = Component.translatable(key, notice.amount(), name);
-    if (minecraft.screen == null) {
+    if (minecraft.screen == null && !notice.toast()) {
       minecraft.player.displayClientMessage(message, false);
       return;
     }

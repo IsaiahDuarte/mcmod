@@ -439,4 +439,31 @@ public final class WirelessGameTests {
         .thenExecute(() -> player.connection.disconnect(Component.literal("done")))
         .thenSucceed();
   }
+
+  /**
+   * Q99 (M127): a finished job is a toast while the requester carries a charged, bound handheld
+   * anywhere in the main inventory or offhand; an uncharged or unbound one does not count.
+   */
+  @GameTest(template = "empty")
+  public static void aCarriedChargedHandheldAsksForAJobToast(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    player.getInventory().clearContent();
+    var bound = new ItemStack(WirelessContent.HANDHELD.get());
+    bound.set(
+        WirelessContent.BINDING.get(),
+        new WirelessContent.Binding(
+            h.getLevel().dimension().location().toString(), h.absolutePos(POINT).asLong()));
+    var unbound = new ItemStack(WirelessContent.HANDHELD.get());
+    unbound.getCapability(Capabilities.EnergyStorage.ITEM).receiveEnergy(1_000, false);
+    h.assertFalse(WirelessTerminalItem.carried(player), "Nothing carried");
+    player.getInventory().setItem(30, bound.copy());
+    player.getInventory().setItem(31, unbound);
+    h.assertFalse(
+        WirelessTerminalItem.carried(player), "Neither an uncharged nor an unbound one counts");
+    bound.getCapability(Capabilities.EnergyStorage.ITEM).receiveEnergy(1_000, false);
+    player.getInventory().offhand.set(0, bound);
+    h.assertTrue(
+        WirelessTerminalItem.carried(player), "A charged, bound one in the offhand counts");
+    h.succeed();
+  }
 }

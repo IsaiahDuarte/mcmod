@@ -102,7 +102,7 @@ public final class InspectScreen extends Screen {
   public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
     super.renderBackground(g, mouseX, mouseY, partial);
     Panels.panel(g, left, top, layout);
-    Panels.title(g, font, title, left, top);
+    Panels.title(g, font, title, left, top, Panels.titleRoom(layout.width()));
     var area = list.offset(left, top);
     Panels.inset(g, area);
     for (int line = 0; line < visibleRows() && scroll + line < rows.size(); line++)

@@ -127,3 +127,12 @@ when some job is quiet, so worlds without one keep their schema 5 or 6 bytes. Sc
 and older reject the field, and `Quiet: false` is malformed (the flag is written only when set).
 Alternatives: keeping the flag in memory (rejected: a restart would turn a quiet job loud) and a
 field on every job snapshot (rejected: it would touch every job constructor for one boolean).
+
+## Amendment — toast while a wireless terminal is carried (2026-10-30, ergonomics plan Q99)
+
+`JobNotice` (payload protocol 2) carries a `toast` flag. The server sets it when the requester
+carries a charged, bound Wireless Terminal in the main inventory or offhand
+(`WirelessTerminalItem.carried`), and the client then shows the toast even with no screen open.
+The handheld need not be bound to the job's own network: binding names an access point, not a
+network, and resolving that per notice would load chunks for a toast. The Jobs tab shows a badge
+counting the player's own listed jobs (up to the 16-row list cap, shown as "16+").

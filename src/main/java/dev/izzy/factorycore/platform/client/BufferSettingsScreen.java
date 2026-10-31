@@ -515,7 +515,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-    Panels.title(graphics, font, title, 0, 0);
+    Panels.title(graphics, font, title, 0, 0, Panels.titleRoom(imageWidth));
     var view = menu.view();
     if (menu.inventoryTab()) {
       graphics.drawString(

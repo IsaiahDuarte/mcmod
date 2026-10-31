@@ -426,7 +426,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
 
   /** The strip follows the title on the free part of the title row. */
   private int stripX() {
-    return 8 + font.width(title) + 10;
+    return 8 + Panels.titleWidth(font, title, Panels.titleRoomBeside(imageWidth)) + 10;
   }
 
   @Override
@@ -445,7 +445,7 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-    Panels.title(graphics, font, title, 0, 0);
+    Panels.title(graphics, font, title, 0, 0, Panels.titleRoomBeside(imageWidth));
     var view = menu.view();
     StatusStrip.drawOnPanel(
         graphics, font, menu.deviceStatus(), stripX(), 6, imageWidth - 8 - stripX());

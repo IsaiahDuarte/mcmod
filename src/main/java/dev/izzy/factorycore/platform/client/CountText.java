@@ -13,6 +13,17 @@ final class CountText {
 
   private CountText() {}
 
+  /**
+   * Q99 (M125): a fluid amount in mB as whole buckets with a "B" suffix ({@code 1.5kB} for 1,500
+   * buckets), truncated like {@link #compact}; under one bucket it reads {@code <1B}.
+   */
+  static String buckets(String millibuckets) {
+    BigInteger amount = new BigInteger(millibuckets);
+    if (amount.signum() <= 0) return amount + "B";
+    if (amount.compareTo(THOUSAND) < 0) return "<1B";
+    return compact(amount.divide(THOUSAND).toString()) + "B";
+  }
+
   static String compact(String decimal) {
     BigInteger number = new BigInteger(decimal);
     if (number.signum() < 0) return number.toString();

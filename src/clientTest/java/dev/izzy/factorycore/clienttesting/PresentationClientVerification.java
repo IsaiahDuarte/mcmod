@@ -37,6 +37,7 @@ import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.platform.storage.TerminalSearchSupport;
 import dev.izzy.factorycore.platform.wireless.AccessPointEntity;
 import dev.izzy.factorycore.platform.wireless.LinkModule;
 import java.io.IOException;
@@ -775,6 +776,28 @@ public final class PresentationClientVerification {
             return true;
           });
     }
+    // Q99 (M125): the units button shows fluid amounts in whole buckets, then back in mB.
+    step(client -> press(client, "mB"));
+    step(
+        client -> {
+          var view = terminal(client).getMenu().view();
+          if (!TerminalSearchSupport.buckets(view.sort()) || view.busy() || waited() < 8)
+            return false;
+          check(hasButton(client, "B"), "The units button reads B");
+          captures.grab(client, "terminal-fluids-buckets-scale-1.png");
+          setScale(client, 4);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 8) return false;
+          captures.grab(client, "terminal-fluids-buckets-scale-4.png");
+          return press(client, "B");
+        });
+    step(
+        client ->
+            !TerminalSearchSupport.buckets(terminal(client).getMenu().view().sort())
+                && waited() > 4);
     step(
         client -> {
           client.setScreen(null);
@@ -1058,6 +1081,10 @@ public final class PresentationClientVerification {
           var jobs = jobView(client).jobs();
           if (jobs.isEmpty() || waited() < 4) return false;
           check(jobs.getFirst().output().amount().equals("37"), "Started job is for 37: " + jobs);
+          // Q99 (M110): the Jobs tab's badge counts the player's own unfinished jobs.
+          int running = terminal(client).runningJobs();
+          check(running > 0, "The Jobs tab shows a running-jobs badge");
+          evidence.append("jobs tab badge: ").append(running).append('\n');
           captures.grab(client, "jobs-typed-37-started-scale-2.png");
           // A4: open the running job's steps with a real click on its row.
           var screen = terminal(client);
@@ -1129,6 +1156,22 @@ public final class PresentationClientVerification {
                 && screen.getMenu().view().activity()
                     != dev.izzy.factorycore.platform.crafting.CrafterPackets.Activity.LOADING
                 && waited() > 4);
+    step(
+        client -> {
+          var screen = (dev.izzy.factorycore.platform.client.CrafterScreen) client.screen;
+          int room =
+              dev.izzy.factorycore.platform.client.ui.Panels.titleRoomBeside(screen.getXSize());
+          check(
+              client.font.width(screen.getTitle()) > room,
+              "The long Crafter label is wider than its title room");
+          evidence
+              .append("crafter long title: ")
+              .append(screen.getTitle().getString())
+              .append(" scrolls in ")
+              .append(room)
+              .append(" px\n");
+          return true;
+        });
     scales("crafter", dev.izzy.factorycore.platform.client.CrafterScreen.class, false);
     // Q3: the terminal's Patterns tab; a pattern is taken onto the cursor and put back by clicks.
     use(base.east(2), Direction.SOUTH, false);

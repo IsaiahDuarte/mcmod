@@ -136,3 +136,14 @@ five empty views, and no schema bump is needed. The terminal view packet carries
 Alternatives: a client-side file (rejected: views would not follow the player between machines
 or servers, unlike the rest of these preferences). A sixth row under the search row (rejected: it
 costs a grid row at GUI scale 4, so the ★ tool swaps the search row instead).
+
+## Amendment — clear-on-open and buckets (2026-10-30, ergonomics plan Q99)
+
+Two more flags ride in the saved sort value: `CLEAR_VIEWER` (128) empties the recipe viewer's
+search once when the terminal's first view arrives, and `BUCKETS` (256) shows Fluids-tab amounts
+in whole buckets. Both are display choices like Tall, so a saved view (Q67) does not carry them.
+The largest valid sort is now 511 (`SORT_LIMIT` 512), and saved values from before keep their
+meaning. The bucket display truncates (`1999` mB is `1B`, under 1,000 is `<1B`), so it never
+overstates; tooltips keep exact mB. Alternatives: a separate preference key per option
+(rejected: each would need its own command and packet field for one bit) and rounding buckets
+(rejected: it would overstate stock, unlike every other count).

@@ -156,7 +156,9 @@ Deposit and withdrawing needs Withdraw.
   hover it for details. If the network is offline, the reason shows over the grid.
 - **Fluids and energy:** the **Fluids** tab fills buckets and tanks (**Fill**), or
   empties them when you Shift-click a filled container. The **Energy** tab charges or
-  drains FE items, up to 1,000 FE per click.
+  drains FE items, up to 1,000 FE per click. On the Fluids tab, **mB** switches amounts to
+  whole buckets (**B**: `5B`, or `<1B` for less than one); tooltips keep the exact mB, and
+  the choice is remembered.
 - **Returning a stuck move:** if a move is interrupted, **Return** sends the items in
   transit back to where they came from.
 
@@ -182,7 +184,8 @@ inventory. Moving patterns needs Edit where that Crafter is; otherwise its row s
 only*. The search box keeps only Crafters with a pattern that makes what you typed, and greys
 the other slots. Scroll over the list to see more Crafters.
 
-**Jobs.** Press the **Jobs** tab to list what your Crafters can make in the strip at the top.
+**Jobs.** A green number on the **Jobs** tab counts your jobs that are still running. Press the
+**Jobs** tab to list what your Crafters can make in the strip at the top.
 Scroll over the strip (Shift: eight at a time) or click its scrollbar to see more. Your
 inventory is hidden while Jobs is open.
 - **Preview:** select an item and press **×64**, or type an amount (1–4,096) in the box and
@@ -208,8 +211,8 @@ inventory is hidden while Jobs is open.
   running, ⏸ waiting, ⇩ storing, ✕ cancelling); hover for the reason, scroll for more.
   Click a job to see each step: done, crafting, waiting (and why) or next. **Cancel**
   stops a job and returns unused ingredients; **Back** closes the steps.
-- **Finished jobs:** while a screen is open you get a toast in the corner; otherwise the
-  usual chat line. Turn **✉** grey before **Start** for jobs that should finish quietly; it is
+- **Finished jobs:** while a screen is open, or while you carry a charged, bound Wireless
+  Terminal, you get a toast in the corner; otherwise the usual chat line. Turn **✉** grey before **Start** for jobs that should finish quietly; it is
   green again the next time you open the terminal.
 - **From JEI:** with JEI installed and a terminal open, Ctrl-click a crafting recipe's
   **+** button to open its output in Jobs (if your Crafters can make it) instead of
@@ -566,7 +569,9 @@ rounded up to 250 mB steps). A recipe with more than three outputs keeps the fir
 message says so; one with more than nine inputs cannot be transferred. Dragging an item or fluid onto the program editor types its
 expression. With JEI installed the terminal's search row also has a **J** button: while it is
 green, what you type in the terminal search is copied into JEI's search and the other way
-round. The setting is remembered with your sort. Everything also works without JEI.
+round. Right-click **J** to have JEI's search emptied each time the terminal opens (the J is
+underlined while that is on). Both settings are remembered with your sort. Everything also works
+without JEI.
 
 ## Label Tool
 

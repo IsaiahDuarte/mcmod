@@ -353,6 +353,9 @@ final class PresentationScenes {
           .patterns()
           .insertItem(slot, pattern, false);
     }
+    // Q99 (M112): a label longer than the title's room, so the Crafter screen title scrolls.
+    ((CrafterEntity) level.getBlockEntity(EXTRA_UNITS[0]))
+        .label("Overflow patterns for the east wall greenhouse");
   }
 
   /** The 91-resource plan's top item: 9 crafted parts, each from 9 different missing leaves. */

@@ -146,3 +146,11 @@ than 4. The terminal's fifth tab (Patterns) needed it: five labels with full pad
 to the end of the search row, eight pixels square, with the search box eight pixels narrower,
 so tabs and lamp no longer compete for the strip. The presentation tour's terminal captures
 show both at scales 1 and 4.
+
+## Amendment — scrolling titles (2026-10-30, ergonomics plan Q99)
+
+`Panels.title` takes the width the title may use. A longer title scrolls back and forth inside it
+(vanilla's scrolling-button easing, at least three seconds a sweep) behind a scissor rather than
+running past the panel. Screens with a status strip after the title give it half the panel
+(`titleRoomBeside`) and place the strip after `titleWidth`, so a long label no longer pushes the
+strip off. 1.21.1's scissor ignores the pose, so the title adds the pose's translation itself.

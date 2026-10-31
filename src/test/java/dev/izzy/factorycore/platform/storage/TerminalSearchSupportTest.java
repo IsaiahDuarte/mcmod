@@ -74,7 +74,8 @@ class TerminalSearchSupportTest {
     // auto-focus (Q18). Mode 64 | 1 and bit 128 are unknown.
     assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(65, names::get));
     assertThrows(
-        IllegalArgumentException.class, () -> TerminalSearchSupport.order(128, names::get));
+        IllegalArgumentException.class,
+        () -> TerminalSearchSupport.order(TerminalSearchSupport.SORT_LIMIT, names::get));
     assertThrows(IllegalArgumentException.class, () -> TerminalSearchSupport.order(-1, names::get));
   }
 
@@ -142,12 +143,24 @@ class TerminalSearchSupportTest {
     assertEquals(
         TerminalSearchSupport.MOD,
         TerminalSearchSupport.mode(TerminalSearchSupport.SYNC | TerminalSearchSupport.MOD));
-    // Q18: 32 is search auto-focus; Q62: 64 is the Recent mode, 128 is unknown.
+    // Q18: 32 is search auto-focus; Q62: 64 is the Recent mode; Q99: 128 and 256 are flags.
     assertTrue(TerminalSearchSupport.focus(TerminalSearchSupport.FOCUS));
     assertEquals(
         TerminalSearchSupport.NAME, TerminalSearchSupport.mode(TerminalSearchSupport.FOCUS));
     assertTrue(TerminalSearchSupport.validSort(TerminalSearchSupport.RECENT));
-    assertFalse(TerminalSearchSupport.validSort(128), "unknown bits are refused");
+    assertFalse(
+        TerminalSearchSupport.validSort(TerminalSearchSupport.SORT_LIMIT),
+        "unknown bits are refused");
+    // Q99: clear-viewer and buckets are flags on any mode.
+    assertTrue(
+        TerminalSearchSupport.validSort(
+            TerminalSearchSupport.RECENT
+                | TerminalSearchSupport.CLEAR_VIEWER
+                | TerminalSearchSupport.BUCKETS));
+    assertTrue(
+        TerminalSearchSupport.buckets(
+            TerminalSearchSupport.nextMode(TerminalSearchSupport.BUCKETS)),
+        "Cycling the mode keeps the flags");
     assertFalse(TerminalSearchSupport.validSort(-1));
   }
 

@@ -427,7 +427,7 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
 
   @Override
   protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
-    Panels.title(g, font, title, 0, 0);
+    Panels.title(g, font, title, 0, 0, Panels.titleRoom(imageWidth));
     var view = menu.view();
     caption(g, "watch", watchRow);
     int nameX = slot.right() + 6;

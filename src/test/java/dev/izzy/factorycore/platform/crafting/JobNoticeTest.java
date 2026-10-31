@@ -24,15 +24,20 @@ class JobNoticeTest {
 
   @Test
   void roundTripsAndRefusesBadBounds() {
-    var notice = new JobNotice("minecraft:oak_planks", 37, false);
-    var buffer =
-        new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
-    try {
-      JobNotice.CODEC.encode(buffer, notice);
-      assertEquals(notice, JobNotice.CODEC.decode(buffer));
-      assertFalse(buffer.isReadable());
-    } finally {
-      buffer.release();
+    // Q99: the toast flag (a carried wireless terminal) crosses the wire too.
+    for (var notice :
+        java.util.List.of(
+            new JobNotice("minecraft:oak_planks", 37, false),
+            new JobNotice("minecraft:stick", 4, true, true))) {
+      var buffer =
+          new RegistryFriendlyByteBuf(Unpooled.buffer(), registries, ConnectionType.NEOFORGE);
+      try {
+        JobNotice.CODEC.encode(buffer, notice);
+        assertEquals(notice, JobNotice.CODEC.decode(buffer));
+        assertFalse(buffer.isReadable());
+      } finally {
+        buffer.release();
+      }
     }
     assertThrows(IllegalArgumentException.class, () -> new JobNotice("minecraft:stick", 0, true));
     assertThrows(IllegalArgumentException.class, () -> new JobNotice("x".repeat(257), 1, false));

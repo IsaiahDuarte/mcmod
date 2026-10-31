@@ -1099,7 +1099,10 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
 
 ## Wave N — nits (each lane picks up its own; no gate)
 
-- [ ] **Q99 — Terminal nits (M110–M112, M125, M127).** Size S. Lane T, after Q55.
+- [x] **Q99 — Terminal nits (M110–M112, M125, M127).** Size S. Lane T, after Q55. Done
+  2026-10-30 (commit subject `Q99:`). Jobs badge, clear-on-open (right-click J), scrolling
+  titles, mB/B toggle, toast while a wireless terminal is carried (ADR 0052, 0031, 0064
+  amendments). [Evidence](evidence/ergonomics-q99-terminal-nits-2026-10-30.md).
   A running-jobs count on the Jobs tab; a "clear recipe-viewer search on open" option (with
   Q17); scrolling long titles; a buckets/mB toggle saved with the terminal preferences; a
   finished-job toast while a charged, bound Wireless Terminal is carried.

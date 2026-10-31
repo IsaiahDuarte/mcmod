@@ -114,7 +114,7 @@ public final class LabelToolScreen extends Screen {
   public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
     super.renderBackground(g, mouseX, mouseY, partial);
     Panels.panel(g, left, top, layout);
-    Panels.title(g, font, title, left, top);
+    Panels.title(g, font, title, left, top, Panels.titleRoom(layout.width()));
     g.drawString(
         font,
         Component.translatable("gui.factorycore.label_tool.label"),

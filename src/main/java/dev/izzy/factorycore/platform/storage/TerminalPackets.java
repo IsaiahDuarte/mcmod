@@ -186,7 +186,7 @@ public final class TerminalPackets {
                       : action == CRAFTABLES
                           ? 3
                           : action == SORT
-                              ? 128
+                              ? TerminalSearchSupport.SORT_LIMIT
                               : action == DEPOSIT_REGION ? 2 : action == VIEWS ? SAVED_VIEWS : 36)
           || (action == SORT && !TerminalSearchSupport.validSort(selection))
           || amount < 1

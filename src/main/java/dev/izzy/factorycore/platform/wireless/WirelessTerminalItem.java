@@ -77,17 +77,31 @@ public final class WirelessTerminalItem extends Item {
     int found = -1;
     for (int slot = 0; slot <= Inventory.SLOT_OFFHAND; slot++) {
       if (slot >= inventory.items.size() && slot < Inventory.SLOT_OFFHAND) continue;
-      var stack = inventory.getItem(slot);
-      if (!stack.is(WirelessContent.HANDHELD.get())
-          || stack.get(WirelessContent.BINDING.get()) == null) continue;
-      var energy = stack.getCapability(Capabilities.EnergyStorage.ITEM);
-      if (energy == null || energy.getEnergyStored() < WirelessAccess.ACTION_COST) continue;
+      if (!ready(inventory.getItem(slot))) continue;
       if (found >= 0) return "several_handhelds";
       found = slot;
     }
     if (found < 0) return "no_handheld";
     int slot = found;
     return open(player, held -> held.getInventory().getItem(slot));
+  }
+
+  /** A bound handheld with charge for at least one action. */
+  private static boolean ready(ItemStack stack) {
+    if (!stack.is(WirelessContent.HANDHELD.get())
+        || stack.get(WirelessContent.BINDING.get()) == null) return false;
+    var energy = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+    return energy != null && energy.getEnergyStored() >= WirelessAccess.ACTION_COST;
+  }
+
+  /**
+   * Q99 (M127): whether the player carries a charged, bound handheld in the main inventory or
+   * offhand, so a finished job is shown as a toast rather than a chat line.
+   */
+  public static boolean carried(ServerPlayer player) {
+    var inventory = player.getInventory();
+    for (var stack : inventory.items) if (ready(stack)) return true;
+    return ready(inventory.offhand.getFirst());
   }
 
   private static String open(

@@ -21,17 +21,22 @@ public final class TerminalSearchSupport {
    * changes only the client's grid height (H2), never the order. So does {@link #SYNC} (Q17): the
    * client mirrors the terminal search with a recipe viewer's search box. {@link #FOCUS} (Q18) puts
    * the cursor in the search box when the terminal opens. Q62 adds the modes {@link #ID} and {@link
-   * #RECENT} (most recently changed first); RECENT needs a mode bit above the flags.
+   * #RECENT} (most recently changed first); RECENT needs a mode bit above the flags. Q99 adds
+   * {@link #CLEAR_VIEWER} (empty the recipe viewer's search when the terminal opens) and {@link
+   * #BUCKETS} (fluid amounts in buckets rather than mB).
    */
   public static final int NAME = 0, QUANTITY = 1, MOD = 2, REVERSED = 4, TALL = 8, SYNC = 16;
 
-  public static final int FOCUS = 32, ID = 3, RECENT = 64;
+  public static final int FOCUS = 32, ID = 3, RECENT = 64, CLEAR_VIEWER = 128, BUCKETS = 256;
+
+  /** One more than the largest valid sort value. */
+  public static final int SORT_LIMIT = 512;
 
   /** The sort button's cycle. */
   public static final java.util.List<Integer> MODES =
       java.util.List.of(NAME, QUANTITY, MOD, ID, RECENT);
 
-  private static final int FLAGS = REVERSED | TALL | SYNC | FOCUS;
+  private static final int FLAGS = REVERSED | TALL | SYNC | FOCUS | CLEAR_VIEWER | BUCKETS;
 
   public static boolean validSort(int sort) {
     return sort >= 0 && MODES.contains(sort & ~FLAGS);
@@ -49,6 +54,14 @@ public final class TerminalSearchSupport {
 
   public static boolean sync(int sort) {
     return (sort & SYNC) != 0;
+  }
+
+  public static boolean clearViewer(int sort) {
+    return (sort & CLEAR_VIEWER) != 0;
+  }
+
+  public static boolean buckets(int sort) {
+    return (sort & BUCKETS) != 0;
   }
 
   public static boolean focus(int sort) {

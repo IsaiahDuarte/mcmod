@@ -444,7 +444,12 @@ public final class WorldCraftingJobs {
     // A5: clients that know the payload show a toast over open screens, chat otherwise.
     if (player.connection.hasChannel(JobNotice.TYPE)) {
       net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(
-          player, new JobNotice(job.request().registryId(), job.amount(), cancelled));
+          player,
+          new JobNotice(
+              job.request().registryId(),
+              job.amount(),
+              cancelled,
+              dev.izzy.factorycore.platform.wireless.WirelessTerminalItem.carried(player)));
       return;
     }
     Component name;

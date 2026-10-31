@@ -11,6 +11,7 @@ import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
+import dev.izzy.factorycore.platform.storage.TerminalSearchSupport;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -205,12 +206,21 @@ final class TerminalStorageView {
             button(
                 new Rect(info.x() + oneWidth + 4, info.y(), twoWidth, info.height()),
                 twoLabel,
-                () ->
+                () -> {
+                  // Q99 (M125): on the Fluids tab the second button switches mB and buckets.
+                  if (screen.kind() == 1)
+                    screen.send(
+                        TerminalPackets.SORT,
+                        menu().view().sort() ^ TerminalSearchSupport.BUCKETS,
+                        1,
+                        new byte[32]);
+                  else
                     screen.send(
                         TerminalPackets.DISCHARGE,
                         screen.client().player.getInventory().selected,
                         1,
-                        new byte[32])));
+                        new byte[32]);
+                }));
 
     for (int index = 0; index < COLUMNS * rows; index++) {
       int cell = index;
@@ -276,7 +286,16 @@ final class TerminalStorageView {
     var view = menu().view();
     int kind = screen.kind();
     one.visible = !jobsMode && kind != 0;
-    stack.visible = !jobsMode && kind == 2;
+    stack.visible = !jobsMode && kind != 0;
+    if (kind == 1) {
+      boolean buckets = TerminalSearchSupport.buckets(view.sort());
+      stack.setMessage(
+          Component.translatable("gui.factorycore.terminal.units." + (buckets ? "buckets" : "mb")));
+      stack.setTooltip(
+          net.minecraft.client.gui.components.Tooltip.create(
+              Component.translatable("gui.factorycore.terminal.units.help")));
+      stack.active = !view.busy();
+    } else stack.setTooltip(null);
     returning.visible = !jobsMode && view.staging();
     // The crafting grid takes items or fluids, so the Energy tab has no Crafting button.
     craftingToggle.visible = !jobsMode && kind != 2;
@@ -304,7 +323,14 @@ final class TerminalStorageView {
         continue;
       }
       if (value.craftable()) Panels.marker(graphics, new Rect(x + 1, y + 1, 3, 3));
-      screen.drawCount(graphics, shown, x, y, CountText.compact(value.available()));
+      screen.drawCount(
+          graphics,
+          shown,
+          x,
+          y,
+          kind == 1 && TerminalSearchSupport.buckets(menu().view().sort())
+              ? CountText.buckets(value.available())
+              : CountText.compact(value.available()));
     }
     var view = menu().view();
     Panels.scrollbar(

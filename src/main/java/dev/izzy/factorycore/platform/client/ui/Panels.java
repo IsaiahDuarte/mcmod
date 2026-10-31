@@ -226,10 +226,56 @@ public final class Panels {
     graphics.fill(area.x() + 1, area.y() + 1, area.right() - 1, area.bottom() - 1, 0xffc6c6c6);
   }
 
-  /** The title at the vanilla position; {@code left, top} is the panel's corner. */
-  public static void title(GuiGraphics graphics, Font font, Component title, int left, int top) {
-    graphics.drawString(
-        font, title, left + PanelLayout.EDGE + 1, top + PanelLayout.TITLE_Y, TEXT, false);
+  /** The width a title may take on a panel {@code panelWidth} wide with nothing beside it. */
+  public static int titleRoom(int panelWidth) {
+    return panelWidth - 2 * PanelLayout.EDGE - 2;
+  }
+
+  /**
+   * The room for a title followed by a status strip: half the panel, so the strip keeps the rest.
+   */
+  public static int titleRoomBeside(int panelWidth) {
+    return titleRoom(panelWidth) / 2;
+  }
+
+  /** How wide {@code title} is drawn in {@code room}: where something after it may start. */
+  public static int titleWidth(Font font, Component title, int room) {
+    return Math.min(font.width(title), room);
+  }
+
+  /**
+   * The title at the vanilla position; {@code left, top} is the panel's corner and {@code room} the
+   * width it may take. A longer title scrolls back and forth inside that room (Q99, M112) rather
+   * than running past it.
+   */
+  public static void title(
+      GuiGraphics graphics, Font font, Component title, int left, int top, int room) {
+    int x = left + PanelLayout.EDGE + 1, y = top + PanelLayout.TITLE_Y;
+    int shift = titleShift(font.width(title), room, net.minecraft.Util.getMillis());
+    if (shift < 0) {
+      graphics.drawString(font, title, x, y, TEXT, false);
+      return;
+    }
+    // 1.21.1's scissor ignores the pose, and container labels are drawn translated to the panel.
+    var pose = graphics.pose().last().pose();
+    int dx = Math.round(pose.m30()), dy = Math.round(pose.m31());
+    graphics.enableScissor(x + dx, y - 1 + dy, x + room + dx, y + font.lineHeight + dy);
+    graphics.drawString(font, title, x - shift, y, TEXT, false);
+    graphics.disableScissor();
+  }
+
+  /**
+   * How far a title {@code textWidth} wide is shifted left at {@code millis} to fit {@code room}:
+   * -1 when it fits; otherwise it eases between 0 and the overflow, pausing at each end, taking at
+   * least three seconds per sweep (vanilla's scrolling-button timing).
+   */
+  public static int titleShift(int textWidth, int room, long millis) {
+    int overflow = textWidth - room;
+    if (overflow <= 0) return -1;
+    double period = Math.max(overflow * 0.5, 3.0);
+    double phase =
+        Math.sin(Math.PI / 2 * Math.cos(2 * Math.PI * (millis / 1000.0) / period)) / 2 + 0.5;
+    return (int) Math.round(overflow * (1 - phase));
   }
 
   /**

@@ -173,7 +173,7 @@ public final class CablePortScreen extends AbstractContainerScreen<MachineSettin
 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-    Panels.title(graphics, font, title, 0, 0);
+    Panels.title(graphics, font, title, 0, 0, Panels.titleRoom(imageWidth));
     var name = label.getValue().strip();
     Panels.wrapped(
         graphics,

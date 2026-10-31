@@ -439,8 +439,12 @@ public final class NetworkAccessScreen extends AbstractContainerScreen<NetworkAc
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     var view = menu.view();
     int all = (1 << PERMISSIONS) - 1;
-    Panels.title(graphics, font, title, 0, 0);
-    int strip = PanelLayout.EDGE + 1 + font.width(title) + 8;
+    Panels.title(graphics, font, title, 0, 0, Panels.titleRoomBeside(imageWidth));
+    int strip =
+        PanelLayout.EDGE
+            + 1
+            + Panels.titleWidth(font, title, Panels.titleRoomBeside(imageWidth))
+            + 8;
     StatusStrip.drawOnPanel(
         graphics, font, menu.deviceStatus(), strip, PanelLayout.TITLE_Y, imageWidth - 8 - strip);
     if (view.manage())

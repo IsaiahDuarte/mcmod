@@ -112,7 +112,7 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-    Panels.title(graphics, font, title, 0, 0);
+    Panels.title(graphics, font, title, 0, 0, Panels.titleRoom(imageWidth));
     var state = menu.status();
     boolean online = state == NetworkTopology.Status.VALID;
     Panels.wrapped(

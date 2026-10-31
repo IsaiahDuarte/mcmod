@@ -507,7 +507,7 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
 
   @Override
   protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
-    Panels.title(g, font, title, 0, 0);
+    Panels.title(g, font, title, 0, 0, Panels.titleRoom(imageWidth));
     var view = menu.view();
     InterfaceModeRow.caption(g, font, modeRow);
     var state =

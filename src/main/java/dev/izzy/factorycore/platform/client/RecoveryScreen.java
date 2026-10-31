@@ -226,7 +226,7 @@ public final class RecoveryScreen extends AbstractContainerScreen<RecoveryMenu> 
   @Override
   protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
     var view = menu.view();
-    Panels.title(graphics, font, title, 0, 0);
+    Panels.title(graphics, font, title, 0, 0, Panels.titleRoom(imageWidth));
     graphics.drawString(
         font,
         font.plainSubstrByWidth(

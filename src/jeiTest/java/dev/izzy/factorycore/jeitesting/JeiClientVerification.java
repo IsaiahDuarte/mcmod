@@ -226,6 +226,10 @@ final class JeiClientVerification {
         next();
       }
       case 6 -> {
+        if (clearStep < 3) {
+          clearOnOpen(client);
+          return;
+        }
         if (client.screen != null) return;
         client.gameMode.useItemOn(
             client.player,
@@ -413,6 +417,46 @@ final class JeiClientVerification {
             menu, recipe, layout.getRecipeSlotsView(), client.player, false, true);
     check(result == null, "JEI transfer reports no error: " + result);
     return handler.getClass().getName();
+  }
+
+  private int clearStep;
+
+  /**
+   * Q99 (M111): reopens the terminal with clear-on-open set and JEI's search at "dirt"; the
+   * terminal empties it. Then turns the option off again and closes the terminal.
+   */
+  private void clearOnOpen(Minecraft client) {
+    switch (clearStep) {
+      case 0 -> {
+        if (client.screen != null) return;
+        client.gameMode.useItemOn(
+            client.player,
+            InteractionHand.MAIN_HAND,
+            new BlockHitResult(Vec3.atCenterOf(TERMINAL), Direction.UP, TERMINAL, false));
+        clearStep = 1;
+        entered = ticks;
+      }
+      case 1 -> {
+        if (!(client.screen instanceof TerminalScreen screen)
+            || !screen.getMenu().viewReceived()
+            || screen.getMenu().view().status() != TerminalPackets.Status.READY
+            || ticks - entered < 10) return;
+        var text = RuntimeCapture.runtime.getIngredientFilter().getFilterText();
+        check(text.isEmpty(), "Opening the terminal emptied JEI's search: " + text);
+        evidence.append(
+            "jei: clear-on-open emptied JEI's search (dirt) when the terminal opened\n");
+        check(press(screen, "J", 1), "Right-click on J again");
+        clearStep = 2;
+      }
+      case 2 -> {
+        if (!(client.screen instanceof TerminalScreen screen)
+            || TerminalSearchSupport.clearViewer(screen.getMenu().view().sort())) return;
+        client.player.closeContainer();
+        clearStep = 3;
+        entered = ticks;
+      }
+      default -> {}
+    }
   }
 
   private boolean panelTour(Minecraft client, TerminalScreen screen) {
@@ -613,11 +657,25 @@ final class JeiClientVerification {
         evidence.append(
             "jei: search sync copies the terminal search into JEI (cobble) and JEI's back into"
                 + " the terminal, which searches it on the server (stone).\n");
-        check(press(screen, "J"), "Sync turns off");
+        // Q99 (M111): right-click J asks for JEI's search to be emptied when the terminal opens.
+        check(press(screen, "J", 1), "Right-click on J");
       }
       case 17 -> {
+        if (!TerminalSearchSupport.clearViewer(screen.getMenu().view().sort())) return false;
+        check(
+            screen.children().stream()
+                .anyMatch(
+                    child ->
+                        child instanceof Button button
+                            && button.getMessage().getString().equals("J")
+                            && button.getMessage().getStyle().isUnderlined()),
+            "J is underlined while clear-on-open is set");
+        check(press(screen, "J"), "Sync turns off");
+      }
+      case 18 -> {
         if (TerminalSearchSupport.sync(screen.getMenu().view().sort())) return false;
-        RuntimeCapture.runtime.getIngredientFilter().setFilterText("");
+        // Left in JEI on purpose: reopening the terminal must empty it.
+        RuntimeCapture.runtime.getIngredientFilter().setFilterText("dirt");
         screen.typeSearch("");
         return true;
       }
@@ -629,13 +687,19 @@ final class JeiClientVerification {
   }
 
   private static boolean press(TerminalScreen screen, String name) {
+    return press(screen, name, 0);
+  }
+
+  private static boolean press(TerminalScreen screen, String name, int mouse) {
     for (var child : screen.children())
       if (child instanceof Button button
           && button.visible
           && button.active
           && button.getMessage().getString().equals(name))
         return screen.mouseClicked(
-            button.getX() + button.getWidth() / 2.0, button.getY() + button.getHeight() / 2.0, 0);
+            button.getX() + button.getWidth() / 2.0,
+            button.getY() + button.getHeight() / 2.0,
+            mouse);
     return false;
   }
 
