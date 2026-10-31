@@ -38,7 +38,7 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
   private final List<Button> bayButtons = new ArrayList<>(), filterButtons = new ArrayList<>();
   private FilterSlots filterSlots;
   private net.minecraft.client.gui.components.EditBox filterId;
-  private Button back, mode, addById, addId, addTag, clear;
+  private Button back, mode, fromContents, addById, addId, addTag, clear;
 
   /** B4: the drive's priority; Enter saves it. */
   private net.minecraft.client.gui.components.EditBox priority;
@@ -88,10 +88,22 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
                 .bounds(leftPos + left + ROW_WIDTH - backWidth, topPos + top, backWidth, 18)
                 .build());
     int modeY = top + PanelLayout.ROW + PanelLayout.GAP;
+    var contentsLabel = Component.translatable("gui.factorycore.drive.filter.contents");
+    int contentsWidth = font.width(contentsLabel) + 10;
+    fromContents =
+        addRenderableWidget(
+            Button.builder(contentsLabel, b -> filter(DrivePackets.FilterCommand.CONTENTS, 0, ""))
+                .bounds(
+                    leftPos + left + ROW_WIDTH - contentsWidth, topPos + modeY, contentsWidth, 18)
+                .tooltip(
+                    net.minecraft.client.gui.components.Tooltip.create(
+                        Component.translatable("gui.factorycore.drive.filter.contents.help")))
+                .build());
     mode =
         addRenderableWidget(
             Button.builder(Component.empty(), b -> filter(DrivePackets.FilterCommand.MODE, 0, ""))
-                .bounds(leftPos + left, topPos + modeY, ROW_WIDTH, 18)
+                .bounds(
+                    leftPos + left, topPos + modeY, ROW_WIDTH - contentsWidth - PanelLayout.GAP, 18)
                 .tooltip(
                     net.minecraft.client.gui.components.Tooltip.create(
                         Component.translatable("gui.factorycore.drive.filter.mode.help")))
@@ -276,7 +288,8 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
       bayButtons.get(bay).visible = !panel;
       filterButtons.get(bay).visible = !panel && !menu.view().bays().get(bay).item().isEmpty();
     }
-    back.visible = mode.visible = filterSlots.visible = clear.visible = panel;
+    back.visible =
+        mode.visible = fromContents.visible = filterSlots.visible = clear.visible = panel;
     priority.visible = !panel;
     if (priorityShown != menu.view().priority() && !priority.isFocused()) {
       priorityShown = menu.view().priority();
@@ -297,6 +310,7 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
             : dev.izzy.factorycore.core.resource.ResourceKind.ITEM,
         selectedRule);
     clear.active = !row.partition().isEmpty();
+    fromContents.active = row.types() > 0;
   }
 
   private void actOnBay(int bay) {

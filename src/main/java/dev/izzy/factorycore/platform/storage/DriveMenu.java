@@ -1,6 +1,8 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.resource.ResourceKind;
+import dev.izzy.factorycore.core.resource.ResourceLedger;
+import dev.izzy.factorycore.core.storage.DeviceRegistry;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
@@ -198,6 +200,16 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
           terms.remove(packet.selection());
         }
         case DrivePackets.FilterCommand.CLEAR -> terms.clear();
+        case DrivePackets.FilterCommand.CONTENTS -> {
+          terms = contents(sender, cell);
+          if (terms.isEmpty()) {
+            status = DrivePackets.Status.REFUSED;
+            detail = "The cell is empty";
+            session.pollNow();
+            return;
+          }
+          mode = dev.izzy.factorycore.core.resource.ResourceFilter.Mode.INCLUDE;
+        }
         case DrivePackets.FilterCommand.REGISTRY ->
             terms.add(
                 new dev.izzy.factorycore.core.resource.ResourceFilter.Registry(packet.text()));
@@ -234,6 +246,52 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
       detail = String.valueOf(refused.getMessage());
     }
     session.pollNow();
+  }
+
+  /**
+   * Q23: one slot per stored type, in catalog order, up to the filter's slot limit. A plain
+   * resource becomes its ID; one with components (an enchanted book, a named item) stays exact.
+   */
+  private static ArrayList<dev.izzy.factorycore.core.resource.ResourceFilter.Term> contents(
+      ServerPlayer sender, ItemStack cell) {
+    var terms = new ArrayList<dev.izzy.factorycore.core.resource.ResourceFilter.Term>();
+    var handle = CellHandleData.read(cell);
+    var registry = DeviceSavedData.get(sender.server).registry();
+    var codec =
+        new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(sender.registryAccess());
+    if (handle == null || registry.validate(handle) != DeviceRegistry.Failure.OK) return terms;
+    dev.izzy.factorycore.core.resource.ResourceKey after = null;
+    // A few pages at most: emptied rows are skipped, and the slots hold 16.
+    for (int pages = 0; pages < 4; pages++) {
+      var page = registry.catalog(handle, after, ResourceLedger.CATALOG_PAGE_SIZE);
+      for (var entry : page.entries()) {
+        if (terms.size() == dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS)
+          return terms;
+        if (entry.stock().total() <= 0) continue;
+        var key = entry.key();
+        dev.izzy.factorycore.core.resource.ResourceFilter.Term term =
+            plain(codec, key)
+                ? new dev.izzy.factorycore.core.resource.ResourceFilter.Registry(key.registryId())
+                : new dev.izzy.factorycore.core.resource.ResourceFilter.Exact(key);
+        if (!terms.contains(term)) terms.add(term);
+      }
+      if (page.next() == null) break;
+      after = page.next();
+    }
+    return terms;
+  }
+
+  /** True if {@code key} is its resource with default components. */
+  private static boolean plain(
+      dev.izzy.factorycore.platform.resource.PlatformResourceCodec codec,
+      dev.izzy.factorycore.core.resource.ResourceKey key) {
+    if (!codec.resolvable(key)) return false;
+    return key.kind() == ResourceKind.FLUID
+        ? key.equals(
+            codec.fluidKey(
+                new net.neoforged.neoforge.fluids.FluidStack(
+                    codec.fluidStack(key, 1).getFluid(), 1)))
+        : key.equals(codec.itemKey(new ItemStack(codec.itemStack(key, 1).getItem())));
   }
 
   private static void give(Player player, ItemStack stack) {

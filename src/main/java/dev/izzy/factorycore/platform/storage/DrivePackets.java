@@ -71,7 +71,8 @@ public final class DrivePackets {
 
   /**
    * B3 partition edits for {@code bay}, applied to the cell at once (the Drive has no Apply step)
-   * under EDIT. MODE cycles all → only listed → all but listed; the others mirror the ghost slots.
+   * under EDIT. CONTENTS replaces the slots with the cell's first stored types (Q23). MODE cycles
+   * all → only listed → all but listed; the others mirror the ghost slots.
    */
   public record FilterCommand(
       int menu, UUID session, int bay, int action, int selection, String text)
@@ -85,7 +86,8 @@ public final class DrivePackets {
         MODE = 6,
         // B4: sets the whole drive's priority to the integer in {@code text}; {@code bay} is
         // unused.
-        PRIORITY = 7;
+        PRIORITY = 7,
+        CONTENTS = 8;
 
     public static final Type<FilterCommand> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "drive_filter"));
@@ -94,7 +96,7 @@ public final class DrivePackets {
       if (bay < 0
           || bay >= BAYS
           || action < CARRIED
-          || action > PRIORITY
+          || action > CONTENTS
           || selection < 0
           || selection >= dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS
           || text.length() > 256)
@@ -206,7 +208,7 @@ public final class DrivePackets {
   private DrivePackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("3");
+    var registrar = event.registrar("4");
     MenuPayloads.toClient(registrar, View.TYPE, View.CODEC, DriveMenu.class, DriveMenu::accept);
     MenuPayloads.toServer(
         registrar, FilterCommand.TYPE, FilterCommand.CODEC, DriveMenu.class, DriveMenu::filter);

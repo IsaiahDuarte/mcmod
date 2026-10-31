@@ -18,6 +18,7 @@ import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -359,6 +360,71 @@ public final class DrivePartitionGameTests {
                   "Logs skip the partitioned cell and go to the chest");
             })
         .thenExecute(() -> end(f))
+        .thenSucceed();
+  }
+
+  /** Q23: "From contents" replaces the slots with the cell's stored types. */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void fromContentsPartitionsTheCellToWhatItHolds(GameTestHelper h) {
+    var f = setup(h);
+    Runnable fromContents =
+        () -> {
+          if (!(f.player.containerMenu instanceof DriveMenu)) h.useBlock(DRIVE, f.player);
+          var menu = (DriveMenu) f.player.containerMenu;
+          menu.broadcastChanges();
+          menu.filter(
+              f.player,
+              new DrivePackets.FilterCommand(
+                  menu.containerId,
+                  menu.view().session(),
+                  0,
+                  DrivePackets.FilterCommand.CONTENTS,
+                  0,
+                  ""));
+        };
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.terminal.canUse(f.player)
+                        && DeviceSavedData.get(h.getLevel().getServer())
+                            .registry()
+                            .stock(CellHandleData.read(f.drive.cell(0)), key(h, Items.DIRT))
+                            .loaded(),
+                    "Network and cell ready"))
+        .thenExecute(
+            () -> {
+              fromContents.run();
+              h.assertTrue(
+                  f.drive.cell(0).get(StorageContent.PARTITION.get()) == null,
+                  "An empty cell has no contents to partition by");
+              var registry = DeviceSavedData.get(h.getLevel().getServer()).registry();
+              var cell = CellHandleData.read(f.drive.cell(0));
+              registry.insert(cell, key(h, Items.DIRT), 4);
+              registry.insert(cell, key(h, Items.STONE), 9);
+              registry.insert(cell, key(h, Items.OAK_LOG), 2);
+            })
+        .thenIdle(GAP)
+        .thenExecute(fromContents)
+        .thenIdle(GAP)
+        // Twice: the button replaces the slots rather than adding to them.
+        .thenExecute(fromContents)
+        .thenExecute(
+            () -> {
+              var partition = f.drive.cell(0).get(StorageContent.PARTITION.get());
+              h.assertTrue(
+                  partition != null
+                      && partition.filter().mode() == ResourceFilter.Mode.INCLUDE
+                      && Set.copyOf(partition.filter().terms())
+                          .equals(
+                              Set.of(
+                                  new ResourceFilter.Registry("minecraft:dirt"),
+                                  new ResourceFilter.Registry("minecraft:stone"),
+                                  new ResourceFilter.Registry("minecraft:oak_log")))
+                      && partition.filter().terms().size() == 3,
+                  "The partition lists exactly the three stored types: " + partition);
+              end(f);
+            })
         .thenSucceed();
   }
 

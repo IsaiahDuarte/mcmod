@@ -1094,6 +1094,8 @@
   "gui.factorycore.drive.status.stale": "The cell changed; try again",
   "gui.factorycore.drive.filter.help": "Partition: choose what the network may put in this cell.",
   "gui.factorycore.drive.filter.back": "Back",
+  "gui.factorycore.drive.filter.contents": "From contents",
+  "gui.factorycore.drive.filter.contents.help": "Replace the slots with what the cell holds now (its first 16 types), so the network only puts those in.",
   "gui.factorycore.drive.filter.title": "Bay %s: %s",
   "gui.factorycore.drive.filter.mode.help": "What the network may put into this cell. Everything already in it stays visible, and it keeps the partition when moved or upgraded.",
   "message.factorycore.gateway_status": "Downstream: %s; upstream: %s; %s",

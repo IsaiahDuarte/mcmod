@@ -95,7 +95,9 @@ before they reach general storage.
 **Partitioning a cell:** the **⚙** button on a bay opens that cell's partition. It
 works like the other filter slots: click a slot holding an item, drag from JEI, or
 **Add by ID…**, then choose whether the network may put in only the listed items or
-everything but them. The cell keeps its partition when it is moved or upgraded, and
+everything but them. **From contents** replaces the slots with what the cell holds now
+(its first 16 types; an item with special components, such as an enchanted book, is
+matched exactly), so a filled cell keeps collecting the same things. The cell keeps its partition when it is moved or upgraded, and
 everything already in it stays visible and can be taken out. Changing a partition
 needs Edit access.
 

@@ -714,7 +714,8 @@ New gates:
   Done when: GameTests cover a turned Exporter now feeding the new face, a refused turn while a
   move is in transit, and a pick-up keeping settings; `RecipeProgressionTest` updated.
 
-- [ ] **Q23 — Partition from contents (M23).** Size S.
+- [x] **Q23 — Partition from contents (M23).** Size S. Done 2026-10-31 (commit subject `Q23:`),
+  [Evidence](evidence/ergonomics-q23-partition-from-contents-2026-10-31.md).
   A **From contents** button in the Drive's partition editor fills the slots from the cell's
   first 16 stored types.
   Files: `DriveMenu.java`, `DriveScreen.java`.
