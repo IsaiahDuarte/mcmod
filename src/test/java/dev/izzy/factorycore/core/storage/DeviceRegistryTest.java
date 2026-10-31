@@ -505,4 +505,22 @@ class DeviceRegistryTest {
     var stale = new DeviceRegistry.Handle(WORLD, handle.backing(), handle.generation() + 1);
     assertEquals(0, registry.changed(stale, KEY), "A stale handle reads nothing");
   }
+
+  @Test
+  void onlyADetachedEmptyLedgerCanBeRetired() {
+    var registry = registry(() -> {});
+    var placed = placed(registry);
+    assertFalse(registry.retireEmpty(placed), "A placed ledger stays");
+    registry.insert(placed, KEY, 5);
+    var portable = registry.detach(placed, FIRST).handle();
+    assertFalse(registry.retireEmpty(portable), "A ledger with stock stays");
+    assertEquals(5, registry.ownership(portable.backing()).total());
+    var other = registry.create(ResourceKind.ITEM, 1000, false, 4096, 8192).handle();
+    var stale = new DeviceRegistry.Handle(WORLD, other.backing(), other.generation() + 1);
+    assertFalse(registry.retireEmpty(stale), "A stale handle retires nothing");
+    assertTrue(registry.retireEmpty(other), "An empty portable ledger is forgotten");
+    assertNull(registry.ownership(other.backing()));
+    assertEquals(DeviceRegistry.Failure.UNKNOWN, registry.validate(other));
+    assertFalse(registry.retireEmpty(other), "Only once");
+  }
 }

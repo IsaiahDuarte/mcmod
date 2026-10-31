@@ -331,6 +331,26 @@ public final class DeviceRegistry {
     return result(Failure.OK, device);
   }
 
+  /**
+   * Q101 (M121): forgets the ledger of a cell being taken apart. Only a current, unconflicted,
+   * detached (portable) ledger with no stock and no reservations goes; anything else is refused and
+   * unchanged. Every copy of the handle becomes unknown, which ADR 0005 already treats as a stale
+   * reference, never as stock.
+   */
+  public boolean retireEmpty(Handle handle) {
+    checkThread();
+    if (validate(handle) != Failure.OK) return false;
+    var device = devices.get(handle.backing());
+    if (device.location != null
+        || device.conflict
+        || device.ledger.total() != 0
+        || device.ledger.entryCount() != 0) return false;
+    devices.remove(handle.backing());
+    bytes -= device.ledger.serializedBytes();
+    changed.run();
+    return true;
+  }
+
   public LeaseResult detach(Handle handle, Location location) {
     checkThread();
     Failure invalid = placed(handle, location);

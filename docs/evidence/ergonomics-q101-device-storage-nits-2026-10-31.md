@@ -20,3 +20,23 @@ cell:
 **Test.** `PortGameTests.cellsRefuseFilledContainersAndBoundCells`: cobblestone and an empty
 shulker box are imported; the filled box and the bound cell stay in the chest; storage holds
 neither. 484 GameTests passed.
+
+## M121: taking empty cells apart
+
+`CellItem.use` (Sneak-use in the air; `doesSneakBypassUse` keeps Sneak-use on a drive installing)
+gives back the starter recipe's ingredients, read from the recipe manager so they follow the
+recipe, plus Expansion/Advanced/Infinite Modules for each level above starter. A bound cell must
+hold nothing: no stock and no reservations. Its ledger is then forgotten with the new core
+`DeviceRegistry.retireEmpty`, before anything is given back. It retires only a current,
+unconflicted, detached, empty ledger; anything else is refused unchanged. A cell with stock is
+refused with a message.
+
+**Tests.**
+- `DeviceRegistryTest.onlyADetachedEmptyLedgerCanBeRetired`: placed, stocked and stale ledgers stay;
+  an empty portable one goes once, and its handle is then unknown.
+- `DriveFeedbackGameTests.sneakUseTakesAnEmptyCellApart`:
+  - a fresh cell gives 4 iron, 4 redstone and a chest;
+  - a cell holding 3 cobblestone is refused and untouched;
+  - an empty bound cell's ledger is forgotten;
+  - an Expanded cell also returns its Expansion Module.
+- 485 GameTests passed.

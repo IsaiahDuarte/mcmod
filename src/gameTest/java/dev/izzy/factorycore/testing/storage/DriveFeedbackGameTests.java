@@ -179,4 +179,81 @@ public final class DriveFeedbackGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Q101 (M121): Sneak-use takes an empty cell apart into its recipe's ingredients (plus modules
+   * for upgraded tiers) and forgets an empty bound ledger; a cell holding anything is refused.
+   */
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void sneakUseTakesAnEmptyCellApart(GameTestHelper h) {
+    var player = dev.izzy.factorycore.testing.TestPlayers.mock(h);
+    dev.izzy.factorycore.testing.TestPlayers.connect(player);
+    player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+    Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM, CellTier.STARTER_ITEM);
+    var registry = DeviceSavedData.get(h.getLevel().getServer()).registry();
+    var inventory = player.getInventory();
+    var hand = net.minecraft.world.InteractionHand.MAIN_HAND;
+    java.util.function.Function<net.minecraft.world.item.Item, Integer> count =
+        item -> {
+          int total = 0;
+          for (var stack : inventory.items) if (stack.is(item)) total += stack.getCount();
+          return total;
+        };
+    java.util.function.Consumer<ItemStack> sneakUse =
+        cell -> {
+          player.setItemInHand(hand, cell);
+          player.setShiftKeyDown(true);
+          cell.getItem().use(h.getLevel(), player, hand);
+          player.setShiftKeyDown(false);
+        };
+    // The materials land in the slot the cell freed, so "gone" means no cell left in the inventory.
+    java.util.function.BooleanSupplier noCell =
+        () ->
+            inventory.items.stream()
+                .noneMatch(
+                    stack ->
+                        stack.getItem() instanceof dev.izzy.factorycore.platform.storage.CellItem);
+    var network = Net.in(h);
+    h.startSequence()
+        .thenWaitUntil(() -> network.assertValid(DRIVE))
+        .thenExecute(
+            () -> {
+              // A fresh cell: its recipe's 4 iron, 4 redstone and a chest.
+              sneakUse.accept(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+              h.assertTrue(
+                  noCell.getAsBoolean()
+                      && count.apply(Items.IRON_INGOT) == 4
+                      && count.apply(Items.REDSTONE) == 4
+                      && count.apply(Items.CHEST) == 1,
+                  "A fresh cell gives back its materials");
+              inventory.clearContent();
+              // A bound cell holding something is refused and untouched.
+              put(h, drive, Items.COBBLESTONE, 3);
+              var full = drive.removeCell(0);
+              sneakUse.accept(full);
+              h.assertTrue(
+                  player.getMainHandItem() == full
+                      && registry.ownership(CellHandleData.read(full).backing()).total() == 3
+                      && count.apply(Items.IRON_INGOT) == 0,
+                  "A cell with stock is not taken apart");
+              // A bound empty cell: its ledger is forgotten.
+              var empty = drive.removeCell(1);
+              var backing = CellHandleData.read(empty).backing();
+              sneakUse.accept(empty);
+              h.assertTrue(
+                  noCell.getAsBoolean()
+                      && registry.ownership(backing) == null
+                      && count.apply(Items.IRON_INGOT) == 4,
+                  "An empty bound cell is taken apart and its ledger forgotten");
+              inventory.clearContent();
+              // An upgraded cell also gives back its module.
+              sneakUse.accept(new ItemStack(StorageContent.cell(CellTier.EXPANDED_ITEM)));
+              h.assertTrue(
+                  count.apply(StorageContent.EXPANSION.get()) == 1 && count.apply(Items.CHEST) == 1,
+                  "An Expanded cell gives back the Expansion Module too");
+              player.connection.disconnect(Component.literal("Disassembly fixture complete"));
+            })
+        .thenSucceed();
+  }
 }

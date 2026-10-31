@@ -235,3 +235,10 @@ clone itself cannot be seen. So a creative copy of a loose cell kept in a chest 
 reference, as before, and is refused on install. Considered: stripping handles from stacks decoded
 from creative slot packets. Rejected, because moving a real cell in the creative inventory goes
 through the same packet and would orphan its contents.
+
+## Retiring empty cell ledgers — 2026-10-31 (Q101, M121)
+
+Taking an empty cell apart removes its ledger with `DeviceRegistry.retireEmpty`, the only path
+that deletes a backing. It accepts only a current, unconflicted, detached ledger with no stock
+and no reservations, so no stock or claim can be lost. Copies of the handle become unknown, which
+this ADR already treats as stale references. A placed cell must be taken out of its drive first.

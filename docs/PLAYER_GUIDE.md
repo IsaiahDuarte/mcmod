@@ -92,7 +92,9 @@ Breaking the drive drops its cells with their contents. Cells never store a fill
 bundle, or another cell that holds a ledger; those stay where they are. A cell taken out of a drive
 shows in its tooltip how much it holds (stored / capacity, percent and types) and its
 eight largest entries as icons. In creative, middle-clicking a cell gives you a fresh, empty
-cell, not a second key to the same contents.
+cell, not a second key to the same contents. Sneak-use an empty cell in the air to take it
+apart: you get its recipe's materials back, plus the module of each upgrade it had. A cell
+that holds anything is refused; Sneak-use on a drive still installs it.
 
 The **Statistics** screen (General) counts **Items stored** and **Items taken**: items the
 network's screens moved out of and into your inventory. A move that could not finish and
