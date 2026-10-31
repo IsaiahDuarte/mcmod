@@ -80,6 +80,8 @@ sentence  = "move" [ amount ] stuff "from" place "to" place
           | "say" STRING ;
 amount    = INT | "all" ;
 stuff     = ( "everything" | "fluids" | phrase ) { "except" phrase } ;
+phrase    = [ "fluid" ] ( WORD { WORD } | STRING ) | "tag" ( WORD | STRING ) ;
+            (* "tag ingots" is c:ingots when that tag exists, else minecraft:ingots *)
 place     = "storage" | LABEL [ face ] [ "slot" INT | "slots" INT "to" INT ] ;
 face      = "top" | "bottom" | "side" | "up" | "down" | "north" | "south" | "east" | "west" ;
 check     = part { ( "and" | "or" ) part } ;

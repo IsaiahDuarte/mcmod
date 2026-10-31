@@ -1121,13 +1121,16 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   errors are tested for a misspelled item, a missing `from` and bad indentation; and the v1/v2
   pins are unchanged.
 
-- [ ] **Q121 — Printer and round trip.** Size M.
-  `ProgramPrinter` (IR to sentences), and the templates rewritten as sentences.
+- [x] **Q121 — Printer and round trip.** Size M. Done 2026-10-31 (commit subject `Q121:`),
+  [Evidence](evidence/ergonomics-q121-printer-2026-10-31.md).
+  `ProgramPrinter` (IR to sentences).
   Done when: every v1/v2 fixture and template prints to sentences that compile to equal IR.
 
-- [ ] **Q122 — Game vocabulary and pinned deploys.** Size M.
-  A registry- and language-backed `Vocabulary`; deploy saves the source and the canonical form;
-  load compiles the canonical form; packets carry both (protocol bump).
+- [ ] **Q122 — Game vocabulary, pinned deploys and sentence templates.** Size M.
+  A registry- and language-backed `Vocabulary`; a generated vanilla-plus-mod vocabulary file
+  (for tests and the MCP helper); deploy saves the source and the canonical form; load compiles
+  the canonical form; packets carry both (protocol bump); the templates rewritten as sentences
+  (the v1 template pins compiled with the generated vocabulary, IR unchanged).
   Done when: a GameTest deploys sentences, reloads them, and a missing item traps.
 
 - [ ] **Q123 — Editor support.** Size M.

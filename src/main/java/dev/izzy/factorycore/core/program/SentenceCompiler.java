@@ -127,7 +127,8 @@ final class SentenceCompiler {
           "east",
           "west",
           "slot",
-          "slots");
+          "slots",
+          "tag");
 
   /** Words that end an item name. */
   private static final Set<String> PHRASE_END = Set.of("from", "to", "in", "except", "and", "or");
@@ -1014,6 +1015,21 @@ final class SentenceCompiler {
       next();
       return new Term(ResourceKind.FLUID, new ResourceFilter.Glob("*"));
     }
+    if (at("tag")) {
+      next();
+      var token = peek();
+      if (token.kind != Kind.WORD && token.kind != Kind.STRING)
+        throw expected(
+            token, "a tag name after 'tag'", "move tag c:ingots from furnace to storage");
+      next();
+      var id = token.text.toLowerCase(Locale.ROOT);
+      if (id.indexOf('*') >= 0) throw fail(token, "A tag name cannot use '*'");
+      // Without a mod name: the common (c:) tag when there is one, else Minecraft's.
+      if (id.indexOf(':') < 0)
+        id = (vocabulary.itemTags().contains("c:" + id) ? "c:" : "minecraft:") + id;
+      registry(id, token);
+      return new Term(ResourceKind.ITEM, new ResourceFilter.Tag(id));
+    }
     var kind = ResourceKind.ITEM;
     if (at("fluid")) {
       next();
@@ -1029,6 +1045,19 @@ final class SentenceCompiler {
         words.add(next().word());
     if (words.isEmpty() || words.getFirst().isEmpty()) throw expected(start, what, example);
     return new Term(kind, resolve(String.join(" ", words), kind, start));
+  }
+
+  /**
+   * What {@code phrase} names under {@code vocabulary}, or null when it names nothing or more than
+   * one thing. The printer uses it to check that a friendly name reads back exactly.
+   */
+  static ResourceFilter.Term name(String phrase, ResourceKind kind, Vocabulary vocabulary) {
+    try {
+      return new SentenceCompiler(vocabulary)
+          .resolve(phrase, kind, new Token(Kind.WORD, phrase, 0, 1, 1));
+    } catch (SentenceError unknown) {
+      return null;
+    }
   }
 
   /** ADR 0068 name resolution: ID path, then English name, then common tag, then a guess list. */
