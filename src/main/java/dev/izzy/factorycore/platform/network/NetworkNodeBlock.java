@@ -143,7 +143,8 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
         server.openMenu(
             new SimpleMenuProvider(
                 (id, inventory, who) -> new GatewayPolicyMenu(id, inventory, node),
-                Component.translatable("gui.factorycore.gateway_policy")),
+                dev.izzy.factorycore.platform.DeviceNames.title(
+                    node, Component.translatable("gui.factorycore.gateway_policy"))),
             buffer -> buffer.writeBlockPos(position));
         return InteractionResult.CONSUME;
       }

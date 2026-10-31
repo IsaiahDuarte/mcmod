@@ -9,8 +9,11 @@ import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.DeviceNames;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.PortContent;
+import dev.izzy.factorycore.platform.storage.TerminalContent;
+import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.WrenchContent;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -18,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -29,7 +33,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
@@ -299,6 +305,89 @@ public final class WrenchGameTests {
                       && placed.settings().rate() == 32,
                   "Placed again it is the same device with its rate: "
                       + (placed.handle() == null ? "no lease" : placed.settings().rate()));
+              end(owner);
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Q77: an anvil-named Exporter shows its name as its screen title, keeps it through a save and
+   * load, and keeps it when the wrench picks it up and it is placed again. A Terminal (a loot-table
+   * device) drops its item with the name.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void deviceNamesShowAsTitlesSurviveReloadAndPickUp(GameTestHelper h) {
+    var owner = player(h);
+    var net = Net.in(h, owner.getUUID());
+    net.controller(ROOT);
+    net.drive(DRIVE, CellTier.STARTER_ITEM);
+    h.setBlock(EAST_CHEST, Blocks.CHEST);
+    var name = Component.literal("Ore line");
+    var block = PortContent.EXPORTER.get();
+    var named = new ItemStack(block);
+    named.set(DataComponents.CUSTOM_NAME, name);
+    var registries = h.getLevel().registryAccess();
+    Runnable placeNamed =
+        () -> {
+          h.setBlock(
+              PORT,
+              block.defaultBlockState().setValue(BlockStateProperties.FACING, Direction.EAST));
+          var position = h.absolutePos(PORT);
+          var state = h.getLevel().getBlockState(position);
+          // As BlockItem.place does: the item's components first, then the placement hook.
+          h.getLevel().getBlockEntity(position).applyComponentsFromItemStack(named);
+          state.getBlock().setPlacedBy(h.getLevel(), position, state, owner, named.copy());
+        };
+    placeNamed.run();
+    h.startSequence()
+        .thenWaitUntil(() -> net.assertValid(PORT))
+        .thenExecute(
+            () -> {
+              MachineInterfaceEntity exporter = h.getBlockEntity(PORT);
+              h.assertTrue(
+                  exporter.getDisplayName().equals(name),
+                  "The screen title is the name: " + exporter.getDisplayName().getString());
+              var saved = exporter.saveWithFullMetadata(registries);
+              var loaded =
+                  BlockEntity.loadStatic(
+                      exporter.getBlockPos(), exporter.getBlockState(), saved, registries);
+              h.assertTrue(
+                  loaded != null && name.equals(DeviceNames.name(loaded)),
+                  "The name survives a save and load");
+              h.assertTrue(
+                  wrench(h, owner, PORT, true) == InteractionResult.CONSUME
+                      && h.getBlockState(PORT).isAir(),
+                  "Sneak-use picks the Exporter up");
+              var picked = ItemStack.EMPTY;
+              for (var stack : owner.getInventory().items)
+                if (stack.is(block.asItem())) picked = stack;
+              h.assertTrue(
+                  name.equals(picked.get(DataComponents.CUSTOM_NAME)),
+                  "The picked-up item keeps the name: " + picked.getHoverName().getString());
+              named.applyComponents(picked.getComponents());
+              placeNamed.run();
+            })
+        .thenWaitUntil(() -> net.assertValid(PORT))
+        .thenExecute(
+            () -> {
+              MachineInterfaceEntity again = h.getBlockEntity(PORT);
+              h.assertTrue(again.getDisplayName().equals(name), "Placed again it keeps the name");
+              var terminalAt = new BlockPos(1, 2, 3);
+              h.setBlock(terminalAt, TerminalContent.BLOCK.get());
+              var terminalStack = new ItemStack(TerminalContent.BLOCK.get());
+              terminalStack.set(DataComponents.CUSTOM_NAME, Component.literal("Front desk"));
+              TerminalEntity terminal = h.getBlockEntity(terminalAt);
+              terminal.applyComponentsFromItemStack(terminalStack);
+              h.assertTrue(
+                  terminal.getDisplayName().getString().equals("Front desk"),
+                  "A named Terminal's title is its name");
+              var drops =
+                  Block.getDrops(
+                      terminal.getBlockState(), h.getLevel(), terminal.getBlockPos(), terminal);
+              h.assertTrue(
+                  drops.size() == 1
+                      && drops.getFirst().getHoverName().getString().equals("Front desk"),
+                  "Its drop keeps the name: " + drops);
               end(owner);
             })
         .thenSucceed();

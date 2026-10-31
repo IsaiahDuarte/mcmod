@@ -11,7 +11,8 @@
               "function": "minecraft:copy_components",
               "include": [
                 "factorycore:program_draft",
-                "factorycore:program_energy"
+                "factorycore:program_energy",
+                "minecraft:custom_name"
               ],
               "source": "block_entity"
             }

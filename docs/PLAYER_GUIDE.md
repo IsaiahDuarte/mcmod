@@ -628,6 +628,8 @@ applies.
   any of its sides. Using the tool on it again relabels it. Use the port with an empty hand to
   change its label or what programs move through it (items, fluids or energy). Breaking an idle
   port gives the cable back.
+- **Name any device:** rename its item in an anvil before placing it. Its screen shows the name
+  as its title, and it keeps the name when broken or picked up with the wrench.
 - **Name a Crafter:** use the tool on a Crafter (Edit needed). Its screen and the terminal's
   Patterns tab show the name, and the Crafter keeps it when broken. A Crafter renamed in an
   anvil gets that name too.

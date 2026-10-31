@@ -65,7 +65,8 @@ public final class TerminalEntity extends BlockEntity
 
   @Override
   public Component getDisplayName() {
-    return Component.translatable("block.factorycore.storage_terminal");
+    return dev.izzy.factorycore.platform.DeviceNames.title(
+        this, Component.translatable("block.factorycore.storage_terminal"));
   }
 
   @Override

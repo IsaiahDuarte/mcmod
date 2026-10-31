@@ -177,7 +177,8 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
     player.openMenu(
         new SimpleMenuProvider(
             (id, inventory, who) -> new ProgramMenu(id, inventory, controller, session),
-            Component.translatable("block.factorycore.program_controller")),
+            dev.izzy.factorycore.platform.DeviceNames.title(
+                controller, Component.translatable("block.factorycore.program_controller"))),
         buffer -> {
           buffer.writeBlockPos(controller.getBlockPos());
           buffer.writeUUID(session);

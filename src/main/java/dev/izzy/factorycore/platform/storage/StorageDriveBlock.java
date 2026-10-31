@@ -25,7 +25,8 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 
-public final class StorageDriveBlock extends NetworkedBlock implements EntityBlock {
+public final class StorageDriveBlock extends NetworkedBlock
+    implements EntityBlock, dev.izzy.factorycore.platform.CarriedComponents {
   /**
    * Presentation-only bay lamps (Q72: empty, online, near full, full or offline), mirrored from the
    * entity's four lease slots and their ledgers. Gameplay always reads the entity; these properties
@@ -155,5 +156,11 @@ public final class StorageDriveBlock extends NetworkedBlock implements EntityBlo
   @Override
   protected boolean cosmeticOnly(BlockState before, BlockState after) {
     return onlyBaysChanged(before, after);
+  }
+
+  /** Q77: the anvil name survives breaking. */
+  @Override
+  public java.util.List<net.minecraft.core.component.DataComponentType<?>> carriedComponents() {
+    return java.util.List.of(net.minecraft.core.component.DataComponents.CUSTOM_NAME);
   }
 }

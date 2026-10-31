@@ -117,7 +117,10 @@ public final class ProgramControllerBlock extends NetworkedBlock
 
   @Override
   public List<DataComponentType<?>> carriedComponents() {
-    return List.of(ProgramContent.DRAFT.get(), ProgramContent.ENERGY.get());
+    return List.of(
+        ProgramContent.DRAFT.get(),
+        ProgramContent.ENERGY.get(),
+        net.minecraft.core.component.DataComponents.CUSTOM_NAME);
   }
 
   @Override

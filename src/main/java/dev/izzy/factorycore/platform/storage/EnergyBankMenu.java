@@ -88,7 +88,9 @@ public final class EnergyBankMenu extends AbstractContainerMenu {
         new SimpleMenuProvider(
             (id, inventory, who) ->
                 new EnergyBankMenu(id, inventory, position, new ServerData(player, position)),
-            Component.translatable("gui.factorycore.bank")),
+            dev.izzy.factorycore.platform.DeviceNames.title(
+                player.level().getBlockEntity(position),
+                Component.translatable("gui.factorycore.bank"))),
         buffer -> buffer.writeBlockPos(position));
   }
 

@@ -24,7 +24,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 
-public final class AccessPointBlock extends NetworkedBlock implements EntityBlock {
+public final class AccessPointBlock extends NetworkedBlock
+    implements EntityBlock, dev.izzy.factorycore.platform.CarriedComponents {
   public static final MapCodec<AccessPointBlock> CODEC = simpleCodec(AccessPointBlock::new);
 
   public AccessPointBlock(Properties properties) {
@@ -108,5 +109,11 @@ public final class AccessPointBlock extends NetworkedBlock implements EntityBloc
               new ItemStack(ThroughputContent.THROUGHPUT.get()),
               new ItemStack(ThroughputContent.OVERDRIVE.get()));
     };
+  }
+
+  /** Q77: the anvil name survives breaking. */
+  @Override
+  public java.util.List<net.minecraft.core.component.DataComponentType<?>> carriedComponents() {
+    return java.util.List.of(net.minecraft.core.component.DataComponents.CUSTOM_NAME);
   }
 }

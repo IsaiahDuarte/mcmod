@@ -44,7 +44,8 @@ final class ConnectorControls {
       if (!entity.canUse(server)) return InteractionResult.FAIL;
       MenuSession.open(
           server,
-          Component.translatable("gui.factorycore.interface.title.storage"),
+          dev.izzy.factorycore.platform.DeviceNames.title(
+              entity, Component.translatable("gui.factorycore.interface.title.storage")),
           (id, inventory, session) -> new ConnectorSettingsMenu(id, inventory, entity, session));
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {

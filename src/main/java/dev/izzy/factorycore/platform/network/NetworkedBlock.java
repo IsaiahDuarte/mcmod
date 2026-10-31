@@ -114,7 +114,8 @@ public abstract class NetworkedBlock extends Block {
     if (!state.is(next.getBlock()) && !level.isClientSide()) {
       var entity = level.getBlockEntity(position);
       if (entity != null)
-        for (var drop : dropsOnBreak(entity))
+        for (var drop :
+            dev.izzy.factorycore.platform.DeviceNames.carry(entity, dropsOnBreak(entity)))
           if (!collect(drop))
             Containers.dropItemStack(
                 level, position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5, drop);

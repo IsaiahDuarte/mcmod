@@ -16,7 +16,8 @@ import net.minecraft.world.level.block.state.*;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
 
-public final class TerminalBlock extends NetworkedBlock implements EntityBlock {
+public final class TerminalBlock extends NetworkedBlock
+    implements EntityBlock, dev.izzy.factorycore.platform.CarriedComponents {
   public TerminalBlock(Properties properties) {
     super(properties);
     registerDefaultState(
@@ -59,5 +60,11 @@ public final class TerminalBlock extends NetworkedBlock implements EntityBlock {
           buffer.writeUUID(terminal.sessionForOpen());
         });
     return InteractionResult.CONSUME;
+  }
+
+  /** Q77: the anvil name survives breaking. */
+  @Override
+  public java.util.List<net.minecraft.core.component.DataComponentType<?>> carriedComponents() {
+    return java.util.List.of(net.minecraft.core.component.DataComponents.CUSTOM_NAME);
   }
 }

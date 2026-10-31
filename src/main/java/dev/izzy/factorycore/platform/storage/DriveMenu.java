@@ -81,7 +81,8 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
   public static void open(ServerPlayer player, StorageDriveEntity drive) {
     MenuSession.open(
         player,
-        Component.translatable("block.factorycore.storage_drive"),
+        dev.izzy.factorycore.platform.DeviceNames.title(
+            drive, Component.translatable("block.factorycore.storage_drive")),
         (id, inventory, nonce) -> new DriveMenu(id, inventory, nonce, drive));
   }
 

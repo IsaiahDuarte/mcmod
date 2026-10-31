@@ -110,3 +110,16 @@ name is the vanilla way to name a block item, and one name in two places would d
 labels only through the Crafter screen (rejected: every other label comes from the tool).
 Labels do not float over Crafters while the tool is held; the overlay still covers machines and
 Signal Interfaces only.
+
+## Every device keeps its anvil name — 2026-10-31 (Q77)
+
+Other devices use the vanilla route the Crafter's label follows, without a label field. Placing an
+item named in an anvil leaves `CUSTOM_NAME` among the block entity's kept components (vanilla
+1.21), which save and load with it. `DeviceNames.title` makes it the screen title. That covers
+Terminal, Drive, Buffer, Storage/Signal Interfaces, Importer/Exporter/cable port, Energy Bank,
+Program Controller and Gateway. Loot-table devices list `CUSTOM_NAME` in `CarriedComponents`
+(Terminal, Drive, Access Point, Program Controller, Fuel Generator; loot tables regenerated).
+Leased devices build their own drop, so `NetworkedBlock` passes it through `DeviceNames.carry`,
+which names the device's own item unless it already has a name (recovery items keep theirs). A
+Crafter still turns its name into its label. The name is display only: programs keep using
+labels, and Q13 copy does not move it.

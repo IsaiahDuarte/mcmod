@@ -166,6 +166,9 @@ public final class FuelGeneratorBlock extends BaseEntityBlock implements Carried
 
   @Override
   public List<DataComponentType<?>> carriedComponents() {
-    return List.of(FuelGeneratorContent.STATE.get(), FuelGeneratorContent.RETAINED.get());
+    return List.of(
+        FuelGeneratorContent.STATE.get(),
+        FuelGeneratorContent.RETAINED.get(),
+        net.minecraft.core.component.DataComponents.CUSTOM_NAME);
   }
 }

@@ -2297,6 +2297,13 @@ public final class PresentationClientVerification {
                   .buffers()
                   .deployment(buffer.handle().id());
           swap[0] = new PolicySwap(before.mode(), before.policy());
+          // Q77: an anvil name is the screen's title.
+          buffer.setComponents(
+              net.minecraft.core.component.DataComponentMap.builder()
+                  .set(
+                      net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                      Component.literal("Smelter feed"))
+                  .build());
           buffer.configure(
               actor,
               dev.izzy.factorycore.core.storage.BufferRegistry.Mode.STOCK,
@@ -2315,6 +2322,7 @@ public final class PresentationClientVerification {
                   player.getUUID(), false),
               swap[0].mode(),
               swap[0].policy());
+          buffer.setComponents(net.minecraft.core.component.DataComponentMap.EMPTY);
         });
     // H6: the Importer and Exporter screens on the panel kit.
     use(base.east(8).north(), Direction.SOUTH, false);

@@ -90,7 +90,8 @@ public final class BufferedInterfaceEntity extends BlockEntity
 
   @Override
   public Component getDisplayName() {
-    return Component.translatable("gui.factorycore.interface.title.buffer");
+    return dev.izzy.factorycore.platform.DeviceNames.title(
+        this, Component.translatable("gui.factorycore.interface.title.buffer"));
   }
 
   @Override

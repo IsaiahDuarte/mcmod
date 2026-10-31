@@ -71,7 +71,8 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
   public static void open(ServerPlayer player, SignalInterfaceEntity signal) {
     MenuSession.open(
         player,
-        Component.translatable("gui.factorycore.signal.title"),
+        dev.izzy.factorycore.platform.DeviceNames.title(
+            signal, Component.translatable("gui.factorycore.signal.title")),
         (id, inventory, nonce) -> new SignalMenu(id, inventory, nonce, signal));
   }
 
