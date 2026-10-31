@@ -514,4 +514,60 @@ public final class ProgramLimitsGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * A08: when every matching item in storage is held by crafting-job reservations, a program says
+   * so instead of "shortage", takes nothing, and moves the stock once the reservation is released.
+   */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void programReportsStockHeldByCraftingReservationsAndResumesAfterIt(
+      GameTestHelper h) {
+    var f = setup(h, 1);
+    var ingot = f.codec.itemKey(new ItemStack(Items.IRON_INGOT));
+    var job = UUID.randomUUID();
+    String fill =
+        "every 10 ticks as \"fill\" {\n"
+            + "  move item(\"iron_ingot\") from storage to machines(\"out\") limit 4\n}";
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(() -> label(h, f))
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              // The 20 ingots move from the chest into storage, all reserved by one job.
+              f.chest.clearContent();
+              f.saved.registry().insert(f.cell, ingot, 20);
+              h.assertTrue(
+                  f.saved.registry().reserve(f.cell, job, ingot, 20).amount() == 20,
+                  "Every ingot is reserved");
+              deploy(h, f, f.controller, fill);
+            })
+        .thenWaitUntil(
+            () -> {
+              conserved(h, f);
+              h.assertTrue(
+                  f.inChest() == 0
+                      && f.controller.logs().stream()
+                          .anyMatch(
+                              line ->
+                                  line.contains(
+                                      "storage: matching stock is reserved by crafting jobs")),
+                  "The program names the reservation and takes nothing: " + f.controller.logs());
+              h.assertTrue(
+                  f.controller.logs().stream().noneMatch(line -> line.contains("shortage")),
+                  "It is not reported as a shortage: " + f.controller.logs());
+            })
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.saved.registry().release(f.cell, job, ingot).amount() == 20,
+                    "The job's reservation is released"))
+        .thenWaitUntil(
+            () -> {
+              conserved(h, f);
+              h.assertTrue(
+                  f.inChest() >= 4, "After the release the program moves ingots: " + f.inChest());
+            })
+        .thenSucceed();
+  }
 }
