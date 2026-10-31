@@ -1,10 +1,14 @@
 package dev.izzy.factorycore.platform.signal;
 
 import dev.izzy.factorycore.core.EnumKeys;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.storage.SignalRule;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.MenuPayloads;
 import dev.izzy.factorycore.platform.session.WireEnums;
+import dev.izzy.factorycore.platform.storage.FilterEdits;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -42,8 +46,8 @@ public final class SignalPackets {
   }
 
   /**
-   * The screen's state. {@code resource} is the watched registry ID ("" for none), {@code fluid}
-   * its kind, {@code power} the strength now emitted and {@code reason} why it is off (a key
+   * The screen's state. {@code watch} is the watched filter's slots (Q24; empty for none), {@code
+   * fluid} its kind, {@code power} the strength now emitted and {@code reason} why it is off (a key
    * suffix, "" when evaluated). {@code status} is the last edit's outcome.
    */
   public record View(
@@ -51,8 +55,7 @@ public final class SignalPackets {
       UUID session,
       long revision,
       SignalRule rule,
-      String resource,
-      String name,
+      List<FilterEdits.Rule> watch,
       boolean fluid,
       int power,
       String reason,
@@ -66,8 +69,8 @@ public final class SignalPackets {
     public View {
       Objects.requireNonNull(rule);
       Objects.requireNonNull(status);
-      if (resource.length() > 256
-          || name.length() > 96
+      watch = List.copyOf(watch);
+      if (watch.size() > ResourceFilter.MAX_TERMS
           || power < 0
           || power > SignalRule.MAX
           || reason.length() > 32
@@ -87,8 +90,8 @@ public final class SignalPackets {
               b.writeUUID(v.session);
               b.writeVarLong(v.revision);
               writeRule(b, v.rule);
-              b.writeUtf(v.resource, 256);
-              b.writeUtf(v.name, 96);
+              b.writeVarInt(v.watch.size());
+              for (var rule : v.watch) FilterEdits.Rule.write(b, rule);
               b.writeBoolean(v.fluid);
               b.writeVarInt(v.power);
               b.writeUtf(v.reason, 32);
@@ -102,8 +105,7 @@ public final class SignalPackets {
                     b.readUUID(),
                     b.readVarLong(),
                     readRule(b),
-                    b.readUtf(256),
-                    b.readUtf(96),
+                    readWatch(b),
                     b.readBoolean(),
                     b.readVarInt(),
                     b.readUtf(32),
@@ -113,22 +115,41 @@ public final class SignalPackets {
   }
 
   /**
-   * RESOURCE sets the watched resource to the plain ID in {@code text} ({@code fluid} picks the
-   * kind); CARRIED takes it from the cursor item; APPLY saves {@code rule} with that resource under
-   * the sender's EDIT; LABEL sets the label programs name (D6) to {@code text}. All of them are
-   * refused without EDIT.
+   * RESOURCE adds a slot for the plain ID in {@code text} ({@code fluid} picks the kind; a slot of
+   * the other kind starts a new list); CARRIED adds the cursor item (or the fluid inside it); TAG
+   * adds the tag in {@code text}; CYCLE turns slot {@code selection}, showing {@code text}, to its
+   * next match; REMOVE and CLEAR drop one or all slots. These edit a draft that APPLY saves with
+   * {@code rule} under the sender's EDIT. LABEL sets the label programs name (D6) to {@code text}.
+   * All of them are refused without EDIT.
    */
   public record Command(
-      int menu, UUID session, int action, boolean fluid, String text, SignalRule rule)
+      int menu,
+      UUID session,
+      int action,
+      boolean fluid,
+      String text,
+      SignalRule rule,
+      int selection)
       implements CustomPacketPayload {
-    public static final int RESOURCE = 0, CARRIED = 1, APPLY = 2, LABEL = 3;
+    public static final int RESOURCE = 0,
+        CARRIED = 1,
+        APPLY = 2,
+        LABEL = 3,
+        TAG = 4,
+        CYCLE = 5,
+        REMOVE = 6,
+        CLEAR = 7;
 
     public static final Type<Command> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "signal_command"));
 
     public Command {
       Objects.requireNonNull(rule);
-      if (action < RESOURCE || action > LABEL || text.length() > 256)
+      if (action < RESOURCE
+          || action > CLEAR
+          || text.length() > 256
+          || selection < 0
+          || selection >= ResourceFilter.MAX_TERMS)
         throw new IllegalArgumentException("Invalid signal command");
     }
 
@@ -146,6 +167,7 @@ public final class SignalPackets {
               b.writeBoolean(v.fluid);
               b.writeUtf(v.text, 256);
               writeRule(b, v.rule);
+              b.writeVarInt(v.selection);
             },
             b ->
                 new Command(
@@ -154,7 +176,17 @@ public final class SignalPackets {
                     b.readVarInt(),
                     b.readBoolean(),
                     b.readUtf(256),
-                    readRule(b)));
+                    readRule(b),
+                    b.readVarInt()));
+  }
+
+  private static List<FilterEdits.Rule> readWatch(RegistryFriendlyByteBuf b) {
+    int count = b.readVarInt();
+    if (count < 0 || count > ResourceFilter.MAX_TERMS)
+      throw new IllegalArgumentException("Invalid signal view");
+    var rules = new ArrayList<FilterEdits.Rule>(count);
+    for (int i = 0; i < count; i++) rules.add(FilterEdits.Rule.read(b));
+    return rules;
   }
 
   static void writeRule(RegistryFriendlyByteBuf b, SignalRule rule) {
@@ -175,7 +207,7 @@ public final class SignalPackets {
   private SignalPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("1");
+    var registrar = event.registrar("2");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, SignalMenu.class, SignalMenu::command);
     MenuPayloads.toClient(registrar, View.TYPE, View.CODEC, SignalMenu.class, SignalMenu::accept);

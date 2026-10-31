@@ -1,7 +1,9 @@
 package dev.izzy.factorycore.testing.storage;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.SignalRule;
 import dev.izzy.factorycore.platform.Positions;
@@ -213,6 +215,134 @@ public final class SignalGameTests {
                 h.assertTrue(
                     f.signal.power() == 0 && f.signal.reason().equals("offline"),
                     "No controller: off, offline; got " + f.signal.reason()))
+        .thenSucceed();
+  }
+
+  private static void put(GameTestHelper h, Fixture f, net.minecraft.world.item.Item item, int n) {
+    DeviceSavedData.get(h.getLevel().getServer())
+        .registry()
+        .insert(
+            CellHandleData.read(f.drive.cell(0)),
+            new PlatformResourceCodec(h.getLevel().registryAccess()).itemKey(new ItemStack(item)),
+            n);
+  }
+
+  /**
+   * Q24: a tag filter adds up every stored item in the tag (and nothing else), turns on at the
+   * threshold, keeps its filter over a reload, and "equal to" is on at exactly the amount.
+   */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void tagFilterSumsItsMatchesAcrossTheThresholdAndReload(GameTestHelper h) {
+    var f = setup(h);
+    var logs =
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.INCLUDE,
+            List.of(new ResourceFilter.Tag("minecraft:logs")));
+    var atLeast =
+        new SignalRule(
+            SignalRule.Condition.STOCK, SignalRule.Compare.AT_LEAST, 10, SignalRule.Output.FULL);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              stock(h, f, 50);
+              put(h, f, Items.OAK_LOG, 4);
+              put(h, f, Items.BIRCH_LOG, 5);
+              f.signal.configure(f.owner.getUUID(), atLeast, logs);
+            })
+        .thenIdle(SETTLE)
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.signal.power() == 0 && f.signal.reason().isEmpty(),
+                    "Nine logs (and 50 cobblestone, not in the tag): off and checked, got "
+                        + f.signal.power()
+                        + " "
+                        + f.signal.reason()))
+        .thenExecute(() -> put(h, f, Items.BIRCH_LOG, 1))
+        .thenWaitUntil(
+            () -> h.assertTrue(f.signal.power() == 15 && lit(h), "Ten logs of two kinds: on"))
+        .thenExecute(
+            () -> {
+              var saved = f.signal.saveWithoutMetadata(h.getLevel().registryAccess());
+              f.signal.loadWithComponents(saved, h.getLevel().registryAccess());
+              h.assertTrue(
+                  logs.equals(f.signal.watch())
+                      && f.signal.rule().equals(atLeast)
+                      && f.signal.power() == 15,
+                  "Reload keeps the tag filter, the rule and the strength");
+            })
+        .thenIdle(SETTLE)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  f.signal.power() == 15 && f.signal.reason().isEmpty(),
+                  "Re-evaluated after reload: still on");
+              f.signal.configure(
+                  f.owner.getUUID(),
+                  new SignalRule(
+                      SignalRule.Condition.STOCK,
+                      SignalRule.Compare.EQUAL,
+                      10,
+                      SignalRule.Output.PROPORTIONAL),
+                  logs);
+            })
+        .thenIdle(SETTLE)
+        .thenExecute(
+            () -> {
+              h.assertTrue(f.signal.power() == 15, "Exactly ten: equal is on, at full strength");
+              put(h, f, Items.OAK_LOG, 1);
+            })
+        .thenWaitUntil(() -> h.assertTrue(f.signal.power() == 0, "Eleven: equal is off"))
+        .thenSucceed();
+  }
+
+  /** Q24: the energy condition reads the network's stored FE, with no watched slots. */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void energyConditionReadsStoredNetworkEnergy(GameTestHelper h) {
+    var f = setup(h);
+    var bank =
+        Net.in(h).bank(ROOT.above(), dev.izzy.factorycore.core.storage.EnergyBankTier.STARTER);
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              DeviceSavedData.get(h.getLevel().getServer())
+                  .registry()
+                  .insert(bank.handle(), ResourceKey.ENERGY, 5000);
+              f.signal.configure(
+                  f.owner.getUUID(),
+                  new SignalRule(
+                      SignalRule.Condition.ENERGY,
+                      SignalRule.Compare.AT_LEAST,
+                      1000,
+                      SignalRule.Output.FULL),
+                  (ResourceFilter) null);
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.signal.power() == 15 && f.signal.reason().isEmpty(),
+                    "At least 1000 FE stored: on, got "
+                        + f.signal.power()
+                        + " "
+                        + f.signal.reason()))
+        .thenExecute(
+            () ->
+                f.signal.configure(
+                    f.owner.getUUID(),
+                    new SignalRule(
+                        SignalRule.Condition.ENERGY,
+                        SignalRule.Compare.AT_LEAST,
+                        1_000_000,
+                        SignalRule.Output.FULL),
+                    (ResourceFilter) null))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.signal.power() == 0 && f.signal.reason().isEmpty(),
+                    "Far less than a million FE: off and checked"))
         .thenSucceed();
   }
 

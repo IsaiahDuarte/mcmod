@@ -115,14 +115,7 @@ public final class DeviceCopy {
         copy.putString("Compare", rule.compare().name());
         copy.putLong("Threshold", rule.threshold());
         copy.putString("Output", rule.output().name());
-        var resource = signal.resource();
-        if (resource != null) {
-          var key = new CompoundTag();
-          key.putString("Kind", resource.kind().name());
-          key.putString("Id", resource.registryId());
-          key.putByteArray("Components", resource.components());
-          copy.put("Resource", key);
-        }
+        if (signal.watch() != null) copy.put("Watch", FilterCodec.encode(signal.watch()));
         copy.putString("Label", signal.label());
       }
       case DRIVE -> copy.putInt("Priority", ((StorageDriveEntity) entity).priority());
@@ -219,16 +212,20 @@ public final class DeviceCopy {
                 SignalRule.Compare.valueOf(copy.getString("Compare")),
                 copy.getLong("Threshold"),
                 SignalRule.Output.valueOf(copy.getString("Output")));
-        ResourceKey resource = null;
-        if (copy.contains("Resource", Tag.TAG_COMPOUND)) {
+        if (copy.contains("Watch", Tag.TAG_COMPOUND))
+          signal.configure(
+              player.getUUID(), rule, FilterCodec.decode(copy.getCompound("Watch"), "Signal"));
+        else if (copy.contains("Resource", Tag.TAG_COMPOUND)) {
+          // A label copied before Q24 names one exact resource.
           var key = copy.getCompound("Resource");
-          resource =
+          signal.configure(
+              player.getUUID(),
+              rule,
               new ResourceKey(
                   ResourceKind.valueOf(key.getString("Kind")),
                   key.getString("Id"),
-                  key.getByteArray("Components"));
-        }
-        signal.configure(player.getUUID(), rule, resource);
+                  key.getByteArray("Components")));
+        } else signal.configure(player.getUUID(), rule, (ResourceKey) null);
         signal.label(copy.getString("Label"));
         return new Outcome("pasted");
       }

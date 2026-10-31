@@ -721,7 +721,9 @@ New gates:
   Files: `DriveMenu.java`, `DriveScreen.java`.
   Done when: a GameTest fills a partition from a cell holding three types.
 
-- [ ] **Q24 — Signal watches a filter (M24).** Size S.
+- [x] **Q24 — Signal watches a filter (M24).** Size S. Done 2026-10-31 (commit subject `Q24:`),
+  ADR 0059 amendment, [Evidence](evidence/ergonomics-q24-signal-filter-2026-10-31.md). Emit to
+  craft moved to Q115.
   Signal mode takes the same ghost-slot filter as Buffers (items or tags, up to 16) and compares
   the summed stock. Also: watch stored network energy (M92, AE2 Energy Level Emitter), an
   **equal to** comparison (RS2 Detector), and **emit to craft**: a craft step that turns the
@@ -729,6 +731,14 @@ New gates:
   AE2 Level Emitter with Crafting Card; the last part needs a QD19-style ADR amendment).
   Files: `SignalMenu.java`, `SignalScreen.java`, `WorldSignals.java`, ADR 0059 amendment.
   Done when: GameTests cover a tag filter crossing its threshold and a reload.
+
+- [ ] **Q115 — Emit to craft (from Q24, M92).** Size M. Lane D. Needs QD19.
+  A crafting step that turns a labelled Signal Interface on until the requested item arrives, so
+  a redstone-driven machine can be a crafting step (AE2 Level Emitter with Crafting Card). It
+  changes crafting dispatch, so it waits for the QD19 amendment to ADR 0060 / ADR 0032.
+  Files: `WorldSignals.java`, `WorldCraftingJobs.java`, `SignalScreen.java`.
+  Done when: a GameTest crafts through a redstone-only machine and the signal turns off when the
+  output arrives or the job is cancelled.
 
 - [ ] **Q25 — Energy use in the Overview (M25).** Size S. Check first.
   Show the network's FE use per tick and the five largest users, and a list of devices with

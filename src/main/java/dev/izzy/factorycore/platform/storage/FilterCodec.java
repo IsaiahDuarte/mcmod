@@ -14,10 +14,10 @@ import net.minecraft.nbt.Tag;
  * by machine preset deployments and Storage-mode insertion filters. Unknown fields or term types
  * are rejected rather than broadening a selector.
  */
-final class FilterCodec {
+public final class FilterCodec {
   private FilterCodec() {}
 
-  static CompoundTag encode(ResourceFilter value) {
+  public static CompoundTag encode(ResourceFilter value) {
     var filter = new CompoundTag();
     filter.putString("Kind", value.kind().name());
     filter.putString("Mode", value.mode().name());
@@ -42,7 +42,7 @@ final class FilterCodec {
   }
 
   /** {@code owner} names the record kind in error messages. */
-  static ResourceFilter decode(CompoundTag filter, String owner) {
+  public static ResourceFilter decode(CompoundTag filter, String owner) {
     Nbt.fields(filter, Set.of("Kind", "Mode", "Terms"));
     Nbt.require(filter, "Kind", Tag.TAG_STRING, owner);
     Nbt.require(filter, "Mode", Tag.TAG_STRING, owner);

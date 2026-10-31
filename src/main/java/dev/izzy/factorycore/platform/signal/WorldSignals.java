@@ -4,11 +4,16 @@ import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.OperationResult;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
+import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.SignalRule;
 import dev.izzy.factorycore.platform.ServerScoped;
 import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
+import dev.izzy.factorycore.platform.storage.WorldStorageCatalog;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,16 +23,22 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.tags.TagKey;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
  * C1: evaluates loaded Signal Interfaces at most once per {@link #INTERVAL} ticks each, never per
- * tick. A stock condition walks the same bounded, scheduled and VIEW-checked catalog as the
- * terminal ({@link WorldStorageTransfers#catalog}) page by page under the owner's current grants,
- * adding stored totals of the watched resource across drives and Storage-mode containers. A job
- * condition reads the network's crafting jobs. Offline networks, revoked VIEW and missing settings
- * turn the output off with a reason.
+ * tick. A stock condition walks the same bounded, scheduled and VIEW-checked catalogs as the
+ * terminal page by page under the owner's current grants, adding stored totals across drives and
+ * Storage-mode containers: for one exact resource its own catalog ({@link
+ * WorldStorageTransfers#catalog}); for any other filter (Q24: several slots, IDs or tags) every key
+ * of the filter's kind ({@link WorldStorageTransfers#allKeys}), summing those the filter allows. An
+ * energy condition counts the network's stored FE the same way. A job condition reads the network's
+ * crafting jobs. Offline networks, revoked VIEW and missing settings turn the output off with a
+ * reason.
  */
 public final class WorldSignals {
   public static final int INTERVAL = 20;
@@ -137,8 +148,13 @@ public final class WorldSignals {
       return;
     }
     var owner = signal.owner();
+    var rule = signal.rule();
+    var watch = signal.watch();
     var resource = signal.resource();
-    if (owner == null || resource == null) {
+    boolean energy = rule.condition() == SignalRule.Condition.ENERGY;
+    if (owner == null
+        || !energy && watch == null
+        || rule.condition() == SignalRule.Condition.JOB && resource == null) {
       signal.output(0, "unset");
       return;
     }
@@ -154,7 +170,6 @@ public final class WorldSignals {
       signal.output(0, "denied");
       return;
     }
-    var rule = signal.rule();
     if (rule.condition() == SignalRule.Condition.JOB) {
       boolean running = false;
       for (var job : DeviceSavedData.get(server).craftingJobs().all())
@@ -168,12 +183,81 @@ public final class WorldSignals {
       return;
     }
     counting.add(signal);
-    count(signal, actor, null, 0, 0);
+    if (energy) count(signal, actor, ResourceKey.ENERGY, null, 0, 0);
+    else if (watch.terms().size() == 1
+        && watch.terms().getFirst() instanceof ResourceFilter.Exact exact)
+      count(signal, actor, exact.key(), null, 0, 0);
+    else sum(signal, actor, watch, null, 0, 0);
+  }
+
+  /** Q24: every key of the filter's kind, page by page, adding those the filter allows. */
+  private void sum(
+      SignalInterfaceEntity signal,
+      NetworkPermissions.Actor actor,
+      ResourceFilter watch,
+      WorldStorageCatalog.Cursor cursor,
+      long total,
+      int pages) {
+    var submission =
+        WorldNetworks.get(server)
+            .transfers()
+            .allKeys()
+            .page(
+                UUID.randomUUID(),
+                actor,
+                signal.origin(),
+                watch.kind(),
+                cursor,
+                page -> {
+                  if (!counting.contains(signal) || !signal.current()) {
+                    counting.remove(signal);
+                    return;
+                  }
+                  if (page.reason() != OperationResult.Reason.OK) {
+                    finish(signal, 0, page.reason().name().toLowerCase(Locale.ROOT));
+                    return;
+                  }
+                  // Settings changed while counting: the next evaluation counts the new filter.
+                  if (!watch.equals(signal.watch())) {
+                    counting.remove(signal);
+                    return;
+                  }
+                  long sum = total;
+                  for (var row : page.rows())
+                    if (watch.matches(row.key(), this::tagged))
+                      sum = saturatedAdd(sum, row.total());
+                  if (page.next() == null) {
+                    finish(signal, signal.rule().strength(sum), "");
+                    return;
+                  }
+                  if (pages + 1 >= MAX_PAGES) {
+                    finish(signal, 0, "limit");
+                    return;
+                  }
+                  sum(signal, actor, watch, page.next(), sum, pages + 1);
+                });
+    if (submission.rejection() != OperationResult.Reason.OK)
+      finish(signal, 0, submission.rejection().name().toLowerCase(Locale.ROOT));
+  }
+
+  private boolean tagged(ResourceKind kind, String tag, ResourceKey key) {
+    var id = ResourceLocation.tryParse(tag);
+    if (id == null) return false;
+    var codec = new PlatformResourceCodec(server.registryAccess());
+    try {
+      return kind == ResourceKind.FLUID
+          ? codec.fluidStack(key, 1).is(TagKey.create(Registries.FLUID, id))
+          : kind == ResourceKind.ITEM
+              && codec.itemStack(key, 1).is(TagKey.create(Registries.ITEM, id));
+    } catch (IllegalArgumentException unsupported) {
+      return false;
+    }
   }
 
   private void count(
       SignalInterfaceEntity signal,
       NetworkPermissions.Actor actor,
+      ResourceKey key,
       WorldStorageTransfers.CatalogCursor cursor,
       long total,
       int pages) {
@@ -184,7 +268,7 @@ public final class WorldSignals {
                 UUID.randomUUID(),
                 actor,
                 signal.origin(),
-                signal.resource(),
+                key,
                 cursor,
                 page -> {
                   if (!counting.contains(signal) || !signal.current()) {
@@ -205,7 +289,7 @@ public final class WorldSignals {
                     finish(signal, 0, "limit");
                     return;
                   }
-                  count(signal, actor, page.next(), sum, pages + 1);
+                  count(signal, actor, key, page.next(), sum, pages + 1);
                 });
     if (submission.rejection() != OperationResult.Reason.OK)
       finish(signal, 0, submission.rejection().name().toLowerCase(Locale.ROOT));

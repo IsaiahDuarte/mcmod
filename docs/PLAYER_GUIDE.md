@@ -346,10 +346,14 @@ Interface; breaking it resets it to *ignored*.
 A Signal-mode Interface is a redstone output for the network. Choose it from the Mode row
 of any Interface screen. In its screen:
 
-- **Watch**: click the slot holding an item (a filled bucket or tank watches its fluid),
-  drag from JEI, or use **Add by ID…**.
-- **When**: *amount stored* compares network stock with a number (≥ or <; items, or mB for
-  fluids), or *a crafting job runs* turns on while a job for that item is running.
+- **Watch**: up to 16 slots, like a Buffer's filter: click a slot while holding an item (a
+  filled bucket or tank adds its fluid), drag from JEI, or use **Add by ID…** for an item,
+  fluid or tag (such as `c:ingots`). Clicking a filled slot cycles how it matches: the item,
+  that exact item, then each of its tags. The amounts of everything the slots match are
+  added together.
+- **When**: *Stored* compares that total with a number (≥, < or exactly =; items, or mB for
+  fluids); *Energy* compares the network's stored energy (FE) instead and needs no slots;
+  *Job running* turns on while a crafting job for the one watched item runs.
 - **Output**: *full 15*, or *proportional*, which rises like a comparator to 15 at the
   number.
 - **Apply** saves it. The signal then reads storage with your access, so you need Edit

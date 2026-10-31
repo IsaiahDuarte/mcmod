@@ -19,18 +19,15 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 /**
  * C1 Signal Interface settings (on the panel kit since playtest H3a): what to watch, when to turn
- * on and how strong. The rule is a local draft until Apply; the watched resource is set at once
- * (held item, JEI drop or Add by ID).
+ * on and how strong. What to watch is the shared filter slots (Q24: held item, JEI drop, Add by ID
+ * or a tag; a click on a slot cycles how it matches). Both are drafts until Apply.
  */
 public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
     implements FilterDropTarget {
@@ -39,7 +36,10 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
   private static final SignalRule.Output[] OUTPUTS = SignalRule.Output.values();
 
   private static final int BODY =
-      5 * (PanelLayout.ROW + PanelLayout.GAP) + 2 * PanelLayout.LINE + PanelLayout.GAP;
+      2 * PanelLayout.SLOT
+          + 5 * (PanelLayout.ROW + PanelLayout.GAP)
+          + 2 * PanelLayout.LINE
+          + 2 * PanelLayout.GAP;
 
   private final PanelLayout layout = new PanelLayout(PanelLayout.WIDE, PanelLayout.heightFor(BODY));
 
@@ -47,7 +47,9 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
   private SignalRule.Compare compare;
   private SignalRule.Output output;
   private EditBox threshold, id;
-  private Button apply, addById, setItem, setFluid, setLabel;
+  private Button apply, addById, clear, setItem, setFluid, setTag, setLabel;
+  private FilterSlots watchSlots;
+  private int selectedRule;
   private final List<ChoiceButton> conditions = new ArrayList<>(),
       compares = new ArrayList<>(),
       outputs = new ArrayList<>();
@@ -57,8 +59,8 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
   private long shown = -1;
   private int statusWidth;
 
-  /** Panel-relative rows that carry text, and the watched slot. */
-  private Rect watchRow, whenRow, powerRow, labelRow, modeRow, messageRow, footer, slot;
+  /** Panel-relative rows that carry text. */
+  private Rect idRow, whenRow, powerRow, labelRow, modeRow, messageRow, footer;
 
   public SignalScreen(SignalMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
@@ -75,32 +77,55 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
     outputs.clear();
     var rows = new PanelLayout(layout.width(), layout.height());
 
-    // Watch: the slot, then the watched name and Add by ID, or the typed-ID row in their place.
-    watchRow = rows.row();
-    slot =
-        new Rect(watchRow.x() + caption("watch"), watchRow.y(), PanelLayout.SLOT, PanelLayout.SLOT);
-    var addLabel = Component.translatable("gui.factorycore.signal.add_by_id");
-    var addCell =
-        PanelLayout.alignRight(watchRow, new int[] {font.width(addLabel) + 10}, 0).getFirst();
+    // Watch: the slots with Add by ID and Clear beside them; below, the selected slot's rule or
+    // the typed-ID row.
+    var watchRow = rows.row(2 * PanelLayout.SLOT);
+    int side = watchRow.x() + FilterSlots.COLUMNS * PanelLayout.SLOT + PanelLayout.GAP;
+    int sideWidth = watchRow.right() - side;
     addById =
         button(
-            addCell,
+            new Rect(side, watchRow.y(), sideWidth, 17),
             "add_by_id",
             () -> {
               typing = !typing;
               sync();
             });
+    clear =
+        button(
+            new Rect(side, watchRow.y() + 19, sideWidth, 17),
+            "clear",
+            () -> send(SignalPackets.Command.CLEAR, false, "", menu.view().rule(), 0));
+    watchSlots =
+        addRenderableWidget(
+            new FilterSlots(
+                leftPos + watchRow.x(),
+                topPos + watchRow.y(),
+                new FilterSlots.Actions() {
+                  @Override
+                  public void addCarried() {
+                    send(SignalPackets.Command.CARRIED, false, "", menu.view().rule(), 0);
+                  }
+
+                  @Override
+                  public void cycle(int index, String shown) {
+                    send(SignalPackets.Command.CYCLE, false, shown, menu.view().rule(), index);
+                  }
+
+                  @Override
+                  public void remove(int index) {
+                    send(SignalPackets.Command.REMOVE, false, "", menu.view().rule(), index);
+                  }
+                },
+                index -> selectedRule = index));
+    idRow = rows.row();
     var idCells =
         PanelLayout.fit(
-            new Rect(
-                slot.right() + PanelLayout.GAP,
-                watchRow.y(),
-                watchRow.right() - slot.right() - PanelLayout.GAP,
-                watchRow.height()),
+            idRow,
             new int[] {
-              100,
+              80,
               font.width(Component.translatable("gui.factorycore.signal.set_item")) + 10,
-              font.width(Component.translatable("gui.factorycore.signal.set_fluid")) + 10
+              font.width(Component.translatable("gui.factorycore.signal.set_fluid")) + 10,
+              font.width(Component.translatable("gui.factorycore.signal.set_tag")) + 10
             },
             PanelLayout.GAP);
     id =
@@ -115,6 +140,20 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
     id.setMaxLength(256);
     setItem = button(idCells.get(1), "set_item", () -> resource(false));
     setFluid = button(idCells.get(2), "set_fluid", () -> resource(true));
+    setTag =
+        button(
+            idCells.get(3),
+            "set_tag",
+            () -> {
+              send(
+                  SignalPackets.Command.TAG,
+                  menu.view().fluid(),
+                  id.getValue(),
+                  menu.view().rule(),
+                  0);
+              typing = false;
+              sync();
+            });
 
     // When it turns on.
     whenRow = rows.row();
@@ -211,7 +250,12 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
             new Rect(labelRow.right() - setWidth, labelRow.y(), setWidth, labelRow.height()),
             "set_label",
             () ->
-                send(SignalPackets.Command.LABEL, false, labelBox.getValue(), menu.view().rule()));
+                send(
+                    SignalPackets.Command.LABEL,
+                    false,
+                    labelBox.getValue(),
+                    menu.view().rule(),
+                    0));
 
     modeRow = rows.row();
     InterfaceModeRow.add(
@@ -295,13 +339,14 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
     invalid = false;
   }
 
-  private void send(int action, boolean fluid, String text, SignalRule rule) {
+  private void send(int action, boolean fluid, String text, SignalRule rule, int selection) {
     PacketDistributor.sendToServer(
-        new SignalPackets.Command(menu.containerId, menu.session(), action, fluid, text, rule));
+        new SignalPackets.Command(
+            menu.containerId, menu.session(), action, fluid, text, rule, selection));
   }
 
   private void resource(boolean fluid) {
-    send(SignalPackets.Command.RESOURCE, fluid, id.getValue(), menu.view().rule());
+    send(SignalPackets.Command.RESOURCE, fluid, id.getValue(), menu.view().rule(), 0);
     typing = false;
     sync();
   }
@@ -314,7 +359,8 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
           SignalPackets.Command.APPLY,
           false,
           "",
-          new SignalRule(condition, compare, value, output));
+          new SignalRule(condition, compare, value, output),
+          0);
       invalid = false;
     } catch (IllegalArgumentException badInput) {
       invalid = true;
@@ -337,7 +383,7 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
       shownLabel = view.label();
     }
     boolean editable = view.editable();
-    boolean stock = condition == SignalRule.Condition.STOCK;
+    boolean stock = condition.counts();
     for (int i = 0; i < CONDITIONS.length; i++) {
       conditions.get(i).setSelected(CONDITIONS[i] == condition);
       conditions.get(i).active = editable && CONDITIONS[i] != condition;
@@ -353,28 +399,16 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
       outputs.get(i).visible = stock;
     }
     threshold.visible = stock;
-    for (var widget : List.<AbstractWidget>of(apply, addById, setItem, setFluid))
+    for (var widget : List.<AbstractWidget>of(apply, addById, setItem, setFluid, setTag))
       widget.active = editable;
+    clear.active = editable && !view.watch().isEmpty();
+    selectedRule = Math.max(0, Math.min(selectedRule, view.watch().size() - 1));
+    watchSlots.show(
+        view.watch(), view.fluid() ? ResourceKind.FLUID : ResourceKind.ITEM, selectedRule);
     threshold.setEditable(editable);
     labelBox.setEditable(editable);
     setLabel.active = editable;
-    id.visible = setItem.visible = setFluid.visible = typing;
-    addById.visible = !typing;
-  }
-
-  private boolean overSlot(double mouseX, double mouseY) {
-    double x = mouseX - leftPos - slot.x(), y = mouseY - topPos - slot.y();
-    return x >= 0 && x < PanelLayout.SLOT && y >= 0 && y < PanelLayout.SLOT;
-  }
-
-  @Override
-  public boolean mouseClicked(double mouseX, double mouseY, int button) {
-    // Clicking the watch slot while holding an item watches that item (or the fluid inside it).
-    if (button == 0 && overSlot(mouseX, mouseY) && !menu.getCarried().isEmpty()) {
-      send(SignalPackets.Command.CARRIED, false, "", menu.view().rule());
-      return true;
-    }
-    return super.mouseClicked(mouseX, mouseY, button);
+    id.visible = setItem.visible = setFluid.visible = setTag.visible = typing;
   }
 
   @Override
@@ -390,29 +424,19 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
 
   @Override
   public Rect2i filterArea() {
-    return new Rect2i(leftPos + slot.x(), topPos + slot.y(), PanelLayout.SLOT, PanelLayout.SLOT);
+    return new Rect2i(
+        watchSlots.getX(), watchSlots.getY(), watchSlots.getWidth(), watchSlots.getHeight());
   }
 
   @Override
   public void addFilterId(ResourceKind kind, String dropped) {
-    send(SignalPackets.Command.RESOURCE, kind == ResourceKind.FLUID, dropped, menu.view().rule());
+    send(
+        SignalPackets.Command.RESOURCE, kind == ResourceKind.FLUID, dropped, menu.view().rule(), 0);
   }
 
   @Override
   protected void renderBg(GuiGraphics g, float partial, int mouseX, int mouseY) {
     Panels.panel(g, leftPos, topPos, layout);
-    int x = leftPos + slot.x(), y = topPos + slot.y();
-    Panels.slot(g, x, y);
-    var view = menu.view();
-    if (view.resource().isEmpty()) return;
-    if (view.fluid()) {
-      if (!ResourceIcons.renderFluid(g, view.resource(), x + 1, y + 1))
-        g.renderFakeItem(new ItemStack(net.minecraft.world.item.Items.BUCKET), x + 1, y + 1);
-    } else {
-      var location = ResourceLocation.tryParse(view.resource());
-      if (location != null && BuiltInRegistries.ITEM.containsKey(location))
-        g.renderFakeItem(new ItemStack(BuiltInRegistries.ITEM.get(location)), x + 1, y + 1);
-    }
   }
 
   private void caption(GuiGraphics g, String key, Rect row) {
@@ -429,20 +453,23 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
   protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
     Panels.title(g, font, title, 0, 0, Panels.titleRoom(imageWidth));
     var view = menu.view();
-    caption(g, "watch", watchRow);
-    int nameX = slot.right() + 6;
-    if (!typing)
+    if (!typing) {
+      // The selected slot's rule, or what the slots are for when there are none.
+      boolean none = view.watch().isEmpty();
+      var line =
+          condition == SignalRule.Condition.ENERGY
+              ? Component.translatable("gui.factorycore.signal.watch.energy").getString()
+              : none
+                  ? Component.translatable("gui.factorycore.signal.watch.none").getString()
+                  : view.watch().get(selectedRule).label();
       g.drawString(
           font,
-          font.plainSubstrByWidth(
-              view.resource().isEmpty()
-                  ? Component.translatable("gui.factorycore.signal.watch.none").getString()
-                  : view.name(),
-              addById.getX() - leftPos - nameX - PanelLayout.GAP),
-          nameX,
-          watchRow.y() + 5,
-          view.resource().isEmpty() ? Panels.MUTED : Panels.TEXT,
+          font.plainSubstrByWidth(line, idRow.width()),
+          idRow.x(),
+          idRow.y() + 5,
+          none || condition == SignalRule.Condition.ENERGY ? Panels.MUTED : Panels.TEXT,
           false);
+    }
     caption(g, "when", whenRow);
     var state =
         Component.translatable(
@@ -481,8 +508,5 @@ public final class SignalScreen extends AbstractContainerScreen<SignalMenu>
   public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
     super.render(g, mouseX, mouseY, partial);
     renderTooltip(g, mouseX, mouseY);
-    if (overSlot(mouseX, mouseY))
-      g.renderTooltip(
-          font, Component.translatable("gui.factorycore.signal.slot.help"), mouseX, mouseY);
   }
 }

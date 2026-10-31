@@ -847,8 +847,9 @@ public final class PresentationClientVerification {
     step(
         client -> {
           var screen = (dev.izzy.factorycore.platform.client.SignalScreen) client.screen;
-          if (!screen.getMenu().view().resource().equals("minecraft:stone") || waited() < 4)
-            return false;
+          if (screen.getMenu().view().watch().stream()
+                  .noneMatch(rule -> rule.icon().equals("minecraft:stone"))
+              || waited() < 4) return false;
           for (var child : screen.children())
             if (child instanceof net.minecraft.client.gui.components.EditBox box
                 && box.visible

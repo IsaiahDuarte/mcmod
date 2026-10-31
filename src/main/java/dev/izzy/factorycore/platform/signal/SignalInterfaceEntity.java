@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.signal;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.SignalRule;
@@ -9,6 +10,8 @@ import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.storage.FilterCodec;
 import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -26,14 +29,15 @@ import net.minecraft.world.phys.Vec3;
  * C1: the Signal mode of the unified Interface. It holds no resources and no lease; it is a
  * positional network member that emits redstone on every side from its {@link SignalRule},
  * evaluated by {@link WorldSignals} under its owner's current grants (the player who last applied
- * its settings). Saved: the rule, the watched resource and the owner; power is recomputed.
+ * its settings). Saved: the rule, the watched filter and the owner; power is recomputed. Schema 2
+ * (Q24) saves the filter as "Watch"; schema 1's single "Resource" loads as one exact term.
  */
 public final class SignalInterfaceEntity extends BlockEntity implements WiredMember {
   static final String FIELD = "FactoryCoreSignal";
 
   private UUID owner;
   private SignalRule rule = SignalRule.DEFAULT;
-  private ResourceKey resource;
+  private ResourceFilter watch;
   private int power;
   private String reason = "unset";
   private String label = "";
@@ -83,8 +87,34 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
     return rule;
   }
 
+  /** Q24: what a STOCK or JOB condition watches (an allow list, items or fluids), or null. */
+  public ResourceFilter watch() {
+    return watch;
+  }
+
+  /**
+   * The one resource a JOB condition follows: the only slot, if it is an exact resource or a plain
+   * ID (its default form); null when the filter names several or a tag.
+   */
   public ResourceKey resource() {
-    return resource;
+    if (watch == null || watch.terms().size() != 1) return null;
+    var term = watch.terms().getFirst();
+    if (term instanceof ResourceFilter.Exact exact) return exact.key();
+    if (!(term instanceof ResourceFilter.Registry registry) || level == null) return null;
+    var id = net.minecraft.resources.ResourceLocation.tryParse(registry.id());
+    if (id == null) return null;
+    var codec = new PlatformResourceCodec(level.registryAccess());
+    if (watch.kind() == ResourceKind.FLUID) {
+      if (!net.minecraft.core.registries.BuiltInRegistries.FLUID.containsKey(id)) return null;
+      return codec.fluidKey(
+          new net.neoforged.neoforge.fluids.FluidStack(
+              net.minecraft.core.registries.BuiltInRegistries.FLUID.get(id), 1));
+    }
+    if (!net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(id)) return null;
+    var stack =
+        new net.minecraft.world.item.ItemStack(
+            net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id));
+    return stack.isEmpty() ? null : codec.itemKey(stack);
   }
 
   public int power() {
@@ -136,13 +166,38 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
 
   /** Saves new settings under {@code owner}, who must hold EDIT here (checked by the caller). */
   public void configure(UUID owner, SignalRule rule, ResourceKey resource) {
-    this.owner = Objects.requireNonNull(owner);
-    this.rule = Objects.requireNonNull(rule);
-    if (resource != null && resource.kind() == ResourceKind.ENERGY)
-      throw new IllegalArgumentException("A Signal Interface watches items or fluids");
-    this.resource = resource;
+    configure(
+        owner,
+        rule,
+        resource == null
+            ? null
+            : new ResourceFilter(
+                resource.kind(),
+                ResourceFilter.Mode.INCLUDE,
+                java.util.List.of(new ResourceFilter.Exact(resource))));
+  }
+
+  /** Q24: as above, watching every resource {@code watch} allows (null watches nothing). */
+  public void configure(UUID owner, SignalRule rule, ResourceFilter watch) {
+    Objects.requireNonNull(owner);
+    Objects.requireNonNull(rule);
+    checkWatch(watch);
+    this.owner = owner;
+    this.rule = rule;
+    this.watch = watch;
     setChanged();
     if (level instanceof ServerLevel server) WorldSignals.get(server.getServer()).dueNow(this);
+  }
+
+  /** An allow list of 1–16 item or fluid slots a screen can show, or null. */
+  static void checkWatch(ResourceFilter watch) {
+    if (watch == null) return;
+    if (watch.kind() == ResourceKind.ENERGY)
+      throw new IllegalArgumentException("A Signal Interface watches items or fluids");
+    if (watch.mode() != ResourceFilter.Mode.INCLUDE
+        || watch.terms().isEmpty()
+        || watch.terms().stream().anyMatch(ResourceFilter::programOnly))
+      throw new IllegalArgumentException("A Signal Interface watches a list of slots");
   }
 
   /** Sets the emitted strength and its reason; neighbors are updated only on a change. */
@@ -191,19 +246,13 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
   protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
     super.saveAdditional(tag, registries);
     var data = new CompoundTag();
-    data.putInt("Schema", 1);
+    data.putInt("Schema", 2);
     if (owner != null) data.putUUID("Owner", owner);
     data.putString("Condition", rule.condition().name());
     data.putString("Compare", rule.compare().name());
     data.putLong("Threshold", rule.threshold());
     data.putString("Output", rule.output().name());
-    if (resource != null) {
-      var key = new CompoundTag();
-      key.putString("Kind", resource.kind().name());
-      key.putString("Id", resource.registryId());
-      key.putByteArray("Components", resource.components());
-      data.put("Resource", key);
-    }
+    if (watch != null) data.put("Watch", FilterCodec.encode(watch));
     data.putInt("Power", power);
     if (!label.isEmpty()) data.putString("Label", label);
     tag.put(FIELD, data);
@@ -218,31 +267,38 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
     super.loadAdditional(tag, registries);
     owner = null;
     rule = SignalRule.DEFAULT;
-    resource = null;
+    watch = null;
     power = 0;
     reason = "unset";
     label = "";
     if (!tag.contains(FIELD, Tag.TAG_COMPOUND)) return;
     var data = tag.getCompound(FIELD);
     try {
-      if (data.getInt("Schema") != 1) throw new IllegalArgumentException("Signal schema");
+      int schema = data.getInt("Schema");
+      if (schema != 1 && schema != 2) throw new IllegalArgumentException("Signal schema");
       var loadedRule =
           new SignalRule(
               SignalRule.Condition.valueOf(data.getString("Condition")),
               SignalRule.Compare.valueOf(data.getString("Compare")),
               data.getLong("Threshold"),
               SignalRule.Output.valueOf(data.getString("Output")));
-      ResourceKey loadedResource = null;
-      if (data.contains("Resource", Tag.TAG_COMPOUND)) {
+      ResourceFilter loadedWatch = null;
+      if (schema == 2 && data.contains("Watch", Tag.TAG_COMPOUND))
+        loadedWatch = FilterCodec.decode(data.getCompound("Watch"), "Signal");
+      else if (schema == 1 && data.contains("Resource", Tag.TAG_COMPOUND)) {
         var key = data.getCompound("Resource");
-        loadedResource =
+        var resource =
             new ResourceKey(
                 ResourceKind.valueOf(key.getString("Kind")),
                 key.getString("Id"),
                 key.getByteArray("Components"));
-        if (loadedResource.kind() == ResourceKind.ENERGY)
-          throw new IllegalArgumentException("Energy resource");
+        loadedWatch =
+            new ResourceFilter(
+                resource.kind(),
+                ResourceFilter.Mode.INCLUDE,
+                java.util.List.of(new ResourceFilter.Exact(resource)));
       }
+      checkWatch(loadedWatch);
       int saved = data.getInt("Power");
       if (saved < 0 || saved > SignalRule.MAX) throw new IllegalArgumentException("Power");
       var savedLabel = data.getString("Label");
@@ -250,7 +306,7 @@ public final class SignalInterfaceEntity extends BlockEntity implements WiredMem
       owner = data.hasUUID("Owner") ? data.getUUID("Owner") : null;
       label = savedLabel;
       rule = loadedRule;
-      resource = loadedResource;
+      watch = loadedWatch;
       // The last strength is kept until the first evaluation, so a reload does not flicker.
       power = saved;
       reason = "";

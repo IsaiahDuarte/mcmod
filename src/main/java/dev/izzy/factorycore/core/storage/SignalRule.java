@@ -4,21 +4,31 @@ import java.util.Objects;
 
 /**
  * C1: what a Signal-mode Interface emits. {@link Condition#STOCK} compares the network's stored
- * amount of one resource with {@code threshold}; {@link Condition#JOB} is true while a crafting job
- * for that resource is running. {@link Output#FULL} emits 15 when the condition holds; {@link
- * Output#PROPORTIONAL} grows like a comparator: 0 at the "off" end, 15 at the threshold.
+ * amount of the watched resources (summed over the filter, Q24) with {@code threshold}; {@link
+ * Condition#ENERGY} does the same for the network's stored energy (FE); {@link Condition#JOB} is
+ * true while a crafting job for the watched resource is running. {@link Output#FULL} emits 15 when
+ * the condition holds; {@link Output#PROPORTIONAL} grows like a comparator: 0 at the "off" end, 15
+ * at the threshold. {@link Compare#EQUAL} has no "toward" direction, so it is always full.
  */
 public record SignalRule(Condition condition, Compare compare, long threshold, Output output) {
   public enum Condition {
     STOCK,
-    JOB
+    JOB,
+    ENERGY;
+
+    /** Compares an amount with the threshold (not a running job). */
+    public boolean counts() {
+      return this != JOB;
+    }
   }
 
   public enum Compare {
     /** On when at least {@code threshold} is stored. */
     AT_LEAST,
     /** On when less than {@code threshold} is stored. */
-    BELOW
+    BELOW,
+    /** On when exactly {@code threshold} is stored (Q24). */
+    EQUAL
   }
 
   public enum Output {
@@ -41,8 +51,13 @@ public record SignalRule(Condition condition, Compare compare, long threshold, O
   /** Strength for a stored {@code amount} (STOCK). */
   public int strength(long amount) {
     if (amount < 0) throw new IllegalArgumentException("Negative stock");
-    boolean on = compare == Compare.AT_LEAST ? amount >= threshold : amount < threshold;
-    if (output == Output.FULL || threshold == 0) return on ? MAX : 0;
+    boolean on =
+        switch (compare) {
+          case AT_LEAST -> amount >= threshold;
+          case BELOW -> amount < threshold;
+          case EQUAL -> amount == threshold;
+        };
+    if (output == Output.FULL || threshold == 0 || compare == Compare.EQUAL) return on ? MAX : 0;
     long capped = Math.min(amount, threshold);
     long toward = compare == Compare.AT_LEAST ? capped : threshold - capped;
     if (toward == 0) return 0;

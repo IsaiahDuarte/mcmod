@@ -121,11 +121,33 @@ starts unset.
 - **Neighbor updates.** A strength change notifies only non-network neighbors. Network
   blocks treat neighbor updates as topology changes and read no redstone; notifying them
   rebuilt the network and briefly refused permissions (regression-tested).
-- **Scope.** One watched resource rather than a filter; a filter condition can come later
-  without a schema break (`FactoryCoreSignal` Schema 1).
+- **Scope.** One watched resource rather than a filter (`FactoryCoreSignal` Schema 1).
+  Q24 added the filter as Schema 2; see the amendment below.
 
 Alternatives: a separate Level Emitter block (rejected by PD1: another item and recipe for
 one behavior); evaluating every tick (unbounded on large networks).
+
+## Amendment — Signal filters, energy and "equal" (2026-10-31, ergonomics plan Q24)
+
+The Signal watches a filter instead of one resource: an allow list of 1–16 slots (IDs, exact
+resources or tags, edited like the Buffer's ghost slots), all of one kind (item or fluid).
+`FactoryCoreSignal` Schema 2 saves it as "Watch" (the shared `FilterCodec` form); Schema 1's
+"Resource" still loads as one exact slot, and copied Label Tool settings from before Q24 paste
+the same way. A STOCK condition sums every stored resource the filter allows. One exact slot keeps
+the old exact-key catalog; anything else walks every key of the filter's kind through the same
+scheduled, VIEW-checked catalog the terminal uses (`WorldStorageTransfers.allKeys`), so tags and
+plain IDs (any components) count across drives and Storage-mode containers. The 640-page limit
+and once-a-second cadence are unchanged. A new ENERGY condition counts the network's stored FE
+through the exact-key catalog of the energy key. EQUAL turns on at exactly the threshold and is
+always full strength, as there is no direction to scale toward. JOB still follows one resource:
+the only slot, if it is an ID or exact resource; otherwise the signal is "unset".
+
+Not in Q24: emitting to make a redstone-driven machine a crafting step. That changes crafting
+dispatch, so it needs its own amendment with the Crafter lock modes (QD19); it is slice Q115.
+
+Alternatives: one slot per condition plus a separate tag field (rejected: a second editor for what
+the shared filter slots already do), or summing only digital cells as programs do (rejected: a
+Storage-mode chest's stock would silently not count, unlike the exact-resource signal).
 
 ## Amendment — redstone control on presets (parity C2, 2026-10-25)
 

@@ -52,7 +52,21 @@ class MenuStatusPacketsTest {
         SignalPackets.Status.class,
         status ->
             new SignalPackets.View(
-                1, SESSION, 2, SignalRule.DEFAULT, "", "", false, 0, "", true, status, ""));
+                1,
+                SESSION,
+                2,
+                SignalRule.DEFAULT,
+                List.of(
+                    new dev.izzy.factorycore.platform.storage.FilterEdits.Rule(
+                        dev.izzy.factorycore.platform.storage.FilterEdits.TAG,
+                        "minecraft:oak_log",
+                        "#minecraft:logs")),
+                false,
+                0,
+                "",
+                true,
+                status,
+                ""));
     var form =
         new MachineSettingsPackets.Form(
             "", ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 1, 8);

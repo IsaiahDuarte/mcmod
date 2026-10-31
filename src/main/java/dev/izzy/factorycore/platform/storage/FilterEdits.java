@@ -34,13 +34,13 @@ public final class FilterEdits {
         throw new IllegalArgumentException("Invalid filter rule");
     }
 
-    static void write(RegistryFriendlyByteBuf buffer, Rule rule) {
+    public static void write(RegistryFriendlyByteBuf buffer, Rule rule) {
       buffer.writeVarInt(rule.type);
       buffer.writeUtf(rule.icon, 256);
       buffer.writeUtf(rule.label, 256);
     }
 
-    static Rule read(RegistryFriendlyByteBuf buffer) {
+    public static Rule read(RegistryFriendlyByteBuf buffer) {
       return new Rule(buffer.readVarInt(), buffer.readUtf(256), buffer.readUtf(256));
     }
   }

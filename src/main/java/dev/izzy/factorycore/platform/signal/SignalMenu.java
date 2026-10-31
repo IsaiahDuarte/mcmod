@@ -1,7 +1,7 @@
 package dev.izzy.factorycore.platform.signal;
 
 import dev.izzy.factorycore.core.network.NetworkPermissions;
-import dev.izzy.factorycore.core.resource.ResourceKey;
+import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.SignalRule;
 import dev.izzy.factorycore.platform.Actors;
@@ -9,7 +9,10 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.session.DeviceStatus;
 import dev.izzy.factorycore.platform.session.MenuSession;
+import dev.izzy.factorycore.platform.storage.FilterEdits;
 import dev.izzy.factorycore.platform.storage.InterfaceSwitch;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -21,20 +24,20 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidUtil;
 
 /**
- * C1 Signal Interface settings. Anyone with VIEW may look; changing the watched resource or
- * applying a rule needs EDIT, and the applying player becomes the owner whose grants the signal
- * reads under. The watched resource is a server-side draft until Apply.
+ * C1 Signal Interface settings. Anyone with VIEW may look; changing what is watched or applying a
+ * rule needs EDIT, and the applying player becomes the owner whose grants the signal reads under.
+ * The watched filter (Q24: up to 16 slots of IDs, exact resources or tags, as for Buffers) is a
+ * server-side draft until Apply.
  */
 public final class SignalMenu extends AbstractContainerMenu implements DeviceStatus.Holder {
   private static final int POLL_TICKS = 5;
 
   private final MenuSession session;
   private final SignalInterfaceEntity signal;
-  private ResourceKey draft;
+  private ResourceFilter draft;
   private boolean drafted;
   private SignalPackets.Status status = SignalPackets.Status.READY;
   private long revision;
@@ -55,8 +58,7 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
             nonce,
             0,
             SignalRule.DEFAULT,
-            "",
-            "",
+            List.of(),
             false,
             0,
             "unset",
@@ -102,8 +104,26 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
     return WorldNetworks.get(player.server).allows(Actors.of(player), signal.origin(), permission);
   }
 
-  private ResourceKey watched() {
-    return drafted ? draft : signal.resource();
+  private ResourceFilter watched() {
+    return drafted ? draft : signal.watch();
+  }
+
+  /** The draft after adding {@code term} of {@code kind}; another kind starts a new list. */
+  private ResourceFilter added(ResourceKind kind, ResourceFilter.Term term) {
+    var current = watched();
+    var terms =
+        current == null || current.kind() != kind
+            ? new ArrayList<ResourceFilter.Term>()
+            : new ArrayList<>(current.terms());
+    if (!terms.contains(term)) terms.add(term);
+    return new ResourceFilter(kind, ResourceFilter.Mode.INCLUDE, terms);
+  }
+
+  /** {@code current} with its slots replaced; none left watches nothing. */
+  private static ResourceFilter with(ResourceFilter current, List<ResourceFilter.Term> terms) {
+    return terms.isEmpty()
+        ? null
+        : new ResourceFilter(current.kind(), ResourceFilter.Mode.INCLUDE, terms);
   }
 
   public void command(ServerPlayer sender, SignalPackets.Command packet) {
@@ -124,27 +144,71 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
           if (packet.fluid()) {
             if (!BuiltInRegistries.FLUID.containsKey(id))
               throw new IllegalArgumentException("Fluid");
-            var fluid = BuiltInRegistries.FLUID.get(id);
-            if (fluid == Fluids.EMPTY) throw new IllegalArgumentException("Empty fluid");
-            draft = codec.fluidKey(new FluidStack(fluid, 1));
+            if (BuiltInRegistries.FLUID.get(id) == Fluids.EMPTY)
+              throw new IllegalArgumentException("Empty fluid");
           } else {
             if (!BuiltInRegistries.ITEM.containsKey(id)) throw new IllegalArgumentException("Item");
-            var item = BuiltInRegistries.ITEM.get(id);
-            if (new ItemStack(item).isEmpty()) throw new IllegalArgumentException("Empty item");
-            draft = codec.itemKey(new ItemStack(item));
+            if (new ItemStack(BuiltInRegistries.ITEM.get(id)).isEmpty())
+              throw new IllegalArgumentException("Empty item");
           }
+          draft =
+              added(
+                  packet.fluid() ? ResourceKind.FLUID : ResourceKind.ITEM,
+                  new ResourceFilter.Registry(id.toString()));
           drafted = true;
           status = SignalPackets.Status.DRAFT;
         }
         case SignalPackets.Command.CARRIED -> {
           var carried = getCarried();
           if (carried.isEmpty()) return;
-          // A held fluid container watches its fluid; anything else watches the exact item.
+          // A held fluid container adds its fluid; anything else adds the item's ID.
           var fluid = FluidUtil.getFluidContained(carried.copyWithCount(1));
+          var kind =
+              fluid.isPresent() && !fluid.get().isEmpty() ? ResourceKind.FLUID : ResourceKind.ITEM;
+          var term = FilterEdits.carried(kind, carried);
+          if (term == null) return;
+          draft = added(kind, term);
+          drafted = true;
+          status = SignalPackets.Status.DRAFT;
+        }
+        case SignalPackets.Command.TAG -> {
+          String text = packet.text().strip();
+          var tag = text.startsWith("#") ? text.substring(1) : text;
+          if (ResourceLocation.tryParse(tag) == null) throw new IllegalArgumentException("Tag");
+          var current = watched();
           draft =
-              fluid.isPresent() && !fluid.get().isEmpty()
-                  ? codec.fluidKey(fluid.get())
-                  : codec.itemKey(carried);
+              added(
+                  current == null
+                      ? (packet.fluid() ? ResourceKind.FLUID : ResourceKind.ITEM)
+                      : current.kind(),
+                  new ResourceFilter.Tag(tag));
+          drafted = true;
+          status = SignalPackets.Status.DRAFT;
+        }
+        case SignalPackets.Command.CYCLE -> {
+          var current = watched();
+          if (current == null || packet.selection() >= current.terms().size()) return;
+          var next =
+              FilterEdits.cycle(
+                  current.kind(), current.terms().get(packet.selection()), packet.text(), codec);
+          if (next == null) return;
+          var terms = new ArrayList<>(current.terms());
+          terms.set(packet.selection(), next);
+          draft = with(current, terms);
+          drafted = true;
+          status = SignalPackets.Status.DRAFT;
+        }
+        case SignalPackets.Command.REMOVE -> {
+          var current = watched();
+          if (current == null || packet.selection() >= current.terms().size()) return;
+          var terms = new ArrayList<>(current.terms());
+          terms.remove(packet.selection());
+          draft = with(current, terms);
+          drafted = true;
+          status = SignalPackets.Status.DRAFT;
+        }
+        case SignalPackets.Command.CLEAR -> {
+          draft = null;
           drafted = true;
           status = SignalPackets.Status.DRAFT;
         }
@@ -171,25 +235,13 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
 
   private void publish() {
     if (signal == null || !session.server()) return;
-    var resource = watched();
-    String id = "", name = "";
-    boolean fluid = false;
-    if (resource != null) {
-      id = resource.registryId();
-      fluid = resource.kind() == ResourceKind.FLUID;
-      try {
-        var codec = new PlatformResourceCodec(session.player().registryAccess());
-        name =
-            (fluid
-                    ? codec.fluidStack(resource, 1).getHoverName()
-                    : codec.itemStack(resource, 1).getHoverName())
-                .getString()
-                .replaceAll("[\\p{Cntrl}§]", "");
-      } catch (IllegalArgumentException unsupported) {
-        name = id;
-      }
-      if (name.length() > 96) name = name.substring(0, 96);
-    }
+    var watch = watched();
+    var rules =
+        watch == null
+            ? List.<FilterEdits.Rule>of()
+            : FilterEdits.rules(
+                watch, new PlatformResourceCodec(session.player().registryAccess()));
+    boolean fluid = watch != null && watch.kind() == ResourceKind.FLUID;
     view =
         session.publish(
             view,
@@ -198,8 +250,7 @@ public final class SignalMenu extends AbstractContainerMenu implements DeviceSta
                 session.id(),
                 revision,
                 signal.rule(),
-                id,
-                name,
+                rules,
                 fluid,
                 signal.power(),
                 signal.reason(),

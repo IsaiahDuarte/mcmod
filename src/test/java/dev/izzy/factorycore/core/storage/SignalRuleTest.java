@@ -39,6 +39,17 @@ class SignalRuleTest {
   }
 
   @Test
+  void equalIsOnOnlyAtTheThresholdAndAlwaysFull() {
+    var equal = rule(SignalRule.Compare.EQUAL, 64, SignalRule.Output.PROPORTIONAL);
+    assertEquals(0, equal.strength(63));
+    assertEquals(15, equal.strength(64));
+    assertEquals(0, equal.strength(65));
+    assertEquals(15, rule(SignalRule.Compare.EQUAL, 0, SignalRule.Output.FULL).strength(0));
+    assertEquals(0, rule(SignalRule.Compare.EQUAL, 0, SignalRule.Output.FULL).strength(1));
+    assertTrue(SignalRule.Condition.ENERGY.counts() && !SignalRule.Condition.JOB.counts());
+  }
+
+  @Test
   void edgeCases() {
     assertEquals(
         15, rule(SignalRule.Compare.AT_LEAST, 0, SignalRule.Output.PROPORTIONAL).strength(0));
