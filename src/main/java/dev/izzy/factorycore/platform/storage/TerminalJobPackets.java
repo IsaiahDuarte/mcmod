@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
 import dev.izzy.factorycore.core.crafting.JobReason;
 import dev.izzy.factorycore.core.crafting.JobStatus;
+import dev.izzy.factorycore.core.crafting.PlanTree;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
 import dev.izzy.factorycore.platform.session.WireEnums;
 import java.util.ArrayList;
@@ -47,6 +48,12 @@ public final class TerminalJobPackets {
    */
   public static final int TARGET = 7, QUICK = 8, QUICK_TARGET = 9;
 
+  /**
+   * Q65: NOTIFY sets whether jobs started in this session tell the requester when they finish
+   * ({@code selection} 1) or not (0).
+   */
+  public static final int NOTIFY = 10;
+
   public static final int MAX_TARGET = 1_000_000_000;
 
   public static final int ROWS = 8, JOBS = 16, MISSING = 3, MAX_OFFSET = 65_536;
@@ -68,7 +75,7 @@ public final class TerminalJobPackets {
 
     public Command {
       if (action < WINDOW
-          || action > QUICK_TARGET
+          || action > NOTIFY
           || selection < 0
           || selection
               >= (action == WINDOW
@@ -138,6 +145,18 @@ public final class TerminalJobPackets {
    * One resource of the previewed plan (A2): units taken from stock, crafted by the plan and
    * missing. The entry's amount is empty; the three counts are exact.
    */
+  /**
+   * Q65: one node of the plan drawn as a tree, depth first: {@code amount} units of {@code item} at
+   * {@code depth} (0 is the request), and how the plan gets it.
+   */
+  public record TreeRow(Entry item, int depth, long amount, PlanTree.Kind kind) {
+    public TreeRow {
+      Objects.requireNonNull(kind);
+      if (depth < 0 || depth > PlanTree.MAX_DEPTH || amount < 0)
+        throw new IllegalArgumentException("Invalid tree row bounds");
+    }
+  }
+
   public record PlanRow(Entry item, long stored, long crafted, long missing) {
     public PlanRow {
       if (stored < 0 || crafted < 0 || missing < 0)
@@ -246,13 +265,59 @@ public final class TerminalJobPackets {
       List<String> cycles,
       List<Job> jobs,
       Detail detail,
-      JobStatus status)
+      JobStatus status,
+      List<TreeRow> tree,
+      boolean treeMore,
+      boolean notices)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
             ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_job_view"));
 
+    public View(
+        int menu,
+        UUID session,
+        long revision,
+        List<Entry> craftables,
+        int offset,
+        int total,
+        Entry preview,
+        JobStatus previewReason,
+        int previewSteps,
+        long previewCrafts,
+        List<Entry> missing,
+        List<PlanRow> plan,
+        int planMore,
+        List<String> cycles,
+        List<Job> jobs,
+        Detail detail,
+        JobStatus status) {
+      this(
+          menu,
+          session,
+          revision,
+          craftables,
+          offset,
+          total,
+          preview,
+          previewReason,
+          previewSteps,
+          previewCrafts,
+          missing,
+          plan,
+          planMore,
+          cycles,
+          jobs,
+          detail,
+          status,
+          List.of(),
+          false,
+          true);
+    }
+
     public View {
+      tree = List.copyOf(tree);
+      if (tree.size() > PLAN_ROWS) throw new IllegalArgumentException("Tree rows");
       craftables = List.copyOf(craftables);
       missing = List.copyOf(missing);
       plan = List.copyOf(plan);
@@ -327,6 +392,15 @@ public final class TerminalJobPackets {
               }
               buffer.writeVarInt(value.detail.moreSteps());
               WireEnums.write(buffer, value.status);
+              buffer.writeVarInt(value.tree.size());
+              for (var row : value.tree) {
+                Entry.write(buffer, row.item());
+                buffer.writeVarInt(row.depth());
+                buffer.writeVarLong(row.amount());
+                WireEnums.write(buffer, row.kind());
+              }
+              buffer.writeBoolean(value.treeMore);
+              buffer.writeBoolean(value.notices);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -391,8 +465,25 @@ public final class TerminalJobPackets {
                   cycles,
                   jobs,
                   detail,
-                  WireEnums.read(buffer, JobStatus.class));
+                  WireEnums.read(buffer, JobStatus.class),
+                  readTree(buffer),
+                  buffer.readBoolean(),
+                  buffer.readBoolean());
             });
+
+    private static List<TreeRow> readTree(RegistryFriendlyByteBuf buffer) {
+      int count = buffer.readVarInt();
+      if (count < 0 || count > PLAN_ROWS) throw new IllegalArgumentException("Tree rows");
+      var rows = new ArrayList<TreeRow>(count);
+      for (int index = 0; index < count; index++)
+        rows.add(
+            new TreeRow(
+                Entry.read(buffer),
+                buffer.readVarInt(),
+                buffer.readVarLong(),
+                WireEnums.read(buffer, PlanTree.Kind.class)));
+      return rows;
+    }
   }
 
   public static final Entry NONE = new Entry("", "", "");

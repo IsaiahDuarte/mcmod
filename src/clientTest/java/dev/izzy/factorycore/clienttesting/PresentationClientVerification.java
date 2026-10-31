@@ -1328,6 +1328,33 @@ public final class PresentationClientVerification {
           return true;
         });
     planCapture("minecraft:stick", "200", "jobs-plan-two-level-shortage-scale-4.png", false);
+    // Q65: the same two-level plan as a tree, at GUI scales 4 and 1; the failed preview offers
+    // Retry.
+    step(client -> press(client, "Tree"));
+    step(
+        client -> {
+          var view = jobView(client);
+          if (waited() < 4 || view.tree().isEmpty() || !hasButton(client, "List")) return false;
+          check(hasButton(client, "Retry"), "A failed preview offers Retry");
+          evidence
+              .append("jobs plan tree: ")
+              .append(
+                  view.tree().stream()
+                      .map(row -> row.depth() + ":" + row.item().icon() + "=" + row.kind())
+                      .toList())
+              .append('\n');
+          captures.grab(client, "jobs-plan-tree-scale-4.png");
+          setScale(client, 1);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          captures.grab(client, "jobs-plan-tree-scale-1.png");
+          setScale(client, 4);
+          return true;
+        });
+    step(client -> waited() > 4 && press(client, "List"));
     planCapture("minecraft:coal", "1", "jobs-plan-cycle-scale-4.png", false);
     planCapture(null, "1", "jobs-plan-bound-scale-4.png", true);
     // A4: a waiting processing job's steps and reason in the monitor.

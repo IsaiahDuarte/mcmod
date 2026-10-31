@@ -193,7 +193,10 @@ inventory is hidden while Jobs is open.
 - **Plan:** after a preview, **Plan** lists every item the job touches: how many come
   from storage, how many are crafted and how many are missing (red, listed first). A
   **Loop** line means two recipes make each other; keep some of one in storage to break
-  it. **Back** returns to the craftable strip and your jobs.
+  it. **Tree** draws the same plan as a tree of what each step needs (red is missing);
+  Ctrl+wheel zooms it and **List** goes back. **Back** returns to the craftable strip and
+  your jobs. If a preview fails, **Start** reads **Retry**: it previews the same amount again,
+  for example after you add the missing items.
 - **Start:** press **Start** to run the job; you need Craft. **Shift+Start** previews the typed
   amount and starts it at once. Its ingredients are
   reserved so no one else takes them.
@@ -202,7 +205,8 @@ inventory is hidden while Jobs is open.
   Click a job to see each step: done, crafting, waiting (and why) or next. **Cancel**
   stops a job and returns unused ingredients; **Back** closes the steps.
 - **Finished jobs:** while a screen is open you get a toast in the corner; otherwise the
-  usual chat line.
+  usual chat line. Turn **✉** grey before **Start** for jobs that should finish quietly; it is
+  green again the next time you open the terminal.
 - **From JEI:** with JEI installed and a terminal open, Ctrl-click a crafting recipe's
   **+** button to open its output in Jobs (if your Crafters can make it) instead of
   filling the grid.

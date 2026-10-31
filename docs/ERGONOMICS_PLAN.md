@@ -910,7 +910,9 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   missing amount; Start or Skip moves to the next).
   Done when: a JEI client step requests two missing ingredients.
 
-- [ ] **Q65 — Plan tree and notifications (M67).** Size M.
+- [x] **Q65 — Plan tree and notifications (M67).** Size M. Done 2026-10-30 (commit subject
+  `Q65:`). `PlanTree`, quiet jobs (nested job schema 7), Retry (ADR 0031 amendment).
+  [Evidence](evidence/ergonomics-q65-plan-tree-2026-10-30.md).
   A **Tree** toggle in Plan draws the steps as a zoomable tree (bounded by the plan's row cap).
   A **Notify** checkbox per request controls the finish toast. A failed preview offers
   **Retry**.

@@ -25,8 +25,10 @@ import net.minecraft.nbt.Tag;
  * Nested crafting-job schema inside world schema thirteen. Schema two adds the optional processing
  * {@code Dispatch}; schema three adds keep-stock {@code Rules} and an optional job {@code Rule}.
  * Schema four persists the exact physical target; schema five adds component/type provider
- * fingerprints. Older dispatches retain unknown target/provider identity without inference. Older
- * nested schemas still load. Unknown fields reject.
+ * fingerprints. Older dispatches retain unknown target/provider identity without inference. Schema
+ * six adds substitute allocations; schema seven (Q65) adds an optional {@code Quiet} flag on jobs
+ * whose requester turned the finish notice off. Each is written only when used, so older bytes stay
+ * the same. Older nested schemas still load. Unknown fields reject.
  */
 public final class CraftingJobCodec {
   static final long MAX_BYTES = 4L * 1024 * 1024;
@@ -87,20 +89,30 @@ public final class CraftingJobCodec {
   }
 
   /** Decoded nested table: jobs and keep-stock rules, already validated together. */
-  public record Decoded(List<CraftingJob.Snapshot> jobs, List<KeepStockRule> rules) {}
+  public record Decoded(
+      List<CraftingJob.Snapshot> jobs, List<KeepStockRule> rules, List<java.util.UUID> quiet) {
+    public Decoded(List<CraftingJob.Snapshot> jobs, List<KeepStockRule> rules) {
+      this(jobs, rules, List.of());
+    }
+  }
 
   public static CompoundTag encode(List<CraftingJob.Snapshot> jobs) {
     return encode(jobs, List.of());
   }
 
   public static CompoundTag encode(List<CraftingJob.Snapshot> jobs, List<KeepStockRule> rules) {
+    return encode(jobs, rules, List.of());
+  }
+
+  public static CompoundTag encode(
+      List<CraftingJob.Snapshot> jobs, List<KeepStockRule> rules, List<java.util.UUID> quiet) {
     var root = new CompoundTag();
     // Schema 6 (E1) adds each step's substitute allocation ("Uses"); without one the schema-5
     // bytes are unchanged.
     boolean substituted =
         jobs.stream()
             .anyMatch(job -> job.steps().stream().anyMatch(step -> !step.uses().isEmpty()));
-    root.putInt("Schema", substituted ? 6 : 5);
+    root.putInt("Schema", !quiet.isEmpty() ? 7 : substituted ? 6 : 5);
     var ruleList = new ListTag();
     for (var rule : rules) {
       var entry = new CompoundTag();
@@ -175,6 +187,7 @@ public final class CraftingJobCodec {
         entry.put("Dispatch", dispatch);
       }
       if (job.rule() != null) entry.putUUID("Rule", job.rule());
+      if (quiet.contains(job.id())) entry.putBoolean("Quiet", true);
       list.add(entry);
     }
     root.put("Jobs", list);
@@ -188,7 +201,7 @@ public final class CraftingJobCodec {
   public static Decoded decodeAll(CompoundTag root) {
     if (!root.contains("Schema", Tag.TAG_INT)
         || root.getInt("Schema") < 1
-        || root.getInt("Schema") > 6)
+        || root.getInt("Schema") > 7)
       throw new IllegalArgumentException("Unsupported crafting job schema");
     int schema = root.getInt("Schema");
     Nbt.fields(root, schema >= 3 ? Set.of("Schema", "Jobs", "Rules") : Set.of("Schema", "Jobs"));
@@ -236,6 +249,7 @@ public final class CraftingJobCodec {
       throw new IllegalArgumentException("Crafting job limit");
     long bytes = 0;
     var jobs = new ArrayList<CraftingJob.Snapshot>();
+    var quiet = new ArrayList<java.util.UUID>();
     for (int index = 0; index < list.size(); index++) {
       var entry = list.getCompound(index);
       bytes += entry.sizeInBytes();
@@ -258,9 +272,13 @@ public final class CraftingJobCodec {
                   "Reason"));
       if (schema >= 2) fields.add("Dispatch");
       if (schema >= 3) fields.add("Rule");
+      if (schema >= 7) fields.add("Quiet");
       if (entry.contains("Rule") && !entry.hasUUID("Rule"))
         throw new IllegalArgumentException("Malformed job rule");
+      if (entry.contains("Quiet") && !entry.getBoolean("Quiet"))
+        throw new IllegalArgumentException("Quiet is written only when set");
       Nbt.fields(entry, fields);
+      if (entry.contains("Quiet")) quiet.add(entry.getUUID("Id"));
       CraftingJob.Dispatch dispatch = null;
       if (entry.contains("Dispatch")) {
         if (!entry.contains("Dispatch", Tag.TAG_COMPOUND))
@@ -376,8 +394,8 @@ public final class CraftingJobCodec {
               dispatch,
               entry.hasUUID("Rule") ? entry.getUUID("Rule") : null));
     }
-    var validated = new CraftingJobs(jobs, rules, () -> {});
-    return new Decoded(validated.snapshot(), validated.rules());
+    var validated = new CraftingJobs(jobs, rules, quiet, () -> {});
+    return new Decoded(validated.snapshot(), validated.rules(), validated.quietJobs());
   }
 
   /** A saved job reason: empty for none; an unknown key is a malformed save, not a lost reason. */

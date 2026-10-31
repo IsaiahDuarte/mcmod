@@ -143,8 +143,8 @@ class CraftingJobPersistenceTest {
       var tag = world(true, 3);
       var entry = tag.getCompound("CraftingJobs").getList("Jobs", Tag.TAG_COMPOUND).getCompound(0);
       switch (i) {
-        // Schema 6 is now defined (E1 allocations); the first unknown one is 7.
-        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 7);
+        // Schemas 6 (E1 allocations) and 7 (Q65 quiet jobs) are defined; 8 is unknown.
+        case 0 -> tag.getCompound("CraftingJobs").putInt("Schema", 8);
         case 1 -> entry.putString("State", "FUTURE");
         case 2 -> entry.putString("Unknown", "x");
         case 3 -> entry.getList("Steps", Tag.TAG_COMPOUND).getCompound(0).putLong("Done", 9);
@@ -352,5 +352,33 @@ class CraftingJobPersistenceTest {
     assertEquals(
         Map.of(LOG, Map.of(LOG, 2L)),
         loaded.craftingJobs().all().getFirst().steps().getFirst().uses());
+  }
+
+  /**
+   * Q65: a quiet job is written as schema 7 with {@code Quiet} on that job, loads back quiet and
+   * saves identically; a Quiet field in an older schema, or a false one, is malformed.
+   */
+  @Test
+  void aQuietJobRoundTripsAsSchemaSeven() {
+    var tag = world(true, 3);
+    var jobs = tag.getCompound("CraftingJobs");
+    assertEquals(5, jobs.getInt("Schema"), "No quiet job: the schema-5 bytes are unchanged");
+    var decoded = CraftingJobCodec.decodeAll(jobs);
+    var quiet =
+        CraftingJobCodec.encode(
+            decoded.jobs(), decoded.rules(), List.of(decoded.jobs().getFirst().id()));
+    assertEquals(7, quiet.getInt("Schema"));
+    tag.put("CraftingJobs", quiet);
+    var loaded = DeviceSavedData.load(tag, registries);
+    assertEquals("", loaded.diagnostic());
+    var id = loaded.craftingJobs().all().getFirst().id();
+    assertTrue(loaded.craftingJobs().isQuiet(id));
+    assertEquals(tag, loaded.save(new CompoundTag(), registries));
+    var older = quiet.copy();
+    older.putInt("Schema", 6);
+    assertThrows(IllegalArgumentException.class, () -> CraftingJobCodec.decodeAll(older));
+    var falseFlag = quiet.copy();
+    falseFlag.getList("Jobs", Tag.TAG_COMPOUND).getCompound(0).putBoolean("Quiet", false);
+    assertThrows(IllegalArgumentException.class, () -> CraftingJobCodec.decodeAll(falseFlag));
   }
 }

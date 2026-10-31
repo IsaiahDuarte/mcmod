@@ -109,3 +109,21 @@ the row has no room for more buttons. Alternatives: computing `=N` on the client
 the client does not know the actor's available stock across segments), and evaluating
 expressions on the server (rejected: nothing would gain from it, and the packet stays one
 integer).
+
+## Amendment — plan tree, quiet jobs and Retry (2026-10-30, ergonomics plan Q65)
+
+The preview also carries the plan as a tree (`core.crafting.PlanTree`): depth-first nodes from
+the request down through each crafted resource's pattern inputs, scaled by that step's crafts,
+at most 64 rows (the plan-row cap) and 12 deep. A resource already open on its own path is
+shown once as a loop leaf, and a pattern that changed since planning is not expanded. The
+client draws it with connector lines and a ½–1× zoom. Retry is client-only: after a failed
+preview, Start re-sends the same preview.
+
+A job can be started quiet (`NOTIFY` in the terminal session, default on each time the terminal
+opens). `CraftingJobs` keeps the quiet job IDs, retires a job's flag with the job, and
+`WorldCraftingJobs` skips both the toast and the stored notice for a quiet job. They persist in
+the nested `CraftingJobs` table as schema 7: an optional `Quiet: true` on that job, written only
+when some job is quiet, so worlds without one keep their schema 5 or 6 bytes. Schema 6 tables
+and older reject the field, and `Quiet: false` is malformed (the flag is written only when set).
+Alternatives: keeping the flag in memory (rejected: a restart would turn a quiet job loud) and a
+field on every job snapshot (rejected: it would touch every job constructor for one boolean).

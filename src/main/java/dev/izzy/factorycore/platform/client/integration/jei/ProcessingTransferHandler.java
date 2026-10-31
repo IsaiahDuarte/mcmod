@@ -52,8 +52,13 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
       Player player,
       boolean maxTransfer,
       boolean doTransfer) {
-    var inputs = cells(slots.getSlotViews(RecipeIngredientRole.INPUT));
-    var outputs = cells(slots.getSlotViews(RecipeIngredientRole.OUTPUT));
+    var available = new java.util.HashSet<String>();
+    for (var stack : player.getInventory().items)
+      if (!stack.isEmpty())
+        available.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+    for (var row : menu.view().rows()) available.add(row.icon());
+    var inputs = cells(slots.getSlotViews(RecipeIngredientRole.INPUT), available);
+    var outputs = cells(slots.getSlotViews(RecipeIngredientRole.OUTPUT), available);
     if (inputs.size() > ProcessingTransfer.MAX_INPUTS)
       return helper.createUserErrorWithTooltip(
           Component.translatable("gui.factorycore.terminal.jei.too_many_inputs"));
@@ -79,12 +84,24 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
     return null;
   }
 
-  /** The shown item or fluid of each nonempty slot; slots of other ingredient types are skipped. */
+  /**
+   * The item or fluid of each nonempty slot; slots of other ingredient types are skipped. An item
+   * slot with alternatives takes the first one in {@code available} (the player's inventory and
+   * terminal rows), else its first listed one, never JEI's cycling display, so the same click
+   * always fills the same grid.
+   */
   private static List<TerminalCraftingPackets.ProcessingFill.Cell> cells(
-      List<IRecipeSlotView> views) {
+      List<IRecipeSlotView> views, java.util.Set<String> available) {
     var cells = new ArrayList<TerminalCraftingPackets.ProcessingFill.Cell>();
     for (var view : views) {
-      var item = view.getDisplayedItemStack().filter(stack -> !stack.isEmpty());
+      var options = view.getItemStacks().filter(stack -> !stack.isEmpty()).limit(64).toList();
+      var item =
+          options.stream()
+              .filter(
+                  stack ->
+                      available.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString()))
+              .findFirst()
+              .or(() -> options.stream().findFirst());
       if (item.isPresent()) {
         cells.add(
             new TerminalCraftingPackets.ProcessingFill.Cell(

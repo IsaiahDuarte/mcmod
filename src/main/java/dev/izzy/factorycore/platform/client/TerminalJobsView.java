@@ -40,7 +40,14 @@ final class TerminalJobsView {
       startJob,
       keepJob,
       planButton,
+      treeButton,
+      notifyButton,
       cancelJob;
+
+  /** Q65: the Plan overlay draws a tree instead of the per-resource list, at this zoom. */
+  private boolean treeMode;
+
+  private float treeZoom = 1;
 
   /** Q7: the job-view revision whose Max result was last copied into the amount box. */
   private long maxShown;
@@ -173,8 +180,10 @@ final class TerminalJobsView {
     amountBox.setResponder(value -> amountError = "");
     startJob = jobButton("start", first.get(5), this::start);
     var second =
-        PanelLayout.columns(
-            new Rect(GRID_X, y + PanelLayout.ROW + 4, MAIN - 2 * GRID_X, PanelLayout.ROW), 3, 4);
+        PanelLayout.fit(
+            new Rect(GRID_X, y + PanelLayout.ROW + 4, MAIN - 2 * GRID_X, PanelLayout.ROW),
+            new int[] {32, 32, 32, 40, 20},
+            3);
     keepJob =
         jobButton(
             "keep", second.get(0), () -> job(TerminalJobPackets.KEEP, craftSelected, keepAmount()));
@@ -191,8 +200,22 @@ final class TerminalJobsView {
               showPlan = !showPlan;
               planOffset = 0;
             });
+    // Q65: Tree switches the Plan overlay; ✉ turns the finish notice on or off for new jobs.
+    treeButton =
+        jobButton(
+            "tree",
+            second.get(2),
+            () -> {
+              treeMode = !treeMode;
+              planOffset = 0;
+            });
     cancelJob =
-        jobButton("cancel", second.get(2), () -> job(TerminalJobPackets.CANCEL, jobSelected, 1));
+        jobButton("cancel", second.get(3), () -> job(TerminalJobPackets.CANCEL, jobSelected, 1));
+    notifyButton =
+        jobButton(
+            "notify",
+            second.get(4),
+            () -> job(TerminalJobPackets.NOTIFY, menu().jobView().notices() ? 0 : 1, 1));
   }
 
   /**
@@ -222,6 +245,21 @@ final class TerminalJobsView {
    */
   private void start() {
     var jobs = menu().jobView();
+    // Q65: after a failed preview Start reads Retry and previews the same amount again.
+    if (retry()) {
+      try {
+        job(
+            TerminalJobPackets.PREVIEW,
+            craftSelected,
+            Math.max(
+                1,
+                Math.min(
+                    TerminalJobPackets.MAX_AMOUNT, Integer.parseInt(jobs.preview().amount()))));
+      } catch (NumberFormatException unreadable) {
+        previewTyped();
+      }
+      return;
+    }
     boolean previewed = !jobs.preview().icon().isEmpty() && jobs.previewReason() == null;
     if (Screen.hasShiftDown() || !previewed) {
       var parsed = typed();
@@ -235,6 +273,14 @@ final class TerminalJobsView {
       return;
     }
     job(TerminalJobPackets.START, 0, 1);
+  }
+
+  /** Q65: a preview failed, so Start offers to try it again. */
+  private boolean retry() {
+    var jobs = menu().jobView();
+    return !jobs.preview().icon().isEmpty()
+        && jobs.previewReason() != null
+        && craftSelected < jobs.craftables().size();
   }
 
   /** Q64: steps the typed amount by 1 (Shift 10, Ctrl 64) in {@code direction}, then previews. */
@@ -317,8 +363,21 @@ final class TerminalJobsView {
 
   void tickButtons(boolean jobsMode) {
     var jobs = menu().jobView();
-    for (var item : List.of(stepDown, stepUp, previewMany, previewMax, startJob, keepJob))
+    for (var item :
+        List.of(stepDown, stepUp, previewMany, previewMax, startJob, keepJob, notifyButton))
       item.visible = jobsMode;
+    treeButton.visible = jobsMode;
+    treeButton.active = planShown();
+    treeButton.setMessage(
+        Component.translatable("gui.factorycore.terminal.job." + (treeMode ? "list" : "tree")));
+    notifyButton.setMessage(
+        Component.literal("✉")
+            .withStyle(
+                jobs.notices()
+                    ? net.minecraft.ChatFormatting.GREEN
+                    : net.minecraft.ChatFormatting.DARK_GRAY));
+    startJob.setMessage(
+        Component.translatable("gui.factorycore.terminal.job." + (retry() ? "retry" : "start")));
     keepJob.active = craftSelected < jobs.craftables().size();
     amountBox.visible = jobsMode;
     if (jobs.preview().icon().isEmpty()) showPlan = false;
@@ -340,6 +399,7 @@ final class TerminalJobsView {
     // Q64: with nothing previewed, Start previews (or with Shift, starts) the typed amount.
     startJob.active =
         (!jobs.preview().icon().isEmpty() && jobs.previewReason() == null)
+            || retry()
             || (craftSelected < jobs.craftables().size() && !amountBox.getValue().isBlank());
     cancelJob.visible = jobsMode;
     cancelJob.active =
@@ -355,6 +415,7 @@ final class TerminalJobsView {
 
   void renderBg(GuiGraphics graphics) {
     if (detailShown()) renderDetail(graphics);
+    else if (planShown() && treeMode) renderTree(graphics);
     else if (planShown()) renderPlan(graphics);
     else renderList(graphics);
   }
@@ -547,7 +608,91 @@ final class TerminalJobsView {
   /** Breakdown lines: one per row, "and N more" if any, then one per cycle explanation. */
   private int planLines() {
     var jobs = menu().jobView();
+    if (treeMode) return jobs.tree().size() + (jobs.treeMore() ? 1 : 0);
     return jobs.plan().size() + (jobs.planMore() > 0 ? 1 : 0) + jobs.cycles().size();
+  }
+
+  /** Q65: tree rows that fit the overlay at the current zoom. */
+  private int treeLines() {
+    return Math.max(1, (int) ((overlay().height() - 13) / (18 * treeZoom)));
+  }
+
+  /**
+   * Q65: the plan as a tree, depth first. Each node is an icon with its amount, indented by depth
+   * and joined to its parent by a line; red is missing, amber a loop, grey taken from storage.
+   */
+  private void renderTree(GuiGraphics graphics) {
+    var jobs = menu().jobView();
+    var font = screen.font();
+    var area = overlay().offset(screen.left(), screen.top());
+    Panels.inset(graphics, area);
+    graphics.drawString(
+        font,
+        Component.translatable("gui.factorycore.terminal.job.tree.title"),
+        area.x() + 3,
+        area.y() + 3,
+        Panels.LIST_MUTED,
+        true);
+    var tree = jobs.tree();
+    graphics.enableScissor(area.x() + 1, area.y() + 12, area.right() - 1, area.bottom() - 1);
+    var pose = graphics.pose();
+    pose.pushPose();
+    pose.translate(area.x() + 3, area.y() + 13, 0);
+    pose.scale(treeZoom, treeZoom, 1);
+    // The row each depth last drew, so a child can draw its line up to its parent.
+    int[] parentRow = new int[dev.izzy.factorycore.core.crafting.PlanTree.MAX_DEPTH + 2];
+    for (int index = 0; index < tree.size(); index++) {
+      var node = tree.get(index);
+      int row = index - planOffset, x = node.depth() * 12, y = row * 18;
+      parentRow[node.depth() + 1] = row;
+      if (node.depth() > 0) {
+        int parentY = parentRow[node.depth()] * 18 + 17, lineX = x - 7;
+        int line = 0xFF000000 | Panels.LIST_MUTED;
+        graphics.fill(lineX, Math.min(parentY, y + 9), lineX + 1, y + 9, line);
+        graphics.fill(lineX, y + 8, x + 1, y + 9, line);
+      }
+      if (row < 0) continue;
+      if (y > (area.height() - 13) / treeZoom) break;
+      graphics.renderItem(
+          new net.minecraft.world.item.ItemStack(
+              net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                  net.minecraft.resources.ResourceLocation.parse(node.item().icon()))),
+          x + 1,
+          y + 1);
+      int colour =
+          switch (node.kind()) {
+            case MISSING -> Panels.LIST_SHORT;
+            case LOOP -> Panels.LIST_WARN;
+            case STORED -> Panels.LIST_MUTED;
+            default -> Panels.LIST_TEXT;
+          };
+      graphics.drawString(
+          font,
+          Component.translatable(
+              "gui.factorycore.terminal.job.tree.node."
+                  + node.kind().name().toLowerCase(java.util.Locale.ROOT),
+              CountText.compact(Long.toString(node.amount())),
+              node.item().name()),
+          x + 19,
+          y + 5,
+          colour,
+          true);
+    }
+    if (jobs.treeMore() && tree.size() - planOffset < treeLines())
+      graphics.drawString(
+          font,
+          Component.translatable("gui.factorycore.terminal.job.tree.more"),
+          0,
+          (tree.size() - planOffset) * 18 + 5,
+          Panels.LIST_MUTED,
+          true);
+    pose.popPose();
+    graphics.disableScissor();
+  }
+
+  /** Test hook (Q65): the tree zoom. */
+  void treeZoom(float zoom) {
+    treeZoom = Math.max(0.5f, Math.min(1, zoom));
   }
 
   /** Right edges of the Stored, Craft and Missing columns, from the overlay's left. */
@@ -707,7 +852,7 @@ final class TerminalJobsView {
     var font = screen.font();
     int top = screen.top();
     if (planShown() || detailShown()) {
-      if (!planShown() || !overOverlay(mouseX, mouseY)) return;
+      if (!planShown() || treeMode || !overOverlay(mouseX, mouseY)) return;
       int index = planOffset + (mouseY - top - overlay().y() - 13) / 9;
       var plan = menu().jobView().plan();
       if (mouseY >= top + overlay().y() + 13 && index >= 0 && index < plan.size()) {
@@ -882,6 +1027,17 @@ final class TerminalJobsView {
               Math.min(
                   Math.max(0, detailLines() - overlayLines()),
                   detailOffset + (scrollY > 0 ? -1 : 1)));
+      return true;
+    }
+    if (planShown() && treeMode && overOverlay(mouseX, mouseY)) {
+      // Q65: Ctrl+wheel zooms the tree; the wheel scrolls it.
+      if (Screen.hasControlDown()) treeZoom(treeZoom + (scrollY > 0 ? 0.25f : -0.25f));
+      else
+        planOffset =
+            Math.max(
+                0,
+                Math.min(
+                    Math.max(0, planLines() - treeLines()), planOffset + (scrollY > 0 ? -1 : 1)));
       return true;
     }
     if (planShown() && overOverlay(mouseX, mouseY)) {

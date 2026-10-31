@@ -211,6 +211,18 @@ public final class WorldCraftingJobs {
     return submit(actor, origin, key, amount, null);
   }
 
+  /** Q65: as {@link #submit}, and with {@code notify} false the job finishes without a notice. */
+  public Submission submit(
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      ResourceKey key,
+      long amount,
+      boolean notify) {
+    var submission = submit(actor, origin, key, amount, null);
+    if (!notify && submission.job() != null) saved().craftingJobs().quiet(submission.job());
+    return submission;
+  }
+
   private Submission submit(
       NetworkPermissions.Actor actor,
       NodeRegistry.Position origin,
@@ -531,13 +543,14 @@ public final class WorldCraftingJobs {
     if (job.state() == CraftingJob.State.DELIVERING || cancelling) {
       deliver(job);
       if (job.finished()) {
+        boolean quiet = jobs.isQuiet(id);
         jobs.retire(id);
         retryAt.remove(id);
         batches.remove(id);
         lastRun.remove(id);
         runs.remove(id);
         recipes.remove(id);
-        notice(job, cancelling);
+        if (!quiet) notice(job, cancelling);
       }
       jobs.changed();
       return;

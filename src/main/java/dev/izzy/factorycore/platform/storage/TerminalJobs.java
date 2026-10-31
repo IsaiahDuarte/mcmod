@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.crafting.JobStatus;
 import dev.izzy.factorycore.core.crafting.PlanRows;
+import dev.izzy.factorycore.core.crafting.PlanTree;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.*;
@@ -34,6 +35,15 @@ final class TerminalJobs {
   private int previewAmount;
   private WorldCraftingJobs.Preview preview;
   private List<TerminalJobPackets.PlanRow> planRows = List.of();
+
+  /** Q65: the preview as a tree, and whether it was cut at the row limit. */
+  private List<TerminalJobPackets.TreeRow> planTree = List.of();
+
+  private boolean planTreeMore;
+
+  /** Q65: whether jobs started in this session tell the requester when they finish. */
+  private boolean notify = true;
+
   private int planMore;
   private List<String> planCycles = List.of();
   private JobStatus jobStatus = JobStatus.READY;
@@ -127,7 +137,7 @@ final class TerminalJobs {
   private void startPreviewed() {
     var submission =
         WorldCraftingJobs.get(viewer.server)
-            .submit(actor(), terminal.origin(), previewKey, previewAmount);
+            .submit(actor(), terminal.origin(), previewKey, previewAmount, notify);
     if (submission.job() != null) {
       jobStatus = JobStatus.STARTED;
       started = previewKey;
@@ -228,6 +238,7 @@ final class TerminalJobs {
                 : capped ? JobStatus.CAPPED : JobStatus.PREVIEWED;
         if (quick && preview.reason() == null) startPreviewed();
       }
+      case TerminalJobPackets.NOTIFY -> notify = command.selection() == 1;
       case TerminalJobPackets.KEEP -> {
         if (command.revision() != jobRevision || command.selection() >= craftables.size()) {
           return true;
@@ -287,6 +298,8 @@ final class TerminalJobs {
       planRows = List.of();
       planMore = 0;
       planCycles = List.of();
+      planTree = List.of();
+      planTreeMore = false;
       return;
     }
     var units = new HashMap<UUID, Long>();
@@ -311,6 +324,19 @@ final class TerminalJobs {
       cycles.add(text.length() > 256 ? text.substring(0, 255) + "…" : text);
     }
     planCycles = List.copyOf(cycles);
+    // Q65: the same plan as a tree; pattern inputs come from the segment's index.
+    var inputs = new HashMap<UUID, java.util.Map<ResourceKey, Long>>();
+    if (member.status() == NetworkTopology.Status.VALID)
+      for (var offers : WorldCrafting.get(viewer.server).index(member.scope()).byOutput().values())
+        for (var offer : offers) inputs.put(offer.pattern().id(), offer.pattern().inputs());
+    var tree = PlanTree.of(preview.plan(), inputs::get, TerminalJobPackets.PLAN_ROWS);
+    var treeRows = new ArrayList<TerminalJobPackets.TreeRow>(tree.nodes().size());
+    for (var node : tree.nodes())
+      treeRows.add(
+          new TerminalJobPackets.TreeRow(
+              entry(node.key(), ""), node.depth(), node.amount(), node.kind()));
+    planTree = List.copyOf(treeRows);
+    planTreeMore = tree.truncated();
   }
 
   /**
@@ -439,7 +465,10 @@ final class TerminalJobs {
             planCycles,
             jobRows,
             detail,
-            jobStatus);
+            jobStatus,
+            planTree,
+            planTreeMore,
+            notify);
     if (!packet.equals(sent)) {
       sent = packet;
       PacketDistributor.sendToPlayer(viewer, packet);

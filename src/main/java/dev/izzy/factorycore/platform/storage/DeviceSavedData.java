@@ -170,7 +170,8 @@ public final class DeviceSavedData extends SavedData {
     craftingJobs =
         state == null
             ? null
-            : new CraftingJobs(jobStates.jobs(), jobStates.rules(), this::setDirty);
+            : new CraftingJobs(
+                jobStates.jobs(), jobStates.rules(), jobStates.quiet(), this::setDirty);
     for (var rule : jobStates.rules())
       if (!networks.containsKey(rule.network()))
         throw new IllegalArgumentException("Keep-stock rule has unknown network");
@@ -569,7 +570,10 @@ public final class DeviceSavedData extends SavedData {
     tag.put("ExternalClaims", ExternalClaimsCodec.encode(externalClaims.snapshot()));
     tag.put("RouteCursors", RouteCursorCodec.encode(routeCursors.snapshot()));
     tag.put("Buffers", BufferStateCodec.encode(buffers.snapshot(), buffers.deployments()));
-    tag.put("CraftingJobs", CraftingJobCodec.encode(craftingJobs.snapshot(), craftingJobs.rules()));
+    tag.put(
+        "CraftingJobs",
+        CraftingJobCodec.encode(
+            craftingJobs.snapshot(), craftingJobs.rules(), craftingJobs.quietJobs()));
     tag.put(
         "Networks",
         NetworkStateCodec.encode(

@@ -344,4 +344,51 @@ public final class CraftingJobGameTests {
         .thenExecute(() -> h.assertTrue(f.stock(f.stick) == 8, "Eight sticks delivered"))
         .thenSucceed();
   }
+
+  /**
+   * Q65: a job started with Notify off finishes without a notice, and its quiet flag survives a
+   * save and load while it runs; one started with Notify on still gets one.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void aJobStartedWithNotifyOffSendsNoNotice(GameTestHelper h) {
+    var f = setup(h);
+    UUID[] ids = {null, null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.log, 4);
+              var quiet = jobs(h).submit(actor(f.owner), f.origin, f.stick, 4, false);
+              var loud = jobs(h).submit(actor(f.owner), f.origin, f.stick, 4, true);
+              h.assertTrue(quiet.job() != null && loud.job() != null, "Both submitted");
+              ids[0] = quiet.job();
+              ids[1] = loud.job();
+              var saved =
+                  dev.izzy.factorycore.platform.storage.CraftingJobCodec.decodeAll(
+                      dev.izzy.factorycore.platform.storage.CraftingJobCodec.encode(
+                          f.saved.craftingJobs().snapshot(),
+                          f.saved.craftingJobs().rules(),
+                          f.saved.craftingJobs().quietJobs()));
+              h.assertTrue(
+                  saved.quiet().equals(List.of(ids[0])),
+                  "The quiet flag is saved for that job only: " + saved.quiet());
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.craftingJobs().get(ids[0]) == null
+                        && f.saved.craftingJobs().get(ids[1]) == null,
+                    "Both jobs finish and retire"))
+        .thenExecute(
+            () -> {
+              var notices = jobs(h).notices(f.owner);
+              h.assertTrue(
+                  notices.stream().noneMatch(n -> n.job().equals(ids[0]))
+                      && notices.stream().anyMatch(n -> n.job().equals(ids[1])),
+                  "Only the Notify-on job leaves a notice: " + notices);
+              h.assertTrue(
+                  f.saved.craftingJobs().quietJobs().isEmpty(), "The quiet flag retires too");
+            })
+        .thenSucceed();
+  }
 }

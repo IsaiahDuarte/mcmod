@@ -803,6 +803,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /** Test hook: the search text, as typed. */
+  /** Test hook (Q65): the Plan tree's zoom (½ to 1). */
+  public void treeZoom(float zoom) {
+    jobs.treeZoom(zoom);
+  }
+
   /** Test hook (Q64): types in the Jobs amount box and previews it, as Enter does. */
   public void typeAmount(String text) {
     jobs.typeAmount(text);

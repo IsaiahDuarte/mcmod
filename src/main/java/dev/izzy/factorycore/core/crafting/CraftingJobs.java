@@ -20,6 +20,10 @@ public final class CraftingJobs {
 
   private final Map<UUID, CraftingJob> jobs = new LinkedHashMap<>();
   private final Map<UUID, KeepStockRule> rules = new LinkedHashMap<>();
+
+  /** Q65: jobs whose requester asked not to be told when they finish. */
+  private final java.util.Set<UUID> quiet = new java.util.LinkedHashSet<>();
+
   private final Runnable dirty;
   private Thread owner;
 
@@ -29,6 +33,14 @@ public final class CraftingJobs {
 
   public CraftingJobs(
       List<CraftingJob.Snapshot> saved, List<KeepStockRule> savedRules, Runnable dirty) {
+    this(saved, savedRules, List.of(), dirty);
+  }
+
+  public CraftingJobs(
+      List<CraftingJob.Snapshot> saved,
+      List<KeepStockRule> savedRules,
+      List<UUID> savedQuiet,
+      Runnable dirty) {
     this.dirty = Objects.requireNonNull(dirty);
     if (savedRules.size() > MAX_RULES) throw new IllegalArgumentException("Rule limit exceeded");
     var owners = new LinkedHashMap<UUID, Integer>();
@@ -46,6 +58,27 @@ public final class CraftingJobs {
         throw new IllegalArgumentException("Per-principal job limit exceeded");
       jobs.put(snapshot.id(), new CraftingJob(snapshot));
     }
+    for (var id : savedQuiet) {
+      if (!jobs.containsKey(id)) throw new IllegalArgumentException("Quiet flag for unknown job");
+      quiet.add(id);
+    }
+  }
+
+  /** Q65: the job finishes without telling its requester. */
+  public void quiet(UUID id) {
+    checkThread();
+    if (!jobs.containsKey(id)) throw new IllegalArgumentException("Unknown job");
+    if (quiet.add(id)) dirty.run();
+  }
+
+  public boolean isQuiet(UUID id) {
+    checkThread();
+    return quiet.contains(id);
+  }
+
+  public List<UUID> quietJobs() {
+    checkThread();
+    return List.copyOf(quiet);
   }
 
   private void checkThread() {
@@ -91,6 +124,7 @@ public final class CraftingJobs {
     var job = jobs.get(id);
     if (job == null || !job.finished()) throw new IllegalStateException("Job is not finished");
     jobs.remove(id);
+    quiet.remove(id);
     dirty.run();
   }
 

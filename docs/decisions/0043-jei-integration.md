@@ -65,3 +65,8 @@ message; more than nine inputs is a transfer error shown on the button, as is a 
 an item or fluid on both sides. Fluid amounts round up to the grid's 250 mB unit; the player
 sees and can change the amounts before encoding. Alternative: one handler per known category
 (rejected: it misses other mods' categories, which is the point of the slice).
+
+Processing transfers (Q5) choose among an input's alternatives the way crafting transfers do:
+the first one the player has in the inventory or the terminal, else the first listed. They
+never use JEI's cycling display, so a click does not depend on the moment it is made (fixed
+2026-10-30 during Q65).

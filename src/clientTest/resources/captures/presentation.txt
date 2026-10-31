@@ -87,6 +87,8 @@ connector-picked-scale-4.png
 jobs-typed-37-scale-2.png
 jobs-typed-37-started-scale-2.png
 jobs-plan-two-level-shortage-scale-4.png
+jobs-plan-tree-scale-4.png
+jobs-plan-tree-scale-1.png
 jobs-plan-cycle-scale-4.png
 jobs-plan-bound-scale-4.png
 jobs-plan-bound-end-scale-4.png
