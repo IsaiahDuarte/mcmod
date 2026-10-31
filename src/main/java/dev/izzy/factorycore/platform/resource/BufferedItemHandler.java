@@ -14,13 +14,27 @@ public final class BufferedItemHandler implements IItemHandler {
   private final ItemBuffer buffer;
   private final PlatformResourceCodec codec;
   private final BooleanSupplier usable;
+  private final java.util.function.Predicate<ResourceKey> accepts;
 
   /** Usable must revalidate the current loaded physical lease on the server thread. */
   public BufferedItemHandler(
       ItemBuffer buffer, PlatformResourceCodec codec, BooleanSupplier usable) {
+    this(buffer, codec, usable, key -> true);
+  }
+
+  /**
+   * Q101 (M124): {@code accepts} says which resources outside automation may insert now (a Stock
+   * buffer takes only what its filter allows). Network transfers do not come through here.
+   */
+  public BufferedItemHandler(
+      ItemBuffer buffer,
+      PlatformResourceCodec codec,
+      BooleanSupplier usable,
+      java.util.function.Predicate<ResourceKey> accepts) {
     this.buffer = Objects.requireNonNull(buffer);
     this.codec = Objects.requireNonNull(codec);
     this.usable = Objects.requireNonNull(usable);
+    this.accepts = Objects.requireNonNull(accepts);
   }
 
   @Override
@@ -49,6 +63,7 @@ public final class BufferedItemHandler implements IItemHandler {
     } catch (IllegalArgumentException | UncheckedIOException unsupported) {
       return stack.copy();
     }
+    if (!accepts.test(key)) return stack.copy();
     long accepted = buffer.insertSlot(slot, key, stack.getCount(), simulate);
     return accepted == stack.getCount()
         ? ItemStack.EMPTY

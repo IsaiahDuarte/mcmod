@@ -592,4 +592,40 @@ public final class BufferExportGameTests {
         .thenWaitUntil(stocked)
         .thenSucceed();
   }
+
+  /**
+   * Q101 (M124): in Stock mode a hopper or pipe can put in only what the Buffer's filter allows;
+   * paused, it takes anything as before.
+   */
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void stockBufferRefusesForeignItemsFromOutside(GameTestHelper helper) {
+    var f = setup(helper);
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(
+            () -> {
+              f.buffer().configure(f.actor(), BufferRegistry.Mode.STOCK, policy(f, 64));
+              var handler = f.buffer().capability();
+              var dirt = new ItemStack(Items.DIRT, 5);
+              helper.assertTrue(
+                  handler.insertItem(0, dirt.copy(), false).getCount() == 5
+                      && f.buffer()
+                              .inventory()
+                              .total(
+                                  new PlatformResourceCodec(helper.getLevel().registryAccess())
+                                      .itemKey(dirt))
+                          == 0,
+                  "Stock refuses dirt from outside");
+              helper.assertTrue(
+                  handler.insertItem(0, new ItemStack(Items.IRON_INGOT, 3), false).isEmpty()
+                      && f.buffer().inventory().total(f.iron()) == 3,
+                  "Stock takes the iron its filter allows");
+              f.buffer().configure(f.actor(), BufferRegistry.Mode.PAUSED, policy(f, 64));
+              helper.assertTrue(
+                  handler.insertItem(1, dirt.copy(), false).isEmpty(),
+                  "Paused, anything goes in as before");
+            })
+        .thenSucceed();
+  }
 }

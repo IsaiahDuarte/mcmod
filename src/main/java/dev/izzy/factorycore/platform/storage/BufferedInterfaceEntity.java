@@ -496,7 +496,20 @@ public final class BufferedInterfaceEntity extends BlockEntity
                   !isRemoved()
                       && diagnostic.isEmpty()
                       && physicallyCurrent()
-                      && saved.buffers().usable(lease, this));
+                      && saved.buffers().usable(lease, this),
+              // Q101 (M124): a Stock buffer takes from outside only what its filter allows.
+              key -> {
+                var deployment = saved.buffers().deployment(lease.id());
+                return deployment == null
+                    || deployment.mode() != BufferRegistry.Mode.STOCK
+                    || deployment
+                        .policy()
+                        .filter()
+                        .matches(
+                            key,
+                            new dev.izzy.factorycore.platform.resource.PlatformFilterTags(
+                                serverLevel().getServer()));
+              });
       write();
       WorldNetworks.get(serverLevel().getServer()).imports().register(this);
     } catch (IllegalArgumentException | IllegalStateException | ArithmeticException failure) {

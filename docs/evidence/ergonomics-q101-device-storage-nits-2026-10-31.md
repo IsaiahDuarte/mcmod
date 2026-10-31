@@ -54,3 +54,20 @@ the hopper. The handler is always present, and it refuses when the drive can't t
 **Test.** `DriveFeedbackGameTests.hoppersMoveWholeCellsInAndOutOfADrive`: a hopper above installs
 a cell holding 12 cobblestone into bay 1 (its ledger is placed). A hopper below then takes it out
 whole, detached, with its 12 cobblestone. 486 GameTests passed.
+
+## M124: a Stock buffer refuses foreign items from outside (confirmed bug, fixed)
+
+**Check first.** With the new check turned off, `BufferExportGameTests.stockBufferRefusesForeignItemsFromOutside`
+fails: a hopper or pipe could put dirt into a Stock buffer.
+
+**Fix.** `BufferedItemHandler` takes an `accepts` predicate. `BufferedInterfaceEntity` passes one
+that, in Stock mode, allows only what the policy filter matches (tags resolved by
+`PlatformFilterTags`). Other modes are unchanged, and network transfers do not go through this
+handler.
+
+**Test.** In Stock mode dirt is refused and iron accepted; paused, dirt goes in. 487 GameTests passed.
+
+## M141: handle ID in the tooltip (already met)
+
+`CellItem.appendHoverText` already shows every bound cell's backing ID
+(`tooltip.factorycore.cell_backing`), so nothing changed.
