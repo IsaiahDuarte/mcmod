@@ -2,10 +2,13 @@ package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.core.program.DraftHistory;
 import dev.izzy.factorycore.core.program.FriendlyCompiler;
-import dev.izzy.factorycore.core.program.ProgramCompletion;
+import dev.izzy.factorycore.core.program.ProgramSuggestions;
 import dev.izzy.factorycore.core.program.ProgramSyntax;
+import dev.izzy.factorycore.platform.program.GameVocabulary;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractScrollWidget;
@@ -20,7 +23,9 @@ import net.minecraft.util.StringUtil;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Vanilla multiline editing semantics with bounded undo, token colors and positioned diagnostics.
+ * Vanilla multiline editing semantics with bounded undo, token colors, positioned diagnostics and
+ * suggestions while typing (Q123): the best match shows faintly after the cursor and a short list
+ * under the line; Tab accepts, Up and Down choose.
  */
 public final class ProgramTextEditor extends AbstractScrollWidget {
   private record Line(int start, int end) {}
@@ -49,21 +54,84 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
   private List<FriendlyCompiler.Diagnostic> diagnostics = List.of();
   private boolean restoring;
 
+  /** Shown while typing; any other move of the cursor hides the suggestions. */
+  private static final int SHOWN = 5;
+
+  private final Supplier<Collection<String>> labels;
+  private ProgramSuggestions.Context suggestion;
+  private List<String> options = List.of();
+  private int selected;
+  private boolean typing;
+
   public ProgramTextEditor(
-      Font font, int x, int y, int width, int height, String initial, DraftHistory history) {
+      Font font,
+      int x,
+      int y,
+      int width,
+      int height,
+      String initial,
+      DraftHistory history,
+      Supplier<Collection<String>> labels) {
     super(x, y, width, height, Component.translatable("gui.factorycore.program.editor"));
     this.font = font;
     this.history = history;
+    this.labels = labels;
     field = new Field(font, width - totalInnerPadding());
     field.setCharacterLimit(16_384);
     field.setValueListener(
         value -> {
           spans = ProgramSyntax.spans(value);
-          diagnostics = FriendlyCompiler.compile(value).diagnostics();
+          diagnostics = FriendlyCompiler.compile(value, GameVocabulary.get()).diagnostics();
           if (!restoring) history.edit(value);
         });
     field.setCursorListener(this::scrollToCursor);
     restore(initial);
+  }
+
+  /** The live problems with the draft as typed, first one first. */
+  public List<FriendlyCompiler.Diagnostic> diagnostics() {
+    return diagnostics;
+  }
+
+  /** The suggestions shown now (empty when none are), best first. */
+  public List<String> suggestions() {
+    return showing() ? options : List.of();
+  }
+
+  private boolean showing() {
+    if (!typing || !isFocused() || suggestion == null || options.isEmpty()) return false;
+    boolean waiting =
+        switch (suggestion.slot()) {
+          case PLACE, AFTER_PLACE, UNIT, NONE -> true;
+          default -> false;
+        };
+    return (waiting || !suggestion.prefix().isEmpty())
+        && !(options.size() == 1 && options.getFirst().equalsIgnoreCase(suggestion.prefix()));
+  }
+
+  private void suggest() {
+    suggestion = ProgramSuggestions.at(field.value(), field.cursor());
+    options = ProgramSuggestions.options(suggestion, GameVocabulary.get(), labels.get(), 8);
+    selected = 0;
+  }
+
+  /** Replaces the text being typed with the chosen suggestion, then a space. */
+  public void accept(String option) {
+    if (suggestion == null) suggest();
+    var value = field.value();
+    int end = suggestion.end();
+    boolean spaced = end < value.length() && value.charAt(end) == ' ';
+    replace(suggestion.start(), end, spaced ? option : option + " ");
+    typing = true;
+    suggest();
+  }
+
+  private void replace(int start, int end, String text) {
+    field.seekCursor(Whence.ABSOLUTE, start);
+    field.setSelecting(true);
+    field.seekCursor(Whence.ABSOLUTE, end);
+    field.setSelecting(false);
+    field.insertText(text);
   }
 
   public String getValue() {
@@ -102,18 +170,14 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
     field.insertText(text);
   }
 
-  /** Replaces just the identifier prefix before the cursor for explicit completion choices. */
+  /** Replaces the text being typed (a whole item name, label or word) for a picker choice. */
   public void complete(String text) {
-    var context = ProgramCompletion.at(field.value(), field.cursor());
-    field.seekCursor(Whence.ABSOLUTE, context.start());
-    field.setSelecting(true);
-    field.seekCursor(Whence.ABSOLUTE, context.end());
-    field.setSelecting(false);
-    field.insertText(text);
+    var context = completion();
+    replace(context.start(), context.end(), text);
   }
 
-  public ProgramCompletion.Context completion() {
-    return ProgramCompletion.at(field.value(), field.cursor());
+  public ProgramSuggestions.Context completion() {
+    return ProgramSuggestions.at(field.value(), field.cursor());
   }
 
   @Override
@@ -129,17 +193,34 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
       redo();
       return true;
     }
+    if (showing()) {
+      int shown = Math.min(SHOWN, options.size());
+      if (key == GLFW.GLFW_KEY_TAB) {
+        accept(options.get(selected));
+        return true;
+      }
+      if (key == GLFW.GLFW_KEY_DOWN || key == GLFW.GLFW_KEY_UP) {
+        selected = (selected + (key == GLFW.GLFW_KEY_DOWN ? 1 : shown - 1)) % shown;
+        return true;
+      }
+    }
     if (key == GLFW.GLFW_KEY_TAB) {
       insert("    ");
       return true;
     }
-    return field.keyPressed(key);
+    // Deleting keeps suggesting; moving the cursor or a new line stops until the next letter.
+    typing = key == GLFW.GLFW_KEY_BACKSPACE && typing;
+    boolean handled = field.keyPressed(key);
+    if (typing) suggest();
+    return handled;
   }
 
   @Override
   public boolean charTyped(char character, int modifiers) {
     if (!isFocused() || !StringUtil.isAllowedChatCharacter(character)) return false;
     field.insertText(Character.toString(character));
+    typing = true;
+    suggest();
     return true;
   }
 
@@ -148,6 +229,7 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
     // Hidden behind the picker or preview, the editor must not swallow clicks meant for them.
     if (!visible) return false;
     if (button == 0 && withinContentAreaPoint(x, y)) {
+      typing = false;
       field.setSelecting(Screen.hasShiftDown());
       field.seekCursorToPoint(
           x - getX() - innerPadding(), y - getY() - innerPadding() + scrollAmount());
@@ -223,7 +305,19 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
         }
         if (isFocused() && field.cursor() >= line.start() && field.cursor() <= line.end()) {
           int cursorX = x + font.width(source.substring(line.start(), field.cursor()));
+          if (showing() && field.cursor() == suggestion.end()) {
+            var ghost =
+                ProgramSuggestions.ghost(suggestion.prefix(), List.of(options.get(this.selected)));
+            if (!ghost.isEmpty()) graphics.drawString(font, ghost, cursorX, y, GHOST, false);
+          }
           graphics.fill(cursorX, y - 1, cursorX + 1, y + 9, 0xffeeeeee);
+          if (showing()) {
+            int startX =
+                x
+                    + font.width(
+                        source.substring(line.start(), Math.max(line.start(), suggestion.start())));
+            list(graphics, startX, y);
+          }
         }
         for (var diagnostic : diagnostics) {
           int at = offset(source, diagnostic.line(), diagnostic.column());
@@ -237,17 +331,55 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
     }
   }
 
+  private static final int GHOST = 0x7f8a99;
+
+  /** The suggestion list under the line being typed (above it near the bottom), inside the box. */
+  private void list(GuiGraphics graphics, int x, int lineY) {
+    int shown = Math.min(SHOWN, options.size());
+    int width = 0;
+    for (int index = 0; index < shown; index++)
+      width = Math.max(width, font.width(options.get(index)));
+    width += 6;
+    int height = shown * 10 + 2;
+    int right = getX() + this.width - innerPadding();
+    int left = Math.max(getX() + innerPadding(), Math.min(x - 3, right - width));
+    int bottom = getY() + this.height + (int) scrollAmount();
+    int top = lineY + 10 + height <= bottom ? lineY + 10 : lineY - height - 1;
+    graphics.pose().pushPose();
+    graphics.pose().translate(0, 0, 200);
+    graphics.fill(left - 1, top - 1, left + width + 1, top + height + 1, 0xff5a6170);
+    graphics.fill(left, top, left + width, top + height, 0xf0101318);
+    for (int index = 0; index < shown; index++) {
+      int rowY = top + 1 + index * 10;
+      if (index == selected) graphics.fill(left, rowY, left + width, rowY + 10, 0xff2d4a6e);
+      graphics.drawString(
+          font,
+          options.get(index),
+          left + 3,
+          rowY + 1,
+          index == selected ? 0xffffff : 0xc0c8d0,
+          false);
+    }
+    graphics.pose().popPose();
+  }
+
   @Override
   public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     super.renderWidget(graphics, mouseX, mouseY, partial);
-    if (visible && isMouseOver(mouseX, mouseY) && !diagnostics.isEmpty()) {
-      var first = diagnostics.getFirst();
-      graphics.renderTooltip(
-          font,
-          Component.literal(first.line() + ":" + first.column() + " " + first.message()),
-          mouseX,
-          mouseY);
-    }
+    if (visible && isMouseOver(mouseX, mouseY) && !diagnostics.isEmpty() && !showing())
+      graphics.renderComponentTooltip(font, problem(diagnostics.getFirst()), mouseX, mouseY);
+  }
+
+  /** A problem as lines: where and what, then the hint and an example when there are any. */
+  public static List<Component> problem(FriendlyCompiler.Diagnostic diagnostic) {
+    var lines = new java.util.ArrayList<Component>();
+    lines.add(
+        Component.literal(
+            diagnostic.line() + ":" + diagnostic.column() + " " + diagnostic.message()));
+    if (diagnostic.hint() != null) lines.add(Component.literal(diagnostic.hint()));
+    if (diagnostic.example() != null)
+      lines.add(Component.translatable("gui.factorycore.program.example", diagnostic.example()));
+    return lines;
   }
 
   private static int offset(String source, int line, int column) {
@@ -263,7 +395,6 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
   private static int color(ProgramSyntax.Kind kind) {
     return switch (kind) {
       case KEYWORD -> 0xc792ea;
-      case CALL -> 0x82aaff;
       case STRING -> 0xc3e88d;
       case NUMBER -> 0xf7bb80;
       case COMMENT -> 0x80918b;

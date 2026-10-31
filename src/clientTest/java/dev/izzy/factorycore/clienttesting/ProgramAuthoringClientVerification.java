@@ -47,8 +47,8 @@ final class ProgramAuthoringClientVerification {
         capture.accept("program-native-items-scale-2.png");
         click(screen, "minecraft:coal");
         require(
-            editor.getValue().equals(SOURCE + " item(\"minecraft:coal\")"),
-            "Native item picker inserts a working escaped expression: " + editor.getValue());
+            editor.getValue().equals(SOURCE + "coal"),
+            "The item picker inserts the item as a program names it: " + editor.getValue());
         screen.keyPressed(GLFW.GLFW_KEY_Z, 0, GLFW.GLFW_MOD_CONTROL);
         require(editor.getValue().equals(SOURCE), "Item picker insertion is one undo step");
         click(screen, "Insert / complete");
@@ -63,39 +63,61 @@ final class ProgramAuthoringClientVerification {
         capture.accept("program-native-labels-scale-2.png");
         click(screen, "smelter");
         require(
-            editor.getValue().equals(SOURCE + " machines(\"smelter\")"),
-            "Native picker inserts only an authorized local label expression");
+            editor.getValue().equals(SOURCE + "smelter"),
+            "The label picker inserts only an authorized local label");
         screen.keyPressed(GLFW.GLFW_KEY_Z, 0, GLFW.GLFW_MOD_CONTROL);
         require(editor.getValue().equals(SOURCE), "Label insertion is one undo step");
-        // Complete an actual identifier in a quoted item call, retaining its delimiters.
-        editor.setValue(SOURCE.replace("minecraft:iron_ingot", "minecraft:ir"));
-        screen.keyPressed(GLFW.GLFW_KEY_PAGE_UP, 0, 0);
-        int cursor = editor.getValue().indexOf("minecraft:ir") + "minecraft:ir".length();
-        for (int index = 0; index < cursor; index++) screen.keyPressed(GLFW.GLFW_KEY_RIGHT, 0, 0);
-        screen.keyPressed(GLFW.GLFW_KEY_SPACE, 0, GLFW.GLFW_MOD_CONTROL);
+        // Q123: type the move line again and let the suggestions finish the names.
+        int body = SOURCE.indexOf('\n') + 1;
+        editor.load(SOURCE.substring(0, body));
+        screen.setFocused(editor);
+        editor.setFocused(true);
+        screen.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0);
+        type(screen, "    move 4 iron ing");
+        require(
+            !editor.suggestions().isEmpty() && editor.suggestions().getFirst().equals("iron ingot"),
+            "Typing an item name suggests it: " + editor.suggestions());
         advance(ticks);
       }
       case 4 -> {
-        search(screen, "minecraft:iron_ingot");
-        click(screen, "minecraft:iron_ingot");
+        capture.accept("program-suggestion-scale-2.png");
+        screen.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0);
+        type(screen, "from sm");
+        require(
+            editor.suggestions().contains("smelter"),
+            "After 'from' the visible labels are suggested: " + editor.suggestions());
+        screen.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0);
+        type(screen, "to storage");
+        screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
         require(
             editor.getValue().equals(SOURCE),
-            "Ctrl+Space completes a quoted resource without duplicate delimiters");
+            "Tab accepted both suggestions into the same program: " + editor.getValue());
+        // A misspelt item shows the problem with its hint under the editor.
+        editor.setValue(SOURCE.replace("iron ingot", "iron ingit"));
+        var problem = editor.diagnostics();
+        require(
+            !problem.isEmpty() && "Did you mean iron ingot?".equals(problem.getFirst().hint()),
+            "A misspelt item suggests the right name: " + problem);
         advance(ticks);
       }
       case 5 -> {
+        capture.accept("program-error-hint-scale-2.png");
+        editor.setValue(SOURCE);
+        advance(ticks);
+      }
+      case 6 -> {
         capture.accept("program-highlighted-scale-2.png");
         client.options.guiScale().set(4);
         client.resizeDisplay();
         advance(ticks);
       }
-      case 6 -> {
+      case 7 -> {
         require(editor.getValue().equals(SOURCE), "Draft and history survive scale4 resize");
         capture.accept("program-highlighted-scale-4.png");
         click(screen, "Preview next rule");
         advance(ticks);
       }
-      case 7 -> {
+      case 8 -> {
         var author = screen.getMenu().authorView();
         if (author == null || author.preview().isEmpty()) return false;
         require(
@@ -112,7 +134,7 @@ final class ProgramAuthoringClientVerification {
         client.resizeDisplay();
         advance(ticks);
       }
-      case 8 -> {
+      case 9 -> {
         return true;
       }
       default -> throw new IllegalStateException("Unexpected authoring stage");
@@ -131,6 +153,14 @@ final class ProgramAuthoringClientVerification {
         .map(child -> (ProgramTextEditor) child)
         .findFirst()
         .orElseThrow();
+  }
+
+  /** Types as a player would, with Enter for a new line. */
+  private static void type(ProgramScreen screen, String text) {
+    for (char character : text.toCharArray()) {
+      if (character == '\n') screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+      else screen.charTyped(character, 0);
+    }
   }
 
   private static void clickCategory(ProgramScreen screen) {

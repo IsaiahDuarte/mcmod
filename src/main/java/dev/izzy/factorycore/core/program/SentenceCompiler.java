@@ -65,7 +65,7 @@ final class SentenceCompiler {
     }
   }
 
-  static final Set<String> KEYWORDS =
+  public static final Set<String> KEYWORDS =
       Set.of(
           "every",
           "when",

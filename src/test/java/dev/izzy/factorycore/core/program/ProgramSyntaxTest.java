@@ -1,15 +1,19 @@
 package dev.izzy.factorycore.core.program;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 class ProgramSyntaxTest {
   @Test
-  void colorsKeywordsCallsEscapedStringsNumbersAndCommentsWithoutChangingSource() {
-    var source = "every 10 ticks { log \"escaped \\\" # string\" # comment\nmove item(\"iron\") }";
+  void colorsWordsTextNumbersAndCommentsWithoutChangingSource() {
+    var source =
+        "every 0.5 seconds:   # twice a second\n    say \"escaped \\\" # text\"\n    move 8 coal from \"my chest\" to storage";
     var spans = ProgramSyntax.spans(source);
     assertEquals(
         source,
@@ -18,58 +22,52 @@ class ProgramSyntaxTest {
             .collect(Collectors.joining()));
     var expected =
         Map.of(
-            "every",
-            ProgramSyntax.Kind.KEYWORD,
-            "10",
-            ProgramSyntax.Kind.NUMBER,
-            "item",
-            ProgramSyntax.Kind.CALL,
-            "# comment",
-            ProgramSyntax.Kind.COMMENT,
-            "\"escaped \\\" # string\"",
-            ProgramSyntax.Kind.STRING);
+            "every", ProgramSyntax.Kind.KEYWORD,
+            "0.5", ProgramSyntax.Kind.NUMBER,
+            "coal", ProgramSyntax.Kind.TEXT,
+            "# twice a second", ProgramSyntax.Kind.COMMENT,
+            "\"escaped \\\" # text\"", ProgramSyntax.Kind.STRING,
+            "\"my chest\"", ProgramSyntax.Kind.STRING);
     for (var entry : expected.entrySet())
       assertTrue(
           spans.stream()
               .anyMatch(
                   span ->
                       source.substring(span.start(), span.end()).equals(entry.getKey())
-                          && span.kind() == entry.getValue()));
+                          && span.kind() == entry.getValue()),
+          entry.getKey());
     assertEquals(
         ProgramSyntax.Kind.STRING, ProgramSyntax.spans("\"unfinished\\").getFirst().kind());
   }
 
   @Test
-  void cursorCompletionReplacesWholeTokenAndOnlyTheInsideOfQuotedLiterals() {
-    var source = "move item(\"minecraft:iron_ingot\") from machines(\"smelter input\") to storage";
-    int cursor = source.indexOf("iron_") + 2;
-    var item = ProgramCompletion.at(source, cursor);
-    assertEquals("item", item.call());
-    assertTrue(item.quoted());
-    assertEquals("minecraft:iron_ingot", source.substring(item.start(), item.end()));
-    var label = ProgramCompletion.at(source, source.indexOf("input") + 2);
-    assertEquals("machines", label.call());
-    assertEquals("smelter input", source.substring(label.start(), label.end()));
-    assertEquals("smelter in", label.prefix());
-    var keyword = ProgramCompletion.at(source, source.lastIndexOf("storage") + 3);
-    assertFalse(keyword.quoted());
-    assertEquals("storage", source.substring(keyword.start(), keyword.end()));
-    assertFalse(ProgramCompletion.at("item(\"iron\") ", 13).quoted());
-    assertEquals("minecraft:wat", ProgramCompletion.at("fluid(\"minecraft:wat", 20).prefix());
-    assertThrows(IllegalArgumentException.class, () -> ProgramCompletion.at("", 1));
-  }
-
-  @org.junit.jupiter.api.Test
-  void languageV2KeywordsAreHighlighted() {
+  void everyWordOfTheLanguageIsHighlighted() {
     var source =
-        "if f has < 8 of item(\"coal\") and not redstone(m) { emit redstone 1 on machines(\"a\") } else { move energy from f side up slots 0..1 to storage }";
-    var keywords = new java.util.HashSet<String>();
+        "if furnace has less than 8 coal and not button is powered:\n"
+            + "    turn on lamp\notherwise:\n    move 8 coal from storage to furnace top slots 0 to 2";
+    var keywords = new HashSet<String>();
     for (var span : ProgramSyntax.spans(source))
       if (span.kind() == ProgramSyntax.Kind.KEYWORD)
         keywords.add(source.substring(span.start(), span.end()));
     for (var word :
-        java.util.List.of(
-            "if", "has", "and", "not", "redstone", "emit", "on", "else", "side", "up", "slots"))
-      org.junit.jupiter.api.Assertions.assertTrue(keywords.contains(word), word);
+        List.of(
+            "if",
+            "has",
+            "less",
+            "than",
+            "and",
+            "not",
+            "is",
+            "powered",
+            "turn",
+            "on",
+            "otherwise",
+            "move",
+            "from",
+            "storage",
+            "to",
+            "top",
+            "slots")) assertTrue(keywords.contains(word), word);
+    assertTrue(ProgramSyntax.KEYWORD_WORDS.contains("every"));
   }
 }

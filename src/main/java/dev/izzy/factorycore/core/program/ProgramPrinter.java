@@ -28,7 +28,7 @@ public final class ProgramPrinter {
   private final Vocabulary vocabulary;
   private final StringBuilder out = new StringBuilder();
 
-  private ProgramPrinter(Vocabulary vocabulary) {
+  ProgramPrinter(Vocabulary vocabulary) {
     this.vocabulary = vocabulary;
   }
 
@@ -269,7 +269,7 @@ public final class ProgramPrinter {
     return term(term, filter.kind());
   }
 
-  private String term(ResourceFilter.Term term, ResourceKind kind) {
+  String term(ResourceFilter.Term term, ResourceKind kind) {
     boolean fluid = kind == ResourceKind.FLUID;
     return switch (term) {
       case ResourceFilter.Glob glob when glob.pattern().equals("*") ->

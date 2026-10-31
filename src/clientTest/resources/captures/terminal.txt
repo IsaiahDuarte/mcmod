@@ -35,6 +35,8 @@ program-editor-scale-2.png
 program-inline-error-scale-2.png
 program-native-items-scale-2.png
 program-native-labels-scale-2.png
+program-suggestion-scale-2.png
+program-error-hint-scale-2.png
 program-highlighted-scale-2.png
 program-highlighted-scale-4.png
 program-rule-preview-scale-4.png

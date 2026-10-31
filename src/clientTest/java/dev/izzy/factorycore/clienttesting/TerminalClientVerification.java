@@ -747,7 +747,8 @@ public final class TerminalClientVerification {
         if (rule < rules.length) {
           // B1: typed IDs are behind "Add by ID…" (ghost slots are the default).
           if (rule == 0) click(screen, "Add by ID…");
-          edit(screen, 2, rules[rule], false);
+          // By name: Q73 added the slot goal box before the ID box.
+          edit(screen, idField(screen), rules[rule], false);
           click(screen, rule == 6 ? "Tag" : "Item ID");
           rule++;
           entered = ticks;
@@ -1608,6 +1609,19 @@ public final class TerminalClientVerification {
             down
                 ? ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY
                 : ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
+  }
+
+  /** Index of the buffer screen's ID box among its text boxes. */
+  private static int idField(Screen screen) {
+    var name = Component.translatable("gui.factorycore.buffer.id").getString();
+    var fields =
+        screen.children().stream()
+            .filter(child -> child instanceof EditBox)
+            .map(child -> (EditBox) child)
+            .toList();
+    for (int index = 0; index < fields.size(); index++)
+      if (fields.get(index).getMessage().getString().equals(name)) return index;
+    throw new IllegalStateException("The buffer screen has an ID box");
   }
 
   private static void edit(Screen screen, int index, String text, boolean enter) {

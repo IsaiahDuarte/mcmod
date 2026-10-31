@@ -835,6 +835,7 @@
   "status.factorycore.program.paused": "Paused",
   "status.factorycore.program.trapped": "Stopped by an error",
   "gui.factorycore.program.placeholder": "every 10 ticks { ... }",
+  "gui.factorycore.program.example": "For example: %s",
   "gui.factorycore.program.editor": "Program",
   "gui.factorycore.program.save": "Save draft",
   "gui.factorycore.program.save.help": "Store this text as the draft (needs Edit). The running program is not changed.",

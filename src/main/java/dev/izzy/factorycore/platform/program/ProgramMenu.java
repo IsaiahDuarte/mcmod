@@ -255,7 +255,13 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
     var lines = new ArrayList<String>();
     for (var diagnostic : found) {
       if (lines.size() == ProgramPackets.LINES) break;
-      var line = diagnostic.line() + ":" + diagnostic.column() + " " + diagnostic.message();
+      var line =
+          diagnostic.line()
+              + ":"
+              + diagnostic.column()
+              + " "
+              + diagnostic.message()
+              + (diagnostic.hint() == null ? "" : ". " + diagnostic.hint());
       lines.add(line.length() > 192 ? line.substring(0, 192) : line);
     }
     diagnostics = List.copyOf(lines);

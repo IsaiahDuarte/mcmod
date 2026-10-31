@@ -1142,7 +1142,8 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   example program was converted mechanically with the printer, with IR equality checked per
   program. ADRs 0035 and 0062 are superseded, and Machine Inspection prints sentence lines.
 
-- [ ] **Q123 — Editor support.** Size M.
+- [x] **Q123 — Editor support.** Size M. Done 2026-10-31 (commit subject `Q123:`),
+  [Evidence](evidence/ergonomics-q123-editor-suggestions-2026-10-31.md).
   Highlighting; suggestions while typing: after `move`, `keep`, `craft`, `has` or `except`, the
   best item name matching the typed words shows as faint text that Tab accepts, with a short list
   of the closest items, labels and next words (`from`, `to`, faces). Also **Convert to

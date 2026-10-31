@@ -71,7 +71,16 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     editor =
         addRenderableWidget(
             new ProgramTextEditor(
-                font, leftPos + 8, topPos + 18, editorWidth(), 148, previous, history));
+                font,
+                leftPos + 8,
+                topPos + 18,
+                editorWidth(),
+                148,
+                previous,
+                history,
+                () -> menu.authorView() == null ? List.<String>of() : menu.authorView().labels()));
+    // The labels this player may use, for suggestions while typing.
+    requestAuthor(false, "");
     // Three groups, a gap apart: saving and deploying; running; writing.
     button("save", controlsX(), BUTTONS_Y, () -> upload(-1));
     button(
@@ -197,10 +206,10 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
     var context = editor.completion();
     if (complete)
       kind =
-          switch (context.call()) {
-            case "item" -> 0;
-            case "fluid" -> 1;
-            case "machines" -> 2;
+          switch (context.slot()) {
+            case ITEM -> 0;
+            case FLUID -> 1;
+            case PLACE -> 2;
             default -> 3;
           };
     labelAfter = "";
@@ -249,8 +258,15 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
           case TEMPLATES -> ProgramTemplates.ALL.stream().map(ProgramTemplates.Template::name);
           default ->
               Stream.concat(
-                  dev.izzy.factorycore.core.program.ProgramSyntax.KEYWORD_WORDS.stream(),
-                  dev.izzy.factorycore.core.program.ProgramSyntax.CALL_WORDS.stream());
+                  Stream.of(
+                      "for each",
+                      "turn on",
+                      "turn off",
+                      "less than",
+                      "more than",
+                      "at least",
+                      "at most"),
+                  dev.izzy.factorycore.core.program.ProgramSyntax.KEYWORD_WORDS.stream());
         };
     var matching = values.filter(value -> value.toLowerCase(Locale.ROOT).contains(needle));
     // Templates keep their teaching order; everything else is alphabetical.
@@ -294,18 +310,17 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
       refocusEditor = true;
       return;
     }
-    // Inside a quoted call, completion inserts its identifier; outside, insert a working
-    // expression.
+    // Items, fluids and labels go in as a program names them (iron ingot, fluid water).
     String text =
-        completing && editor.completion().quoted()
-            ? ResourceExpressions.literal(value)
-                .substring(1, ResourceExpressions.literal(value).length() - 1)
-            : switch (kind) {
-              case 0 -> ResourceExpressions.item(value);
-              case 1 -> ResourceExpressions.fluid(value);
-              case 2 -> ResourceExpressions.label(value);
-              default -> value;
-            };
+        switch (kind) {
+          case 0 -> ResourceExpressions.item(value);
+          case 1 ->
+              completing
+                  ? ResourceExpressions.fluid(value).substring("fluid ".length())
+                  : ResourceExpressions.fluid(value);
+          case 2 -> ResourceExpressions.label(value);
+          default -> value;
+        };
     if (completing) editor.complete(text);
     else insert(text);
     selecting = false;
@@ -466,6 +481,20 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
             font, snapshot.get(index), 12, 32 + (index % 13) * 9, Panels.TEXT, false);
     }
     int y = LOG_Y + 4;
+    // While the draft has a problem, show it with its hint and example as it is typed; not while
+    // a word is still being finished from the suggestions.
+    var live = editor.diagnostics();
+    if (!live.isEmpty() && editor.suggestions().isEmpty() && !previewing && !selecting) {
+      var problem = ProgramTextEditor.problem(live.getFirst());
+      for (int i = 0; i < problem.size(); i++) {
+        for (var part : font.split(problem.get(i), imageWidth - 20)) {
+          if (y > LOG_Y + LOG_HEIGHT - 9) break;
+          graphics.drawString(font, part, 12, y, i == 0 ? Panels.BAD : Panels.TEXT, false);
+          y += 10;
+        }
+      }
+      return;
+    }
     var lines = new ArrayList<String>();
     if (!view.message().isEmpty()) lines.add(view.message());
     lines.addAll(view.diagnostics());
