@@ -43,6 +43,24 @@ public final class MachineSettingsGameTests {
     return new Fixture(player, machine, root);
   }
 
+  /**
+   * Holds until the machine's network scope has stayed the same for {@code SETTLE} ticks. A port's
+   * network can rebuild again just after it first becomes valid; an editor opened before then goes
+   * stale and drops later commands. When that happens depends on server load.
+   */
+  private static void settled(GameTestHelper h, Fixture f, Object[] last, int[] same) {
+    h.assertTrue(f.machine.canUse(f.player), "Wired owner ready");
+    var scope = WorldNetworks.get(f.player.server).membership(f.machine.position()).scope();
+    if (Objects.equals(scope, last[0])) same[0]++;
+    else {
+      last[0] = scope;
+      same[0] = 0;
+    }
+    h.assertTrue(same[0] >= SETTLE, "Network settled");
+  }
+
+  private static final int SETTLE = 10;
+
   private static MachineSettingsMenu open(GameTestHelper h, Fixture f) {
     h.useBlock(MACHINE, f.player);
     h.assertTrue(
@@ -206,8 +224,10 @@ public final class MachineSettingsGameTests {
   public static void presetDraftSamplesDoNotDeployOrConsumeUntilExplicitSave(GameTestHelper h) {
     var f = setup(h);
     MachineSettingsMenu[] menu = {null};
+    Object[] scope = {null};
+    int[] same = {0};
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.machine.canUse(f.player), "Wired owner ready"))
+        .thenWaitUntil(() -> settled(h, f, scope, same))
         .thenExecute(
             () -> {
               menu[0] = open(h, f);

@@ -45,7 +45,9 @@ public final class DrivePartitionGameTests {
   /** Ticks between commands so the session's command rate gate admits each one. */
   private static final int GAP = 5;
 
-  private record Fixture(ServerPlayer player, StorageDriveEntity drive, TerminalEntity terminal) {}
+  /** {@code offered} holds the test tick of the last deposit sent (see {@link #offer}). */
+  private record Fixture(
+      ServerPlayer player, StorageDriveEntity drive, TerminalEntity terminal, long[] offered) {}
 
   private DrivePartitionGameTests() {}
 
@@ -57,7 +59,7 @@ public final class DrivePartitionGameTests {
     Net.in(h, player.getUUID()).controller(ROOT);
     var drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
     h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
-    return new Fixture(player, drive, h.getBlockEntity(TERMINAL));
+    return new Fixture(player, drive, h.getBlockEntity(TERMINAL), new long[] {-GAP - 1});
   }
 
   private static ResourceKey key(GameTestHelper h, Item item) {
@@ -77,7 +79,34 @@ public final class DrivePartitionGameTests {
 
   private static void deposit(GameTestHelper h, Fixture f, Item item, int count) {
     f.player.getInventory().setItem(0, new ItemStack(item, count));
-    var m = terminal(f);
+    offer(h, f, item);
+  }
+
+  /**
+   * Opens the terminal (again, if a network rebuild closed it) and asserts its view is ready. A
+   * partition or cell change rebuilds the network, which can close an open terminal a few ticks
+   * later; how many depends on server load, so steps wait for this instead of a fixed gap.
+   */
+  private static void ready(GameTestHelper h, Fixture f) {
+    if (!(f.player.containerMenu instanceof TerminalMenu)) h.useBlock(TERMINAL, f.player);
+    h.assertTrue(f.player.containerMenu instanceof TerminalMenu, "Terminal open");
+    terminal(f).broadcastChanges();
+    h.assertTrue(terminal(f).view().status() != TerminalPackets.Status.LOADING, "Terminal loaded");
+  }
+
+  /**
+   * Deposits what slot 0 still holds of {@code item} through a ready terminal, at most once per
+   * {@link #GAP} ticks so the session's rate gate admits it. Safe to repeat in a waiting step: an
+   * emptied slot sends nothing.
+   */
+  private static void offer(GameTestHelper h, Fixture f, Item item) {
+    var held = f.player.getInventory().getItem(0);
+    if (h.getTick() - f.offered()[0] <= GAP) return;
+    if (!held.is(item) || !(f.player.containerMenu instanceof TerminalMenu m)) {
+      if (held.is(item) && !(f.player.containerMenu instanceof TerminalMenu))
+        h.useBlock(TERMINAL, f.player);
+      return;
+    }
     m.command(
         f.player,
         new TerminalPackets.Command(
@@ -86,9 +115,10 @@ public final class DrivePartitionGameTests {
             m.view().revision(),
             TerminalPackets.DEPOSIT,
             0,
-            count,
+            held.getCount(),
             "",
             TerminalPackets.fingerprint(key(h, item))));
+    f.offered()[0] = h.getTick();
     m.broadcastChanges();
   }
 
@@ -139,7 +169,7 @@ public final class DrivePartitionGameTests {
               f.player.closeContainer();
             })
         .thenIdle(GAP)
-        .thenExecute(() -> h.useBlock(TERMINAL, f.player))
+        .thenWaitUntil(() -> ready(h, f))
         .thenIdle(GAP)
         .thenExecute(() -> deposit(h, f, Items.OAK_LOG, 5))
         .thenIdle(20)
@@ -151,11 +181,13 @@ public final class DrivePartitionGameTests {
                     "Logs are refused by the only cell, so they stay with the player"))
         .thenExecute(() -> deposit(h, f, Items.COBBLESTONE, 7))
         .thenWaitUntil(
-            () ->
-                h.assertTrue(
-                    f.player.getInventory().getItem(0).isEmpty()
-                        && stored(h, f, 0, Items.COBBLESTONE) == 7,
-                    "Cobblestone goes into the partitioned cell"))
+            () -> {
+              offer(h, f, Items.COBBLESTONE);
+              h.assertTrue(
+                  f.player.getInventory().getItem(0).isEmpty()
+                      && stored(h, f, 0, Items.COBBLESTONE) == 7,
+                  "Cobblestone goes into the partitioned cell");
+            })
         .thenExecute(
             () -> {
               f.player.closeContainer();
@@ -170,14 +202,16 @@ public final class DrivePartitionGameTests {
                             .loaded()
                         && f.terminal.canUse(f.player),
                     "Second cell online"))
-        .thenExecute(() -> h.useBlock(TERMINAL, f.player))
+        .thenWaitUntil(() -> ready(h, f))
         .thenIdle(GAP)
         .thenExecute(() -> deposit(h, f, Items.OAK_LOG, 5))
         .thenWaitUntil(
-            () ->
-                h.assertTrue(
-                    stored(h, f, 1, Items.OAK_LOG) == 5 && stored(h, f, 0, Items.OAK_LOG) == 0,
-                    "With an open cell, logs go there and never into the partitioned one"))
+            () -> {
+              offer(h, f, Items.OAK_LOG);
+              h.assertTrue(
+                  stored(h, f, 1, Items.OAK_LOG) == 5 && stored(h, f, 0, Items.OAK_LOG) == 0,
+                  "With an open cell, logs go there and never into the partitioned one");
+            })
         .thenWaitUntil(
             () -> {
               terminal(f).broadcastChanges();
@@ -300,11 +334,12 @@ public final class DrivePartitionGameTests {
               f.player.closeContainer();
             })
         .thenIdle(GAP)
-        .thenExecute(() -> h.useBlock(TERMINAL, f.player))
+        .thenWaitUntil(() -> ready(h, f))
         .thenIdle(GAP)
         .thenExecute(() -> deposit(h, f, Items.COBBLESTONE, 12))
         .thenWaitUntil(
             () -> {
+              offer(h, f, Items.COBBLESTONE);
               Container box = h.getBlockEntity(chest);
               h.assertTrue(
                   stored(h, f, 0, Items.COBBLESTONE) == 12 && box.isEmpty(),
@@ -314,6 +349,7 @@ public final class DrivePartitionGameTests {
         .thenExecute(() -> deposit(h, f, Items.OAK_LOG, 5))
         .thenWaitUntil(
             () -> {
+              offer(h, f, Items.OAK_LOG);
               Container box = h.getBlockEntity(chest);
               int logs = 0;
               for (int slot = 0; slot < box.getContainerSize(); slot++)

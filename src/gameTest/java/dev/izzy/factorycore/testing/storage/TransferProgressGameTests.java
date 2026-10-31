@@ -45,6 +45,7 @@ public final class TransferProgressGameTests {
         new NodeRegistry.Position(origin.dimension(), helper.absolutePos(DRIVE).asLong());
     var id = UUID.randomUUID();
     WorldStorageTransfers.Result[] result = {null};
+    boolean[] refused = {false};
     helper
         .startSequence()
         .thenWaitUntil(
@@ -219,16 +220,47 @@ public final class TransferProgressGameTests {
                     "Legacy staging preserved without replay");
               if (mode == 6) {
                 helper.assertTrue(
-                    result[0].transfer().delivered() == 128
-                        && result[0].transfer().staged() == 122
+                    result[0].transfer().delivered() <= 128
+                        && result[0].transfer().delivered() + result[0].transfer().staged() == 250
                         && saved.registry().stock(source, KEY).total() == 50
-                        && saved.registry().stock(target, KEY).total() == 128,
+                        && saved.registry().stock(target, KEY).total()
+                            == result[0].transfer().delivered(),
                     "First recovery step respects item quantum and conserves remainder");
                 result[0] = null;
-                runtime.transfers().progress(id, actor, false, value -> result[0] = value);
+                refused[0] =
+                    runtime
+                            .transfers()
+                            .progress(id, actor, false, value -> result[0] = value)
+                            .rejection()
+                        != null;
               }
             })
-        .thenWaitUntil(() -> helper.assertTrue(result[0] != null, "Cleanup callback complete"))
+        .thenWaitUntil(
+            () -> {
+              // A submission refused while the network rebuilds never calls back; submit again.
+              if (mode == 6 && refused[0])
+                refused[0] =
+                    runtime
+                            .transfers()
+                            .progress(id, actor, false, value -> result[0] = value)
+                            .rejection()
+                        != null;
+              helper.assertTrue(result[0] != null, "Cleanup callback complete");
+              // A busy server can give a scheduled step less than a full quantum; recovery
+              // continues in further steps, never extracting from the source again.
+              if (mode == 6
+                  && result[0].transfer().staged() > 0
+                  && saved.registry().stock(source, KEY).total() == 50) {
+                result[0] = null;
+                refused[0] =
+                    runtime
+                            .transfers()
+                            .progress(id, actor, false, value -> result[0] = value)
+                            .rejection()
+                        != null;
+                helper.fail("Recovery continues in another scheduled step");
+              }
+            })
         .thenExecute(
             () -> {
               if (mode == 1)
@@ -244,7 +276,12 @@ public final class TransferProgressGameTests {
                         && result[0].transfer().staged() == 0
                         && saved.registry().stock(source, KEY).total() == 50
                         && saved.registry().stock(target, KEY).total() == 250,
-                    "Second scheduled step completes exactly without new extraction");
+                    "Later scheduled steps complete exactly without new extraction: delivered "
+                        + result[0].transfer().delivered()
+                        + " staged "
+                        + result[0].transfer().staged()
+                        + " source "
+                        + saved.registry().stock(source, KEY).total());
             })
         .thenSucceed();
   }

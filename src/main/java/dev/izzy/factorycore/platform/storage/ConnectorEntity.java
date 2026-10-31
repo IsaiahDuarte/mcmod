@@ -387,6 +387,28 @@ public class ConnectorEntity extends BlockEntity
   }
 
   /**
+   * Q22: turns the socket to {@code face} as a configuration change: EDIT here, nothing in transit
+   * for this lease (the Interface-switch rules), then the generation advances through the same
+   * commit as an upgrade (the faces carrying cables change, so the network rebuilds; a machine port
+   * pauses its preset and its deployer's resume waits for the rebuild) and the provider rebinds on
+   * the new face. Returns the decision; nothing changes unless it is ALLOWED. Throws {@code
+   * turn_busy} while a transfer is unresolved.
+   */
+  public NetworkAuthority.Decision turn(NetworkPermissions.Actor actor, Direction face) {
+    validatePlaced();
+    if (face == targetDirection()) throw new IllegalArgumentException("turn_same");
+    if (DeviceSavedData.get(serverLevel().getServer()).transfers().unresolvedDevice(handle().id())
+        != null) throw new IllegalStateException("turn_busy");
+    var result = configureTier(actor, settings(), tier());
+    if (result != NetworkAuthority.Decision.ALLOWED) return result;
+    level.setBlock(
+        worldPosition,
+        getBlockState().setValue(BlockStateProperties.FACING, face),
+        net.minecraft.world.level.block.Block.UPDATE_ALL);
+    return result;
+  }
+
+  /**
    * Q19: takes the top upgrade out; a rate above the lower ceiling is lowered to it. A machine
    * interface pauses its preset exactly as on install.
    */

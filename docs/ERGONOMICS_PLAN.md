@@ -703,7 +703,9 @@ New gates:
 - [ ] **Q21 — Controller energy buffer (M21, needs UD3).** Size S.
   As UD3 decides.
 
-- [ ] **Q22 — Wrench (M22).** Size M.
+- [x] **Q22 — Wrench (M22).** Size M. Done 2026-10-31 (commit subject `Q22:`), ADR 0059
+  amendment. Follow-up: Q114 (batch-sensitive GameTests found while adding these).
+  [Evidence](evidence/ergonomics-q22-wrench-2026-10-31.md).
   A Wrench item. Use on an Importer, Exporter, Storage Interface or Crafter to turn its socket
   to the next face that touches a block; sneak-use to pick the device up with its settings and
   contents, as breaking does today. Turning rebinds through the existing Interface-switch rules
@@ -1166,6 +1168,21 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Files: `platform/upgrade/*`, `UpgradeSlotWidget`.
   Done when: a GameTest installs and removes through the tool without the upgrade on the
   cursor, and a client capture shows the offer.
+
+- [ ] **Q114 — Batch-sensitive GameTests (found in Q22).** Size S. Lane D.
+  With two or more tests added to the default batches, `fullInventoryRefusesBeforeConsumingAnything`
+  ("Terminal still open"), `partitionLimitsInsertsSurvivesUpgradeAndKeepsContentsReachable` and
+  `presetDraftSamplesDoNotDeployOrConsumeUntilExplicitSave` (and once
+  `recoveryQuantumRetainsRemainderAcrossScheduledSteps`) failed intermittently. This did not
+  depend on which tests were added. The Wrench tests run in their own batch meanwhile. Cause
+  (found in Q22): a new network can rebuild again just after it first becomes valid, closing
+  menus and refusing submissions made in between. Q22 fixed the four tests above (see its
+  evidence). Still open: test steps that cast `f.player.containerMenu` to `TerminalMenu` without
+  checking, in about ten GameTest files (e.g. `TerminalCraftingGameTests` line ~221 in
+  `fullInventoryRefusesBeforeConsumingAnything`), which crash the whole test server when a
+  rebuild closed the menu; and `machineSavedBeforeItsInsertionFreezesTheJobUntilResolved`
+  ("Operator resolves"). Done when: the Wrench tests move back to the default batches, and five
+  full runs pass.
 
 - [ ] **Q101 — Device and storage nits (M119–M124, M126, M141).** Size M. Lane D.
   Drives expose cell slots to hoppers (insert into an empty bay, extract whole cells; through

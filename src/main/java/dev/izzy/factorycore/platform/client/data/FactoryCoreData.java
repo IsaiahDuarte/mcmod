@@ -406,6 +406,18 @@ public final class FactoryCoreData {
           Items.NETHERITE_INGOT,
           'R',
           Items.REDSTONE);
+      // Q22: the Wrench (starter stage: vanilla parts only).
+      shaped(
+          out,
+          misc,
+          "wrench",
+          1,
+          Items.IRON_INGOT,
+          "I I/ C / I ",
+          'I',
+          Items.IRON_INGOT,
+          'C',
+          Items.COPPER_INGOT);
       // D8: the Label Tool (starter stage: vanilla parts only).
       shaped(
           out,

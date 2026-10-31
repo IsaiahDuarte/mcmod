@@ -9,6 +9,7 @@ states-night-close.png
 held-first-person-network_controller.png
 held-first-person-network_cable.png
 held-first-person-factory_guide.png
+held-first-person-wrench.png
 held-third-person-gateway.png
 tooltips-edges-scale-4.png
 tooltips-edges-scale-2.png

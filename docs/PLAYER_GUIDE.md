@@ -47,6 +47,7 @@ that consume them.
 | Starter | Fuel Generator | 4 iron ingots, 3 copper ingots, 1 furnace, 1 redstone dust |
 | Starter | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
+| Starter | Wrench | 4 iron ingots, 1 copper ingot |
 | Expanded | Expansion Module | 4 gold ingots, 2 redstone dust, 1 Nether quartz |
 | Expanded | Crafter | 4 iron ingots, 2 gold ingots, 2 redstone dust, 1 crafting table |
 | Expanded | Program Controller | 4 iron ingots, 1 gold ingot, 3 redstone dust, 1 redstone repeater |
@@ -645,6 +646,16 @@ applies.
   using one Blank Pattern from your inventory for each, and says how many it could not add. A
   Program Controller gets the program in its editor only; deploy it there.
 - **Forget copy** in its screen makes it label again.
+
+## Wrench
+
+- **Turn:** use it on an Importer, Exporter, cable port, Storage Interface or Crafter to
+  turn it to the next side that touches a block (not a cable or another device). A turned
+  port works on the new side at once. It needs Edit rights. It waits while something is
+  still moving through the port; try again a moment later. A turned Importer or Exporter
+  pauses and resumes for whoever started it, as after any settings change.
+- **Pick up:** sneak-use picks the device up straight into your inventory, exactly as
+  breaking it does: it keeps its settings, patterns and upgrades when placed again.
 
 ## Lamps and status
 

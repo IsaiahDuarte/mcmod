@@ -56,6 +56,33 @@ public abstract class NetworkedBlock extends Block {
     return dropsLeasedItem() ? List.of() : super.getDrops(state, parameters);
   }
 
+  /** Q22: while set (server thread only), break drops go here instead of into the world. */
+  private static java.util.List<ItemStack> collecting;
+
+  /**
+   * Q22: runs {@code action} (a block break) with the drops of every Factory Core block it breaks
+   * handed to the returned list instead of the world; loot-table drops are collected by {@link
+   * #collect(ItemStack)} from the drops event. The Wrench gives them to the player.
+   */
+  public static java.util.List<ItemStack> collectDrops(Runnable action) {
+    var previous = collecting;
+    var drops = new java.util.ArrayList<ItemStack>();
+    collecting = drops;
+    try {
+      action.run();
+    } finally {
+      collecting = previous;
+    }
+    return drops;
+  }
+
+  /** Q22: takes a drop into the active collection; false when none is active. */
+  public static boolean collect(ItemStack drop) {
+    if (collecting == null) return false;
+    if (!drop.isEmpty()) collecting.add(drop);
+    return true;
+  }
+
   /** Items handed back when the block is broken (server only; not on a mere state change). */
   protected List<ItemStack> dropsOnBreak(BlockEntity entity) {
     return List.of();
@@ -88,8 +115,9 @@ public abstract class NetworkedBlock extends Block {
       var entity = level.getBlockEntity(position);
       if (entity != null)
         for (var drop : dropsOnBreak(entity))
-          Containers.dropItemStack(
-              level, position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5, drop);
+          if (!collect(drop))
+            Containers.dropItemStack(
+                level, position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5, drop);
     }
     super.onRemove(state, level, position, next, moved);
   }

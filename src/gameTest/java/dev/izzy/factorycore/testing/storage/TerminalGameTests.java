@@ -83,8 +83,16 @@ public final class TerminalGameTests {
     menu(f).broadcastChanges();
   }
 
+  /**
+   * Waits for a ready view, opening the terminal again if a network rebuild closed it (how soon the
+   * network's first rebuilds finish depends on server load).
+   */
   private static void loaded(GameTestHelper helper, Fixture f) {
+    if (!(f.player.containerMenu instanceof TerminalMenu)) helper.useBlock(TERMINAL, f.player);
+    helper.assertTrue(f.player.containerMenu instanceof TerminalMenu, "Terminal open");
     menu(f).broadcastChanges();
+    // A broadcast closes a menu whose network was rebuilt; the next tick opens it again.
+    helper.assertTrue(f.player.containerMenu instanceof TerminalMenu, "Terminal still open");
     helper.assertTrue(
         menu(f).view().status() == TerminalPackets.Status.READY,
         "Bounded asynchronous menu search ready");

@@ -797,6 +797,27 @@ def label_tool():
     return c
 
 
+def wrench():
+    """Q22 Wrench: a steel open-ended spanner, diagonal, with a copper grip."""
+    c = Canvas("wrench")
+    # Handle from the bottom left toward the jaw; copper grip at the end.
+    for i in range(9):
+        x, y = 2 + i, 13 - i
+        c.px(x - 1, y, OUTLINE)
+        c.px(x, y, COPPER if i < 3 else STEEL)
+        c.px(x, y - 1, COPPER_HI if i < 3 else STEEL_HI)
+        c.px(x + 1, y, OUTLINE)
+    # Open jaw: a steel ring around (12, 3) with its mouth to the top right.
+    for x, y in ((10, 2), (10, 3), (10, 4), (11, 1), (12, 1), (11, 5), (12, 5), (13, 5), (14, 4)):
+        c.px(x, y, STEEL)
+    for x, y in ((9, 2), (9, 3), (9, 4), (11, 0), (12, 0), (10, 1), (10, 5), (11, 6), (12, 6),
+                 (13, 6), (14, 5), (15, 4)):
+        c.px(x, y, OUTLINE)
+    c.px(11, 2, STEEL_DARK)
+    c.px(13, 4, STEEL_DARK)
+    return c
+
+
 def pattern(kind):
     c = Canvas(f"{kind}_pattern")
     # Encoded card with a folded corner; corner tab marks the kind by shape.
@@ -890,6 +911,7 @@ def item_textures():
     out["overdrive_upgrade"] = throughput_upgrade("overdrive")
     out["wireless_link"] = wireless_link()
     out["label_tool"] = label_tool()
+    out["wrench"] = wrench()
     for kind in ("blank", "crafting", "processing"):
         out[f"{kind}_pattern"] = pattern(kind)
     out["wireless_terminal"] = wireless_terminal()

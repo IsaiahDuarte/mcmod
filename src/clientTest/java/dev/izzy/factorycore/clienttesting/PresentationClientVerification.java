@@ -1964,6 +1964,8 @@ public final class PresentationClientVerification {
       {"network_controller", "starter_item_cell"},
       {"network_cable", "wireless_terminal"},
       {"factory_guide", "processing_pattern"},
+      // Q22: the Wrench's texture in hand.
+      {"wrench", "label_tool"},
       {"gateway", "infinite_item_cell"}
     };
     step(

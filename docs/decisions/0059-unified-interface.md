@@ -172,3 +172,23 @@ Alternative: a configurator that edits many Interfaces from one screen. Rejected
 needs remote access to unloaded or distant Interfaces, which the reach and loading rules
 forbid.
 
+## Amendment — the Wrench turns ports (2026-10-31, ergonomics plan Q22)
+
+A port (Importer, Exporter, cable port, or an Interface in Storage mode) can turn its socket in
+place. `ConnectorEntity.turn` is a configuration change under the switch rules that apply when
+the device is kept: Edit at the port, and no unresolved staged transfer naming its lease (else
+`turn_busy`, nothing changes). Unlike a mode switch, a turn keeps the lease, settings, label and
+upgrades. It commits through the same path as a throughput upgrade (`configureTier` with the
+current tier), because the faces carrying cables change and the network rebuilds. The generation
+advances, so the provider rebinds on the new face. A machine port pauses its preset, and its
+deployer's resume waits for the rebuild. The Wrench picks the next face, in face order, whose
+neighbour is a block other than a Factory Core device or cable. A Crafter's facing is only
+cosmetic and turns under Edit.
+
+Sneak-use picks a device up through an ordinary break: protection is checked, then
+`Level.destroyBlock`. The break's drops go to the player through `NetworkedBlock.collectDrops`
+and the loot drops event, so a pick-up carries exactly what breaking would.
+
+Alternatives: rotating with the block's `rotate` hook (rejected: it bypasses authority and the
+in-transit check), or a mode-switch-style re-lease (rejected: it would lose settings and upgrades
+for a purely positional change).
