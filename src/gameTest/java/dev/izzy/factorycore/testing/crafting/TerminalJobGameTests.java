@@ -20,6 +20,7 @@ import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalJobPackets;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,7 +65,7 @@ public final class TerminalJobGameTests {
 
   private static TerminalMenu menu(GameTestHelper h, ServerPlayer player) {
     h.assertTrue(player.containerMenu instanceof TerminalMenu, "Terminal open");
-    return (TerminalMenu) player.containerMenu;
+    return TestMenus.terminal(player);
   }
 
   private static void command(
@@ -137,7 +138,10 @@ public final class TerminalJobGameTests {
     var firstWindow = new ArrayList<TerminalJobPackets.Entry>();
     var keepTarget = new ArrayList<String>();
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               h.useBlock(TERMINAL, player);
@@ -254,7 +258,10 @@ public final class TerminalJobGameTests {
     var origin = dev.izzy.factorycore.platform.Positions.of(h.getLevel(), h.absolutePos(TERMINAL));
     UUID[] ids = {null, null};
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(owner), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(owner), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               h.assertTrue(
@@ -397,7 +404,10 @@ public final class TerminalJobGameTests {
     ResourceKey log = codec.itemKey(new ItemStack(Items.OAK_LOG));
     ResourceKey planks = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               saved.registry().insert(cell, log, 1);
@@ -485,7 +495,10 @@ public final class TerminalJobGameTests {
     ResourceKey log = codec.itemKey(new ItemStack(Items.OAK_LOG));
     ResourceKey stick = codec.itemKey(new ItemStack(Items.STICK));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               saved.registry().insert(cell, log, 5);
@@ -564,7 +577,10 @@ public final class TerminalJobGameTests {
     ResourceKey log = codec.itemKey(new ItemStack(Items.OAK_LOG));
     ResourceKey stick = codec.itemKey(new ItemStack(Items.STICK));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               h.useBlock(TERMINAL, player);
@@ -748,7 +764,10 @@ public final class TerminalJobGameTests {
     var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
     ResourceKey log = codec.itemKey(new ItemStack(Items.OAK_LOG));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               saved.registry().insert(cell, log, 9);
@@ -822,7 +841,10 @@ public final class TerminalJobGameTests {
     ResourceKey log = codec.itemKey(new ItemStack(Items.OAK_LOG));
     ResourceKey planks = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               saved.registry().insert(cell, log, 9);

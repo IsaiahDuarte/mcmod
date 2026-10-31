@@ -15,6 +15,7 @@ import dev.izzy.factorycore.platform.storage.CellHandleData;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -198,7 +199,10 @@ public final class SubstituteCraftingGameTests {
     var oak = codec.itemKey(new ItemStack(Items.OAK_PLANKS));
     var birch = codec.itemKey(new ItemStack(Items.BIRCH_PLANKS));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               h.useBlock(terminalAt, player);

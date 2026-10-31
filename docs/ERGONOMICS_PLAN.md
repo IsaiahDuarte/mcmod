@@ -1183,7 +1183,8 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Done when: a GameTest installs and removes through the tool without the upgrade on the
   cursor, and a client capture shows the offer.
 
-- [ ] **Q114 — Batch-sensitive GameTests (found in Q22).** Size S. Lane D.
+- [x] **Q114 — Batch-sensitive GameTests (found in Q22).** Size S. Lane D. Done 2026-10-31
+  (commit subject `Q114:`), [Evidence](evidence/ergonomics-q114-batch-sensitive-gametests-2026-10-31.md).
   With two or more tests added to the default batches, `fullInventoryRefusesBeforeConsumingAnything`
   ("Terminal still open"), `partitionLimitsInsertsSurvivesUpgradeAndKeepsContentsReachable` and
   `presetDraftSamplesDoNotDeployOrConsumeUntilExplicitSave` (and once

@@ -15,6 +15,7 @@ import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.math.BigInteger;
 import java.util.Set;
@@ -50,7 +51,7 @@ public final class TerminalGridGameTests {
       DeviceRegistry.Handle cell,
       ResourceKey key) {
     TerminalMenu menu() {
-      return (TerminalMenu) player.containerMenu;
+      return TestMenus.terminal(player);
     }
   }
 
@@ -124,7 +125,10 @@ public final class TerminalGridGameTests {
   public static void scrollingWindowAndStandardClicksPreserveExactComponents(GameTestHelper h) {
     var f = setup(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network valid"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network valid"))
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, f.key, 100);
@@ -310,7 +314,10 @@ public final class TerminalGridGameTests {
       GameTestHelper h) {
     var f = setup(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network valid"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network valid"))
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, f.key, 8190);
@@ -361,7 +368,10 @@ public final class TerminalGridGameTests {
     WorldStorageTransfers.PlayerInventory[] old = {null};
     WorldStorageTransfers.Result[] results = {null, null};
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network valid"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network valid"))
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, f.key, 5);
@@ -491,7 +501,10 @@ public final class TerminalGridGameTests {
     var f = setup(h);
     TerminalMenu[] closed = {null};
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network valid"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network valid"))
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, f.key, 100);

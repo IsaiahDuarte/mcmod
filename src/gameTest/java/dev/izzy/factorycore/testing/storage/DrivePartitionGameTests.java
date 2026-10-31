@@ -16,6 +16,7 @@ import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
 import java.util.Set;
@@ -75,7 +76,7 @@ public final class DrivePartitionGameTests {
   }
 
   private static TerminalMenu terminal(Fixture f) {
-    return (TerminalMenu) f.player.containerMenu;
+    return TestMenus.terminal(f.player);
   }
 
   private static void deposit(GameTestHelper h, Fixture f, Item item, int count) {
@@ -432,7 +433,10 @@ public final class DrivePartitionGameTests {
   public static void partitionKindMustMatchTheCell(GameTestHelper h) {
     var f = setup(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(
             () -> {
               boolean refused = false;

@@ -48,12 +48,6 @@ public final class WrenchGameTests {
       EAST_CHEST = new BlockPos(3, 2, 1),
       SOUTH_CHEST = new BlockPos(2, 2, 2);
 
-  /**
-   * Their own batch: added to the default batches they shifted the batch layout, and some existing
-   * terminal, drive and preset tests then failed intermittently (see the Q22 evidence).
-   */
-  private static final String BATCH = "wrench";
-
   private WrenchGameTests() {}
 
   private static ServerPlayer player(GameTestHelper h) {
@@ -120,7 +114,7 @@ public final class WrenchGameTests {
     return h.getBlockState(PORT).getValue(BlockStateProperties.FACING);
   }
 
-  @GameTest(template = "empty", timeoutTicks = 600, batch = BATCH)
+  @GameTest(template = "empty", timeoutTicks = 600)
   public static void aTurnedExporterFeedsItsNewFace(GameTestHelper h) {
     var owner = player(h);
     var net = Net.in(h, owner.getUUID());
@@ -174,7 +168,7 @@ public final class WrenchGameTests {
    * A staged move naming the Exporter as its destination makes a turn wait; a player without Edit
    * is refused; neither changes the face.
    */
-  @GameTest(template = "empty", timeoutTicks = 400, batch = BATCH)
+  @GameTest(template = "empty", timeoutTicks = 400)
   public static void aTurnWaitsForAMoveInTransitAndNeedsEdit(GameTestHelper h) {
     var owner = player(h);
     var stranger = player(h);
@@ -258,7 +252,7 @@ public final class WrenchGameTests {
   }
 
   /** Sneak-use picks the Exporter up into the inventory; placed again, it keeps its settings. */
-  @GameTest(template = "empty", timeoutTicks = 400, batch = BATCH)
+  @GameTest(template = "empty", timeoutTicks = 400)
   public static void sneakPickUpKeepsSettings(GameTestHelper h) {
     var owner = player(h);
     var net = Net.in(h, owner.getUUID());

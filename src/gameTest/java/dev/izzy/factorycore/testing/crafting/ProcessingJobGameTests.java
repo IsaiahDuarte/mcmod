@@ -34,6 +34,7 @@ import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
 import dev.izzy.factorycore.testing.ConnectorFixture;
 import dev.izzy.factorycore.testing.MixerFixture;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
 import java.util.UUID;
@@ -278,11 +279,14 @@ public final class ProcessingJobGameTests {
     inventory.setItem(2, new ItemStack(CraftingContent.BLANK_PATTERN.get()));
     var codec = new PlatformResourceCodec(player.registryAccess());
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(() -> h.useBlock(TERMINAL, player))
         .thenExecute(
             () -> {
-              var m = (TerminalMenu) player.containerMenu;
+              var m = TestMenus.terminal(player);
               grid(m, player, TerminalCraftingPackets.MODE, 1, 0, 1, new byte[32]);
               grid(
                   m,
@@ -312,7 +316,7 @@ public final class ProcessingJobGameTests {
         .thenIdle(3)
         .thenExecute(
             () -> {
-              var m = (TerminalMenu) player.containerMenu;
+              var m = TestMenus.terminal(player);
               grid(m, player, TerminalCraftingPackets.CRAFT, -1, 0, 1, new byte[32]);
               h.assertTrue(
                   m.gridView().status() == TerminalCraftingPackets.GridStatus.PROCESSING_MODE,
@@ -321,7 +325,7 @@ public final class ProcessingJobGameTests {
         .thenIdle(3)
         .thenExecute(
             () -> {
-              var m = (TerminalMenu) player.containerMenu;
+              var m = TestMenus.terminal(player);
               grid(m, player, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]);
               h.assertTrue(
                   m.gridView().status() == TerminalCraftingPackets.GridStatus.ENCODED,

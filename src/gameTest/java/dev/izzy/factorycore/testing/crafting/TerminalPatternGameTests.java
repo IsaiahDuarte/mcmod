@@ -19,6 +19,7 @@ import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.platform.storage.TerminalPatternPackets;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -96,7 +97,7 @@ public final class TerminalPatternGameTests {
 
   private static TerminalMenu menu(GameTestHelper h, ServerPlayer player) {
     h.assertTrue(player.containerMenu instanceof TerminalMenu, "Terminal open");
-    return (TerminalMenu) player.containerMenu;
+    return TestMenus.terminal(player);
   }
 
   /** Opens the terminal and its Patterns view (the client's first WINDOW command). */
@@ -173,7 +174,10 @@ public final class TerminalPatternGameTests {
     var player = branchFixture(h, true);
     var terminal = terminal(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(() -> open(h, player))
         .thenWaitUntil(
             () -> {
@@ -224,7 +228,10 @@ public final class TerminalPatternGameTests {
     var player = branchFixture(h, false);
     var terminal = terminal(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(() -> open(h, player))
         .thenWaitUntil(
             () -> {
@@ -256,7 +263,10 @@ public final class TerminalPatternGameTests {
     var crafter = crafter(h, NORTH, first.copy(), second.copy(), third.copy());
     var terminal = terminal(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(() -> open(h, player))
         .thenWaitUntil(
             () ->
@@ -320,7 +330,10 @@ public final class TerminalPatternGameTests {
     var crafter = crafter(h, NORTH, held.copy());
     var terminal = terminal(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(owner), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(owner), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () ->
                 h.assertTrue(
@@ -378,7 +391,10 @@ public final class TerminalPatternGameTests {
     var terminal = terminal(h);
     var first = new ArrayList<BlockPos>();
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(() -> open(h, player))
         .thenWaitUntil(
             () -> {
@@ -448,7 +464,10 @@ public final class TerminalPatternGameTests {
     var stranger = TestPlayers.mock(h);
     TestPlayers.connect(stranger);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               stranger.setItemInHand(InteractionHand.MAIN_HAND, tool.copy());
@@ -543,7 +562,10 @@ public final class TerminalPatternGameTests {
     // Commands share the session's rate gate, so each waits a few ticks after the last.
     int gap = 5;
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(() -> open(h, player))
         .thenWaitUntil(
             () ->

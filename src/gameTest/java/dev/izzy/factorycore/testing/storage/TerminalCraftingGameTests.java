@@ -16,6 +16,7 @@ import dev.izzy.factorycore.platform.storage.TerminalEntity;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
 import java.util.UUID;
@@ -69,7 +70,7 @@ public final class TerminalCraftingGameTests {
   }
 
   private static TerminalMenu menu(Fixture f) {
-    return (TerminalMenu) f.player.containerMenu;
+    return TestMenus.terminal(f.player);
   }
 
   private static void open(GameTestHelper helper, Fixture f) {
@@ -137,7 +138,10 @@ public final class TerminalCraftingGameTests {
     inventory.setItem(4, new ItemStack(Items.EGG, 2));
     inventory.setItem(5, new ItemStack(Items.WHEAT, 4));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(() -> open(h, f))
         .thenWaitUntil(() -> loaded(h, f))
         .thenExecute(
@@ -194,7 +198,10 @@ public final class TerminalCraftingGameTests {
     inventory.setItem(0, new ItemStack(Items.OAK_PLANKS, 64));
     for (int slot = 1; slot < 36; slot++) inventory.setItem(slot, new ItemStack(Items.STONE, 64));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(() -> open(h, f))
         .thenWaitUntil(() -> loaded(h, f))
         .thenExecute(
@@ -243,7 +250,10 @@ public final class TerminalCraftingGameTests {
     var f = setup(h);
     var log = f.codec.itemKey(new ItemStack(Items.OAK_LOG));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, log, 5);
@@ -308,7 +318,10 @@ public final class TerminalCraftingGameTests {
     inventory.setItem(0, new ItemStack(Items.OAK_LOG, 2));
     inventory.setItem(1, new ItemStack(Items.BIRCH_LOG, 2));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(() -> open(h, f))
         .thenWaitUntil(() -> loaded(h, f))
         .thenExecute(
@@ -363,7 +376,10 @@ public final class TerminalCraftingGameTests {
     var f = setup(h);
     var planks = "minecraft:oak_planks";
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(() -> open(h, f))
         .thenWaitUntil(() -> loaded(h, f))
         .thenExecute(
@@ -520,7 +536,10 @@ public final class TerminalCraftingGameTests {
     inventory.setItem(2, new ItemStack(Items.OAK_LOG));
     int[] patternSlot = {-1};
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(() -> open(h, f))
         .thenWaitUntil(() -> loaded(h, f))
         .thenExecute(
@@ -603,7 +622,10 @@ public final class TerminalCraftingGameTests {
     inventory.setItem(4, declared);
     inventory.setItem(5, odd);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(() -> open(h, f))
         .thenWaitUntil(() -> loaded(h, f))
         .thenExecute(
@@ -712,7 +734,10 @@ public final class TerminalCraftingGameTests {
         List.of(
             "minecraft:acacia_log", "minecraft:apple", "minecraft:birch_log", "minecraft:oak_log");
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, log, 5);
@@ -786,7 +811,10 @@ public final class TerminalCraftingGameTests {
     inventory.setItem(2, new ItemStack(Items.IRON_INGOT));
     inventory.setItem(3, new ItemStack(Items.STONE));
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
         .thenExecute(() -> open(h, f))
         .thenWaitUntil(() -> loaded(h, f))
         .thenExecute(

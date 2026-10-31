@@ -10,10 +10,10 @@ import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.platform.storage.StorageDriveEntity;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
-import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.EnergyFixture;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
@@ -41,7 +41,7 @@ public final class TerminalContainerGameTests {
   private TerminalContainerGameTests() {}
 
   private static void command(ServerPlayer player, int action, int selection) {
-    var m = (TerminalMenu) player.containerMenu;
+    var m = TestMenus.terminal(player);
     m.command(
         player,
         new TerminalPackets.Command(
@@ -95,7 +95,7 @@ public final class TerminalContainerGameTests {
             })
         .thenWaitUntil(
             () -> {
-              var m = (TerminalMenu) player.containerMenu;
+              var m = TestMenus.terminal(player);
               m.broadcastChanges();
               h.assertTrue(
                   m.view().status() == TerminalPackets.Status.READY
@@ -112,7 +112,7 @@ public final class TerminalContainerGameTests {
                       && inventory.getItem(0).getCount() == 1
                       && countOf(player, Items.WATER_BUCKET) == 1,
                   "One bucket filled with exactly 1000 mB: "
-                      + ((TerminalMenu) player.containerMenu).view().status());
+                      + TestMenus.terminal(player).view().status());
             })
         .thenIdle(3)
         .thenExecute(
@@ -131,8 +131,7 @@ public final class TerminalContainerGameTests {
             () -> {
               command(player, TerminalPackets.EMPTY, 0);
               h.assertTrue(
-                  ((TerminalMenu) player.containerMenu).view().status()
-                          == TerminalPackets.Status.EMPTY
+                  TestMenus.terminal(player).view().status() == TerminalPackets.Status.EMPTY
                       && saved.registry().stock(cell, water).total() == 2_500,
                   "Empty buckets have nothing to empty");
             })
@@ -164,7 +163,7 @@ public final class TerminalContainerGameTests {
             () -> {
               command(player, TerminalPackets.CHARGE, 0);
               h.assertTrue(
-                  ((TerminalMenu) player.containerMenu).view().status()
+                  TestMenus.terminal(player).view().status()
                           == TerminalPackets.Status.NO_ENERGY_ITEM
                       && bank.getEnergyStored() == 900,
                   "A bucket stack is not an energy item; nothing moves");

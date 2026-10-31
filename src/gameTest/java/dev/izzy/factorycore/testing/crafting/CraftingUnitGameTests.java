@@ -14,9 +14,9 @@ import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalEntity;
-import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -224,11 +224,14 @@ public final class CraftingUnitGameTests {
     inventory.setItem(5, new ItemStack(Items.WHEAT, 3));
     var codec = new PlatformResourceCodec(player.registryAccess());
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, terminal.canUse(player), terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               h.useBlock(TERMINAL, player);
-              var menu = (TerminalMenu) player.containerMenu;
+              var menu = TestMenus.terminal(player);
               int[] sources = {0, 0, 0, 3, 4, 3, 5, 5, 5};
               for (int cell = 0; cell < 9; cell++) {
                 var key = codec.itemKey(inventory.getItem(sources[cell]));
@@ -266,7 +269,7 @@ public final class CraftingUnitGameTests {
         .thenIdle(3)
         .thenExecute(
             () -> {
-              var menu = (TerminalMenu) player.containerMenu;
+              var menu = TestMenus.terminal(player);
               menu.gridCommand(
                   player,
                   new TerminalCraftingPackets.Command(

@@ -17,6 +17,7 @@ import dev.izzy.factorycore.platform.wireless.LinkPairing;
 import dev.izzy.factorycore.testing.EnergyFixture;
 import dev.izzy.factorycore.testing.Links;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -59,7 +60,7 @@ public final class TerminalWirelessContainerGameTests {
       player.closeContainer();
       h.useBlock(TERMINAL, player);
     }
-    var menu = (TerminalMenu) player.containerMenu;
+    var menu = TestMenus.terminal(player);
     menu.command(
         player,
         new TerminalPackets.Command(
@@ -142,7 +143,7 @@ public final class TerminalWirelessContainerGameTests {
             })
         .thenWaitUntil(
             () -> {
-              var menu = (TerminalMenu) player.containerMenu;
+              var menu = TestMenus.terminal(player);
               menu.broadcastChanges();
               h.assertTrue(
                   menu.view().status() == TerminalPackets.Status.READY

@@ -24,6 +24,7 @@ import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.platform.storage.TerminalSearchSupport;
 import dev.izzy.factorycore.platform.storage.WorldStorageSearch;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -116,7 +117,7 @@ public final class CraftableGridGameTests {
   }
 
   private static TerminalMenu menu(Fixture f) {
-    return (TerminalMenu) f.player.containerMenu;
+    return TestMenus.terminal(f.player);
   }
 
   private static void open(GameTestHelper h, Fixture f) {
@@ -170,7 +171,10 @@ public final class CraftableGridGameTests {
   public static void publishedCraftablesAreMarkedListedAndRequested(GameTestHelper h) {
     var f = setup(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, f.log, 2);
@@ -253,7 +257,10 @@ public final class CraftableGridGameTests {
   public static void recipeViewerRequestsOnlyCraftableItems(GameTestHelper h) {
     var f = setup(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(() -> open(h, f))
         .thenWaitUntil(
             () -> {
@@ -286,7 +293,10 @@ public final class CraftableGridGameTests {
   public static void gatewayWithoutCraftPublishesNoCraftables(GameTestHelper h) {
     var f = setup(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               var branch = EnumSet.allOf(NetworkPermissions.Permission.class);
@@ -334,7 +344,10 @@ public final class CraftableGridGameTests {
   public static void craftableRowsPageWithinTheWindowBound(GameTestHelper h) {
     var f = setup(h);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               var tooMany = new HashSet<ResourceKey>();
@@ -410,7 +423,10 @@ public final class CraftableGridGameTests {
     var dirt = codec.itemKey(zeta);
     String log = "minecraft:oak_log", plank = "minecraft:oak_planks", soil = "minecraft:dirt";
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               // Changed in the order planks, Zeta, logs (the extract is the last change).
@@ -510,7 +526,10 @@ public final class CraftableGridGameTests {
     int quantityUp = TerminalSearchSupport.QUANTITY | TerminalSearchSupport.REVERSED;
     int nameTall = TerminalSearchSupport.NAME | TerminalSearchSupport.TALL;
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Terminal ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Terminal ready"))
         .thenExecute(
             () -> {
               f.saved.registry().insert(f.cell, f.log, 2);

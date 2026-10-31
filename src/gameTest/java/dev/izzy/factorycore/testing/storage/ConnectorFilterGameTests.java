@@ -14,6 +14,7 @@ import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -95,7 +96,7 @@ public final class ConnectorFilterGameTests {
   }
 
   private static TerminalMenu terminal(Fixture f) {
-    return (TerminalMenu) f.player.containerMenu;
+    return TestMenus.terminal(f.player);
   }
 
   private static void deposit(Fixture f, Item item, int count) {
@@ -232,7 +233,10 @@ public final class ConnectorFilterGameTests {
   public static void refusedDepositStaysWithThePlayerAndFilterReloads(GameTestHelper h) {
     var f = setup(h, false);
     h.startSequence()
-        .thenWaitUntil(() -> h.assertTrue(f.filtered.canUse(f.player), "Port ready"))
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.filtered.canUse(f.player), f.filtered.getBlockPos(), "Port ready"))
         .thenExecute(
             () -> {
               filter(f);

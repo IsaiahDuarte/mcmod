@@ -8,6 +8,7 @@ import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.storage.TerminalPackets;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import java.util.HashMap;
 import java.util.Map;
@@ -73,7 +74,7 @@ public final class TerminalGameTests {
   }
 
   private static TerminalMenu menu(Fixture f) {
-    return (TerminalMenu) f.player.containerMenu;
+    return TestMenus.terminal(f.player);
   }
 
   private static void open(GameTestHelper helper, Fixture f) {

@@ -246,7 +246,11 @@ public final class ProcessingJournalGameTests {
               f.machine.items.setStackInSlot(0, ItemStack.EMPTY);
               f.machine.items.setStackInSlot(1, ItemStack.EMPTY);
               audits[0] = recoveryFiles(h);
-              h.assertTrue(resolve(h) == 1, "Operator resolves with evidence");
+            })
+        // The recovery command admits one request a second server-wide; tests share it.
+        .thenWaitUntil(() -> h.assertTrue(resolve(h) == 1, "Operator resolves with evidence"))
+        .thenExecute(
+            () -> {
               h.assertTrue(recoveryFiles(h) == audits[0] + 1, "Before-state evidence written");
             })
         .thenWaitUntil(
@@ -317,7 +321,11 @@ public final class ProcessingJournalGameTests {
               h.assertTrue(
                   f.job(id[0]) != null && f.job(id[0]).reason() == JobReason.SAVE_MISMATCH,
                   "Cancellation stays frozen until an operator resolves");
-              h.assertTrue(resolve(h) == 1, "Operator resolves");
+            })
+        // The recovery command admits one request a second server-wide; tests share it.
+        .thenWaitUntil(() -> h.assertTrue(resolve(h) == 1, "Operator resolves"))
+        .thenExecute(
+            () -> {
               h.assertTrue(
                   f.journaled() == 2 && !f.pending(), "Journal now matches the saved job record");
             })
@@ -370,7 +378,11 @@ public final class ProcessingJournalGameTests {
         .thenExecute(
             () -> {
               files[0] = recoveryFiles(h);
-              h.assertTrue(resolve(h) == 1, "Operator resolves a missing journal");
+            })
+        // The recovery command admits one request a second server-wide; tests share it.
+        .thenWaitUntil(() -> h.assertTrue(resolve(h) == 1, "Operator resolves a missing journal"))
+        .thenExecute(
+            () -> {
               h.assertTrue(recoveryFiles(h) == files[0] + 1, "Absence is preserved as evidence");
               h.assertTrue(
                   f.journaled() == 2 && !f.pending(), "Journal now matches the saved job record");
@@ -419,8 +431,9 @@ public final class ProcessingJournalGameTests {
                       && f.job(id[0]).staged().isEmpty()
                       && f.saved.registry().stock(f.cell, f.cobble).reserved() == 2,
                   "Ingredients stay reserved in storage; nothing was pulled");
-              h.assertTrue(resolve(h) == 1, "Operator removes the orphaned journal");
             })
+        // The recovery command admits one request a second server-wide; tests share it.
+        .thenWaitUntil(() -> h.assertTrue(resolve(h) == 1, "Operator removes the orphaned journal"))
         .thenWaitUntil(
             () ->
                 h.assertTrue(

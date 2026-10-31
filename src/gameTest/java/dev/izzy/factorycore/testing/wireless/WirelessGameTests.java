@@ -15,6 +15,7 @@ import dev.izzy.factorycore.platform.wireless.WirelessContent;
 import dev.izzy.factorycore.platform.wireless.WirelessPick;
 import dev.izzy.factorycore.platform.wireless.WirelessTerminalItem;
 import dev.izzy.factorycore.testing.Net;
+import dev.izzy.factorycore.testing.TestMenus;
 import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -42,7 +43,7 @@ public final class WirelessGameTests {
   private WirelessGameTests() {}
 
   private static TerminalMenu menu(ServerPlayer player) {
-    return (TerminalMenu) player.containerMenu;
+    return TestMenus.terminal(player);
   }
 
   private static void command(ServerPlayer player, int action, int selection, int amount) {
