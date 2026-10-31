@@ -228,7 +228,16 @@ public final class TerminalCraftingGameTests {
               menu(f).broadcastChanges();
               h.assertTrue(
                   menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.FULL,
-                  "Gathering finds no planks, then crafting fills the free slot");
+                  "Gathering finds no planks, then crafting fills the free slot: "
+                      + menu(f).gridView().status()
+                      + " crafted "
+                      + menu(f).gridView().crafted()
+                      + " sticks "
+                      + count(f, Items.STICK)
+                      + " net "
+                      + dev.izzy.factorycore.platform.network.WorldNetworks.get(f.player.server)
+                          .membership(f.terminal.origin())
+                          .status());
             })
         .thenExecute(
             () -> {

@@ -12,6 +12,12 @@ public interface TerminalAccess {
   /** True while {@code player} may keep using this session (holder, range, grants, power). */
   boolean canUse(ServerPlayer player);
 
+  /**
+   * The physical half of {@link #canUse}: holder, range and power, without the network grant. A
+   * menu uses it to ride out a brief rebuild of its network; it never authorizes an action.
+   */
+  boolean present(ServerPlayer player);
+
   /** The network position that authorizes the session's operations. */
   NodeRegistry.Position origin();
 

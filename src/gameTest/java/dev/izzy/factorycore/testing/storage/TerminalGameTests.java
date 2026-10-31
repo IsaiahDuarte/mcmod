@@ -1,9 +1,12 @@
 package dev.izzy.factorycore.testing.storage;
 
 import dev.izzy.factorycore.core.network.*;
+import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.storage.*;
 import dev.izzy.factorycore.platform.network.*;
+import dev.izzy.factorycore.platform.network.NetworkContent;
+import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.storage.StorageStats;
@@ -981,5 +984,57 @@ public final class TerminalGameTests {
     for (int index = 0; index < rows.size(); index++)
       if (rows.get(index).icon().equals(key.registryId())) return index;
     throw new IllegalStateException("No row for " + key.registryId() + ": " + rows);
+  }
+
+  /**
+   * Q118: a cable placed on a running network rebuilds it for a few ticks. An open terminal stays
+   * open through that, a search sent mid-rebuild is kept and applied once the network is VALID, and
+   * the view is READY again. Before the fix every open terminal on the network closed.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void aRebuildKeepsTheTerminalOpenAndAppliesItsSearchAfter(GameTestHelper helper) {
+    var f = setup(helper);
+    var gold =
+        new PlatformResourceCodec(f.player.registryAccess())
+            .itemKey(new ItemStack(Items.GOLD_INGOT));
+    var networks = WorldNetworks.get(helper.getLevel().getServer());
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.key, 32);
+              f.saved.registry().insert(f.cell, gold, 48);
+              open(helper, f);
+            })
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenExecute(() -> helper.setBlock(new BlockPos(3, 1, 1), NetworkContent.CABLE.get()))
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    networks.membership(f.terminal.origin()).status()
+                        == NetworkTopology.Status.REBUILDING,
+                    "The cable starts a rebuild"))
+        .thenExecute(
+            () -> {
+              search(f, "minecraft:gold_ingot");
+              menu(f).broadcastChanges();
+              helper.assertTrue(
+                  f.player.containerMenu instanceof TerminalMenu,
+                  "The terminal stays open while the network rebuilds");
+            })
+        .thenWaitUntil(
+            () -> {
+              helper.assertTrue(
+                  f.player.containerMenu instanceof TerminalMenu, "The terminal never closed");
+              menu(f).broadcastChanges();
+              helper.assertTrue(
+                  menu(f).view().status() == TerminalPackets.Status.READY
+                      && menu(f).view().rows().size() == 1
+                      && menu(f).view().rows().getFirst().icon().equals("minecraft:gold_ingot"),
+                  "The kept search applies once the network is VALID: " + menu(f).view().rows());
+            })
+        .thenExecute(() -> logout(f))
+        .thenSucceed();
   }
 }

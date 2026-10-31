@@ -50,13 +50,18 @@ public final class TerminalEntity extends BlockEntity
 
   @Override
   public boolean canUse(ServerPlayer player) {
-    if (!player.isAlive()
-        || !current()
-        || player.serverLevel() != level
-        || player.server.getPlayerList().getPlayer(player.getUUID()) != player
-        || player.distanceToSqr(Vec3.atCenterOf(worldPosition)) > 64) return false;
-    return WorldNetworks.get(player.server)
-        .allows(Actors.of(player), origin(), NetworkPermissions.Permission.VIEW);
+    return present(player)
+        && WorldNetworks.get(player.server)
+            .allows(Actors.of(player), origin(), NetworkPermissions.Permission.VIEW);
+  }
+
+  @Override
+  public boolean present(ServerPlayer player) {
+    return player.isAlive()
+        && current()
+        && player.serverLevel() == level
+        && player.server.getPlayerList().getPlayer(player.getUUID()) == player
+        && player.distanceToSqr(Vec3.atCenterOf(worldPosition)) <= 64;
   }
 
   UUID sessionForOpen() {

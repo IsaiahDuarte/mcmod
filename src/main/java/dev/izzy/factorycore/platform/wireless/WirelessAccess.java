@@ -52,6 +52,13 @@ public final class WirelessAccess implements TerminalAccess {
 
   @Override
   public boolean canUse(ServerPlayer player) {
+    return present(player)
+        && WorldNetworks.get(player.server)
+            .allows(Actors.of(player), point.origin(), NetworkPermissions.Permission.VIEW);
+  }
+
+  @Override
+  public boolean present(ServerPlayer player) {
     var held = handheld.apply(player);
     var binding = held.get(WirelessContent.BINDING.get());
     double range = (double) point.range() * point.range();
@@ -63,9 +70,7 @@ public final class WirelessAccess implements TerminalAccess {
         && binding != null
         && binding.position() == point.getBlockPos().asLong()
         && binding.dimension().equals(point.origin().dimension())
-        && player.distanceToSqr(Vec3.atCenterOf(point.getBlockPos())) <= range
-        && WorldNetworks.get(player.server)
-            .allows(Actors.of(player), point.origin(), NetworkPermissions.Permission.VIEW);
+        && player.distanceToSqr(Vec3.atCenterOf(point.getBlockPos())) <= range;
   }
 
   @Override

@@ -24,7 +24,9 @@ for permissions commands, configuration and recovery.
 Every block with a screen opens it when you use it with an empty main hand. Each
 screen has a status line near the top: a green or amber lamp, the network state
 (Online, Connecting, No controller, …), the device's own reason, and stored energy
-for powered devices. Hover a shortened status line to read all of it.
+for powered devices. Hover a shortened status line to read all of it. When someone places or
+breaks a cable, the network reconnects for a moment; an open terminal stays open (showing
+*Connecting*) and carries out what you clicked once it is back online.
 
 ## Recipes
 

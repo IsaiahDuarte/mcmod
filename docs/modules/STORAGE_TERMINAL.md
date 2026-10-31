@@ -14,6 +14,14 @@ server creates a random per-open session UUID and keeps the exact physical holde
 Every command requires the authenticated sender's current menu, matching menu ID
 and session; mutations also require the current server view revision. Replacing,
 unloading, closing, disconnecting or leaving range invalidates that holder/session.
+
+**Rebuilds (Q118).** While the terminal's network is REBUILDING (a cable or device changed), the
+menu stays open for up to `TerminalMenu.REBUILD_GRACE_TICKS` (100) as long as
+`TerminalAccess.present` holds (holder, range, power). It publishes only the status strip
+("Connecting"). Commands from the viewer are kept, at most `MAX_PENDING` (8), and route results
+that arrive meanwhile are kept too. Both are replayed in order once the network is VALID, through
+the handlers' normal checks, so nothing runs without authorization. If the rebuild does not end
+VALID with View in time, the menu closes and the kept work is dropped.
 Grants and the query's complete captured topology scope are revalidated. Read/search
 payloads supply no actor, operator, root, segment, provider or resource key.
 

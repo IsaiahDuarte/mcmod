@@ -1231,27 +1231,19 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Done when: a GameTest fills a two-type partitioned cell with one type and sees it stop at half,
   and the setting survives removal, reinstall and reload.
 
-- [ ] **Q118 — Open screens survive a network rebuild (bug found 2026-10-31).** Size M. Lane D.
-  **Confirmed bug:** placing one cable on a running network closes every open Storage Terminal on
-  it, for every player. A probe GameTest (open a terminal, place a cable next to the drive, poll
-  for 40 ticks) failed with "placing a cable closed the open terminal". Cause: `TerminalMenu`
-  closes as soon as `authorized()` is false, and `WorldNetworks.authorize` returns INVALID_SCOPE
-  while the region is REBUILDING. This also explains the intermittent "Terminal closed" GameTest
-  failures (for example `fullInventoryRefusesBeforeConsumingAnything`).
-  **Tried and reverted:** keeping the menu open for up to 100 ticks while REBUILDING (a physical
-  `TerminalAccess.present` check, with actions still gated on `authorized()`). The open terminal
-  then survived, but commands sent during the rebuild were dropped silently, and two other terminal
-  GameTests failed in 3 of 4 runs.
-  **Do:**
-  - Keep the screen open through a bounded rebuild, with the physical checks still applied.
-  - Show a "Network rebuilding…" status.
-  - Refuse commands during the rebuild with a visible status, rather than dropping them.
-  - Make the `TestMenus` settle helpers and one-shot command tests wait for READY.
-  - Check the other device screens (Drive, Buffer, Interface, Crafter) for the same close-on-rebuild
-    behaviour.
-  Done when: a GameTest places a cable while a terminal is open and the terminal stays open and is
-  READY afterwards; a command sent mid-rebuild is refused visibly; the full GameTest suite passes
-  five consecutive runs.
+- [x] **Q118 — Open terminals survive a network rebuild (bug found 2026-10-31).** Size M. Lane D.
+  Done 2026-10-31 (commit subject `Q118:`),
+  [Evidence](evidence/ergonomics-q118-rebuild-keeps-terminals-2026-10-31.md). Placing a cable
+  closed every open terminal on the network; terminals now stay open (showing "Connecting") for up
+  to 100 ticks, keep commands and route results, and replay them once the network is VALID. This
+  also fixed the intermittent "Terminal closed" GameTest failures: 8 consecutive full runs pass.
+  Done when: a GameTest places a cable while a terminal is open and the terminal stays open and
+  applies a search sent mid-rebuild; the full suite passes repeatedly.
+
+- [ ] **Q119 — Device screens survive a network rebuild (from Q118).** Size M. Lane D. Apply
+  Q118's rule (stay open while REBUILDING and present, bounded; keep and replay commands) to the
+  Drive, Buffer settings, Interface settings, Crafter, Program and Overview screens, each with a
+  GameTest that places a cable while it is open.
 
 - [ ] **Q102 — Label and program nits (M128–M136).** Size S. Lanes L and S.
   The Label Tool's name shows its label; row labelling includes diagonals (with Q9); clicking a

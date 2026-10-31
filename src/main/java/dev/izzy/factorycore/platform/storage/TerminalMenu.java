@@ -238,6 +238,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
    * click spends a wireless terminal's action energy, as storage actions do.
    */
   public void patternCommand(ServerPlayer sender, TerminalPatternPackets.Command command) {
+    if (deferred(sender, () -> patternCommand(sender, command))) return;
     if (!protocol.fromViewer(sender, command.menu(), command.session())
         || !authorized()
         || !protocol.admitRate()) return;
@@ -340,7 +341,48 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
 
   @Override
   public boolean stillValid(Player player) {
-    return player == viewer && (terminal == null || terminal.canUse(player()));
+    if (player != viewer) return false;
+    if (terminal == null) return true;
+    var user = player();
+    if (terminal.canUse(user)) {
+      rebuildingSince = -1;
+      return true;
+    }
+    // A cable placed or broken elsewhere rebuilds the network for a few ticks. Stay open through
+    // that (bounded), as long as the player is still at the terminal; every action keeps checking
+    // the network, so nothing can be moved until it is VALID again.
+    if (!terminal.present(user)
+        || WorldNetworks.get(user.server).membership(terminal.origin()).status()
+            != dev.izzy.factorycore.core.network.NetworkTopology.Status.REBUILDING) return false;
+    long now = user.serverLevel().getGameTime();
+    if (rebuildingSince < 0) rebuildingSince = now;
+    return now - rebuildingSince <= REBUILD_GRACE_TICKS;
+  }
+
+  /** How long a menu stays open while its network rebuilds (5 s). */
+  static final int REBUILD_GRACE_TICKS = 100;
+
+  private long rebuildingSince = -1;
+
+  /** At most this many commands are kept while the network rebuilds; later ones are dropped. */
+  static final int MAX_PENDING = 8;
+
+  private final java.util.ArrayDeque<Runnable> pending = new java.util.ArrayDeque<>();
+
+  /**
+   * Q118: a command from this menu's viewer that arrives while the network is rebuilding (the menu
+   * is held open by {@link #stillValid}) is kept, bounded, and replayed once the network is VALID.
+   * The replay calls the handler again, so every check (session, grants, rate, power) applies then;
+   * if the network does not come back in time the menu closes and the kept commands are dropped.
+   */
+  private boolean deferred(ServerPlayer sender, Runnable replay) {
+    if (sender != viewer
+        || terminal == null
+        || player().containerMenu != this
+        || authorized()
+        || !stillValid(sender)) return false;
+    if (pending.size() < MAX_PENDING) pending.add(replay);
+    return true;
   }
 
   /**
@@ -377,10 +419,23 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     super.broadcastChanges();
     // Native initMenu broadcasts before assigning containerMenu; never close another menu.
     if (!protocol.server() || !protocol.active() || player().containerMenu != this) return;
-    if (!authorized()) {
+    if (!stillValid(player())) {
       player().closeContainer();
       return;
     }
+    // Rebuilding (see stillValid): stay open, showing only the status strip ("Connecting"),
+    // until the network is VALID again.
+    if (!authorized()) {
+      deviceStatus =
+          DeviceStatus.publish(
+              player(),
+              deviceStatus,
+              DeviceStatus.of(
+                  player().server, containerId, protocol.id(), terminal.origin(), "", ""));
+      return;
+    }
+    // Commands kept during the rebuild run now, in order, each through its own checks again.
+    while (!pending.isEmpty()) pending.poll().run();
     if (!terminal.upkeep(player())) {
       player()
           .displayClientMessage(
@@ -609,6 +664,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   }
 
   public void command(ServerPlayer sender, TerminalPackets.Command command) {
+    if (deferred(sender, () -> command(sender, command))) return;
     if (!protocol.fromViewer(sender, command.menu(), command.session())
         || !authorized()
         || busy
@@ -949,6 +1005,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
    * from cell 0, outputs from cell 9. Unknown IDs leave their cell empty.
    */
   public void gridProcessingFill(ServerPlayer sender, TerminalCraftingPackets.ProcessingFill fill) {
+    if (deferred(sender, () -> gridProcessingFill(sender, fill))) return;
     if (!protocol.fromViewer(sender, fill.menu(), fill.session()) || !authorized() || busy) return;
     int tick = sender.server.getTickCount();
     if (editWindow == Integer.MIN_VALUE || tick - editWindow >= 20) {
@@ -987,6 +1044,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
 
   /** Applies a recipe-viewer transfer as crafting-mode ghost cells; unknown IDs clear a cell. */
   public void gridFill(ServerPlayer sender, TerminalCraftingPackets.Fill fill) {
+    if (deferred(sender, () -> gridFill(sender, fill))) return;
     if (!protocol.fromViewer(sender, fill.menu(), fill.session()) || !authorized() || busy) return;
     int tick = sender.server.getTickCount();
     if (editWindow == Integer.MIN_VALUE || tick - editWindow >= 20) {
@@ -1008,6 +1066,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   }
 
   public void gridCommand(ServerPlayer sender, TerminalCraftingPackets.Command command) {
+    if (deferred(sender, () -> gridCommand(sender, command))) return;
     if (!protocol.fromViewer(sender, command.menu(), command.session()) || !authorized() || busy)
       return;
     int tick = sender.server.getTickCount();
@@ -1122,6 +1181,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
 
   /** Autocrafting: page craftables, preview a row, start the previewed plan, cancel own jobs. */
   public void jobCommand(ServerPlayer sender, TerminalJobPackets.Command command) {
+    if (deferred(sender, () -> jobCommand(sender, command))) return;
     if (!protocol.fromViewer(sender, command.menu(), command.session())
         || !authorized()
         || !protocol.admitRate()) return;
@@ -1295,6 +1355,19 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         && result.transfer().state() == StagedTransfer.State.COMPLETE
         && result.transfer().pending() == StagedTransfer.PendingCall.NONE
         && result.transfer().staged() == 0) saved().transfers().retire(result.id());
+    settle(result);
+  }
+
+  /**
+   * What a finished route means for the craft or move chain it belonged to. Q118: a result that
+   * arrives while the network rebuilds (menu held open) is settled once it is VALID again, instead
+   * of leaving a craft stuck in GATHERING.
+   */
+  private void settle(WorldStorageTransfers.Result result) {
+    if (!authorized() && player().containerMenu == this && stillValid(player())) {
+      pending.add(() -> settle(result));
+      return;
+    }
     if (authorized()) {
       refresh();
       status = TerminalPackets.Status.of(result.reason());
