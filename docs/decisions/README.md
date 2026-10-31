@@ -158,3 +158,4 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 - [0066 — Importer and Exporter](0066-importer-exporter.md)
 
 - [0067 — Storage discovery by network](0067-storage-discovery-by-network.md)
+- [0068 — Sentence programs and the offline program helper](0068-sentence-programs.md)
