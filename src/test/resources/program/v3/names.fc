@@ -1,0 +1,5 @@
+every minute:
+    move block of iron from storage to vault
+    move raw materials from storage to furnace
+    move create:brass_ingot from storage to vault
+    move "Iron Nugget" from storage to vault

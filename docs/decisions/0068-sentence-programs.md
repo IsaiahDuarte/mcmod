@@ -30,8 +30,9 @@ Research outside Minecraft:
 
 Sentence programs are a second front end (`SentenceCompiler`) that produces the existing
 `ProgramIr`. The evaluator, scheduling, permissions, Wasm and limits do not change. A program is
-in **sentence style** when its first line that is not blank and not a comment ends with `:`.
-Otherwise it is a brace program (v1/v2), compiled exactly as today. The `FriendlyV1PinTest` pins
+in **sentence style** when its first line that is not blank and not a comment has a `:` and no
+`{` outside quoted text. Brace programs keep `:` inside quoted IDs. Otherwise it is a brace
+program (v1/v2), compiled exactly as today. The `FriendlyV1PinTest` pins
 and the v2 fixtures must not change. The two styles cannot be mixed in one program.
 
 `ProgramPrinter` turns any `ProgramIr.Program` back into sentences. Every v2 program has a
@@ -84,7 +85,7 @@ face      = "top" | "bottom" | "side" | "up" | "down" | "north" | "south" | "eas
 check     = part { ( "and" | "or" ) part } ;
 part      = [ "not" ] ( place "has" COMPARE INT stuff | place "is powered" | "(" check ")" ) ;
 COMPARE   = "less than" | "more than" | "at least" | "at most" | "exactly" ;
-LABEL     = WORD | STRING ;
+LABEL     = WORD | STRING ;   (* any word but "storage": labels sit in fixed places *)
 ```
 
 ### Meanings

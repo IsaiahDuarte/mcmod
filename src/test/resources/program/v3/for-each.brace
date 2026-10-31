@@ -1,0 +1,7 @@
+every 20 ticks {
+  for worker in machines("workers") {
+    if worker has < 16 of item("cobblestone") {
+      move item("cobblestone") from storage to worker limit 16
+    }
+  }
+}

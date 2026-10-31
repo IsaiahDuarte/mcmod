@@ -1,0 +1,6 @@
+every 20 ticks {
+  move item("raw_iron") from storage to machines("furnace") side up
+  move everything from machines("furnace") side down slots 2 to storage
+  move item("coal") from storage to machines("furnace") side north
+  move item("dirt") from machines("chest") side east slots 0..3 to machines("my barrel")
+}

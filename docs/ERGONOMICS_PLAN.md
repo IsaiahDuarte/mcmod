@@ -1112,7 +1112,8 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
 
 ## Wave S3 — sentence programs (lane S, QD11 syntax resolved, ADR 0068)
 
-- [ ] **Q120 — Sentence compiler.** Size L.
+- [x] **Q120 — Sentence compiler.** Size L. Done 2026-10-31 (commit subject `Q120:`),
+  [Evidence](evidence/ergonomics-q120-sentence-compiler-2026-10-31.md).
   `SentenceCompiler` and `Vocabulary` in `core/program`, sentence-style detection in
   `FriendlyCompiler.compile`, `Keep` with an optional face and slots, and `Diagnostic` hint and
   example. Covers every grammar form in ADR 0068.
@@ -1130,9 +1131,12 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Done when: a GameTest deploys sentences, reloads them, and a missing item traps.
 
 - [ ] **Q123 — Editor support.** Size M.
-  Highlighting, completion of item names and labels in sentences, **Convert to sentences**
-  (with Ctrl+Z undo), and the hint and example shown under an error.
-  Done when: editor unit tests and scale 1/4 screenshots of a sentence program and an error.
+  Highlighting; suggestions while typing: after `move`, `keep`, `craft`, `has` or `except`, the
+  best item name matching the typed words shows as faint text that Tab accepts, with a short list
+  of the closest items, labels and next words (`from`, `to`, faces). Also **Convert to
+  sentences** (with Ctrl+Z undo), and the hint and example shown under an error.
+  Done when: editor unit tests cover suggestions for a partial item name, a label and the next
+  word; there are scale 1/4 screenshots of a suggestion, a sentence program and an error.
 
 - [ ] **Q124 — Offline program helper (MCP).** Size M.
   `tools/program-helper`, a stdio MCP server over `core`, with the tools in ADR 0068, a

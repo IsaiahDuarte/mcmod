@@ -1,0 +1,7 @@
+every second:
+    if furnace has at most 7 coal and not (chest has no dirt or chest has more than 3 dirt):
+        move coal from storage to furnace
+    otherwise if furnace has exactly 9 coal:
+        move coal from furnace to storage
+    otherwise:
+        say "ok"

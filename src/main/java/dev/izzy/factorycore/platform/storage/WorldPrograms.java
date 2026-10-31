@@ -607,15 +607,33 @@ public final class WorldPrograms {
       controller.log("keep " + owner.label() + ": " + unbound(registration));
       return;
     }
-    var stock =
-        networks()
-            .connectors()
-            .matchingStock(actor, owner.position(), registration.handle(), keep.filter());
-    if (stock.reason() != OperationResult.Reason.OK) {
-      controller.log("keep " + owner.label() + ": " + name(stock.reason()));
-      return;
+    WorldConnectors.View view = null;
+    long held;
+    if (keep.access() == null) {
+      var stock =
+          networks()
+              .connectors()
+              .matchingStock(actor, owner.position(), registration.handle(), keep.filter());
+      if (stock.reason() != OperationResult.Reason.OK) {
+        controller.log("keep " + owner.label() + ": " + name(stock.reason()));
+        return;
+      }
+      held = stock.amount();
+    } else {
+      // ADR 0068: count and fill through the named face and slots only.
+      view = view(controller, owner, registration.handle(), keep.access());
+      if (view == REFUSED) return;
+      var observation =
+          networks().connectors().observe(actor, owner.position(), registration.handle(), view, 0);
+      if (observation.reason() != OperationResult.Reason.OK) {
+        controller.log("keep " + owner.label() + ": " + name(observation.reason()));
+        return;
+      }
+      held = 0;
+      for (var entry : observation.page().entries())
+        if (keep.filter().matches(entry.key(), this::tagged)) held += entry.stored();
     }
-    long missing = Math.min(keep.amount() - stock.amount(), owner.settings().rate());
+    long missing = Math.min(keep.amount() - held, owner.settings().rate());
     if (missing <= 0) return;
     if (resume(controller, runtime, actor, owner, registration.handle())) return;
     fromStorage(
@@ -624,7 +642,7 @@ public final class WorldPrograms {
         actor,
         owner,
         registration.handle(),
-        null,
+        view,
         keep.filter(),
         missing,
         null,

@@ -1,0 +1,4 @@
+every 5 seconds:
+    if storage has less than 64 oak planks:
+        craft 64 oak planks
+        say "Low on planks"

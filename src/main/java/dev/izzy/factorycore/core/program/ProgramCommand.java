@@ -10,7 +10,13 @@ import java.util.UUID;
  * means authorized network storage.
  */
 public sealed interface ProgramCommand {
-  record Keep(UUID machine, ResourceFilter filter, long amount) implements ProgramCommand {
+  /** A null {@code access} counts and fills through the machine's binding as it is. */
+  record Keep(UUID machine, ResourceFilter filter, long amount, Access access)
+      implements ProgramCommand {
+    public Keep(UUID machine, ResourceFilter filter, long amount) {
+      this(machine, filter, amount, null);
+    }
+
     public Keep {
       Objects.requireNonNull(machine);
       Objects.requireNonNull(filter);

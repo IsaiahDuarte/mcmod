@@ -1,0 +1,4 @@
+every 10 ticks as "fuel" {
+  move item("coal") from storage to machines("furnace") limit 8
+  move item("cobblestone") from machines("chest") to storage limit 4096
+}

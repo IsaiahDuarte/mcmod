@@ -1,0 +1,4 @@
+# Comments and blank lines are fine.
+
+every 0.5 seconds:   # twice a second
+	move coal from storage to furnace

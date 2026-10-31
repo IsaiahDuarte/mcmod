@@ -211,6 +211,11 @@ public final class ProgramEvaluator {
           for (var machine : resolve(keep.target(), scope))
             emit(new ProgramCommand.Keep(machine, keep.filter(), keep.amount()));
         }
+        case ProgramIr.KeepAt keep -> {
+          var access = access(keep.place());
+          for (var machine : resolve(keep.place().target(), scope))
+            emit(new ProgramCommand.Keep(machine, keep.filter(), keep.amount(), access));
+        }
         case ProgramIr.Move move -> {
           var sources = endpoint(move.from(), scope);
           var targets = endpoint(move.to(), scope);

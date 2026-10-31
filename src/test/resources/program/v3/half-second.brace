@@ -1,0 +1,1 @@
+every 10 ticks { move item("coal") from storage to machines("furnace") }

@@ -1,0 +1,1 @@
+every 20 ticks { keep machines("smelter") stocked with 64 of item("raw_iron") }

@@ -1,0 +1,4 @@
+every second:
+    for each worker in workers:
+        if worker has less than 16 cobblestone:
+            move 16 cobblestone from storage to worker

@@ -1,0 +1,4 @@
+every second:
+    move fluid water from pump to storage
+    move fluids from tank to storage
+    move 1000 energy from storage to powered

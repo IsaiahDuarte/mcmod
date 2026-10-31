@@ -21,8 +21,15 @@ public final class FriendlyCompiler {
   public static final long DEFAULT_LIMIT = 64;
   public static final long MAX_LIMIT = 4_096;
 
-  /** One-based source location and a player-facing message. */
-  public record Diagnostic(int line, int column, String message) {}
+  /**
+   * One-based source location and a player-facing message, with an optional {@code hint} (such as
+   * "Did you mean coal?") and {@code example} of a correct line (ADR 0068); both may be null.
+   */
+  public record Diagnostic(int line, int column, String message, String hint, String example) {
+    public Diagnostic(int line, int column, String message) {
+      this(line, column, message, null, null);
+    }
+  }
 
   /** Exactly one of {@code program} and a nonempty {@code diagnostics} list is meaningful. */
   public record Result(ProgramIr.Program program, List<Diagnostic> diagnostics) {
@@ -117,6 +124,16 @@ public final class FriendlyCompiler {
   private FriendlyCompiler() {}
 
   public static Result compile(String source) {
+    return compile(source, Vocabulary.NONE);
+  }
+
+  /**
+   * Compiles a brace program (ADRs 0035, 0062) or, when the source is in sentence style, a sentence
+   * program (ADR 0068) whose item names resolve through {@code vocabulary}.
+   */
+  public static Result compile(String source, Vocabulary vocabulary) {
+    if (source.length() <= MAX_SOURCE && SentenceCompiler.sentenceStyle(source))
+      return SentenceCompiler.compile(source, vocabulary);
     var compiler = new FriendlyCompiler();
     if (source.length() > MAX_SOURCE)
       return new Result(

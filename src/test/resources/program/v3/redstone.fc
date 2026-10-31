@@ -1,0 +1,7 @@
+when button is powered called export:
+    move cobblestone from storage to out
+    turn on busy
+every 10 ticks:
+    if button is unpowered:
+        turn off busy
+        set lamp redstone to 7

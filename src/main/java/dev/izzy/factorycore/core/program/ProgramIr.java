@@ -90,7 +90,7 @@ public final class ProgramIr {
     EQUAL
   }
 
-  public sealed interface Statement permits For, Keep, Move, Craft, If, Branch, Emit, Log {}
+  public sealed interface Statement permits For, Keep, KeepAt, Move, Craft, If, Branch, Emit, Log {}
 
   /**
    * D6 (ADR 0062): set every Signal-mode Interface labelled {@code label} to {@code strength}
@@ -149,6 +149,18 @@ public final class ProgramIr {
 
   /** Request the current deficit so each target machine holds {@code amount} matching units. */
   public record Keep(Target target, ResourceFilter filter, long amount) implements Statement {}
+
+  /**
+   * ADR 0068: {@link Keep} counted and filled through one face and/or slot range of the machine
+   * ({@code place}). Only sentence programs that name a face or slots produce it, so v1/v2 IR is
+   * unchanged.
+   */
+  public record KeepAt(MachineAt place, ResourceFilter filter, long amount) implements Statement {
+    public KeepAt {
+      Objects.requireNonNull(place);
+      Objects.requireNonNull(filter);
+    }
+  }
 
   /** Move at most {@code limit} matching units from one place to another. */
   public record Move(ResourceFilter filter, Place from, Place to, long limit)

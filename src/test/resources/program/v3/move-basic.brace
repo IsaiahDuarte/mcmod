@@ -1,0 +1,1 @@
+every 20 ticks { move item("minecraft:coal") from storage to machines("furnace") }

@@ -1,0 +1,4 @@
+every 20 ticks {
+  move item("*_ingot") except item("iron_ingot") except item("gold_ingot") from machines("furnace") to storage
+  move everything except item("dirt") from machines("unload") to storage
+}

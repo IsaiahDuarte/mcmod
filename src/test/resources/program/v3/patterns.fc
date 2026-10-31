@@ -1,0 +1,3 @@
+every second:
+    move *_ingot except iron ingot except gold ingot from furnace to storage
+    move everything except dirt from unload to storage

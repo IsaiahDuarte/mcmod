@@ -1,0 +1,5 @@
+every second:
+    move raw iron from storage to furnace top
+    move everything from furnace bottom slot 2 to storage
+    move coal from storage to furnace side
+    move dirt from chest east slots 0 to 3 to "my barrel"

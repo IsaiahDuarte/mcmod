@@ -1,0 +1,3 @@
+every 10 ticks called fuel:
+    move 8 coal from storage to furnace
+    move all cobblestone from chest to storage
