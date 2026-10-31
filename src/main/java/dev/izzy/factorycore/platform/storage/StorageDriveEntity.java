@@ -134,7 +134,8 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     requireUsable();
     checkSlot(slot);
     if (!(cells[slot].getItem() instanceof CellItem item))
-      throw new IllegalStateException("That drive bay is empty");
+      throw dev.izzy.factorycore.core.Refusal.state(
+          "message.factorycore.refusal.bay_empty", "That drive bay is empty");
     if (filter == null
         || filter.mode() == dev.izzy.factorycore.core.resource.ResourceFilter.Mode.ALL)
       cells[slot].remove(StorageContent.PARTITION.get());
@@ -159,13 +160,16 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     requireUsable();
     for (int slot = 0; slot < cells.length; slot++)
       if (cells[slot].isEmpty()) return installCell(slot, input);
-    throw new IllegalStateException("All four drive slots are occupied");
+    throw dev.izzy.factorycore.core.Refusal.state(
+        "message.factorycore.refusal.drive_full", "All four drive slots are occupied");
   }
 
   public int installCell(int slot, ItemStack input) {
     requireUsable();
     checkSlot(slot);
-    if (!cells[slot].isEmpty()) throw new IllegalStateException("That drive bay holds a cell");
+    if (!cells[slot].isEmpty())
+      throw dev.izzy.factorycore.core.Refusal.state(
+          "message.factorycore.refusal.bay_occupied", "That drive bay holds a cell");
     cells[slot] = CellOwnership.install(input, registry(), location(slot));
     // In a drive the screens show live totals; a summary is written again when it leaves.
     cells[slot].remove(StorageContent.SUMMARY.get());
@@ -187,7 +191,8 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     requireUsable();
     checkSlot(slot);
     if (!(cells[slot].getItem() instanceof CellItem item))
-      throw new IllegalStateException("That drive bay is empty");
+      throw dev.izzy.factorycore.core.Refusal.state(
+          "message.factorycore.refusal.bay_empty", "That drive bay is empty");
     item.tier().upgrade(targetLevel);
     var result = removeCell(slot);
     RuntimeException refused = null;
@@ -521,7 +526,10 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
 
   private void requireUsable() {
     if (rejected != null || !diagnostic.isEmpty())
-      throw new IllegalStateException("Drive unavailable: " + diagnostic);
+      throw dev.izzy.factorycore.core.Refusal.state(
+          "message.factorycore.refusal.drive_unavailable",
+          "Drive unavailable: " + diagnostic,
+          diagnostic);
     if (!(level instanceof ServerLevel))
       throw new IllegalStateException("Drive requires server level");
   }

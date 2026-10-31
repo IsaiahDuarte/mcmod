@@ -101,7 +101,8 @@ public final class StorageDriveBlock extends NetworkedBlock
           Component.translatable("message.factorycore.drive_installed", slot + 1), true);
       return ItemInteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
-      player.displayClientMessage(Component.literal(failure.getMessage()), true);
+      player.displayClientMessage(
+          dev.izzy.factorycore.platform.PlayerMessages.refusal(failure), true);
       return ItemInteractionResult.FAIL;
     }
   }
@@ -124,7 +125,8 @@ public final class StorageDriveBlock extends NetworkedBlock
       if (player instanceof ServerPlayer server) DriveMenu.open(server, drive);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
-      player.displayClientMessage(Component.literal(failure.getMessage()), true);
+      player.displayClientMessage(
+          dev.izzy.factorycore.platform.PlayerMessages.refusal(failure), true);
       return InteractionResult.FAIL;
     }
   }

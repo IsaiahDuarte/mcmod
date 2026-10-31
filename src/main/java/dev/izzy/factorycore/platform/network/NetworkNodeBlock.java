@@ -98,7 +98,8 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
         node.place(stack, placer instanceof Player ? placer.getUUID() : null);
       } catch (IllegalArgumentException | IllegalStateException failure) {
         if (placer instanceof Player player)
-          player.displayClientMessage(Component.literal(failure.getMessage()), true);
+          player.displayClientMessage(
+              dev.izzy.factorycore.platform.PlayerMessages.refusal(failure), true);
       }
     }
   }
@@ -159,7 +160,8 @@ public final class NetworkNodeBlock extends NetworkedBlock implements EntityBloc
       player.displayClientMessage(message, true);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
-      player.displayClientMessage(Component.literal(failure.getMessage()), true);
+      player.displayClientMessage(
+          dev.izzy.factorycore.platform.PlayerMessages.refusal(failure), true);
       return InteractionResult.FAIL;
     }
   }

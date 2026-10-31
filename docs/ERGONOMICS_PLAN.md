@@ -1049,7 +1049,11 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Every item and every screen control has a one-line hold-Shift help.
   Done when: a lang test finds a help key for every registered item and screen button.
 
-- [ ] **Q84 — Translations ready (M85).** Size S.
+- [x] **Q84 — Translations ready (M85).** Size S. Done 2026-10-31 (commit subject `Q84:`),
+  [Evidence](evidence/ergonomics-q84-translations-ready-2026-10-31.md). Player-facing refusals
+  are translatable (`Refusal`, `PlayerMessages`), [TRANSLATING.md](TRANSLATING.md) explains adding a
+  language, and a lang test checks other languages against `en_us` with a stub French file. The
+  Inspect screen's server-translated "unlabelled" line remains (noted in the evidence).
   Make every player string translatable (no literals), document how to add a language, and add
   a lang test that other language files only use known keys.
   Done when: the test passes with a stub second language.

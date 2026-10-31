@@ -434,7 +434,9 @@ public final class DriveScreen extends AbstractContainerScreen<DriveMenu>
     var status =
         view.detail().isEmpty()
             ? Component.translatable("gui.factorycore.drive.status." + view.status().key())
-            : Component.literal(view.detail());
+            : view.detail().startsWith("message.factorycore.")
+                ? Component.translatable(view.detail())
+                : Component.literal(view.detail());
     Panels.wrapped(
         graphics,
         font,

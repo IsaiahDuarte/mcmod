@@ -30,7 +30,8 @@ final class CellOwnership {
     } else {
       validateTier(item.tier(), registry.definition(handle));
       if (registry.definition(handle).location() != null)
-        throw new IllegalStateException("Cell is already placed");
+        throw dev.izzy.factorycore.core.Refusal.state(
+            "message.factorycore.refusal.cell_placed", "Cell is already placed");
     }
     var attached = registry.attach(handle, location);
     if (attached.failure() != DeviceRegistry.Failure.OK)
@@ -56,17 +57,23 @@ final class CellOwnership {
 
   static ItemStack upgrade(ItemStack stack, int targetLevel, DeviceRegistry registry) {
     if (!(stack.getItem() instanceof CellItem item) || stack.getCount() != 1)
-      throw new IllegalArgumentException("Hold one cell in the offhand");
+      throw dev.izzy.factorycore.core.Refusal.argument(
+          "message.factorycore.refusal.hold_cell", "Hold one cell in the offhand");
     CellTier tier = item.tier().upgrade(targetLevel);
     var handle = CellHandleData.read(stack);
     if (handle != null) {
       var definition = registry.definition(handle);
       validateTier(item.tier(), definition);
       if (definition.location() != null)
-        throw new IllegalStateException("Remove cell from its drive before upgrading");
+        throw dev.izzy.factorycore.core.Refusal.state(
+            "message.factorycore.refusal.cell_in_drive",
+            "Remove cell from its drive before upgrading");
       var result = registry.resize(handle, tier.capacity(), tier.infinite());
       if (result.reason() != OperationResult.Reason.OK)
-        throw new IllegalStateException("Cell upgrade: " + result.reason());
+        throw dev.izzy.factorycore.core.Refusal.state(
+            "message.factorycore.refusal.cell_upgrade",
+            "Cell upgrade: " + result.reason(),
+            result.reason().name().toLowerCase(java.util.Locale.ROOT));
     }
     var replacement = new ItemStack(StorageContent.cell(tier));
     replacement.applyComponents(stack.getComponentsPatch());

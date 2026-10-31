@@ -143,6 +143,10 @@ public final class DriveScreenGameTests {
         player.getInventory().getItem(0).getCount() == 1, "A full drive leaves the cell in hand");
     menu.broadcastChanges();
     h.assertTrue(menu.view().status() == DrivePackets.Status.REFUSED, "The refusal is shown");
+    // Q84: as a translation key, not English text.
+    h.assertTrue(
+        menu.view().detail().equals("message.factorycore.refusal.drive_full"),
+        "The refusal travels translated: " + menu.view().detail());
 
     var fluid = CellHandleData.read(drive.cell(0));
     menu.setCarried(new ItemStack(StorageContent.ADVANCED.get()));

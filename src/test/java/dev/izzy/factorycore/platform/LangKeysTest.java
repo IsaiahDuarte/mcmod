@@ -38,7 +38,9 @@ import org.junit.jupiter.api.Test;
  */
 class LangKeysTest {
   private static final Pattern LITERAL =
-      Pattern.compile("(?:translatable|I18n\\.get|I18n\\.exists)\\(\\s*\"([a-z0-9_.]+)\"");
+      Pattern.compile(
+          "(?:translatable|I18n\\.get|I18n\\.exists|Refusal\\.state|Refusal\\.argument)"
+              + "\\(\\s*\"([a-z0-9_.]+)\"");
 
   @Test
   void everyLiteralKeyAndPrefixResolves() throws Exception {
@@ -211,5 +213,88 @@ class LangKeysTest {
     }
     assertTrue(checked > 300, "Player-facing keys must be inspected: " + checked);
     assertEquals(Set.of(), offending);
+  }
+
+  /**
+   * Q84: another language file may only use keys that {@code en_us.json} has, with the same number
+   * of {@code %s} placeholders, so a renamed key or a dropped argument cannot ship silently. Checks
+   * every shipped language plus a stub French file in test resources, and that the check itself
+   * catches an unknown key and a placeholder mismatch.
+   */
+  @Test
+  void otherLanguagesUseOnlyKnownKeysWithMatchingPlaceholders() throws Exception {
+    var english = read(getClass().getResourceAsStream("/assets/factorycore/lang/en_us.json"));
+    var shipped =
+        Path.of(System.getProperty("factorycore.test.sources"))
+            .getParent()
+            .resolve("resources/assets/factorycore/lang");
+    var files = new java.util.ArrayList<Path>();
+    try (var listing = Files.list(shipped)) {
+      listing
+          .filter(path -> path.toString().endsWith(".json"))
+          .filter(path -> !path.getFileName().toString().equals("en_us.json"))
+          .forEach(files::add);
+    }
+    // read() asserts the stub second language is on the test classpath and closes it.
+    var problems =
+        new TreeSet<String>(
+            languageProblems(
+                english,
+                read(getClass().getResourceAsStream("/lang-stub/fr_fr.json")),
+                "fr_fr (stub)"));
+    for (var file : files)
+      problems.addAll(
+          languageProblems(
+              english, read(Files.newInputStream(file)), file.getFileName().toString()));
+    assertEquals(Set.of(), problems);
+
+    var broken = new java.util.HashMap<String, String>();
+    broken.put("message.factorycore.no_such_key", "x");
+    broken.put("message.factorycore.refused", "Refusé");
+    assertEquals(
+        Set.of(
+            "bad: unknown key message.factorycore.no_such_key",
+            "bad: message.factorycore.refused has 0 placeholders, en_us has 1"),
+        languageProblems(english, broken, "bad"));
+  }
+
+  private static java.util.Map<String, String> read(java.io.InputStream stream)
+      throws java.io.IOException {
+    assertNotNull(stream, "lang file");
+    try (stream) {
+      var map = new java.util.TreeMap<String, String>();
+      for (var entry :
+          JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+              .getAsJsonObject()
+              .entrySet()) map.put(entry.getKey(), entry.getValue().getAsString());
+      return map;
+    }
+  }
+
+  private static Set<String> languageProblems(
+      java.util.Map<String, String> english, java.util.Map<String, String> other, String name) {
+    var problems = new TreeSet<String>();
+    for (var entry : other.entrySet()) {
+      var base = english.get(entry.getKey());
+      if (base == null) {
+        problems.add(name + ": unknown key " + entry.getKey());
+        continue;
+      }
+      long expected = placeholders(base), actual = placeholders(entry.getValue());
+      if (expected != actual)
+        problems.add(
+            name
+                + ": "
+                + entry.getKey()
+                + " has "
+                + actual
+                + " placeholders, en_us has "
+                + expected);
+    }
+    return problems;
+  }
+
+  private static long placeholders(String text) {
+    return Pattern.compile("%(?:\\d+\\$)?s").matcher(text.replace("%%", "")).results().count();
   }
 }

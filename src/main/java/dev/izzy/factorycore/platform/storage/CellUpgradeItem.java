@@ -38,7 +38,8 @@ public final class CellUpgradeItem extends Item {
               && blockItem.getBlock() instanceof EnergyBankBlock;
       if (bank) {
         if (offhand.getCount() != 1)
-          throw new IllegalArgumentException("Hold one bank in the offhand");
+          throw dev.izzy.factorycore.core.Refusal.argument(
+              "message.factorycore.refusal.hold_bank", "Hold one bank in the offhand");
         var block = (EnergyBankBlock) ((BlockItem) offhand.getItem()).getBlock();
         var data = offhand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         var handle = EnergyBankHandleData.read(data.get(EnergyBankHandleData.FIELD));
@@ -60,7 +61,8 @@ public final class CellUpgradeItem extends Item {
           Component.translatable("message.factorycore.storage_upgraded"), true);
       return InteractionResultHolder.consume(module);
     } catch (IllegalArgumentException | IllegalStateException rejected) {
-      player.displayClientMessage(Component.literal(rejected.getMessage()), true);
+      player.displayClientMessage(
+          dev.izzy.factorycore.platform.PlayerMessages.refusal(rejected), true);
       return InteractionResultHolder.fail(module);
     }
   }

@@ -1,0 +1,5 @@
+{
+  "block.factorycore.storage_terminal": "Terminal de stockage",
+  "message.factorycore.refused": "Refusé : %s",
+  "message.factorycore.refusal.cell_upgrade": "La cellule ne peut pas être améliorée (%s)"
+}

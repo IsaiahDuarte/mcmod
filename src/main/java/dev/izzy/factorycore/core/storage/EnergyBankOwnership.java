@@ -62,10 +62,14 @@ public final class EnergyBankOwnership {
     if (portable != null) {
       var definition = validate(portable, tier);
       if (definition.location() != null)
-        throw new IllegalStateException("Remove the bank before upgrading");
+        throw dev.izzy.factorycore.core.Refusal.state(
+            "message.factorycore.refusal.bank_placed", "Remove the bank before upgrading");
       var resized = registry.resize(portable, target.capacity(), false);
       if (resized.reason() != OperationResult.Reason.OK)
-        throw new IllegalStateException("Bank upgrade: " + resized.reason());
+        throw dev.izzy.factorycore.core.Refusal.state(
+            "message.factorycore.refusal.bank_upgrade",
+            "Bank upgrade: " + resized.reason(),
+            resized.reason().name().toLowerCase(java.util.Locale.ROOT));
     }
     return target;
   }

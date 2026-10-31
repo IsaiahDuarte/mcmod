@@ -72,9 +72,15 @@ public final class PlayerInventoryGameTests {
         new PlatformResourceCodec(helper.getLevel().registryAccess()).itemKey(named(1)));
   }
 
+  /**
+   * The origin is VALID and its scope has settled (Q114): a test that captures the scope for a
+   * transfer context must not race the network's late second rebuild, which would DENY it.
+   */
   private static void ready(GameTestHelper helper, Fixture fixture) {
-    helper.assertTrue(
+    dev.izzy.factorycore.testing.TestMenus.ready(
+        helper,
         fixture.runtime().membership(fixture.origin()).status() == NetworkTopology.Status.VALID,
+        helper.absolutePos(ROOT),
         "Player operation wired origin ready");
   }
 
@@ -833,7 +839,16 @@ public final class PlayerInventoryGameTests {
                       && fixture.player().getInventory().getItem(0).getCount() == 17
                       && fixture.saved().registry().stock(fixture.cell(), fixture.key()).total()
                           == 0,
-                  "Uncertain canonical evidence blocks fresh extraction and retains the refill");
+                  "Uncertain canonical evidence blocks fresh extraction and retains the refill: "
+                      + result[0].reason()
+                      + " "
+                      + snapshot.state()
+                      + "/"
+                      + snapshot.pending()
+                      + " hand "
+                      + fixture.player().getInventory().getItem(0).getCount()
+                      + " stored "
+                      + fixture.saved().registry().stock(fixture.cell(), fixture.key()).total());
               logout(fixture);
             })
         .thenSucceed();

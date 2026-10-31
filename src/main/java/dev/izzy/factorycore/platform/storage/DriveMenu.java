@@ -129,7 +129,7 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
       }
     } catch (IllegalArgumentException | IllegalStateException refused) {
       status = DrivePackets.Status.REFUSED;
-      detail = String.valueOf(refused.getMessage());
+      detail = detail(refused);
     }
     session.pollNow();
     return true;
@@ -157,7 +157,7 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
         detail = "";
       } catch (IllegalArgumentException | IllegalStateException refused) {
         status = DrivePackets.Status.REFUSED;
-        detail = "Priority must be a whole number from -1000 to 1000";
+        detail = "message.factorycore.refusal.priority_range";
       }
       session.pollNow();
       return;
@@ -244,7 +244,7 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
       status = DrivePackets.Status.PARTITIONED;
     } catch (IllegalArgumentException | IllegalStateException refused) {
       status = DrivePackets.Status.REFUSED;
-      detail = String.valueOf(refused.getMessage());
+      detail = detail(refused);
     }
     session.pollNow();
   }
@@ -314,7 +314,7 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
       status = DrivePackets.Status.INSTALLED;
     } catch (IllegalArgumentException | IllegalStateException refused) {
       status = DrivePackets.Status.REFUSED;
-      detail = String.valueOf(refused.getMessage());
+      detail = detail(refused);
     }
     session.pollNow();
     return ItemStack.EMPTY;
@@ -404,5 +404,13 @@ public final class DriveMenu extends AbstractContainerMenu implements DeviceStat
 
   private static String truncate(String text) {
     return text.length() <= 128 ? text : text.substring(0, 125) + "...";
+  }
+
+  /** Q84: a translated refusal travels as its key (DriveScreen translates it); others as text. */
+  private static String detail(RuntimeException refused) {
+    return refused instanceof dev.izzy.factorycore.core.Refusal.Translated translated
+            && translated.args().isEmpty()
+        ? translated.key()
+        : String.valueOf(refused.getMessage());
   }
 }
