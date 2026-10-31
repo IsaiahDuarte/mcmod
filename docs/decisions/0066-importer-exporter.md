@@ -82,3 +82,11 @@ one backing as future work.
   - an Importer on a storage chest refused as an overlap;
   - three ports making a furnace an auto smelter (raw iron in, coal kept stocked, ingots back
     in storage, coal only burned or stocked).
+
+## Amendment — rule status on the Exporter screen (2026-10-30, ergonomics plan Q100)
+
+While an Exporter's screen is open, each exact or registry-ID rule shows whether the network holds
+some (as the viewer would see it for a job preview), has none but a visible pattern makes it, or
+has none. Tag rules show nothing, because a tag can match many keys and the answer would mislead.
+The status is computed at most once a second, or when the filter changes, with one stock lookup
+per rule (at most 16). It is display only; export behavior is unchanged.

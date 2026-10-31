@@ -23,9 +23,16 @@ import net.minecraft.resources.ResourceLocation;
 public final class TerminalPatternPackets {
   /**
    * WINDOW scrolls so Crafter {@code selection} is first; CLICK uses slot {@code slot} of row
-   * {@code selection}.
+   * {@code selection}. Q100: FILTER chooses which Crafters are listed ({@link #VISIBLE}, {@link
+   * #NOT_FULL} or {@link #ALL}); MODE what the terminal search matches ({@link #OUTPUTS}, {@link
+   * #INPUTS} or {@link #NAMES}); HIDE hides or shows row {@code selection}'s Crafter; STORE puts
+   * the pattern in the viewer's inventory slot {@code selection} into the first listed Crafter with
+   * a free slot.
    */
-  public static final int WINDOW = 0, CLICK = 1;
+  public static final int WINDOW = 0, CLICK = 1, FILTER = 2, MODE = 3, HIDE = 4, STORE = 5;
+
+  public static final int VISIBLE = 0, NOT_FULL = 1, ALL = 2;
+  public static final int OUTPUTS = 0, INPUTS = 1, NAMES = 2;
 
   /** Crafters shown at once, pattern slots per Crafter, and the furthest scroll. */
   public static final int ROWS = 3,
@@ -46,7 +53,12 @@ public final class TerminalPatternPackets {
     REFUSED,
     /** The row's Crafter is gone or no longer visible here; the window was refreshed. */
     GONE,
-    NO_POWER;
+    NO_POWER,
+    /** Q100: the Crafter was hidden from, or shown again in, the Patterns view. */
+    HIDDEN,
+    SHOWN,
+    /** Q100: no listed Crafter the viewer may edit has a free slot for the pattern. */
+    FULL;
 
     public String key() {
       return EnumKeys.key(this);
@@ -63,11 +75,18 @@ public final class TerminalPatternPackets {
     public Command {
       Objects.requireNonNull(session);
       if (action < WINDOW
-          || action > CLICK
+          || action > STORE
           || selection < 0
-          || selection > (action == WINDOW ? MAX_OFFSET : ROWS - 1)
+          || selection
+              > switch (action) {
+                case WINDOW -> MAX_OFFSET;
+                case FILTER, MODE -> 2;
+                case STORE -> 35;
+                default -> ROWS - 1;
+              }
           || slot < 0
-          || slot >= SLOTS) throw new IllegalArgumentException("Invalid pattern command bounds");
+          || slot >= (action == CLICK ? SLOTS : 1))
+        throw new IllegalArgumentException("Invalid pattern command bounds");
     }
 
     @Override
@@ -130,7 +149,18 @@ public final class TerminalPatternPackets {
       String label,
       boolean published,
       boolean editable,
-      List<Entry> patterns) {
+      List<Entry> patterns,
+      boolean hidden) {
+    public Crafter(
+        BlockPos position,
+        String dimension,
+        String label,
+        boolean published,
+        boolean editable,
+        List<Entry> patterns) {
+      this(position, dimension, label, published, editable, patterns, false);
+    }
+
     public Crafter {
       Objects.requireNonNull(position);
       patterns = List.copyOf(patterns);
@@ -147,6 +177,7 @@ public final class TerminalPatternPackets {
       buffer.writeBoolean(value.published);
       buffer.writeBoolean(value.editable);
       for (var entry : value.patterns) Entry.write(buffer, entry);
+      buffer.writeBoolean(value.hidden);
     }
 
     static Crafter read(RegistryFriendlyByteBuf buffer) {
@@ -156,7 +187,8 @@ public final class TerminalPatternPackets {
       boolean published = buffer.readBoolean(), editable = buffer.readBoolean();
       var patterns = new ArrayList<Entry>(SLOTS);
       for (int slot = 0; slot < SLOTS; slot++) patterns.add(Entry.read(buffer));
-      return new Crafter(position, dimension, label, published, editable, patterns);
+      return new Crafter(
+          position, dimension, label, published, editable, patterns, buffer.readBoolean());
     }
   }
 
@@ -171,15 +203,30 @@ public final class TerminalPatternPackets {
       int offset,
       int total,
       Status status,
-      List<Crafter> crafters)
+      List<Crafter> crafters,
+      int filter,
+      int mode)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
             ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_pattern_view"));
 
+    public View(
+        int menu,
+        UUID session,
+        long revision,
+        int offset,
+        int total,
+        Status status,
+        List<Crafter> crafters) {
+      this(menu, session, revision, offset, total, status, crafters, VISIBLE, OUTPUTS);
+    }
+
     public View {
       Objects.requireNonNull(session);
       Objects.requireNonNull(status);
+      if (filter < VISIBLE || filter > ALL || mode < OUTPUTS || mode > NAMES)
+        throw new IllegalArgumentException("Invalid pattern view options");
       crafters = List.copyOf(crafters);
       if (offset < 0
           || offset > MAX_OFFSET
@@ -209,6 +256,8 @@ public final class TerminalPatternPackets {
               WireEnums.write(buffer, value.status);
               buffer.writeVarInt(value.crafters.size());
               for (var crafter : value.crafters) Crafter.write(buffer, crafter);
+              buffer.writeVarInt(value.filter);
+              buffer.writeVarInt(value.mode);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -220,7 +269,16 @@ public final class TerminalPatternPackets {
               if (size < 0 || size > ROWS) throw new IllegalArgumentException("Pattern row count");
               var crafters = new ArrayList<Crafter>(size);
               for (int i = 0; i < size; i++) crafters.add(Crafter.read(buffer));
-              return new View(menu, session, revision, offset, total, status, crafters);
+              return new View(
+                  menu,
+                  session,
+                  revision,
+                  offset,
+                  total,
+                  status,
+                  crafters,
+                  buffer.readVarInt(),
+                  buffer.readVarInt());
             });
   }
 

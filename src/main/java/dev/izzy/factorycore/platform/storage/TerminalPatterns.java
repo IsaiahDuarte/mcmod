@@ -23,6 +23,11 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * hides a branch's Crafters here too), filtered by the terminal search on pattern outputs. A click
  * takes, inserts or swaps one pattern through the cursor after the same EDIT check as the Crafter
  * screen. Nothing is computed until the client first opens the view.
+ *
+ * <p>Q100: the filter (Visible, Not full, All) and search mode (outputs, inputs, Crafter names)
+ * last for the session. A hidden Crafter is listed only under All; hiding needs EDIT there, as
+ * moving its patterns does. STORE checks EDIT on each candidate and takes the first free slot that
+ * accepts the pattern.
  */
 final class TerminalPatterns {
   private final ServerPlayer viewer;
@@ -33,6 +38,7 @@ final class TerminalPatterns {
   private int offset;
   private long revision;
   private Status status = Status.READY;
+  private int filter = TerminalPatternPackets.VISIBLE, mode = TerminalPatternPackets.OUTPUTS;
   private List<WorldCrafting.Visible> shown = List.of();
   private TerminalPatternPackets.View sent;
 
@@ -58,6 +64,20 @@ final class TerminalPatterns {
         // A click on a window the client no longer has is answered with the current one.
         if (command.revision() == sent.revision()) status = click(command, text);
       }
+      case TerminalPatternPackets.FILTER -> {
+        filter = command.selection();
+        offset = 0;
+        status = Status.READY;
+      }
+      case TerminalPatternPackets.MODE -> {
+        mode = command.selection();
+        offset = 0;
+        status = Status.READY;
+      }
+      case TerminalPatternPackets.HIDE -> {
+        if (command.revision() == sent.revision()) status = hide(command.selection(), text);
+      }
+      case TerminalPatternPackets.STORE -> status = store(command.selection(), text);
       default -> {}
     }
     publish(text, true);
@@ -68,6 +88,43 @@ final class TerminalPatterns {
     active = true;
     status = Status.NO_POWER;
     publish(text, true);
+  }
+
+  private Status hide(int row, String text) {
+    if (row >= shown.size()) return Status.GONE;
+    var unit = shown.get(row).unit();
+    if (!unit.current() || matching(text).stream().noneMatch(visible -> visible.unit() == unit))
+      return Status.GONE;
+    if (!unit.editableBy(viewer)) return Status.DENIED;
+    unit.hidden(!unit.hidden());
+    return unit.hidden() ? Status.HIDDEN : Status.SHOWN;
+  }
+
+  /** Q100: Shift-click from the inventory: the first listed Crafter with room takes one pattern. */
+  private Status store(int inventorySlot, String text) {
+    var inventory = viewer.getInventory();
+    var stack = inventory.getItem(inventorySlot);
+    if (stack.isEmpty()) return Status.READY;
+    boolean any = false, denied = false;
+    for (var visible : matching(text)) {
+      var unit = visible.unit();
+      var patterns = unit.patterns();
+      if (!patterns.isItemValid(0, stack)) return Status.REFUSED;
+      if (!unit.editableBy(viewer)) {
+        denied = true;
+        continue;
+      }
+      any = true;
+      for (int slot = 0; slot < TerminalPatternPackets.SLOTS; slot++)
+        if (patterns.getStackInSlot(slot).isEmpty()
+            && patterns.insertItem(slot, stack.copyWithCount(1), true).isEmpty()) {
+          patterns.insertItem(slot, stack.copyWithCount(1), false);
+          stack.shrink(1);
+          inventory.setChanged();
+          return Status.INSERTED;
+        }
+    }
+    return !any && denied ? Status.DENIED : Status.FULL;
   }
 
   private Status click(TerminalPatternPackets.Command command, String text) {
@@ -104,8 +161,9 @@ final class TerminalPatterns {
 
   /**
    * Holders visible to this terminal's segment, in stable order, at most {@link
-   * TerminalPatternPackets#MAX_OFFSET}, keeping those with a pattern whose output matches {@code
-   * text}. Empty while the segment is not VALID.
+   * TerminalPatternPackets#MAX_OFFSET}, that the filter keeps and that match {@code text} in the
+   * search mode: a pattern's output (or byproduct), a pattern's input, or the Crafter's label.
+   * Empty while the segment is not VALID.
    */
   private List<WorldCrafting.Visible> matching(String text) {
     var member = WorldNetworks.get(viewer.server).membership(terminal.origin());
@@ -114,20 +172,43 @@ final class TerminalPatterns {
     var units = new ArrayList<WorldCrafting.Visible>();
     for (var visible : WorldCrafting.get(viewer.server).visible(member.scope())) {
       if (units.size() == TerminalPatternPackets.MAX_OFFSET) break;
-      if (text.isBlank()) units.add(visible);
-      else
-        for (int slot = 0; slot < TerminalPatternPackets.SLOTS; slot++)
-          if (entry(codec, visible.unit().patterns().getStackInSlot(slot), text).match()) {
-            units.add(visible);
-            break;
-          }
+      var unit = visible.unit();
+      if (filter != TerminalPatternPackets.ALL && unit.hidden()) continue;
+      if (filter == TerminalPatternPackets.NOT_FULL
+          && unit.patternCount() >= TerminalPatternPackets.SLOTS) continue;
+      if (text.isBlank()
+          || (mode == TerminalPatternPackets.NAMES
+              ? named(unit.label(), text)
+              : holds(codec, unit, text))) units.add(visible);
     }
     return units;
   }
 
-  /** One slot as sent: the pattern's output, or the pattern item itself if it cannot be read. */
+  private boolean holds(
+      PlatformResourceCodec codec,
+      dev.izzy.factorycore.platform.crafting.PatternHolderEntity unit,
+      String text) {
+    for (int slot = 0; slot < TerminalPatternPackets.SLOTS; slot++)
+      if (entry(codec, unit.patterns().getStackInSlot(slot), text, mode).match()) return true;
+    return false;
+  }
+
+  /** Every word of {@code text} appears in the label, ignoring case. */
+  private static boolean named(String label, String text) {
+    var lower = label.toLowerCase(java.util.Locale.ROOT);
+    for (var word : text.toLowerCase(java.util.Locale.ROOT).split("\\s+"))
+      if (!word.isEmpty() && !lower.contains(word)) return false;
+    return !label.isEmpty();
+  }
+
+  /**
+   * One slot as sent: the pattern's output, or the pattern item itself if it cannot be read. It
+   * matches when {@code text} finds its output or a byproduct ({@link
+   * TerminalPatternPackets#OUTPUTS}), an input ({@link TerminalPatternPackets#INPUTS}), or always
+   * under {@link TerminalPatternPackets#NAMES}, where the Crafter's label was searched instead.
+   */
   private static TerminalPatternPackets.Entry entry(
-      PlatformResourceCodec codec, ItemStack stack, String text) {
+      PlatformResourceCodec codec, ItemStack stack, String text, int mode) {
     if (stack.isEmpty()) return TerminalPatternPackets.Entry.EMPTY;
     var crafting = stack.get(CraftingContent.PATTERN.get());
     var processing = stack.get(CraftingContent.PROCESSING.get());
@@ -140,9 +221,14 @@ final class TerminalPatterns {
               : processing != null ? processing.pattern(codec) : null;
       if (pattern != null) {
         output = pattern.output();
-        matched = matches(codec, output, text);
-        for (var byproduct : pattern.byproducts().keySet())
-          matched |= matches(codec, byproduct, text);
+        if (mode == TerminalPatternPackets.NAMES) matched = true;
+        else if (mode == TerminalPatternPackets.INPUTS)
+          for (var input : pattern.inputs().keySet()) matched |= matches(codec, input, text);
+        else {
+          matched = matches(codec, output, text);
+          for (var byproduct : pattern.byproducts().keySet())
+            matched |= matches(codec, byproduct, text);
+        }
       }
     } catch (IllegalArgumentException unreadable) {
       output = null;
@@ -182,7 +268,7 @@ final class TerminalPatterns {
       var unit = visible.unit();
       var entries = new ArrayList<TerminalPatternPackets.Entry>(TerminalPatternPackets.SLOTS);
       for (int slot = 0; slot < TerminalPatternPackets.SLOTS; slot++)
-        entries.add(entry(codec, unit.patterns().getStackInSlot(slot), text));
+        entries.add(entry(codec, unit.patterns().getStackInSlot(slot), text, mode));
       var origin = unit.origin();
       crafters.add(
           new TerminalPatternPackets.Crafter(
@@ -191,15 +277,16 @@ final class TerminalPatterns {
               unit.label(),
               visible.published(),
               unit.editableBy(viewer),
-              entries));
+              entries,
+              unit.hidden()));
     }
     var next =
         new TerminalPatternPackets.View(
-            menu.containerId, session, revision, offset, total, status, crafters);
+            menu.containerId, session, revision, offset, total, status, crafters, filter, mode);
     if (!force && next.equals(sent)) return;
     sent =
         new TerminalPatternPackets.View(
-            menu.containerId, session, ++revision, offset, total, status, crafters);
+            menu.containerId, session, ++revision, offset, total, status, crafters, filter, mode);
     PacketDistributor.sendToPlayer(viewer, sent);
   }
 }

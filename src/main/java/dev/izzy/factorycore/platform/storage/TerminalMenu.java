@@ -241,8 +241,10 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     if (!protocol.fromViewer(sender, command.menu(), command.session())
         || !authorized()
         || !protocol.admitRate()) return;
-    if (command.action() == TerminalPatternPackets.CLICK && !terminal.spendAction(sender))
-      patterns.noPower(text);
+    boolean moves =
+        command.action() == TerminalPatternPackets.CLICK
+            || command.action() == TerminalPatternPackets.STORE;
+    if (moves && !terminal.spendAction(sender)) patterns.noPower(text);
     else patterns.command(command, text);
   }
 

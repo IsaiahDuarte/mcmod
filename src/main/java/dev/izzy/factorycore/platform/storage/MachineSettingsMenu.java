@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.*;
 import dev.izzy.factorycore.core.resource.*;
+import dev.izzy.factorycore.core.resource.ResourceKey;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.resource.ThroughputTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
@@ -397,6 +398,67 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
     return value;
   }
 
+  /** Q100: the last computed Exporter rule statuses, for which filter, and when. */
+  private List<MachinePresetPackets.RuleStatus> ruleStatuses = List.of();
+
+  private ResourceFilter statusesFor;
+  private long statusesAt = Long.MIN_VALUE;
+
+  /**
+   * Q100: per Exporter rule, whether the network holds some, could craft it, or has none. Tag rules
+   * stay UNKNOWN. Recomputed at most once a second, or when the filter changes; each rule is one
+   * stock lookup through the viewer's own access, as a job preview does.
+   */
+  private List<MachinePresetPackets.RuleStatus> ruleStatuses(PlatformResourceCodec codec) {
+    if (machine.role() != PortBlock.Role.EXPORTER || scope == null) return List.of();
+    long now = player().serverLevel().getGameTime();
+    if (presetFilter.equals(statusesFor) && now - statusesAt < 20) return ruleStatuses;
+    var jobs = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(player().server);
+    var index =
+        dev.izzy.factorycore.platform.crafting.WorldCrafting.get(player().server).index(scope);
+    var statuses = new ArrayList<MachinePresetPackets.RuleStatus>(presetFilter.terms().size());
+    for (var term : presetFilter.terms()) {
+      ResourceKey key =
+          term instanceof ResourceFilter.Exact exact
+              ? exact.key()
+              : term instanceof ResourceFilter.Registry registry
+                  ? registryKey(codec, presetFilter.kind(), registry.id())
+                  : null;
+      if (key == null) statuses.add(MachinePresetPackets.RuleStatus.UNKNOWN);
+      else if (jobs.available(actor(), machine.position(), key) > 0)
+        statuses.add(MachinePresetPackets.RuleStatus.STOCKED);
+      else if (!index.producers(key).isEmpty())
+        statuses.add(MachinePresetPackets.RuleStatus.CRAFTABLE);
+      else statuses.add(MachinePresetPackets.RuleStatus.EMPTY);
+    }
+    ruleStatuses = List.copyOf(statuses);
+    statusesFor = presetFilter;
+    statusesAt = now;
+    return ruleStatuses;
+  }
+
+  /** The plain key of a registry-ID rule, or null when the ID is not a known item or fluid. */
+  private static ResourceKey registryKey(
+      PlatformResourceCodec codec, ResourceKind kind, String id) {
+    var location = net.minecraft.resources.ResourceLocation.tryParse(id);
+    if (location == null) return null;
+    return switch (kind) {
+      case ITEM ->
+          net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(location)
+              ? codec.itemKey(
+                  new net.minecraft.world.item.ItemStack(
+                      net.minecraft.core.registries.BuiltInRegistries.ITEM.get(location)))
+              : null;
+      case FLUID ->
+          net.minecraft.core.registries.BuiltInRegistries.FLUID.containsKey(location)
+              ? codec.fluidKey(
+                  new net.neoforged.neoforge.fluids.FluidStack(
+                      net.minecraft.core.registries.BuiltInRegistries.FLUID.get(location), 1))
+              : null;
+      default -> null;
+    };
+  }
+
   private void publishPreset() {
     var codec = new PlatformResourceCodec(player().registryAccess());
     var rules = FilterEdits.rules(presetFilter, codec);
@@ -423,7 +485,8 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
             presetBusy,
             presetDirty,
             staged == null ? 0 : staged.transfer().staged(),
-            staged != null && !uncertain);
+            staged != null && !uncertain,
+            ruleStatuses(codec));
     if (!packet.equals(presetView)) {
       presetView = packet;
       PacketDistributor.sendToPlayer(player(), packet);

@@ -33,6 +33,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -883,6 +884,102 @@ public final class TerminalJobGameTests {
               player.closeContainer();
               player.connection.disconnect(net.minecraft.network.chat.Component.literal("done"));
             })
+        .thenSucceed();
+  }
+
+  /**
+   * Q100: a job step names what runs it: the Crafter (and its label) while no machine faces it,
+   * then the furnace placed beside it.
+   */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void jobStepsNameTheirMachine(GameTestHelper h) {
+    var owner = TestPlayers.mock(h);
+    TestPlayers.connect(owner);
+    owner.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    Net.in(h, owner.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    h.setBlock(UNIT, CraftingContent.CRAFTER.get());
+    CrafterEntity unit = h.getBlockEntity(UNIT);
+    var processing = new ItemStack(CraftingContent.PROCESSING_PATTERN.get());
+    processing.set(
+        CraftingContent.PROCESSING.get(),
+        new dev.izzy.factorycore.platform.crafting.ProcessingContents(
+            UUID.randomUUID(),
+            1,
+            0,
+            List.of(new ItemStack(Items.RAW_IRON)),
+            List.of(new ItemStack(Items.IRON_INGOT))));
+    unit.patterns().insertItem(0, processing, false);
+    h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
+    TerminalEntity terminal = h.getBlockEntity(TERMINAL);
+    var server = h.getLevel().getServer();
+    var saved = DeviceSavedData.get(server);
+    DeviceRegistry.Handle cell = CellHandleData.read(drive.cell(0));
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    ResourceKey raw = codec.itemKey(new ItemStack(Items.RAW_IRON));
+    ResourceKey ingot = codec.itemKey(new ItemStack(Items.IRON_INGOT));
+    var origin = dev.izzy.factorycore.platform.Positions.of(h.getLevel(), h.absolutePos(TERMINAL));
+    var actor =
+        new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(owner.getUUID(), false);
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    terminal.canUse(owner) && saved.registry().stock(cell, raw).loaded(),
+                    "Terminal ready"))
+        .thenExecute(
+            () -> {
+              saved.registry().insert(cell, raw, 1);
+              id[0] = WorldCraftingJobs.get(server).submit(actor, origin, ingot, 1).job();
+              h.assertTrue(id[0] != null, "Job started");
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    saved.craftingJobs().get(id[0]).reason() == JobReason.MACHINE_MISSING,
+                    "The job waits for a machine"))
+        .thenExecute(
+            () -> {
+              h.useBlock(TERMINAL, owner);
+              menu(h, owner).broadcastChanges();
+              command(h, owner, TerminalJobPackets.DETAIL, 0, 1);
+              var step = menu(h, owner).jobView().detail().steps().getFirst();
+              h.assertTrue(
+                  step.machine().equals("factorycore:crafter") && step.label().isEmpty(),
+                  "With no machine beside it, the Crafter runs the step: " + step);
+              // A block beside the Crafter rebuilds the network, which closes the terminal.
+              owner.closeContainer();
+              unit.label("Smelter");
+              h.setBlock(UNIT.above(), Blocks.FURNACE);
+            })
+        .thenWaitUntil(
+            () -> h.assertTrue(terminal.canUse(owner), "Terminal ready again after the rebuild"))
+        .thenExecute(
+            () -> {
+              h.useBlock(TERMINAL, owner);
+              menu(h, owner).broadcastChanges();
+            })
+        .thenIdle(RATE_GAP)
+        .thenExecute(() -> command(h, owner, TerminalJobPackets.DETAIL, 0, 1))
+        .thenWaitUntil(
+            () -> {
+              var m = menu(h, owner);
+              m.broadcastChanges();
+              var steps = m.jobView().detail().steps();
+              h.assertTrue(
+                  !steps.isEmpty()
+                      && steps.getFirst().machine().equals("minecraft:furnace")
+                      && steps.getFirst().label().equals("Smelter"),
+                  "The furnace beside the labelled Crafter runs it: " + steps);
+            })
+        .thenExecute(
+            () -> {
+              owner.closeContainer();
+              WorldCraftingJobs.get(server).cancel(actor, id[0]);
+            })
+        .thenWaitUntil(
+            () -> h.assertTrue(saved.craftingJobs().get(id[0]) == null, "Cancelled and retired"))
         .thenSucceed();
   }
 }

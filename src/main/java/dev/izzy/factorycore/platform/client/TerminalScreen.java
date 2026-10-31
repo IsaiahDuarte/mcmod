@@ -493,6 +493,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
             : null;
 
     storage.init();
+    patterns.init();
     crafting.init();
     jobs.init();
     crafting.update();
@@ -569,6 +570,28 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       clickView(index, button == 1, hasShiftDown());
       return true;
     }
+  }
+
+  /**
+   * Q100: in the Patterns view, Shift-click on an encoded pattern in the inventory stores it in the
+   * first listed Crafter with a free slot instead of moving it within the inventory.
+   */
+  @Override
+  protected void slotClicked(
+      Slot slot, int slotId, int mouseButton, net.minecraft.world.inventory.ClickType type) {
+    if (patternsMode
+        && type == net.minecraft.world.inventory.ClickType.QUICK_MOVE
+        && slot != null
+        && slot.container instanceof net.minecraft.world.entity.player.Inventory
+        && slot.getContainerSlot() < 36) {
+      var stack = slot.getItem();
+      if (stack.has(dev.izzy.factorycore.platform.crafting.CraftingContent.PATTERN.get())
+          || stack.has(dev.izzy.factorycore.platform.crafting.CraftingContent.PROCESSING.get())) {
+        patterns.store(slot.getContainerSlot());
+        return;
+      }
+    }
+    super.slotClicked(slot, slotId, mouseButton, type);
   }
 
   /** Q99 (M110): the player's own unfinished jobs; the list stops at its row cap. */
@@ -718,6 +741,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     if (request != null) showJobs(request);
     jobs.tick(jobsMode);
     storage.tickVisibility(storageHidden());
+    patterns.tick(patternsMode);
     jobs.tickButtons(jobsMode);
   }
 

@@ -182,7 +182,12 @@ your cursor; click an empty slot with a pattern to put it there, or a full one t
 inventory stays open below, so you can move patterns between Crafters or back to your
 inventory. Moving patterns needs Edit where that Crafter is; otherwise its row says *view
 only*. The search box keeps only Crafters with a pattern that makes what you typed, and greys
-the other slots. Scroll over the list to see more Crafters.
+the other slots. Scroll over the list to see more Crafters. Below the list, **Visible**
+cycles to **Not full** (only Crafters with a free slot) and **All** (hidden Crafters too), and
+**Out** cycles what the search looks at: what patterns make, what they use (**In**), or Crafter
+labels (**Name**). **hide** beside a Crafter's name takes it out of the list until you show it
+again under **All**; jobs still use it. Shift-click a pattern in your inventory to put it in
+the first listed Crafter with a free slot.
 
 **Jobs.** A green number on the **Jobs** tab counts your jobs that are still running. Press the
 **Jobs** tab to list what your Crafters can make in the strip at the top.
@@ -209,7 +214,8 @@ inventory is hidden while Jobs is open.
   reserved so no one else takes them.
 - **Your jobs:** they are listed under the strip with progress and a state symbol (▶
   running, ⏸ waiting, ⇩ storing, ✕ cancelling); hover for the reason, scroll for more.
-  Click a job to see each step: done, crafting, waiting (and why) or next. **Cancel**
+  Click a job to see each step: done, crafting, waiting (and why) or next, and what runs it
+  (the Crafter's label, or the machine beside it; hover a step for the full line). **Cancel**
   stops a job and returns unused ingredients; **Back** closes the steps.
 - **Finished jobs:** while a screen is open, or while you carry a charged, bound Wireless
   Terminal, you get a toast in the corner; otherwise the usual chat line. Turn **✉** grey before **Start** for jobs that should finish quietly; it is
@@ -240,6 +246,8 @@ connect to its back and sides. Use it with an empty hand to open its screen.
 - **Exporter** (a "Λ" chevron): pushes from storage into that side. It sends nothing until you
   choose what: click a filter slot with an item, then **Apply**. Leave **Keep** blank to send
   everything that matches, or type a number to keep the machine stocked up to that amount.
+  A dot in each item slot's corner says what storage holds: green, some; cyan, none but a
+  pattern can craft it; red, none. Tag slots have no dot.
 - **Resource:** Items, Fluids or Energy. A new one picks what the machine offers on that side.
 - **Stop** pauses it; **Apply** starts it again in your name. You need Edit and Deploy access,
   plus Deposit and Withdraw to move things.

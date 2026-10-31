@@ -75,3 +75,21 @@ with substitutes cycling once a second, an arrow and the output; a processing pa
 screen readers and copy. While Shift is held, an item decorator draws the pattern's first output
 over its icon in every screen, as AE2 and RS do. Alternative: replacing the item model with the
 output (rejected: it needs a custom model and hides which stacks are patterns at all times).
+
+## Amendment — Patterns view options, step machines (2026-10-30, ergonomics plan Q100)
+
+The terminal's Patterns view has a session filter (Visible, Not full, All) and a search mode
+(outputs, inputs, Crafter labels). A Crafter can be hidden from the view; the flag is saved on the
+Crafter (`Hidden`, written only when set), needs Edit there, and changes nothing about which
+patterns jobs may use. Shift-click on a pattern in the inventory stores it in the first listed
+Crafter, in the view's own order, that the viewer may edit and that has a free slot accepting it.
+It spends a wireless terminal's action energy, as a click does. Job detail rows name what runs each
+step: the dispatched machine for the step in progress, else the first machine beside the Crafter
+for a processing pattern, else the Crafter. They also carry the Crafter's label. Naming never loads
+a chunk.
+
+Blank patterns for encoding stay in the player's main inventory only. A container beside the
+terminal was considered and rejected: a wireless terminal has no "beside", and a second extraction
+path would bypass the shared transfer and permission checks that the inventory path already
+satisfies. Taking blanks from network storage through the transfer layer remains possible later if
+players ask for it.

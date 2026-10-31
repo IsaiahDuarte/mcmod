@@ -139,6 +139,22 @@ public final class MachinePresetPackets {
                     b.readByteArray(32)));
   }
 
+  /**
+   * Q100: what an Exporter filter rule finds in the network: some in storage, none but a pattern
+   * makes it, or none. UNKNOWN for tag rules and while not computed.
+   */
+  public enum RuleStatus {
+    UNKNOWN,
+    STOCKED,
+    CRAFTABLE,
+    EMPTY;
+
+    public String key() {
+      return EnumKeys.key(this);
+    }
+  }
+
+  /** {@code statuses} is empty or one per rule (Q100, Exporters only). */
   public record View(
       int menu,
       UUID session,
@@ -155,22 +171,58 @@ public final class MachinePresetPackets {
       boolean busy,
       boolean dirty,
       long staged,
-      boolean cleanup)
+      boolean cleanup,
+      List<RuleStatus> statuses)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
             ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "machine_preset_view"));
 
+    public View(
+        int menu,
+        UUID session,
+        long revision,
+        ResourceKind kind,
+        MachinePresets.Mode mode,
+        ResourceFilter.Mode filter,
+        long goal,
+        List<FilterEdits.Rule> rules,
+        Status status,
+        MachinePresets.Mode running,
+        String reason,
+        boolean editable,
+        boolean busy,
+        boolean dirty,
+        long staged,
+        boolean cleanup) {
+      this(
+          menu, session, revision, kind, mode, filter, goal, rules, status, running, reason,
+          editable, busy, dirty, staged, cleanup, List.of());
+    }
+
     public View {
       rules = List.copyOf(rules);
+      statuses = List.copyOf(statuses);
       Objects.requireNonNull(status);
-      if (goal < 0 || rules.size() > 16 || reason.length() > 32 || staged < 0)
+      if (goal < 0
+          || rules.size() > 16
+          || reason.length() > 32
+          || staged < 0
+          || (!statuses.isEmpty() && statuses.size() != rules.size()))
         throw new IllegalArgumentException("Machine preset view bounds");
     }
 
     @Override
     public Type<View> type() {
       return TYPE;
+    }
+
+    private static List<RuleStatus> readStatuses(RegistryFriendlyByteBuf b) {
+      int count = b.readVarInt();
+      if (count < 0 || count > 16) throw new IllegalArgumentException("Rule status count");
+      var statuses = new ArrayList<RuleStatus>(count);
+      for (int i = 0; i < count; i++) statuses.add(WireEnums.read(b, RuleStatus.class));
+      return statuses;
     }
 
     public static final StreamCodec<RegistryFriendlyByteBuf, View> CODEC =
@@ -193,6 +245,8 @@ public final class MachinePresetPackets {
               b.writeBoolean(v.dirty());
               b.writeVarLong(v.staged());
               b.writeBoolean(v.cleanup());
+              b.writeVarInt(v.statuses().size());
+              for (var status : v.statuses()) WireEnums.write(b, status);
             },
             b -> {
               int id = b.readVarInt();
@@ -222,14 +276,15 @@ public final class MachinePresetPackets {
                   b.readBoolean(),
                   b.readBoolean(),
                   b.readVarLong(),
-                  b.readBoolean());
+                  b.readBoolean(),
+                  readStatuses(b));
             });
   }
 
   private MachinePresetPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var r = event.registrar("2");
+    var r = event.registrar("3");
     MenuPayloads.toServer(
         r,
         Command.TYPE,

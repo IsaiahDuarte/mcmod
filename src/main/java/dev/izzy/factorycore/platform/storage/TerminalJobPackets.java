@@ -201,11 +201,24 @@ public final class TerminalJobPackets {
     }
   }
 
-  /** One step of the opened job (A4): its output, crafts done/total and status. */
-  public record StepRow(Entry output, long done, long total, StepStatus status) {
+  /**
+   * One step of the opened job (A4): its output, crafts done/total and status. Q100: {@code
+   * machine} is the block registry ID of what runs it ("" when unknown or not loaded) and {@code
+   * label} that Crafter's Label Tool label ("" for none).
+   */
+  public record StepRow(
+      Entry output, long done, long total, StepStatus status, String machine, String label) {
+    public StepRow(Entry output, long done, long total, StepStatus status) {
+      this(output, done, total, status, "", "");
+    }
+
     public StepRow {
       Objects.requireNonNull(status);
-      if (done < 0 || total < done) throw new IllegalArgumentException("Invalid step row bounds");
+      if (done < 0
+          || total < done
+          || machine.length() > 256
+          || label.length() > dev.izzy.factorycore.platform.crafting.PatternHolderEntity.MAX_LABEL)
+        throw new IllegalArgumentException("Invalid step row bounds");
     }
   }
 
@@ -389,6 +402,10 @@ public final class TerminalJobPackets {
                 buffer.writeVarLong(step.done());
                 buffer.writeVarLong(step.total());
                 WireEnums.write(buffer, step.status());
+                buffer.writeUtf(step.machine(), 256);
+                buffer.writeUtf(
+                    step.label(),
+                    dev.izzy.factorycore.platform.crafting.PatternHolderEntity.MAX_LABEL);
               }
               buffer.writeVarInt(value.detail.moreSteps());
               WireEnums.write(buffer, value.status);
@@ -446,7 +463,10 @@ public final class TerminalJobPackets {
                         Entry.read(buffer),
                         buffer.readVarLong(),
                         buffer.readVarLong(),
-                        WireEnums.read(buffer, StepStatus.class)));
+                        WireEnums.read(buffer, StepStatus.class),
+                        buffer.readUtf(256),
+                        buffer.readUtf(
+                            dev.izzy.factorycore.platform.crafting.PatternHolderEntity.MAX_LABEL)));
               var detail = new Detail(detailJob, cancellable, stepRows, buffer.readVarInt());
               return new View(
                   menu,

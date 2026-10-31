@@ -506,4 +506,164 @@ public final class TerminalPatternGameTests {
         InteractionHand.MAIN_HAND,
         new BlockHitResult(Vec3.atCenterOf(at), Direction.UP, at, false));
   }
+
+  private static void search(GameTestHelper h, ServerPlayer player, String text) {
+    var m = menu(h, player);
+    m.command(
+        player,
+        new dev.izzy.factorycore.platform.storage.TerminalPackets.Command(
+            m.containerId,
+            m.session(),
+            m.view().revision(),
+            dev.izzy.factorycore.platform.storage.TerminalPackets.SEARCH,
+            0,
+            1,
+            text,
+            new byte[32]));
+    m.broadcastChanges();
+  }
+
+  /**
+   * Q100: the filter lists only Crafters with a free slot (Not full) or hidden ones too (All); the
+   * search mode matches inputs or Crafter labels; a hidden Crafter is saved hidden; Shift-click
+   * stores an inventory pattern in the first listed Crafter with a free slot.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void filterModesHidingAndShiftClickStore(GameTestHelper h) {
+    var player = player(h);
+    Net.in(h, player.getUUID()).controller(ROOT);
+    var full = new ItemStack[TerminalPatternPackets.SLOTS];
+    for (int slot = 0; slot < full.length; slot++)
+      full[slot] = pattern(Items.OAK_LOG, Items.OAK_PLANKS);
+    var wood = crafter(h, NORTH, full);
+    wood.label("Wood shop");
+    var torches = crafter(h, SOUTH, pattern(Items.COAL, Items.TORCH));
+    var terminal = terminal(h);
+    var spare = pattern(Items.OAK_PLANKS, Items.STICK);
+    // Commands share the session's rate gate, so each waits a few ticks after the last.
+    int gap = 5;
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(terminal.canUse(player), "Terminal ready"))
+        .thenExecute(() -> open(h, player))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    patterns(h, player, TerminalPatternPackets.WINDOW, 0, 0).total() == 2,
+                    "Both Crafters are listed"))
+        .thenIdle(gap)
+        .thenExecute(
+            () -> {
+              var view =
+                  patterns(
+                      h, player, TerminalPatternPackets.FILTER, TerminalPatternPackets.NOT_FULL, 0);
+              h.assertTrue(
+                  view.total() == 1
+                      && row(h, view, SOUTH) == 0
+                      && view.filter() == TerminalPatternPackets.NOT_FULL,
+                  "Not full leaves out the full Crafter: " + view);
+            })
+        .thenIdle(gap)
+        .thenExecute(
+            () ->
+                patterns(
+                    h, player, TerminalPatternPackets.FILTER, TerminalPatternPackets.VISIBLE, 0))
+        .thenIdle(gap)
+        .thenExecute(() -> search(h, player, "coal"))
+        .thenIdle(gap)
+        .thenExecute(
+            () -> {
+              var outputs = menu(h, player).patternView();
+              h.assertTrue(outputs.total() == 0, "No pattern makes coal: " + outputs);
+            })
+        .thenIdle(gap)
+        .thenExecute(
+            () -> {
+              var inputs =
+                  patterns(
+                      h, player, TerminalPatternPackets.MODE, TerminalPatternPackets.INPUTS, 0);
+              h.assertTrue(
+                  inputs.total() == 1
+                      && row(h, inputs, SOUTH) == 0
+                      && inputs.crafters().getFirst().patterns().getFirst().match(),
+                  "The torch pattern takes coal: " + inputs);
+            })
+        .thenIdle(gap)
+        .thenExecute(() -> search(h, player, "shop"))
+        .thenIdle(gap)
+        .thenExecute(
+            () -> {
+              var names =
+                  patterns(h, player, TerminalPatternPackets.MODE, TerminalPatternPackets.NAMES, 0);
+              h.assertTrue(
+                  names.total() == 1 && row(h, names, NORTH) == 0,
+                  "The label is searched: " + names);
+            })
+        .thenIdle(gap)
+        .thenExecute(
+            () ->
+                patterns(h, player, TerminalPatternPackets.MODE, TerminalPatternPackets.OUTPUTS, 0))
+        .thenIdle(gap)
+        .thenExecute(() -> search(h, player, ""))
+        .thenIdle(gap)
+        .thenExecute(
+            () -> {
+              var listed = menu(h, player).patternView();
+              var hidden =
+                  patterns(h, player, TerminalPatternPackets.HIDE, row(h, listed, SOUTH), 0);
+              h.assertTrue(
+                  hidden.status() == TerminalPatternPackets.Status.HIDDEN
+                      && torches.hidden()
+                      && hidden.total() == 1
+                      && torches
+                          .saveWithoutMetadata(h.getLevel().registryAccess())
+                          .getBoolean("Hidden"),
+                  "Hidden from the list, and saved hidden: " + hidden);
+            })
+        .thenIdle(gap)
+        .thenExecute(
+            () -> {
+              var all =
+                  patterns(h, player, TerminalPatternPackets.FILTER, TerminalPatternPackets.ALL, 0);
+              h.assertTrue(
+                  all.total() == 2 && all.crafters().get(row(h, all, SOUTH)).hidden(),
+                  "All lists it, marked hidden: " + all);
+            })
+        .thenIdle(gap)
+        .thenExecute(
+            () -> {
+              var shown =
+                  patterns(
+                      h,
+                      player,
+                      TerminalPatternPackets.HIDE,
+                      row(h, menu(h, player).patternView(), SOUTH),
+                      0);
+              h.assertTrue(
+                  shown.status() == TerminalPatternPackets.Status.SHOWN && !torches.hidden(),
+                  "Shown again: " + shown);
+              player.getInventory().setItem(5, spare.copy());
+            })
+        .thenIdle(gap)
+        .thenExecute(
+            () -> {
+              var stored = patterns(h, player, TerminalPatternPackets.STORE, 5, 0);
+              h.assertTrue(
+                  stored.status() == TerminalPatternPackets.Status.INSERTED
+                      && player.getInventory().getItem(5).isEmpty()
+                      && id(torches.patterns().getStackInSlot(1)).equals(id(spare))
+                      && wood.patternCount() == TerminalPatternPackets.SLOTS,
+                  "The full Crafter is skipped; the next free slot takes it: " + stored);
+              player.getInventory().setItem(6, new ItemStack(Items.DIAMOND));
+            })
+        .thenIdle(gap)
+        .thenExecute(
+            () -> {
+              var refused = patterns(h, player, TerminalPatternPackets.STORE, 6, 0);
+              h.assertTrue(
+                  refused.status() == TerminalPatternPackets.Status.REFUSED
+                      && player.getInventory().getItem(6).is(Items.DIAMOND),
+                  "Anything but a pattern stays: " + refused);
+            })
+        .thenSucceed();
+  }
 }

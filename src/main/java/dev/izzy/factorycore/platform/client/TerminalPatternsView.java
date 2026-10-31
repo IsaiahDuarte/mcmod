@@ -70,6 +70,76 @@ final class TerminalPatternsView {
     return screen.top() + slotsY(row) + 8;
   }
 
+  private net.minecraft.client.gui.components.Button filterButton, modeButton;
+
+  /** Q100: the filter and search-mode buttons, on the info row's right. */
+  void init() {
+    var font = screen.font();
+    int width = 0;
+    for (int value = 0; value <= 2; value++) {
+      width =
+          Math.max(
+              width,
+              font.width(
+                  Component.translatable("gui.factorycore.terminal.patterns.filter." + value)));
+      width =
+          Math.max(
+              width,
+              font.width(
+                  Component.translatable("gui.factorycore.terminal.patterns.mode." + value)));
+    }
+    width += 10;
+    int right = MAIN - GRID_X, y = infoY();
+    modeButton =
+        screen.add(
+            net.minecraft.client.gui.components.Button.builder(
+                    Component.empty(),
+                    button -> send(TerminalPatternPackets.MODE, (view().mode() + 1) % 3, 0))
+                .bounds(screen.left() + right - width, screen.top() + y, width, PanelLayout.ROW)
+                .tooltip(
+                    net.minecraft.client.gui.components.Tooltip.create(
+                        Component.translatable("gui.factorycore.terminal.patterns.mode.help")))
+                .build());
+    filterButton =
+        screen.add(
+            net.minecraft.client.gui.components.Button.builder(
+                    Component.empty(),
+                    button -> send(TerminalPatternPackets.FILTER, (view().filter() + 1) % 3, 0))
+                .bounds(
+                    screen.left() + right - 2 * width - 4, screen.top() + y, width, PanelLayout.ROW)
+                .tooltip(
+                    net.minecraft.client.gui.components.Tooltip.create(
+                        Component.translatable("gui.factorycore.terminal.patterns.filter.help")))
+                .build());
+    tick(false);
+  }
+
+  void tick(boolean shown) {
+    if (filterButton == null) return;
+    filterButton.visible = modeButton.visible = shown;
+    filterButton.setMessage(
+        Component.translatable("gui.factorycore.terminal.patterns.filter." + view().filter()));
+    modeButton.setMessage(
+        Component.translatable("gui.factorycore.terminal.patterns.mode." + view().mode()));
+  }
+
+  /** Q100: Shift-click on a pattern in the inventory stores it in the first free Crafter. */
+  void store(int inventorySlot) {
+    send(TerminalPatternPackets.STORE, inventorySlot, 0);
+  }
+
+  /** Q100: where row {@code row}'s hide/show link is drawn (panel-relative). */
+  private Rect hideLink(int row) {
+    var font = screen.font();
+    var label =
+        Component.translatable(
+            view().crafters().get(row).hidden()
+                ? "gui.factorycore.terminal.patterns.show"
+                : "gui.factorycore.terminal.patterns.hide");
+    int width = font.width(label);
+    return new Rect(MAIN - GRID_X - SCROLLBAR - 2 - width, GRID_Y + row * ROW_HEIGHT + 1, width, 8);
+  }
+
   /** Opening the view asks the server for its window (and starts its refreshes). */
   void show() {
     send(TerminalPatternPackets.WINDOW, view().offset(), 0);
@@ -137,6 +207,23 @@ final class TerminalPatternsView {
     for (int row = 0; row < rows; row++) {
       var crafter = view.crafters().get(row);
       var pos = crafter.position();
+      // Q100: hide or show, for Crafters the viewer may edit.
+      int nameWidth = width;
+      if (crafter.editable()) {
+        var link = hideLink(row);
+        graphics.drawString(
+            font,
+            Component.translatable(
+                    crafter.hidden()
+                        ? "gui.factorycore.terminal.patterns.show"
+                        : "gui.factorycore.terminal.patterns.hide")
+                .withStyle(net.minecraft.ChatFormatting.UNDERLINE),
+            link.x(),
+            link.y(),
+            Panels.MUTED,
+            false);
+        nameWidth = link.x() - GRID_X - 5;
+      }
       // Q107: a label names the Crafter; without one, its position does.
       var name =
           crafter.label().isEmpty()
@@ -154,9 +241,11 @@ final class TerminalPatternsView {
                   crafter.label());
       if (!crafter.editable())
         name = Component.translatable("gui.factorycore.terminal.patterns.locked", name);
+      if (crafter.hidden())
+        name = Component.translatable("gui.factorycore.terminal.patterns.hidden", name);
       graphics.drawString(
           font,
-          font.plainSubstrByWidth(name.getString(), width),
+          font.plainSubstrByWidth(name.getString(), nameWidth),
           GRID_X + 1,
           GRID_Y + row * ROW_HEIGHT + 1,
           crafter.editable() ? Panels.TEXT : Panels.MUTED,
@@ -169,13 +258,17 @@ final class TerminalPatternsView {
             : Component.translatable("gui.factorycore.terminal.patterns.status." + status.key());
     int color =
         switch (status) {
-          case DENIED, REFUSED, GONE, NO_POWER -> Panels.WARN;
-          case TAKEN, INSERTED, SWAPPED -> Panels.GOOD;
+          case DENIED, REFUSED, GONE, NO_POWER, FULL -> Panels.WARN;
+          case TAKEN, INSERTED, SWAPPED, HIDDEN, SHOWN -> Panels.GOOD;
           default -> Panels.MUTED;
         };
     graphics.drawString(
         font,
-        font.plainSubstrByWidth(info.getString(), MAIN - 2 * GRID_X),
+        font.plainSubstrByWidth(
+            info.getString(),
+            filterButton == null
+                ? MAIN - 2 * GRID_X
+                : filterButton.getX() - screen.left() - GRID_X - 4),
         GRID_X + 1,
         infoY() + 5,
         color,
@@ -228,6 +321,13 @@ final class TerminalPatternsView {
 
   boolean mouseClicked(double mouseX, double mouseY, int button) {
     if (button != 0) return false;
+    int x = (int) Math.floor(mouseX) - screen.left(), y = (int) Math.floor(mouseY) - screen.top();
+    int rows = Math.min(fit(), view().crafters().size());
+    for (int row = 0; row < rows; row++)
+      if (view().crafters().get(row).editable() && hideLink(row).contains(new Rect(x, y, 1, 1))) {
+        send(TerminalPatternPackets.HIDE, row, 0);
+        return true;
+      }
     int[] at = slotAt(mouseX, mouseY);
     if (at == null) return false;
     send(TerminalPatternPackets.CLICK, at[0], at[1]);

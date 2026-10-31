@@ -307,7 +307,7 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
       button.setSelected(view.filter() == modes[i]);
       button.active = editable && view.filter() != modes[i];
     }
-    filterSlots.show(view.rules(), view.kind(), selectedRule);
+    filterSlots.show(view.rules(), view.kind(), selectedRule, view.statuses());
     filterSlots.active = editable;
     RedstoneButton.refresh(redstone, menu.redstoneState());
     redstone.active = view.editable();

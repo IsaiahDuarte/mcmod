@@ -52,10 +52,24 @@ final class FilterSlots extends AbstractWidget {
   }
 
   void show(List<FilterEdits.Rule> rules, ResourceKind kind, int selection) {
+    show(rules, kind, selection, List.of());
+  }
+
+  /** Q100: {@code statuses} is empty, or one Exporter status per rule, drawn as a corner dot. */
+  void show(
+      List<FilterEdits.Rule> rules,
+      ResourceKind kind,
+      int selection,
+      List<dev.izzy.factorycore.platform.storage.MachinePresetPackets.RuleStatus> statuses) {
+    if (!statuses.equals(this.statuses)) hovered = -2;
     this.rules = rules;
     this.kind = kind;
     this.selection = selection;
+    this.statuses = statuses;
   }
+
+  private List<dev.izzy.factorycore.platform.storage.MachinePresetPackets.RuleStatus> statuses =
+      List.of();
 
   private int slotAt(double mouseX, double mouseY) {
     int column = (int) Math.floor((mouseX - getX()) / 18),
@@ -109,6 +123,22 @@ final class FilterSlots extends AbstractWidget {
         Panels.badge(graphics, font, badge, new Rect(x + 1, y + 1, 6, 7));
         graphics.pose().popPose();
       }
+      int dot =
+          slot >= statuses.size()
+              ? 0
+              : switch (statuses.get(slot)) {
+                case STOCKED -> 0xff3fbf3f;
+                case CRAFTABLE -> 0xff3fbfbf;
+                case EMPTY -> 0xffd04040;
+                default -> 0;
+              };
+      if (dot != 0) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 200);
+        graphics.fill(x + 12, y + 12, x + 17, y + 17, 0xff202020);
+        graphics.fill(x + 13, y + 13, x + 16, y + 16, dot);
+        graphics.pose().popPose();
+      }
     }
     int slot = isHovered() ? slotAt(mouseX, mouseY) : -1;
     if (slot != hovered) {
@@ -121,12 +151,18 @@ final class FilterSlots extends AbstractWidget {
     if (slot < 0 || slot >= rules.size())
       return Tooltip.create(Component.translatable("gui.factorycore.filter.empty.help"));
     var rule = rules.get(slot);
-    return Tooltip.create(
+    var text =
         Component.literal(rule.label())
             .append("\n")
-            .append(Component.translatable("gui.factorycore.filter.match." + rule.type()))
-            .append("\n")
-            .append(Component.translatable("gui.factorycore.filter.slot.help")));
+            .append(Component.translatable("gui.factorycore.filter.match." + rule.type()));
+    if (slot < statuses.size()
+        && statuses.get(slot)
+            != dev.izzy.factorycore.platform.storage.MachinePresetPackets.RuleStatus.UNKNOWN)
+      text.append("\n")
+          .append(
+              Component.translatable("gui.factorycore.filter.status." + statuses.get(slot).key()));
+    return Tooltip.create(
+        text.append("\n").append(Component.translatable("gui.factorycore.filter.slot.help")));
   }
 
   /**

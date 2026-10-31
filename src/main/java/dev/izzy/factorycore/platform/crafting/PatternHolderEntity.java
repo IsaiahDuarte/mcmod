@@ -37,6 +37,8 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
   /** Longest label, as for Signal and Machine Interfaces. */
   public static final int MAX_LABEL = 64;
 
+  private boolean hidden;
+
   private CompoundTag unsupported;
   private String label = "";
 
@@ -155,6 +157,20 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
     tag.putInt("Schema", SCHEMA);
     tag.put("Patterns", patterns.serializeNBT(registries));
     if (!label.isEmpty()) tag.putString("Label", label);
+    if (hidden) tag.putBoolean("Hidden", true);
+  }
+
+  /**
+   * Q100: hidden from the terminal's Patterns view unless its filter is All. Saved with the
+   * Crafter; it does not change what jobs may use.
+   */
+  public boolean hidden() {
+    return hidden;
+  }
+
+  public void hidden(boolean value) {
+    hidden = value;
+    setChanged();
   }
 
   @Override
@@ -162,6 +178,7 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
     super.loadAdditional(tag, registries);
     unsupported = null;
     label = "";
+    hidden = false;
     if (!tag.contains("Schema")) return;
     var saved = tag.getCompound("Patterns");
     if (tag.getInt("Schema") != SCHEMA || saved.getInt("Size") != SLOTS) {
@@ -172,6 +189,7 @@ public abstract class PatternHolderEntity extends BlockEntity implements WiredMe
     patterns.deserializeNBT(registries, saved);
     var savedLabel = clean(tag.getString("Label"));
     label = savedLabel.length() > MAX_LABEL ? "" : savedLabel;
+    hidden = tag.getBoolean("Hidden");
   }
 
   @Override

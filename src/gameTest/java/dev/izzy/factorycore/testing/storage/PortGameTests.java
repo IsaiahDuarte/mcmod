@@ -339,4 +339,80 @@ public final class PortGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Q100: the Exporter screen marks each exact filter rule: iron in storage, sticks craftable by a
+   * Crafter's pattern, diamonds absent; a tag rule has no status.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void exporterFilterRulesShowWhatStorageHolds(GameTestHelper h) {
+    var owner = player(h);
+    var net = Net.in(h, owner.getUUID());
+    net.controller(ROOT);
+    net.drive(DRIVE, CellTier.STARTER_ITEM);
+    var cell = net.cell(DRIVE, 0);
+    var crafterAt = new BlockPos(0, 2, 1);
+    h.setBlock(crafterAt, dev.izzy.factorycore.platform.crafting.CraftingContent.CRAFTER.get());
+    dev.izzy.factorycore.platform.crafting.CrafterEntity crafter = h.getBlockEntity(crafterAt);
+    var cells =
+        new java.util.ArrayList<ItemStack>(java.util.Collections.nCopies(9, ItemStack.EMPTY));
+    cells.set(0, new ItemStack(Items.OAK_PLANKS));
+    cells.set(3, new ItemStack(Items.OAK_PLANKS));
+    var pattern =
+        new ItemStack(
+            dev.izzy.factorycore.platform.crafting.CraftingContent.CRAFTING_PATTERN.get());
+    pattern.set(
+        dev.izzy.factorycore.platform.crafting.CraftingContent.PATTERN.get(),
+        new dev.izzy.factorycore.platform.crafting.PatternContents(
+            java.util.UUID.randomUUID(), 1, 0, cells, new ItemStack(Items.STICK, 4), List.of()));
+    crafter.patterns().insertItem(0, pattern, false);
+    var exporter = place(h, PORT, PortBlock.Role.EXPORTER, Direction.EAST, owner);
+    var filter =
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.INCLUDE,
+            List.of(
+                new ResourceFilter.Exact(net.key(Items.IRON_INGOT)),
+                new ResourceFilter.Registry("minecraft:stick"),
+                new ResourceFilter.Exact(net.key(Items.DIAMOND)),
+                new ResourceFilter.Tag("minecraft:logs")));
+    h.startSequence()
+        .thenWaitUntil(() -> net.assertValid(PORT))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    net.saved().registry().stock(cell, net.key(Items.IRON_INGOT)).loaded(),
+                    "Cell ready"))
+        .thenExecute(
+            () -> {
+              net.saved().registry().insert(cell, net.key(Items.IRON_INGOT), 5);
+              exporter.deployPreset(Actors.of(owner), MachinePresets.Mode.PAUSED, filter, 0);
+              h.useBlock(PORT, owner);
+            })
+        .thenWaitUntil(
+            () -> {
+              h.assertTrue(
+                  owner.containerMenu
+                      instanceof dev.izzy.factorycore.platform.storage.MachineSettingsMenu,
+                  "The Exporter screen is open");
+              var menu =
+                  (dev.izzy.factorycore.platform.storage.MachineSettingsMenu) owner.containerMenu;
+              menu.broadcastChanges();
+              var statuses = menu.presetView().statuses();
+              h.assertTrue(
+                  statuses.equals(
+                      List.of(
+                          dev.izzy.factorycore.platform.storage.MachinePresetPackets.RuleStatus
+                              .STOCKED,
+                          dev.izzy.factorycore.platform.storage.MachinePresetPackets.RuleStatus
+                              .CRAFTABLE,
+                          dev.izzy.factorycore.platform.storage.MachinePresetPackets.RuleStatus
+                              .EMPTY,
+                          dev.izzy.factorycore.platform.storage.MachinePresetPackets.RuleStatus
+                              .UNKNOWN)),
+                  "Iron stocked, sticks craftable, diamonds absent, the tag unknown: " + statuses);
+            })
+        .thenExecute(() -> end(owner))
+        .thenSucceed();
+  }
 }

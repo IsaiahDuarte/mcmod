@@ -1132,7 +1132,11 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Done when: a GameTest labels a Crafter and finds the label in the Patterns view, and a reload
   keeps it.
 
-- [ ] **Q100 — Crafting nits (M113–M118).** Size M. Lane C, after Q3 and Q5.
+- [x] **Q100 — Crafting nits (M113–M118).** Size M. Lane C, after Q3 and Q5. Done 2026-10-30
+  (commit subject `Q100:`). Patterns filter, modes, hide and Shift-click store; job step machines;
+  Exporter rule status; blanks stay inventory-only (ADR 0030 and 0066 amendments). Recipe-viewer
+  encoding preferences and the processing amount/main-output choice moved to Q112.
+  [Evidence](evidence/ergonomics-q100-crafting-nits-2026-10-30.md).
   Recipe-viewer encoding prefers plentiful, undamaged items and warns about the wrong mode or a
   recipe over 3×3; an amount box and a "main output" choice for processing slots; the Patterns
   view gets search modes, the Visible / Not full / All filter, a per-Crafter hide toggle and
@@ -1140,6 +1144,13 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   show status icons; check whether encoding should also take blanks from a container beside the
   terminal, and record the decision.
   Done when: GameTests for the Patterns view options, step machine names and Exporter status.
+
+- [ ] **Q112 — Encoding preferences and processing slot options (M113, M114).** Size M. Lane C,
+  split from Q100. Recipe-viewer encoding prefers plentiful, undamaged items and warns about the
+  wrong mode or a recipe over 3×3; an amount box and a "main output" choice for processing
+  slots.
+  Done when: a JEI client step shows the plentiful variant chosen and each warning; a GameTest
+  encodes a processing pattern with a typed amount and a chosen main output.
 
 - [ ] **Q101 — Device and storage nits (M119–M124, M126, M141).** Size M. Lane D.
   Drives expose cell slots to hoppers (insert into an empty bay, extract whole cells; through

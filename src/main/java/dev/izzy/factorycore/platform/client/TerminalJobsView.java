@@ -510,6 +510,14 @@ final class TerminalJobsView {
     return showDetail && !menu().jobView().detail().job().output().icon().isEmpty();
   }
 
+  /** Q100: a Crafter's label, else the name of the block that runs the step; "" if unknown. */
+  private static String machineName(TerminalJobPackets.StepRow step) {
+    if (!step.label().isEmpty()) return step.label();
+    var id = net.minecraft.resources.ResourceLocation.tryParse(step.machine());
+    if (step.machine().isEmpty() || id == null) return "";
+    return net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(id).getName().getString();
+  }
+
   private int detailLines() {
     var detail = menu().jobView().detail();
     return detail.steps().size() + (detail.moreSteps() > 0 ? 1 : 0);
@@ -573,7 +581,8 @@ final class TerminalJobsView {
             };
         String status =
             Component.translatable("gui.factorycore.terminal.job.step." + step.status().key())
-                .getString();
+                    .getString()
+                + (machineName(step).isEmpty() ? "" : " · " + machineName(step));
         graphics.drawString(
             font,
             font.plainSubstrByWidth(step.output().name(), nameWidth),
@@ -851,6 +860,25 @@ final class TerminalJobsView {
   void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
     var font = screen.font();
     int top = screen.top();
+    if (detailShown() && overOverlay(mouseX, mouseY)) {
+      // Q100: a step row's full status and the machine that runs it, which the row may cut.
+      var detail = menu().jobView().detail();
+      int first = top + overlay().y() + (detail.job().reason() != null ? 23 : 13);
+      int index = detailOffset + (mouseY - first) / 9;
+      if (mouseY >= first && index >= 0 && index < detail.steps().size()) {
+        var step = detail.steps().get(index);
+        var lines = new java.util.ArrayList<Component>();
+        lines.add(Component.literal(step.output().name()));
+        lines.add(
+            Component.translatable("gui.factorycore.terminal.job.step." + step.status().key()));
+        if (!machineName(step).isEmpty())
+          lines.add(
+              Component.translatable(
+                  "gui.factorycore.terminal.job.step.machine", machineName(step)));
+        graphics.renderComponentTooltip(font, lines, mouseX, mouseY);
+      }
+      return;
+    }
     if (planShown() || detailShown()) {
       if (!planShown() || treeMode || !overOverlay(mouseX, mouseY)) return;
       int index = planOffset + (mouseY - top - overlay().y() - 13) / 9;

@@ -12,6 +12,7 @@ import dev.izzy.factorycore.platform.crafting.WorldCraftingJobs;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.*;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -383,6 +384,11 @@ final class TerminalJobs {
     var steps = new ArrayList<TerminalJobPackets.StepRow>();
     int current = job.current();
     boolean waiting = job.state() == dev.izzy.factorycore.core.crafting.CraftingJob.State.WAITING;
+    var member = WorldNetworks.get(viewer.server).membership(terminal.origin());
+    var patterns =
+        member.status() == NetworkTopology.Status.VALID
+            ? WorldCrafting.get(viewer.server).index(member.scope())
+            : null;
     for (int index = 0; index < job.steps().size(); index++) {
       if (steps.size() == TerminalJobPackets.DETAIL_STEPS) break;
       var step = job.steps().get(index);
@@ -394,13 +400,57 @@ final class TerminalJobs {
                   : waiting
                       ? TerminalJobPackets.StepStatus.WAITING
                       : TerminalJobPackets.StepStatus.RUNNING;
+      var offer = patterns == null ? null : patterns.offer(step.pattern());
+      var dispatch = index == current ? job.dispatch() : null;
       steps.add(
           new TerminalJobPackets.StepRow(
-              entry(step.output(), ""), step.done(), step.crafts(), status));
+              entry(step.output(), ""),
+              step.done(),
+              step.crafts(),
+              status,
+              machine(offer, dispatch),
+              offer == null ? "" : offer.unit().label()));
     }
     boolean cancellable = job.principal().equals(viewer.getUUID()) || actor().operator();
     return new TerminalJobPackets.Detail(
         row, cancellable, steps, job.steps().size() - steps.size());
+  }
+
+  /**
+   * Q100: the block that runs a step: the dispatched machine for the step in progress, else the
+   * first machine beside the Crafter for a processing pattern, else the Crafter itself. "" when the
+   * pattern is gone or the block is not loaded (this never loads a chunk).
+   */
+  private String machine(
+      WorldCrafting.Offer offer, dev.izzy.factorycore.core.crafting.CraftingJob.Dispatch dispatch) {
+    if (dispatch != null) {
+      var block = blockAt(dispatch.target());
+      if (!block.isEmpty()) return block;
+    }
+    if (offer == null) return "";
+    var unit = offer.unit();
+    if (offer.processing() != null
+        && unit instanceof dev.izzy.factorycore.platform.crafting.CrafterEntity crafter)
+      for (var side : net.minecraft.core.Direction.values())
+        if (crafter.machineSide(side)) {
+          var block = blockAt(unit.getLevel(), unit.getBlockPos().relative(side));
+          if (!block.isEmpty()) return block;
+        }
+    return blockAt(unit.getLevel(), unit.getBlockPos());
+  }
+
+  private String blockAt(dev.izzy.factorycore.core.network.NodeRegistry.Position position) {
+    if (position == null) return "";
+    var level =
+        viewer.server.getLevel(
+            dev.izzy.factorycore.platform.Loaded.dimension(position.dimension()));
+    return level == null ? "" : blockAt(level, net.minecraft.core.BlockPos.of(position.block()));
+  }
+
+  private static String blockAt(
+      net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) {
+    if (level == null || dev.izzy.factorycore.platform.Loaded.chunk(level, pos) == null) return "";
+    return BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()).toString();
   }
 
   /** Sends the Jobs view when it differs from the last one sent. */
