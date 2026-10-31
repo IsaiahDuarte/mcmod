@@ -78,7 +78,10 @@ public final class BufferSettingsPackets {
       RETURN = 13,
       // B1 ghost slots: add the cursor item; cycle rule {@code selection}'s match (text: shown ID).
       CARRIED = 14,
-      CYCLE = 15;
+      CYCLE = 15,
+      // Q73: slot {@code selection}'s own Stock goal ({@code value}), or back to the general goal.
+      SLOT_GOAL = 16,
+      SLOT_DEFAULT = 17;
 
   /**
    * MODE and FILTER with {@code value} 0 cycle to the next choice; a value of n picks choice n - 1
@@ -107,7 +110,7 @@ public final class BufferSettingsPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > CYCLE
+          || action > SLOT_DEFAULT
           || selection < 0
           || selection > 35
           || value < 0
@@ -171,6 +174,7 @@ public final class BufferSettingsPackets {
       int rate,
       int target,
       List<FilterEdits.Rule> rules,
+      List<Integer> goals,
       List<Row> slots,
       Status status,
       boolean editable,
@@ -187,6 +191,7 @@ public final class BufferSettingsPackets {
 
     public View {
       rules = List.copyOf(rules);
+      goals = List.copyOf(goals);
       slots = List.copyOf(slots);
       Objects.requireNonNull(status);
       if (mode.length() > 16
@@ -196,6 +201,8 @@ public final class BufferSettingsPackets {
           || target < 0
           || target > BufferPolicy.MAX_TARGET
           || rules.size() > 16
+          || !goals.isEmpty() && goals.size() != rules.size()
+          || goals.stream().anyMatch(goal -> goal < -1 || goal > BufferPolicy.MAX_TARGET)
           || slots.size() > 9
           || staged < 0
           || moved < 0
@@ -220,6 +227,8 @@ public final class BufferSettingsPackets {
               b.writeVarInt(v.target);
               b.writeVarInt(v.rules.size());
               for (var rule : v.rules) FilterEdits.Rule.write(b, rule);
+              b.writeVarInt(v.goals.size());
+              for (int goal : v.goals) b.writeVarInt(goal + 1);
               b.writeVarInt(v.slots.size());
               for (var row : v.slots) {
                 b.writeVarInt(row.slot);
@@ -246,6 +255,10 @@ public final class BufferSettingsPackets {
               var rules = new ArrayList<FilterEdits.Rule>();
               for (int i = 0; i < size; i++) rules.add(FilterEdits.Rule.read(b));
               size = b.readVarInt();
+              if (size < 0 || size > 16) throw new IllegalArgumentException("Goal count");
+              var goals = new ArrayList<Integer>();
+              for (int i = 0; i < size; i++) goals.add(b.readVarInt() - 1);
+              size = b.readVarInt();
               if (size < 0 || size > 9) throw new IllegalArgumentException("Slot count");
               var rows = new ArrayList<Row>();
               for (int i = 0; i < size; i++)
@@ -259,6 +272,7 @@ public final class BufferSettingsPackets {
                   rate,
                   target,
                   rules,
+                  goals,
                   rows,
                   WireEnums.read(b, Status.class),
                   b.readBoolean(),
@@ -274,7 +288,7 @@ public final class BufferSettingsPackets {
   private BufferSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var r = event.registrar("4");
+    var r = event.registrar("5");
     MenuPayloads.toServer(
         r, Command.TYPE, Command.CODEC, BufferSettingsMenu.class, BufferSettingsMenu::command);
     MenuPayloads.toClient(

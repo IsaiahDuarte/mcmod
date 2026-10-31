@@ -361,12 +361,19 @@ final class TransferEndpoints {
       if (ownedReturn || deployment == null || deployment.mode() != BufferRegistry.Mode.STOCK)
         return amount;
       var tags = new PlatformFilterTags(server);
-      var filter = deployment.policy().filter();
+      var policy = deployment.policy();
+      var filter = policy.filter();
       if (!filter.matches(key, tags)) return amount;
+      // Q73: with slot goals, only what the key's own slot matches counts toward its goal.
+      int own = policy.perSlot() ? filter.firstMatch(key, tags) : -1;
       long resident = 0;
       for (var slot : owner.inventory().snapshot().slots())
-        if (slot.key() != null && filter.matches(slot.key(), tags)) resident += slot.count();
-      return Math.min(amount, Math.max(0, deployment.policy().target() - resident));
+        if (slot.key() != null
+            && (own < 0
+                ? filter.matches(slot.key(), tags)
+                : filter.firstMatch(slot.key(), tags) == own)) resident += slot.count();
+      int goal = own < 0 ? policy.target() : policy.goal(own);
+      return Math.min(amount, Math.max(0, goal - resident));
     }
 
     private boolean current() {

@@ -92,3 +92,17 @@ unverified; this extension does not finish A01 or P3.
 
 The placement Import default ([ADR 0014](0014-buffered-inventory.md)) uses the
 default ALL/64 policy, so it needs no buffers-v3 record and changes no encoding.
+
+## Per-slot Stock goals — 2026-10-31 (Q73)
+
+Stock may give each filter slot its own goal (0–576), so one buffer keeps, say,
+64 coal and 16 iron. A slot's goal counts only the resident items that slot
+matches first (`ResourceFilter.firstMatch`); a slot without one uses the policy
+goal. Goals apply in Stock mode with an allow list and are ignored otherwise.
+Insertion caps and pull planning use the same per-slot count, so a full slot
+never blocks a short one. A policy with slot goals encodes as policy-v3 (an
+int array `Slots`, −1 for "use the goal", sized to the terms) inside
+buffers-v5; policies without them keep their v2/v4 bytes. Table five accepts
+policy v2 or v3; tables one to four keep their strict pairing, so older readers
+quarantine rather than drop goals. Slot goals follow their slot through remove
+and clear in the draft, and a rate change keeps them.

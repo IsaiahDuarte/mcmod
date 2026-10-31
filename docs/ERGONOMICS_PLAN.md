@@ -983,7 +983,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   bays: empty, partial, near full (≥ 75%), full and offline lamps.
   Done when: a GameTest checks the tooltip data; screenshots of the bay states.
 
-- [ ] **Q73 — Stock per slot (M75).** Size M.
+- [x] **Q73 — Stock per slot (M75).** Size M. Done 2026-10-31 (commit subject `Q73:`),
+  [Evidence](evidence/ergonomics-q73-stock-per-slot-2026-10-31.md).
   Buffer Stock mode takes an amount per filter slot (click a slot to set it), so one Buffer
   stocks several items to different levels.
   Done when: GameTests stock 64 coal and 16 iron in one Buffer and survive a reload.

@@ -28,6 +28,8 @@ connector-scale-1.png
 connector-scale-4.png
 buffer-scale-1.png
 buffer-scale-4.png
+buffer-slot-goal-scale-1.png
+buffer-slot-goal-scale-4.png
 program-scale-1.png
 program-scale-4.png
 gateway-policy-scale-1.png

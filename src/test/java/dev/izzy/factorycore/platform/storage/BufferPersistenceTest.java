@@ -260,7 +260,7 @@ class BufferPersistenceTest {
       if (mode == 4) entry.putUUID("Segment", new UUID(0, 999));
       if (mode == 5) list.add(entry.copy());
       if (mode == 6) entry.putString("Mode", "FUTURE");
-      if (mode == 7) table.putInt("Schema", 5);
+      if (mode == 7) table.putInt("Schema", 6);
       if (mode == 8) entry.putInt("Revision", 2);
       var rejected = DeviceSavedData.load(invalid, registries);
       assertThrows(IllegalStateException.class, rejected::buffers);
@@ -355,7 +355,8 @@ class BufferPersistenceTest {
     assertEquals(deployed, restored.buffers().deployment(handle.id()));
     assertEquals(saved.buffers().snapshot(), restored.buffers().snapshot());
     var future = encoded.copy();
-    future.getCompound("Buffers").putInt("Schema", 5);
+    // Table five holds slot goals (Q73); six is still unknown.
+    future.getCompound("Buffers").putInt("Schema", 6);
     var rejected = DeviceSavedData.load(future, registries);
     assertFalse(rejected.diagnostic().isEmpty());
     assertEquals(future, rejected.save(new CompoundTag(), registries));

@@ -50,6 +50,66 @@ class BufferPolicyCodecTest {
   }
 
   @Test
+  void slotGoalsRoundTripAsSchemaThreeAndMustMatchTheSlots() {
+    var filter =
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.INCLUDE,
+            List.of(
+                new ResourceFilter.Registry("minecraft:coal"),
+                new ResourceFilter.Registry("minecraft:iron_ingot"),
+                new ResourceFilter.Tag("minecraft:logs")));
+    var policy = new BufferPolicy(filter, 64, 32, List.of(64, 16, BufferPolicy.DEFAULT_GOAL));
+    var tag = BufferPolicyCodec.encode(policy);
+    assertEquals(3, tag.getInt("Schema"));
+    assertArrayEquals(new int[] {64, 16, -1}, tag.getIntArray("Slots"));
+    assertEquals(policy, BufferPolicyCodec.decode(tag));
+    assertEquals(64, policy.goal(0));
+    assertEquals(16, policy.goal(1));
+    assertEquals(32, policy.goal(2), "A slot without its own goal uses the policy's");
+    assertTrue(policy.perSlot());
+    assertEquals(
+        policy.slotTargets(), policy.withRate(8).slotTargets(), "A rate change keeps them");
+    assertEquals(
+        List.of(),
+        new BufferPolicy(filter, 64, 32, List.of(-1, -1, -1)).slotTargets(),
+        "All slots on the policy's goal is no slot goals");
+    var wrongCount = tag.copy();
+    wrongCount.putIntArray("Slots", new int[] {64, 16});
+    assertThrows(IllegalArgumentException.class, () -> BufferPolicyCodec.decode(wrongCount));
+    var tooMany = tag.copy();
+    tooMany.putIntArray("Slots", new int[] {64, 577, -1});
+    assertThrows(IllegalArgumentException.class, () -> BufferPolicyCodec.decode(tooMany));
+    var missing = tag.copy();
+    missing.remove("Slots");
+    assertThrows(IllegalArgumentException.class, () -> BufferPolicyCodec.decode(missing));
+    // The buffer table carries it as table five next to a policy without slot goals.
+    UUID root = new UUID(0, 101), actor = new UUID(0, 9);
+    var withGoals =
+        new BufferRegistry.Deployment(
+            new UUID(0, 1), 3, 3, actor, root, root, BufferRegistry.Mode.STOCK, policy);
+    var plain =
+        new BufferRegistry.Deployment(
+            new UUID(0, 2),
+            3,
+            3,
+            actor,
+            root,
+            root,
+            BufferRegistry.Mode.STOCK,
+            new BufferPolicy(filter, 64, 32));
+    var table = BufferStateCodec.encode(List.of(), List.of(withGoals, plain));
+    assertEquals(5, table.getInt("Schema"));
+    assertEquals(List.of(withGoals, plain), BufferStateCodec.deployments(table));
+    var oldTable = table.copy();
+    oldTable.putInt("Schema", 4);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> BufferStateCodec.deployments(oldTable),
+        "A table four cannot hold slot goals");
+  }
+
+  @Test
   void bufferTableThreePreservesLegacyTwoAndActualCompressedPolicyRecovery() throws Exception {
     UUID id = new UUID(0, 601), actor = new UUID(0, 9), root = new UUID(0, 101);
     var state = ItemBuffer.empty(id);
@@ -113,7 +173,7 @@ class BufferPolicyCodecTest {
     for (int i = 0; i < 5; i++) {
       var bad = table.copy();
       var entry = bad.getList("Deployments", Tag.TAG_COMPOUND).getCompound(0);
-      if (i == 0) bad.putInt("Schema", 5);
+      if (i == 0) bad.putInt("Schema", 6);
       if (i == 1) entry.getCompound("Policy").putInt("Schema", 3);
       if (i == 2) entry.getCompound("Policy").putInt("Target", 577);
       if (i == 3) entry.getCompound("Policy").putLong("Target", 20);

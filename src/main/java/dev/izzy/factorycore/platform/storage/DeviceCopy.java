@@ -191,11 +191,7 @@ public final class DeviceCopy {
         var copied = BufferPolicyCodec.decode(copy.getCompound("Policy"));
         var policy = copied;
         if (!policy.fits(buffer.tier()))
-          policy =
-              new BufferPolicy(
-                  copied.filter(),
-                  Math.min(copied.rate(), buffer.tier().bufferRate()),
-                  copied.target());
+          policy = copied.withRate(Math.min(copied.rate(), buffer.tier().bufferRate()));
         try {
           buffer.configure(actor, BufferRegistry.Mode.valueOf(copy.getString("Mode")), policy);
         } catch (BufferedInterfaceEntity.PermissionDenied denied) {

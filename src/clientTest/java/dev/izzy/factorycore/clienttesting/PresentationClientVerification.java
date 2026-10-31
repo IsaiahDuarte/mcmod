@@ -364,6 +364,11 @@ public final class PresentationClientVerification {
   }
 
   /** Visits scales 1–4 with {@code screen} open; captures scales 1 and 4 (all four if asked). */
+  /** A Buffer's mode and policy, kept to put back after a capture changes them. */
+  private record PolicySwap(
+      dev.izzy.factorycore.core.storage.BufferRegistry.Mode mode,
+      dev.izzy.factorycore.core.storage.BufferPolicy policy) {}
+
   private void scales(String name, Class<? extends Screen> type, boolean captureAll) {
     for (int value = 1; value <= 4; value++) {
       int target = value;
@@ -2274,6 +2279,40 @@ public final class PresentationClientVerification {
         });
     use(base.east(3), Direction.SOUTH, false);
     scales("buffer", BufferSettingsScreen.class, false);
+    // Q73: Stock mode with goals on two slots: badges on the slots and the selected slot's box.
+    PolicySwap[] swap = {null};
+    server(
+        player -> {
+          var buffer =
+              (dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity)
+                  player.serverLevel().getBlockEntity(base.east(3));
+          var actor =
+              new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                  player.getUUID(), false);
+          var before =
+              dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
+                  .buffers()
+                  .deployment(buffer.handle().id());
+          swap[0] = new PolicySwap(before.mode(), before.policy());
+          buffer.configure(
+              actor,
+              dev.izzy.factorycore.core.storage.BufferRegistry.Mode.STOCK,
+              new dev.izzy.factorycore.core.storage.BufferPolicy(
+                  before.policy().filter(), 64, 32, List.of(64, -1, 16)));
+        });
+    use(base.east(3), Direction.SOUTH, false);
+    scales("buffer-slot-goal", BufferSettingsScreen.class, false);
+    server(
+        player -> {
+          var buffer =
+              (dev.izzy.factorycore.platform.storage.BufferedInterfaceEntity)
+                  player.serverLevel().getBlockEntity(base.east(3));
+          buffer.configure(
+              new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                  player.getUUID(), false),
+              swap[0].mode(),
+              swap[0].policy());
+        });
     // H6: the Importer and Exporter screens on the panel kit.
     use(base.east(8).north(), Direction.SOUTH, false);
     step(

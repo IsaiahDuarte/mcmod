@@ -109,8 +109,8 @@ class MenuStatusPacketsTest {
         BufferSettingsPackets.Status.class,
         status ->
             new BufferSettingsPackets.View(
-                1, SESSION, 2, "PAUSED", "ALL", 8, 16, List.of(), List.of(), status, true, false,
-                false, 0, 0, 0, false));
+                1, SESSION, 2, "PAUSED", "ALL", 8, 16, List.of(), List.of(), List.of(), status,
+                true, false, false, 0, 0, 0, false));
     var bay = new DrivePackets.Bay("", false, 0, 0, false, 0, "ALL", List.of());
     typed(
         DrivePackets.View.CODEC,

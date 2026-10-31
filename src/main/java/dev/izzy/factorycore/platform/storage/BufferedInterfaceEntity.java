@@ -352,7 +352,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
     return configure(
         actor,
         previous == null ? BufferRegistry.Mode.PAUSED : previous.mode(),
-        new BufferPolicy(policy.filter(), next.bufferRate(), policy.target()),
+        policy.withRate(next.bufferRate()),
         next);
   }
 
@@ -366,8 +366,7 @@ public final class BufferedInterfaceEntity extends BlockEntity
     return configure(
         actor,
         previous == null ? BufferRegistry.Mode.PAUSED : previous.mode(),
-        new BufferPolicy(
-            policy.filter(), Math.min(policy.rate(), next.bufferRate()), policy.target()),
+        policy.withRate(Math.min(policy.rate(), next.bufferRate())),
         next);
   }
 

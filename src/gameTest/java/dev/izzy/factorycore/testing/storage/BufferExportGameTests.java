@@ -517,4 +517,79 @@ public final class BufferExportGameTests {
                     "Reserved source stays owned; best-effort targets conserve all nineteen without overshoot"))
         .thenSucceed();
   }
+
+  /**
+   * Q73: one Buffer in Stock mode keeps coal at 64 and iron at 16 through per-slot goals, counting
+   * each against its own slot only. The goals survive a saved-data reload and refills top up only
+   * the slot that fell short.
+   */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void stockPerSlotKeepsSixtyFourCoalAndSixteenIronThroughAReload(
+      GameTestHelper helper) {
+    var f = setup(helper);
+    var coal =
+        new PlatformResourceCodec(helper.getLevel().registryAccess())
+            .itemKey(new ItemStack(Items.COAL));
+    var policy =
+        new BufferPolicy(
+            new ResourceFilter(
+                ResourceKind.ITEM,
+                ResourceFilter.Mode.INCLUDE,
+                List.of(
+                    new ResourceFilter.Registry(coal.registryId()),
+                    new ResourceFilter.Registry(f.iron.registryId()))),
+            64,
+            32,
+            List.of(64, 16));
+    long[] taken = {0};
+    Runnable stocked =
+        () ->
+            helper.assertTrue(
+                f.buffer.inventory().total(coal) == 64
+                    && f.buffer.inventory().total(f.iron) == 16
+                    && f.saved.registry().stock(f.cell, coal).total() == 200 - 64 - taken[0]
+                    && f.saved.registry().stock(f.cell, f.iron).total() == 100 - 16,
+                "64 coal and 16 iron: buffer coal="
+                    + f.buffer.inventory().total(coal)
+                    + " iron="
+                    + f.buffer.inventory().total(f.iron)
+                    + "; cell coal="
+                    + f.saved.registry().stock(f.cell, coal).total()
+                    + " iron="
+                    + f.saved.registry().stock(f.cell, f.iron).total());
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, coal, 200);
+              f.saved.registry().insert(f.cell, f.iron, 100);
+              f.buffer.configure(f.actor, BufferRegistry.Mode.STOCK, policy);
+            })
+        .thenWaitUntil(stocked)
+        .thenIdle(30)
+        .thenExecute(stocked)
+        .thenExecute(
+            () -> {
+              var registries = helper.getLevel().registryAccess();
+              var reloaded =
+                  DeviceSavedData.load(
+                      f.saved.save(new net.minecraft.nbt.CompoundTag(), registries), registries);
+              var restored = reloaded.buffers().deployment(f.buffer.handle().id()).policy();
+              helper.assertTrue(
+                  restored.equals(policy) && restored.goal(0) == 64 && restored.goal(1) == 16,
+                  "The slot goals survive a reload: " + restored);
+              // Take ten coal out; only the coal slot is short, and it refills from the cell.
+              for (int slot = 0; slot < 9 && taken[0] < 10; slot++)
+                if (f.buffer.capability().getStackInSlot(slot).is(Items.COAL))
+                  taken[0] +=
+                      f.buffer
+                          .capability()
+                          .extractItem(slot, (int) (10 - taken[0]), false)
+                          .getCount();
+              helper.assertTrue(taken[0] == 10, "Ten coal taken out");
+            })
+        .thenWaitUntil(stocked)
+        .thenSucceed();
+  }
 }

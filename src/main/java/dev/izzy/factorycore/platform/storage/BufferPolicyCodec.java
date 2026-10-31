@@ -6,7 +6,10 @@ import java.util.ArrayList;
 import java.util.Set;
 import net.minecraft.nbt.*;
 
-/** Nested policy v1; rejects unknown fields/types instead of silently broadening selectors. */
+/**
+ * Nested policy; rejects unknown fields/types instead of silently broadening selectors. Schema 1
+ * has no goal (64), 2 adds "Target", 3 (Q73) adds "Slots", one goal per filter term (−1: the goal).
+ */
 final class BufferPolicyCodec {
   private BufferPolicyCodec() {}
 
@@ -16,8 +19,11 @@ final class BufferPolicyCodec {
 
   static CompoundTag encode(BufferPolicy policy, boolean extended) {
     var tag = new CompoundTag();
-    tag.putInt("Schema", extended ? 2 : 1);
-    if (extended) tag.putInt("Target", policy.target());
+    boolean slots = !policy.slotTargets().isEmpty();
+    tag.putInt("Schema", slots ? 3 : extended ? 2 : 1);
+    if (extended || slots) tag.putInt("Target", policy.target());
+    if (slots)
+      tag.putIntArray("Slots", policy.slotTargets().stream().mapToInt(Integer::intValue).toArray());
     tag.putInt("Rate", policy.rate());
     tag.putString("Mode", policy.filter().mode().name());
     var terms = new ListTag();
@@ -41,19 +47,25 @@ final class BufferPolicyCodec {
   }
 
   static BufferPolicy decode(CompoundTag tag) {
+    int schema = tag.getInt("Schema");
     Nbt.fields(
         tag,
-        tag.getInt("Schema") == 2
-            ? Set.of("Schema", "Rate", "Mode", "Terms", "Target")
-            : Set.of("Schema", "Rate", "Mode", "Terms"));
+        switch (schema) {
+          case 3 -> Set.of("Schema", "Rate", "Mode", "Terms", "Target", "Slots");
+          case 2 -> Set.of("Schema", "Rate", "Mode", "Terms", "Target");
+          default -> Set.of("Schema", "Rate", "Mode", "Terms");
+        });
     if (!tag.contains("Schema", Tag.TAG_INT)
-        || (tag.getInt("Schema") != 1 && tag.getInt("Schema") != 2)
+        || schema < 1
+        || schema > 3
         || !tag.contains("Rate", Tag.TAG_INT)
         || !tag.contains("Mode", Tag.TAG_STRING)
         || !tag.contains("Terms", Tag.TAG_LIST))
       throw new IllegalArgumentException("Unsupported buffer policy");
-    if (tag.getInt("Schema") == 2 && !tag.contains("Target", Tag.TAG_INT))
+    if (schema >= 2 && !tag.contains("Target", Tag.TAG_INT))
       throw new IllegalArgumentException("Missing stock target");
+    if (schema == 3 && !tag.contains("Slots", Tag.TAG_INT_ARRAY))
+      throw new IllegalArgumentException("Missing slot goals");
     var terms = tag.getList("Terms", Tag.TAG_COMPOUND);
     if (terms.size() != ((ListTag) tag.get("Terms")).size()
         || terms.size() > ResourceFilter.MAX_TERMS)
@@ -84,6 +96,9 @@ final class BufferPolicyCodec {
         new ResourceFilter(
             ResourceKind.ITEM, ResourceFilter.Mode.valueOf(tag.getString("Mode")), result),
         tag.getInt("Rate"),
-        tag.getInt("Schema") == 2 ? tag.getInt("Target") : 64);
+        schema >= 2 ? tag.getInt("Target") : 64,
+        schema == 3
+            ? java.util.Arrays.stream(tag.getIntArray("Slots")).boxed().toList()
+            : java.util.List.of());
   }
 }

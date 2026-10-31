@@ -349,13 +349,43 @@ public final class WorldBufferImports {
   }
 
   private long room(Entry entry, BufferRegistry.Deployment deployment) {
-    if (deployment.mode() != BufferRegistry.Mode.STOCK) return deployment.policy().rate();
-    long resident = 0;
-    for (var slot : entry.owner.inventory().snapshot().slots())
-      if (slot.key() != null && matches(deployment, slot.key())) resident += slot.count();
-    return new StockTarget(
-            ResourceKind.ITEM, deployment.policy().target(), deployment.policy().rate())
-        .missing(resident, 0);
+    return room(entry, deployment, null);
+  }
+
+  /**
+   * How much Stock mode may still bring in: for {@code key}, or for anything when null. Q73: with
+   * slot goals each slot counts only what it matches first, and the room for a key is its slot's.
+   */
+  private long room(Entry entry, BufferRegistry.Deployment deployment, ResourceKey key) {
+    var policy = deployment.policy();
+    if (deployment.mode() != BufferRegistry.Mode.STOCK) return policy.rate();
+    if (!policy.perSlot()) {
+      long resident = 0;
+      for (var slot : entry.owner.inventory().snapshot().slots())
+        if (slot.key() != null && matches(deployment, slot.key())) resident += slot.count();
+      return new StockTarget(ResourceKind.ITEM, policy.target(), policy.rate())
+          .missing(resident, 0);
+    }
+    var tags = new PlatformFilterTags(server);
+    var filter = policy.filter();
+    var resident = new long[filter.terms().size()];
+    for (var slot : entry.owner.inventory().snapshot().slots()) {
+      int own = slot.key() == null ? -1 : filter.firstMatch(slot.key(), tags);
+      if (own >= 0) resident[own] += slot.count();
+    }
+    if (key != null) {
+      int own = filter.firstMatch(key, tags);
+      return own < 0
+          ? 0
+          : new StockTarget(ResourceKind.ITEM, policy.goal(own), policy.rate())
+              .missing(resident[own], 0);
+    }
+    long missing = 0;
+    for (int slot = 0; slot < resident.length; slot++)
+      missing +=
+          new StockTarget(ResourceKind.ITEM, policy.goal(slot), policy.rate())
+              .missing(resident[slot], 0);
+    return Math.min(missing, policy.rate());
   }
 
   private boolean cursor(Entry entry, WorldStorageCatalog.Cursor next) {
@@ -431,8 +461,10 @@ public final class WorldBufferImports {
                         || entry.owner.inventory().simulateInsert(row.key(), 1) == 0) continue;
                     entry.pick = (index + 1) % rows.size();
                     var request = UUID.randomUUID();
-                    long amount = room(entry, deployment);
+                    long amount = room(entry, deployment, row.key());
                     if (amount == 0) {
+                      // Q73: this key's slot is stocked; another slot may still need some.
+                      if (deployment.policy().perSlot()) continue;
                       retry(entry, OperationResult.Reason.OK);
                       return;
                     }
@@ -458,7 +490,7 @@ public final class WorldBufferImports {
                                         && matches(deployment, row.key()),
                                 () ->
                                     saved.transfers().unresolved(entry.backing) == null
-                                        && room(entry, deployment) >= amount);
+                                        && room(entry, deployment, row.key()) >= amount);
                     if (page.next() == null) entry.pages = 0;
                     admitted(entry, move);
                     return;

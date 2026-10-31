@@ -15,7 +15,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 
-/** Canonical owned slots and optional schema-two deployments; physical references own no stock. */
+/**
+ * Canonical owned slots and optional deployments; physical references own no stock. Table schema 2
+ * adds deployments, 3 their policies (policy schema 1), 4 Export/Stock and goals (policy 2), and 5
+ * (Q73) per-slot Stock goals (policy 2 or 3).
+ */
 final class BufferStateCodec {
   private BufferStateCodec() {}
 
@@ -57,7 +61,9 @@ final class BufferStateCodec {
                       d.mode() == BufferRegistry.Mode.EXPORT
                           || d.mode() == BufferRegistry.Mode.STOCK
                           || d.policy().target() != 64);
-      root.putInt("Schema", extended ? 4 : policies ? 3 : 2);
+      boolean slotGoals = deployments.stream().anyMatch(d -> !d.policy().slotTargets().isEmpty());
+      root.putInt("Schema", slotGoals ? 5 : extended ? 4 : policies ? 3 : 2);
+      extended |= slotGoals;
       var encoded = new ListTag();
       for (var deployment : deployments) {
         var entry = new CompoundTag();
@@ -84,7 +90,7 @@ final class BufferStateCodec {
             ? Set.of("Schema", "Buffers", "Deployments")
             : Set.of("Schema", "Buffers"));
     if (!root.contains("Schema", Tag.TAG_INT)
-        || (root.getInt("Schema") < 1 || root.getInt("Schema") > 4)
+        || (root.getInt("Schema") < 1 || root.getInt("Schema") > 5)
         || !root.contains("Buffers", Tag.TAG_LIST))
       throw new IllegalArgumentException("Unsupported buffer schema");
     var records = root.getList("Buffers", Tag.TAG_COMPOUND);
@@ -139,7 +145,7 @@ final class BufferStateCodec {
 
   static List<BufferRegistry.Deployment> deployments(CompoundTag root) {
     if (root.getInt("Schema") == 1) return List.of();
-    if ((root.getInt("Schema") < 2 || root.getInt("Schema") > 4)
+    if ((root.getInt("Schema") < 2 || root.getInt("Schema") > 5)
         || !root.contains("Deployments", Tag.TAG_LIST))
       throw new IllegalArgumentException("Unsupported buffer deployments");
     var entries = root.getList("Deployments", Tag.TAG_COMPOUND);
@@ -184,7 +190,8 @@ final class BufferStateCodec {
         if (!entry.contains("Policy", Tag.TAG_COMPOUND))
           throw new IllegalArgumentException("Missing buffer policy");
         var encodedPolicy = entry.getCompound("Policy");
-        if (encodedPolicy.getInt("Schema") != (root.getInt("Schema") == 4 ? 2 : 1))
+        int table = root.getInt("Schema"), version = encodedPolicy.getInt("Schema");
+        if (table == 5 ? version != 2 && version != 3 : version != (table == 4 ? 2 : 1))
           throw new IllegalArgumentException("Policy/table version mismatch");
         policy = BufferPolicyCodec.decode(encodedPolicy);
       }

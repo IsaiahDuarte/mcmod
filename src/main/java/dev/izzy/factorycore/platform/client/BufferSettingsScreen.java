@@ -53,7 +53,9 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
           PanelLayout.WIDE, PanelLayout.heightFor(MESSAGE_Y + PanelLayout.LINE - PanelLayout.BODY));
 
   private Button redstone;
-  private EditBox id, rate, target;
+  private EditBox id, rate, target, slotGoal;
+  private Button setSlotGoal;
+  private int shownGoalRule = -1;
   private Button apply, reset, addId, addTag, setRate, setTarget, clear, addById, sampleButton;
   private Button takeOne, takeStack, returning;
   private ChoiceButton settingsView, inventoryView;
@@ -218,6 +220,37 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
 
     // The selected slot's rule, or the typed-ID row while "Add by ID" is open.
     describeRow = rows.row(3 * PanelLayout.LINE);
+    // Q73: in Stock mode with an allow list, the selected slot's own goal at the row's right.
+    var goalSet = Component.translatable("gui.factorycore.buffer.set");
+    int goalSetWidth = font.width(goalSet) + 10;
+    var goalCell =
+        new Rect(
+            describeRow.right() - goalSetWidth - 2 - 30,
+            describeRow.y(),
+            30 + 2 + goalSetWidth,
+            PanelLayout.ROW);
+    slotGoal =
+        settings(
+            addRenderableWidget(
+                new EditBox(
+                    font,
+                    leftPos + goalCell.x() + 1,
+                    topPos + goalCell.y() + 1,
+                    28,
+                    16,
+                    Component.translatable("gui.factorycore.buffer.slot_goal"))));
+    slotGoal.setMaxLength(3);
+    slotGoal.setTooltip(
+        Tooltip.create(
+            Component.translatable(
+                "gui.factorycore.buffer.slot_goal.help", BufferPolicy.MAX_TARGET)));
+    setSlotGoal =
+        settings(
+            button(
+                new Rect(
+                    goalCell.right() - goalSetWidth, goalCell.y(), goalSetWidth, PanelLayout.ROW),
+                "set",
+                this::slotGoal));
     var idCells =
         PanelLayout.fit(
             new Rect(describeRow.x(), describeRow.y(), describeRow.width(), PanelLayout.ROW),
@@ -412,6 +445,38 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     }
   }
 
+  /** Q73: the selected slot's goal; an empty box puts the slot back on the general goal. */
+  private void slotGoal() {
+    if (slotGoal.getValue().isBlank()) {
+      send(BufferSettingsPackets.SLOT_DEFAULT, selectedRule, 0, "", new byte[32]);
+      return;
+    }
+    try {
+      int value = Integer.parseInt(slotGoal.getValue().strip());
+      if (value < 0 || value > BufferPolicy.MAX_TARGET) throw new NumberFormatException();
+      send(BufferSettingsPackets.SLOT_GOAL, selectedRule, value, "", new byte[32]);
+    } catch (NumberFormatException invalid) {
+      minecraft.player.displayClientMessage(
+          Component.translatable("gui.factorycore.buffer.status.invalid"), true);
+    }
+  }
+
+  /** True when the selected slot can have its own goal: Stock mode, an allow list, a slot. */
+  private boolean slotGoals() {
+    var view = menu.view();
+    return !menu.inventoryTab()
+        && !typing
+        && "STOCK".equals(view.mode())
+        && "INCLUDE".equals(view.filter())
+        && selectedRule < view.rules().size();
+  }
+
+  /** The selected slot's own goal, or −1 when it uses the general goal. */
+  private int ownGoal(int rule) {
+    var goals = menu.view().goals();
+    return rule < goals.size() ? goals.get(rule) : BufferPolicy.DEFAULT_GOAL;
+  }
+
   private void send(int action, int selection, int value, String text, byte[] fingerprint) {
     PacketDistributor.sendToServer(
         new BufferSettingsPackets.Command(
@@ -466,6 +531,14 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     takeOne.active = inventory && !view.busy() && selected;
     takeStack.active = takeOne.active;
     returning.active = inventory && !view.busy() && view.staged() > 0 && !view.uncertain();
+    slotGoal.visible = setSlotGoal.visible = slotGoals();
+    if (shown != view.revision() || shownGoalRule != selectedRule) {
+      if (!slotGoal.isFocused()) {
+        int own = ownGoal(selectedRule);
+        slotGoal.setValue(own == BufferPolicy.DEFAULT_GOAL ? "" : Integer.toString(own));
+      }
+      shownGoalRule = selectedRule;
+    }
     if (shown != view.revision()) {
       if (!rate.isFocused()) rate.setValue(Integer.toString(view.rate()));
       if (!target.isFocused()) target.setValue(Integer.toString(view.target()));
@@ -543,7 +616,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
             halves.get(i).y() + 5,
             Panels.TEXT,
             false);
-      // B1: the selected slot's rule, under the ghost slots.
+      // B1: the selected slot's rule, under the ghost slots (beside the slot goal, Q73).
       if (!typing && selectedRule < view.rules().size())
         FilterSlots.describe(
             graphics,
@@ -551,7 +624,29 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
             view.rules().get(selectedRule),
             describeRow.x(),
             describeRow.y(),
-            describeRow.width());
+            slotGoals()
+                ? slotGoal.getX() - leftPos - PanelLayout.GAP - describeRow.x()
+                : describeRow.width());
+      // Q73: each slot's own goal, where an item's count goes.
+      if ("STOCK".equals(view.mode()) && "INCLUDE".equals(view.filter())) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 200);
+        for (int rule = 0; rule < view.rules().size(); rule++) {
+          int own = ownGoal(rule);
+          if (own == BufferPolicy.DEFAULT_GOAL) continue;
+          var text = Integer.toString(own);
+          int x = filterSlots.getX() - leftPos + (rule % FilterSlots.COLUMNS) * PanelLayout.SLOT;
+          int y = filterSlots.getY() - topPos + (rule / FilterSlots.COLUMNS) * PanelLayout.SLOT;
+          graphics.drawString(
+              font,
+              text,
+              x + PanelLayout.SLOT - 1 - font.width(text),
+              y + PanelLayout.SLOT - 9,
+              0xFFFFFFFF,
+              true);
+        }
+        graphics.pose().popPose();
+      }
     }
     Component message;
     int color = Panels.WARN;
@@ -649,6 +744,10 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
       }
       if (target.isFocused()) {
         number(target, BufferSettingsPackets.TARGET);
+        return true;
+      }
+      if (slotGoal.isFocused()) {
+        slotGoal();
         return true;
       }
       if (id.isFocused()) {

@@ -317,6 +317,8 @@
   "gui.factorycore.buffer.reset.help": "Discard your changes and reload the saved settings.",
   "gui.factorycore.buffer.rate.help": "Network items per tick in each direction. Tier caps: base %s, Throughput %s, Overdrive %s.",
   "gui.factorycore.buffer.target.help": "Stock goal: matching items physically resident, from 0 to %s.",
+  "gui.factorycore.buffer.slot_goal": "Slot goal",
+  "gui.factorycore.buffer.slot_goal.help": "Stock this slot to its own amount (0–%s), counting only what it matches. Leave empty to use the Goal above.",
   "gui.factorycore.buffer.set.help": "Use the number you typed.",
   "gui.factorycore.buffer.id.help": "Add a registry ID such as minecraft:iron_ingot.",
   "gui.factorycore.buffer.tag.help": "Add a current item tag such as #minecraft:logs.",

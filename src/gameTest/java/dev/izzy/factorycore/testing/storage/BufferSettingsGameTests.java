@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.storage.BufferSettingsPackets;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.*;
@@ -477,6 +478,54 @@ public final class BufferSettingsGameTests {
                   saved.mode() == BufferRegistry.Mode.PAUSED
                       && saved.policy().filter().mode() == ResourceFilter.Mode.EXCLUDE,
                   "Apply saves the picked choices");
+              end(f);
+            })
+        .thenSucceed();
+  }
+
+  /** Q73: a slot's own goal is set and cleared from the screen and follows its slot. */
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void slotGoalsFollowTheirSlotsThroughEdits(GameTestHelper helper) {
+    var f = setup(helper);
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> helper.assertTrue(f.buffer.canUse(f.player), "Wired owner ready"))
+        .thenExecute(() -> open(helper, f))
+        .thenIdle(3)
+        .thenExecute(
+            () -> command(f, BufferSettingsPackets.REGISTRY, 0, 0, "minecraft:coal", new byte[32]))
+        .thenIdle(3)
+        .thenExecute(
+            () ->
+                command(
+                    f, BufferSettingsPackets.REGISTRY, 0, 0, "minecraft:iron_ingot", new byte[32]))
+        .thenIdle(3)
+        .thenExecute(() -> command(f, BufferSettingsPackets.SLOT_GOAL, 1, 16, "", new byte[32]))
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              menu(f).broadcastChanges();
+              helper.assertTrue(
+                  menu(f).view().goals().equals(List.of(-1, 16)),
+                  "Iron gets its own goal: " + menu(f).view().goals());
+              command(f, BufferSettingsPackets.REMOVE, 0, 0, "", new byte[32]);
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              menu(f).broadcastChanges();
+              helper.assertTrue(
+                  menu(f).view().goals().equals(List.of(16)),
+                  "Removing coal moves iron's goal with it: " + menu(f).view().goals());
+              command(f, BufferSettingsPackets.SLOT_DEFAULT, 0, 0, "", new byte[32]);
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              menu(f).broadcastChanges();
+              helper.assertTrue(
+                  menu(f).view().goals().isEmpty(),
+                  "Back on the general goal: " + menu(f).view().goals());
               end(f);
             })
         .thenSucceed();

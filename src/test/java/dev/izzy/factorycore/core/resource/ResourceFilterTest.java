@@ -201,4 +201,25 @@ class ResourceFilterTest {
         "Except needs something to remove");
     org.junit.jupiter.api.Assertions.assertTrue(ResourceFilter.programOnly(ingots));
   }
+
+  @Test
+  void firstMatchNamesTheFirstSlotAResourceMatchesIgnoringTheMode() {
+    var logs = new ResourceKey(ResourceKind.ITEM, "minecraft:oak_log", new byte[0]);
+    var stone = new ResourceKey(ResourceKind.ITEM, "minecraft:stone", new byte[0]);
+    ResourceFilter.Tags tags = (kind, tag, key) -> tag.equals("minecraft:logs") && key.equals(logs);
+    var filter =
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.EXCLUDE,
+            java.util.List.of(
+                new ResourceFilter.Registry("minecraft:coal"),
+                new ResourceFilter.Tag("minecraft:logs"),
+                new ResourceFilter.Registry("minecraft:oak_log")));
+    org.junit.jupiter.api.Assertions.assertEquals(1, filter.firstMatch(logs, tags));
+    org.junit.jupiter.api.Assertions.assertEquals(-1, filter.firstMatch(stone, tags));
+    org.junit.jupiter.api.Assertions.assertEquals(
+        -1,
+        filter.firstMatch(
+            new ResourceKey(ResourceKind.FLUID, "minecraft:water", new byte[0]), tags));
+  }
 }

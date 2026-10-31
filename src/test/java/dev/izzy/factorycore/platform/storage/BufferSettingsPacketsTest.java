@@ -83,6 +83,7 @@ class BufferSettingsPacketsTest {
                     FilterEdits.EXACT,
                     "minecraft:iron_ingot",
                     "= minecraft:iron_ingot · Exact sample")),
+            List.of(64, -1),
             List.of(new BufferSettingsPackets.Row(0, "minecraft:iron_ingot", "Exact sample", 64)),
             BufferSettingsPackets.Status.DRAFT,
             true,
@@ -110,7 +111,7 @@ class BufferSettingsPacketsTest {
         IllegalArgumentException.class,
         () ->
             new BufferSettingsPackets.Command(
-                1, session, 1, BufferSettingsPackets.CYCLE + 1, 0, 1, "", new byte[32]));
+                1, session, 1, BufferSettingsPackets.SLOT_DEFAULT + 1, 0, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new BufferSettingsPackets.Command(1, session, 1, 4, 36, 1, "", new byte[32]));
@@ -134,6 +135,7 @@ class BufferSettingsPacketsTest {
                 64,
                 64,
                 Collections.nCopies(17, new FilterEdits.Rule(FilterEdits.ITEM, "a", "rule")),
+                List.of(),
                 List.of(),
                 BufferSettingsPackets.Status.READY,
                 true,

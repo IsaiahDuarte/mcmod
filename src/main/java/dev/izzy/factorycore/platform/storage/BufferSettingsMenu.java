@@ -110,8 +110,8 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
     if (holder != null) reset();
     view =
         new BufferSettingsPackets.View(
-            id, nonce, revision, "PAUSED", "ALL", 64, 64, List.of(), List.of(), status, false,
-            false, false, 0, 0, 0, false);
+            id, nonce, revision, "PAUSED", "ALL", 64, 64, List.of(), List.of(), List.of(), status,
+            false, false, false, 0, 0, 0, false);
     deviceStatus = DeviceStatus.View.pending(id, nonce);
   }
 
@@ -321,6 +321,13 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
     requested = 0;
     try {
       var terms = new ArrayList<>(draft.filter().terms());
+      // Q73: one goal per slot, kept in step with the slots through every edit below.
+      var goals = new ArrayList<Integer>();
+      for (int slot = 0; slot < terms.size(); slot++)
+        goals.add(
+            draft.slotTargets().isEmpty()
+                ? BufferPolicy.DEFAULT_GOAL
+                : draft.slotTargets().get(slot));
       var filterMode = draft.filter().mode();
       int rate = draft.rate(), target = draft.target();
       switch (packet.action()) {
@@ -351,6 +358,14 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
           rate = packet.value();
         }
         case BufferSettingsPackets.TARGET -> target = packet.value();
+        case BufferSettingsPackets.SLOT_GOAL, BufferSettingsPackets.SLOT_DEFAULT -> {
+          if (packet.selection() >= terms.size()) return;
+          goals.set(
+              packet.selection(),
+              packet.action() == BufferSettingsPackets.SLOT_GOAL
+                  ? packet.value()
+                  : BufferPolicy.DEFAULT_GOAL);
+        }
         case BufferSettingsPackets.REGISTRY -> {
           terms.add(new ResourceFilter.Registry(packet.text()));
           if (filterMode == ResourceFilter.Mode.ALL) filterMode = ResourceFilter.Mode.INCLUDE;
@@ -375,6 +390,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
         case BufferSettingsPackets.REMOVE -> {
           if (packet.selection() >= terms.size()) return;
           terms.remove(packet.selection());
+          goals.remove(packet.selection());
         }
         case BufferSettingsPackets.CARRIED -> {
           var term = FilterEdits.carried(ResourceKind.ITEM, getCarried());
@@ -416,8 +432,12 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
         }
         default -> throw new IllegalArgumentException("Action");
       }
+      // Added slots start on the general goal; cleared ones drop theirs.
+      while (goals.size() < terms.size()) goals.add(BufferPolicy.DEFAULT_GOAL);
+      if (goals.size() > terms.size()) goals.subList(terms.size(), goals.size()).clear();
       draft =
-          new BufferPolicy(new ResourceFilter(ResourceKind.ITEM, filterMode, terms), rate, target);
+          new BufferPolicy(
+              new ResourceFilter(ResourceKind.ITEM, filterMode, terms), rate, target, goals);
       dirty = true;
       revision++;
       status = BufferSettingsPackets.Status.DRAFT;
@@ -587,6 +607,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
             draft.rate(),
             draft.target(),
             rules,
+            draft.slotTargets(),
             rows,
             displayStatus,
             editable(),

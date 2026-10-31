@@ -314,7 +314,11 @@ The **Settings** tab controls what the network does with the buffer:
 - **Mode** cycles Paused, Import, Export and Stock:
   - Import moves buffered items into storage.
   - Export pulls matching items from storage into the buffer.
-  - Stock keeps the buffer filled to the **Goal**.
+  - Stock keeps the buffer filled to the **Goal**. With **Only these**, each
+    filter slot can have its own goal: select the slot, type an amount in the
+    box beside its description and press **Set** (or Enter). The slot shows its
+    goal in the corner and counts only what it matches, so one buffer can keep
+    64 coal and 16 iron. Empty the box and **Set** to go back to the Goal.
 - **Filter slots:** click a slot while holding an item to add it, drag an item
   from JEI, or use **Sample**. Click a filled slot to change how it matches:
   the item (any components), **=** that exact item, or **#** each of its tags.

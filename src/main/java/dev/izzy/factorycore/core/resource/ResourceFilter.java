@@ -181,6 +181,19 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
   }
 
   /**
+   * Q73: the index of the first term {@code candidate} matches, ignoring the mode, or −1 (also for
+   * another kind). At most sixteen probes.
+   */
+  public int firstMatch(ResourceKey candidate, Tags tags) {
+    Objects.requireNonNull(candidate);
+    Objects.requireNonNull(tags);
+    if (candidate.kind() != kind) return -1;
+    for (int index = 0; index < terms.size(); index++)
+      if (term(terms.get(index), candidate, tags)) return index;
+    return -1;
+  }
+
+  /**
    * At most sixteen probes. Empty INCLUDE matches nothing; empty EXCLUDE matches all of its kind.
    */
   public boolean matches(ResourceKey candidate, Tags tags) {
