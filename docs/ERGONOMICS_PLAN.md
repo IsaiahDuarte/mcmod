@@ -1211,7 +1211,10 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   ("Operator resolves"). Done when: the Wrench tests move back to the default batches, and five
   full runs pass.
 
-- [ ] **Q101 — Device and storage nits (M119–M124, M126, M141).** Size M. Lane D.
+- [x] **Q101 — Device and storage nits (M119–M124, M126, M141).** Size M. Lane D. Done 2026-10-31
+  (commit subjects `Q101:`), [Evidence](evidence/ergonomics-q101-device-storage-nits-2026-10-31.md).
+  M120 and M124 were confirmed bugs (each test fails without its fix). M141 was already met. The
+  optional "spread evenly" setting (M122) moved to Q117.
   Drives expose cell slots to hoppers (insert into an empty bay, extract whole cells; through
   the same ownership path as the screen). **Check M120 first:** if a cell accepts a filled
   shulker box or another cell, refuse it and add a regression test. Sneak-use on an empty cell
@@ -1220,6 +1223,35 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   with distance (balance change; record it in ADR 0039). F3+H shows a cell's handle ID.
   Done when: GameTests for hopper cell moves, the nesting refusal (or evidence that it is
   already refused), cell disassembly and foreign insertion.
+
+- [ ] **Q117 — Spread a cell evenly (from Q101, M122).** Size S. Lane D. An optional per-cell
+  setting: a partitioned cell splits its capacity evenly across its listed types, so one type
+  cannot fill it. Store it with the partition (cell metadata schema bump with migration), show it
+  in the Drive screen's partition panel, and enforce it in the ledger's insert limit.
+  Done when: a GameTest fills a two-type partitioned cell with one type and sees it stop at half,
+  and the setting survives removal, reinstall and reload.
+
+- [ ] **Q118 — Open screens survive a network rebuild (bug found 2026-10-31).** Size M. Lane D.
+  **Confirmed bug:** placing one cable on a running network closes every open Storage Terminal on
+  it, for every player. A probe GameTest (open a terminal, place a cable next to the drive, poll
+  for 40 ticks) failed with "placing a cable closed the open terminal". Cause: `TerminalMenu`
+  closes as soon as `authorized()` is false, and `WorldNetworks.authorize` returns INVALID_SCOPE
+  while the region is REBUILDING. This also explains the intermittent "Terminal closed" GameTest
+  failures (for example `fullInventoryRefusesBeforeConsumingAnything`).
+  **Tried and reverted:** keeping the menu open for up to 100 ticks while REBUILDING (a physical
+  `TerminalAccess.present` check, with actions still gated on `authorized()`). The open terminal
+  then survived, but commands sent during the rebuild were dropped silently, and two other terminal
+  GameTests failed in 3 of 4 runs.
+  **Do:**
+  - Keep the screen open through a bounded rebuild, with the physical checks still applied.
+  - Show a "Network rebuilding…" status.
+  - Refuse commands during the rebuild with a visible status, rather than dropping them.
+  - Make the `TestMenus` settle helpers and one-shot command tests wait for READY.
+  - Check the other device screens (Drive, Buffer, Interface, Crafter) for the same close-on-rebuild
+    behaviour.
+  Done when: a GameTest places a cable while a terminal is open and the terminal stays open and is
+  READY afterwards; a command sent mid-rebuild is refused visibly; the full GameTest suite passes
+  five consecutive runs.
 
 - [ ] **Q102 — Label and program nits (M128–M136).** Size S. Lanes L and S.
   The Label Tool's name shows its label; row labelling includes diagonals (with Q9); clicking a
