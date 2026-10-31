@@ -160,7 +160,9 @@ public final class PresentationClientVerification {
       throw new IllegalStateException(
           "Presentation stage timeout: "
               + index
-              + " screen="
+              + " ("
+              + (index < origins.size() ? origins.get(index) : "?")
+              + ") screen="
               + (client.screen == null ? "none" : client.screen.getClass().getName())
               + (client.screen instanceof TerminalScreen screen
                   ? " jobs offset="
@@ -195,7 +197,19 @@ public final class PresentationClientVerification {
 
   private void step(Step step) {
     steps.add(step);
+    // Where the step was added (outside the step helpers), so a timeout names its source line.
+    for (var frame : new Throwable().getStackTrace())
+      if (!frame.getMethodName().equals("step")
+          && !frame.getMethodName().equals("server")
+          && !frame.getMethodName().equals("serverUntil")
+          && !frame.getMethodName().equals("use")) {
+        origins.add(frame.getMethodName() + ":" + frame.getLineNumber());
+        return;
+      }
+    origins.add("?");
   }
+
+  private final List<String> origins = new java.util.ArrayList<>();
 
   /** Runs {@code action} on the server thread once; the step completes when it has run. */
   private void server(Consumer<ServerPlayer> action) {
@@ -368,6 +382,101 @@ public final class PresentationClientVerification {
   private record PolicySwap(
       dev.izzy.factorycore.core.storage.BufferRegistry.Mode mode,
       dev.izzy.factorycore.core.storage.BufferPolicy policy) {}
+
+  /**
+   * Q50: the Importer screen's <b>?</b> button opens the Importer's guide page and closing the
+   * guide returns to the Importer screen; then, in the inventory, the guide key (G) over an
+   * Importer item opens the same page.
+   */
+  private void guideFromImporter(BlockPos importerAt) {
+    int importerPage =
+        dev.izzy.factorycore.platform.guide.GuideContent.pageFor("factorycore:importer");
+    step(client -> waited() > 4 && press(client, "?"));
+    step(
+        client -> {
+          if (!(client.screen instanceof dev.izzy.factorycore.platform.client.GuideScreen guide)
+              || waited() < 4) return false;
+          check(guide.page() == importerPage, "? opens the Importer page: " + guide.page());
+          captures.grab(client, "guide-from-importer-scale-2.png");
+          evidence.append("guide from importer button: page ").append(guide.page()).append('\n');
+          guide.onClose();
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 2) return false;
+          check(client.screen instanceof PortScreen, "Closing the guide returns to the Importer");
+          client.screen.onClose();
+          return true;
+        });
+    // Survival, so the inventory key opens the plain inventory (creative opens its own tabs).
+    server(
+        player -> {
+          player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+          player
+              .getInventory()
+              .setItem(
+                  9,
+                  new ItemStack(
+                      net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                          net.minecraft.resources.ResourceLocation.parse("factorycore:importer"))));
+        });
+    step(
+        client -> {
+          if (waited() < 4) return false;
+          client.setScreen(
+              new net.minecraft.client.gui.screens.inventory.InventoryScreen(client.player));
+          return true;
+        });
+    step(
+        client -> {
+          if (!(client.screen
+                  instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen inventory)
+              || waited() < 4) return false;
+          net.minecraft.world.inventory.Slot importer = null;
+          for (var slot : inventory.getMenu().slots)
+            if (slot.getItem().getItem().toString().contains("importer")) importer = slot;
+          check(importer != null, "The Importer item is in the inventory");
+          try {
+            var hovered =
+                net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class
+                    .getDeclaredField("hoveredSlot");
+            hovered.setAccessible(true);
+            hovered.set(inventory, importer);
+          } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException(failure);
+          }
+          net.neoforged.neoforge.client.ClientHooks.onScreenKeyPressedPre(
+              inventory, org.lwjgl.glfw.GLFW.GLFW_KEY_G, 0, 0);
+          return true;
+        });
+    step(
+        client -> {
+          if (!(client.screen instanceof dev.izzy.factorycore.platform.client.GuideScreen guide)
+              || waited() < 4) return false;
+          check(guide.page() == importerPage, "G over an Importer opens its page: " + guide.page());
+          evidence.append("guide from hovered importer: page ").append(guide.page()).append('\n');
+          guide.onClose();
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 2) return false;
+          if (client.screen != null) client.screen.onClose();
+          return true;
+        });
+    server(
+        player -> {
+          player.getInventory().setItem(9, ItemStack.EMPTY);
+          player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
+        });
+    // Open the Importer again for its scale captures.
+    use(importerAt, Direction.SOUTH, false);
+    step(
+        client ->
+            client.screen instanceof PortScreen screen
+                && screen.role() == dev.izzy.factorycore.platform.storage.PortBlock.Role.IMPORTER);
+  }
 
   private void scales(String name, Class<? extends Screen> type, boolean captureAll) {
     for (int value = 1; value <= 4; value++) {
@@ -1848,6 +1957,9 @@ public final class PresentationClientVerification {
           evidence.append(
               "exporter upgrade slot: an empty-handed click took the Overdrive out (tier"
                   + " Throughput, rate 256) and the player holds it; nothing dropped\n");
+          // The tier change rebuilds the network; since Q119 the screen stays open through it,
+          // so close it here (the next steps read the player's inventory).
+          if (client.screen != null) client.screen.onClose();
           return true;
         });
   }
@@ -2338,6 +2450,7 @@ public final class PresentationClientVerification {
         client ->
             client.screen instanceof PortScreen screen
                 && screen.role() == dev.izzy.factorycore.platform.storage.PortBlock.Role.IMPORTER);
+    guideFromImporter(base.east(8).north());
     scales("importer", PortScreen.class, false);
     use(base.east(8).south(), Direction.NORTH, false);
     step(

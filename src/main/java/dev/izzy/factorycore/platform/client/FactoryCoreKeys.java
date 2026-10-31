@@ -71,6 +71,15 @@ public final class FactoryCoreKeys {
           GLFW.GLFW_KEY_F,
           CATEGORY);
 
+  /** Q50: over a Factory Core item in an inventory screen, opens its Factory Guide page (G). */
+  public static final KeyMapping GUIDE =
+      new KeyMapping(
+          "key.factorycore.guide",
+          KeyConflictContext.GUI,
+          InputConstants.Type.KEYSYM,
+          GLFW.GLFW_KEY_G,
+          CATEGORY);
+
   private FactoryCoreKeys() {}
 
   @SubscribeEvent
@@ -80,6 +89,7 @@ public final class FactoryCoreKeys {
     event.register(LABEL_OVERLAY);
     event.register(OPEN_WIRELESS);
     event.register(FOCUS_SEARCH);
+    event.register(GUIDE);
   }
 
   /** The hand holding a Label Tool, or null. */

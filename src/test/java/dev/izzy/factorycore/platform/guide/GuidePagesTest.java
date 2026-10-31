@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.guide;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -58,5 +59,18 @@ class GuidePagesTest {
           "Throughput",
           "Overdrive"
         }) assertTrue(all.toString().contains(topic), "Guide is missing topic: " + topic);
+  }
+
+  /**
+   * Q50: an item opens the first page that pictures it; other Factory Core items the first page.
+   */
+  @Test
+  void itemsOpenTheFirstPageThatPicturesThem() {
+    assertEquals(6, GuideContent.pageFor("factorycore:importer"));
+    assertEquals(6, GuideContent.pageFor("factorycore:exporter"));
+    assertEquals(9, GuideContent.pageFor("factorycore:crafter"));
+    assertEquals(2, GuideContent.pageFor("factorycore:starter_item_cell"));
+    assertEquals(0, GuideContent.pageFor("factorycore:upgrade_toolbelt"));
+    assertEquals(-1, GuideContent.pageFor("minecraft:dirt"));
   }
 }

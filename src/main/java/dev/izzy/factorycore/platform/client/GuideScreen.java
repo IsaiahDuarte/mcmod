@@ -34,12 +34,38 @@ public final class GuideScreen extends BookViewScreen {
 
   private ItemStack result = ItemStack.EMPTY;
 
-  private GuideScreen() {
+  /** The screen the guide was opened from (Q50), shown again when it closes; may be null. */
+  private final net.minecraft.client.gui.screens.Screen parent;
+
+  private GuideScreen(net.minecraft.client.gui.screens.Screen parent) {
     super(new BookAccess(GuideContent.pages()));
+    this.parent = parent;
   }
 
   public static void open() {
-    Minecraft.getInstance().setScreen(new GuideScreen());
+    Minecraft.getInstance().setScreen(new GuideScreen(null));
+  }
+
+  /**
+   * Q50: opens at {@code page} over the current screen; closing the guide returns to that screen (a
+   * device screen stays open on the server meanwhile).
+   */
+  public static void open(int page) {
+    var minecraft = Minecraft.getInstance();
+    var guide = new GuideScreen(minecraft.screen);
+    minecraft.setScreen(guide);
+    guide.forcePage(page);
+  }
+
+  /** The page shown, for client checks. */
+  public int page() {
+    return page;
+  }
+
+  @Override
+  public void onClose() {
+    if (parent != null && minecraft != null) minecraft.setScreen(parent);
+    else super.onClose();
   }
 
   @Override

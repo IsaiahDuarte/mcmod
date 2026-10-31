@@ -118,6 +118,7 @@ drive-bays.png
 program-v2-scale-4.png
 importer-scale-1.png
 importer-scale-4.png
+guide-from-importer-scale-2.png
 exporter-scale-1.png
 exporter-scale-4.png
 cable-port-scale-1.png

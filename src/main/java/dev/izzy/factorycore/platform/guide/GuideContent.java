@@ -56,6 +56,16 @@ public final class GuideContent {
 
   private GuideContent() {}
 
+  /**
+   * Q50: the first page that pictures {@code itemId}, the first page (0) for any other Factory Core
+   * item, or -1 for an item from elsewhere.
+   */
+  public static int pageFor(String itemId) {
+    for (int page = 0; page < PICTURES.size(); page++)
+      if (PICTURES.get(page).contains(itemId)) return page;
+    return itemId.startsWith("factorycore:") ? 0 : -1;
+  }
+
   public static String pageKey(int page) {
     return "guide.factorycore.page." + page;
   }

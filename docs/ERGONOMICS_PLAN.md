@@ -869,7 +869,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
 
 ## Wave H — help (lane H)
 
-- [ ] **Q50 — Guide hotkey (M49).** Size S.
+- [x] **Q50 — Guide hotkey (M49).** Size S. Done 2026-10-31 (commit subject `Q50:`),
+  [Evidence](evidence/ergonomics-q50-guide-hotkey-2026-10-31.md).
   Holding a key (default G, rebindable) over an item from this mod opens its Factory Guide page.
   Every device screen gets a **?** button in its title bar that opens that device's page (M82,
   AE2).

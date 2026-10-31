@@ -1237,6 +1237,8 @@
   "item.factorycore.upgrade_toolbelt": "Upgrade Toolbelt",
   "message.factorycore.cell_disassembled": "Cell taken apart",
   "message.factorycore.refused": "Refused: %s",
+  "key.factorycore.guide": "Open Factory Guide page",
+  "gui.factorycore.guide_button": "Open this device's Factory Guide page",
   "message.factorycore.refusal.priority_range": "Priority must be a whole number from -1000 to 1000",
   "message.factorycore.refusal.bay_empty": "That drive bay is empty",
   "message.factorycore.refusal.drive_full": "All four drive bays are occupied",
