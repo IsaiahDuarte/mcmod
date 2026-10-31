@@ -1019,7 +1019,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   packets, bounded like labels).
   Done when: a GameTest sees a named Access Point in the Overview's top users.
 
-- [ ] **Q78 — Fresh cell on creative pick (M86).** Size S.
+- [x] **Q78 — Fresh cell on creative pick (M86).** Size S. Done 2026-10-31 (commit subject `Q78:`),
+  [Evidence](evidence/ergonomics-q78-fresh-cell-2026-10-31.md).
   Creative middle-click on a cell gives a new, empty, unbound cell rather than a copy of the
   handle.
   Done when: a GameTest picks a stored cell in creative and finds a fresh one.

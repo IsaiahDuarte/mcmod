@@ -220,3 +220,18 @@ World schema 13 adds the nested CraftingJobs table in the same SavedData as the
 ledgers, so job records and their ledger reservations share one save. Load rejects a
 job whose recorded reservation differs from the ledger. See
 [ADR 0031](0031-crafting-jobs.md).
+
+## Creative copies of cells — 2026-10-31 (Q78)
+
+A creative clone copies a cell's handle; this ADR already treats such a copy as a duplicate
+reference, not extra stock. To spare the creative player a conflicting cell, `CellItem.inventoryTick`
+unbinds a creative player's copy (clears `FactoryCoreCell` and the Q72 summary), making it a fresh,
+empty cell. A stack counts as a copy when:
+- its ledger is installed in a drive bay (the registry location is set), or
+- an earlier stack in the same player's inventory holds the same ledger.
+
+The ledger and its stock are untouched, and survival players are not checked. Without a mixin the
+clone itself cannot be seen. So a creative copy of a loose cell kept in a chest stays a duplicate
+reference, as before, and is refused on install. Considered: stripping handles from stacks decoded
+from creative slot packets. Rejected, because moving a real cell in the creative inventory goes
+through the same packet and would orphan its contents.

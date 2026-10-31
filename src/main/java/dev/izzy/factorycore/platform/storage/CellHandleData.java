@@ -46,4 +46,9 @@ public final class CellHandleData {
           data.put(FIELD, tag);
         });
   }
+
+  /** Q78: unbinds {@code stack}, leaving any other custom data. */
+  public static void clear(ItemStack stack) {
+    CustomData.update(DataComponents.CUSTOM_DATA, stack, data -> data.remove(FIELD));
+  }
 }

@@ -20,6 +20,57 @@ public final class CellItem extends Item {
     return tier;
   }
 
+  /**
+   * Q78: a creative player's copy of a cell becomes a fresh, empty, unbound cell instead of a
+   * second reference to the same ledger (ADR 0005 counts that as a conflicting duplicate). Without
+   * hooking the creative clone itself, a copy shows as a cell whose ledger is installed in a drive
+   * bay, or as the later of two of the player's stacks with the same ledger. Survival players are
+   * unaffected.
+   */
+  @Override
+  public void inventoryTick(
+      ItemStack stack,
+      net.minecraft.world.level.Level level,
+      net.minecraft.world.entity.Entity entity,
+      int slot,
+      boolean selected) {
+    if (!(entity instanceof net.minecraft.server.level.ServerPlayer player)
+        || !player.hasInfiniteMaterials()) return;
+    var handle = handle(stack);
+    if (handle == null) return;
+    var saved = DeviceSavedData.get(player.server);
+    if (!saved.diagnostic().isEmpty()) return;
+    var owner = saved.registry().ownership(handle.backing());
+    boolean installed = owner != null && owner.definition().location() != null;
+    if (installed || earlierCopy(player, stack, handle)) {
+      CellHandleData.clear(stack);
+      stack.remove(StorageContent.SUMMARY.get());
+    }
+  }
+
+  private static dev.izzy.factorycore.core.storage.DeviceRegistry.Handle handle(ItemStack stack) {
+    try {
+      return CellHandleData.read(stack);
+    } catch (IllegalArgumentException malformed) {
+      return null;
+    }
+  }
+
+  /** Another of the player's stacks before {@code stack} holds the same ledger. */
+  private static boolean earlierCopy(
+      net.minecraft.server.level.ServerPlayer player,
+      ItemStack stack,
+      dev.izzy.factorycore.core.storage.DeviceRegistry.Handle handle) {
+    var inventory = player.getInventory();
+    for (int index = 0; index < inventory.getContainerSize(); index++) {
+      var other = inventory.getItem(index);
+      if (other == stack) return false;
+      var held = other.getItem() instanceof CellItem ? handle(other) : null;
+      if (held != null && held.backing().equals(handle.backing())) return true;
+    }
+    return false;
+  }
+
   /** Q72: the stored contents a cell had when it left a drive, drawn as icons. */
   @Override
   public java.util.Optional<net.minecraft.world.inventory.tooltip.TooltipComponent> getTooltipImage(

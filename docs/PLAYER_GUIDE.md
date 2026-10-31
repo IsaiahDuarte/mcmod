@@ -90,7 +90,8 @@ install it. Click a filled bay to pick its cell up, or Shift-click it to send th
 cell to your inventory. Sneak-use with an empty hand takes out the first cell.
 Breaking the drive drops its cells with their contents. A cell taken out of a drive
 shows in its tooltip how much it holds (stored / capacity, percent and types) and its
-eight largest entries as icons.
+eight largest entries as icons. In creative, middle-clicking a cell gives you a fresh, empty
+cell, not a second key to the same contents.
 
 **Drive priority:** type a number from -1000 to 1000 in **Priority** and press Enter.
 The network fills higher-priority storage first, counting drives and Storage-mode

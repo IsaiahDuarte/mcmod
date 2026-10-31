@@ -117,4 +117,66 @@ public final class DriveFeedbackGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Q78: a creative player's copy of a stored cell becomes a fresh, empty, unbound cell, and of two
+   * copies of a loose cell only the later one does. The original keeps its ledger and stock; a
+   * survival player's inventory is left alone.
+   */
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void creativeCopyOfAStoredCellIsAFreshCell(GameTestHelper h) {
+    var player = dev.izzy.factorycore.testing.TestPlayers.mock(h);
+    dev.izzy.factorycore.testing.TestPlayers.connect(player);
+    Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE, CellTier.STARTER_ITEM);
+    var original = CellHandleData.read(drive.cell(0));
+    var registry = DeviceSavedData.get(h.getLevel().getServer()).registry();
+    var cobble =
+        new PlatformResourceCodec(h.getLevel().registryAccess())
+            .itemKey(new ItemStack(Items.COBBLESTONE));
+    var inventory = player.getInventory();
+    var network = Net.in(h);
+    h.startSequence()
+        .thenWaitUntil(() -> network.assertValid(DRIVE))
+        .thenExecute(
+            () -> {
+              put(h, drive, Items.COBBLESTONE, 40);
+              // A survival player holding a copy is not touched (they cannot clone).
+              player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+              inventory.setItem(0, drive.cell(0).copy());
+              inventory.tick();
+              h.assertTrue(
+                  original.equals(CellHandleData.read(inventory.getItem(0))),
+                  "A survival inventory is left alone");
+              // The creative clone of a cell in a drive bay.
+              player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
+              inventory.tick();
+              var copy = inventory.getItem(0);
+              h.assertTrue(
+                  copy.getItem() instanceof dev.izzy.factorycore.platform.storage.CellItem
+                      && CellHandleData.read(copy) == null
+                      && !copy.has(StorageContent.SUMMARY.get()),
+                  "The copy is a fresh, unbound cell");
+              h.assertTrue(
+                  original.equals(CellHandleData.read(drive.cell(0))),
+                  "The stored cell keeps its ledger");
+              h.assertTrue(
+                  registry.stock(original, cobble).total() == 40,
+                  "The stored cell keeps its stock: " + registry.stock(original, cobble));
+              // Two copies of a cell taken out: the later one is fresh.
+              var removed = drive.removeCell(0);
+              inventory.setItem(0, removed);
+              inventory.setItem(1, removed.copy());
+              inventory.tick();
+              // Taking a cell out moves its handle to a new generation; the ledger is the same.
+              var first = CellHandleData.read(inventory.getItem(0));
+              h.assertTrue(
+                  first != null
+                      && first.backing().equals(original.backing())
+                      && CellHandleData.read(inventory.getItem(1)) == null,
+                  "The first keeps the ledger, the second is fresh");
+              player.connection.disconnect(Component.literal("Fresh cell fixture complete"));
+            })
+        .thenSucceed();
+  }
 }
