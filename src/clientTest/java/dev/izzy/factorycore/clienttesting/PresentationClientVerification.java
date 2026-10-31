@@ -1671,6 +1671,43 @@ public final class PresentationClientVerification {
     scales(name, buffer ? BufferSettingsScreen.class : PortScreen.class, false);
   }
 
+  /** Q20: the Energy Bank screen with some charge, opened by an empty-handed use. */
+  private void bankScreen(BlockPos target) {
+    serverUntil(
+        player -> {
+          player.getInventory().clearContent();
+          if (!(player.serverLevel().getBlockEntity(target)
+                  instanceof dev.izzy.factorycore.platform.storage.EnergyBankEntity bank)
+              || !valid(player, target)) return false;
+          var stored =
+              dev.izzy.factorycore.platform.storage.DeviceSavedData.get(player.server)
+                  .registry()
+                  .insert(
+                      bank.handle(),
+                      dev.izzy.factorycore.core.resource.ResourceKey.ENERGY,
+                      40_000 - bank.getEnergyStored());
+          return bank.getEnergyStored() == 40_000 || stored.amount() > 0;
+        });
+    step(client -> client.player.getMainHandItem().isEmpty());
+    use(target, Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen
+                  instanceof dev.izzy.factorycore.platform.client.EnergyBankScreen screen)
+              || screen.getMenu().energy() != 40_000) return false;
+          evidence
+              .append("bank screen: charge ")
+              .append(screen.getMenu().energy())
+              .append(" / ")
+              .append(screen.getMenu().tier().capacity())
+              .append(" FE, network ")
+              .append(screen.getMenu().networkKey())
+              .append('\n');
+          return true;
+        });
+    scales("bank", dev.izzy.factorycore.platform.client.EnergyBankScreen.class, false);
+  }
+
   /**
    * Q19: an empty-handed click on the Exporter's upgrade slot (the real press and release through
    * the screen) takes the Overdrive out: the port drops to Throughput and its rate to 256, and the
@@ -2244,6 +2281,7 @@ public final class PresentationClientVerification {
     slotRemoval(base.east(4));
     upgrade(base.east(3), ThroughputTier.ADVANCED, true);
     upgrade(base.east(3), ThroughputTier.ENDGAME, true);
+    bankScreen(base.east(6).south());
     use(base.east(5), Direction.SOUTH, false);
     scales("program", ProgramScreen.class, false);
     // D9: the editor highlights language-v2 keywords (else, has, side, emit, redstone, ...).

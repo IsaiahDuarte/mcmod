@@ -186,4 +186,28 @@ class EnergyBankAccessTest {
       assertTrue(received <= 1000 && extracted <= 1000, "seed=" + seed + " step=" + step);
     }
   }
+
+  /** Q20: the bank screen's in/out per tick is the last complete tick's movement, else idle. */
+  @Test
+  void lastTickReportsTheCompletedTicksFlow() {
+    var registry = registry();
+    var handle = placed(registry, EnergyBankTier.STARTER);
+    long[] tick = {5};
+    var access = new EnergyBankAccess(registry, () -> tick[0]);
+    access.receive(handle, EnergyBankTier.STARTER, 700, false);
+    access.extract(handle, EnergyBankTier.STARTER, 200, false);
+    access.receive(handle, EnergyBankTier.STARTER, 50, true);
+    assertEquals(EnergyBankAccess.Flow.IDLE, access.lastTick(handle.backing()), "Tick 5 is open");
+    tick[0] = 6;
+    assertEquals(new EnergyBankAccess.Flow(700, 200), access.lastTick(handle.backing()));
+    access.extract(handle, EnergyBankTier.STARTER, 100, false);
+    assertEquals(
+        new EnergyBankAccess.Flow(700, 200),
+        access.lastTick(handle.backing()),
+        "Moving energy in tick 6 keeps tick 5 readable");
+    tick[0] = 7;
+    assertEquals(new EnergyBankAccess.Flow(0, 100), access.lastTick(handle.backing()));
+    tick[0] = 9;
+    assertEquals(EnergyBankAccess.Flow.IDLE, access.lastTick(handle.backing()), "Idle ticks");
+  }
 }

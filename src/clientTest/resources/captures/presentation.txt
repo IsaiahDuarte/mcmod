@@ -51,6 +51,8 @@ exporter-throughput-scale-1.png
 exporter-throughput-scale-4.png
 exporter-overdrive-scale-1.png
 exporter-overdrive-scale-4.png
+bank-scale-1.png
+bank-scale-4.png
 buffer-throughput-scale-1.png
 buffer-throughput-scale-4.png
 buffer-overdrive-scale-1.png

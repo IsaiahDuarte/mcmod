@@ -177,6 +177,61 @@ public final class EnergyBankEntity extends BlockEntity
     return path;
   }
 
+  /**
+   * Q20: upgrades this placed bank to {@code targetLevel} where it stands, keeping its identity and
+   * energy. The lease is detached, resized exactly as a portable bank's is ({@link
+   * EnergyBankOwnership#upgrade}) and placed again in the next tier's block. On a valid network it
+   * needs EDIT here. Returns null, changing nothing, when {@code actor} may not; throws, changing
+   * nothing, when the step does not apply (a skipped level or a downgrade).
+   */
+  public EnergyBankTier upgradeInPlace(
+      dev.izzy.factorycore.core.network.NetworkPermissions.Actor actor, int targetLevel) {
+    validatePlaced();
+    var tier = tier();
+    var target = tier.upgrade(targetLevel);
+    var server = (ServerLevel) level;
+    var networks = WorldNetworks.get(server.getServer());
+    var origin = dev.izzy.factorycore.platform.Positions.of(level, worldPosition);
+    if (networks.membership(origin).status() == NetworkTopology.Status.VALID
+        && !networks.allows(
+            actor, origin, dev.izzy.factorycore.core.network.NetworkPermissions.Permission.EDIT))
+      return null;
+    var ownership = new EnergyBankOwnership(authority().registry());
+    var portable = ownership.remove(handle, tier, location());
+    try {
+      ownership.upgrade(portable, tier, targetLevel);
+    } catch (IllegalArgumentException | IllegalStateException refused) {
+      handle = ownership.place(portable, tier, location());
+      data = EnergyBankHandleData.write(handle);
+      setChanged();
+      throw refused;
+    }
+    var stack = new ItemStack(EnergyBankContent.item(target));
+    CustomData.update(
+        DataComponents.CUSTOM_DATA,
+        stack,
+        custom -> custom.put(EnergyBankHandleData.FIELD, EnergyBankHandleData.write(portable)));
+    // The replaced entity must not mark the moved lease unavailable as it is removed.
+    handle = null;
+    data = null;
+    var position = worldPosition;
+    server.setBlock(
+        position,
+        EnergyBankContent.block(target).withPropertiesOf(getBlockState()),
+        net.minecraft.world.level.block.Block.UPDATE_ALL);
+    if (!(server.getBlockEntity(position) instanceof EnergyBankEntity next))
+      throw new IllegalStateException("Bank block missing after upgrade");
+    next.place(stack);
+    return target;
+  }
+
+  /** Q20: FE in and out during the last complete tick, for the bank screen. */
+  public dev.izzy.factorycore.core.storage.EnergyBankAccess.Flow flow() {
+    if (handle == null || !(level instanceof ServerLevel))
+      return dev.izzy.factorycore.core.storage.EnergyBankAccess.Flow.IDLE;
+    return authority().energyBanks().lastTick(handle.backing());
+  }
+
   public void validatePlaced() {
     if (isRemoved() || !diagnostic.isEmpty() || handle == null)
       throw new IllegalStateException("Bank unavailable");

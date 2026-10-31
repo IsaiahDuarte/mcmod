@@ -510,6 +510,19 @@ final class PresentationScenes {
     ((MachineInterfaceEntity) level.getBlockEntity(base.east(6)))
         .place(
             new ItemStack(dev.izzy.factorycore.platform.storage.PortContent.CABLE_PORT_ITEM.get()));
+    // Q20: a Starter Energy Bank on the cable port's south face, for its screen.
+    var bank = base.east(6).south();
+    level.setBlock(
+        bank,
+        dev.izzy.factorycore.platform.storage.EnergyBankContent.block(
+                dev.izzy.factorycore.core.storage.EnergyBankTier.STARTER)
+            .defaultBlockState(),
+        3);
+    ((dev.izzy.factorycore.platform.storage.EnergyBankEntity) level.getBlockEntity(bank))
+        .place(
+            new ItemStack(
+                dev.izzy.factorycore.platform.storage.EnergyBankContent.item(
+                    dev.izzy.factorycore.core.storage.EnergyBankTier.STARTER)));
     // H6: an Importer and an Exporter off the last cable, each on its own chest.
     for (var side : new Direction[] {Direction.NORTH, Direction.SOUTH}) {
       var block =

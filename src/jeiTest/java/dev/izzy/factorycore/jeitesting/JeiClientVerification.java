@@ -103,6 +103,11 @@ final class JeiClientVerification {
   private void tick(ClientTickEvent.Post event) {
     var client = Minecraft.getInstance();
     ticks++;
+    // The verification client plays no music (set once the sound system is up).
+    if (ticks == 1) {
+      client.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MUSIC).set(0.0);
+      client.options.save();
+    }
     if (stage == 99) return;
     if (failure.get() != null) throw new IllegalStateException("JEI fixture failed", failure.get());
     if (ticks - entered > 1200)

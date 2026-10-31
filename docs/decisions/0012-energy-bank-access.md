@@ -55,3 +55,22 @@ clock failure and generated conservation. Real capability/block/upgrade/recovery
 GameTests, chunk/full-world restart, client/progression and representative
 performance remain required before release. Portable access alone does not finish
 an energy bank or A04/A13/A14. Physical integration follows this prerequisite.
+
+## Amendment — screen and in-place upgrade (2026-10-31, ergonomics plan Q20)
+
+A placed bank can be upgraded without breaking it. `EnergyBankEntity.upgradeInPlace` detaches the
+lease (`EnergyBankOwnership.remove`), resizes it as the portable path does
+(`EnergyBankOwnership.upgrade`, which still accepts only portable leases) and places it in the
+next tier's block. Identity, stock, claims and generation are kept, as for an offhand upgrade. If
+the resize is refused, the lease is placed back at the same tier. The replaced entity drops its
+handle first, so its removal does not mark the moved lease unavailable. On a valid network the
+upgrade needs Edit at the bank. Off a network it needs no right, as breaking the bank needs none.
+A skipped level or a downgrade is refused before anything changes.
+
+The bank's screen (`EnergyBankMenu`) shows charge, tier and network state, and the FE in and out
+during the last complete tick. `EnergyBankAccess.lastTick` reads that from the per-backing
+budgets it already keeps, plus the previous tick's budget, bounded by the number of banks. The
+module slot is a one-item container. It upgrades on insertion, returns a refused module when the
+screen closes, and follows the position, so it stays open while the block is replaced.
+Alternative: average flow over a second (rejected: needs a per-bank history the ledger does not
+keep; one tick matches the per-tick limits shown beside it).

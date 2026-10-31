@@ -41,6 +41,8 @@ public final class TerminalClient {
     event.register(BufferedInterfaceContent.MENU.get(), BufferSettingsScreen::new);
     event.register(ProgramContent.MENU.get(), ProgramScreen::new);
     event.register(NetworkContent.POLICY_MENU.get(), GatewayPolicyScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.storage.EnergyBankContent.MENU.get(), EnergyBankScreen::new);
     event.register(NetworkContent.ACCESS_MENU.get(), NetworkAccessScreen::new);
     event.register(NetworkContent.OVERVIEW_MENU.get(), OverviewScreen::new);
     event.register(RecoveryContent.MENU.get(), RecoveryScreen::new);

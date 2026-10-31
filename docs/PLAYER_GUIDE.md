@@ -420,8 +420,11 @@ network is online.
 | Expanded | 1,000,000 FE | 4,000 FE |
 | Advanced | 10,000,000 FE | 16,000 FE |
 
-Use it with an empty hand to see its charge. To upgrade, break it, hold it in your
-offhand and use an Expansion (then Advanced) module; its energy is kept.
+Use it with an empty hand to open its screen: the charge, the FE that went in and out
+last tick, its limit and the network state. To upgrade it where it stands, put an
+Expansion Module (then an Advanced Module) in the screen's **Module** slot; it keeps its
+energy, and a module that does not fit stays in the slot. On a network this needs Edit
+rights. You can still break it, hold it in your offhand and use the module.
 
 ## Program Controller
 

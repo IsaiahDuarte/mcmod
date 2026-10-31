@@ -1,14 +1,11 @@
 package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
-import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
-import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.util.List;
-import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -64,19 +61,8 @@ public final class EnergyBankBlock extends NetworkedBlock implements EntityBlock
       if (bank.handle() == null && bank.diagnostic().isEmpty())
         bank.place(new ItemStack(EnergyBankContent.item(tier)));
       bank.validatePlaced();
-      var status =
-          WorldNetworks.get(((ServerLevel) level).getServer())
-              .membership(Positions.of(level, position))
-              .status();
-      player.displayClientMessage(
-          Component.translatable(
-              "message.factorycore.bank_status",
-              bank.getEnergyStored(),
-              bank.getMaxEnergyStored(),
-              bank.tier().rate(),
-              Component.translatable(
-                  "status.factorycore." + status.name().toLowerCase(Locale.ROOT))),
-          true);
+      // Q20: the screen shows the charge, flow and network state, and takes upgrade modules.
+      if (player instanceof ServerPlayer viewer) EnergyBankMenu.open(viewer, position);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
       player.displayClientMessage(

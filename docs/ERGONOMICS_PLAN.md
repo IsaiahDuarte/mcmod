@@ -692,7 +692,9 @@ New gates:
   Done when: GameTests cover install, removal order, a rate clamped on removal, and denial
   without Edit; tooltips are checked in a lang test.
 
-- [ ] **Q20 — Energy Bank screen and in-place upgrade (M20).** Size S.
+- [x] **Q20 — Energy Bank screen and in-place upgrade (M20).** Size S. Done 2026-10-31 (commit
+  subject `Q20:`), ADR 0012 amendment.
+  [Evidence](evidence/ergonomics-q20-energy-bank-screen-2026-10-31.md).
   Empty-hand use opens a kit screen with charge, input and output per tick, and a module slot
   that upgrades the bank in place, keeping its energy. The offhand path stays.
   Files: `EnergyBankBlock.java`, `EnergyBankEntity.java`, new menu/screen.

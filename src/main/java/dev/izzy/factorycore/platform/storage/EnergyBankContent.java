@@ -59,6 +59,12 @@ public final class EnergyBankContent {
                       block(EnergyBankTier.ADVANCED))
                   .build(null));
 
+  /** Q20: the bank's screen. */
+  public static final DeferredHolder<
+          net.minecraft.world.inventory.MenuType<?>,
+          net.minecraft.world.inventory.MenuType<EnergyBankMenu>>
+      MENU = FactoryRegistries.menu("energy_bank", EnergyBankMenu::new);
+
   private EnergyBankContent() {}
 
   public static EnergyBankBlock block(EnergyBankTier tier) {
