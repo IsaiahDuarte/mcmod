@@ -403,4 +403,31 @@ public final class ProgramGameTests {
             })
         .thenSucceed();
   }
+
+  /** ADR 0068: the vocabulary export the offline helper reads lists this game's names. */
+  @GameTest(template = "empty")
+  public static void vocabularyExportListsTheGamesItemsTagsAndNames(GameTestHelper h) {
+    try {
+      var path =
+          dev.izzy.factorycore.platform.program.ProgramCommands.export(h.getLevel().getServer());
+      var exported =
+          dev.izzy.factorycore.core.program.Vocabulary.read(
+              java.nio.file.Files.readString(path, java.nio.charset.StandardCharsets.UTF_8));
+      h.assertTrue(
+          exported.items().contains("minecraft:coal")
+              && exported.items().contains("factorycore:starter_item_cell")
+              && exported.fluids().contains("minecraft:water")
+              && exported.itemTags().contains("c:ingots")
+              && "minecraft:iron_block".equals(exported.names().get("block of iron")),
+          "Exported vocabulary has items, mod items, fluids, loaded tags and names");
+      h.assertTrue(
+          FriendlyCompiler.compile(
+                  "every second: move block of iron from storage to vault", exported)
+              .ok(),
+          "Programs compile against the exported file");
+    } catch (java.io.IOException failure) {
+      throw new IllegalStateException(failure);
+    }
+    h.succeed();
+  }
 }

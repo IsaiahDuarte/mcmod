@@ -249,6 +249,11 @@ public final class ProgramSuggestions {
     return all;
   }
 
+  /** Up to {@code limit} of {@code names} closest to {@code query}, ranked as while typing. */
+  public static List<String> match(String query, Collection<String> names, int limit) {
+    return rank(query, names, limit, true);
+  }
+
   /** The best-ranked candidates for what was typed (case-insensitive). */
   static List<String> rank(String typed, Collection<String> candidates, int limit, boolean sort) {
     var needle = typed.toLowerCase(Locale.ROOT);
@@ -316,7 +321,7 @@ public final class ProgramSuggestions {
   /**
    * Every item (and common tag group) or fluid as a sentence would name it; cached per vocabulary.
    */
-  static synchronized List<String> names(Vocabulary vocabulary, ResourceKind kind) {
+  public static synchronized List<String> names(Vocabulary vocabulary, ResourceKind kind) {
     if (cachedFor != vocabulary) {
       var items = new ArrayList<String>(List.of("everything", "fluid", "tag"));
       var printer = new ProgramPrinter(vocabulary);

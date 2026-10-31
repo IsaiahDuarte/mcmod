@@ -522,6 +522,23 @@ tasks.named('releaseCheck') {
         .collect { tasks.named("run${it}Server") })
 }
 
+// ADR 0068: the offline program helper, an MCP server over stdio for AI clients. It holds only
+// the portable core (no Minecraft classes), the generated vocabulary and the language reference.
+tasks.register('programHelperJar', Jar) {
+    group = 'build'
+    description = 'Builds the offline program helper (MCP over stdio): build/libs/factorycore-program-helper.jar.'
+    archiveFileName = 'factorycore-program-helper.jar'
+    destinationDirectory = layout.buildDirectory.dir('libs')
+    from(sourceSets.main.output) {
+        include 'dev/izzy/factorycore/core/**'
+        include 'data/factorycore/program_vocabulary.txt'
+    }
+    from(file('docs/PROGRAM_LANGUAGE.md'))
+    manifest { attributes('Main-Class': 'dev.izzy.factorycore.core.program.helper.ProgramHelper') }
+}
+// Tests read the language reference from the same path the helper jar serves it from.
+tasks.named('processTestResources', ProcessResources) { from(file('docs/PROGRAM_LANGUAGE.md')) }
+
 // Manual A15/D07 measurement (not part of check): dedicated-server workload benchmark.
 tasks.named('runBenchmarkServer', JavaExec) {
     doFirst {

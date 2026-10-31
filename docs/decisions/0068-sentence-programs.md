@@ -119,16 +119,22 @@ size, statements, depth) are unchanged.
 
 ### Offline program helper (MCP)
 
-`tools/program-helper` is a standalone stdio MCP server. It depends only on `core` and a
-generated vocabulary file, with no game, network or world access. Its tools:
+`ProgramHelper` (`core/program/helper`, built by `programHelperJar`) is a standalone stdio MCP
+server. The jar holds only the portable core, the generated vocabulary and
+[PROGRAM_LANGUAGE.md](../PROGRAM_LANGUAGE.md). It has no game, network or world access, and its
+JSON reader is built in, so it needs only the JDK. Its tools:
 
-- `language_reference`: the sentence guide.
-- `list_examples`: the templates, as sentences.
-- `check_program`: JSON diagnostics plus the canonical brace form.
-- `convert_program`: brace to sentences.
+- `language_reference`: the language guide.
+- `list_examples`: the templates.
+- `check_program`: problems with line, column, hint and example; when ok, the rules and the
+  canonical form.
+- `find_names`: exact item, tag or fluid names matching some text.
 
-An AI client writes programs from English itself and uses `check_program` until it compiles.
-A live link to a running world is a separate later decision. It would need opt-in,
+The planned `convert_program` was dropped when braces were removed; there is nothing left to
+convert. Instead, `/factorycore programs vocabulary` (operators) exports a game's full
+vocabulary, which the helper reads from `FACTORYCORE_VOCABULARY`, so a modpack's items work
+too. An AI client writes programs from English itself and uses `check_program` until it
+compiles. A live link to a running world is a separate later decision. It would need opt-in,
 localhost-only access and the player's permissions.
 
 ## Consequences
