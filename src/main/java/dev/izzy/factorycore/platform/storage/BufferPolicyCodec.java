@@ -39,6 +39,10 @@ final class BufferPolicyCodec {
       } else if (term instanceof ResourceFilter.Tag tagTerm) {
         entry.putString("Type", "TAG");
         entry.putString("Id", tagTerm.id());
+      } else if (term instanceof ResourceFilter.Worn worn) {
+        entry.putString("Type", "WORN");
+        entry.putString("Id", worn.id());
+        entry.putInt("Below", worn.below());
       } else throw new IllegalArgumentException("Program-only filter terms are never saved");
       terms.add(entry);
     }
@@ -74,8 +78,7 @@ final class BufferPolicyCodec {
     for (int i = 0; i < terms.size(); i++) {
       var entry = terms.getCompound(i);
       String type = entry.getString("Type");
-      Nbt.fields(
-          entry, type.equals("EXACT") ? Set.of("Type", "Id", "Components") : Set.of("Type", "Id"));
+      Nbt.fields(entry, FilterCodec.fields(type));
       if (!entry.contains("Type", Tag.TAG_STRING) || !entry.contains("Id", Tag.TAG_STRING))
         throw new IllegalArgumentException("Malformed filter term");
       switch (type) {
@@ -89,6 +92,11 @@ final class BufferPolicyCodec {
         }
         case "REGISTRY" -> result.add(new ResourceFilter.Registry(entry.getString("Id")));
         case "TAG" -> result.add(new ResourceFilter.Tag(entry.getString("Id")));
+        case "WORN" -> {
+          if (!entry.contains("Below", Tag.TAG_INT))
+            throw new IllegalArgumentException("Missing worn threshold");
+          result.add(new ResourceFilter.Worn(entry.getString("Id"), entry.getInt("Below")));
+        }
         default -> throw new IllegalArgumentException("Unknown filter term type");
       }
     }

@@ -208,7 +208,7 @@ public final class ConnectorSettingsPackets {
   private ConnectorSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("3");
+    var registrar = event.registrar("4");
     MenuPayloads.toServer(
         registrar,
         FilterCommand.TYPE,

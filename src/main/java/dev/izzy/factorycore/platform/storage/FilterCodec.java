@@ -34,11 +34,25 @@ public final class FilterCodec {
       } else if (term instanceof ResourceFilter.Tag tag) {
         entry.putString("Type", "TAG");
         entry.putString("Id", tag.id());
+      } else if (term instanceof ResourceFilter.Worn worn) {
+        // Q76: a new type, so older readers reject (quarantine) it rather than drop it.
+        entry.putString("Type", "WORN");
+        entry.putString("Id", worn.id());
+        entry.putInt("Below", worn.below());
       } else throw new IllegalArgumentException("Program-only filter terms are never saved");
       terms.add(entry);
     }
     filter.put("Terms", terms);
     return filter;
+  }
+
+  /** The fields a saved term of {@code type} has. */
+  static Set<String> fields(String type) {
+    return switch (type) {
+      case "EXACT" -> Set.of("Type", "Id", "Components");
+      case "WORN" -> Set.of("Type", "Id", "Below");
+      default -> Set.of("Type", "Id");
+    };
   }
 
   /** {@code owner} names the record kind in error messages. */
@@ -58,8 +72,7 @@ public final class FilterCodec {
       Nbt.require(term, "Type", Tag.TAG_STRING, owner);
       Nbt.require(term, "Id", Tag.TAG_STRING, owner);
       String type = term.getString("Type");
-      Nbt.fields(
-          term, type.equals("EXACT") ? Set.of("Type", "Id", "Components") : Set.of("Type", "Id"));
+      Nbt.fields(term, fields(type));
       switch (type) {
         case "EXACT" -> {
           Nbt.require(term, "Components", Tag.TAG_BYTE_ARRAY, owner);
@@ -69,6 +82,10 @@ public final class FilterCodec {
         }
         case "REGISTRY" -> selections.add(new ResourceFilter.Registry(term.getString("Id")));
         case "TAG" -> selections.add(new ResourceFilter.Tag(term.getString("Id")));
+        case "WORN" -> {
+          Nbt.require(term, "Below", Tag.TAG_INT, owner);
+          selections.add(new ResourceFilter.Worn(term.getString("Id"), term.getInt("Below")));
+        }
         default -> throw new IllegalArgumentException("Unknown " + owner + " selector");
       }
     }

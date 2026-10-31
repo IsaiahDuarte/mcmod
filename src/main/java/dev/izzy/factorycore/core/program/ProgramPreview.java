@@ -91,6 +91,7 @@ public final class ProgramPreview {
       case ResourceFilter.Registry registry -> registry.id();
       case ResourceFilter.Tag tag -> "#" + tag.id();
       case ResourceFilter.Exact exact -> exact.key().registryId();
+      case ResourceFilter.Worn worn -> worn.id() + " below " + worn.below() + "%";
       case ResourceFilter.Glob glob -> glob.pattern();
       case ResourceFilter.Except except -> {
         var text = new StringBuilder(term(except.include()));

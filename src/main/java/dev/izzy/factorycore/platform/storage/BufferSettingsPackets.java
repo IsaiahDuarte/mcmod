@@ -288,7 +288,7 @@ public final class BufferSettingsPackets {
   private BufferSettingsPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var r = event.registrar("5");
+    var r = event.registrar("6");
     MenuPayloads.toServer(
         r, Command.TYPE, Command.CODEC, BufferSettingsMenu.class, BufferSettingsMenu::command);
     MenuPayloads.toClient(

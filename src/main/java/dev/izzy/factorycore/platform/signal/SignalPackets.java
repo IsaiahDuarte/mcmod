@@ -207,7 +207,7 @@ public final class SignalPackets {
   private SignalPackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("2");
+    var registrar = event.registrar("3");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, SignalMenu.class, SignalMenu::command);
     MenuPayloads.toClient(registrar, View.TYPE, View.CODEC, SignalMenu.class, SignalMenu::accept);

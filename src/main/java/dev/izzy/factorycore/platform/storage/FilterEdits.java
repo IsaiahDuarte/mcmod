@@ -18,11 +18,12 @@ import net.neoforged.neoforge.fluids.FluidUtil;
 /**
  * B1 ghost-slot filter editing shared by the Buffer, Machine preset and Storage screens. The
  * screens show each term as a slot with an icon; a click with an item adds it as an Item term and a
- * click on a slot cycles how it matches: Item (registry ID) → Exact (components included) → each of
- * the item's tags → Item. All edits still build an ordinary bounded {@link ResourceFilter}.
+ * click on a slot cycles how it matches: Item (registry ID) → Exact (components included) → for a
+ * damageable item, Worn below 99/75/50/25% durability (Q76) → each of the item's tags → Item. All
+ * edits still build an ordinary bounded {@link ResourceFilter}.
  */
 public final class FilterEdits {
-  public static final int ITEM = 0, EXACT = 1, TAG = 2;
+  public static final int ITEM = 0, EXACT = 1, TAG = 2, WORN = 3;
 
   /** Tags offered per item when cycling; more are skipped. */
   public static final int MAX_TAGS = 32;
@@ -30,7 +31,7 @@ public final class FilterEdits {
   /** One filter slot for a screen: match kind, the shown resource ID and a readable label. */
   public record Rule(int type, String icon, String label) {
     public Rule {
-      if (type < ITEM || type > TAG || icon.length() > 256 || label.length() > 256)
+      if (type < ITEM || type > WORN || icon.length() > 256 || label.length() > 256)
         throw new IllegalArgumentException("Invalid filter rule");
     }
 
@@ -58,6 +59,10 @@ public final class FilterEdits {
         rule = new Rule(ITEM, registry.id(), "ID " + registry.id());
       else if (term instanceof ResourceFilter.Tag tag)
         rule = new Rule(TAG, firstMember(filter.kind(), tag.id()), "#" + tag.id());
+      else if (term instanceof ResourceFilter.Worn worn)
+        rule =
+            new Rule(
+                WORN, worn.id(), "ID " + worn.id() + " · durability below " + worn.below() + "%");
       else {
         var key = ((ResourceFilter.Exact) term).key();
         rule =
@@ -136,11 +141,20 @@ public final class FilterEdits {
       if (!registry.id().equals(shown)) return null;
       return new ResourceFilter.Exact(defaultKey(kind, location, codec));
     }
+    var afterWorn =
+        tags.isEmpty() ? new ResourceFilter.Registry(shown) : new ResourceFilter.Tag(tags.get(0));
     if (term instanceof ResourceFilter.Exact exact) {
       if (!exact.key().registryId().equals(shown)) return null;
-      return tags.isEmpty()
-          ? new ResourceFilter.Registry(shown)
-          : new ResourceFilter.Tag(tags.get(0));
+      return damageable(kind, location)
+          ? new ResourceFilter.Worn(shown, ResourceFilter.Worn.STEPS.getFirst())
+          : afterWorn;
+    }
+    if (term instanceof ResourceFilter.Worn worn) {
+      int step = ResourceFilter.Worn.STEPS.indexOf(worn.below());
+      if (!worn.id().equals(shown)) return null;
+      return step >= 0 && step + 1 < ResourceFilter.Worn.STEPS.size()
+          ? new ResourceFilter.Worn(shown, ResourceFilter.Worn.STEPS.get(step + 1))
+          : afterWorn;
     }
     if (!(term instanceof ResourceFilter.Tag tagTerm)) return null;
     var tag = tagTerm.id();
@@ -149,6 +163,11 @@ public final class FilterEdits {
     return index + 1 < tags.size()
         ? new ResourceFilter.Tag(tags.get(index + 1))
         : new ResourceFilter.Registry(shown);
+  }
+
+  private static boolean damageable(ResourceKind kind, ResourceLocation location) {
+    return kind == ResourceKind.ITEM
+        && new ItemStack(BuiltInRegistries.ITEM.get(location)).isDamageableItem();
   }
 
   private static List<String> tags(ResourceKind kind, ResourceLocation location) {

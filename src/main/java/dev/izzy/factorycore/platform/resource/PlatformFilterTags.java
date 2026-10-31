@@ -37,4 +37,19 @@ public final class PlatformFilterTags implements ResourceFilter.Tags {
       case ENERGY -> throw new IllegalArgumentException("Energy has no tag model");
     };
   }
+
+  @Override
+  public boolean worn(ResourceKey candidate, int below) {
+    ServerThread.require(server, "Durability evaluation");
+    if (candidate.kind() != ResourceKind.ITEM) return false;
+    try {
+      var stack = new PlatformResourceCodec(server.registryAccess()).itemStack(candidate, 1);
+      int max = stack.getMaxDamage();
+      return stack.isDamageableItem()
+          && max > 0
+          && (long) (max - stack.getDamageValue()) * 100 < (long) below * max;
+    } catch (IllegalArgumentException unsupported) {
+      return false;
+    }
+  }
 }

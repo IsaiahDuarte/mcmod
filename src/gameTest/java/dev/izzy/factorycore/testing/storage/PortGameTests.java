@@ -6,6 +6,8 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.MachinePresets;
 import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.storage.FilterEdits;
 import dev.izzy.factorycore.platform.storage.MachineInterfaceEntity;
 import dev.izzy.factorycore.platform.storage.PortBlock;
 import dev.izzy.factorycore.platform.storage.PortContent;
@@ -484,5 +486,85 @@ public final class PortGameTests {
   @GameTest(template = "empty", timeoutTicks = 600)
   public static void inOrderExporterSendsTheFirstSlotFirst(GameTestHelper h) {
     exportTwo(h, dev.izzy.factorycore.core.storage.ExportOrder.IN_ORDER, "PPPSSS");
+  }
+
+  /**
+   * Q76: an Exporter set to iron pickaxes below 50% durability sends only the worn one, leaving a
+   * fresh and a lightly used pickaxe in storage. The slot cycle reaches the worn steps only for
+   * damageable items.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void wornFilterExportsOnlyWornTools(GameTestHelper h) {
+    var owner = player(h);
+    var net = Net.in(h, owner.getUUID());
+    net.controller(ROOT);
+    net.drive(DRIVE, CellTier.STARTER_ITEM);
+    var cell = net.cell(DRIVE, 0);
+    h.setBlock(TARGET, Blocks.CHEST);
+    ChestBlockEntity chest = h.getBlockEntity(TARGET);
+    var exporter = place(h, PORT, PortBlock.Role.EXPORTER, Direction.EAST, owner);
+    int max = new ItemStack(Items.IRON_PICKAXE).getMaxDamage();
+    ItemStack worn = new ItemStack(Items.IRON_PICKAXE), used = worn.copy(), fresh = worn.copy();
+    worn.setDamageValue(max * 7 / 10); // 30% left
+    used.setDamageValue(max / 5); // 80% left
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var id = "minecraft:iron_pickaxe";
+    // The slot cycle: Exact → worn 99/75/50/25 → the item's tags; stone has no worn steps.
+    ResourceFilter.Term step = new ResourceFilter.Exact(codec.itemKey(fresh));
+    var seen = new java.util.ArrayList<Integer>();
+    for (int i = 0; i < 4; i++) {
+      step = FilterEdits.cycle(ResourceKind.ITEM, step, id, codec);
+      h.assertTrue(step instanceof ResourceFilter.Worn, "Worn step " + i + ": " + step);
+      seen.add(((ResourceFilter.Worn) step).below());
+    }
+    h.assertTrue(seen.equals(List.of(99, 75, 50, 25)), "Steps " + seen);
+    step = FilterEdits.cycle(ResourceKind.ITEM, step, id, codec);
+    h.assertTrue(
+        step instanceof ResourceFilter.Tag || step instanceof ResourceFilter.Registry,
+        "After 25% come the tags: " + step);
+    var stone =
+        FilterEdits.cycle(
+            ResourceKind.ITEM,
+            new ResourceFilter.Exact(codec.itemKey(new ItemStack(Items.STONE))),
+            "minecraft:stone",
+            codec);
+    h.assertTrue(!(stone instanceof ResourceFilter.Worn), "Stone is never worn: " + stone);
+    var filter =
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.INCLUDE,
+            List.of(new ResourceFilter.Worn(id, 50)));
+    h.startSequence()
+        .thenWaitUntil(() -> net.assertValid(PORT))
+        .thenExecute(
+            () -> {
+              for (var stack : List.of(worn, used, fresh))
+                net.saved().registry().insert(cell, codec.itemKey(stack), 1);
+              exporter.deployPreset(Actors.of(owner), MachinePresets.Mode.EXPORT, filter, 0);
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    net.saved().registry().stock(cell, codec.itemKey(worn)).total() == 0,
+                    "The worn pickaxe leaves storage"))
+        .thenIdle(40)
+        .thenExecute(
+            () -> {
+              int sent = 0;
+              for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                var stack = chest.getItem(slot);
+                if (stack.isEmpty()) continue;
+                h.assertTrue(
+                    stack.getDamageValue() == worn.getDamageValue(), "Only the worn one moves");
+                sent += stack.getCount();
+              }
+              h.assertTrue(sent == 1, "Exactly one pickaxe sent: " + sent);
+              h.assertTrue(
+                  net.saved().registry().stock(cell, codec.itemKey(used)).total() == 1
+                      && net.saved().registry().stock(cell, codec.itemKey(fresh)).total() == 1,
+                  "The fresh and lightly used pickaxes stay in storage");
+              end(owner);
+            })
+        .thenSucceed();
   }
 }

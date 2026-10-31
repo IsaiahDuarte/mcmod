@@ -114,9 +114,14 @@ final class FilterSlots extends AbstractWidget {
         if (!ResourceIcons.renderFluid(graphics, rule.icon(), x + 1, y + 1))
           icon(graphics, "minecraft:bucket", x, y);
       } else icon(graphics, rule.icon(), x, y);
-      // "=" for an exact match, "#" for a tag; a plain item match has no badge.
+      // "=" for an exact match, "#" for a tag, "%" for worn (Q76); a plain item match has none.
       String badge =
-          rule.type() == FilterEdits.EXACT ? "=" : rule.type() == FilterEdits.TAG ? "#" : "";
+          switch (rule.type()) {
+            case FilterEdits.EXACT -> "=";
+            case FilterEdits.TAG -> "#";
+            case FilterEdits.WORN -> "%";
+            default -> "";
+          };
       if (!badge.isEmpty()) {
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 200);

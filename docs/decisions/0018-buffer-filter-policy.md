@@ -106,3 +106,19 @@ buffers-v5; policies without them keep their v2/v4 bytes. Table five accepts
 policy v2 or v3; tables one to four keep their strict pairing, so older readers
 quarantine rather than drop goals. Slot goals follow their slot through remove
 and clear in the draft, and a rate change keeps them.
+
+## Worn terms — 2026-10-31 (Q76)
+
+Filters gain `ResourceFilter.Worn(id, below)`. It matches item `id` with less than `below`
+percent (1–99) of its durability left, whatever its other components. The core has no item model,
+so durability is asked of the filter's `Tags` provider (`worn`, default false). `PlatformFilterTags`
+answers from the decoded stack, so a provider that cannot read durability matches nothing rather
+than everything. The Signal Interface's stock sum now uses `PlatformFilterTags` too, instead of
+its own tag lambda. Slot cycling offers Worn 99 → 75 → 50 → 25 after Exact, only for damageable
+items. Both saved encodings (`FilterCodec`, `BufferPolicyCodec`) add a `WORN` term with an int
+`Below`; every other term keeps its bytes, so no schema number changes. Older readers already reject
+an unknown term type, so they quarantine a filter with a worn term rather than dropping it.
+Packet sets that carry filter rows moved their protocol versions (Buffer 6, Drive 5, Connector 4,
+Machine preset 5, Signal 3), since rule type 3 is new on the wire.
+Considered: a fuzzy mode per slot (AE2-style ranges). One term per threshold reuses the slot
+cycle and filter limits, and needs no second matching path.

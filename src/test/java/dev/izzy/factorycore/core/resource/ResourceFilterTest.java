@@ -222,4 +222,51 @@ class ResourceFilterTest {
         filter.firstMatch(
             new ResourceKey(ResourceKind.FLUID, "minecraft:water", new byte[0]), tags));
   }
+
+  @Test
+  void wornMatchesItsItemOnlyBelowTheThresholdTheProviderReports() {
+    var pick = new ResourceKey(ResourceKind.ITEM, "minecraft:iron_pickaxe", new byte[] {1});
+    var fresh = new ResourceKey(ResourceKind.ITEM, "minecraft:iron_pickaxe", new byte[] {2});
+    // Percent of durability left, as a platform provider would read it.
+    var left = Map.of(pick, 30, fresh, 100, GOLD, 10);
+    var tags =
+        new ResourceFilter.Tags() {
+          @Override
+          public boolean contains(ResourceKind kind, String tag, ResourceKey candidate) {
+            return false;
+          }
+
+          @Override
+          public boolean worn(ResourceKey candidate, int below) {
+            return left.getOrDefault(candidate, 100) < below;
+          }
+        };
+    var filter =
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.INCLUDE,
+            List.of(new ResourceFilter.Worn("minecraft:iron_pickaxe", 50)));
+    assertTrue(filter.matches(pick, tags), "30% left is below 50%");
+    assertFalse(filter.matches(fresh, tags), "A fresh pickaxe is not worn");
+    assertFalse(filter.matches(GOLD, tags), "Another item never matches, however worn");
+    assertFalse(filter.matches(pick, NO_TAGS), "A provider without durability matches nothing");
+    assertEquals(
+        "minecraft:iron_pickaxe",
+        new ResourceFilter.Worn("minecraft:iron_pickaxe", 99).id(),
+        "99 is the mildest step");
+    assertThrows(
+        IllegalArgumentException.class, () -> new ResourceFilter.Worn("minecraft:iron_pickaxe", 0));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ResourceFilter.Worn("minecraft:iron_pickaxe", 100));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ResourceFilter(
+                ResourceKind.FLUID,
+                ResourceFilter.Mode.INCLUDE,
+                List.of(new ResourceFilter.Worn("minecraft:water", 50))),
+        "Only items have durability");
+    assertFalse(ResourceFilter.programOnly(new ResourceFilter.Worn("minecraft:shears", 25)));
+  }
 }

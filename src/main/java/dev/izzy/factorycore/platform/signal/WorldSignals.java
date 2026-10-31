@@ -6,12 +6,11 @@ import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.core.resource.ResourceFilter;
 import dev.izzy.factorycore.core.resource.ResourceKey;
-import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.SignalRule;
 import dev.izzy.factorycore.platform.ServerScoped;
 import dev.izzy.factorycore.platform.ServerThread;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
-import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
+import dev.izzy.factorycore.platform.resource.PlatformFilterTags;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.platform.storage.WorldStorageCatalog;
 import dev.izzy.factorycore.platform.storage.WorldStorageTransfers;
@@ -23,10 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.tags.TagKey;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
@@ -224,7 +220,7 @@ public final class WorldSignals {
                   }
                   long sum = total;
                   for (var row : page.rows())
-                    if (watch.matches(row.key(), this::tagged))
+                    if (watch.matches(row.key(), new PlatformFilterTags(server)))
                       sum = saturatedAdd(sum, row.total());
                   if (page.next() == null) {
                     finish(signal, signal.rule().strength(sum), "");
@@ -238,20 +234,6 @@ public final class WorldSignals {
                 });
     if (submission.rejection() != OperationResult.Reason.OK)
       finish(signal, 0, submission.rejection().name().toLowerCase(Locale.ROOT));
-  }
-
-  private boolean tagged(ResourceKind kind, String tag, ResourceKey key) {
-    var id = ResourceLocation.tryParse(tag);
-    if (id == null) return false;
-    var codec = new PlatformResourceCodec(server.registryAccess());
-    try {
-      return kind == ResourceKind.FLUID
-          ? codec.fluidStack(key, 1).is(TagKey.create(Registries.FLUID, id))
-          : kind == ResourceKind.ITEM
-              && codec.itemStack(key, 1).is(TagKey.create(Registries.ITEM, id));
-    } catch (IllegalArgumentException unsupported) {
-      return false;
-    }
   }
 
   private void count(

@@ -182,4 +182,39 @@ class BufferPolicyCodecTest {
     }
     assertThrows(IllegalArgumentException.class, () -> new BufferPolicy(policy().filter(), 8, -1));
   }
+
+  @Test
+  void wornTermsRoundTripInBothCodecsAndNeedTheirThreshold() {
+    var filter =
+        new ResourceFilter(
+            ResourceKind.ITEM,
+            ResourceFilter.Mode.INCLUDE,
+            List.of(
+                new ResourceFilter.Worn("minecraft:iron_pickaxe", 25),
+                new ResourceFilter.Registry("minecraft:coal")));
+    var policy = new BufferPolicy(filter, 16, 64);
+    var tag = BufferPolicyCodec.encode(policy);
+    assertEquals(policy, BufferPolicyCodec.decode(tag));
+    var worn = tag.getList("Terms", Tag.TAG_COMPOUND).getCompound(0);
+    assertEquals("WORN", worn.getString("Type"));
+    assertEquals(25, worn.getInt("Below"));
+    var missing = tag.copy();
+    missing.getList("Terms", Tag.TAG_COMPOUND).getCompound(0).remove("Below");
+    assertThrows(IllegalArgumentException.class, () -> BufferPolicyCodec.decode(missing));
+    var zero = tag.copy();
+    zero.getList("Terms", Tag.TAG_COMPOUND).getCompound(0).putInt("Below", 0);
+    assertThrows(IllegalArgumentException.class, () -> BufferPolicyCodec.decode(zero));
+    var extra = tag.copy();
+    extra.getList("Terms", Tag.TAG_COMPOUND).getCompound(1).putInt("Below", 5);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> BufferPolicyCodec.decode(extra),
+        "Only a worn term has a threshold");
+
+    var shared = FilterCodec.encode(filter);
+    assertEquals(filter, FilterCodec.decode(shared, "test"));
+    var sharedMissing = shared.copy();
+    sharedMissing.getList("Terms", Tag.TAG_COMPOUND).getCompound(0).remove("Below");
+    assertThrows(IllegalArgumentException.class, () -> FilterCodec.decode(sharedMissing, "test"));
+  }
 }

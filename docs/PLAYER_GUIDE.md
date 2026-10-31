@@ -324,7 +324,8 @@ The **Settings** tab controls what the network does with the buffer:
     64 coal and 16 iron. Empty the box and **Set** to go back to the Goal.
 - **Filter slots:** click a slot while holding an item to add it, drag an item
   from JEI, or use **Sample**. Click a filled slot to change how it matches:
-  the item (any components), **=** that exact item, or **#** each of its tags.
+  the item (any components), **=** that exact item, for tools and armour **%**
+  worn below 99, 75, 50 or 25% durability, or **#** each of its tags.
   Right-click removes it. **Add by ID…** lets you type an ID or #tag instead.
   **Filter** chooses all items, allow the slots, or block the slots. **Clear**
   resets to all items.

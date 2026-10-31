@@ -208,7 +208,7 @@ public final class DrivePackets {
   private DrivePackets() {}
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("4");
+    var registrar = event.registrar("5");
     MenuPayloads.toClient(registrar, View.TYPE, View.CODEC, DriveMenu.class, DriveMenu::accept);
     MenuPayloads.toServer(
         registrar, FilterCommand.TYPE, FilterCommand.CODEC, DriveMenu.class, DriveMenu::filter);

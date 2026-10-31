@@ -1014,7 +1014,9 @@ public final class PresentationClientVerification {
           setScale(client, 4);
           return true;
         });
-    String[] ids = {"minecraft:iron_ingot", "minecraft:oak_planks", "minecraft:diamond"};
+    String[] ids = {
+      "minecraft:iron_ingot", "minecraft:oak_planks", "minecraft:diamond", "minecraft:iron_pickaxe"
+    };
     for (int index = 0; index < ids.length; index++) {
       int count = index + 1;
       String id = ids[index];
@@ -1028,7 +1030,8 @@ public final class PresentationClientVerification {
             return false;
           });
     }
-    int[][] clicks = {{1, 1}, {1, 2}, {2, 1}};
+    // Q76: the pickaxe cycles Item → Exact → worn below 99%, the "%" badge.
+    int[][] clicks = {{1, 1}, {1, 2}, {2, 1}, {3, 3}};
     for (var click : clicks) {
       int slot = click[0], type = click[1];
       step(

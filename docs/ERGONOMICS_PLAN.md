@@ -1002,7 +1002,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   an item is preferred.
   Done when: GameTests for each option and the seeded conservation suite.
 
-- [ ] **Q76 — Durability matching (M78).** Size S.
+- [x] **Q76 — Durability matching (M78).** Size S. Done 2026-10-31 (commit subject `Q76:`),
+  [Evidence](evidence/ergonomics-q76-durability-matching-2026-10-31.md).
   A filter slot's match cycle gains **damaged below 25/50/75/99%**.
   Done when: filter tests and a GameTest that exports only worn tools.
 

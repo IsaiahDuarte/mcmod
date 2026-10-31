@@ -14,7 +14,7 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
     EXCLUDE
   }
 
-  public sealed interface Term permits Registry, Exact, Tag, Glob, Except {}
+  public sealed interface Term permits Registry, Exact, Tag, Worn, Glob, Except {}
 
   /**
    * D5 (ADR 0062): a registry ID with exactly one {@code *} in its path, matching zero or more of
@@ -101,10 +101,33 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
     }
   }
 
+  /**
+   * Q76: item {@code id} with less than {@code below} percent of its durability left, any other
+   * components. Only damageable items match, as {@link Tags#worn} reports. Items only.
+   */
+  public record Worn(String id, int below) implements Term {
+    /** The thresholds a filter slot cycles through, most worn last. */
+    public static final List<Integer> STEPS = List.of(99, 75, 50, 25);
+
+    public Worn {
+      validateId(id);
+      if (below < 1 || below > 99)
+        throw new IllegalArgumentException("Worn threshold must be 1–99 percent");
+    }
+  }
+
   /** Resolve current tags at evaluation time; exceptions propagate before any resource mutation. */
   @FunctionalInterface
   public interface Tags {
     boolean contains(ResourceKind kind, String tag, ResourceKey candidate);
+
+    /**
+     * Q76: {@code candidate} is damageable and has less than {@code below} percent of its
+     * durability left. A provider that cannot read durability matches nothing.
+     */
+    default boolean worn(ResourceKey candidate, int below) {
+      return false;
+    }
   }
 
   public ResourceFilter {
@@ -128,6 +151,10 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
         if (kind == ResourceKind.ENERGY)
           throw new IllegalArgumentException("Energy has no tag model");
         bytes += 256L + 3L * tag.id().length();
+      } else if (term instanceof Worn worn) {
+        if (kind != ResourceKind.ITEM)
+          throw new IllegalArgumentException("Only items have durability");
+        bytes += termBytes(worn);
       } else {
         if (kind == ResourceKind.ENERGY)
           throw new IllegalArgumentException("Energy has no glob or except model");
@@ -157,6 +184,7 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
           256L + 3L * exact.key().registryId().length() + exact.key().componentByteCount();
       case Registry registry -> 256L + 3L * registry.id().length();
       case Tag tag -> 256L + 3L * tag.id().length();
+      case Worn worn -> 260L + 3L * worn.id().length();
       case Glob glob -> 256L + 3L * glob.pattern().length();
       case Except except -> {
         long bytes = termBytes(except.include());
@@ -171,6 +199,8 @@ public record ResourceFilter(ResourceKind kind, Mode mode, List<Term> terms) {
       case Exact exact -> exact.key().equals(candidate);
       case Registry registry -> registry.id().equals(candidate.registryId());
       case Tag tag -> tags.contains(kind, tag.id(), candidate);
+      case Worn worn ->
+          worn.id().equals(candidate.registryId()) && tags.worn(candidate, worn.below());
       case Glob glob -> glob.matches(candidate.registryId());
       case Except except -> {
         if (!term(except.include(), candidate, tags)) yield false;
