@@ -338,11 +338,12 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
 
   @Override
   public boolean clickMenuButton(Player player, int button) {
-    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+    if (dev.izzy.factorycore.platform.upgrade.UpgradeSlots.requested(button))
       return connector != null
           && player instanceof ServerPlayer upgrader
           && stillValid(upgrader)
-          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, connector);
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(
+              upgrader, this, connector, button);
     var target = InterfaceSwitch.requested(button);
     if (target == null
         || connector == null

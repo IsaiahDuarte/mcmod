@@ -457,4 +457,97 @@ public final class ThroughputUpgradeGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Q113: with an Upgrade Toolbelt in the inventory and an empty cursor, the slot offers and
+   * installs the next upgrade from it; a right-click takes the top one back into the toolbelt. No
+   * upgrade ever sits on the cursor.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void toolbeltInstallsAndTakesBackWithoutTheCursor(GameTestHelper h) {
+    var f = setup(h);
+    int click = dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON;
+    int remove = dev.izzy.factorycore.platform.upgrade.UpgradeSlots.REMOVE;
+    var belt = new ItemStack(ThroughputContent.TOOLBELT.get());
+    belt.set(
+        ThroughputContent.BELT.get(), new dev.izzy.factorycore.platform.upgrade.UpgradeBelt(1, 1));
+    f.player.getInventory().setItem(20, belt);
+    java.util.function.Supplier<dev.izzy.factorycore.platform.upgrade.UpgradeBelt> contents =
+        () ->
+            dev.izzy.factorycore.platform.upgrade.UpgradeBeltItem.contents(
+                f.player.getInventory().getItem(20));
+    java.util.function.Supplier<ConnectorSettingsMenu> menu =
+        () -> {
+          if (!(f.player.containerMenu instanceof ConnectorSettingsMenu open)
+              || !open.stillValid(f.player)) {
+            f.player.closeContainer();
+            f.player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            h.useBlock(PORT, f.player);
+            return (ConnectorSettingsMenu) f.player.containerMenu;
+          }
+          return open;
+        };
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu.get();
+              h.assertTrue(
+                  dev.izzy.factorycore.platform.upgrade.UpgradeSlots.offer(
+                          m.upgradeState(), f.player.getInventory())
+                      == ThroughputTier.ADVANCED,
+                  "The slot offers Throughput from the toolbelt");
+              h.assertTrue(
+                  m.clickMenuButton(f.player, click)
+                      && m.getCarried().isEmpty()
+                      && f.port.tier() == ThroughputTier.ADVANCED
+                      && contents
+                          .get()
+                          .equals(new dev.izzy.factorycore.platform.upgrade.UpgradeBelt(0, 1)),
+                  "A click installs Throughput from the toolbelt: " + contents.get());
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu.get();
+              h.assertTrue(
+                  m.clickMenuButton(f.player, click)
+                      && f.port.tier() == ThroughputTier.ENDGAME
+                      && contents.get().isEmpty(),
+                  "Then Overdrive: " + contents.get());
+              h.assertTrue(
+                  dev.izzy.factorycore.platform.upgrade.UpgradeSlots.offer(
+                          m.upgradeState(), f.player.getInventory())
+                      == null,
+                  "A full slot offers nothing");
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu.get();
+              h.assertTrue(
+                  m.clickMenuButton(f.player, remove)
+                      && m.getCarried().isEmpty()
+                      && f.port.tier() == ThroughputTier.ADVANCED
+                      && contents
+                          .get()
+                          .equals(new dev.izzy.factorycore.platform.upgrade.UpgradeBelt(0, 1)),
+                  "A right-click puts Overdrive back in the toolbelt: " + contents.get());
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu.get();
+              h.assertTrue(
+                  m.clickMenuButton(f.player, remove)
+                      && m.getCarried().isEmpty()
+                      && f.port.tier() == ThroughputTier.BASE
+                      && contents
+                          .get()
+                          .equals(new dev.izzy.factorycore.platform.upgrade.UpgradeBelt(1, 1)),
+                  "And Throughput: " + contents.get());
+              f.player.closeContainer();
+            })
+        .thenSucceed();
+  }
 }

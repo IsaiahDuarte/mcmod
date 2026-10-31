@@ -25,6 +25,21 @@ public final class ThroughputContent {
       FactoryRegistries.ITEMS.register(
           "overdrive_upgrade", () -> new ThroughputUpgradeItem(ThroughputTier.ENDGAME));
 
+  /** Q113: what an Upgrade Toolbelt carries. */
+  public static final net.neoforged.neoforge.registries.DeferredHolder<
+          net.minecraft.core.component.DataComponentType<?>,
+          net.minecraft.core.component.DataComponentType<UpgradeBelt>>
+      BELT =
+          FactoryRegistries.COMPONENTS.registerComponentType(
+              "upgrade_belt",
+              builder ->
+                  builder
+                      .persistent(UpgradeBelt.CODEC)
+                      .networkSynchronized(UpgradeBelt.STREAM_CODEC));
+
+  public static final DeferredItem<UpgradeBeltItem> TOOLBELT =
+      FactoryRegistries.ITEMS.register("upgrade_toolbelt", UpgradeBeltItem::new);
+
   private ThroughputContent() {}
 
   public static Item item(ThroughputTier tier) {

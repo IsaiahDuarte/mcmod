@@ -418,6 +418,20 @@ public final class FactoryCoreData {
           Items.IRON_INGOT,
           'C',
           Items.COPPER_INGOT);
+      // Q113: the Upgrade Toolbelt (starter stage: vanilla parts only).
+      shaped(
+          out,
+          misc,
+          "upgrade_toolbelt",
+          1,
+          Items.LEATHER,
+          "SLS/L L/SIS",
+          'S',
+          Items.STRING,
+          'L',
+          Items.LEATHER,
+          'I',
+          Items.IRON_INGOT);
       // D8: the Label Tool (starter stage: vanilla parts only).
       shaped(
           out,

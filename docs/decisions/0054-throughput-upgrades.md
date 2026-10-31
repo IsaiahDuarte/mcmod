@@ -190,3 +190,18 @@ Alternatives: a real container slot per menu (rejected: the tier is not an inven
 would need its own persistence beside the tier fields above); removal only by breaking the device
 (rejected by M19). A toolbelt that offers a held set of upgrades in every slot (M89) is left to a
 later slice.
+
+## Upgrade Toolbelt — 2026-10-31 (Q113)
+
+The Upgrade Toolbelt keeps up to 64 Throughput and 64 Overdrive Upgrades as counts in an
+`upgrade_belt` data component, so installed and carried upgrades stay ordinary items with no
+second inventory. `UpgradeSlots` gains:
+- `REMOVE` (401), a right-click that only removes;
+- `offer(state, inventory)`, the device's next upgrade if the first toolbelt in the inventory holds
+  one. Client and server both compute it from the synced slot state.
+
+An empty-cursor click on `BUTTON` installs the offer through the same `ThroughputUpgradeable.upgrade`
+call. The toolbelt is charged only after the device accepts, and nothing in creative. A removed
+upgrade goes into the toolbelt when it has room, otherwise to the cursor as before. Every device
+menu now accepts both buttons. Considered: a toolbelt with real slots (a container item), which
+would add a third place upgrades live, and its own menu, for no gain over counts.

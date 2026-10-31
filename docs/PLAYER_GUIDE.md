@@ -566,6 +566,12 @@ cursor, or to your inventory if the change closes the screen. Taking one out low
 device's rate to the new limit and needs the same rights as installing. The upgrade's
 tooltip lists the devices it fits.
 
+An **Upgrade Toolbelt** (string, leather and an iron ingot) carries up to 64 of each upgrade.
+Click it with upgrades on your cursor to put them in, or right-click it to take one out.
+With it in your inventory, an upgrade slot shows the next upgrade it holds as a faded icon
+with a **+**. Click the slot to install it straight from the toolbelt. Right-click the slot
+to take the top upgrade out; it goes back into the toolbelt when there is room.
+
 | Hardware | Base | Throughput | Overdrive |
 | --- | --- | --- | --- |
 | Storage, Importer, Exporter, cable port items per tick | 128 (default 64) | 256 | 1,024 |

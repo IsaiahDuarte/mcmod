@@ -151,12 +151,13 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
 
   @Override
   public boolean clickMenuButton(Player player, int button) {
-    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+    if (dev.izzy.factorycore.platform.upgrade.UpgradeSlots.requested(button))
       return gateway != null
           && gateway.link() != null
           && player instanceof ServerPlayer upgrader
           && stillValid(upgrader)
-          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, gateway);
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(
+              upgrader, this, gateway, button);
     if (button == ACCESS_BUTTON
         && gateway != null
         && player instanceof ServerPlayer server

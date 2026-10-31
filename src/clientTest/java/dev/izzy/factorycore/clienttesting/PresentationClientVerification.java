@@ -2297,6 +2297,13 @@ public final class PresentationClientVerification {
                   .buffers()
                   .deployment(buffer.handle().id());
           swap[0] = new PolicySwap(before.mode(), before.policy());
+          // Q113: a toolbelt with upgrades makes the upgrade slot offer Throughput.
+          var belt =
+              new ItemStack(dev.izzy.factorycore.platform.upgrade.ThroughputContent.TOOLBELT.get());
+          belt.set(
+              dev.izzy.factorycore.platform.upgrade.ThroughputContent.BELT.get(),
+              new dev.izzy.factorycore.platform.upgrade.UpgradeBelt(2, 1));
+          player.getInventory().setItem(30, belt);
           // Q77: an anvil name is the screen's title.
           buffer.setComponents(
               net.minecraft.core.component.DataComponentMap.builder()
@@ -2323,6 +2330,7 @@ public final class PresentationClientVerification {
               swap[0].mode(),
               swap[0].policy());
           buffer.setComponents(net.minecraft.core.component.DataComponentMap.EMPTY);
+          player.getInventory().setItem(30, ItemStack.EMPTY);
         });
     // H6: the Importer and Exporter screens on the panel kit.
     use(base.east(8).north(), Direction.SOUTH, false);

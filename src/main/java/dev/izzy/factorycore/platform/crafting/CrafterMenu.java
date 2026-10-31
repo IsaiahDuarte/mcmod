@@ -305,11 +305,12 @@ public final class CrafterMenu extends AbstractContainerMenu implements DeviceSt
 
   @Override
   public boolean clickMenuButton(Player player, int button) {
-    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+    if (dev.izzy.factorycore.platform.upgrade.UpgradeSlots.requested(button))
       return crafter != null
           && player instanceof ServerPlayer upgrader
           && stillValid(upgrader)
-          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, crafter);
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(
+              upgrader, this, crafter, button);
     return false;
   }
 }

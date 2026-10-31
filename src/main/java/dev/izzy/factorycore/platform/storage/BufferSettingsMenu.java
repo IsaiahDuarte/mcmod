@@ -198,11 +198,12 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
 
   @Override
   public boolean clickMenuButton(Player player, int button) {
-    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+    if (dev.izzy.factorycore.platform.upgrade.UpgradeSlots.requested(button))
       return holder != null
           && player instanceof ServerPlayer upgrader
           && stillValid(upgrader)
-          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, holder);
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(
+              upgrader, this, holder, button);
     if (RedstoneMenu.requested(button)) {
       if (holder == null
           || !current()

@@ -838,6 +838,35 @@ def wrench():
     return c
 
 
+def upgrade_toolbelt():
+    """Q113 Upgrade Toolbelt: a leather belt with a steel buckle and two upgrade pouches.
+
+    The pouches carry the two upgrade cards' tier colors, each with its flow chevron, so the item
+    reads as "holds upgrades" next to the cards themselves.
+    """
+    c = Canvas("upgrade_toolbelt")
+    # Belt band across the middle, copper leather with stitching.
+    c.rect(0, 9, 15, 12, OUTLINE)
+    c.rect(0, 10, 15, 11, COPPER_DARK)
+    c.hline(0, 15, 10, COPPER)
+    for x in range(1, 16, 3):
+        c.px(x, 11, COPPER_HI)
+    # Buckle on the left.
+    c.rect(1, 8, 4, 13, OUTLINE)
+    c.rect(2, 9, 3, 12, STEEL)
+    c.px(2, 9, STEEL_HI)
+    # Two pouches hanging from the band: Throughput (left) and Overdrive (right).
+    for left, tier in ((5, "advanced"), (10, "infinite")):
+        dark, base, hi = TIERS[tier]
+        c.rect(left, 3, left + 4, 9, OUTLINE)
+        c.rect(left + 1, 4, left + 3, 8, CASE)
+        c.hline(left + 1, left + 3, 4, base)
+        c.px(left + 2, 6, hi)
+        c.px(left + 1, 6, dark)
+        c.hline(left + 1, left + 3, 8, dark)
+    return c
+
+
 def pattern(kind):
     c = Canvas(f"{kind}_pattern")
     # Encoded card with a folded corner; corner tab marks the kind by shape.
@@ -932,6 +961,7 @@ def item_textures():
     out["wireless_link"] = wireless_link()
     out["label_tool"] = label_tool()
     out["wrench"] = wrench()
+    out["upgrade_toolbelt"] = upgrade_toolbelt()
     for kind in ("blank", "crafting", "processing"):
         out[f"{kind}_pattern"] = pattern(kind)
     out["wireless_terminal"] = wireless_terminal()

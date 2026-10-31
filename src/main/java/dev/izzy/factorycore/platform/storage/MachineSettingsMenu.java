@@ -330,11 +330,12 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
 
   @Override
   public boolean clickMenuButton(Player player, int button) {
-    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+    if (dev.izzy.factorycore.platform.upgrade.UpgradeSlots.requested(button))
       return machine != null
           && player instanceof ServerPlayer upgrader
           && stillValid(upgrader)
-          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, machine);
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(
+              upgrader, this, machine, button);
     int order = button - ORDER_BUTTON;
     if (order >= 0 && order < dev.izzy.factorycore.core.storage.ExportOrder.values().length) {
       if (machine == null

@@ -1186,7 +1186,8 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   Done when: a JEI client step shows the plentiful variant chosen and each warning; a GameTest
   encodes a processing pattern with a typed amount and a chosen main output.
 
-- [ ] **Q113 — Upgrade toolbelt (M89).** Size S. Lane D, after Q19 (split from it).
+- [x] **Q113 — Upgrade toolbelt (M89).** Size S. Lane D, after Q19 (split from it). Done 2026-10-31
+  (commit subject `Q113:`), [Evidence](evidence/ergonomics-q113-upgrade-toolbelt-2026-10-31.md).
   A carried tool holding a set of upgrades; with it in the inventory, each upgrade slot offers
   its contents (click the slot to install from the tool, removal returns to the tool when it
   has room).
