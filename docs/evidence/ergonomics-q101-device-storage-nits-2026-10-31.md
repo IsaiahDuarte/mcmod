@@ -40,3 +40,17 @@ refused with a message.
   - an empty bound cell's ledger is forgotten;
   - an Expanded cell also returns its Expansion Module.
 - 485 GameTests passed.
+
+## M119: hoppers move whole cells
+
+`DriveCellHandler` (registered as the drive's `ItemHandler.BLOCK` capability on every face)
+exposes the four bays with a limit of 1. A cell goes into an empty bay through
+`StorageDriveEntity.installCell`, and a whole cell comes out through `removeCell`: the same calls
+the screen makes, so leases, detachment and the Q72 summary are unchanged. Only cells are
+valid. Anything the drive refuses (a duplicate or stale cell, a drive needing recovery) stays in
+the hopper. The handler is always present, and it refuses when the drive can't take a cell
+(a capability that is sometimes null would be cached stale).
+
+**Test.** `DriveFeedbackGameTests.hoppersMoveWholeCellsInAndOutOfADrive`: a hopper above installs
+a cell holding 12 cobblestone into bay 1 (its ledger is placed). A hopper below then takes it out
+whole, detached, with its 12 cobblestone. 486 GameTests passed.

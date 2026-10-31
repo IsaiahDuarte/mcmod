@@ -13,6 +13,7 @@ import dev.izzy.factorycore.testing.Net;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -22,6 +23,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.entity.HopperBlockEntity;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -253,6 +256,71 @@ public final class DriveFeedbackGameTests {
                   count.apply(StorageContent.EXPANSION.get()) == 1 && count.apply(Items.CHEST) == 1,
                   "An Expanded cell gives back the Expansion Module too");
               player.connection.disconnect(Component.literal("Disassembly fixture complete"));
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Q101 (M119): a hopper above a drive puts a cell into its first empty bay, and a hopper below
+   * takes whole cells out with their contents, through the drive's own install and removal.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void hoppersMoveWholeCellsInAndOutOfADrive(GameTestHelper h) {
+    var owner = java.util.UUID.randomUUID();
+    Net.in(h, owner).controller(ROOT);
+    StorageDriveEntity drive = Net.in(h).drive(DRIVE);
+    // A second, wired drive whose cell is filled and then taken out.
+    var sourceAt = new BlockPos(1, 1, 2);
+    StorageDriveEntity source = Net.in(h).drive(sourceAt, CellTier.STARTER_ITEM);
+    var registry = DeviceSavedData.get(h.getLevel().getServer()).registry();
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var network = Net.in(h);
+    java.util.UUID[] backing = {null};
+    HopperBlockEntity[] top = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> network.assertValid(DRIVE, sourceAt))
+        .thenExecute(
+            () -> {
+              var filled =
+                  registry.insert(
+                      CellHandleData.read(source.cell(0)),
+                      codec.itemKey(new ItemStack(Items.COBBLESTONE)),
+                      12);
+              h.assertTrue(filled.amount() == 12, "The cell holds 12 cobblestone");
+              var cell = source.removeCell(0);
+              backing[0] = CellHandleData.read(cell).backing();
+              h.setBlock(
+                  DRIVE.above(),
+                  Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN));
+              top[0] = h.getBlockEntity(DRIVE.above());
+              top[0].setItem(0, cell);
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    top[0].isEmpty()
+                        && CellHandleData.read(drive.cell(0)) != null
+                        && CellHandleData.read(drive.cell(0)).backing().equals(backing[0])
+                        && registry.ownership(backing[0]).definition().location() != null,
+                    "The hopper installs the cell in the first bay"))
+        .thenExecute(
+            () ->
+                h.setBlock(
+                    DRIVE.below(),
+                    Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.EAST)))
+        .thenWaitUntil(
+            () -> {
+              HopperBlockEntity bottom = h.getBlockEntity(DRIVE.below());
+              var taken = bottom.getItem(0);
+              h.assertTrue(
+                  drive.cell(0).isEmpty()
+                      && CellHandleData.read(taken) != null
+                      && CellHandleData.read(taken).backing().equals(backing[0]),
+                  "A hopper below takes the whole cell out");
+              h.assertTrue(
+                  registry.ownership(backing[0]).definition().location() == null
+                      && registry.ownership(backing[0]).total() == 12,
+                  "It leaves the drive detached, with its 12 cobblestone");
             })
         .thenSucceed();
   }

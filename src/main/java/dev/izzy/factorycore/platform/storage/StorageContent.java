@@ -140,5 +140,16 @@ public final class StorageContent {
   public static void register(IEventBus bus) {
     // Loading this class adds its entries to FactoryRegistries before registration.
     bus.addListener(DrivePackets::register);
+    bus.addListener(StorageContent::capabilities);
+  }
+
+  /** Q101 (M119): hoppers and pipes move whole cells in and out of drive bays. */
+  private static void capabilities(
+      net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent event) {
+    event.registerBlockEntity(
+        net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
+        DRIVE_ENTITY.get(),
+        // Always present: the handler refuses on its own while the drive cannot take a cell.
+        (drive, face) -> new DriveCellHandler(drive));
   }
 }
