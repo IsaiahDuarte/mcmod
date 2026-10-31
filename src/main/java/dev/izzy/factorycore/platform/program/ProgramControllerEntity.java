@@ -12,6 +12,7 @@ import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.power.EnergyUsers;
 import dev.izzy.factorycore.platform.power.RateLimitedEnergyInput;
 import dev.izzy.factorycore.platform.storage.WorldPrograms;
 import java.util.List;
@@ -32,7 +33,8 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * finite FE buffer and bounded logs. Deployment authority is the deployer's current grants checked
  * at every invocation; breaking the block keeps the draft and FE, never the deployment.
  */
-public final class ProgramControllerEntity extends BlockEntity implements WiredMember {
+public final class ProgramControllerEntity extends BlockEntity
+    implements WiredMember, EnergyUsers.User {
   public static final int MAX_DRAFT = FriendlyCompiler.MAX_SOURCE;
   public static final long CAPACITY = 10_000;
   public static final long INPUT_RATE = 1_000;
@@ -86,6 +88,16 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
   /** Spends {@code amount} FE if available; returns false and spends nothing otherwise. */
   public boolean spend(long amount) {
     return input.spend(amount);
+  }
+
+  @Override
+  public EnergyUsers.Kind energyKind() {
+    return EnergyUsers.Kind.PROGRAM_CONTROLLER;
+  }
+
+  @Override
+  public double energyUse() {
+    return input.use();
   }
 
   public String draft() {
@@ -245,6 +257,7 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
   public void onLoad() {
     super.onLoad();
     if (level instanceof ServerLevel server) WorldPrograms.get(server.getServer()).loaded(this);
+    EnergyUsers.loaded(level, this);
     WorldNetworks.changed(level, worldPosition);
   }
 
@@ -252,6 +265,7 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
   public void setRemoved() {
     if (level instanceof ServerLevel server && WorldPrograms.exists(server.getServer()))
       WorldPrograms.get(server.getServer()).removed(this);
+    EnergyUsers.removed(level, this);
     WorldNetworks.changed(level, worldPosition);
     super.setRemoved();
   }
@@ -260,6 +274,7 @@ public final class ProgramControllerEntity extends BlockEntity implements WiredM
   public void onChunkUnloaded() {
     if (level instanceof ServerLevel server && WorldPrograms.exists(server.getServer()))
       WorldPrograms.get(server.getServer()).removed(this);
+    EnergyUsers.removed(level, this);
     super.onChunkUnloaded();
   }
 

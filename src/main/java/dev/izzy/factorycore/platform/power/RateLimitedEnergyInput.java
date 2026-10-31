@@ -13,6 +13,9 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * <p>{@code serverTick} returns the level's game time on the logical server and a negative value
  * otherwise (client or no level), when nothing is accepted. {@code accepting} lets the owner refuse
  * input, for example while its saved data is unsupported. {@code dirty} runs after each change.
+ *
+ * <p>Q25: it also meters what the owner spends, as FE per tick averaged over the last window of at
+ * least {@link #WINDOW} ticks ({@link #use}), for the network Overview.
  */
 public final class RateLimitedEnergyInput implements IEnergyStorage {
   private final long capacity, rate;
@@ -21,6 +24,12 @@ public final class RateLimitedEnergyInput implements IEnergyStorage {
   private final Runnable dirty;
   private long energy;
   private long inputTick = Long.MIN_VALUE, inputThisTick;
+
+  /** Ticks a use window covers at least. */
+  public static final int WINDOW = 20;
+
+  private long windowStart = Long.MIN_VALUE, windowSpent;
+  private double lastUse;
 
   public RateLimitedEnergyInput(
       long capacity,
@@ -49,9 +58,35 @@ public final class RateLimitedEnergyInput implements IEnergyStorage {
   /** Spends {@code amount} FE if available; spends nothing and returns false otherwise. */
   public boolean spend(long amount) {
     if (amount < 0 || amount > energy) return false;
+    roll(serverTick.getAsLong());
+    windowSpent += amount;
     energy -= amount;
     dirty.run();
     return true;
+  }
+
+  /**
+   * FE spent per tick, averaged over the last finished window (0 before one finishes, and again
+   * once a whole window passes without spending). Not saved: it restarts with the level.
+   */
+  public double use() {
+    roll(serverTick.getAsLong());
+    return lastUse;
+  }
+
+  /** Closes the current window once it is {@link #WINDOW} ticks old. */
+  private void roll(long now) {
+    if (now < 0) return;
+    if (windowStart == Long.MIN_VALUE || now < windowStart) {
+      windowStart = now;
+      windowSpent = 0;
+      return;
+    }
+    long age = now - windowStart;
+    if (age < WINDOW) return;
+    lastUse = (double) windowSpent / age;
+    windowStart = now;
+    windowSpent = 0;
   }
 
   /** Restores saved energy, clamped to {@code [0, capacity]}; does not mark the owner dirty. */

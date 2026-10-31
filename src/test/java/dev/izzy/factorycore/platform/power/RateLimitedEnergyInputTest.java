@@ -49,6 +49,20 @@ class RateLimitedEnergyInputTest {
   }
 
   @Test
+  void useAveragesSpendingOverTheLastWindowAndFallsToZeroWhenIdle() {
+    var input = input(100_000, 100_000);
+    input.receiveEnergy(100_000, false);
+    assertEquals(0, input.use(), "Nothing measured yet");
+    for (tick = 0; tick < RateLimitedEnergyInput.WINDOW; tick++) input.spend(16);
+    assertEquals(16, input.use(), 1e-9, "16 FE every tick");
+    for (; tick < 2 * RateLimitedEnergyInput.WINDOW; tick += 10) input.spend(50);
+    assertEquals(5, input.use(), 1e-9, "50 FE every 10 ticks");
+    tick += 2 * RateLimitedEnergyInput.WINDOW;
+    input.use();
+    assertEquals(0, input.use(), 1e-9, "A whole idle window reads 0");
+  }
+
+  @Test
   void spendNeverGoesBelowZeroAndRestoreClamps() {
     var input = input(1_000, 1_000);
     input.receiveEnergy(300, false);

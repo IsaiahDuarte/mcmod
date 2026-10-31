@@ -5,6 +5,7 @@ import dev.izzy.factorycore.platform.client.ui.PanelLayout;
 import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.network.OverviewMenu;
+import dev.izzy.factorycore.platform.power.EnergyUsers;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphics;
@@ -17,7 +18,9 @@ import net.minecraft.world.entity.player.Inventory;
 /**
  * Network overview (playtest H10), on the panel kit: whether the network works and why not, what it
  * has, and a short checklist of what a first network needs (storage, a terminal, then machines),
- * each with what to do next. Access… opens the Network Access screen.
+ * each with what to do next. Access… opens the Network Access screen. Q25: between the counts and
+ * the checklist, the energy the network's self-powered devices use, per kind of device; hovering it
+ * lists the five largest users.
  */
 public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> {
   /** The checklist, in play order: a role and the step that adds it. */
@@ -38,7 +41,7 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
   /** Sized to what is shown now; a change (online, counts, steps done) lays it out again. */
   private PanelLayout layout;
 
-  private Rect status, counts, checklist;
+  private Rect status, counts, energy, checklist;
 
   public OverviewScreen(OverviewMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
@@ -65,10 +68,35 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
     return height;
   }
 
+  /** Kinds of device that use energy here, in kind order. */
+  private List<EnergyUsers.Kind> energyKinds() {
+    var kinds = new java.util.ArrayList<EnergyUsers.Kind>();
+    for (var kind : EnergyUsers.Kind.values()) if (menu.energyCount(kind) > 0) kinds.add(kind);
+    return kinds;
+  }
+
+  /** The total line and one line per kind of device that uses energy. */
+  private int energyHeight() {
+    return (1 + energyKinds().size()) * PanelLayout.LINE;
+  }
+
   private int bodyHeight() {
     return detailed()
-        ? STATUS_HEIGHT + PanelLayout.GAP + COUNTS_HEIGHT + PanelLayout.GAP + checklistHeight()
+        ? STATUS_HEIGHT
+            + PanelLayout.GAP
+            + COUNTS_HEIGHT
+            + PanelLayout.GAP
+            + energyHeight()
+            + PanelLayout.GAP
+            + checklistHeight()
         : STATUS_HEIGHT + PanelLayout.LINE;
+  }
+
+  /** FE per tick with one decimal below 100. */
+  private static String fe(double perTick) {
+    return perTick < 100
+        ? String.format(Locale.ROOT, "%.1f", perTick)
+        : Long.toString(Math.round(perTick));
   }
 
   @Override
@@ -79,6 +107,7 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
     var rows = new PanelLayout(layout.width(), layout.height());
     status = rows.row(detailed() ? STATUS_HEIGHT : STATUS_HEIGHT + PanelLayout.LINE);
     counts = detailed() ? rows.row(COUNTS_HEIGHT) : null;
+    energy = detailed() ? rows.row(energyHeight()) : null;
     checklist = detailed() ? rows.row(checklistHeight()) : null;
     var access = Component.translatable("gui.factorycore.overview.access");
     var cell =
@@ -133,7 +162,7 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
       return;
     }
     // The state just changed and the next tick lays the panel out again; draw nothing until then.
-    if (counts == null || checklist == null) return;
+    if (counts == null || energy == null || checklist == null) return;
     // What the network has, in two columns.
     var columns = PanelLayout.columns(counts, 2, PanelLayout.GAP);
     NetworkTopology.Role[] shown = {
@@ -154,6 +183,28 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
           Panels.TEXT,
           false);
     }
+    // Energy: the total, then each kind of device that uses it.
+    var kinds = energyKinds();
+    graphics.drawString(
+        font,
+        kinds.isEmpty()
+            ? Component.translatable("gui.factorycore.overview.energy.none")
+            : Component.translatable("gui.factorycore.overview.energy", fe(menu.energyUse())),
+        energy.x(),
+        energy.y(),
+        kinds.isEmpty() ? Panels.MUTED : Panels.TEXT,
+        false);
+    for (int i = 0; i < kinds.size(); i++)
+      graphics.drawString(
+          font,
+          Component.translatable(
+              "gui.factorycore.overview.energy.kind." + key(kinds.get(i)),
+              menu.energyCount(kinds.get(i)),
+              fe(menu.energyUse(kinds.get(i)))),
+          energy.x() + 6,
+          energy.y() + (i + 1) * PanelLayout.LINE,
+          Panels.MUTED,
+          false);
     // The checklist: a tick or a cross (never colour alone) and the next thing to do.
     int y = checklist.y();
     for (var step : STEPS) {
@@ -177,5 +228,26 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
   public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     super.render(graphics, mouseX, mouseY, partial);
     renderTooltip(graphics, mouseX, mouseY);
+    if (energy != null
+        && detailed()
+        && energy.offset(leftPos, topPos).contains(new Rect(mouseX, mouseY, 0, 0)))
+      graphics.renderComponentTooltip(font, energyTooltip(), mouseX, mouseY);
+  }
+
+  /** What the energy lines mean, then the largest users. */
+  private List<Component> energyTooltip() {
+    var lines = new java.util.ArrayList<Component>();
+    lines.add(Component.translatable("gui.factorycore.overview.energy.help"));
+    var top = menu.topUsers();
+    if (!top.isEmpty()) lines.add(Component.translatable("gui.factorycore.overview.energy.top"));
+    for (int i = 0; i < top.size(); i++)
+      lines.add(
+          Component.translatable(
+              "gui.factorycore.overview.energy.user",
+              i + 1,
+              Component.translatable(
+                  "gui.factorycore.overview.energy.device." + key(top.get(i).kind())),
+              fe(top.get(i).perTick())));
+    return lines;
   }
 }

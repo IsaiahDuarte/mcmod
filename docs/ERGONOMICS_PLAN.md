@@ -740,7 +740,8 @@ New gates:
   Done when: a GameTest crafts through a redstone-only machine and the signal turns off when the
   output arrives or the job is cancelled.
 
-- [ ] **Q25 — Energy use in the Overview (M25).** Size S. Check first.
+- [x] **Q25 — Energy use in the Overview (M25).** Size S. Check first. Done 2026-10-31 (commit
+  subject `Q25:`), [Evidence](evidence/ergonomics-q25-overview-energy-2026-10-31.md).
   Show the network's FE use per tick and the five largest users, and a list of devices with
   their count and use (M91, AE2 network status).
   Files: `OverviewMenu.java`, `OverviewScreen.java`.

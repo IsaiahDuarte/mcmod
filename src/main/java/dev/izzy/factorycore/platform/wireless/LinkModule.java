@@ -88,6 +88,11 @@ public final class LinkModule {
     return input.spend(amount);
   }
 
+  /** FE per tick this link spends (Q25), see {@link RateLimitedEnergyInput#use}. */
+  public double use() {
+    return input.use();
+  }
+
   public UUID owner() {
     return owner;
   }

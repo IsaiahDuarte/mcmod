@@ -8,6 +8,7 @@ import dev.izzy.factorycore.platform.Loaded;
 import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.power.EnergyUsers;
 import dev.izzy.factorycore.platform.power.RateLimitedEnergyInput;
 import dev.izzy.factorycore.platform.upgrade.ThroughputUpgradeable;
 import net.minecraft.core.BlockPos;
@@ -28,7 +29,7 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * per open tick (16, 32, 64 FE).
  */
 public final class AccessPointEntity extends BlockEntity
-    implements WiredMember, ThroughputUpgradeable {
+    implements WiredMember, ThroughputUpgradeable, EnergyUsers.User {
   public static final long CAPACITY = 20_000;
   public static final long INPUT_RATE = 1_000;
 
@@ -129,6 +130,16 @@ public final class AccessPointEntity extends BlockEntity
     return input.spend(amount);
   }
 
+  @Override
+  public EnergyUsers.Kind energyKind() {
+    return EnergyUsers.Kind.ACCESS_POINT;
+  }
+
+  @Override
+  public double energyUse() {
+    return input.use();
+  }
+
   public NodeRegistry.Position origin() {
     return Positions.of(level, worldPosition);
   }
@@ -143,11 +154,13 @@ public final class AccessPointEntity extends BlockEntity
   @Override
   public void onLoad() {
     super.onLoad();
+    EnergyUsers.loaded(level, this);
     WorldNetworks.changed(level, worldPosition);
   }
 
   @Override
   public void setRemoved() {
+    EnergyUsers.removed(level, this);
     WorldNetworks.changed(level, worldPosition);
     super.setRemoved();
   }

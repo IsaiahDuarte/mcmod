@@ -37,7 +37,8 @@ import net.minecraft.world.level.storage.LevelResource;
 /**
  * Chunk/item references; ownership and gateway policies live exclusively in canonical SavedData.
  */
-public final class NetworkNodeEntity extends BlockEntity implements ThroughputUpgradeable {
+public final class NetworkNodeEntity extends BlockEntity
+    implements ThroughputUpgradeable, dev.izzy.factorycore.platform.power.EnergyUsers.User {
   private Tag data;
 
   /** A gateway's installed wireless link (ADR 0061), or null. */
@@ -340,7 +341,24 @@ public final class NetworkNodeEntity extends BlockEntity implements ThroughputUp
   public void onLoad() {
     super.onLoad();
     if (level instanceof ServerLevel) bind(false);
+    dev.izzy.factorycore.platform.power.EnergyUsers.loaded(level, this);
     networkingChanged();
+  }
+
+  /** Q25: a node uses energy only while it carries a Wireless Link. */
+  @Override
+  public dev.izzy.factorycore.platform.power.EnergyUsers.Kind energyKind() {
+    return link == null ? null : dev.izzy.factorycore.platform.power.EnergyUsers.Kind.WIRELESS_LINK;
+  }
+
+  @Override
+  public NodeRegistry.Position origin() {
+    return position();
+  }
+
+  @Override
+  public double energyUse() {
+    return link == null ? 0 : link.use();
   }
 
   private void networkingChanged() {
@@ -349,6 +367,7 @@ public final class NetworkNodeEntity extends BlockEntity implements ThroughputUp
 
   @Override
   public void setRemoved() {
+    dev.izzy.factorycore.platform.power.EnergyUsers.removed(level, this);
     networkingChanged();
     super.setRemoved();
   }
