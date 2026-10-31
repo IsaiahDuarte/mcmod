@@ -977,7 +977,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
 
 ## Wave D2 — devices and storage (lane D)
 
-- [ ] **Q72 — Cell and drive feedback (M70).** Size S.
+- [x] **Q72 — Cell and drive feedback (M70).** Size S. Done 2026-10-31 (commit subject `Q72:`),
+  [Evidence](evidence/ergonomics-q72-cell-drive-feedback-2026-10-31.md).
   Cell tooltip: stored/capacity, types, percent, and the first 8 stored entries with icons. Drive
   bays: empty, partial, near full (≥ 75%), full and offline lamps.
   Done when: a GameTest checks the tooltip data; screenshots of the bay states.

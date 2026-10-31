@@ -810,6 +810,78 @@ public final class PresentationClientVerification {
    * watches stone (one is stored), the threshold is typed down to 1 and applied, and the lamp
    * lights; the screen is captured at scales 4 and 1 and the lit lamp in the world.
    */
+  /**
+   * Q72: the bay lamps in the world. A drive wired to the root's west face holds an empty cell, one
+   * at 80% and a full one; an unwired drive two blocks further west shows offline cells. Both are
+   * removed afterwards so later tours see the scene as before.
+   */
+  private void driveBaysTour(BlockPos base) {
+    var driveAt = base.west();
+    var lone = base.west(3);
+    Vec3[] home = {null};
+    float[] facing = {0, 0};
+    server(
+        player -> {
+          home[0] = player.position();
+          facing[0] = player.getYRot();
+          facing[1] = player.getXRot();
+          var level = player.serverLevel();
+          level.setBlock(driveAt, StorageContent.DRIVE.get().defaultBlockState(), 3);
+          var drive = (StorageDriveEntity) level.getBlockEntity(driveAt);
+          for (int slot = 0; slot < 3; slot++)
+            drive.installCell(slot, new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+          level.setBlock(lone, StorageContent.DRIVE.get().defaultBlockState(), 3);
+          var offline = (StorageDriveEntity) level.getBlockEntity(lone);
+          offline.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+          offline.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_ITEM)));
+        });
+    // The cells take stock once the drive is on the network.
+    serverUntil(player -> valid(player, driveAt));
+    server(
+        player -> {
+          var level = player.serverLevel();
+          var drive = (StorageDriveEntity) level.getBlockEntity(driveAt);
+          var registry = DeviceSavedData.get(level.getServer()).registry();
+          var cobble =
+              new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                      level.registryAccess())
+                  .itemKey(new ItemStack(net.minecraft.world.item.Items.COBBLESTONE));
+          registry.insert(CellHandleData.read(drive.cell(1)), cobble, 6_600);
+          registry.insert(
+              CellHandleData.read(drive.cell(2)), cobble, CellTier.STARTER_ITEM.capacity());
+        });
+    serverUntil(
+        player -> {
+          var level = player.serverLevel();
+          var bays = dev.izzy.factorycore.platform.storage.StorageDriveBlock.BAYS;
+          var shown = level.getBlockState(driveAt);
+          return shown.getValue(bays.get(0))
+                  == dev.izzy.factorycore.platform.storage.DriveBay.ONLINE
+              && shown.getValue(bays.get(1))
+                  == dev.izzy.factorycore.platform.storage.DriveBay.NEAR_FULL
+              && shown.getValue(bays.get(2)) == dev.izzy.factorycore.platform.storage.DriveBay.FULL
+              && level.getBlockState(lone).getValue(bays.get(0))
+                  == dev.izzy.factorycore.platform.storage.DriveBay.OFFLINE;
+        });
+    // From the south, looking north at both drive fronts.
+    view(
+        new PresentationScenes.View(
+            base.getX() - 1.5, base.getY() + 1.4, base.getZ() + 3.0, 180, 32),
+        "drive-bays.png",
+        10);
+    server(
+        player -> {
+          var level = player.serverLevel();
+          for (var at : List.of(driveAt, lone)) {
+            var drive = (StorageDriveEntity) level.getBlockEntity(at);
+            for (int slot = 0; slot < 4; slot++) drive.removeCell(slot);
+            level.setBlock(at, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+          }
+          player.teleportTo(
+              player.serverLevel(), home[0].x, home[0].y, home[0].z, facing[0], facing[1]);
+        });
+  }
+
   private void signalTour(BlockPos base) {
     var signalAt = base.north();
     Vec3[] home = {null};
@@ -2220,6 +2292,7 @@ public final class PresentationClientVerification {
     scales("cable-port", dev.izzy.factorycore.platform.client.CablePortScreen.class, false);
     filterTour(base);
     signalTour(base);
+    driveBaysTour(base);
     use(base.east(6).north(), Direction.SOUTH, false);
     step(
         client ->

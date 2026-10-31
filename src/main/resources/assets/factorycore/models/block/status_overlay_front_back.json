@@ -2,7 +2,7 @@
   "render_type": "minecraft:cutout",
   "textures": {
     "particle": "#overlay",
-    "overlay": "factorycore:block/storage_drive_bay_1"
+    "overlay": "factorycore:block/storage_drive_bay_1_online"
   },
   "elements": [
     {

@@ -1084,6 +1084,8 @@
   "tooltip.factorycore.cell_capacity_infinite": "Capacity: Infinite (technical limits apply)",
   "tooltip.factorycore.cell_unbound": "Unbound empty cell",
   "tooltip.factorycore.cell_backing": "Cell ID: %s",
+  "tooltip.factorycore.cell_stored": "Stored: %s / %s (%s%%) · %s types",
+  "tooltip.factorycore.cell_stored_infinite": "Stored: %s · %s types",
   "tooltip.factorycore.cell_invalid": "Invalid cell data: %s",
   "message.factorycore.drive_installed": "Cell installed in slot %s; routing awaits a valid network",
   "gui.factorycore.drive.bay": "Bay %s",

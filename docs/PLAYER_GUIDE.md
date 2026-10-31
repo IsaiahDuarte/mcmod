@@ -88,7 +88,9 @@ the drive with an empty hand to open its screen. Each bay shows its tier, the nu
 of stored types and how full it is. With a cell on your cursor, click a bay to
 install it. Click a filled bay to pick its cell up, or Shift-click it to send the
 cell to your inventory. Sneak-use with an empty hand takes out the first cell.
-Breaking the drive drops its cells with their contents.
+Breaking the drive drops its cells with their contents. A cell taken out of a drive
+shows in its tooltip how much it holds (stored / capacity, percent and types) and its
+eight largest entries as icons.
 
 **Drive priority:** type a number from -1000 to 1000 in **Priority** and press Enter.
 The network fills higher-priority storage first, counting drives and Storage-mode
@@ -672,7 +674,10 @@ applies.
   mark on a fault.
 - **Programs** show running, paused (two bars), fault or stopped (dark).
 - **Access points** follow their network and power.
-- **Drive bays** show which slots hold cells.
+- **Drive bays** show each cell's state: one blue lamp while there is room, two amber
+  lamps at three quarters full, two red lamps and a red bar when full, and a dark lamp
+  when the drive is off the network or the cell cannot be used. An empty bay has no cell
+  face.
 
 Lamps can take a second to update; open the device for the reason. Item tooltips
 include the lamp legend.

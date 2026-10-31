@@ -7,34 +7,130 @@
     },
     {
       "when": {
-        "bay_1": "true"
+        "bay_1": "online"
       },
       "apply": {
-        "model": "factorycore:block/storage_drive_bay_1"
+        "model": "factorycore:block/storage_drive_bay_1_online"
       }
     },
     {
       "when": {
-        "bay_2": "true"
+        "bay_1": "near_full"
       },
       "apply": {
-        "model": "factorycore:block/storage_drive_bay_2"
+        "model": "factorycore:block/storage_drive_bay_1_near_full"
       }
     },
     {
       "when": {
-        "bay_3": "true"
+        "bay_1": "full"
       },
       "apply": {
-        "model": "factorycore:block/storage_drive_bay_3"
+        "model": "factorycore:block/storage_drive_bay_1_full"
       }
     },
     {
       "when": {
-        "bay_4": "true"
+        "bay_1": "offline"
       },
       "apply": {
-        "model": "factorycore:block/storage_drive_bay_4"
+        "model": "factorycore:block/storage_drive_bay_1_offline"
+      }
+    },
+    {
+      "when": {
+        "bay_2": "online"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_2_online"
+      }
+    },
+    {
+      "when": {
+        "bay_2": "near_full"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_2_near_full"
+      }
+    },
+    {
+      "when": {
+        "bay_2": "full"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_2_full"
+      }
+    },
+    {
+      "when": {
+        "bay_2": "offline"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_2_offline"
+      }
+    },
+    {
+      "when": {
+        "bay_3": "online"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_3_online"
+      }
+    },
+    {
+      "when": {
+        "bay_3": "near_full"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_3_near_full"
+      }
+    },
+    {
+      "when": {
+        "bay_3": "full"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_3_full"
+      }
+    },
+    {
+      "when": {
+        "bay_3": "offline"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_3_offline"
+      }
+    },
+    {
+      "when": {
+        "bay_4": "online"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_4_online"
+      }
+    },
+    {
+      "when": {
+        "bay_4": "near_full"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_4_near_full"
+      }
+    },
+    {
+      "when": {
+        "bay_4": "full"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_4_full"
+      }
+    },
+    {
+      "when": {
+        "bay_4": "offline"
+      },
+      "apply": {
+        "model": "factorycore:block/storage_drive_bay_4_offline"
       }
     }
   ]

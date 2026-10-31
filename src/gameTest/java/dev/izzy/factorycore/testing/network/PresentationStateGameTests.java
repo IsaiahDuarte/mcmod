@@ -47,7 +47,8 @@ public final class PresentationStateGameTests {
   }
 
   private static boolean bay(GameTestHelper helper, int slot) {
-    return helper.getBlockState(DRIVE).getValue(StorageDriveBlock.BAYS.get(slot));
+    return helper.getBlockState(DRIVE).getValue(StorageDriveBlock.BAYS.get(slot))
+        != dev.izzy.factorycore.platform.storage.DriveBay.EMPTY;
   }
 
   @GameTest(template = "empty", timeoutTicks = 200)

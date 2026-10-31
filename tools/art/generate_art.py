@@ -287,7 +287,7 @@ def block_textures():
     out["network_cable"] = cable
 
     # Storage Drive: four stacked bays, empty in the base face; cells are bay overlays.
-    out["storage_drive_front"] = drive_front(())
+    out["storage_drive_front"] = drive_front({})
     top = casing("storage_drive_top")
     inset(top, 3, 3, 11, 11)
     for x in (4, 6, 8, 10):
@@ -505,20 +505,37 @@ def access_point_side(lamp):
 DRIVE_BAYS = (2, 5, 8, 11)
 
 
-def drive_front(occupied):
-    """Four bays; an occupied bay shows a cell face with a pull handle and lit status lamp."""
+# Drive bay lamp states with a cell (Q72); each has its own glyph, not only a colour.
+BAY_STATES = ("online", "near_full", "full", "offline")
+
+
+def drive_front(bays):
+    """Four bays; ``bays`` maps a bay index to its lamp state. A bay with a cell shows a cell face
+    with a pull handle and its lamp: online one lit lamp, near full two amber lamps, full two red
+    lamps and a red fill bar on the handle, offline one dark lamp."""
     c = casing("storage_drive_front", rivets=False)
     for i, y in enumerate(DRIVE_BAYS):
         c.rect(2, y, 13, y + 2, PANEL)
         c.hline(2, 13, y, PANEL_SHADOW)
         c.px(12, y + 1, PANEL_LINE)
         c.hline(2, 13, y + 3, CASE_LIGHT) if y + 3 < 14 else None
-        if i in occupied:
-            c.rect(3, y + 1, 11, y + 2, CASE_LIGHT)
-            c.hline(3, 11, y + 2, CASE_SHADOW)
-            c.rect(4, y + 1, 5, y + 1, STEEL)
-            c.hline(7, 10, y + 1, CASE_HI)
+        state = bays.get(i)
+        if state is None:
+            continue
+        c.rect(3, y + 1, 11, y + 2, CASE_LIGHT)
+        c.hline(3, 11, y + 2, CASE_SHADOW)
+        c.rect(4, y + 1, 5, y + 1, STEEL)
+        c.hline(7, 10, y + 1, FAULT if state == "full" else CASE_HI)
+        if state == "online":
             c.px(12, y + 1, SIGNAL)
+        elif state == "near_full":
+            c.px(12, y + 1, AMBER)
+            c.px(12, y + 2, AMBER_DARK)
+        elif state == "full":
+            c.px(12, y + 1, FAULT)
+            c.px(12, y + 2, FAULT_DARK)
+        else:
+            c.px(12, y + 1, PANEL_SHADOW)
     return c
 
 
@@ -548,9 +565,11 @@ def status_overlays():
         base = face("off")
         for lamp in lamps:
             out[f"{prefix}_{lamp}"] = overlay(f"{prefix}_{lamp}", base, face(lamp))
-    empty = drive_front(())
+    empty = drive_front({})
     for i in range(4):
-        out[f"storage_drive_bay_{i + 1}"] = overlay(f"bay_{i}", empty, drive_front((i,)))
+        for state in BAY_STATES:
+            name = f"storage_drive_bay_{i + 1}_{state}"
+            out[name] = overlay(name, empty, drive_front({i: state}))
     return out
 
 
@@ -602,7 +621,7 @@ def status_json():
         "status_overlay_north": overlay_template(("north",), True, "network_controller_lamp_active"),
         "status_overlay_sides": overlay_template(("north", "south", "east", "west"), True, "program_controller_lamp_active"),
         "status_overlay_up": overlay_template(("up",), True, "wireless_access_point_top_lamp_active"),
-        "status_overlay_front_back": overlay_template(("north", "south"), False, "storage_drive_bay_1"),
+        "status_overlay_front_back": overlay_template(("north", "south"), False, "storage_drive_bay_1_online"),
     }
     states = {}
 
@@ -639,9 +658,10 @@ def status_json():
 
     parts = [part("storage_drive")]
     for i in range(1, 5):
-        name = f"storage_drive_bay_{i}"
-        models[name] = child("status_overlay_front_back", name)
-        parts.append(part(name, when={f"bay_{i}": "true"}))
+        for state in BAY_STATES:
+            name = f"storage_drive_bay_{i}_{state}"
+            models[name] = child("status_overlay_front_back", name)
+            parts.append(part(name, when={f"bay_{i}": state}))
     states["storage_drive"] = {"multipart": parts}
 
     def encode(value):

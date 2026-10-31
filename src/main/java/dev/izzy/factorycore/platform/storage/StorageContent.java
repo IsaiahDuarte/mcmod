@@ -52,6 +52,18 @@ public final class StorageContent {
                       .persistent(CellPartition.CODEC)
                       .networkSynchronized(CellPartition.STREAM_CODEC));
 
+  /** Q72: a cell's contents when it last left a drive, for its tooltip. */
+  public static final DeferredHolder<
+          net.minecraft.core.component.DataComponentType<?>,
+          net.minecraft.core.component.DataComponentType<CellSummary>>
+      SUMMARY =
+          FactoryRegistries.COMPONENTS.registerComponentType(
+              "cell_summary",
+              builder ->
+                  builder
+                      .persistent(CellSummary.CODEC)
+                      .networkSynchronized(CellSummary.STREAM_CODEC));
+
   public static final DeferredItem<CellUpgradeItem> EXPANSION =
       FactoryRegistries.ITEMS.register("expansion_module", () -> new CellUpgradeItem(1));
   public static final DeferredItem<CellUpgradeItem> ADVANCED =

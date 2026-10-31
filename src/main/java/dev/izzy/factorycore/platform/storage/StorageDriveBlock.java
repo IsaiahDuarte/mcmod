@@ -1,5 +1,6 @@
 package dev.izzy.factorycore.platform.storage;
 
+import dev.izzy.factorycore.platform.network.DeviceLamp;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -15,30 +16,47 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 
 public final class StorageDriveBlock extends NetworkedBlock implements EntityBlock {
   /**
-   * Presentation-only bay occupancy, mirrored from the entity's four lease slots. Gameplay always
-   * reads the entity; these properties never decide installation or routing.
+   * Presentation-only bay lamps (Q72: empty, online, near full, full or offline), mirrored from the
+   * entity's four lease slots and their ledgers. Gameplay always reads the entity; these properties
+   * never decide installation or routing.
    */
-  public static final List<BooleanProperty> BAYS =
+  public static final List<EnumProperty<DriveBay>> BAYS =
       List.of(
-          BooleanProperty.create("bay_1"),
-          BooleanProperty.create("bay_2"),
-          BooleanProperty.create("bay_3"),
-          BooleanProperty.create("bay_4"));
+          EnumProperty.create("bay_1", DriveBay.class),
+          EnumProperty.create("bay_2", DriveBay.class),
+          EnumProperty.create("bay_3", DriveBay.class),
+          EnumProperty.create("bay_4", DriveBay.class));
 
   public StorageDriveBlock(Properties properties) {
     super(properties);
     var state = stateDefinition.any();
-    for (var bay : BAYS) state = state.setValue(bay, false);
+    for (var bay : BAYS) state = state.setValue(bay, DriveBay.EMPTY);
     registerDefaultState(state);
+  }
+
+  /** Refreshes the bay lamps once per {@link DeviceLamp#PERIOD}, as fill and network change. */
+  @Override
+  public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+      Level level, BlockState state, BlockEntityType<T> type) {
+    return level.isClientSide()
+        ? null
+        : ticker(
+            type,
+            StorageContent.DRIVE_ENTITY.get(),
+            (tickLevel, position, tickState, drive) -> {
+              if (DeviceLamp.due(tickLevel, position)) drive.syncBays();
+            });
   }
 
   @Override

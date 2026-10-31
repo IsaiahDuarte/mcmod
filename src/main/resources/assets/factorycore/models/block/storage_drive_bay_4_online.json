@@ -1,6 +1,6 @@
 {
   "parent": "factorycore:block/status_overlay_front_back",
   "textures": {
-    "overlay": "factorycore:block/storage_drive_bay_3"
+    "overlay": "factorycore:block/storage_drive_bay_4_online"
   }
 }

@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.storage;
 
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.storage.DeviceRegistry;
+import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.WiredMember;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import java.io.IOException;
@@ -41,8 +42,8 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
   }
 
   /**
-   * Mirrors bay occupancy to the block state for rendering, without neighbor or shape updates. A
-   * drive being replaced or removed no longer has its own block at this position and is skipped.
+   * Mirrors bay lamps to the block state for rendering, without neighbor or shape updates. A drive
+   * being replaced or removed no longer has its own block at this position and is skipped.
    */
   @Override
   public void setChanged() {
@@ -50,13 +51,42 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     syncBays();
   }
 
-  private void syncBays() {
-    if (level == null || level.isClientSide() || isRemoved()) return;
+  /**
+   * Q72: each bay's lamp from its cell, the drive's network and the cell's ledger (one ownership
+   * lookup per bay; also run once a second by the block's ticker).
+   */
+  void syncBays() {
+    if (!(level instanceof ServerLevel server) || isRemoved()) return;
     var state = level.getBlockState(worldPosition);
     if (!(state.getBlock() instanceof StorageDriveBlock)) return;
+    boolean online =
+        rejected == null
+            && WorldNetworks.get(server.getServer())
+                    .membership(Positions.of(server, worldPosition))
+                    .status()
+                == NetworkTopology.Status.VALID;
+    var registry = DeviceSavedData.get(server.getServer()).registry();
     var next = state;
-    for (int slot = 0; slot < cells.length; slot++)
-      next = next.setValue(StorageDriveBlock.BAYS.get(slot), !cells[slot].isEmpty());
+    for (int slot = 0; slot < cells.length; slot++) {
+      var handle = cells[slot].isEmpty() ? null : CellHandleData.read(cells[slot]);
+      var owner = handle == null ? null : registry.ownership(handle.backing());
+      // A cell is usable when its ledger is this bay's, unconflicted and current.
+      boolean usable =
+          owner != null
+              && !owner.conflict()
+              && owner.handle().equals(handle)
+              && location(slot).equals(owner.definition().location());
+      var definition = owner == null ? null : owner.definition();
+      next =
+          next.setValue(
+              StorageDriveBlock.BAYS.get(slot),
+              DriveBay.of(
+                  !cells[slot].isEmpty(),
+                  online && usable,
+                  owner == null ? 0 : owner.total(),
+                  definition == null ? 0 : definition.capacity(),
+                  definition != null && definition.infinite()));
+    }
     if (next != state)
       level.setBlock(worldPosition, next, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
   }
@@ -137,6 +167,8 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     checkSlot(slot);
     if (!cells[slot].isEmpty()) throw new IllegalStateException("That drive bay holds a cell");
     cells[slot] = CellOwnership.install(input, registry(), location(slot));
+    // In a drive the screens show live totals; a summary is written again when it leaves.
+    cells[slot].remove(StorageContent.SUMMARY.get());
     setChanged();
     networkingChanged();
     return slot;
@@ -179,11 +211,13 @@ public final class StorageDriveEntity extends BlockEntity implements WiredMember
     if (cells[slot].isEmpty()) return ItemStack.EMPTY;
     var handle = CellHandleData.read(cells[slot]);
     if (handle == null) throw new IllegalStateException("Placed cell has no lease");
+    var summary = CellSummary.of(registry(), handle);
     var detached = registry().detach(handle, location(slot));
     if (detached.failure() != DeviceRegistry.Failure.OK)
       throw new IllegalStateException("Cell removal: " + detached.failure());
     ItemStack portable = cells[slot].copy();
     CellHandleData.write(portable, detached.handle());
+    if (summary != null) portable.set(StorageContent.SUMMARY.get(), summary);
     cells[slot] = ItemStack.EMPTY;
     setChanged();
     networkingChanged();

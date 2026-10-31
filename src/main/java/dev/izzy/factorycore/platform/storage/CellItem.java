@@ -20,9 +20,31 @@ public final class CellItem extends Item {
     return tier;
   }
 
+  /** Q72: the stored contents a cell had when it left a drive, drawn as icons. */
+  @Override
+  public java.util.Optional<net.minecraft.world.inventory.tooltip.TooltipComponent> getTooltipImage(
+      ItemStack stack) {
+    var summary = stack.get(StorageContent.SUMMARY.get());
+    return summary == null || summary.entries().isEmpty()
+        ? java.util.Optional.empty()
+        : java.util.Optional.of(summary);
+  }
+
   @Override
   public void appendHoverText(
       ItemStack stack, TooltipContext context, List<Component> lines, TooltipFlag flags) {
+    var summary = stack.get(StorageContent.SUMMARY.get());
+    if (summary != null)
+      lines.add(
+          summary.infinite()
+              ? Component.translatable(
+                  "tooltip.factorycore.cell_stored_infinite", summary.stored(), summary.types())
+              : Component.translatable(
+                  "tooltip.factorycore.cell_stored",
+                  summary.stored(),
+                  summary.capacity(),
+                  summary.percent(),
+                  summary.types()));
     lines.add(
         tier.infinite()
             ? Component.translatable("tooltip.factorycore.cell_capacity_infinite")
