@@ -93,6 +93,19 @@ final class TerminalCrafting {
     revision++;
   }
 
+  /** Q112: swaps two processing output cells (9–11) with their counts. */
+  void swapOutputs(int a, int b) {
+    if (a < cells.length || b < cells.length || a >= ALL_CELLS || b >= ALL_CELLS)
+      throw new IllegalArgumentException("Output cells");
+    var key = outputs[a - cells.length];
+    outputs[a - cells.length] = outputs[b - cells.length];
+    outputs[b - cells.length] = key;
+    int count = counts[a];
+    counts[a] = counts[b];
+    counts[b] = count;
+    revision++;
+  }
+
   /** Per-cell unit count used only by processing patterns. */
   void count(int index, int amount) {
     if (index < 0 || index >= ALL_CELLS || amount < 1 || amount > 64)

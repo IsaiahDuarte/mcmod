@@ -43,6 +43,7 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
@@ -419,6 +420,18 @@ final class JeiClientVerification {
     return handler.getClass().getName();
   }
 
+  /** The action-bar text, read from the HUD (dev mappings name the field). */
+  private static String overlay(Minecraft client) {
+    try {
+      var field = net.minecraft.client.gui.Gui.class.getDeclaredField("overlayMessageString");
+      field.setAccessible(true);
+      var value = (Component) field.get(client.gui);
+      return value == null ? "" : value.getString();
+    } catch (ReflectiveOperationException error) {
+      throw new IllegalStateException("Action bar not readable", error);
+    }
+  }
+
   private int clearStep;
 
   /**
@@ -616,12 +629,19 @@ final class JeiClientVerification {
             || grid.status() != TerminalCraftingPackets.GridStatus.FILLED) return false;
         check(
             grid.processing()
-                && grid.cells().get(0).equals("minecraft:sand")
+                && grid.cells().get(0).equals("minecraft:red_sand")
                 && grid.amount(0) == 1
                 && grid.cells().get(9).equals("minecraft:glass")
                 && grid.amount(9) == 1
                 && grid.cells().get(1).isEmpty(),
-            "A furnace recipe fills processing Inputs and Outputs: " + grid);
+            "A furnace recipe fills processing Inputs and Outputs with the stocked red sand: "
+                + grid);
+        check(
+            overlay(client)
+                .equals(
+                    Component.translatable("gui.factorycore.terminal.jei.switched_processing")
+                        .getString()),
+            "The Table-to-processing switch is announced: " + overlay(client));
         capture(client, "jei-processing-transfer.png");
         processingRevision = grid.gridRevision();
         transferProcessing(
@@ -637,9 +657,29 @@ final class JeiClientVerification {
             "A blasting recipe replaces it: " + grid);
         evidence.append(
             "jei: the universal handler fills processing Inputs/Outputs from a furnace recipe"
-                + " (sand -> glass) and a blasting recipe (raw iron -> iron ingot).\n");
+                + " (red sand, the plentiful option -> glass) and a blasting recipe (raw iron ->"
+                + " iron ingot), announcing the switch from Table.\n");
+        // Q112: a crafting recipe on a processing grid switches back to Table and says so.
+        processingRevision = grid.gridRevision();
+        transfer(client, screen.getMenu());
+        panelStage = 30;
+        panelEntered = ticks;
+        return false;
+      }
+      case 30 -> {
+        if (grid.gridRevision() == processingRevision || grid.processing()) return false;
+        check(
+            overlay(client)
+                .equals(
+                    Component.translatable("gui.factorycore.terminal.jei.switched_table")
+                        .getString()),
+            "The processing-to-Table switch is announced: " + overlay(client));
+        evidence.append("jei: a crafting recipe on the processing grid announces the switch.\n");
         // Q17: the J tool turns on search sync.
         check(press(screen, "J"), "The search-sync tool is shown with JEI installed");
+        panelStage = 14;
+        panelEntered = ticks;
+        return false;
       }
       case 14 -> {
         if (!TerminalSearchSupport.sync(screen.getMenu().view().sort())) return false;
@@ -793,6 +833,18 @@ final class JeiClientVerification {
                   .amount()
               == 1,
           "Seed processing output sample");
+      // Q112: more red sand than sand, so the glass transfer must choose red sand.
+      check(
+          DeviceSavedData.get(player.server)
+                  .registry()
+                  .insert(
+                      cell,
+                      new PlatformResourceCodec(player.registryAccess())
+                          .itemKey(new ItemStack(Items.RED_SAND)),
+                      8)
+                  .amount()
+              == 8,
+          "Seed red sand");
       ready.set(true);
     } catch (RuntimeException error) {
       failure.set(error);

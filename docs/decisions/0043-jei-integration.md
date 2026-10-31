@@ -70,3 +70,18 @@ Processing transfers (Q5) choose among an input's alternatives the way crafting 
 the first one the player has in the inventory or the terminal, else the first listed. They
 never use JEI's cycling display, so a click does not depend on the moment it is made (fixed
 2026-10-30 during Q65).
+
+## Amendment — plentiful choice and mode warnings (2026-10-30, ergonomics plan Q112)
+
+Both transfers pick, for each slot with alternatives, the item the player has most of: undamaged
+inventory stacks plus the available amount of each shown terminal row. A tie keeps JEI's listed
+order (`GridTransfer.choose` with counts). Damaged stacks do not count, so a transfer never
+steers a craft toward worn tools. A transfer that switches the grid between Table and
+Inputs/Outputs says so on the action bar instead of silently changing mode. A crafting recipe with
+more than nine inputs is still refused.
+
+The processing grid has a typed amount per slot (items, or mB rounded up to 250 mB steps, 1–64
+steps) and a `MAIN` grid command that swaps output 2 or 3, with its count, into the first output.
+The first output is what the encoded pattern makes. Alternatives: an explicit "main" flag per
+output (rejected: the first output already has that meaning in the pattern format, so swapping
+keeps old patterns unchanged).

@@ -917,6 +917,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   @Override
   public boolean keyPressed(int key, int scan, int modifiers) {
+    // Q112: Enter in the processing amount box applies it.
+    if ((key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) && crafting.applyAmount())
+      return true;
     if (search.isFocused() && (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER)) {
       searchDelay = 0;
       remember(search.getValue());
@@ -1005,6 +1008,12 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       viewerOurs = viewerTheirs = theirs;
       search.setValue(theirs);
     }
+  }
+
+  /** Test hook (Q112): selects processing cell {@code cell} and types its amount. */
+  public void typeGridAmount(int cell, String text) {
+    crafting.select(cell);
+    crafting.typeAmount(text);
   }
 
   /** Test hook (Q65): the Plan tree's zoom (½ to 1). */

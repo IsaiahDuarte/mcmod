@@ -43,7 +43,12 @@ final class TerminalCraftingPanel {
 
   private final TerminalScreen screen;
   private final List<ChoiceButton> gridTabs = new ArrayList<>();
-  private Button useRow, craftOne, craftMany, clearGrid, encode, countDown, countUp;
+  private Button useRow, craftOne, craftMany, clearGrid, encode, countDown, countUp, mainOutput;
+
+  /** Q112: the selected processing slot's amount, typed (items, or mB for fluids). */
+  private net.minecraft.client.gui.components.EditBox amountBox;
+
+  private int amountShownFor = -1, amountShownValue = -1;
   private ToggleButton substitutesButton;
   private boolean substitutes;
 
@@ -160,6 +165,31 @@ final class TerminalCraftingPanel {
                     Tooltip.create(
                         Component.translatable("gui.factorycore.terminal.grid.count.up")))
                 .build());
+    amountBox =
+        screen.add(
+            new net.minecraft.client.gui.components.EditBox(
+                screen.font(),
+                // Wider than − and + (into the gap after the grid) so "1000" mB fits.
+                left + counts - 12,
+                top + GRID_Y + 19,
+                34,
+                16,
+                Component.translatable("gui.factorycore.terminal.grid.amount_box")));
+    amountBox.setMaxLength(5);
+    amountBox.setFilter(text -> text.chars().allMatch(Character::isDigit));
+    amountBox.setTooltip(
+        Tooltip.create(Component.translatable("gui.factorycore.terminal.grid.amount_box.help")));
+    amountShownFor = amountShownValue = -1;
+    mainOutput =
+        screen.add(
+            Button.builder(
+                    Component.translatable("gui.factorycore.terminal.grid.main"),
+                    button -> grid(TerminalCraftingPackets.MAIN, target, 0, 1, new byte[32]))
+                .bounds(left + counts - 34, top + GRID_Y + 36, 32, 18)
+                .tooltip(
+                    Tooltip.create(
+                        Component.translatable("gui.factorycore.terminal.grid.main.help")))
+                .build());
     var bottom = PanelLayout.columns(new Rect(x0 + 7, CRAFT_Y, SIDE - 14, PanelLayout.ROW), 2, 4);
     craftOne =
         gridButton(
@@ -214,6 +244,39 @@ final class TerminalCraftingPanel {
       grid(TerminalCraftingPackets.MODE, mode, 0, 1, new byte[32]);
     }
     update();
+  }
+
+  /**
+   * Q112: applies the typed amount to the selected processing slot: items as a count, fluids in mB
+   * rounded up to whole {@code 250} mB steps; both kept within 1–64 steps.
+   */
+  boolean applyAmount() {
+    var view = menu().gridView();
+    if (amountBox == null
+        || !amountBox.isFocused()
+        || !view.processing()
+        || view.cells().get(target).isEmpty()
+        || amountBox.getValue().isEmpty()) return false;
+    long typed = Long.parseLong(amountBox.getValue());
+    int unit = view.fluid(target) ? view.amount(target) / view.counts().get(target) : 1;
+    int count = (int) Math.max(1, Math.min(64, (typed + unit - 1) / unit));
+    if (count != view.counts().get(target))
+      grid(TerminalCraftingPackets.COUNT, target, 0, count, new byte[32]);
+    amountShownFor = -1;
+    return true;
+  }
+
+  /** Test hook (Q112): types into the amount box and applies it, as Enter does. */
+  void typeAmount(String text) {
+    amountBox.setFocused(true);
+    amountBox.setValue(text);
+    applyAmount();
+    amountBox.setFocused(false);
+  }
+
+  /** Test hook (Q112): selects processing cell {@code cell} (as a click on it does). */
+  void select(int cell) {
+    target = cell;
   }
 
   private void changeCount(int delta) {
@@ -299,6 +362,19 @@ final class TerminalCraftingPanel {
                     && ghost.cells().subList(9, 12).stream().anyMatch(cell -> !cell.isEmpty())
                 : !ghost.result().isEmpty());
     countDown.visible = countUp.visible = open && gridPage != 0;
+    amountBox.visible = open && gridPage != 0;
+    boolean filled = !ghost.cells().get(target).isEmpty() && ghost.processing();
+    amountBox.active = filled && !view.busy();
+    // Keep the box in step with the server unless the player is typing in it.
+    if (!amountBox.isFocused()
+        && (amountShownFor != target || amountShownValue != (filled ? ghost.amount(target) : 0))) {
+      amountShownFor = target;
+      amountShownValue = filled ? ghost.amount(target) : 0;
+      amountBox.setValue(filled ? Integer.toString(amountShownValue) : "");
+      amountBox.moveCursorToStart(false);
+    }
+    mainOutput.visible = open && gridPage == 2 && filled && target > 9;
+    mainOutput.active = !view.busy();
     substitutesButton.visible = open && !ghost.processing();
     substitutesButton.active = !view.busy();
     boolean selected = !ghost.cells().get(target).isEmpty() && ghost.processing() && !view.busy();

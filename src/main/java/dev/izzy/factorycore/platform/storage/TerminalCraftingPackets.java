@@ -68,6 +68,13 @@ public final class TerminalCraftingPackets {
   /** Q4: load the encoded pattern in main-inventory slot {@code source} into the grid. */
   public static final int LOAD = 7;
 
+  /**
+   * Q112: MAIN makes processing output cell {@code cell} (10 or 11) the main output by swapping it,
+   * with its count, into cell 9; the pattern then makes that output and the others become
+   * byproducts.
+   */
+  public static final int MAIN = 8;
+
   /** Nine input cells plus three processing output cells (indices 9–11). */
   public static final int CELLS = TerminalCrafting.ALL_CELLS;
 
@@ -89,7 +96,8 @@ public final class TerminalCraftingPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < SET_OWN
-          || action > LOAD
+          || action > MAIN
+          || (action == MAIN && cell != 10 && cell != 11)
           || cell < -1
           || cell >= CELLS
           || source < 0

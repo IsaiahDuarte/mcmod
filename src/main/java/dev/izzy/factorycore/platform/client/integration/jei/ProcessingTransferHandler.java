@@ -52,11 +52,7 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
       Player player,
       boolean maxTransfer,
       boolean doTransfer) {
-    var available = new java.util.HashSet<String>();
-    for (var stack : player.getInventory().items)
-      if (!stack.isEmpty())
-        available.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-    for (var row : menu.view().rows()) available.add(row.icon());
+    var available = Holdings.of(player, menu);
     var inputs = cells(slots.getSlotViews(RecipeIngredientRole.INPUT), available);
     var outputs = cells(slots.getSlotViews(RecipeIngredientRole.OUTPUT), available);
     if (inputs.size() > ProcessingTransfer.MAX_INPUTS)
@@ -78,6 +74,10 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
               ProcessingTransfer.MAX_OUTPUTS,
               kept.total()),
           true);
+    // Q112: a processing recipe switches a Table grid to Inputs/Outputs; say so.
+    if (!menu.gridView().processing())
+      player.displayClientMessage(
+          Component.translatable("gui.factorycore.terminal.jei.switched_processing"), true);
     PacketDistributor.sendToServer(
         new TerminalCraftingPackets.ProcessingFill(
             menu.containerId, menu.session(), inputs, kept.kept()));
@@ -86,22 +86,25 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
 
   /**
    * The item or fluid of each nonempty slot; slots of other ingredient types are skipped. An item
-   * slot with alternatives takes the first one in {@code available} (the player's inventory and
-   * terminal rows), else its first listed one, never JEI's cycling display, so the same click
-   * always fills the same grid.
+   * slot with alternatives takes the one the player has most of (Q112; inventory and terminal
+   * rows), else its first listed one, never JEI's cycling display, so the same click always fills
+   * the same grid.
    */
   private static List<TerminalCraftingPackets.ProcessingFill.Cell> cells(
-      List<IRecipeSlotView> views, java.util.Set<String> available) {
+      List<IRecipeSlotView> views, java.util.Map<String, Long> available) {
     var cells = new ArrayList<TerminalCraftingPackets.ProcessingFill.Cell>();
     for (var view : views) {
       var options = view.getItemStacks().filter(stack -> !stack.isEmpty()).limit(64).toList();
-      var item =
-          options.stream()
-              .filter(
-                  stack ->
-                      available.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString()))
-              .findFirst()
-              .or(() -> options.stream().findFirst());
+      java.util.Optional<net.minecraft.world.item.ItemStack> item = options.stream().findFirst();
+      long most = 0;
+      for (var stack : options) {
+        long count =
+            available.getOrDefault(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(), 0L);
+        if (count > most) {
+          most = count;
+          item = java.util.Optional.of(stack);
+        }
+      }
       if (item.isPresent()) {
         cells.add(
             new TerminalCraftingPackets.ProcessingFill.Cell(

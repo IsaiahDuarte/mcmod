@@ -5,7 +5,6 @@ import dev.izzy.factorycore.platform.storage.TerminalContent;
 import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import mezz.jei.api.constants.RecipeTypes;
@@ -25,8 +24,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Fills the terminal's 3-by-3 ghost grid from a JEI crafting recipe. Nothing is moved or consumed;
- * options the player can see (inventory or terminal rows) are preferred. With Ctrl held (A5) the
- * recipe's output is opened in the Jobs view as a request instead, if the network can craft it.
+ * the option the player has most of (undamaged inventory stacks and terminal rows) is preferred.
+ * With Ctrl held (A5) the recipe's output is opened in the Jobs view as a request instead, if the
+ * network can craft it.
  */
 final class TerminalTransferHandler
     implements IRecipeTransferHandler<TerminalMenu, RecipeHolder<CraftingRecipe>> {
@@ -70,11 +70,10 @@ final class TerminalTransferHandler
       JeiRequests.request(menu, slots);
       return null;
     }
-    var available = new HashSet<String>();
-    for (var stack : player.getInventory().items)
-      if (!stack.isEmpty())
-        available.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-    for (var row : menu.view().rows()) available.add(row.icon());
+    // Q112: a crafting recipe switches a grid in processing mode back to Table; say so.
+    if (menu.gridView().processing())
+      player.displayClientMessage(
+          Component.translatable("gui.factorycore.terminal.jei.switched_table"), true);
     var options = new ArrayList<List<String>>(9);
     for (var slot : inputs)
       options.add(
@@ -85,7 +84,9 @@ final class TerminalTransferHandler
               .toList());
     PacketDistributor.sendToServer(
         new TerminalCraftingPackets.Fill(
-            menu.containerId, menu.session(), GridTransfer.choose(options, available)));
+            menu.containerId,
+            menu.session(),
+            GridTransfer.choose(options, Holdings.of(player, menu))));
     return null;
   }
 }

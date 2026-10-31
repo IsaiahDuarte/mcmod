@@ -1145,8 +1145,10 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   terminal, and record the decision.
   Done when: GameTests for the Patterns view options, step machine names and Exporter status.
 
-- [ ] **Q112 — Encoding preferences and processing slot options (M113, M114).** Size M. Lane C,
-  split from Q100. Recipe-viewer encoding prefers plentiful, undamaged items and warns about the
+- [x] **Q112 — Encoding preferences and processing slot options (M113, M114).** Size M. Lane C,
+  split from Q100. Done 2026-10-30 (commit subject `Q112:`). Plentiful choice, mode-switch
+  messages, amount box and Main (ADR 0043 amendment).
+  [Evidence](evidence/ergonomics-q112-encoding-preferences-2026-10-30.md). Recipe-viewer encoding prefers plentiful, undamaged items and warns about the
   wrong mode or a recipe over 3×3; an amount box and a "main output" choice for processing
   slots.
   Done when: a JEI client step shows the plentiful variant chosen and each warning; a GameTest

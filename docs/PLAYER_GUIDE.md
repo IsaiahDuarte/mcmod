@@ -367,7 +367,10 @@ Craft Blank Patterns.
   planks for sticks or chests. Jobs then take whichever is most plentiful, and can mix
   them. With it off, the pattern uses exactly the items you placed.
 - **Processing Pattern** (for machines): choose **Inputs** and set the ingredients,
-  then **Outputs** (up to three), then **Encode**.
+  then **Outputs** (up to three), then **Encode**. Select a slot to change its amount with
+  **−**/**+** or type it in the box between them (items, or mB for fluids, rounded up to
+  250 mB steps) and press Enter. The first output is what the pattern makes; select another
+  output and press **Main** to make it the main one (the rest become byproducts).
 - **Amounts:** use **+ / −** or scroll to change them; Shift-scroll changes them
   faster.
 - **Fluids:** switch the browser to **Fluids** and use **Use selected**. Amounts go
@@ -571,7 +574,9 @@ Commands for the same rights are in the [admin guide](ADMIN_GUIDE.md#access-comm
 ## JEI (optional)
 
 With JEI installed, the **+** button on a crafting recipe fills the terminal's Table
-grid with ghosts. On any other recipe (furnace, blasting, or another mod's machine) it fills
+grid with ghosts. Where a slot accepts several items, it picks the one you have most of
+(undamaged items in your inventory plus the terminal's stock). If the grid was in the other
+mode, it switches and says so above the hotbar. On any other recipe (furnace, blasting, or another mod's machine) it fills
 **Inputs** and **Outputs** for a Processing Pattern, items and fluids with their amounts (fluids
 rounded up to 250 mB steps). A recipe with more than three outputs keeps the first three, and a
 message says so; one with more than nine inputs cannot be transferred. Dragging an item or fluid onto the program editor types its

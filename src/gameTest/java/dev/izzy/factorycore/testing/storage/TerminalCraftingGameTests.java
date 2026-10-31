@@ -765,4 +765,78 @@ public final class TerminalCraftingGameTests {
             })
         .thenSucceed();
   }
+
+  /**
+   * Q112: a typed amount sets a processing slot's count, and Main swaps a later output into first
+   * place, so the encoded pattern makes it and keeps the old main output as a byproduct.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void aProcessingPatternTakesTypedAmountsAndAChosenMainOutput(GameTestHelper h) {
+    var f = setup(h);
+    var inventory = f.player.getInventory();
+    inventory.setItem(0, new ItemStack(Items.RAW_IRON));
+    inventory.setItem(1, new ItemStack(CraftingContent.BLANK_PATTERN.get()));
+    inventory.setItem(2, new ItemStack(Items.IRON_INGOT));
+    inventory.setItem(3, new ItemStack(Items.STONE));
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Network ready"))
+        .thenExecute(() -> open(h, f))
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.MODE, 1, 0, 1, new byte[32]);
+              ghost(f, 0, 0);
+              grid(f, TerminalCraftingPackets.COUNT, 0, 0, 3, new byte[32]);
+              ghost(f, 9, 2);
+              ghost(f, 10, 3);
+              grid(f, TerminalCraftingPackets.COUNT, 10, 0, 2, new byte[32]);
+              grid(f, TerminalCraftingPackets.MAIN, 10, 0, 1, new byte[32]);
+              var view = menu(f).gridView();
+              h.assertTrue(
+                  view.cells().get(9).equals("minecraft:stone")
+                      && view.counts().get(9) == 2
+                      && view.cells().get(10).equals("minecraft:iron_ingot")
+                      && view.counts().get(10) == 1,
+                  "Main swaps stone (with its count) into the first output: " + view);
+              boolean refused;
+              try {
+                new TerminalCraftingPackets.Command(
+                    1,
+                    java.util.UUID.randomUUID(),
+                    0,
+                    0,
+                    TerminalCraftingPackets.MAIN,
+                    9,
+                    0,
+                    1,
+                    new byte[32]);
+                refused = false;
+              } catch (IllegalArgumentException expected) {
+                refused = true;
+              }
+              h.assertTrue(refused, "Only outputs 2 and 3 can be made main");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]);
+              ItemStack encoded = ItemStack.EMPTY;
+              for (int slot = 0; slot < 36; slot++)
+                if (inventory.getItem(slot).is(CraftingContent.PROCESSING_PATTERN.get()))
+                  encoded = inventory.getItem(slot);
+              var contents = encoded.get(CraftingContent.PROCESSING.get());
+              h.assertTrue(
+                  contents != null
+                      && contents.inputs().size() == 1
+                      && contents.inputs().getFirst().is(Items.RAW_IRON)
+                      && contents.inputs().getFirst().getCount() == 3
+                      && contents.outputs().getFirst().is(Items.STONE)
+                      && contents.outputs().getFirst().getCount() == 2
+                      && contents.outputs().get(1).is(Items.IRON_INGOT),
+                  "Encoded: 3 raw iron makes 2 stone, with an ingot byproduct: "
+                      + menu(f).gridView().status());
+              logout(f);
+            })
+        .thenSucceed();
+  }
 }

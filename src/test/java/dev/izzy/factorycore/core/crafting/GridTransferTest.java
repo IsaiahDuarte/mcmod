@@ -25,6 +25,23 @@ class GridTransferTest {
     assertEquals("", chosen.get(8));
   }
 
+  /** Q112: the option the player has most of wins; a tie keeps the listed order. */
+  @Test
+  void prefersThePlentifulOption() {
+    var planks =
+        List.of("minecraft:oak_planks", "minecraft:spruce_planks", "minecraft:birch_planks");
+    var chosen =
+        GridTransfer.choose(
+            List.of(planks, List.of("minecraft:oak_log", "minecraft:spruce_log")),
+            java.util.Map.of(
+                "minecraft:oak_planks", 2L,
+                "minecraft:birch_planks", 300L,
+                "minecraft:oak_log", 5L,
+                "minecraft:spruce_log", 5L));
+    assertEquals("minecraft:birch_planks", chosen.get(0));
+    assertEquals("minecraft:oak_log", chosen.get(1), "A tie keeps the first listed");
+  }
+
   @Test
   void rejectsMoreThanNineCells() {
     assertThrows(
