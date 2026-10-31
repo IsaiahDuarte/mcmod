@@ -166,3 +166,27 @@ whose plain use opens a screen or a status message (Access Point, Crafter) takes
 instead. Before, the block's own use won and the upgrade could only be installed while sneaking.
 Alternative: a separate range-module item (rejected: Throughput and Overdrive are already the
 "faster/farther" pair players craft, and a new item would need its own balance row).
+
+## Amendment — upgrade slots and removal (2026-10-31, ergonomics plan Q19)
+
+Upgrades can now be taken out. `ThroughputUpgradeable.removeUpgrade` removes the top step
+(`ThroughputTier.removeStep`): Overdrive before Throughput, and a link's single Overdrive back to
+base. It runs under the same authority as installing (Edit; links: Manage or orphan owner) and
+through the same commit paths. A port's or buffer's rate above the new ceiling is lowered to it
+and a lower rate is kept, so no saved rate ever exceeds its tier. A Machine Interface advances its
+configuration fence and pauses its preset, exactly as on install. Removing with nothing installed
+fails with `upgrade_none` and changes nothing.
+
+Each upgradeable device's screen shows the slot on a small panel beside it (Port, cable port,
+Interface, Buffer, Crafter, Gateway policy with a link). It is not a container slot: one data slot
+syncs the installed tier and a click is menu button 400 (`UpgradeSlots`). With an upgrade on the
+cursor, the item is taken off before the device is asked and goes back if refused. With an empty
+cursor, the removed item goes to the cursor, or to the inventory when the change has closed the
+screen. A port's change re-validates its network, which makes the open screen stale; that screen
+closes, as after Apply. No path drops or duplicates an upgrade. JEI keeps its item list clear of
+the slot panel through a generic extra-area handler.
+
+Alternatives: a real container slot per menu (rejected: the tier is not an inventory, and a slot
+would need its own persistence beside the tier fields above); removal only by breaking the device
+(rejected by M19). A toolbelt that offers a held set of upgrades in every slot (M89) is left to a
+later slice.

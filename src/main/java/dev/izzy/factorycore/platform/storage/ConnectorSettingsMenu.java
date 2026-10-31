@@ -37,6 +37,13 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
   private final MenuSession protocol;
   private final Player viewer;
   private final ConnectorEntity connector;
+
+  /**
+   * Q19: the device's upgrade slot state ({@link
+   * dev.izzy.factorycore.platform.upgrade.UpgradeSlots}).
+   */
+  private final net.minecraft.world.inventory.DataSlot upgrade;
+
   private final NodeRegistry.Handle lease;
   private final NetworkTopology.Scope scope;
   private final Direction facing;
@@ -58,6 +65,8 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
     viewer = inventory.player;
     protocol = new MenuSession(this, viewer, session, connector != null, POLL_TICKS);
     this.connector = connector;
+    upgrade =
+        addDataSlot(dev.izzy.factorycore.platform.upgrade.UpgradeSlots.state(() -> connector));
     lease = connector == null ? null : connector.handle();
     facing = connector == null ? null : connector.targetDirection();
     scope = connector == null ? null : runtime().membership(connector.position()).scope();
@@ -322,8 +331,18 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
    * switch. On success the screen closes and the player is told to reopen it; a refusal shows its
    * reason.
    */
+  /** Q19: the synced upgrade slot state. */
+  public int upgradeState() {
+    return upgrade.get();
+  }
+
   @Override
   public boolean clickMenuButton(Player player, int button) {
+    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+      return connector != null
+          && player instanceof ServerPlayer upgrader
+          && stillValid(upgrader)
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, connector);
     var target = InterfaceSwitch.requested(button);
     if (target == null
         || connector == null

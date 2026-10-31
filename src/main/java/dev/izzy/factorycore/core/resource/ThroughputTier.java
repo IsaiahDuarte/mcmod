@@ -57,6 +57,15 @@ public enum ThroughputTier {
     return item.ordinal() == ordinal() + 1 ? item : null;
   }
 
+  /**
+   * Q19: the tier left after taking the top upgrade out (a link drops its one Overdrive to BASE),
+   * or null when nothing is installed. The removed item is this tier's.
+   */
+  public ThroughputTier removeStep(boolean link) {
+    if (this == BASE) return null;
+    return link ? BASE : values()[ordinal() - 1];
+  }
+
   /** Pre-upgrade bounded host operation size: 128 items or 1,000 mB/FE. */
   public static long baseQuantum(ResourceKind kind) {
     return BASE.portRate(kind);

@@ -1671,6 +1671,69 @@ public final class PresentationClientVerification {
     scales(name, buffer ? BufferSettingsScreen.class : PortScreen.class, false);
   }
 
+  /**
+   * Q19: an empty-handed click on the Exporter's upgrade slot (the real press and release through
+   * the screen) takes the Overdrive out: the port drops to Throughput and its rate to 256, and the
+   * Overdrive reaches the player (cursor, or inventory when the change closed the screen) without
+   * being dropped in the world.
+   */
+  private void slotRemoval(BlockPos target) {
+    use(target, Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen instanceof PortScreen screen) || waited() < 4) return false;
+          var slot =
+              screen.children().stream()
+                  .filter(dev.izzy.factorycore.platform.client.UpgradeSlotWidget.class::isInstance)
+                  .map(dev.izzy.factorycore.platform.client.UpgradeSlotWidget.class::cast)
+                  .findFirst()
+                  .orElseThrow(
+                      () -> new IllegalStateException("The Exporter shows an upgrade slot"));
+          check(
+              slot.visible && screen.getMenu().upgradeState() == ThroughputTier.ENDGAME.ordinal(),
+              "The slot shows the installed Overdrive: " + screen.getMenu().upgradeState());
+          evidence
+              .append("upgrade slot tooltip: ")
+              .append(
+                  dev.izzy.factorycore.platform.client.UpgradeSlotWidget.describe(
+                          screen.getMenu().upgradeState())
+                      .getString()
+                      .replace('\n', '|'))
+              .append('\n');
+          double x = slot.getX() + 13, y = slot.getY() + 13;
+          screen.mouseClicked(x, y, 0);
+          screen.mouseReleased(x, y, 0);
+          return true;
+        });
+    serverUntil(
+        player -> {
+          var overdrive = stack("overdrive_upgrade").getItem();
+          boolean held =
+              player.containerMenu.getCarried().is(overdrive)
+                  || player.getInventory().contains(new ItemStack(overdrive));
+          boolean dropped =
+              !player
+                  .serverLevel()
+                  .getEntitiesOfClass(
+                      net.minecraft.world.entity.item.ItemEntity.class,
+                      new net.minecraft.world.phys.AABB(target).inflate(8))
+                  .isEmpty();
+          check(!dropped, "The removed Overdrive was dropped in the world");
+          return held
+              && player.serverLevel().getBlockEntity(target)
+                  instanceof MachineInterfaceEntity machine
+              && machine.tier() == ThroughputTier.ADVANCED
+              && machine.settings().rate() == ThroughputTier.ADVANCED.portRate(ResourceKind.ITEM);
+        });
+    step(
+        client -> {
+          evidence.append(
+              "exporter upgrade slot: an empty-handed click took the Overdrive out (tier"
+                  + " Throughput, rate 256) and the player holds it; nothing dropped\n");
+          return true;
+        });
+  }
+
   // ------------------------------------------------------------------ tooltips
 
   /** Real item tooltips (including the ItemTooltipEvent lines) drawn at the four GUI corners. */
@@ -2178,6 +2241,7 @@ public final class PresentationClientVerification {
         });
     upgrade(base.east(4), ThroughputTier.ADVANCED, false);
     upgrade(base.east(4), ThroughputTier.ENDGAME, false);
+    slotRemoval(base.east(4));
     upgrade(base.east(3), ThroughputTier.ADVANCED, true);
     upgrade(base.east(3), ThroughputTier.ENDGAME, true);
     use(base.east(5), Direction.SOUTH, false);

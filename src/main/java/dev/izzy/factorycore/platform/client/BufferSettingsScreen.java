@@ -82,6 +82,10 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     String rateDraft = rate == null ? null : rate.getValue();
     String targetDraft = target == null ? null : target.getValue();
     super.init();
+    upgradeSlot =
+        addRenderableWidget(
+            UpgradeSlotWidget.beside(
+                leftPos, topPos, imageWidth, menu.containerId, menu::upgradeState));
     modes.clear();
     filters.clear();
     settingsWidgets.clear();
@@ -653,5 +657,15 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
       }
     }
     return super.keyPressed(key, scan, modifiers);
+  }
+
+  /** Q19: the device's upgrade slot beside the panel. */
+  private UpgradeSlotWidget upgradeSlot;
+
+  /** A click on the upgrade slot is not a click outside, so a held upgrade is not dropped. */
+  @Override
+  protected boolean hasClickedOutside(double x, double y, int left, int top, int button) {
+    return super.hasClickedOutside(x, y, left, top, button)
+        && (upgradeSlot == null || !upgradeSlot.isMouseOver(x, y));
   }
 }

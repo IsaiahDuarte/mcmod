@@ -30,6 +30,9 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
   private final Player viewer;
   private final ContainerData data;
 
+  /** Q19: the link's upgrade slot; no slot while the gateway has no link. */
+  private final net.minecraft.world.inventory.DataSlot upgrade;
+
   /** Client constructor. */
   public GatewayPolicyMenu(int id, Inventory inventory, RegistryFriendlyByteBuf buffer) {
     super(NetworkContent.POLICY_MENU.get(), id);
@@ -38,6 +41,7 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
     viewer = inventory.player;
     data = new SimpleContainerData(5);
     addDataSlots(data);
+    upgrade = addDataSlot(dev.izzy.factorycore.platform.upgrade.UpgradeSlots.state(() -> null));
   }
 
   GatewayPolicyMenu(int id, Inventory inventory, NetworkNodeEntity gateway) {
@@ -75,6 +79,10 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
           }
         };
     addDataSlots(data);
+    upgrade =
+        addDataSlot(
+            dev.izzy.factorycore.platform.upgrade.UpgradeSlots.state(
+                () -> gateway.link() == null ? null : gateway));
   }
 
   /** Client view of the synchronized mask. */
@@ -136,8 +144,19 @@ public final class GatewayPolicyMenu extends AbstractContainerMenu {
   /** Button {@code PRESET_BUTTON + ordinal} applies one {@link GatewayPolicy.Preset} (U8). */
   public static final int PRESET_BUTTON = 32;
 
+  /** Q19: the synced upgrade slot state. */
+  public int upgradeState() {
+    return upgrade.get();
+  }
+
   @Override
   public boolean clickMenuButton(Player player, int button) {
+    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+      return gateway != null
+          && gateway.link() != null
+          && player instanceof ServerPlayer upgrader
+          && stillValid(upgrader)
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, gateway);
     if (button == ACCESS_BUTTON
         && gateway != null
         && player instanceof ServerPlayer server

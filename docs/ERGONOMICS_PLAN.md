@@ -677,7 +677,10 @@ New gates:
 
 ## Wave D — device consistency (lane D)
 
-- [ ] **Q19 — Upgrade slots (M19).** Size M.
+- [x] **Q19 — Upgrade slots (M19).** Size M. Done 2026-10-31 (commit subject `Q19:`).
+  Install/remove slot on every upgradeable device's screen, removal with rate clamp, device lists
+  in the upgrade tooltips (ADR 0054 amendment); the optional toolbelt moved to Q113.
+  [Evidence](evidence/ergonomics-q19-upgrade-slots-2026-10-31.md).
   Every device that takes an upgrade shows its slot on its screen (Importer, Exporter, Storage
   Interface, Buffer, cable port, Crafter after Q2, Gateway link). Click with an upgrade on the
   cursor installs it; click an installed one to take it out (Overdrive first). Removing one
@@ -1153,6 +1156,14 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   slots.
   Done when: a JEI client step shows the plentiful variant chosen and each warning; a GameTest
   encodes a processing pattern with a typed amount and a chosen main output.
+
+- [ ] **Q113 — Upgrade toolbelt (M89).** Size S. Lane D, after Q19 (split from it).
+  A carried tool holding a set of upgrades; with it in the inventory, each upgrade slot offers
+  its contents (click the slot to install from the tool, removal returns to the tool when it
+  has room).
+  Files: `platform/upgrade/*`, `UpgradeSlotWidget`.
+  Done when: a GameTest installs and removes through the tool without the upgrade on the
+  cursor, and a client capture shows the offer.
 
 - [ ] **Q101 — Device and storage nits (M119–M124, M126, M141).** Size M. Lane D.
   Drives expose cell slots to hoppers (insert into an empty bay, extract whole cells; through

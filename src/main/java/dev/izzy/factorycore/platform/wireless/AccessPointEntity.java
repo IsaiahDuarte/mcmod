@@ -98,6 +98,19 @@ public final class AccessPointEntity extends BlockEntity
   }
 
   @Override
+  public ThroughputTier removeUpgrade(NetworkPermissions.Actor actor) {
+    var next = tier.removeStep(false);
+    if (next == null) throw new IllegalStateException("upgrade_none");
+    if (!(level instanceof ServerLevel server)
+        || !WorldNetworks.get(server.getServer())
+            .allows(actor, origin(), NetworkPermissions.Permission.EDIT)) return null;
+    var removed = tier;
+    tier = next;
+    setChanged();
+    return removed;
+  }
+
+  @Override
   public Component throughputStatus(MinecraftServer server) {
     return Component.translatable(
         "message.factorycore.access_point_throughput", range(), tickCost());

@@ -33,6 +33,13 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   private final MenuSession protocol;
   private final Player viewer;
   private final MachineInterfaceEntity machine;
+
+  /**
+   * Q19: the device's upgrade slot state ({@link
+   * dev.izzy.factorycore.platform.upgrade.UpgradeSlots}).
+   */
+  private final net.minecraft.world.inventory.DataSlot upgrade;
+
   private final NodeRegistry.Handle lease;
   private final NetworkTopology.Scope scope;
   private final Direction facing;
@@ -91,6 +98,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
     if (machine != null && resetPreset()) presetStatus = MachinePresetPackets.Status.RESUMABLE;
     deviceStatus = DeviceStatus.View.pending(id, protocol.id());
     redstone = addDataSlot(RedstoneMenu.slot(machine));
+    upgrade = addDataSlot(dev.izzy.factorycore.platform.upgrade.UpgradeSlots.state(() -> machine));
     presetView =
         new MachinePresetPackets.View(
             id,
@@ -292,8 +300,18 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
    * switch. On success the screen closes and the player is told to reopen it; a refusal shows its
    * reason.
    */
+  /** Q19: the synced upgrade slot state. */
+  public int upgradeState() {
+    return upgrade.get();
+  }
+
   @Override
   public boolean clickMenuButton(Player player, int button) {
+    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+      return machine != null
+          && player instanceof ServerPlayer upgrader
+          && stillValid(upgrader)
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, machine);
     if (RedstoneMenu.requested(button)) {
       if (machine == null
           || !current()

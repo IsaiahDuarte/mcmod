@@ -111,6 +111,18 @@ public final class NetworkNodeEntity extends BlockEntity implements ThroughputUp
   }
 
   @Override
+  public ThroughputTier removeUpgrade(NetworkPermissions.Actor actor) {
+    if (link == null) throw new IllegalStateException("upgrade_not_applicable");
+    if (!link.mayConfigure(actor)) return null;
+    return link.remove();
+  }
+
+  @Override
+  public boolean linkUpgrade() {
+    return true;
+  }
+
+  @Override
   public Component throughputStatus(MinecraftServer server) {
     return ThroughputStatus.link(server, link);
   }

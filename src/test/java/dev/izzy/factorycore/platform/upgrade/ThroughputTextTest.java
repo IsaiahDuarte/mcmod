@@ -62,4 +62,31 @@ class ThroughputTextTest {
         (TranslatableContents) ThroughputContent.describe(ThroughputTier.ENDGAME).getContents();
     assertEquals(List.of("1,024", "16,000", "32,000", "576", "4"), List.of(endgame.getArgs()));
   }
+
+  /**
+   * Q19 (M88): each upgrade's tooltip names every device that takes it by its block name, and the
+   * upgrade slot's lines say what it accepts.
+   */
+  @Test
+  void upgradeTooltipsNameTheDevicesThatTakeThem() throws Exception {
+    var lang = lang();
+    var fits = lang.get("tooltip.factorycore.throughput.fits.advanced").getAsString();
+    for (var block :
+        List.of(
+            "importer", "exporter", "interface", "cable_port", "crafter", "wireless_access_point"))
+      assertTrue(
+          fits.contains(lang.get("block.factorycore." + block).getAsString()),
+          "Throughput tooltip names " + block + ": " + fits);
+    assertTrue(
+        lang.get("tooltip.factorycore.throughput.fits.endgame")
+            .getAsString()
+            .contains(lang.get("block.factorycore.gateway").getAsString()),
+        "Overdrive tooltip names the Gateway");
+    var throughput = lang.get("item.factorycore.throughput_upgrade").getAsString();
+    var overdrive = lang.get("item.factorycore.overdrive_upgrade").getAsString();
+    var accepts = lang.get("gui.factorycore.upgrade_slot.accepts").getAsString();
+    assertTrue(accepts.contains(throughput) && accepts.contains(overdrive), accepts);
+    var link = lang.get("gui.factorycore.upgrade_slot.accepts.link").getAsString();
+    assertTrue(link.contains(overdrive) && !link.contains(throughput), link);
+  }
 }

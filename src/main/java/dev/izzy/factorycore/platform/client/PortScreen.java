@@ -71,6 +71,10 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
   @Override
   protected void init() {
     super.init();
+    upgradeSlot =
+        addRenderableWidget(
+            UpgradeSlotWidget.beside(
+                leftPos, topPos, imageWidth, menu.containerId, menu::upgradeState));
     kinds.clear();
     filterModes.clear();
     var rows = new PanelLayout(layout.width(), layout.height());
@@ -392,5 +396,15 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
     if (keep != null && keep.isFocused() && key != GLFW.GLFW_KEY_ESCAPE)
       return keep.keyPressed(key, scan, modifiers) || keep.canConsumeInput();
     return super.keyPressed(key, scan, modifiers);
+  }
+
+  /** Q19: the device's upgrade slot beside the panel. */
+  private UpgradeSlotWidget upgradeSlot;
+
+  /** A click on the upgrade slot is not a click outside, so a held upgrade is not dropped. */
+  @Override
+  protected boolean hasClickedOutside(double x, double y, int left, int top, int button) {
+    return super.hasClickedOutside(x, y, left, top, button)
+        && (upgradeSlot == null || !upgradeSlot.isMouseOver(x, y));
   }
 }

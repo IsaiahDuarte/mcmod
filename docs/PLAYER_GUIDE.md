@@ -530,6 +530,14 @@ Throughput and Overdrive raise transfer speed; capacity modules do not. Use
 Throughput on an Interface, then Overdrive. Steps that are repeated, skipped or
 denied consume nothing, and upgrades stay when the Interface moves.
 
+Every device that takes upgrades also shows an **upgrade slot** on a small panel at the
+top right of its screen (Importer, Exporter, Interface, cable port, Crafter, and a
+Gateway with a link). Click it while holding an upgrade to install it. Click it
+empty-handed to take the top upgrade out (Overdrive before Throughput); it goes to your
+cursor, or to your inventory if the change closes the screen. Taking one out lowers the
+device's rate to the new limit and needs the same rights as installing. The upgrade's
+tooltip lists the devices it fits.
+
 | Hardware | Base | Throughput | Overdrive |
 | --- | --- | --- | --- |
 | Storage, Importer, Exporter, cable port items per tick | 128 (default 64) | 256 | 1,024 |

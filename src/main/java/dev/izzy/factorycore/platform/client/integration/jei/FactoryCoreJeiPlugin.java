@@ -54,6 +54,26 @@ public final class FactoryCoreJeiPlugin implements IModPlugin {
 
   @Override
   public void registerGuiHandlers(IGuiHandlerRegistration registration) {
+    // Q19: keep JEI's item list off the upgrade slot panel beside device screens.
+    registration.addGenericGuiContainerHandler(
+        net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class,
+        new mezz.jei.api.gui.handlers.IGuiContainerHandler<
+            net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>>() {
+          @Override
+          public java.util.List<net.minecraft.client.renderer.Rect2i> getGuiExtraAreas(
+              net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen) {
+            var areas = new java.util.ArrayList<net.minecraft.client.renderer.Rect2i>();
+            for (var child : screen.children())
+              if (child instanceof dev.izzy.factorycore.platform.client.UpgradeSlotWidget slot
+                  && slot.visible) {
+                var area = slot.area();
+                areas.add(
+                    new net.minecraft.client.renderer.Rect2i(
+                        area.x(), area.y(), area.width(), area.height()));
+              }
+            return areas;
+          }
+        });
     registration.addGhostIngredientHandler(ProgramScreen.class, new ProgramGhostHandler());
     registration.addGhostIngredientHandler(
         dev.izzy.factorycore.platform.client.BufferSettingsScreen.class,

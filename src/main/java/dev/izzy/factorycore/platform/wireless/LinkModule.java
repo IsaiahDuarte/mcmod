@@ -179,6 +179,18 @@ public final class LinkModule {
     refresh();
   }
 
+  /** Q19: takes the Overdrive out after the caller's check; returns the removed tier. */
+  public ThroughputTier remove() {
+    if (rejected != null) throw new IllegalStateException("upgrade_unknown_data");
+    var next = tier.removeStep(true);
+    if (next == null) throw new IllegalStateException("upgrade_none");
+    var removed = tier;
+    tier = next;
+    host.setChanged();
+    refresh();
+    return removed;
+  }
+
   /**
    * Per-pair multiplier on the ADR 0050 caps: the Overdrive scale only when both loaded, reciprocal
    * ends carry it; otherwise 1. Never loads the partner chunk.

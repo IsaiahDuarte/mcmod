@@ -27,6 +27,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
@@ -288,6 +289,170 @@ public final class ThroughputUpgradeGameTests {
                       && moved.tier() == ThroughputTier.ENDGAME
                       && moved.inventory().total(key) == 23,
                   "Portable buffer has one owner, all 23 items and its installed tier");
+              end(f);
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * The removed upgrade is on the cursor, or in the inventory when the change closed the screen (a
+   * port re-validates, which makes its open screen stale); the stack is cleared for the next step.
+   */
+  private static boolean took(ServerPlayer player, ConnectorSettingsMenu menu, Item item) {
+    if (player.containerMenu == menu && menu.getCarried().is(item)) {
+      menu.setCarried(ItemStack.EMPTY);
+      return true;
+    }
+    var inventory = player.getInventory();
+    for (int slot = 0; slot < inventory.getContainerSize(); slot++)
+      if (inventory.getItem(slot).is(item)) {
+        inventory.setItem(slot, ItemStack.EMPTY);
+        return true;
+      }
+    return false;
+  }
+
+  /**
+   * Q19: the upgrade slot on the device screen installs the held upgrade, gives the top one back
+   * (Overdrive before Throughput) lowering the rate to fit, and refuses a viewer without Edit.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void upgradeSlotInstallsRemovesInOrderAndClampsTheRate(GameTestHelper h) {
+    var f = setup(h);
+    var stranger = TestPlayers.mock(h);
+    TestPlayers.connect(stranger);
+    stranger.setGameMode(GameType.SURVIVAL);
+    stranger.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    int button = dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON;
+    // Each change re-validates the port, so every step waits for current wired authority. A
+    // change also makes the open screen stale; a mock player is not ticked, so close it here as the
+    // server's player tick would.
+    java.util.function.Supplier<ConnectorSettingsMenu> menu =
+        () -> {
+          if (!(f.player.containerMenu instanceof ConnectorSettingsMenu open)
+              || !open.stillValid(f.player)) {
+            f.player.closeContainer();
+            f.player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            h.useBlock(PORT, f.player);
+            return (ConnectorSettingsMenu) f.player.containerMenu;
+          }
+          return open;
+        };
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu.get();
+              m.setCarried(new ItemStack(ThroughputContent.OVERDRIVE.get()));
+              h.assertTrue(
+                  !m.clickMenuButton(f.player, button)
+                      && m.getCarried().is(ThroughputContent.OVERDRIVE.get())
+                      && f.port.tier() == ThroughputTier.BASE,
+                  "Overdrive before Throughput is refused and stays on the cursor");
+              m.setCarried(new ItemStack(ThroughputContent.THROUGHPUT.get()));
+              h.assertTrue(
+                  m.clickMenuButton(f.player, button)
+                      && m.getCarried().isEmpty()
+                      && f.port.tier() == ThroughputTier.ADVANCED,
+                  "A held Throughput Upgrade installs and is used up");
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu.get();
+              m.setCarried(new ItemStack(ThroughputContent.OVERDRIVE.get()));
+              h.assertTrue(
+                  m.clickMenuButton(f.player, button)
+                      && f.port.tier() == ThroughputTier.ENDGAME
+                      && f.port.settings().rate() == 1024
+                      && m.upgradeState() == ThroughputTier.ENDGAME.ordinal(),
+                  "Overdrive installs; the slot shows it: " + f.port.settings().rate());
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              // Without Edit: a stranger cannot open the screen, and the slot's server path refuses
+              // them too (the check is the device's, not the screen's).
+              stranger.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+              h.useBlock(PORT, stranger);
+              h.assertFalse(
+                  stranger.containerMenu instanceof ConnectorSettingsMenu,
+                  "A stranger cannot open the port's screen");
+              var foreign = stranger.inventoryMenu;
+              h.assertTrue(
+                  !dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(
+                          stranger, foreign, f.port)
+                      && foreign.getCarried().isEmpty()
+                      && f.port.tier() == ThroughputTier.ENDGAME,
+                  "A player without Edit cannot take an upgrade out");
+              foreign.setCarried(new ItemStack(ThroughputContent.THROUGHPUT.get()));
+              h.assertTrue(
+                  !dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(
+                          stranger, foreign, f.port)
+                      && foreign.getCarried().is(ThroughputContent.THROUGHPUT.get()),
+                  "A refused upgrade stays on the cursor");
+              stranger.closeContainer();
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu.get();
+              boolean clicked = m.clickMenuButton(f.player, button);
+              h.assertTrue(
+                  clicked
+                      && took(f.player, m, ThroughputContent.OVERDRIVE.get())
+                      && f.port.tier() == ThroughputTier.ADVANCED
+                      && f.port.settings().rate() == 256,
+                  "Overdrive comes out first and the rate drops to the Throughput ceiling: "
+                      + f.port.settings().rate());
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.port.configure(
+                  f.actor(),
+                  new ConnectorSettings(
+                      ResourceKind.ITEM, ConnectorSettings.Access.READ_WRITE, 0, 0, 64, 100));
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu.get();
+              boolean clicked = m.clickMenuButton(f.player, button);
+              h.assertTrue(
+                  clicked
+                      && took(f.player, m, ThroughputContent.THROUGHPUT.get())
+                      && f.port.tier() == ThroughputTier.BASE
+                      && f.port.settings().rate() == 100,
+                  "Throughput comes out next; a rate that fits is kept: "
+                      + f.port.settings().rate());
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu.get();
+              h.assertTrue(
+                  !m.clickMenuButton(f.player, button) && m.getCarried().isEmpty(),
+                  "An empty slot gives nothing");
+              f.player.closeContainer();
+              f.buffer.upgrade(f.actor(), ThroughputTier.ADVANCED);
+            })
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(() -> f.buffer.upgrade(f.actor(), ThroughputTier.ENDGAME))
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              // A buffer clamps its rate the same way.
+              var buffers = DeviceSavedData.get(f.player.server).buffers();
+              var id = f.buffer.handle().id();
+              h.assertTrue(
+                  buffers.deployment(id).policy().rate() == 576, "Overdrive buffer runs at 576");
+              h.assertTrue(
+                  f.buffer.removeUpgrade(f.actor()) == ThroughputTier.ENDGAME
+                      && f.buffer.tier() == ThroughputTier.ADVANCED
+                      && buffers.deployment(id).policy().rate() == 256,
+                  "Removing Overdrive lowers the buffer rate to 256");
+              stranger.connection.disconnect(Component.literal("Stranger done"));
               end(f);
             })
         .thenSucceed();

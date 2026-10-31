@@ -387,6 +387,27 @@ public class ConnectorEntity extends BlockEntity
   }
 
   /**
+   * Q19: takes the top upgrade out; a rate above the lower ceiling is lowered to it. A machine
+   * interface pauses its preset exactly as on install.
+   */
+  public NetworkAuthority.Decision removeThroughput(NetworkPermissions.Actor actor) {
+    validatePlaced();
+    var next = state.tier().removeStep(false);
+    if (next == null) throw new IllegalStateException("upgrade_none");
+    var current = state.settings();
+    var settings =
+        new ConnectorSettings(
+            current.kind(),
+            current.access(),
+            current.priority(),
+            current.firstSlot(),
+            current.slotCount(),
+            Math.min(current.rate(), next.portRate(current.kind())),
+            current.insert());
+    return configureTier(actor, settings, next);
+  }
+
+  /**
    * Shared tier commit; a machine interface overrides it to advance its preset configuration fence
    * like every other machine configuration change.
    */
@@ -651,6 +672,12 @@ public class ConnectorEntity extends BlockEntity
   @Override
   public boolean upgrade(NetworkPermissions.Actor actor, ThroughputTier item) {
     return installThroughput(actor, item) == NetworkAuthority.Decision.ALLOWED;
+  }
+
+  @Override
+  public ThroughputTier removeUpgrade(NetworkPermissions.Actor actor) {
+    var removed = state.tier();
+    return removeThroughput(actor) == NetworkAuthority.Decision.ALLOWED ? removed : null;
   }
 
   @Override

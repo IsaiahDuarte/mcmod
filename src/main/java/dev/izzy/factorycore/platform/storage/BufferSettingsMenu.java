@@ -29,6 +29,13 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
   private DeviceStatus.View deviceStatus;
   private final Player viewer;
   private final BufferedInterfaceEntity holder;
+
+  /**
+   * Q19: the device's upgrade slot state ({@link
+   * dev.izzy.factorycore.platform.upgrade.UpgradeSlots}).
+   */
+  private final net.minecraft.world.inventory.DataSlot upgrade;
+
   private final BlockPos position;
   private final net.minecraft.world.inventory.DataSlot redstone;
 
@@ -78,6 +85,7 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
             ? null
             : WorldNetworks.get(player().server).membership(holder.position()).scope();
     redstone = addDataSlot(RedstoneMenu.slot(holder));
+    upgrade = addDataSlot(dev.izzy.factorycore.platform.upgrade.UpgradeSlots.state(() -> holder));
     for (int row = 0; row < 3; row++)
       for (int column = 0; column < 9; column++)
         addSlot(
@@ -183,8 +191,18 @@ public final class BufferSettingsMenu extends AbstractContainerMenu implements D
    * switch. On success the screen closes and the player is told to reopen it; a refusal shows its
    * reason.
    */
+  /** Q19: the synced upgrade slot state. */
+  public int upgradeState() {
+    return upgrade.get();
+  }
+
   @Override
   public boolean clickMenuButton(Player player, int button) {
+    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+      return holder != null
+          && player instanceof ServerPlayer upgrader
+          && stillValid(upgrader)
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, holder);
     if (RedstoneMenu.requested(button)) {
       if (holder == null
           || !current()

@@ -62,6 +62,23 @@ public final class CrafterEntity extends PatternHolderEntity
   }
 
   @Override
+  public dev.izzy.factorycore.core.resource.ThroughputTier removeUpgrade(
+      dev.izzy.factorycore.core.network.NetworkPermissions.Actor actor) {
+    var next = tier.removeStep(false);
+    if (next == null) throw new IllegalStateException("upgrade_none");
+    if (!(level instanceof ServerLevel server)
+        || !dev.izzy.factorycore.platform.network.WorldNetworks.get(server.getServer())
+            .allows(
+                actor,
+                origin(),
+                dev.izzy.factorycore.core.network.NetworkPermissions.Permission.EDIT)) return null;
+    var removed = tier;
+    tier = next;
+    setChanged();
+    return removed;
+  }
+
+  @Override
   public net.minecraft.network.chat.Component throughputStatus(
       net.minecraft.server.MinecraftServer server) {
     return net.minecraft.network.chat.Component.translatable(

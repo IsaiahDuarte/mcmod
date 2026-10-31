@@ -39,6 +39,15 @@ public final class CrafterScreen extends AbstractContainerScreen<CrafterMenu> {
   }
 
   @Override
+  protected void init() {
+    super.init();
+    upgradeSlot =
+        addRenderableWidget(
+            UpgradeSlotWidget.beside(
+                leftPos, topPos, imageWidth, menu.containerId, menu::upgradeState));
+  }
+
+  @Override
   protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
     Panels.panel(graphics, new Rect(leftPos, topPos, imageWidth, imageHeight));
     for (var slot : menu.slots) Panels.slot(graphics, leftPos + slot.x - 1, topPos + slot.y - 1);
@@ -187,5 +196,15 @@ public final class CrafterScreen extends AbstractContainerScreen<CrafterMenu> {
                 + 8),
         mouseX,
         mouseY);
+  }
+
+  /** Q19: the device's upgrade slot beside the panel. */
+  private UpgradeSlotWidget upgradeSlot;
+
+  /** A click on the upgrade slot is not a click outside, so a held upgrade is not dropped. */
+  @Override
+  protected boolean hasClickedOutside(double x, double y, int left, int top, int button) {
+    return super.hasClickedOutside(x, y, left, top, button)
+        && (upgradeSlot == null || !upgradeSlot.isMouseOver(x, y));
   }
 }

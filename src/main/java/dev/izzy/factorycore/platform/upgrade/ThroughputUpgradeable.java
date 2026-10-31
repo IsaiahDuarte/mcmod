@@ -20,6 +20,19 @@ public interface ThroughputUpgradeable {
    */
   boolean upgrade(NetworkPermissions.Actor actor, ThroughputTier item);
 
+  /**
+   * Q19: takes the top installed upgrade out (Overdrive before Throughput) under the same authority
+   * as installing, lowering any rate above the new ceiling to fit. Returns the removed item's tier,
+   * or null, changing nothing, when {@code actor} may not configure this device. Throws {@link
+   * IllegalStateException} {@code upgrade_none} when nothing is installed.
+   */
+  ThroughputTier removeUpgrade(NetworkPermissions.Actor actor);
+
+  /** Q19: true for a gateway link, which takes one Overdrive and no Throughput Upgrade. */
+  default boolean linkUpgrade() {
+    return false;
+  }
+
   /** The player-facing summary shown after a successful install. */
   Component throughputStatus(MinecraftServer server);
 }

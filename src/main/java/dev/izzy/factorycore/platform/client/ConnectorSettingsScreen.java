@@ -84,6 +84,10 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
               priority.getValue(), firstSlot.getValue(), count.getValue(), rate.getValue()
             };
     super.init();
+    upgradeSlot =
+        addRenderableWidget(
+            UpgradeSlotWidget.beside(
+                leftPos, topPos, imageWidth, menu.containerId, menu::upgradeState));
     kinds.clear();
     accesses.clear();
     settingsWidgets.clear();
@@ -569,5 +573,15 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
         infoRow.y(),
         view.throttled() ? Panels.WARN : Panels.MUTED,
         false);
+  }
+
+  /** Q19: the device's upgrade slot beside the panel. */
+  private UpgradeSlotWidget upgradeSlot;
+
+  /** A click on the upgrade slot is not a click outside, so a held upgrade is not dropped. */
+  @Override
+  protected boolean hasClickedOutside(double x, double y, int left, int top, int button) {
+    return super.hasClickedOutside(x, y, left, top, button)
+        && (upgradeSlot == null || !upgradeSlot.isMouseOver(x, y));
   }
 }

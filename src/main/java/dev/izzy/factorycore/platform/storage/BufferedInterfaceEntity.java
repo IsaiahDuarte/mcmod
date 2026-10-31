@@ -356,6 +356,21 @@ public final class BufferedInterfaceEntity extends BlockEntity
         next);
   }
 
+  /** Q19: takes the top upgrade out, keeping mode, filter and goal; the rate is lowered to fit. */
+  public BufferRegistry.Deployment removeThroughput(NetworkPermissions.Actor actor) {
+    validatePlaced();
+    var next = state.tier().removeStep(false);
+    if (next == null) throw new IllegalStateException("upgrade_none");
+    var previous = authority().buffers().deployment(state.lease().id());
+    var policy = previous == null ? BufferPolicy.DEFAULT : previous.policy();
+    return configure(
+        actor,
+        previous == null ? BufferRegistry.Mode.PAUSED : previous.mode(),
+        new BufferPolicy(
+            policy.filter(), Math.min(policy.rate(), next.bufferRate()), policy.target()),
+        next);
+  }
+
   public BufferRegistry.Deployment configure(
       NetworkPermissions.Actor actor, BufferRegistry.Mode mode, BufferPolicy policy) {
     validatePlaced();
@@ -582,6 +597,17 @@ public final class BufferedInterfaceEntity extends BlockEntity
       return true;
     } catch (PermissionDenied denied) {
       return false;
+    }
+  }
+
+  @Override
+  public ThroughputTier removeUpgrade(NetworkPermissions.Actor actor) {
+    var removed = tier();
+    try {
+      removeThroughput(actor);
+      return removed;
+    } catch (PermissionDenied denied) {
+      return null;
     }
   }
 

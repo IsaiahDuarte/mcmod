@@ -46,6 +46,13 @@ public final class CrafterMenu extends AbstractContainerMenu implements DeviceSt
 
   private final MenuSession session;
   private final CrafterEntity crafter;
+
+  /**
+   * Q19: the device's upgrade slot state ({@link
+   * dev.izzy.factorycore.platform.upgrade.UpgradeSlots}).
+   */
+  private final net.minecraft.world.inventory.DataSlot upgrade;
+
   private long revision;
   private CrafterPackets.View view;
   private DeviceStatus.View deviceStatus;
@@ -59,6 +66,7 @@ public final class CrafterMenu extends AbstractContainerMenu implements DeviceSt
     super(CraftingContent.CRAFTER_MENU.get(), id);
     session = new MenuSession(this, inventory.player, nonce, crafter != null, POLL_TICKS);
     this.crafter = crafter;
+    upgrade = addDataSlot(dev.izzy.factorycore.platform.upgrade.UpgradeSlots.state(() -> crafter));
     IItemHandler patterns =
         crafter != null
             ? crafter.patterns()
@@ -288,5 +296,20 @@ public final class CrafterMenu extends AbstractContainerMenu implements DeviceSt
   public void removed(Player player) {
     super.removed(player);
     session.close();
+  }
+
+  /** Q19: the synced upgrade slot state. */
+  public int upgradeState() {
+    return upgrade.get();
+  }
+
+  @Override
+  public boolean clickMenuButton(Player player, int button) {
+    if (button == dev.izzy.factorycore.platform.upgrade.UpgradeSlots.BUTTON)
+      return crafter != null
+          && player instanceof ServerPlayer upgrader
+          && stillValid(upgrader)
+          && dev.izzy.factorycore.platform.upgrade.UpgradeSlots.click(upgrader, this, crafter);
+    return false;
   }
 }

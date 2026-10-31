@@ -40,4 +40,13 @@ class ThroughputTierTest {
     assertFalse(raised.fits(ThroughputTier.BASE));
     assertTrue(raised.fits(ThroughputTier.ADVANCED));
   }
+
+  /** Q19: removal takes the top step; a link drops its single Overdrive; base has nothing. */
+  @Test
+  void removalTakesTheTopStep() {
+    assertEquals(ThroughputTier.ADVANCED, ThroughputTier.ENDGAME.removeStep(false));
+    assertEquals(ThroughputTier.BASE, ThroughputTier.ADVANCED.removeStep(false));
+    assertEquals(ThroughputTier.BASE, ThroughputTier.ENDGAME.removeStep(true));
+    assertNull(ThroughputTier.BASE.removeStep(false));
+  }
 }

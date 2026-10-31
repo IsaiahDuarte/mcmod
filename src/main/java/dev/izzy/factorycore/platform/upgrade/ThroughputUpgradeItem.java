@@ -57,14 +57,7 @@ public final class ThroughputUpgradeItem extends Item {
           false);
       return InteractionResult.CONSUME;
     } catch (IllegalStateException | IllegalArgumentException | ArithmeticException rejected) {
-      String reason = rejected.getMessage() == null ? "" : rejected.getMessage();
-      player.displayClientMessage(
-          reason.startsWith("upgrade_")
-              ? Component.translatable(
-                  "message.factorycore.throughput_" + reason.substring("upgrade_".length()),
-                  ThroughputContent.name(device.tier()))
-              : Component.translatable("message.factorycore.throughput_fault", reason),
-          true);
+      player.displayClientMessage(UpgradeSlots.refusal(device, rejected), true);
       return InteractionResult.FAIL;
     }
   }
@@ -80,6 +73,11 @@ public final class ThroughputUpgradeItem extends Item {
       ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
     super.appendHoverText(stack, context, tooltip, flag);
     tooltip.add(ThroughputContent.describe(tier));
+    // Q19 (M88): which devices take this upgrade.
+    tooltip.add(
+        Component.translatable(
+            "tooltip.factorycore.throughput.fits."
+                + tier.name().toLowerCase(java.util.Locale.ROOT)));
     tooltip.add(Component.translatable("tooltip.factorycore.throughput.install"));
     tooltip.add(Component.translatable("tooltip.factorycore.throughput.fair"));
   }
