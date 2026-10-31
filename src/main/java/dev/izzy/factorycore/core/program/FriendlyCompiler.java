@@ -127,6 +127,20 @@ public final class FriendlyCompiler {
     return compile(source, Vocabulary.NONE);
   }
 
+  /** Whether {@code source} is a sentence program (ADR 0068) rather than a brace program. */
+  public static boolean sentenceStyle(String source) {
+    return SentenceCompiler.sentenceStyle(source);
+  }
+
+  /**
+   * The vocabulary-free spelling a sentence deployment is saved and reloaded with (ADR 0068): the
+   * same sentences with every name written as its ID, so a changed mod list or language never
+   * changes what a deployed program means. Null for brace programs, whose source already is.
+   */
+  public static String canonical(String source, ProgramIr.Program program) {
+    return sentenceStyle(source) ? ProgramPrinter.print(program, Vocabulary.NONE) : null;
+  }
+
   /**
    * Compiles a brace program (ADRs 0035, 0062) or, when the source is in sentence style, a sentence
    * program (ADR 0068) whose item names resolve through {@code vocabulary}.

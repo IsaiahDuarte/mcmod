@@ -60,7 +60,8 @@ class FriendlyV1PinTest {
   }
 
   private static String entry(String name, String source) {
-    var result = FriendlyCompiler.compile(source);
+    // Templates are sentences (ADR 0068); their names resolve as in the game.
+    var result = FriendlyCompiler.compile(source, GeneratedVocabulary.get());
     assertTrue(result.ok(), () -> name + ": " + result.diagnostics());
     return name + "\t" + result.program();
   }

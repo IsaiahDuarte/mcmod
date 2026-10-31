@@ -55,6 +55,10 @@ public final class ProgramControllerEntity extends BlockEntity
 
   private String draft = "";
   private String deployed;
+
+  /** ADR 0068: what a sentence deployment runs and reloads as; null for brace programs. */
+  private String canonical;
+
   private UUID deployer, deployment;
   private State state = State.STOPPED;
   private String message = "";
@@ -176,6 +180,7 @@ public final class ProgramControllerEntity extends BlockEntity
   /** Replaces the deployment with an initialized Wasm guest; trusted runtime call only. */
   public void deployWasm(byte[] bytes, WasmProgram instance, UUID by) {
     deployed = null;
+    canonical = null;
     program = null;
     artifact = bytes.clone();
     wasm = instance;
@@ -209,6 +214,7 @@ public final class ProgramControllerEntity extends BlockEntity
   /** Replaces the deployment with an already compiled program; trusted runtime call only. */
   public void deploy(String source, ProgramIr.Program compiled, UUID by) {
     deployed = source;
+    canonical = FriendlyCompiler.canonical(source, compiled);
     program = compiled;
     artifact = null;
     wasm = null;
@@ -231,6 +237,7 @@ public final class ProgramControllerEntity extends BlockEntity
   /** Trusted runtime removal of the deployment; the draft and FE remain. */
   public void undeploy() {
     deployed = null;
+    canonical = null;
     program = null;
     artifact = null;
     wasm = null;
@@ -291,6 +298,7 @@ public final class ProgramControllerEntity extends BlockEntity
     tag.putString("State", state.name());
     tag.putString("Message", message);
     if (deployed != null) tag.putString("Deployed", deployed);
+    if (canonical != null) tag.putString("Canonical", canonical);
     if (artifact != null) tag.putByteArray("Artifact", artifact);
     if (artifact != null && guestState != null) tag.putByteArray("GuestState", guestState);
     if (deployed()) {
@@ -326,6 +334,7 @@ public final class ProgramControllerEntity extends BlockEntity
         if (bytes.length > WasmPreflight.MAX_ARTIFACT)
           throw new IllegalArgumentException("Artifact size");
         deployed = null;
+        canonical = null;
         program = null;
         artifact = bytes;
         deployer = tag.getUUID("Deployer");
@@ -341,15 +350,18 @@ public final class ProgramControllerEntity extends BlockEntity
         if (!failure.isEmpty()) message = "Deployed Wasm no longer loads: " + failure;
       } else if (tag.contains("Deployed")) {
         deployed = tag.getString("Deployed");
+        canonical = tag.contains("Canonical") ? tag.getString("Canonical") : null;
         deployer = tag.getUUID("Deployer");
         deployment = tag.getUUID("Deployment");
-        var compiled = FriendlyCompiler.compile(deployed);
+        // A sentence deployment reloads from its pinned IDs, never from today's names.
+        var compiled = FriendlyCompiler.compile(canonical != null ? canonical : deployed);
         // A deployment that no longer compiles is kept but cannot run.
         program = compiled.program();
         state = compiled.ok() ? savedState : State.TRAPPED;
         if (!compiled.ok()) message = "Deployed program no longer compiles";
       } else {
         deployed = null;
+        canonical = null;
         deployer = null;
         deployment = null;
         program = null;

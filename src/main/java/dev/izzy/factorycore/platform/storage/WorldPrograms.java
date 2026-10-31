@@ -176,12 +176,18 @@ public final class WorldPrograms {
         && networks().allows(actor, controller.origin(), NetworkPermissions.Permission.DEPLOY);
   }
 
+  /** Compiles friendly source with the game's names for items, fluids and tags (ADR 0068). */
+  public static FriendlyCompiler.Result compile(String source) {
+    return FriendlyCompiler.compile(
+        source, dev.izzy.factorycore.platform.program.GameVocabulary.get());
+  }
+
   /** Compiles the draft and deploys it under {@code actor}; returns diagnostics on failure. */
   public List<FriendlyCompiler.Diagnostic> deploy(
       NetworkPermissions.Actor actor, ProgramControllerEntity controller) {
     if (!allowed(actor, controller))
       return List.of(new FriendlyCompiler.Diagnostic(1, 1, "You need Deploy permission here"));
-    var result = FriendlyCompiler.compile(controller.draft());
+    var result = compile(controller.draft());
     if (!result.ok()) return result.diagnostics();
     releaseSignals(controller);
     controller.deploy(controller.draft(), result.program(), actor.id());
@@ -401,7 +407,7 @@ public final class WorldPrograms {
       NetworkPermissions.Actor actor, ProgramControllerEntity controller, int rule) {
     if (!networks().allows(actor, controller.origin(), NetworkPermissions.Permission.VIEW))
       return new ProgramPreview.Result(0, 0, List.of("View permission required"));
-    var compiled = FriendlyCompiler.compile(controller.draft());
+    var compiled = compile(controller.draft());
     if (!compiled.ok())
       return new ProgramPreview.Result(
           0, 0, List.of("Fix compiler diagnostics before previewing the saved draft"));

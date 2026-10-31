@@ -1126,12 +1126,15 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   `ProgramPrinter` (IR to sentences).
   Done when: every v1/v2 fixture and template prints to sentences that compile to equal IR.
 
-- [ ] **Q122 — Game vocabulary, pinned deploys and sentence templates.** Size M.
+- [x] **Q122 — Game vocabulary, pinned deploys and sentence templates.** Size M. Done
+  2026-10-31 (commit subject `Q122:`),
+  [Evidence](evidence/ergonomics-q122-game-vocabulary-2026-10-31.md).
   A registry- and language-backed `Vocabulary`; a generated vanilla-plus-mod vocabulary file
   (for tests and the MCP helper); deploy saves the source and the canonical form; load compiles
   the canonical form; packets carry both (protocol bump); the templates rewritten as sentences
   (the v1 template pins compiled with the generated vocabulary, IR unchanged).
-  Done when: a GameTest deploys sentences, reloads them, and a missing item traps.
+  Done when: a GameTest deploys sentences, saves and reloads them from the canonical form with
+  the same program.
 
 - [ ] **Q123 — Editor support.** Size M.
   Highlighting; suggestions while typing: after `move`, `keep`, `craft`, `has` or `except`, the

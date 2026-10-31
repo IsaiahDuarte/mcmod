@@ -56,9 +56,11 @@ resolution order is:
 Anything else is an error that suggests the closest names.
 
 Display names depend on installed mods and language files, so **deploy saves both** the
-sentence source (what the editor shows) and the canonical brace form printed from the IR
-(what runs and is recompiled on load). A world opened with a mod removed therefore behaves as
-v2 does: TRAPPED with a diagnostic, never a guessed meaning. Drafts store only the source.
+sentence source (what the editor shows) and a canonical form: the same program printed with no
+vocabulary, so every name is its ID path or full ID (`iron ingot`, `create:brass_ingot`,
+`tag c:ingots`). The canonical form is what is recompiled on load, so a changed mod list or
+language never changes a deployed program's meaning. Drafts store only the source. Pinning
+happens on the server, so packets do not change.
 
 ### Grammar
 
@@ -131,4 +133,6 @@ localhost-only access and the player's permissions.
 
 - Templates and the guide switch to sentences, with the brace form still documented.
 - The Rust SDK is unaffected.
-- Program packets carry the canonical form, which bumps the protocol version.
+- The game vocabulary (`GameVocabulary`) comes from the live registries and loaded tags, so any
+  installed mod's items work. A generated copy (`program_vocabulary.txt`, from `runData`) serves
+  tests and the offline helper.

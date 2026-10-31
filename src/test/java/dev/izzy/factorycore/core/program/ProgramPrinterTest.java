@@ -50,7 +50,7 @@ class ProgramPrinterTest {
       roundTrip(source.getFileName().toString(), text, vocabulary);
     }
     for (var template : ProgramTemplates.ALL)
-      roundTrip(template.name(), template.source(), Vocabulary.NONE);
+      roundTrip(template.name(), template.source(), GeneratedVocabulary.get());
   }
 
   @Test

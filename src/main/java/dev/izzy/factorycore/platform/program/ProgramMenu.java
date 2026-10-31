@@ -290,7 +290,7 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
                       1, 1, "You need Edit permission to save the draft")));
         } else {
           controller.draft(upload.toString());
-          diagnose(FriendlyCompiler.compile(controller.draft()).diagnostics());
+          diagnose(WorldPrograms.compile(controller.draft()).diagnostics());
         }
         upload.setLength(0);
         publish();
@@ -301,7 +301,7 @@ public final class ProgramMenu extends AbstractContainerMenu implements DeviceSt
     var programs = WorldPrograms.get(sender.server);
     switch (command.action()) {
       case ProgramPackets.CHECK ->
-          diagnose(FriendlyCompiler.compile(controller.draft()).diagnostics());
+          diagnose(WorldPrograms.compile(controller.draft()).diagnostics());
       case ProgramPackets.DEPLOY -> diagnose(programs.deploy(actor(), controller));
       case ProgramPackets.PAUSE ->
           programs.control(actor(), controller, ProgramControllerEntity.State.PAUSED);

@@ -4,6 +4,7 @@ import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.network.NodeRegistry;
+import dev.izzy.factorycore.core.program.FriendlyCompiler;
 import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.core.storage.CellTier;
 import dev.izzy.factorycore.core.storage.ConnectorSettings;
@@ -355,6 +356,57 @@ public final class ProgramGameTests {
                       && reloaded.program() != null
                       && reloaded.program().rules().getFirst().key().equals("planks"),
                   "Deployment, deployer and state persist and recompile on load");
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * ADR 0068: a sentence program with plural and English names deploys, runs, and is saved with a
+   * vocabulary-free canonical form that reloads to the same program.
+   */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void sentenceProgramsRunAndReloadFromTheirPinnedForm(GameTestHelper h) {
+    var f = setup(h);
+    f.chest.setItem(0, new ItemStack(Items.IRON_INGOT, 5));
+    f.chest.setItem(1, new ItemStack(Items.IRON_BLOCK, 3));
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(() -> label(h, f, "out"))
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.controller.energyStorage().receiveEnergy(1000, false);
+              deploy(
+                  h,
+                  f,
+                  "every 0.5 seconds called empty:\n"
+                      + "    move iron ingots from out to storage\n"
+                      + "    move block of iron from out to storage\n");
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.stock(Items.IRON_INGOT) == 5 && f.stock(Items.IRON_BLOCK) == 3,
+                    "Both names moved their items"))
+        .thenExecute(
+            () -> {
+              var registries = h.getLevel().registryAccess();
+              var saved = f.controller.saveWithoutMetadata(registries);
+              var canonical = saved.getString("Canonical");
+              h.assertTrue(
+                  canonical.contains("move iron ingot from out to storage")
+                      && canonical.contains("move iron block from out to storage"),
+                  "Saved with IDs, not English names: " + canonical);
+              var deployed = f.controller.program();
+              h.assertTrue(
+                  deployed.equals(FriendlyCompiler.compile(canonical).program()),
+                  "The pinned form compiles without any vocabulary to the same program");
+              f.controller.loadWithComponents(saved, registries);
+              h.assertTrue(
+                  f.controller.state() == ProgramControllerEntity.State.RUNNING
+                      && deployed.equals(f.controller.program())
+                      && f.controller.deployedSource().contains("block of iron"),
+                  "Reloaded from the pinned form; the editor keeps the player's words");
             })
         .thenSucceed();
   }
