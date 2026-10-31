@@ -44,8 +44,12 @@ public final class EnergyUsers {
   /** How many of the largest users a summary lists. */
   public static final int TOP = 5;
 
-  /** One device's use. */
-  public record Use(Kind kind, double perTick) {}
+  /** One device's use, with its anvil name ("" for none, Q116). */
+  public record Use(Kind kind, double perTick, String name) {
+    public Use(Kind kind, double perTick) {
+      this(kind, perTick, "");
+    }
+  }
 
   /**
    * A segment's energy use: the total FE per tick, the device count and use for each {@link Kind}
@@ -65,6 +69,16 @@ public final class EnergyUsers {
   private final Set<User> users = new LinkedHashSet<>();
 
   private EnergyUsers() {}
+
+  private static String name(User user) {
+    var name =
+        user instanceof net.minecraft.world.level.block.entity.BlockEntity entity
+            ? dev.izzy.factorycore.platform.DeviceNames.name(entity)
+            : null;
+    if (name == null) return "";
+    var text = name.getString();
+    return text.length() > 64 ? text.substring(0, 64) : text;
+  }
 
   public static void loaded(Level level, User user) {
     if (level instanceof ServerLevel server) {
@@ -104,7 +118,7 @@ public final class EnergyUsers {
       counts[kind.ordinal()]++;
       uses[kind.ordinal()] += use;
       total += use;
-      all.add(new Use(kind, use));
+      all.add(new Use(kind, use, name(user)));
     }
     all.sort(Comparator.comparingDouble(Use::perTick).reversed());
     return new Summary(total, counts, uses, all.subList(0, Math.min(TOP, all.size())));

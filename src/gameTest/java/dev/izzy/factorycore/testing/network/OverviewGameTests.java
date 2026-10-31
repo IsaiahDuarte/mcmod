@@ -18,6 +18,8 @@ import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -143,6 +145,11 @@ public final class OverviewGameTests {
     h.setBlock(controllerAt, ProgramContent.BLOCK.get());
     AccessPointEntity access = h.getBlockEntity(point);
     ProgramControllerEntity controller = h.getBlockEntity(controllerAt);
+    // Q116: an anvil-named Access Point shows its name among the largest users.
+    access.setComponents(
+        DataComponentMap.builder()
+            .set(DataComponents.CUSTOM_NAME, Component.literal("Front gate"))
+            .build());
     owner.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(WirelessContent.HANDHELD.get()));
     h.startSequence()
         .thenWaitUntil(() -> net.assertValid(DRIVE, point, controllerAt))
@@ -199,6 +206,9 @@ public final class OverviewGameTests {
                       && top.get(0).kind() == EnergyUsers.Kind.ACCESS_POINT
                       && top.get(1).kind() == EnergyUsers.Kind.PROGRAM_CONTROLLER,
                   "The largest users come first: " + top);
+              h.assertTrue(
+                  top.get(0).name().equals("Front gate") && top.get(1).name().isEmpty(),
+                  "The named Access Point is listed by its name: " + top);
             })
         .thenSucceed();
   }

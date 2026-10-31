@@ -245,8 +245,10 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
           Component.translatable(
               "gui.factorycore.overview.energy.user",
               i + 1,
-              Component.translatable(
-                  "gui.factorycore.overview.energy.device." + key(top.get(i).kind())),
+              top.get(i).name().isEmpty()
+                  ? Component.translatable(
+                      "gui.factorycore.overview.energy.device." + key(top.get(i).kind()))
+                  : Component.literal(top.get(i).name()),
               fe(top.get(i).perTick())));
     return lines;
   }

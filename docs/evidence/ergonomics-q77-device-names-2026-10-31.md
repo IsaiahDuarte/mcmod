@@ -12,7 +12,7 @@ Loot-table devices list `CUSTOM_NAME` in `CarriedComponents` (Terminal, Drive, A
 Program Controller, Fuel Generator), and `runData` regenerated their loot tables.
 
 **Lists.** The Patterns view already shows Crafter names (ADR 0060). Job steps are Q70 (needs
-QD19). Overview and Access lists are recorded as Q116.
+QD19). The Overview list is Q116; the Access screen lists players, not devices.
 
 ## Checks
 

@@ -54,5 +54,6 @@ public final class NetworkContent {
 
   public static void register(IEventBus bus) {
     bus.addListener(AccessPackets::register);
+    bus.addListener(OverviewPackets::register);
   }
 }

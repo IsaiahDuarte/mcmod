@@ -1008,15 +1008,15 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   Done when: filter tests and a GameTest that exports only worn tools.
 
 - [x] **Q77 — Device names (M81).** Size S. Done 2026-10-31 (commit subject `Q77:`),
-  [Evidence](evidence/ergonomics-q77-device-names-2026-10-31.md). Overview/Access lists: Q116.
+  [Evidence](evidence/ergonomics-q77-device-names-2026-10-31.md). Overview list: Q116.
   Every device keeps its anvil name, shows it as its screen title and in lists (Patterns view,
   job steps, Overview, Access), and keeps it when picked up (Q22) or copied (Q13).
   Done when: GameTests cover naming, reload and pick-up.
 
-- [ ] **Q116 — Device names in Overview and Access (from Q77, M81).** Size S. Lane D.
-  Q77 named screens and drops. The Overview's largest energy users and the Access screen's
-  device rows still show the kind. Show the anvil name when there is one (carried in their
-  packets, bounded like labels).
+- [x] **Q116 — Device names in the Overview (from Q77, M81).** Size S. Lane D. Done 2026-10-31
+  (commit subject `Q116:`), [Evidence](evidence/ergonomics-q116-overview-names-2026-10-31.md).
+  The Overview's largest energy users show a device's anvil name when it has one. (The Access
+  screen lists players, not devices, so it needs no change.)
   Done when: a GameTest sees a named Access Point in the Overview's top users.
 
 - [x] **Q78 — Fresh cell on creative pick (M86).** Size S. Done 2026-10-31 (commit subject `Q78:`),

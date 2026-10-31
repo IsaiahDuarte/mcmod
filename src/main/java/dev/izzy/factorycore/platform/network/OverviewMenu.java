@@ -49,6 +49,10 @@ public final class OverviewMenu extends AbstractContainerMenu {
   private static final int REFRESH_TICKS = 10;
 
   private final ContainerData data;
+
+  /** Q116: the top users' names; the server's last sent, or the client's last received. */
+  private List<String> names = List.of();
+
   private final NetworkNodeEntity controller;
   private final Player viewer;
   private int clock;
@@ -120,7 +124,11 @@ public final class OverviewMenu extends AbstractContainerMenu {
     for (int i = 0; i < EnergyUsers.TOP; i++) {
       int kind = data.get(TOP + 3 * i);
       if (kind < 0 || kind >= KINDS) break;
-      top.add(new EnergyUsers.Use(EnergyUsers.Kind.values()[kind], use(TOP + 3 * i + 1)));
+      top.add(
+          new EnergyUsers.Use(
+              EnergyUsers.Kind.values()[kind],
+              use(TOP + 3 * i + 1),
+              i < names.size() ? names.get(i) : ""));
     }
     return top;
   }
@@ -144,7 +152,10 @@ public final class OverviewMenu extends AbstractContainerMenu {
     for (int role = 0; role < NetworkTopology.Role.values().length; role++)
       data.set(ROLES + role, counts == null ? -1 : Math.min(Short.MAX_VALUE, counts[role]));
     for (int slot = ENERGY; slot < SLOTS; slot++) data.set(slot, -1);
-    if (counts == null) return;
+    if (counts == null) {
+      send(List.of());
+      return;
+    }
     var energy =
         EnergyUsers.summary(
             (net.minecraft.server.level.ServerLevel) controller.getLevel(),
@@ -158,6 +169,20 @@ public final class OverviewMenu extends AbstractContainerMenu {
       data.set(TOP + 3 * i, energy.top().get(i).kind().ordinal());
       use(TOP + 3 * i + 1, energy.top().get(i).perTick());
     }
+    send(energy.top().stream().map(EnergyUsers.Use::name).toList());
+  }
+
+  /** Server: sends the top users' names when they changed. */
+  private void send(List<String> next) {
+    if (next.equals(names)) return;
+    names = next;
+    net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(
+        (ServerPlayer) viewer, new OverviewPackets.Names(containerId, next));
+  }
+
+  /** Client: the names the server sent for this menu. */
+  void accept(OverviewPackets.Names packet) {
+    if (packet.containerId() == containerId) names = packet.names();
   }
 
   @Override
