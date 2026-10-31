@@ -195,15 +195,14 @@ Both authoring paths use one versioned host API: local label resolution, typed f
 - Budget failure pauses with diagnostics. No suspended Wasm stack survives reload. Restore only versioned persistent state into a fresh instance and initialize with idempotent rule keys.
 - Validate replacement artifacts before deactivating the old deployment. State migration/reset must preserve ownership of resources and outstanding jobs.
 
-Design pseudocode, not a frozen grammar:
+Programs are plain sentences ([ADR 0068](docs/decisions/0068-sentence-programs.md);
+reference: [PROGRAM_LANGUAGE.md](docs/PROGRAM_LANGUAGE.md)):
 
 ~~~text
-every 10 ticks {
-    for machine in machines("smelters") {
-        keep machine.input stocked with 64 of item("minecraft:raw_iron") from storage
-        move item("minecraft:iron_ingot") from machine.output to storage limit 64
-    }
-}
+every 0.5 seconds:
+    for each machine in smelters:
+        keep 64 raw iron in machine top
+        move iron ingots from machine bottom to storage
 ~~~
 
 Within a callback, keep requests the current deficit for that invocation; move requests at most its limit. Neither creates another periodic task. Top-level declarative rules and Rust registration create persistent engine rules separately.

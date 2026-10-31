@@ -1,39 +1,45 @@
 # Programs
 
-Portable P5 contracts. The language is frozen in [ADR 0035](../decisions/0035-friendly-language.md).
-The Program Controller runtime is in [ADR 0036](../decisions/0036-program-controller-runtime.md);
-the editor is below; bounded Wasm programs and persistent guest state are implemented.
+Portable P5 contracts. Programs are written as plain sentences
+([ADR 0068](../decisions/0068-sentence-programs.md); the player-facing reference is
+[PROGRAM_LANGUAGE.md](../PROGRAM_LANGUAGE.md)). The brace language of ADRs 0035 and 0062 was
+removed; its IR, limits and semantics carry over. The Program Controller runtime is in
+[ADR 0036](../decisions/0036-program-controller-runtime.md); the editor is below; bounded Wasm
+programs and persistent guest state are implemented. The offline MCP helper is in
+[PROGRAM_HELPER.md](../PROGRAM_HELPER.md).
 
 ## API
 
-`FriendlyCompiler.compile(source)` returns `Result(program, diagnostics)`; `ok()` is true
-when `program` is non-null. `Diagnostic(line, column, message)` is one-based.
-`ProgramIr.Program(rules)` holds `Rule(key, interval, body)` with statements `For`,
-`Keep`, `Move`, `Craft`, `If` and `Log`, targets `Variable`/`Label` and places
-`Storage`/`Machine`.
+`FriendlyCompiler.compile(source, vocabulary)` returns `Result(program, diagnostics)`; `ok()`
+is true when `program` is non-null.
+- **`Diagnostic(line, column, message, hint, example)`:** one-based, and `hint`/`example` may
+  be null.
+- **`Vocabulary`:** resolves item, fluid and tag names. The game uses `GameVocabulary.get()`;
+  `Vocabulary.NONE` takes names literally.
+- **`FriendlyCompiler.canonical(program)`:** the vocabulary-free form a deployment is saved and
+  reloaded with.
+- **`ProgramPrinter.print(program, vocabulary)`:** writes any program as sentences.
+- **`ProgramIr.Program(rules)`:** holds `Rule(key, interval, body)` with statements `For`,
+  `Keep`, `KeepAt`, `Move`, `Craft`, `If`, `Branch`, `Emit` and `Log`, targets
+  `Variable`/`Label`, and places `Storage`/`Machine`/`MachineAt`.
 
 `ProgramEvaluator.invoke(rule, host)` evaluates one invocation against a read-only
 `Host` (`machines(label)`, `stock(filter)`) and returns staged `ProgramCommand`s
-(`Keep(machine, filter, amount)`, `Move(filter, from, to, limit)` with a null side
+(`Keep(machine, filter, amount, access)`, `Move(filter, from, to, limit)` with a null side
 meaning storage, `Craft(item, amount)`, `Log(text)`), or throws `Trap` and stages
 nothing. Bounds: `MAX_STEPS` 1,024, `MAX_COMMANDS` 256, `MAX_MACHINES_PER_LABEL` 64.
 
 ## Example
 
 ```text
-every 10 ticks as "smelt" {
-    for machine in machines("smelter_in") {
-        keep machine stocked with 64 of item("raw_iron") from storage
-    }
-    move item("iron_ingot") from machines("smelter_out") to storage limit 64
-}
-every 5 seconds {
-    if stock(tag("logs")) < 32 {
-        craft 16 of item("oak_planks")
-    }
-}
+every 0.5 seconds called smelt:
+    for each machine in smelter_in:
+        keep 64 raw iron in machine
+    move iron ingots from smelter_out to storage
+every 5 seconds:
+    if storage has less than 32 logs:
+        craft 16 oak planks
 ```
-
 
 ## Program Controller
 
@@ -99,22 +105,28 @@ variables; their rules are stateless.
 ## Native authoring controls
 
 [ADR 0051](../decisions/0051-program-authoring.md) documents the authoring contracts.
-The friendly editor colors keywords/calls/literals/comments and underlines current
-local compiler diagnostics; Save/Check/Deploy still compile on the server. Ctrl+Z
-undoes, Ctrl+Y or Ctrl+Shift+Z redoes, and Tab inserts four spaces. History retains at
-most 64 text snapshots per open screen and survives a GUI resize. Undo places the
-cursor at the end. Paste, template replacement and resource insertion each make
-one history step.
+The editor colors the language's words, numbers, quoted text and comments, and underlines
+the live compiler problems (compiled with the game vocabulary). The log area shows the first
+problem with its hint and example. Save, Check and Deploy still compile on the server.
+- **Undo history:** Ctrl+Z undoes, and Ctrl+Y or Ctrl+Shift+Z redoes. History keeps at most 64
+  text snapshots per open screen and survives a GUI resize. Undo places the cursor at the end.
+  Paste, template replacement and insertion each make one history step.
+- **Suggestions while typing (Q123, `ProgramSuggestions`):** the best item, fluid, label, face
+  or next word shows faintly after the cursor, with up to five choices under the line.
+  **Tab** accepts (adding a space), **Up/Down** choose, and moving the cursor hides them.
+  Otherwise Tab inserts four spaces.
 
 **Insert / complete** opens an in-place picker: click its category to cycle Items,
 Fluids, Local labels and Keywords, type a search, page with arrows and select a row.
-Escape returns to the draft. JEI is optional. Items/fluids insert escaped expressions;
-labels insert `machines("label")`. Ctrl+Space instead completes the identifier or
-literal at the cursor and initially picks its enclosing call's category. Local labels
-are VIEW-authorized, case-sensitive, segment-only snapshots, 16 per server page.
-Filtering applies to the current label page; Next fetches further pages. Other
-categories search the public local registry, without exposing stored identities or
-quantities. Ports are configured on Machine-mode Interfaces, selected through labels.
+Escape returns to the draft. JEI is optional.
+- **Inserts:** items, fluids and labels go in as a program names them (`iron ingot`,
+  `fluid water`, `create:brass_ingot`, `"my chest"`).
+- **Ctrl+Space:** replaces the name or word at the cursor, and picks the category of the
+  cursor's slot.
+- **Local labels:** VIEW-authorized, case-sensitive, segment-only snapshots, 16 per server
+  page. Filtering applies to the current label page; Next fetches further pages.
+- **Other categories:** search the public local registry, without exposing stored identities
+  or quantities.
 
 **Preview next rule** saves then evaluates one saved native rule using your current
 VIEW scope. Saving needs EDIT; a View-only user can preview the existing saved draft.
@@ -138,24 +150,14 @@ session requests disclose nothing. The payloads do not alter saved schema or ABI
 
 Each rule invocation has a 256-unit host-work budget: one unit per storage catalog page, and 1 + found/16 per label query. Exceeding it traps the invocation. Friendly rules allow at most 512 host calls, the same as Wasm. The program log keeps 16 lines of up to 160 characters, collapses immediate repeats, and keeps at most 8 guest lines per invocation. A refused scheduler admission sets status `throttled`, and an invocation 20 or more ticks late sets `delayed`; each is logged once. See [ADR 0056](../decisions/0056-program-limits-and-overload.md).
 
-## Language version 2 (proposed, ADR 0062)
+## Language
 
-[ADR 0062](../decisions/0062-friendly-language-v2.md) freezes a strict superset of the v1
-language: moves between two machines, `side`/`slots` per endpoint, `else`/`and`/`or`/`not`,
-`has` conditions, one-`*` globs with `except`, and redstone `redstone(...)`/`emit`. Implemented so far:
-D2, moves between two machines (`WorldPrograms.between`: one guarded External→External
-transfer per pair, at most one stack, the lower of the two Interface rates, a processing
-lease on either end refuses as busy, and neither end may hold an unresolved transfer).
-D3, `side`/`slots` per endpoint (`ProgramIr.MachineAt`,
-`ProgramCommand.Access`, `WorldConnectors.View`: same backing, rate, access and lease as the
-binding; refused with a logged reason outside the window, on another face of a narrowed
-binding, or on a partitioned provider). D4, conditions (`ProgramIr.Branch` with a `Condition`
-tree; `Host.contents` reads at most 16 pages per machine, each charged to the host budget).
-D5, globs and `except` (program-only filter terms); H9, the whole-inventory words
-`everything`/`items` and `fluids` (sugar for `item("*")`/`fluid("*")`).
-D6, `redstone(...)` and `emit` (`WorldSignals.emit`/`release`, expiring per-deployment
-overrides on Signal-mode Interfaces). Every v2 language form is implemented; the Wasm
-imports (D7) and editor support (D9) are not yet. `src/test/resources/program/v2/` holds one fixture per form and
-names the slice (D2–D6) that must make it compile. `FriendlyV1PinTest` fails if one
-compiles early, or if any v1 program's IR changes.
-
+[ADR 0068](../decisions/0068-sentence-programs.md) defines the grammar, name resolution and
+errors; [PROGRAM_LANGUAGE.md](../PROGRAM_LANGUAGE.md) is the reference.
+- **Fixtures:** `src/test/resources/program/sentences/` holds one fixture per form, pinned to
+  its IR in `program/sentences-ir.txt`.
+- **Behavior carried over from ADR 0062 unchanged:**
+  - machine-to-machine moves (`WorldPrograms.between`);
+  - faces and slots (`ProgramIr.MachineAt`, `ProgramCommand.Access`, `WorldConnectors.View`),
+    and a faced keep (`KeepAt`, counted through that face's view);
+  - conditions, patterns and `except`, and redstone (`WorldSignals`).

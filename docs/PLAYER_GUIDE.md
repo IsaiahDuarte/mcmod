@@ -386,7 +386,7 @@ of any Interface screen. In its screen:
 - **Apply** saves it. The signal then reads storage with your access, so you need Edit
   access to apply. It updates about once a second.
 
-Give it a **Label** if a program should drive it (`emit redstone …`). While a program
+Give it a **Label** if a program should drive it (`turn on alarm`). While a program
 does, it shows "set by a program" and ignores its own setting. It turns off and shows why
 when nothing is chosen, the network is offline, or whoever
 applied it can no longer view storage. Breaking it drops a plain Interface; its settings
@@ -463,52 +463,35 @@ rights. You can still break it, hold it in your offhand and use the module.
 ## Program Controller
 
 A Program Controller runs rules for its network. Power it with FE; each rule run
-costs about 4 FE. Use it to open its editor.
+costs about 4 FE. Use it to open its editor. Programs are plain sentences:
 
 ```text
-every 10 ticks { move item("iron_ingot") from machines("smelter_out") to storage }
+every second:
+    move iron ingots from smelter_out to storage
 ```
 
-Programs find machines by label. To label one, run a cable to it and use the
-[Label Tool](#label-tool) on the machine. The **Auto smelter** template runs every furnace
-labelled "furnace": raw ores in the top, coal kept at 8 on the side, ingots out the bottom.
-
-- **Editing:** type a program, then **Save draft** and **Check** (errors show as
-  line:column). **Deploy** runs it with your permissions. **Pause/Resume** and
-  **Stop** control it. **Templates…** lists the built-in examples by name; choosing one replaces the draft (Ctrl+Z undoes it).
+- **Labels:** programs find machines by label. To label one, run a cable to it and use the
+  [Label Tool](#label-tool) on the machine. The **Auto smelter** template runs every furnace
+  labelled "furnace": raw ores in the top, coal kept at 8 in the side, ingots out the bottom.
+- **The language:** [Factory Core programs](PROGRAM_LANGUAGE.md) is the whole language on
+  one page, with rules, sentences, places, names, checks, `for each` and limits.
+- **Editing:** type a program, then **Save draft** and **Check**. **Deploy** runs it with
+  your permissions. **Pause/Resume** and **Stop** control it. **Templates…** lists the
+  built-in examples by name; choosing one replaces the draft (Ctrl+Z undoes it).
+- **Suggestions:** as you type an item, a label or the next word, the best match shows
+  faintly after the cursor with a short list under the line. **Tab** accepts, and **Up/Down**
+  choose.
+- **Problems:** a problem shows under the editor as you type, with a fix where there is one
+  ("Did you mean iron ingot?").
 - **Rights:** saving needs Edit and deploying needs Deploy.
-- **Helpers:** **Insert / complete** (Ctrl+Space) finds items, fluids and machine
-  labels. **Preview next rule** shows what a rule would do without moving anything.
+- **Helpers:** **Insert / complete** (Ctrl+Space) finds items, fluids and machine labels.
+  **Preview next rule** shows what a rule would do without moving anything.
+- **Writing with an AI assistant:** the [program helper](PROGRAM_HELPER.md) lets an
+  assistant such as Claude write and check programs for you.
 - **Rust programs:** build one with the SDK (`sdk/rust/README.md`), put the `.wasm`
   in `factorycore/programs` in your game folder and press **Upload Wasm**.
-- **Machine to machine:** `move` may name machines on both sides, for example
-  `move item("iron_ingot") from machines("furnace") to machines("chest")`. Items go
-  straight across without passing through storage. With several machines on each side,
-  every source gives to every target (up to 64 pairs per line). Storage to storage is
-  not a move.
-- **Sides and slots:** after a machine in `move`, `side up` (or down, north, south,
-  west, east) uses that face of the machine, and `slots 2` or `slots 0..3` uses only those
-  slots. For example, one cable port can run a furnace:
-  `side up` for the input, `side north` for fuel and `side down slots 0` for the output.
-  Slot numbers count the slots that face shows. A range outside what the port allows is
-  refused with a log line.
-- **Conditions:** `if` takes `else` and `else if`, and combines checks with `and`, `or`,
-  `not` and parentheses. `machine has < 8 of item("coal")` counts what a machine (or a
-  whole label) holds. For example:
-  `if f has < 8 of item("coal") { move item("coal") from storage to f side north limit 4 }`.
-- **Patterns:** one `*` matches any part of an ID: `item("*_ingot")` is every mod's
-  ingots, `item("minecraft:raw_*")` only vanilla raw ores. `except` removes items:
-  `item("*_ingot") except item("iron_ingot")`.
-- **Whole inventories:** `everything` (or `items`) means every item and `fluids` every
-  fluid, so `move everything from machines("chest") to storage` empties a chest. They take
-  `except` too: `move everything except item("dirt") from machines("chest") to storage`.
-- **Redstone:** `redstone(machines("button"))` is true while that cable port (or
-  Importer or Exporter) is powered. `emit redstone 15 on machines("alarm")` sets every Signal-mode Interface
-  labelled "alarm" (set the label in its screen) while the program runs. Stopping or
-  pausing the program hands those Interfaces back to their own settings.
 - **Long rules:** a rule's moves run one after another, and the next run of the rule
-  replaces any it did not reach. Give slow or important moves their own `every … as "…"`
-  rule rather than putting many in one.
+  replaces any it did not reach. Give slow or important moves their own rule.
 - **When a rule can't act:** its log line says why, for example a machine busy with
   a crafting job, stock reserved by jobs, or the rate limit. It retries at its next
   interval without losing items.
@@ -645,7 +628,7 @@ applies.
 
 - **Label a machine:** run a network cable so it touches the machine, then use the tool on
   the machine. The cable turns into a **cable port** aimed at the machine (a cable with a small
-  plate) and the machine gets the label, so programs can find it with `machines("label")` and use
+  plate) and the machine gets the label, so programs can find it by that label and use
   any of its sides. Using the tool on it again relabels it. Use the port with an empty hand to
   change its label or what programs move through it (items, fluids or energy). Breaking an idle
   port gives the cable back.
@@ -668,7 +651,7 @@ applies.
   and gateways, one colour per branch, and a white box on each machine a port reaches. In this
   view, using the tool on a machine shows what it offers on each side and the `move` lines a
   program needs for it; **Copy move lines** puts them on the clipboard. An unlabelled machine's
-  lines say `machines("label")`: label it and replace the word.
+  lines say `label`: label it and replace the word.
 - **Pick a label:** with the tool in hand, press the **middle mouse button** (Controls →
   Factory Core) on a labelled machine, cable port or Signal Interface. The tool takes that label,
   ready to put on the next machine. You need View access on that network.
