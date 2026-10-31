@@ -126,6 +126,10 @@ Deposit and withdrawing needs Withdraw.
 - **Search box:** Up and Down recall your last 16 searches, right-click clears it, and
   **Ctrl+F** (rebindable as "Focus terminal search") puts the cursor in it. Shift-right-click
   makes it take the cursor whenever the terminal opens (again to stop); this is remembered.
+- **Saved views:** **★** at the end of the search row swaps the search box and sort tools
+  for five numbered buttons. Click an empty (grey) one to save the current search, sort,
+  direction and item view in it, and a saved one to use it again. Shift-click saves over a
+  view, and right-click empties it. Saved views are kept with your player, in every terminal.
 - **Sort:** the sort button cycles Name, Qty, Mod, ID and New (most recently stored or
   taken first, since the server started); the arrow beside it reverses the order. **⇕** makes the grid fill the window's height instead of six rows. Your search,
   sort and grid height are remembered.

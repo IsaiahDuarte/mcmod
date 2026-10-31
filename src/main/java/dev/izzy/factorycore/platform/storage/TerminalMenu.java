@@ -16,6 +16,8 @@ import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -71,6 +73,15 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
 
   /** A3 "Show craftable" preference: zero-count rows for craftables that have no stock. */
   /** Q62: the Items view, {@link TerminalPackets#VIEW_STORED} and so on. */
+  /** Q67: the player's saved views, kept with the other terminal preferences. */
+  private final TerminalPackets.SavedView[] savedViews = {
+    TerminalPackets.SavedView.NONE,
+    TerminalPackets.SavedView.NONE,
+    TerminalPackets.SavedView.NONE,
+    TerminalPackets.SavedView.NONE,
+    TerminalPackets.SavedView.NONE
+  };
+
   private int itemsView = TerminalPackets.VIEW_STORED;
 
   /** Q63: distinct keys the search read before filtering. */
@@ -144,6 +155,19 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                     : TerminalPackets.VIEW_STORED;
         if (storedView >= TerminalPackets.VIEW_STORED
             && storedView <= TerminalPackets.VIEW_CRAFTABLE) itemsView = storedView;
+        // Q67: a malformed saved view is dropped, not the rest of the preferences.
+        var views = preferences.getList("Views", Tag.TAG_COMPOUND);
+        for (int index = 0; index < Math.min(views.size(), savedViews.length); index++) {
+          var entry = views.getCompound(index);
+          if (entry.isEmpty()) continue;
+          try {
+            savedViews[index] =
+                new TerminalPackets.SavedView(
+                    true, entry.getString("Search"), entry.getInt("Sort"), entry.getInt("View"));
+          } catch (IllegalArgumentException malformed) {
+            savedViews[index] = TerminalPackets.SavedView.NONE;
+          }
+        }
       }
     }
     for (int row = 0; row < 3; row++)
@@ -493,6 +517,33 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     }
   }
 
+  /** Q67: applies, saves or clears saved view {@code index}. Applying an empty one does nothing. */
+  private void views(int index, int what) {
+    switch (what) {
+      case TerminalPackets.VIEW_SAVE ->
+          savedViews[index] =
+              new TerminalPackets.SavedView(
+                  true, text, TerminalPackets.SavedView.sortOf(sort), itemsView);
+      case TerminalPackets.VIEW_CLEAR -> savedViews[index] = TerminalPackets.SavedView.NONE;
+      default -> {
+        var saved = savedViews[index];
+        if (!saved.set()) return;
+        offset = 0;
+        text = saved.search();
+        sort = saved.sort() | (sort & ~TerminalPackets.SavedView.sortOf(sort));
+        itemsView = saved.view();
+        savePreferences();
+        refresh();
+        publish();
+        patterns.publish(text, false);
+        return;
+      }
+    }
+    savePreferences();
+    revision++;
+    publish();
+  }
+
   private void savePreferences() {
     var persistent = viewer.getPersistentData();
     var kept = persistent.getCompound(Player.PERSISTED_NBT_TAG);
@@ -502,6 +553,17 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     preferences.putInt("Sort", sort);
     preferences.putBoolean("Craftable", itemsView != TerminalPackets.VIEW_STORED);
     preferences.putInt("View", itemsView);
+    var views = new ListTag();
+    for (var saved : savedViews) {
+      var entry = new CompoundTag();
+      if (saved.set()) {
+        entry.putString("Search", saved.search());
+        entry.putInt("Sort", saved.sort());
+        entry.putInt("View", saved.view());
+      }
+      views.add(entry);
+    }
+    preferences.put("Views", views);
     kept.put("FactoryCoreTerminal", preferences);
     persistent.put(Player.PERSISTED_NBT_TAG, kept);
   }
@@ -557,7 +619,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             || action == TerminalPackets.TAKE_CURSOR
             || action == TerminalPackets.HALF_CURSOR
             || action == TerminalPackets.DEPOSIT_CURSOR
-            || action >= TerminalPackets.DEPOSIT_ALL
+            || (action >= TerminalPackets.DEPOSIT_ALL && action <= TerminalPackets.SWAP)
             || (action >= TerminalPackets.FILL && action <= TerminalPackets.DISCHARGE);
     if (mutating && !terminal.spendAction(sender)) {
       status = TerminalPackets.Status.NO_POWER;
@@ -572,6 +634,10 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       refresh();
       publish();
       patterns.publish(text, false);
+      return;
+    }
+    if (command.action() == TerminalPackets.VIEWS) {
+      views(command.selection(), command.amount());
       return;
     }
     if (command.action() == TerminalPackets.CRAFTABLES) {
@@ -1289,7 +1355,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             external,
             itemsView,
             uncertain,
-            Math.min(allRows, TerminalPackets.MAX_ALL));
+            Math.min(allRows, TerminalPackets.MAX_ALL),
+            terminal == null ? List.of() : List.of(savedViews));
     if (!packet.equals(view)) {
       view = packet;
       PacketDistributor.sendToPlayer(player(), packet);

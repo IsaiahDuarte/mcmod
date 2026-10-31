@@ -97,7 +97,7 @@ class TerminalPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.SWAP + 1, 0, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.VIEWS + 1, 0, 1, "", new byte[32]));
   }
 
   private static RegistryFriendlyByteBuf buffer() {
@@ -259,7 +259,7 @@ class TerminalPacketsTest {
         IllegalArgumentException.class,
         () ->
             new TerminalPackets.Command(
-                1, session, 1, TerminalPackets.SWAP + 1, 0, 1, "", new byte[32]));
+                1, session, 1, TerminalPackets.VIEWS + 1, 0, 1, "", new byte[32]));
     assertThrows(
         IllegalArgumentException.class,
         () -> new TerminalPackets.Command(1, session, 1, 4, 36, 1, "", new byte[32]));
@@ -304,5 +304,100 @@ class TerminalPacketsTest {
         () ->
             new TerminalPackets.View(
                 1, session, 1, TerminalPackets.Status.READY, rows, false, false, "0"));
+  }
+
+  /** Q67: saved views cross the wire as five entries, and their commands are bounded. */
+  @Test
+  void savedViewsRoundTripAndTheirCommandsAreBounded() {
+    var saved = new java.util.ArrayList<>(Collections.nCopies(5, TerminalPackets.SavedView.NONE));
+    saved.set(
+        2,
+        new TerminalPackets.SavedView(
+            true,
+            "@minecraft #logs",
+            TerminalSearchSupport.QUANTITY | TerminalSearchSupport.REVERSED,
+            TerminalPackets.VIEW_CRAFTABLE));
+    var view =
+        new TerminalPackets.View(
+            3,
+            UUID.randomUUID(),
+            7,
+            TerminalPackets.Status.READY,
+            List.of(),
+            false,
+            false,
+            "0",
+            "",
+            TerminalSearchSupport.NAME,
+            0,
+            0,
+            8,
+            0,
+            "0",
+            "0",
+            false,
+            false,
+            TerminalPackets.VIEW_STORED,
+            false,
+            0,
+            saved);
+    var output = buffer();
+    try {
+      TerminalPackets.View.CODEC.encode(output, view);
+      assertEquals(view, TerminalPackets.View.CODEC.decode(output));
+      assertFalse(output.isReadable());
+    } finally {
+      output.release();
+    }
+    // Layout flags are not part of a saved view, and an empty one carries nothing.
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.SavedView(
+                true, "", TerminalSearchSupport.NAME | TerminalSearchSupport.TALL, 0));
+    assertThrows(
+        IllegalArgumentException.class, () -> new TerminalPackets.SavedView(false, "x", 0, 0));
+    assertEquals(
+        TerminalSearchSupport.ID | TerminalSearchSupport.REVERSED,
+        TerminalPackets.SavedView.sortOf(
+            TerminalSearchSupport.ID
+                | TerminalSearchSupport.REVERSED
+                | TerminalSearchSupport.SYNC
+                | TerminalSearchSupport.FOCUS));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalPackets.View(
+                3,
+                UUID.randomUUID(),
+                7,
+                TerminalPackets.Status.READY,
+                List.of(),
+                false,
+                false,
+                "0",
+                "",
+                TerminalSearchSupport.NAME,
+                0,
+                0,
+                8,
+                0,
+                "0",
+                "0",
+                false,
+                false,
+                TerminalPackets.VIEW_STORED,
+                false,
+                0,
+                saved.subList(0, 4)));
+    var session = UUID.randomUUID();
+    new TerminalPackets.Command(
+        1, session, 1, TerminalPackets.VIEWS, 4, TerminalPackets.VIEW_CLEAR, "", new byte[32]);
+    for (int[] bad : new int[][] {{5, 1}, {0, 0}, {0, TerminalPackets.VIEW_CLEAR + 1}})
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              new TerminalPackets.Command(
+                  1, session, 1, TerminalPackets.VIEWS, bad[0], bad[1], "", new byte[32]));
   }
 }

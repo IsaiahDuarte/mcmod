@@ -469,4 +469,124 @@ public final class CraftableGridGameTests {
             })
         .thenSucceed();
   }
+
+  private static void search(Fixture f, String text) {
+    var m = menu(f);
+    m.command(
+        f.player,
+        new TerminalPackets.Command(
+            m.containerId,
+            m.session(),
+            m.view().revision(),
+            TerminalPackets.SEARCH,
+            0,
+            1,
+            text,
+            new byte[32]));
+    m.broadcastChanges();
+  }
+
+  private static void viewIs(
+      GameTestHelper h, Fixture f, String search, int sort, int view, String message) {
+    menu(f).broadcastChanges();
+    var shown = menu(f).view();
+    h.assertTrue(
+        shown.search().equals(search)
+            && shown.sort() == sort
+            && shown.view() == view
+            && shown.status() == TerminalPackets.Status.READY
+            && !shown.busy(),
+        message + ": " + shown.search() + " " + shown.sort() + " " + shown.view());
+  }
+
+  /**
+   * Q67: a saved view keeps the search, sort mode and direction and the item view, survives
+   * reopening the terminal, and applies them in one command without touching layout flags. An empty
+   * view applies nothing; right-click (clear) empties one.
+   */
+  @GameTest(template = "empty", timeoutTicks = 600)
+  public static void savedViewsRestoreSearchSortAndView(GameTestHelper h) {
+    var f = setup(h);
+    int quantityUp = TerminalSearchSupport.QUANTITY | TerminalSearchSupport.REVERSED;
+    int nameTall = TerminalSearchSupport.NAME | TerminalSearchSupport.TALL;
+    h.startSequence()
+        .thenWaitUntil(() -> h.assertTrue(f.terminal.canUse(f.player), "Terminal ready"))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, f.log, 2);
+              open(h, f);
+            })
+        .thenWaitUntil(() -> shows(h, f, 1))
+        .thenExecute(() -> search(f, "oak"))
+        .thenIdle(GAP)
+        .thenExecute(() -> command(f, TerminalPackets.SORT, quantityUp, 1))
+        .thenIdle(GAP)
+        .thenExecute(() -> command(f, TerminalPackets.CRAFTABLES, TerminalPackets.VIEW_ALL, 1))
+        .thenWaitUntil(() -> viewIs(h, f, "oak", quantityUp, TerminalPackets.VIEW_ALL, "Set up"))
+        .thenExecute(() -> command(f, TerminalPackets.VIEWS, 1, TerminalPackets.VIEW_SAVE))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    menu(f)
+                            .view()
+                            .saved()
+                            .get(1)
+                            .equals(
+                                new TerminalPackets.SavedView(
+                                    true, "oak", quantityUp, TerminalPackets.VIEW_ALL))
+                        && !menu(f).view().saved().get(0).set(),
+                    "View 2 holds the search, sort and view: " + menu(f).view().saved()))
+        .thenIdle(GAP)
+        .thenExecute(() -> search(f, ""))
+        .thenIdle(GAP)
+        .thenExecute(() -> command(f, TerminalPackets.SORT, nameTall, 1))
+        .thenIdle(GAP)
+        .thenExecute(() -> command(f, TerminalPackets.CRAFTABLES, TerminalPackets.VIEW_STORED, 1))
+        .thenWaitUntil(() -> viewIs(h, f, "", nameTall, TerminalPackets.VIEW_STORED, "Changed"))
+        .thenExecute(
+            () -> {
+              f.player.closeContainer();
+              open(h, f);
+            })
+        .thenWaitUntil(() -> viewIs(h, f, "", nameTall, TerminalPackets.VIEW_STORED, "Reopened"))
+        .thenExecute(() -> command(f, TerminalPackets.VIEWS, 0, TerminalPackets.VIEW_APPLY))
+        .thenIdle(GAP)
+        .thenExecute(
+            () -> {
+              viewIs(h, f, "", nameTall, TerminalPackets.VIEW_STORED, "An empty view does nothing");
+              command(f, TerminalPackets.VIEWS, 1, TerminalPackets.VIEW_APPLY);
+            })
+        .thenWaitUntil(
+            () ->
+                viewIs(
+                    h,
+                    f,
+                    "oak",
+                    quantityUp | TerminalSearchSupport.TALL,
+                    TerminalPackets.VIEW_ALL,
+                    "View 2 comes back after reopening, and Tall stays on"))
+        .thenIdle(GAP)
+        .thenExecute(() -> command(f, TerminalPackets.VIEWS, 1, TerminalPackets.VIEW_CLEAR))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    menu(f).view().saved().stream().noneMatch(TerminalPackets.SavedView::set),
+                    "Right-click empties it"))
+        .thenExecute(
+            () -> {
+              var views =
+                  f.player
+                      .getPersistentData()
+                      .getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG)
+                      .getCompound("FactoryCoreTerminal")
+                      .getList("Views", net.minecraft.nbt.Tag.TAG_COMPOUND);
+              h.assertTrue(
+                  views.size() == TerminalPackets.SAVED_VIEWS
+                      && views.stream()
+                          .allMatch(tag -> ((net.minecraft.nbt.CompoundTag) tag).isEmpty()),
+                  "The emptied view is saved empty: " + views);
+              end(f);
+            })
+        .thenSucceed();
+  }
 }

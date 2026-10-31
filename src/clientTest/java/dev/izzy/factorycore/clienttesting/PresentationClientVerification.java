@@ -170,6 +170,14 @@ public final class PresentationClientVerification {
                       + screen.getMenu().jobView().status()
                       + " rows="
                       + screen.getMenu().jobView().craftables()
+                      + " buttons="
+                      + screen.children().stream()
+                          .filter(child -> child instanceof Button button && button.visible)
+                          .map(
+                              child ->
+                                  ((Button) child).getMessage().getString()
+                                      + (((Button) child).active ? "" : "(off)"))
+                          .toList()
                   : ""));
     if (steps.get(index).tick(client)) {
       index++;

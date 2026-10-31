@@ -106,6 +106,44 @@ public final class TerminalPackets {
    */
   public static final int DEPOSIT_ROW = 19, CURSOR_ONE = 20, DEPOSIT_REGION = 21, SWAP = 22;
 
+  /**
+   * Q67 saved views. VIEWS acts on saved view {@code selection} (0 to {@link #SAVED_VIEWS} − 1):
+   * {@code amount} {@link #VIEW_APPLY} applies it, {@link #VIEW_SAVE} saves the current search,
+   * sort and view into it, {@link #VIEW_CLEAR} empties it.
+   */
+  public static final int VIEWS = 23,
+      SAVED_VIEWS = 5,
+      VIEW_APPLY = 1,
+      VIEW_SAVE = 2,
+      VIEW_CLEAR = 3;
+
+  /**
+   * Q67: one saved view. {@code sort} keeps only the sort mode and direction; the layout flags
+   * (Tall, recipe-viewer sync, auto-focus) stay as they are when it is applied.
+   */
+  public record SavedView(boolean set, String search, int sort, int view) {
+    public static final SavedView NONE = new SavedView(false, "", TerminalSearchSupport.NAME, 0);
+
+    public SavedView {
+      if (search.length() > 128
+          || !TerminalSearchSupport.validSort(sort)
+          || (sort & ~(TerminalSearchSupport.mode(sort) | TerminalSearchSupport.REVERSED)) != 0
+          || view < VIEW_STORED
+          || view > VIEW_CRAFTABLE
+          || (!set && !equals(search, sort, view)))
+        throw new IllegalArgumentException("Invalid saved view");
+    }
+
+    private static boolean equals(String search, int sort, int view) {
+      return search.isEmpty() && sort == TerminalSearchSupport.NAME && view == 0;
+    }
+
+    /** The parts of {@code sort} a saved view keeps. */
+    public static int sortOf(int sort) {
+      return TerminalSearchSupport.mode(sort) | (sort & TerminalSearchSupport.REVERSED);
+    }
+  }
+
   public static final int MAX_ROWS = 256, MAX_OFFSET = 65536;
 
   /**
@@ -131,7 +169,7 @@ public final class TerminalPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > SWAP
+          || action > VIEWS
           || selection < 0
           || selection
               >= (action == WINDOW
@@ -147,10 +185,15 @@ public final class TerminalPackets {
                       ? MAX_ROWS
                       : action == CRAFTABLES
                           ? 3
-                          : action == SORT ? 128 : action == DEPOSIT_REGION ? 2 : 36)
+                          : action == SORT
+                              ? 128
+                              : action == DEPOSIT_REGION ? 2 : action == VIEWS ? SAVED_VIEWS : 36)
           || (action == SORT && !TerminalSearchSupport.validSort(selection))
           || amount < 1
-          || amount > (action == WINDOW ? MAX_ROWS : action == SWAP ? 9 : 64)
+          || amount
+              > (action == WINDOW
+                  ? MAX_ROWS
+                  : action == SWAP ? 9 : action == VIEWS ? VIEW_CLEAR : 64)
           || text.length() > 128
           || fingerprint.length != 32)
         throw new IllegalArgumentException("Invalid terminal command bounds");
@@ -244,7 +287,8 @@ public final class TerminalPackets {
       boolean external,
       int view,
       boolean uncertain,
-      int all)
+      int all,
+      List<SavedView> saved)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_view"));
@@ -303,7 +347,35 @@ public final class TerminalPackets {
           false,
           VIEW_STORED,
           false,
-          rows.size());
+          rows.size(),
+          List.of());
+    }
+
+    public View(
+        int menu,
+        UUID session,
+        long revision,
+        Status status,
+        List<Row> rows,
+        boolean next,
+        boolean busy,
+        String staged,
+        String search,
+        int sort,
+        int offset,
+        int total,
+        int size,
+        int kind,
+        String used,
+        String capacity,
+        boolean infinite,
+        boolean external,
+        int view,
+        boolean uncertain,
+        int all) {
+      this(
+          menu, session, revision, status, rows, next, busy, staged, search, sort, offset, total,
+          size, kind, used, capacity, infinite, external, view, uncertain, all, List.of());
     }
 
     /** Whether craftable items without stock are shown (the All or Craftable view). */
@@ -329,9 +401,26 @@ public final class TerminalPackets {
           || used.length() > 32
           || capacity.length() > 32) throw new IllegalArgumentException("Invalid terminal window");
       rows = List.copyOf(rows);
+      saved = List.copyOf(saved);
+      if (!saved.isEmpty() && saved.size() != SAVED_VIEWS)
+        throw new IllegalArgumentException("Saved views");
       Objects.requireNonNull(status);
       if (rows.size() > MAX_ROWS || staged.length() > 32)
         throw new IllegalArgumentException("Invalid terminal view bounds");
+    }
+
+    private static List<SavedView> readSaved(RegistryFriendlyByteBuf buffer) {
+      int count = buffer.readVarInt();
+      if (count != 0 && count != SAVED_VIEWS) throw new IllegalArgumentException("Saved views");
+      var saved = new ArrayList<SavedView>(count);
+      for (int index = 0; index < count; index++)
+        saved.add(
+            new SavedView(
+                buffer.readBoolean(),
+                buffer.readUtf(128),
+                buffer.readVarInt(),
+                buffer.readVarInt()));
+      return saved;
     }
 
     /** Something waits in the player's staging record to be returned. */
@@ -377,6 +466,13 @@ public final class TerminalPackets {
               buffer.writeVarInt(value.view);
               buffer.writeBoolean(value.uncertain);
               buffer.writeVarInt(value.all);
+              buffer.writeVarInt(value.saved.size());
+              for (var saved : value.saved) {
+                buffer.writeBoolean(saved.set());
+                buffer.writeUtf(saved.search(), 128);
+                buffer.writeVarInt(saved.sort());
+                buffer.writeVarInt(saved.view());
+              }
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -418,7 +514,8 @@ public final class TerminalPackets {
                   buffer.readBoolean(),
                   buffer.readVarInt(),
                   buffer.readBoolean(),
-                  buffer.readVarInt());
+                  buffer.readVarInt(),
+                  readSaved(buffer));
             });
   }
 
@@ -436,7 +533,7 @@ public final class TerminalPackets {
   }
 
   public static void register(RegisterPayloadHandlersEvent event) {
-    var registrar = event.registrar("14");
+    var registrar = event.registrar("15");
     MenuPayloads.toServer(
         registrar, Command.TYPE, Command.CODEC, TerminalMenu.class, TerminalMenu::command);
     MenuPayloads.toServer(

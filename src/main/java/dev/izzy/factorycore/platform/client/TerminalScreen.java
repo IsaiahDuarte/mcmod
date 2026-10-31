@@ -105,6 +105,12 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   /** A3: the "Show craftable" toggle. */
   private Button craftablesButton;
 
+  /** Q67: ★ swaps the search box and sort tools for the five saved-view buttons. */
+  private Button viewsButton;
+
+  private final List<Button> savedViewButtons = new ArrayList<>();
+  private boolean viewsOpen;
+
   /** A5: a recipe viewer's request, picked up when its own terminal is shown again. */
   private static final ViewerRequests VIEWER = new ViewerRequests();
 
@@ -372,9 +378,35 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         new Rect(GRID_X, SEARCH_Y, MAIN - 2 * GRID_X - LAMP - PanelLayout.GAP, PanelLayout.ROW);
     // Q17: with a recipe viewer installed, a fifth tool syncs the search with it.
     boolean viewer = RecipeViewerSearch.bridge() != null;
+    // Q67: ★ (saved views) comes last, so the saved views can cover what is left of it.
     var tools =
         PanelLayout.alignRight(
-            searchRow, viewer ? new int[] {16, 30, 14, 14, 14} : new int[] {16, 30, 14, 14}, 2);
+            searchRow,
+            viewer ? new int[] {16, 30, 14, 14, 14, 14} : new int[] {16, 30, 14, 14, 14},
+            2);
+    var star = tools.removeLast();
+    viewsButton =
+        addRenderableWidget(
+            tool(
+                star,
+                Component.literal("★"),
+                "gui.factorycore.terminal.views.help",
+                () -> viewsOpen = !viewsOpen));
+    savedViewButtons.clear();
+    // The saved views cover the search box and the view, sort and direction tools.
+    int viewsLeft = searchRow.x(), viewsRight = tools.get(2).right();
+    int viewWidth =
+        (viewsRight - viewsLeft - 2 * (TerminalPackets.SAVED_VIEWS - 1))
+            / TerminalPackets.SAVED_VIEWS;
+    for (int index = 0; index < TerminalPackets.SAVED_VIEWS; index++)
+      savedViewButtons.add(
+          addRenderableWidget(
+              new SavedViewButton(
+                  leftPos + viewsLeft + index * (viewWidth + 2),
+                  topPos + searchRow.y(),
+                  viewWidth,
+                  searchRow.height(),
+                  index)));
     search =
         addRenderableWidget(
             new EditBox(
@@ -464,6 +496,104 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     crafting.init();
     jobs.init();
     crafting.update();
+    // Widgets start visible; the saved views must not take clicks before the first tick.
+    showViews();
+    craftablesButton.visible &= !viewsOpen;
+  }
+
+  /** Q67: the saved-view row or the search box and sort tools, whichever ★ chose. */
+  private void showViews() {
+    var saved = menu.view().saved();
+    search.visible = !viewsOpen;
+    sortButton.visible = !viewsOpen;
+    directionButton.visible = !viewsOpen;
+    for (int index = 0; index < savedViewButtons.size(); index++) {
+      var button = (SavedViewButton) savedViewButtons.get(index);
+      button.visible = viewsOpen;
+      button.update(saved.isEmpty() ? TerminalPackets.SavedView.NONE : saved.get(index));
+    }
+  }
+
+  /**
+   * Q67: one saved view. Click applies it (or, when empty, saves the current search, sort and view
+   * into it); Shift-click saves over it; right-click empties it.
+   */
+  private final class SavedViewButton extends Button {
+    private final int index;
+    private TerminalPackets.SavedView shown;
+
+    SavedViewButton(int x, int y, int width, int height, int index) {
+      super(
+          x,
+          y,
+          width,
+          height,
+          Component.literal(Integer.toString(index + 1)),
+          button -> {},
+          DEFAULT_NARRATION);
+      this.index = index;
+    }
+
+    void update(TerminalPackets.SavedView saved) {
+      if (saved.equals(shown)) return;
+      shown = saved;
+      var number = Component.literal(Integer.toString(index + 1));
+      setMessage(saved.set() ? number : number.withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+      setTooltip(
+          Tooltip.create(
+              saved.set()
+                  ? Component.translatable(
+                      "gui.factorycore.terminal.views.saved",
+                      index + 1,
+                      saved.search().isEmpty()
+                          ? Component.translatable("gui.factorycore.terminal.views.no_search")
+                          : Component.literal(saved.search()),
+                      Component.translatable(
+                          "gui.factorycore.terminal.sort."
+                              + TerminalSearchSupport.mode(saved.sort())),
+                      TerminalSearchSupport.reversed(saved.sort()) ? "↑" : "↓",
+                      Component.translatable("gui.factorycore.terminal.views.view." + saved.view()))
+                  : Component.translatable("gui.factorycore.terminal.views.empty", index + 1)));
+    }
+
+    @Override
+    protected boolean isValidClickButton(int button) {
+      return button == 0 || button == 1;
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+      if (!active || !visible || !isValidClickButton(button) || !clicked(mouseX, mouseY))
+        return false;
+      playDownSound(Minecraft.getInstance().getSoundManager());
+      clickView(index, button == 1, hasShiftDown());
+      return true;
+    }
+  }
+
+  /** Q67: what a click on saved view {@code index} does (public as a test hook). */
+  public void clickView(int index, boolean right, boolean shift) {
+    var saved = menu.view().saved();
+    boolean set = !saved.isEmpty() && saved.get(index).set();
+    int what =
+        right
+            ? TerminalPackets.VIEW_CLEAR
+            : shift || !set ? TerminalPackets.VIEW_SAVE : TerminalPackets.VIEW_APPLY;
+    if (what == TerminalPackets.VIEW_APPLY) {
+      // The saved search arrives with the view; drop any typing still waiting to be sent.
+      searchDirty = false;
+      searchDelay = 0;
+      syncingSearch = true;
+      search.setValue(saved.get(index).search());
+      syncingSearch = false;
+      viewsOpen = false;
+    }
+    send(TerminalPackets.VIEWS, index, what, new byte[32]);
+  }
+
+  /** Test hook (Q67): opens or closes the saved-view row. */
+  public void viewsOpen(boolean open) {
+    viewsOpen = open;
   }
 
   private Button tool(Rect cell, Component label, String help, Runnable action) {
@@ -539,12 +669,18 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     int shown = jobsMode ? JOBS_TAB : patternsMode ? PATTERNS_TAB : kind;
     for (int i = 0; i < tabs.size(); i++) tabs.get(i).setSelected(shown == i);
     storage.tick(storageHidden());
-    search.visible = true;
+    showViews();
+    viewsButton.setMessage(
+        Component.literal("★")
+            .withStyle(
+                viewsOpen
+                    ? net.minecraft.ChatFormatting.YELLOW
+                    : net.minecraft.ChatFormatting.GRAY));
     sortButton.setMessage(sortLabel());
     sortButton.active = !view.busy();
     directionButton.setMessage(directionLabel());
     craftablesButton.setMessage(craftablesLabel());
-    craftablesButton.visible = kind == 0 && !storageHidden();
+    craftablesButton.visible = kind == 0 && !storageHidden() && !viewsOpen;
     directionButton.active = !view.busy();
     tallButton.active = !view.busy();
     storage.tickActions();

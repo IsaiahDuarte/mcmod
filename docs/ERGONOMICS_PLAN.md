@@ -925,7 +925,9 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
   Done when: GameTests cover a paused job making no progress, resuming, persistence across
   reload, and Cancel all leaving other players' jobs alone.
 
-- [ ] **Q67 — Saved views (M79).** Size S. Low priority.
+- [x] **Q67 — Saved views (M79).** Size S. Low priority. Done 2026-10-30 (commit subject
+  `Q67:`). ★ row of five views kept in player data (ADR 0052 amendment).
+  [Evidence](evidence/ergonomics-q67-saved-views-2026-10-30.md).
   Up to 5 saved search-and-filter presets per player, chosen from a row of buttons.
 
 ## Wave A2 — crafting depth (lane C)

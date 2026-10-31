@@ -9,6 +9,8 @@ terminal-search-invalid.png
 terminal-sort-quantity.png
 terminal-sort-frozen.png
 terminal-search-reopened.png
+terminal-saved-views-scale-4.png
+terminal-saved-views-scale-1.png
 terminal-preferences-before-restart.png
 scale-3-iron.png
 scale-4-iron.png

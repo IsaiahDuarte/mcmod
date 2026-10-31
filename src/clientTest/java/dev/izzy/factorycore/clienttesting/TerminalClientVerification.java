@@ -499,7 +499,43 @@ public final class TerminalClientVerification {
           return;
         check(view.rows().getFirst().total().equals("23"), "Reopen restores player's sorted query");
         captures.grab(client, "terminal-search-reopened.png");
+        // Q67: save this search and sort as view 1 from the ★ row, then capture the row.
+        screen.viewsOpen(true);
+        screen.clickView(0, false, false);
+        searchStep = 29;
+      }
+      case 30 -> {
+        if (view.saved().isEmpty() || !view.saved().getFirst().set()) return;
+        check(
+            view.saved().getFirst().search().equals("@minecraft")
+                && view.saved().getFirst().sort() == TerminalSearchSupport.QUANTITY,
+            "An empty saved view takes the current search and sort");
+        scaleBeforeViews = client.options.guiScale().get();
+        client.options.guiScale().set(4);
+        client.resizeDisplay();
+      }
+      case 31 -> {
+        captures.grab(client, "terminal-saved-views-scale-4.png");
+        client.options.guiScale().set(1);
+        client.resizeDisplay();
+      }
+      case 32 -> {
+        captures.grab(client, "terminal-saved-views-scale-1.png");
+        client.options.guiScale().set(scaleBeforeViews);
+        client.resizeDisplay();
+        screen.clickView(0, true, false);
+      }
+      case 33 -> {
+        if (view.saved().getFirst().set()) return;
+        evidence.append(
+            "terminal-saved-views: view 1 saved @minecraft / Qty from the ★ row, captured at"
+                + " scales 4 and 1, then emptied with right-click\n");
+        screen.viewsOpen(false);
+      }
+      case 34 -> {
+        // The sort tools return on the screen tick after the row closes.
         click(screen, "Qty");
+        searchStep = 7;
       }
       case 8 -> {
         // The sort button cycles Name → Qty → Mod → ID → New → Name (Q62 added ID and New).
@@ -531,6 +567,8 @@ public final class TerminalClientVerification {
     searchStep++;
     entered = ticks;
   }
+
+  private int scaleBeforeViews;
 
   private static final String SYNTAX_QUERY =
       "(#minecraft:coals | \"hopper variant\") !@factorycore >5";

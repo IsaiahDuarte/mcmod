@@ -120,3 +120,19 @@ sequence has no time, actor or device (the registry is core and sees only handle
 those per key would add per-entry storage and a persistence change for little play value, so
 the tooltip is not added. If a later slice wants it, an actor and game time would have to be
 carried into `insert`/`extract` from the transfer layer.
+
+## Amendment — saved views (2026-10-30, ergonomics plan Q67)
+
+Players keep up to five saved views with the other terminal preferences in their persisted player
+data (`FactoryCoreTerminal.Views`): a list of five compounds, each empty or holding `Search`,
+`Sort` and `View`. A saved sort keeps only its mode and the reversed bit. Tall, recipe-viewer sync
+and auto-focus are layout choices, so applying a view leaves them as they are. One `VIEWS` command
+(action 23) applies, saves or empties a view, so applying one is a single refresh rather than three
+rate-limited commands. It spends no terminal power because it moves nothing. A malformed entry
+loads as empty without dropping the other preferences. Older preferences without `Views` load with
+five empty views, and no schema bump is needed. The terminal view packet carries the five views
+(protocol 15).
+
+Alternatives: a client-side file (rejected: views would not follow the player between machines
+or servers, unlike the rest of these preferences). A sixth row under the search row (rejected: it
+costs a grid row at GUI scale 4, so the ★ tool swaps the search row instead).
