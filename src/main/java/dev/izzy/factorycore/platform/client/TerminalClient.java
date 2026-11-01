@@ -74,6 +74,9 @@ public final class TerminalClient {
   @SubscribeEvent
   public static void screens(RegisterMenuScreensEvent event) {
     event.register(TerminalContent.MENU.get(), TerminalScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.storage.PortableContent.MENU.get(),
+        PortableStorageScreen::new);
     event.register(StorageContent.DRIVE_MENU.get(), DriveScreen::new);
     event.register(
         dev.izzy.factorycore.platform.storage.PortContent.IMPORTER_MENU.get(), PortScreen::new);

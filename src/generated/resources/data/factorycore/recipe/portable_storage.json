@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "item": "factorycore:storage_drive"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "factorycore:storage_terminal"
+    }
+  },
+  "pattern": [
+    "ITI",
+    "RDR",
+    "III"
+  ],
+  "result": {
+    "count": 1,
+    "id": "factorycore:portable_storage"
+  }
+}

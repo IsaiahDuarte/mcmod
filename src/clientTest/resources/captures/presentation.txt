@@ -8,6 +8,8 @@ monitor-close.png
 cables-coloured.png
 facade-scale-1.png
 facade-scale-4.png
+portable-storage-scale-1.png
+portable-storage-scale-4.png
 states-night.png
 states-night-close.png
 held-first-person-network_controller.png

@@ -31,6 +31,7 @@ item factorycore:label_tool
 item factorycore:network_cable
 item factorycore:network_controller
 item factorycore:overdrive_upgrade
+item factorycore:portable_storage
 item factorycore:processing_pattern
 item factorycore:program_controller
 item factorycore:relay

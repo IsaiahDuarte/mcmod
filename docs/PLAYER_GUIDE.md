@@ -53,6 +53,7 @@ that consume them.
 | Starter | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
 | Starter | Wrench | 4 iron ingots, 1 copper ingot |
+| Starter | Portable Storage | 5 iron ingots, 1 Storage Terminal, 1 Storage Drive, 2 redstone dust |
 | Starter | Relay | 4 iron ingots, 3 redstone dust, 2 Network Cables |
 | Starter | Storage Monitor | 5 iron ingots, 1 glass block, 2 copper ingots, 1 redstone dust |
 | Expanded | Expansion Module | 4 gold ingots, 2 redstone dust, 1 Nether quartz |
@@ -285,6 +286,23 @@ to stop.
 
 The **Wireless Terminal** opens the same screen from a distance (see
 [Wireless access](#wireless-access)).
+
+## Portable Storage
+
+A **Portable Storage** is one item cell you can carry and use without a network.
+- **Opening:** use it in the air to open its screen. The first player to use it owns it, and
+  nobody else can open it.
+- **The cell:** put one item cell in the slot at the top left; Shift-click a cell from your
+  inventory to put it there. The cell keeps everything stored in it when you take it out, so you
+  can move it into a drive later.
+- **Taking:** click a stack to take a stack onto the cursor (right click: half). Shift-click to
+  take a stack into your inventory.
+- **Storing:** click with a stack to store it (right click: one item). Shift-click an inventory
+  stack to store it.
+- **Charge:** each take or store costs 64 FE. It uses the same battery as the Wireless Terminal
+  and charges the same way. With no charge, nothing moves.
+- **Display:** counts are short ("1.0k"). Hover for the exact amount, and use the arrows to page
+  through more than 45 kinds.
 
 ## Storage Monitor
 

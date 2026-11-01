@@ -758,6 +758,9 @@ public final class WorldNetworks {
   }
 
   private boolean available(DeviceRegistry.Location location) {
+    // Q32: a portable cell is reachable only inside the move that holds it.
+    if (dev.izzy.factorycore.platform.storage.PortableCells.portable(location))
+      return dev.izzy.factorycore.platform.storage.PortableCells.open(location);
     return membership(new NodeRegistry.Position(location.dimension(), location.position())).status()
         == NetworkTopology.Status.VALID;
   }

@@ -978,6 +978,21 @@ def wireless_terminal(creative=False):
     return c
 
 
+def portable_storage():
+    # Q32: a wide handheld case with a screen and a cell bay with a cell in it.
+    c = Canvas("portable_storage")
+    c.rect(1, 3, 14, 14, OUTLINE)
+    c.rect(2, 4, 13, 13, CASE, grain=3)
+    c.hline(2, 13, 4, CASE_LIGHT)
+    c.rect(3, 6, 8, 11, SCREEN_BG)
+    c.hline(4, 7, 7, SCREEN)
+    c.rect(4, 9, 5, 10, TIERS["starter"][1])
+    c.rect(10, 6, 12, 11, STEEL_DARK)
+    c.rect(11, 7, 11, 10, TIERS["starter"][1])
+    c.px(12, 12, AMBER)
+    return c
+
+
 def guide():
     c = Canvas("factory_guide")
     c.rect(2, 1, 13, 14, OUTLINE)
@@ -1017,6 +1032,7 @@ def item_textures():
         out[f"{kind}_pattern"] = pattern(kind)
     out["wireless_terminal"] = wireless_terminal()
     out["creative_wireless_terminal"] = wireless_terminal(creative=True)
+    out["portable_storage"] = portable_storage()
     out["factory_guide"] = guide()
     return out
 

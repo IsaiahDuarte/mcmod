@@ -242,3 +242,28 @@ Taking an empty cell apart removes its ledger with `DeviceRegistry.retireEmpty`,
 that deletes a backing. It accepts only a current, unconflicted, detached ledger with no stock
 and no reservations, so no stock or claim can be lost. Copies of the handle become unknown, which
 this ADR already treats as stale references. A placed cell must be taken out of its drive first.
+
+## Amendment — portable cells (2026-11-01, ergonomics plan Q32, QD8)
+
+A cell outside a drive can now be reached, in one place only: the owner's Portable Storage.
+- **The move:** `PortableCells.with` attaches the cell's lease to a per-player location in the
+  pseudo-dimension `factorycore:portable` and marks it available. It runs one take or store, then
+  detaches the lease and writes the new handle (and the cell summary) back to the cell item, all
+  in one server-thread call.
+- **What is saved:** no save, tick or other caller ever sees the cell attached. A saved world
+  holds it detached, exactly like a cell in a chest, so no recovery path changes.
+- **Routing:** `WorldNetworks`' routing predicate admits a portable location only while that
+  call holds it. No network catalog or route ever reaches a portable cell.
+- **Refusals:** the move is refused, with nothing changed, when the cell is placed in a drive, its
+  tier does not match its backing, a transfer for its backing is unresolved, or the registry is
+  full. These are the same checks a drive placement makes (`CellOwnership.install`).
+- **Ownership and charge:** the Portable Storage records its owner (`portable_owner`) on first
+  use and refuses every other player. Each move costs 64 FE from its battery.
+- **Conservation:** a take extracts only unreserved stock, and only as much as fits on the cursor
+  or in the inventory. A store inserts and shrinks the stack by exactly the amount accepted.
+
+**Alternatives:**
+- **Keeping the cell attached while the screen is open:** rejected. A crash or save mid-session
+  would leave a lease at a location no block owns, which needs a new recovery path.
+- **Portable access to a network** (a Wireless Terminal without an access point): out of scope;
+  QD8 asked for one cell without a network.

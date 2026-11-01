@@ -427,6 +427,22 @@ public final class FactoryCoreData {
           Items.NETHERITE_INGOT,
           'R',
           Items.REDSTONE);
+      // Q32: the Portable Storage: a terminal and a drive in one case.
+      shaped(
+          out,
+          misc,
+          "portable_storage",
+          1,
+          Items.REDSTONE,
+          "ITI/RDR/III",
+          'I',
+          Items.IRON_INGOT,
+          'T',
+          dev.izzy.factorycore.platform.storage.TerminalContent.ITEM.get(),
+          'R',
+          Items.REDSTONE,
+          'D',
+          dev.izzy.factorycore.platform.storage.StorageContent.DRIVE_ITEM.get());
       // Q31: the Relay (starter stage): two cables switched by redstone.
       shaped(
           out,

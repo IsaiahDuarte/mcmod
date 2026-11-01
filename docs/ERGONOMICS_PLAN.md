@@ -814,7 +814,9 @@ New gates:
   Done when: GameTests cover the branch going offline when unpowered, back online when powered,
   and the rebuild rate limit.
 
-- [ ] **Q32 — Portable storage (M32, needs QD8).** Size L.
+- [x] **Q32 — Portable storage (M32, needs QD8).** Size L. Done 2026-11-01 (commit subject
+  `Q32:`). ADR 0005 amendment.
+  [Evidence](evidence/ergonomics-q32-portable-storage-2026-11-01.md).
   Done when: GameTests cover opening, taking, depositing, charge use and another player
   refused.
 

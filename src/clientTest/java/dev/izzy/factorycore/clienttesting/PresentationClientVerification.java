@@ -2261,6 +2261,40 @@ public final class PresentationClientVerification {
           setScale(client, 2);
           return true;
         });
+    // Q32: a Portable Storage holding a cell with a few stored stacks.
+    server(
+        player -> {
+          var inventory = player.getInventory();
+          inventory.clearContent();
+          inventory.selected = 0;
+          var portable =
+              new ItemStack(dev.izzy.factorycore.platform.storage.PortableContent.ITEM.get());
+          portable.set(dev.izzy.factorycore.platform.wireless.WirelessContent.ENERGY.get(), 20_000);
+          inventory.setItem(0, portable);
+          inventory.setItem(
+              1,
+              new ItemStack(
+                  dev.izzy.factorycore.platform.storage.StorageContent.cell(
+                      dev.izzy.factorycore.core.storage.CellTier.STARTER_ITEM)));
+          for (int slot = 9; slot < 30; slot++)
+            inventory.setItem(
+                slot,
+                new ItemStack(
+                    slot < 25 ? Items.COBBLESTONE : slot < 28 ? Items.IRON_INGOT : Items.OAK_LOG,
+                    slot < 25 ? 64 : 17));
+          dev.izzy.factorycore.platform.storage.PortableStorageMenu.open(
+              player, InteractionHand.MAIN_HAND);
+          var menu =
+              (dev.izzy.factorycore.platform.storage.PortableStorageMenu) player.containerMenu;
+          int main = dev.izzy.factorycore.platform.storage.PortableStorageMenu.SHOWN + 1;
+          menu.quickMoveStack(player, main + 27 + 1);
+          for (int slot = 9; slot < 30; slot++) menu.quickMoveStack(player, main + slot - 9);
+          menu.broadcastChanges();
+        });
+    scales(
+        "portable-storage",
+        dev.izzy.factorycore.platform.client.PortableStorageScreen.class,
+        false);
     server(player -> player.getInventory().clearContent());
 
     // Tooltips: every item's real lines are translated; corners exercise edge positioning.
