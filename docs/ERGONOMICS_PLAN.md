@@ -265,38 +265,38 @@ Earlier open gates that this plan depends on:
 
 | Gate | Question | Status |
 | --- | --- | --- |
-| PD7 | Narrow chunk-load invalidation to regions on the shared chunk edge ([parity plan](PARITY_PLAN.md#decision-gates-user)). | Open |
-| UD3 | Give the Controller a small internal energy buffer and make the Bank optional ([UX plan](UX_PLAN.md#decision-gates-user)). | Open |
+| PD7 | Narrow chunk-load invalidation to regions on the shared chunk edge ([parity plan](PARITY_PLAN.md#decision-gates-user)). | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, narrow invalidation (Q1) |
+| UD3 | Give the Controller a small internal energy buffer and make the Bank optional ([UX plan](UX_PLAN.md#decision-gates-user)). | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): no; keep the Fuel Generator and Energy Banks (not a parity gap); Q21 is dropped |
 
 New gates:
 
 | Gate | Question | Recommendation | Status |
 | --- | --- | --- | --- |
-| QD1 | Add Curios as an **optional** dependency so the Wireless Terminal works from an accessory slot, with a key to open it? Needs an ADR; stays off mandatory class loading. | Yes; the key works without Curios (it searches the inventory) | Open |
-| QD2 | Add EMI and REI as optional integrations beside JEI ([ADR 0043](decisions/0043-jei-integration.md) amendment)? | EMI yes now; REI only if asked | Open |
-| QD3 | Add stonecutter and smithing patterns? Amends SPEC R06 and [ADR 0030](decisions/0030-patterns-and-crafting-units.md): new pattern kinds that run inside the Crafter, like crafting-table patterns. | Yes | Open |
-| QD4 | Let an Exporter's Keep request a craft when storage runs out? The job runs under the grants of whoever last applied the Exporter, counts against that player's job limit, and makes at most one job per Exporter at a time. Amends [ADR 0066](decisions/0066-importer-exporter.md) and [ADR 0034](decisions/0034-keep-stock-requests.md). | Yes, opt-in **Craft missing** toggle | Open |
-| QD5 | Coloured cables: a dyed cable joins only cables of its own colour or uncoloured ones. Amends SPEC R02 and [ADR 0010](decisions/0010-bounded-wire-discovery.md). | Yes, 16 dyes plus uncoloured | Open |
-| QD6 | Facades on cables (any full block's look; no change to connections)? | Yes, after QD5 | Open |
-| QD7 | A Relay cable that disconnects while unpowered? It changes topology by redstone, so it rebuilds the network on each change. Amends [ADR 0007](decisions/0007-topology-authority.md). | Yes, rate-limited to one rebuild per second | Open |
-| QD8 | Portable storage: a handheld that holds one cell and opens a terminal on it without a network. A cell outside a drive becomes reachable, which amends [ADR 0005](decisions/0005-persistence-ownership.md) and ADR 0023 ownership. | Yes, one cell, owner-only | Open |
-| QD9 | World interaction design for the Constructor and Destructor (PD6 asked for a gate per feature). Recommended: one block each, acting as a fake player owned by whoever applied it, firing break/place events so protection mods can refuse, and never voiding: drops go to storage or stay put. Fortune and Silk Touch as upgrades. | Yes, as described | Open |
-| QD10 | Cross-dimension links and P2P tunnels. No chunk loading (deliberate), so both ends must be loaded or the link waits. Amends [ADR 0040](decisions/0040-paired-wireless-links.md). | Cross-dimension links yes; P2P tunnels later | Open |
-| QD11 | Friendly language **v3** as a superset of v2 with additive `factory_v1` Wasm imports (as PD2 did): pulse-triggered rules, redstone strength, source retain, empty slots, `has` quantifiers with sides and slots, relative sides, several slot ranges, labels and faces, timer offsets and world-clock alignment, per-item and per-match limits, and tag expressions. Needs an ADR. | Yes | Syntax resolved 2026-10-31: plain sentences and an offline MCP helper ([ADR 0068](decisions/0068-sentence-programs.md)); the listed features stay open |
-| QD12 | A **Program Disk** item: a program's source (and optionally its machine labels) on an item, used on a Program Controller to load it, with the program in its tooltip. Changes where program state lives ([ADR 0036](decisions/0036-program-controller-runtime.md), ADR 0044). | Yes: the controller keeps running its copy; the disk is a carrier, not the store | Open |
-| QD13 | Creative items (creative energy source, creative item and fluid cells, creative Wireless Terminal) in the creative tab only, with no recipes. | Yes | Open |
-| QD14 | Infinite fluid cell, and bulk cell tools (a block that empties or fills cells, and placeable storage blocks). Balance change to [ADR 0048](decisions/0048-final-balance.md). | Infinite fluid cell yes; bulk cell tools no for now | Open |
-| QD15 | Reopen rotating round robin (SFM `round robin by block`), rejected in ADR 0062 until a playtest asks for it. | No, unless H12 or Q51 finds a need | Open |
-| QD16 | Mekanism chemicals as a fourth resource kind through an optional integration. Touches the resource model in the portable core. | Later; only if a modpack asks | Open |
-| QD17 | A ComputerCraft peripheral on the Program Controller (read stock, request crafts, run moves under the placing player's grants). | Later | Open |
-| QD18 | Raise processing-pattern limits (for example 27 input types and 9 outputs) and allow tag alternatives on processing inputs? The second reopens PD4 ("processing patterns stay exact"). Amends [ADR 0032](decisions/0032-processing-patterns.md) and SPEC R06. | Raise limits yes; alternatives no for now | Open |
-| QD19 | Crafter lock modes (blocking, until outputs return, redstone pulse/high/low) and Crafter priority. Amends [ADR 0060](decisions/0060-crafter.md) and ADR 0032 dispatch. | Yes | Open |
-| QD20 | Let a player suspend and resume their own jobs, keeping reservations while suspended? Amends [ADR 0031](decisions/0031-crafting-jobs.md). | Yes; a suspended job still counts against the job limits | Open |
-| QD21 | Fluid substitution: a crafting pattern needing a filled bucket may use stored fluid plus an empty bucket. Amends [ADR 0063](decisions/0063-pattern-substitution.md). | Yes, if M71 is confirmed | Open |
-| QD22 | Which numbers become server config (energy costs, wireless range, tick rates, rule interval limits, "energy not required", program emergency stop)? Configurable balance amends [ADR 0048](decisions/0048-final-balance.md) and the admin guide. | Yes, a bounded list with the current values as defaults | Open |
-| QD23 | Separate insert and extract priority, and a redstone switch per storage. Amends [ADR 0013](decisions/0013-external-connectors.md) routing. | Yes | Open |
-| QD24 | Tunnelled and explosion-proof cables (M107). | No for now | Open |
-| QD25 | Which JEI chord does "fill what I have and request each missing ingredient" (M65, Q111) use? Ctrl+click on **+** already opens the recipe's output in Jobs (A5, [ADR 0043](decisions/0043-jei-integration.md), player guide), so taking Ctrl for M65 changes a shipped binding. Options: (a) Ctrl+click becomes M65 and the output request moves to another chord or a Jobs button; (b) M65 uses Ctrl+Shift+click (Shift alone is JEI's "max"), A5 unchanged; (c) Ctrl+click asks which. Found 2026-10-30 while starting Q111. | (b): keeps A5 and its tests, and both intents stay one click away | Open |
+| QD1 | Add Curios as an **optional** dependency so the Wireless Terminal works from an accessory slot, with a key to open it? Needs an ADR; stays off mandatory class loading. | Yes; the key works without Curios (it searches the inventory) | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, optional Curios; the key also searches the inventory |
+| QD2 | Add EMI and REI as optional integrations beside JEI ([ADR 0043](decisions/0043-jei-integration.md) amendment)? | EMI yes now; REI only if asked | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): EMI yes; REI no until asked |
+| QD3 | Add stonecutter and smithing patterns? Amends SPEC R06 and [ADR 0030](decisions/0030-patterns-and-crafting-units.md): new pattern kinds that run inside the Crafter, like crafting-table patterns. | Yes | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes |
+| QD4 | Let an Exporter's Keep request a craft when storage runs out? The job runs under the grants of whoever last applied the Exporter, counts against that player's job limit, and makes at most one job per Exporter at a time. Amends [ADR 0066](decisions/0066-importer-exporter.md) and [ADR 0034](decisions/0034-keep-stock-requests.md). | Yes, opt-in **Craft missing** toggle | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, opt-in **Craft missing** toggle |
+| QD5 | Coloured cables: a dyed cable joins only cables of its own colour or uncoloured ones. Amends SPEC R02 and [ADR 0010](decisions/0010-bounded-wire-discovery.md). | Yes, 16 dyes plus uncoloured | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, 16 dyes plus uncoloured |
+| QD6 | Facades on cables (any full block's look; no change to connections)? | Yes, after QD5 | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, after Q29 |
+| QD7 | A Relay cable that disconnects while unpowered? It changes topology by redstone, so it rebuilds the network on each change. Amends [ADR 0007](decisions/0007-topology-authority.md). | Yes, rate-limited to one rebuild per second | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, at most one rebuild per second |
+| QD8 | Portable storage: a handheld that holds one cell and opens a terminal on it without a network. A cell outside a drive becomes reachable, which amends [ADR 0005](decisions/0005-persistence-ownership.md) and ADR 0023 ownership. | Yes, one cell, owner-only | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, one cell, owner only |
+| QD9 | World interaction design for the Constructor and Destructor (PD6 asked for a gate per feature). Recommended: one block each, acting as a fake player owned by whoever applied it, firing break/place events so protection mods can refuse, and never voiding: drops go to storage or stay put. Fortune and Silk Touch as upgrades. | Yes, as described | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, as described |
+| QD10 | Cross-dimension links and P2P tunnels. No chunk loading (deliberate), so both ends must be loaded or the link waits. Amends [ADR 0040](decisions/0040-paired-wireless-links.md). | Cross-dimension links yes; P2P tunnels later | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): cross-dimension links yes; P2P tunnels yes too (AE2 parity), scheduled last |
+| QD11 | Friendly language **v3** as a superset of v2 with additive `factory_v1` Wasm imports (as PD2 did): pulse-triggered rules, redstone strength, source retain, empty slots, `has` quantifiers with sides and slots, relative sides, several slot ranges, labels and faces, timer offsets and world-clock alignment, per-item and per-match limits, and tag expressions. Needs an ADR. | Yes | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes: the listed features are added as sentences under ADR 0068 (no separate v3 syntax) |
+| QD12 | A **Program Disk** item: a program's source (and optionally its machine labels) on an item, used on a Program Controller to load it, with the program in its tooltip. Changes where program state lives ([ADR 0036](decisions/0036-program-controller-runtime.md), ADR 0044). | Yes: the controller keeps running its copy; the disk is a carrier, not the store | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes: the controller keeps its copy; the disk is a carrier |
+| QD13 | Creative items (creative energy source, creative item and fluid cells, creative Wireless Terminal) in the creative tab only, with no recipes. | Yes | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes |
+| QD14 | Infinite fluid cell, and bulk cell tools (a block that empties or fills cells, and placeable storage blocks). Balance change to [ADR 0048](decisions/0048-final-balance.md). | Infinite fluid cell yes; bulk cell tools no for now | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): infinite fluid cell yes; bulk cell tools no (Q33 dropped) |
+| QD15 | Reopen rotating round robin (SFM `round robin by block`), rejected in ADR 0062 until a playtest asks for it. | No, unless H12 or Q51 finds a need | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes (SFM parity) |
+| QD16 | Mekanism chemicals as a fourth resource kind through an optional integration. Touches the resource model in the portable core. | Later; only if a modpack asks | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): no: AE2 and RS support chemicals only through add-ons (Q48 dropped) |
+| QD17 | A ComputerCraft peripheral on the Program Controller (read stock, request crafts, run moves under the placing player's grants). | Later | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): no: AE2 and RS reach ComputerCraft only through add-ons (Q49 dropped) |
+| QD18 | Raise processing-pattern limits (for example 27 input types and 9 outputs) and allow tag alternatives on processing inputs? The second reopens PD4 ("processing patterns stay exact"). Amends [ADR 0032](decisions/0032-processing-patterns.md) and SPEC R06. | Raise limits yes; alternatives no for now | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): raise limits yes; tag alternatives no |
+| QD19 | Crafter lock modes (blocking, until outputs return, redstone pulse/high/low) and Crafter priority. Amends [ADR 0060](decisions/0060-crafter.md) and ADR 0032 dispatch. | Yes | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes |
+| QD20 | Let a player suspend and resume their own jobs, keeping reservations while suspended? Amends [ADR 0031](decisions/0031-crafting-jobs.md). | Yes; a suspended job still counts against the job limits | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes; a suspended job still counts against the job limits |
+| QD21 | Fluid substitution: a crafting pattern needing a filled bucket may use stored fluid plus an empty bucket. Amends [ADR 0063](decisions/0063-pattern-substitution.md). | Yes, if M71 is confirmed | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, if M71 is confirmed |
+| QD22 | Which numbers become server config (energy costs, wireless range, tick rates, rule interval limits, "energy not required", program emergency stop)? Configurable balance amends [ADR 0048](decisions/0048-final-balance.md) and the admin guide. | Yes, a bounded list with the current values as defaults | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes, a bounded list with the current values as defaults |
+| QD23 | Separate insert and extract priority, and a redstone switch per storage. Amends [ADR 0013](decisions/0013-external-connectors.md) routing. | Yes | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes |
+| QD24 | Tunnelled and explosion-proof cables (M107). | No for now | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): no (Q98 dropped) |
+| QD25 | Which JEI chord does "fill what I have and request each missing ingredient" (M65, Q111) use? Ctrl+click on **+** already opens the recipe's output in Jobs (A5, [ADR 0043](decisions/0043-jei-integration.md), player guide), so taking Ctrl for M65 changes a shipped binding. Options: (a) Ctrl+click becomes M65 and the output request moves to another chord or a Jobs button; (b) M65 uses Ctrl+Shift+click (Shift alone is JEI's "max"), A5 unchanged; (c) Ctrl+click asks which. Found 2026-10-30 while starting Q111. | (b): keeps A5 and its tests, and both intents stay one click away | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): (b) Ctrl+Shift+click |
 
 ## Wave 0 — reliability (lane R)
 
@@ -700,7 +700,7 @@ New gates:
   Files: `EnergyBankBlock.java`, `EnergyBankEntity.java`, new menu/screen.
   Done when: GameTests cover an in-place upgrade keeping energy and a refused downgrade.
 
-- [ ] **Q21 — Controller energy buffer (M21, needs UD3).** Size S.
+- [x] ~~Dropped 2026-10-31 by UD3.~~ **Q21 — Controller energy buffer (M21, needs UD3).** Size S.
   As UD3 decides.
 
 - [x] **Q22 — Wrench (M22).** Size M. Done 2026-10-31 (commit subject `Q22:`), ADR 0059
@@ -787,7 +787,7 @@ New gates:
   Done when: GameTests cover opening, taking, depositing, charge use and another player
   refused.
 
-- [ ] **Q33 — Bulk cell tools (M33, needs QD14).** Size M. Only if QD14 says yes.
+- [x] ~~Dropped 2026-10-31 by QD14.~~ **Q33 — Bulk cell tools (M33, needs QD14).** Size M. Only if QD14 says yes.
 
 ## Wave G — world interaction (lane G, needs QD9)
 
@@ -863,8 +863,8 @@ with a v2 pin). Each new form gets an additive Wasm import and an SDK wrapper in
 
 ## Wave I — optional integrations (lane I)
 
-- [ ] **Q48 — Mekanism chemicals (M47, needs QD16).** Size L.
-- [ ] **Q49 — ComputerCraft peripheral (M48, needs QD17).** Size L.
+- [x] ~~Dropped 2026-10-31 by QD16.~~ **Q48 — Mekanism chemicals (M47, needs QD16).** Size L.
+- [x] ~~Dropped 2026-10-31 by QD17.~~ **Q49 — ComputerCraft peripheral (M48, needs QD17).** Size L.
 
 
 ## Wave H — help (lane H)
@@ -1186,7 +1186,7 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
 - [ ] **Q97 — Cauldrons (M106).** Size S. Low priority.
   Programs, Importers and Exporters can fill and drain cauldrons.
   Done when: a GameTest fills a cauldron with water from storage and drains it back.
-- [ ] **Q98 — Tunnelled and tough cables (M107, needs QD24).** Size M. Only if QD24 says yes.
+- [x] ~~Dropped 2026-10-31 by QD24.~~ **Q98 — Tunnelled and tough cables (M107, needs QD24).** Size M. Only if QD24 says yes.
 
 ## Wave N — nits (each lane picks up its own; no gate)
 

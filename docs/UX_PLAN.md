@@ -47,7 +47,7 @@ and acceptance evidence; each slice here updates it when acceptance evidence cha
 | --- | --- | --- | --- |
 | UD1 | Merge Storage Connector + Machine Interface + Buffered Interface into one **Interface**, and Crafting Unit + Crafting Interface into one **Crafter**? Amends SPEC R02's role table (responsibilities stay). No save migration (see UD7). | Yes | **Resolved 2026-10-20: merge both** |
 | UD2 | Fold Wireless Link Endpoint into a Gateway upgrade and Wireless Access Point into a Controller upgrade? | Yes for the link; keep the Access Point as a block for now | **Resolved 2026-10-20: link becomes a Gateway upgrade; Access Point stays a block** |
-| UD3 | Energy: keep Fuel Generator + three Energy Bank tiers, or give the Controller a small internal buffer and make the Bank optional? | Keep as-is; revisit after a playtest | Open |
+| UD3 | Energy: keep Fuel Generator + three Energy Bank tiers, or give the Controller a small internal buffer and make the Bank optional? | Keep as-is; revisit after a playtest | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): no, keep as-is |
 | UD4 | Player-facing display names (registry IDs never change). See the names table below. | Adopt the table | **Resolved 2026-10-20: adopt the table** |
 | UD5 | Remove the offhand-item controls entirely once screens cover them, or keep them as hidden shortcuts? | Remove | **Resolved 2026-10-20: remove** |
 | UD6 | Add optional Jade/WTHIT look-at status (new optional dependency, ADR required)? | Yes, Jade only | **Resolved 2026-10-20: no** |
