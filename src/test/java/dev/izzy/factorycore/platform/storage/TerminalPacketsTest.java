@@ -32,6 +32,55 @@ class TerminalPacketsTest {
   }
 
   @Test
+  void allKindsViewRowsCarryTheirKind() {
+    var view =
+        new TerminalPackets.View(
+            3,
+            UUID.randomUUID(),
+            7,
+            TerminalPackets.Status.READY,
+            List.of(
+                new TerminalPackets.Row(0, "minecraft:stone", "Stone", "5", "0", "5", false, 0),
+                new TerminalPackets.Row(
+                    1, "minecraft:water", "Water", "2500", "0", "2500", false, 1),
+                new TerminalPackets.Row(
+                    2, "factorycore:energy", "Energy", "900", "0", "900", false, 2)),
+            false,
+            false,
+            "0",
+            "",
+            TerminalSearchSupport.NAME,
+            0,
+            3,
+            8,
+            TerminalPackets.KIND_ALL,
+            "5",
+            "0",
+            false,
+            false,
+            TerminalPackets.VIEW_STORED,
+            false,
+            3);
+    var output = buffer();
+    try {
+      TerminalPackets.View.CODEC.encode(output, view);
+      var decoded = TerminalPackets.View.CODEC.decode(output);
+      assertEquals(view, decoded);
+      assertEquals(TerminalPackets.KIND_ALL, decoded.kind());
+      assertEquals(
+          List.of(0, 1, 2), decoded.rows().stream().map(TerminalPackets.Row::kind).toList());
+    } finally {
+      output.release();
+    }
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new TerminalPackets.Row(0, "minecraft:stone", "Stone", "1", "0", "1", false, 3));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new TerminalPackets.Row(0, "minecraft:stone", "Stone", "1", "0", "1", false, -1));
+  }
+
+  @Test
   void craftableRowsAndTheShowCraftablePreferenceRoundTrip() {
     var view =
         new TerminalPackets.View(

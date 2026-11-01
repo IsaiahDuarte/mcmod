@@ -58,6 +58,8 @@ public final class MultiplayerClientVerification {
   private int ticks, step, acknowledged, entered, sub, mark, policyMask, retries;
 
   public MultiplayerClientVerification() {
+    // Q147: written for the Items view; the All view has its own presentation check.
+    dev.izzy.factorycore.platform.client.TerminalScreen.startKindForTest(0);
     NeoForge.EVENT_BUS.addListener(this::tick);
     NeoForge.EVENT_BUS.addListener(this::chat);
   }

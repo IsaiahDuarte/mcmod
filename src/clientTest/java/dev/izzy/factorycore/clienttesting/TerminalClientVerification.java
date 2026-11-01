@@ -102,6 +102,8 @@ public final class TerminalClientVerification {
   private long previousRevision;
 
   public TerminalClientVerification() {
+    // Q147: written for the Items view; the All view has its own presentation check.
+    dev.izzy.factorycore.platform.client.TerminalScreen.startKindForTest(0);
     if (Boolean.getBoolean("factorycore.client.restart")) new WorldRestartVerification().register();
     else NeoForge.EVENT_BUS.addListener(this::tick);
   }
@@ -1467,7 +1469,7 @@ public final class TerminalClientVerification {
         if (!(client.screen instanceof TerminalScreen screen)
             || screen.getMenu().view().status() != TerminalPackets.Status.READY) return;
         previousRevision = screen.getMenu().view().revision();
-        click(screen, "Fluids");
+        screen.selectKind(1);
         next();
       }
       case 74, 75 -> {
@@ -1487,7 +1489,7 @@ public final class TerminalClientVerification {
                 + view.rows().stream().map(row -> row.name() + "=" + row.total()).toList()
                 + "\n");
         previousRevision = view.revision();
-        if (stage == 74) click(screen, "Energy");
+        if (stage == 74) screen.selectKind(2);
         next();
       }
       case 76 -> {

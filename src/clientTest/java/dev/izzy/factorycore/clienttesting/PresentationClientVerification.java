@@ -128,6 +128,8 @@ public final class PresentationClientVerification {
   private boolean requested;
 
   public PresentationClientVerification() {
+    // Q147: written for the Items view; the All view has its own presentation check.
+    dev.izzy.factorycore.platform.client.TerminalScreen.startKindForTest(0);
     buildSteps();
     NeoForge.EVENT_BUS.addListener(this::tick);
     NeoForge.EVENT_BUS.addListener(this::feed);
@@ -871,7 +873,7 @@ public final class PresentationClientVerification {
         client ->
             terminal(client).getMenu().gridView().processing()
                 && waited() > 4
-                && press(client, "Fluids"));
+                && selectKind(client, 1));
     step(
         client ->
             terminal(client).getMenu().view().kind() == 1
@@ -897,7 +899,7 @@ public final class PresentationClientVerification {
     step(client -> waited() > 4 && useGhost(client, "minecraft:water"));
     step(client -> terminal(client).getMenu().gridView().fluid(9) && waited() > 4);
     countGhost(9, 2);
-    step(client -> press(client, "Items"));
+    step(client -> selectKind(client, 0));
     step(client -> terminal(client).getMenu().view().kind() == 0 && waited() > 6);
     step(
         client -> {
@@ -1067,7 +1069,7 @@ public final class PresentationClientVerification {
             return true;
           });
     }
-    step(client -> press(client, "Fluids"));
+    step(client -> selectKind(client, 1));
     for (int value : new int[] {4, 1}) {
       step(
           client -> {
@@ -1103,6 +1105,75 @@ public final class PresentationClientVerification {
     step(
         client ->
             !TerminalSearchSupport.buckets(terminal(client).getMenu().view().sort())
+                && waited() > 4);
+    // Q147 (n4): the All kinds view lists items and fluids in one grid; selecting a fluid row
+    // offers Fill, and an item row offers no fluid action.
+    step(client -> selectKind(client, TerminalPackets.KIND_ALL));
+    for (int value : new int[] {4, 1}) {
+      step(
+          client -> {
+            setScale(client, value);
+            return true;
+          });
+      step(
+          client -> {
+            var view = terminal(client).getMenu().view();
+            if (view.kind() != TerminalPackets.KIND_ALL
+                || view.busy()
+                || waited() < 8
+                || view.rows().stream().noneMatch(row -> row.kind() == 0)
+                || view.rows().stream().noneMatch(row -> row.kind() == 1)) return false;
+            evidence
+                .append("all kinds: ")
+                .append(view.rows().stream().map(row -> row.kind() + ":" + row.name()).toList())
+                .append('\n');
+            captures.grab(client, "terminal-all-kinds-scale-" + value + ".png");
+            return true;
+          });
+    }
+    step(
+        client -> {
+          setScale(client, 4);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 8) return false;
+          var screen = terminal(client);
+          var rows = screen.getMenu().view().rows();
+          int fluid = -1;
+          for (int index = 0; index < rows.size(); index++)
+            if (rows.get(index).kind() == 1) fluid = index;
+          return fluid >= 0
+              && screen.mouseClicked(screen.itemX(fluid) + 8, screen.itemY(fluid) + 8, 0);
+        });
+    step(
+        client -> {
+          if (waited() < 4) return false;
+          check(hasButton(client, "Fill"), "A selected fluid row offers Fill in All kinds");
+          var screen = terminal(client);
+          var rows = screen.getMenu().view().rows();
+          for (int index = 0; index < rows.size(); index++)
+            if (rows.get(index).kind() == 0)
+              return screen.mouseClicked(screen.itemX(index) + 8, screen.itemY(index) + 8, 1);
+          return false;
+        });
+    step(
+        client -> {
+          if (waited() < 8 || terminal(client).getMenu().view().busy()) return false;
+          check(!hasButton(client, "Fill"), "An item row hides Fill");
+          check(
+              !client.player.containerMenu.getCarried().isEmpty(),
+              "Right-clicking an item row in All kinds takes half a stack");
+          evidence.append("all kinds: fluid row offers Fill; item row takes onto the cursor\n");
+          // Put the half stack back by clicking the grid with it.
+          var screen = terminal(client);
+          return screen.mouseClicked(screen.itemX(0) + 8, screen.itemY(0) + 8, 0);
+        });
+    step(
+        client ->
+            client.player.containerMenu.getCarried().isEmpty()
+                && !terminal(client).getMenu().view().busy()
                 && waited() > 4);
     step(
         client -> {
@@ -1654,7 +1725,7 @@ public final class PresentationClientVerification {
           if (waited() < 6) return false;
           captures.grab(client, "jobs-scrolled-end-scale-1.png");
           setScale(client, 2);
-          press(client, "Items");
+          press(client, "Storage");
           client.screen.onClose();
           return true;
         });
@@ -1838,7 +1909,7 @@ public final class PresentationClientVerification {
         client -> {
           setScale(client, 2);
           if (hasButton(client, "Back")) press(client, "Back");
-          press(client, "Items");
+          press(client, "Storage");
           client.screen.onClose();
           return true;
         });
@@ -1855,7 +1926,7 @@ public final class PresentationClientVerification {
    * back.
    */
   private void jobStripTour() {
-    step(client -> waited() > 2 && press(client, "Items"));
+    step(client -> waited() > 2 && press(client, "Storage"));
     for (int scale : new int[] {4, 1}) {
       step(
           client -> {
@@ -1897,7 +1968,7 @@ public final class PresentationClientVerification {
           evidence.append("job strip: chip opens ").append(detail.job().output()).append('\n');
           return press(client, "Back");
         });
-    step(client -> waited() > 2 && press(client, "Items"));
+    step(client -> waited() > 2 && press(client, "Storage"));
     step(
         client -> {
           var screen = terminal(client);
@@ -2067,6 +2138,12 @@ public final class PresentationClientVerification {
   /** The view tool, whose word is the current view (Q137). */
   private static boolean pressView(Minecraft client) {
     return press(client, "Stored") || press(client, "All") || press(client, "Craftable");
+  }
+
+  /** Q147: shows one kind in the open terminal (the kind tool's cycle, set directly). */
+  private static boolean selectKind(Minecraft client, int kind) {
+    terminal(client).selectKind(kind);
+    return true;
   }
 
   private static boolean press(Minecraft client, String label) {
@@ -2774,8 +2851,24 @@ public final class PresentationClientVerification {
         client -> {
           var screen = terminal(client);
           if (client.player.containerMenu.getCarried().isEmpty()) {
-            if (waited() % 40 == 39 && !screen.getMenu().view().busy())
-              screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+            if (waited() % 40 == 39 && !screen.getMenu().view().busy()) {
+              var view = screen.getMenu().view();
+              System.out.println(
+                  "FACTORYCORE_TAKE_WAIT focused="
+                      + (screen.getFocused() == null
+                          ? "none"
+                          : screen.getFocused().getClass().getName())
+                      + " kind="
+                      + view.kind()
+                      + " status="
+                      + view.status()
+                      + " rows="
+                      + view.rows().size()
+                      + " revision="
+                      + view.revision()
+                      + " handled="
+                      + screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0));
+            }
             return false;
           }
           return waited() > 4

@@ -63,6 +63,21 @@ final class TerminalStorageView {
     return laid - (strip ? 1 : 0);
   }
 
+  /** Q147: a row's resource kind: the tab's, or in the All view the row's own. */
+  private int rowKind(TerminalPackets.Row row) {
+    return screen.kind() == TerminalPackets.KIND_ALL ? row.kind() : screen.kind();
+  }
+
+  /**
+   * The kind the info row's actions follow: the tab's, or in the All view the selected row's
+   * (items, which have no info-row actions, when nothing is selected).
+   */
+  private int actionKind() {
+    if (screen.kind() != TerminalPackets.KIND_ALL) return screen.kind();
+    var entries = entries();
+    return selected < entries.size() ? entries.get(selected).kind() : 0;
+  }
+
   /** Q146: whether the running-jobs strip takes the grid area's first row. */
   boolean strip() {
     return strip;
@@ -122,8 +137,11 @@ final class TerminalStorageView {
   boolean swap(double mouseX, double mouseY, int hotbar) {
     int index = rowAt(mouseX, mouseY);
     var entries = entries();
-    if (screen.kind() != 0 || index < 0 || index >= entries.size() || menu().view().busy())
-      return false;
+    if (!screen.itemsView()
+        || index < 0
+        || index >= entries.size()
+        || rowKind(entries.get(index)) != 0
+        || menu().view().busy()) return false;
     screen.send(TerminalPackets.SWAP, entries.get(index).token(), hotbar + 1, new byte[32]);
     return true;
   }
@@ -181,7 +199,7 @@ final class TerminalStorageView {
   void init() {
     cells.clear();
     var font = screen.font();
-    int kind = screen.kind();
+    int kind = actionKind();
     // Info row: the tab's actions on the left, Return and Crafting on the right.
     var info = new Rect(GRID_X, infoY(), screen.main() - 2 * GRID_X, PanelLayout.ROW);
     var crafting = Component.translatable("gui.factorycore.terminal.grid.panel");
@@ -221,7 +239,7 @@ final class TerminalStorageView {
                 new Rect(info.x(), info.y(), oneWidth, info.height()),
                 oneLabel,
                 () -> {
-                  if (screen.kind() == 1)
+                  if (actionKind() == 1)
                     screen.send(TerminalPackets.FILL, selected, 1, new byte[32]);
                   else
                     screen.send(
@@ -236,8 +254,8 @@ final class TerminalStorageView {
                 new Rect(info.x() + oneWidth + 4, info.y(), twoWidth, info.height()),
                 twoLabel,
                 () -> {
-                  // Q99 (M125): on the Fluids tab the second button switches mB and buckets.
-                  if (screen.kind() == 1)
+                  // Q99 (M125): for fluids the second button switches mB and buckets.
+                  if (actionKind() == 1)
                     screen.send(
                         TerminalPackets.SORT,
                         menu().view().sort() ^ TerminalSearchSupport.BUCKETS,
@@ -299,7 +317,7 @@ final class TerminalStorageView {
   /** Keeps the selection inside the listed rows and updates the info row's actions. */
   void tickActions() {
     var view = menu().view();
-    int kind = screen.kind();
+    int kind = actionKind();
     if (shownRevision != view.revision()) {
       selected = Math.min(selected, Math.max(0, view.rows().size() - 1));
       shownRevision = view.revision();
@@ -313,7 +331,7 @@ final class TerminalStorageView {
 
   void tickVisibility(boolean jobsMode) {
     var view = menu().view();
-    int kind = screen.kind();
+    int kind = actionKind();
     one.visible = !jobsMode && kind != 0;
     stack.visible = !jobsMode && kind != 0;
     if (kind == 1) {
@@ -327,7 +345,7 @@ final class TerminalStorageView {
     } else stack.setTooltip(null);
     returning.visible = !jobsMode && view.staging();
     // The crafting grid takes items or fluids, so the Energy tab has no Crafting button.
-    craftingToggle.visible = !jobsMode && kind != 2;
+    craftingToggle.visible = !jobsMode && screen.kind() != 2;
   }
 
   // ---------------------------------------------------------------- drawing
@@ -342,8 +360,9 @@ final class TerminalStorageView {
       var icon = new Rect(x + 1, y + 1, 16, 16);
       if (index == selected) Panels.selected(graphics, icon);
       var value = entries.get(index);
-      var shown = rowIcon(value.icon()).getDefaultInstance();
-      if (kind != 1 || !ResourceIcons.renderFluid(graphics, value.icon(), x + 1, y + 1))
+      int rowKind = rowKind(value);
+      var shown = rowIcon(value.icon(), rowKind).getDefaultInstance();
+      if (rowKind != 1 || !ResourceIcons.renderFluid(graphics, value.icon(), x + 1, y + 1))
         graphics.renderItem(shown, x + 1, y + 1);
       if (value.craftable() && value.none()) {
         // A ghost: nothing stored, but a pattern can make it.
@@ -362,7 +381,7 @@ final class TerminalStorageView {
           shown,
           x,
           y,
-          kind == 1 && TerminalSearchSupport.buckets(menu().view().sort())
+          rowKind == 1 && TerminalSearchSupport.buckets(menu().view().sort())
               ? CountText.buckets(value.available())
               : CountText.compact(value.available()));
     }
@@ -374,7 +393,7 @@ final class TerminalStorageView {
         view.total(),
         desiredOffset,
         maxOffset());
-    if (kind == 0 && view.status().quiet()) {
+    if (screen.itemsView() && view.status().quiet()) {
       var bar = capacityBar();
       Panels.inset(graphics, bar.offset(left, top));
       var capacity = new BigInteger(view.capacity());
@@ -439,7 +458,7 @@ final class TerminalStorageView {
           false);
       return;
     }
-    if (screen.kind() != 0) return;
+    if (!screen.itemsView()) return;
     // Q63: under a search, how many of the view's entries match.
     var capacityText =
         !view.search().isBlank()
@@ -473,7 +492,7 @@ final class TerminalStorageView {
     int kind = screen.kind(), left = screen.left(), top = screen.top();
     int row = rowAt(mouseX, mouseY);
     // Q63: with items on the cursor, the grid says what a click stores.
-    if (row >= 0 && kind == 0 && !menu().getCarried().isEmpty()) {
+    if (row >= 0 && screen.itemsView() && !menu().getCarried().isEmpty()) {
       var carried = menu().getCarried();
       graphics.renderTooltip(
           font,
@@ -488,7 +507,8 @@ final class TerminalStorageView {
     var entries = entries();
     if (row >= 0 && row < entries.size()) {
       var value = entries.get(row);
-      var stack = kind == 0 ? itemStack(value.icon()) : ItemStack.EMPTY;
+      int rowKind = rowKind(value);
+      var stack = rowKind == 0 ? itemStack(value.icon()) : ItemStack.EMPTY;
       // Q140 (n15): an item shows its standard tooltip (so tooltip mods style it and add their
       // lines) followed by the terminal's counts and help.
       var lines = new ArrayList<Component>();
@@ -506,7 +526,7 @@ final class TerminalStorageView {
       lines.addAll(
           List.of(
               Component.translatable(
-                  "gui.factorycore.terminal.counts" + (kind == 0 ? "" : "." + kind),
+                  "gui.factorycore.terminal.counts" + (rowKind == 0 ? "" : "." + rowKind),
                   value.total(),
                   value.reserved(),
                   value.available()),
@@ -515,12 +535,13 @@ final class TerminalStorageView {
                       ? value.none()
                           ? "gui.factorycore.terminal.craftable.ghost"
                           : "gui.factorycore.terminal.craftable.stocked"
-                      : "gui.factorycore.terminal.select.help" + (kind == 0 ? "" : "." + kind))));
+                      : "gui.factorycore.terminal.select.help"
+                          + (rowKind == 0 ? "" : "." + rowKind))));
       if (stack.isEmpty()) graphics.renderTooltip(font, lines, Optional.empty(), mouseX, mouseY);
       else graphics.renderTooltip(font, lines, stack.getTooltipImage(), stack, mouseX, mouseY);
       return true;
     }
-    if ((kind == 0 || !menu().view().status().quiet())
+    if ((screen.itemsView() || !menu().view().status().quiet())
         && mouseX >= left + GRID_X
         && mouseX < left + GRID_X + infoTextWidth()
         && mouseY >= top + infoY()
@@ -536,7 +557,7 @@ final class TerminalStorageView {
                   view.used(),
                   view.capacity())
               : Component.translatable("gui.factorycore.terminal.status." + view.status().key()));
-      if (kind == 0)
+      if (screen.itemsView())
         lines.add(
             Component.translatable(
                 view.external()
@@ -563,9 +584,11 @@ final class TerminalStorageView {
    * px slot, for recipe viewers' R and U keys; null over anything else.
    */
   TerminalScreen.Hovered hoveredAt(double mouseX, double mouseY) {
-    int kind = screen.kind(), row = rowAt(mouseX, mouseY);
+    int row = rowAt(mouseX, mouseY);
     var entries = entries();
-    if (row < 0 || row >= entries.size() || kind == 2) return null;
+    if (row < 0 || row >= entries.size()) return null;
+    int kind = rowKind(entries.get(row));
+    if (kind == 2) return null;
     var id = entries.get(row).icon();
     Object ingredient;
     if (kind == 0) {
@@ -583,8 +606,7 @@ final class TerminalStorageView {
   }
 
   /** Items show themselves; energy shows redstone; a fluid's bucket is the fallback icon. */
-  private Item rowIcon(String id) {
-    int kind = screen.kind();
+  private Item rowIcon(String id, int kind) {
     if (kind == 2) return Items.REDSTONE;
     var location = ResourceLocation.tryParse(id);
     if (location == null) return Items.BARRIER;
@@ -623,7 +645,7 @@ final class TerminalStorageView {
     }
     int row = rowAt(mouseX, mouseY);
     var entries = entries();
-    if (row >= 0 && screen.kind() == 0 && row < entries.size()) {
+    if (row >= 0 && screen.itemsView() && row < entries.size()) {
       var value = entries.get(row);
       boolean ghost = value.craftable() && value.none();
       if (value.craftable() && (button == 2 || ghost && menu().getCarried().isEmpty())) {
@@ -697,7 +719,7 @@ final class TerminalStorageView {
     int left = screen.left(), top = screen.top(), kind = screen.kind();
     // Q63: Space-click on an inventory slot stores its whole region (hotbar or main inventory).
     if (button == 0
-        && kind == 0
+        && screen.itemsView()
         && slot != null
         && slot.container == player.getInventory()
         && slot.getContainerSlot() < 36
@@ -709,7 +731,7 @@ final class TerminalStorageView {
     }
     if (button == 0
         && screen.shiftDown()
-        && kind == 0
+        && screen.itemsView()
         && slot != null
         && slot.container == player.getInventory()
         && depositAllClicked(slot)) return true;
@@ -722,6 +744,16 @@ final class TerminalStorageView {
         || mouseX >= left + slot.x + 16
         || mouseY < top + slot.y
         || mouseY >= top + slot.y + 16) return false;
+    // Q147: in the All view Ctrl+Shift-click empties a fluid container, or else drains an energy
+    // item, into storage; Shift-click alone stores the item itself.
+    if (kind == TerminalPackets.KIND_ALL && Screen.hasControlDown()) {
+      var item = slot.getItem();
+      if (item.getCapability(net.neoforged.neoforge.capabilities.Capabilities.FluidHandler.ITEM)
+          != null) kind = 1;
+      else if (item.getCapability(
+              net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.ITEM)
+          != null) kind = 2;
+    }
     if (kind == 1) {
       screen.send(TerminalPackets.EMPTY, slot.getContainerSlot(), 1, new byte[32]);
       return true;
@@ -757,11 +789,13 @@ final class TerminalStorageView {
     // Q63: Shift+wheel moves one of the hovered item in (down) or out (up); Ctrl+wheel up puts
     // one on the cursor and down stores one from it.
     int row = rowAt(mouseX, mouseY);
+    var shown = entries();
     if (row >= 0
         && scrollY != 0
-        && screen.kind() == 0
+        && screen.itemsView()
+        && (row >= shown.size() || rowKind(shown.get(row)) == 0)
         && (Screen.hasShiftDown() || Screen.hasControlDown())) {
-      var entries = entries();
+      var entries = shown;
       if (menu().view().busy()) return true;
       if (Screen.hasControlDown() && scrollY < 0) {
         var carried = menu().getCarried();
@@ -813,7 +847,7 @@ final class TerminalStorageView {
     var view = menu().view();
     int kind = screen.kind();
     if (view.busy() || view.kind() != kind) return;
-    if (!menu().getCarried().isEmpty() && kind == 0) {
+    if (!menu().getCarried().isEmpty() && screen.itemsView()) {
       try {
         var key =
             new PlatformResourceCodec(screen.client().level.registryAccess())
@@ -832,7 +866,7 @@ final class TerminalStorageView {
       }
     } else if (index < entries().size()) {
       selected = index;
-      if (kind == 0 && !Screen.hasControlDown())
+      if (rowKind(entries().get(index)) == 0 && !Screen.hasControlDown())
         screen.send(
             Screen.hasShiftDown()
                 ? TerminalPackets.WITHDRAW

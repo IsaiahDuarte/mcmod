@@ -78,11 +78,35 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   /** Q3: the Patterns view replaces the grid; the inventory stays, to carry patterns. */
   private boolean patternsMode;
 
-  /** The tabs: Items, Fluids, Energy (storage kinds 0–2), Jobs, then Patterns. */
-  private static final int JOBS_TAB = 3, PATTERNS_TAB = 4;
+  /**
+   * The tabs: Storage, Jobs, then Patterns. Q147 (n4): one Storage tab lists items, fluids and
+   * energy together; the kind tool narrows it to one kind.
+   */
+  private static final int JOBS_TAB = 1, PATTERNS_TAB = 2;
 
-  /** Client-selected storage kind (0 items, 1 fluids, 2 energy); the server switches its search. */
-  private int kind;
+  /**
+   * Client-selected storage kind (0 items, 1 fluids, 2 energy, 3 all of them); the server switches
+   * its search.
+   */
+  private int kind = startKind;
+
+  /** The kind a newly opened terminal lists: all kinds; verification may start on one. */
+  private static int startKind = TerminalPackets.KIND_ALL;
+
+  /** Q147: lets verification tours written for one kind open terminals on it. */
+  public static void startKindForTest(int kind) {
+    startKind = kind;
+  }
+
+  /** Q147: shows {@code kind} (0 items, 1 fluids, 2 energy, 3 all), as the kind tool does. */
+  public void selectKind(int kind) {
+    if (kind < 0 || kind > TerminalPackets.KIND_ALL) throw new IllegalArgumentException("kind");
+    this.kind = kind;
+    storage.resetOffset();
+  }
+
+  /** Q147: cycles the Storage tab's kinds: all, items, fluids, energy. */
+  private Button kindButton;
 
   private Button sortButton;
   private Button directionButton;
@@ -287,6 +311,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     return kind;
   }
 
+  /** Q147: whether the grid lists items, so item tools apply (Items, and All for its item rows). */
+  boolean itemsView() {
+    return kind == 0 || kind == TerminalPackets.KIND_ALL;
+  }
+
   /** The selected Items/Fluids/Energy entry, which the crafting panel's Use row takes. */
   int selectedEntry() {
     return storage.selected();
@@ -448,7 +477,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     super.init();
     tabs.clear();
 
-    // Tabs on the top edge, across the panel's width (Q3 added a fifth).
+    // Tabs on the top edge: Storage, Jobs and Patterns.
     int tabX = PanelLayout.EDGE - 3;
     var labels = new ArrayList<Component>();
     for (int tab = 0; tab <= PATTERNS_TAB; tab++)
@@ -469,10 +498,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                     boolean previousJobs = jobsMode, previousPatterns = patternsMode;
                     jobsMode = choice == JOBS_TAB;
                     patternsMode = choice == PATTERNS_TAB;
-                    if (!storageHidden()) {
-                      kind = choice;
-                      storage.resetOffset();
-                    }
+                    if (!storageHidden()) storage.resetOffset();
                     if (patternsMode && !previousPatterns) patterns.show();
                     if (previousJobs != jobsMode || previousPatterns != patternsMode)
                       rebuildWidgets();
@@ -482,8 +508,21 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
     // The search box has its own row, ended by the status lamp; under it, show-craftable, sort,
     // direction and tall (right-aligned).
+    // Q147: the kind tool ends the search row, before the lamp; the search box takes the rest.
+    int kindWidth = 8;
+    for (int k = 0; k <= TerminalPackets.KIND_ALL; k++)
+      kindWidth =
+          Math.max(
+              kindWidth,
+              font.width(Component.translatable("gui.factorycore.terminal.kind." + k)) + 8);
+    var kindTool =
+        new Rect(
+            main - GRID_X - LAMP - PanelLayout.GAP - kindWidth,
+            SEARCH_Y,
+            kindWidth,
+            PanelLayout.ROW);
     var searchRow =
-        new Rect(GRID_X, SEARCH_Y, main - 2 * GRID_X - LAMP - PanelLayout.GAP, PanelLayout.ROW);
+        new Rect(GRID_X, SEARCH_Y, kindTool.x() - GRID_X - PanelLayout.GAP, PanelLayout.ROW);
     var toolRow = new Rect(GRID_X, TOOLS_Y, main - 2 * GRID_X, PanelLayout.ROW);
     // Q17: with a recipe viewer installed, a fifth tool syncs the search with it.
     boolean viewer = RecipeViewerSearch.bridge() != null;
@@ -491,6 +530,16 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     // Q137 (n5): every tool is a word in the same button style; a toggle reads green when on.
     var tools = PanelLayout.alignRight(toolRow, toolWidths(viewer, toolRow.width()), 2);
     var star = tools.removeLast();
+    kindButton =
+        addRenderableWidget(
+            tool(
+                kindTool,
+                kindLabel(),
+                "gui.factorycore.terminal.kind.help",
+                () -> {
+                  kind = (kind + 1) % (TerminalPackets.KIND_ALL + 1);
+                  storage.resetOffset();
+                }));
     viewsButton =
         addRenderableWidget(
             tool(
@@ -763,6 +812,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /** The view tool names the current view: Stored, All or Craftable (Q62). */
+  /** Q147: the kind tool's word for the shown kind. */
+  private Component kindLabel() {
+    return Component.translatable("gui.factorycore.terminal.kind." + kind);
+  }
+
   private Component craftablesLabel() {
     return Component.translatable("gui.factorycore.terminal.view." + menu.view().view());
   }
@@ -774,9 +828,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /**
-   * Q137: tool widths from their longest label, right to left in the order view, sort, direction,
-   * tall, [viewer sync], views. A row too narrow for them all shrinks the words evenly (buttons
-   * scroll a clipped label).
+   * Q137: tool widths from their longest label, in the order view, sort, direction, tall, [viewer
+   * sync], views. A row too narrow for them all shrinks the words evenly (buttons scroll a clipped
+   * label).
    */
   private int[] toolWidths(boolean viewer, int row) {
     var keys = new ArrayList<List<String>>();
@@ -860,10 +914,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       }
     }
     syncedSearch = view.search();
-    int shown = jobsMode ? JOBS_TAB : patternsMode ? PATTERNS_TAB : kind;
+    int shown = jobsMode ? JOBS_TAB : patternsMode ? PATTERNS_TAB : 0;
+    kindButton.setMessage(kindLabel());
     for (int i = 0; i < tabs.size(); i++) tabs.get(i).setSelected(shown == i);
     // Q146: the strip takes the grid's first row while the viewer has jobs; the cells follow.
-    boolean strip = !storageHidden() && kind == 0 && runningJobs() > 0;
+    boolean strip = !storageHidden() && itemsView() && runningJobs() > 0;
     if (strip != storage.strip()) {
       storage.setStrip(strip);
       rebuildWidgets();
@@ -877,7 +932,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     sortButton.active = !view.busy();
     directionButton.setMessage(directionLabel());
     craftablesButton.setMessage(craftablesLabel());
-    craftablesButton.visible = kind == 0 && !storageHidden() && !viewsOpen;
+    craftablesButton.visible = itemsView() && !storageHidden() && !viewsOpen;
     directionButton.active = !view.busy();
     tallButton.active = !view.busy();
     storage.tickActions();
@@ -886,7 +941,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     var request = VIEWER.take(menu);
     if (request != null) showJobs(request);
     jobs.tick(jobsMode);
-    if (jobsMode || patternsMode || storageHidden() || kind() != 0) craftDialog.close();
+    if (jobsMode || patternsMode || storageHidden() || !itemsView()) craftDialog.close();
     craftDialog.tick();
     storage.tickVisibility(storageHidden());
     patterns.tick(patternsMode);
@@ -1034,7 +1089,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
               true);
       return true;
     }
-    shiftDrag.press(button, shiftDown() && !patternsMode && kind() == 0, slotAt(mouseX, mouseY));
+    shiftDrag.press(button, shiftDown() && !patternsMode && itemsView(), slotAt(mouseX, mouseY));
     if (storage.strip() && jobStrip.mouseClicked(mouseX, mouseY, button)) return true;
     if (!storageHidden() && storage.mouseClicked(mouseX, mouseY, button)) return true;
     if (jobsMode && jobs.mouseClicked(mouseX, mouseY, button)) return true;
@@ -1124,7 +1179,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     if (amount != null) return amount;
     if (!search.isFocused() && crafting.craftKey(key)) return true;
     // Q63: a hotbar key over a grid entry swaps that entry into the hotbar slot.
-    if (!search.isFocused() && kind() == 0 && !storageHidden() && !jobsMode && !patternsMode) {
+    if (!search.isFocused() && itemsView() && !storageHidden() && !jobsMode && !patternsMode) {
       var window = minecraft.getWindow();
       double mouseX =
           minecraft.mouseHandler.xpos() * window.getGuiScaledWidth() / window.getScreenWidth();
@@ -1220,7 +1275,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
    * again, up to three times.
    */
   private void drainDragged() {
-    if (kind() != 0 || patternsMode) {
+    if (!itemsView() || patternsMode) {
       dragged.clear();
       return;
     }

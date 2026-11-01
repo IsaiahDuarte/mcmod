@@ -78,7 +78,15 @@ public final class WorldStorageSearch {
     final UUID id;
     final NetworkPermissions.Actor actor;
     final NodeRegistry.Position origin;
-    final ResourceKind kind;
+
+    /**
+     * Q147: the kinds this search lists, observed one after another (the All view lists items,
+     * fluids and energy); {@link #pass} indexes the kind being observed. Capacity counts only the
+     * first kind's cells, so its units stay one kind's.
+     */
+    final List<ResourceKind> kinds;
+
+    int pass;
     final String text;
     final SearchQuery query;
     final Map<ResourceKey, String> names = new HashMap<>();
@@ -115,7 +123,7 @@ public final class WorldStorageSearch {
         UUID id,
         NetworkPermissions.Actor actor,
         NodeRegistry.Position origin,
-        ResourceKind kind,
+        List<ResourceKind> kinds,
         String text,
         int sort,
         NetworkTopology.Scope scope,
@@ -128,7 +136,7 @@ public final class WorldStorageSearch {
       this.id = id;
       this.actor = actor;
       this.origin = origin;
-      this.kind = kind;
+      this.kinds = kinds;
       this.text = text;
       query = SearchQuery.parse(text);
       // Q109: pinned rows lead in pin order, ahead of (and unaffected by reversing) the sort, so
@@ -149,6 +157,10 @@ public final class WorldStorageSearch {
       this.ghosts = ghosts;
       this.craftableOnly = craftableOnly;
       touched = tick;
+    }
+
+    ResourceKind kind() {
+      return kinds.get(pass);
     }
   }
 
@@ -217,6 +229,36 @@ public final class WorldStorageSearch {
       boolean ghosts,
       boolean craftableOnly,
       List<ResourceKey> pinned) {
+    return start(
+        id,
+        actor,
+        origin,
+        List.of(Objects.requireNonNull(kind)),
+        text,
+        sort,
+        craftable,
+        ghosts,
+        craftableOnly,
+        pinned);
+  }
+
+  /**
+   * Q147: as above, listing every kind in {@code kinds} (distinct, in observation order) in one
+   * sorted result. Capacity is that of the first kind's cells.
+   */
+  public WorldStorageTransfers.Submission start(
+      UUID id,
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin,
+      List<ResourceKind> kinds,
+      String text,
+      int sort,
+      java.util.Set<ResourceKey> craftable,
+      boolean ghosts,
+      boolean craftableOnly,
+      List<ResourceKey> pinned) {
+    if (kinds.isEmpty() || java.util.Set.copyOf(kinds).size() != kinds.size())
+      throw new IllegalArgumentException("Search kinds must be distinct and not empty");
     if (craftable.size() > MAX_CRAFTABLE)
       throw new IllegalArgumentException("Too many craftable keys");
     if (pinned.size() > MAX_PINNED) throw new IllegalArgumentException("Too many pinned keys");
@@ -226,7 +268,6 @@ public final class WorldStorageSearch {
     Objects.requireNonNull(id);
     Objects.requireNonNull(actor);
     Objects.requireNonNull(origin);
-    Objects.requireNonNull(kind);
     Objects.requireNonNull(text);
     if (text.length() > 128)
       throw new IllegalArgumentException("Search text exceeds 128 characters");
@@ -239,7 +280,7 @@ public final class WorldStorageSearch {
             id,
             actor,
             origin,
-            kind,
+            List.copyOf(kinds),
             text.toLowerCase(Locale.ROOT),
             sort,
             member.scope(),
@@ -278,7 +319,8 @@ public final class WorldStorageSearch {
     }
     if (!search.complete)
       return new Result(OperationResult.Reason.OK, false, search.pages, List.of(), null);
-    if (after != null && after.kind() != search.kind) return failed(OperationResult.Reason.DENIED);
+    if (after != null && !search.kinds.contains(after.kind()))
+      return failed(OperationResult.Reason.DENIED);
     var anchor =
         after == null
             ? null
@@ -369,7 +411,7 @@ public final class WorldStorageSearch {
             search.ticket,
             search.actor,
             search.origin,
-            search.kind,
+            search.kind(),
             cursor,
             page -> {
               if (searches.get(search.id) != search) return;
@@ -401,7 +443,10 @@ public final class WorldStorageSearch {
                   search.sources.put(source, page.source());
                   search.charge += 384;
                   bytes += 384;
-                  if (page.source() instanceof WorldStorageTransfers.Digital digital) {
+                  if (search.pass > 0) {
+                    if (!(page.source() instanceof WorldStorageTransfers.Digital))
+                      search.external = true;
+                  } else if (page.source() instanceof WorldStorageTransfers.Digital digital) {
                     var owner = saved.registry().ownership(digital.handle().backing());
                     search.used = search.used.add(BigInteger.valueOf(owner.total()));
                     search.capacity =
@@ -409,7 +454,7 @@ public final class WorldStorageSearch {
                     search.infinite |= owner.definition().infinite();
                   } else search.external = true;
                 }
-                if (page.source() instanceof WorldStorageTransfers.External)
+                if (search.pass == 0 && page.source() instanceof WorldStorageTransfers.External)
                   for (var row : page.rows())
                     search.used = search.used.add(BigInteger.valueOf(row.total()));
                 for (var row : page.rows()) {
@@ -456,7 +501,15 @@ public final class WorldStorageSearch {
                   search.charge += delta;
                 }
               }
-              if (page.next() == null) {
+              if (page.next() == null && search.pass + 1 < search.kinds.size()) {
+                // Q147: the next kind. A provider seen under one kind is a new endpoint under
+                // the next, so the per-kind source map starts again (its charge stays counted).
+                search.pass++;
+                search.sources.clear();
+                var admission = observe(search, null);
+                if (admission.rejection() != OperationResult.Reason.OK)
+                  fail(search, admission.rejection());
+              } else if (page.next() == null) {
                 if (!addGhosts(search)) return;
                 search.indexing = search.ordered.iterator();
                 index(search);
@@ -492,7 +545,7 @@ public final class WorldStorageSearch {
     if (!search.ghosts) return true;
     var codec = new PlatformResourceCodec(server.registryAccess());
     for (var key : search.craftable) {
-      if (key.kind() != search.kind || search.counts.row(key) != null) continue;
+      if (!search.kinds.contains(key.kind()) || search.counts.row(key) != null) continue;
       if (!see(search, key)) return false;
       String name;
       try {
@@ -526,7 +579,7 @@ public final class WorldStorageSearch {
             search.ticket,
             search.actor,
             search.origin,
-            search.kind,
+            search.kinds.getFirst(),
             () -> {
               if (searches.get(search.id) != search) return;
               if (!valid(search, search.actor)) {

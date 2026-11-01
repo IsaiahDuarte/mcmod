@@ -83,8 +83,13 @@ public final class TerminalPackets {
    * container from fluid row {@code selection}; EMPTY empties own slot {@code selection};
    * CHARGE/DISCHARGE move up to 1,000 FE into/out of the energy item in a slot.
    */
-  public static final int KIND = 6, FILL = 7, EMPTY = 8, CHARGE = 9, DISCHARGE = 10, SORT = 11;
+  /**
+   * Q147: KIND's selection and the view's kind for the All view, which lists items, fluids and
+   * energy together; 0–2 are the {@link dev.izzy.factorycore.core.resource.ResourceKind} ordinals.
+   */
+  public static final int KIND_ALL = 3;
 
+  public static final int KIND = 6, FILL = 7, EMPTY = 8, CHARGE = 9, DISCHARGE = 10, SORT = 11;
   public static final int WINDOW = 12, TAKE_CURSOR = 13, HALF_CURSOR = 14, DEPOSIT_CURSOR = 15;
 
   /**
@@ -247,6 +252,11 @@ public final class TerminalPackets {
   /**
    * {@code craftable}: a visible pattern makes this resource; with zero total it is a ghost row.
    */
+  /**
+   * One listed entry. {@code kind} is the entry's {@link
+   * dev.izzy.factorycore.core.resource.ResourceKind} ordinal, which only differs between rows in
+   * the All view (Q147, view kind {@link #KIND_ALL}).
+   */
   public record Row(
       int token,
       String icon,
@@ -254,13 +264,26 @@ public final class TerminalPackets {
       String total,
       String reserved,
       String available,
-      boolean craftable) {
+      boolean craftable,
+      int kind) {
     public Row(
         int token, String icon, String name, String total, String reserved, String available) {
       this(token, icon, name, total, reserved, available, false);
     }
 
+    public Row(
+        int token,
+        String icon,
+        String name,
+        String total,
+        String reserved,
+        String available,
+        boolean craftable) {
+      this(token, icon, name, total, reserved, available, craftable, 0);
+    }
+
     public Row {
+      if (kind < 0 || kind > 2) throw new IllegalArgumentException("Invalid terminal row kind");
       if (token < 0
           || token >= MAX_ROWS
           || icon.length() > 256
@@ -404,7 +427,7 @@ public final class TerminalPackets {
           || size < 1
           || size > MAX_ROWS
           || kind < 0
-          || kind > 2
+          || kind > KIND_ALL
           || view < VIEW_STORED
           || view > VIEW_CRAFTABLE
           || all < 0
@@ -460,6 +483,7 @@ public final class TerminalPackets {
                 buffer.writeUtf(row.reserved, 32);
                 buffer.writeUtf(row.available, 32);
                 buffer.writeBoolean(row.craftable);
+                buffer.writeByte(row.kind);
               }
               buffer.writeBoolean(value.next);
               buffer.writeBoolean(value.busy);
@@ -503,7 +527,8 @@ public final class TerminalPackets {
                         buffer.readUtf(32),
                         buffer.readUtf(32),
                         buffer.readUtf(32),
-                        buffer.readBoolean()));
+                        buffer.readBoolean(),
+                        buffer.readByte()));
               return new View(
                   menu,
                   session,

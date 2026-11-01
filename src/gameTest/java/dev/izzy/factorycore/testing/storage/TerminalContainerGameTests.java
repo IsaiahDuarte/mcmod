@@ -173,6 +173,112 @@ public final class TerminalContainerGameTests {
         .thenSucceed();
   }
 
+  /** Q147: the row of {@code kind} (a ResourceKind ordinal) in the current view, or -1. */
+  private static int rowOf(ServerPlayer player, int kind) {
+    var rows = TestMenus.terminal(player).view().rows();
+    for (int index = 0; index < rows.size(); index++)
+      if (rows.get(index).kind() == kind) return index;
+    return -1;
+  }
+
+  /**
+   * Q147 (n4): the All view lists items, fluids and energy together, each row with its kind. Fill
+   * acts on a fluid row; a take names only item rows, so taking a fluid row moves nothing.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void allKindsViewListsItemsFluidsAndEnergyAndActsPerRow(GameTestHelper h) {
+    var player = TestPlayers.mock(h);
+    TestPlayers.connect(player);
+    player.moveTo(Vec3.atCenterOf(h.absolutePos(ROOT)));
+    player.getInventory().clearContent();
+    Net.in(h, player.getUUID()).controller(ROOT);
+    StorageDriveEntity fluids = Net.in(h).drive(DRIVE, CellTier.STARTER_FLUID);
+    StorageDriveEntity items = Net.in(h).drive(new BlockPos(1, 1, 0), CellTier.STARTER_ITEM);
+    var fluidCell = CellHandleData.read(fluids.cell(0));
+    var itemCell = CellHandleData.read(items.cell(0));
+    EnergyBankEntity bank = Net.in(h).bank(BANK, EnergyBankTier.STARTER);
+    h.setBlock(TERMINAL, TerminalContent.BLOCK.get());
+    TerminalEntity terminal = h.getBlockEntity(TERMINAL);
+    var saved = DeviceSavedData.get(h.getLevel().getServer());
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var water = codec.fluidKey(new FluidStack(Fluids.WATER, 1));
+    var stone = codec.itemKey(new ItemStack(Items.STONE));
+    var inventory = player.getInventory();
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    terminal.canUse(player)
+                        && saved.registry().stock(fluidCell, water).loaded()
+                        && saved.registry().stock(itemCell, stone).loaded(),
+                    "Ready"))
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  saved.registry().insert(fluidCell, water, 2_500).amount() == 2_500
+                      && saved.registry().insert(itemCell, stone, 5).amount() == 5
+                      && bank.receiveEnergy(900, false) == 900,
+                  "Stocked");
+              inventory.setItem(0, new ItemStack(Items.BUCKET));
+              h.useBlock(TERMINAL, player);
+              command(player, TerminalPackets.KIND, TerminalPackets.KIND_ALL);
+            })
+        .thenWaitUntil(
+            () -> {
+              var m = TestMenus.terminal(player);
+              m.broadcastChanges();
+              h.assertTrue(
+                  m.view().status() == TerminalPackets.Status.READY
+                      && m.view().kind() == TerminalPackets.KIND_ALL
+                      && rowOf(player, 0) >= 0
+                      && rowOf(player, 1) >= 0
+                      && rowOf(player, 2) >= 0,
+                  "The All view lists an item, a fluid and energy: " + m.view().rows());
+            })
+        .thenExecute(
+            () -> {
+              var rows = TestMenus.terminal(player).view().rows();
+              h.assertTrue(
+                  rows.get(rowOf(player, 0)).total().equals("5")
+                      && rows.get(rowOf(player, 1)).total().equals("2500"),
+                  "Rows carry their own amounts: " + rows);
+              command(player, TerminalPackets.TAKE_CURSOR, rowOf(player, 1));
+              h.assertTrue(
+                  player.containerMenu.getCarried().isEmpty()
+                      && saved.registry().stock(fluidCell, water).total() == 2_500,
+                  "Taking a fluid row moves nothing");
+            })
+        .thenIdle(3)
+        .thenExecute(() -> command(player, TerminalPackets.FILL, rowOf(player, 1)))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    saved.registry().stock(fluidCell, water).total() == 1_500
+                        && countOf(player, Items.WATER_BUCKET) == 1,
+                    "Fill on the fluid row fills the bucket with exactly 1000 mB"))
+        .thenIdle(3)
+        .thenWaitUntil(
+            () -> {
+              TestMenus.terminal(player).broadcastChanges();
+              h.assertTrue(
+                  !TestMenus.terminal(player).view().busy() && rowOf(player, 0) >= 0, "Listed");
+            })
+        .thenExecute(() -> command(player, TerminalPackets.TAKE_CURSOR, rowOf(player, 0)))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    player.containerMenu.getCarried().is(Items.STONE)
+                        && player.containerMenu.getCarried().getCount() == 5
+                        && saved.registry().stock(itemCell, stone).total() == 0,
+                    "Taking the item row puts all 5 stone on the cursor"))
+        .thenExecute(
+            () -> {
+              player.closeContainer();
+              player.connection.disconnect(Component.literal("done"));
+            })
+        .thenSucceed();
+  }
+
   private static int countOf(ServerPlayer player, Item item) {
     int total = 0;
     for (int slot = 0; slot < 36; slot++)

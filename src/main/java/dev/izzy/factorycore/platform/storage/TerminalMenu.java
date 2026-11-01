@@ -91,6 +91,13 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   private String text = "";
   private TerminalPackets.Status status = TerminalPackets.Status.LOADING;
   private ResourceKind kind = ResourceKind.ITEM;
+
+  /**
+   * Q147: the All view lists items, fluids and energy together. {@link #kind} stays ITEM for its
+   * item commands; each command checks the named row's own kind.
+   */
+  private boolean everything;
+
   private int sort = TerminalSearchSupport.NAME;
   private long revision = 1;
   private int scanned, offset, totalRows, pageSize = 8;
@@ -557,7 +564,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                 query,
                 actor(),
                 terminal.origin(),
-                kind,
+                kinds(),
                 text,
                 sort,
                 TerminalJobs.craftableKeys(player().server, terminal.origin()),
@@ -573,6 +580,13 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       revision++;
       status = TerminalPackets.Status.of(submission.rejection());
     }
+  }
+
+  /** The kinds the current view searches: one, or (Q147) all three in the All view. */
+  private List<ResourceKind> kinds() {
+    return everything
+        ? List.of(ResourceKind.ITEM, ResourceKind.FLUID, ResourceKind.ENERGY)
+        : List.of(kind);
   }
 
   /** Q67: applies, saves or clears saved view {@code index}. Applying an empty one does nothing. */
@@ -662,7 +676,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
                 query,
                 actor(),
                 terminal.origin(),
-                kind,
+                kinds(),
                 text,
                 sort,
                 TerminalJobs.craftableKeys(player().server, terminal.origin()),
@@ -788,9 +802,10 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       return;
     }
     if (command.action() == TerminalPackets.KIND) {
-      if (command.selection() > 2) return;
+      if (command.selection() > TerminalPackets.KIND_ALL) return;
       offset = 0;
-      kind = ResourceKind.values()[command.selection()];
+      everything = command.selection() == TerminalPackets.KIND_ALL;
+      kind = everything ? ResourceKind.ITEM : ResourceKind.values()[command.selection()];
       refresh();
       publish();
       return;
@@ -800,8 +815,9 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       TerminalPackets.Status outcome;
       if (command.action() == TerminalPackets.FILL) {
         if (command.revision() != revision
-            || kind != ResourceKind.FLUID
-            || command.selection() >= selections.size()) {
+            || kind != ResourceKind.FLUID && !everything
+            || command.selection() >= selections.size()
+            || selections.get(command.selection()).key().kind() != ResourceKind.FLUID) {
           publish();
           return;
         }
@@ -853,6 +869,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         return;
       }
       key = selections.get(command.selection()).key();
+      // Q147: in the All view only an item row can be taken.
+      if (key.kind() != ResourceKind.ITEM) return;
       var selectedStack = new PlatformResourceCodec(sender.registryAccess()).itemStack(key, 1);
       long stackAmount = Math.min(64, selectedStack.getMaxStackSize());
       if (command.action() != TerminalPackets.WITHDRAW) {
@@ -1323,7 +1341,9 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       publish();
       return null;
     }
-    return selections.get(selection).key();
+    // Q147: the moves that name a row are item moves; the All view also lists fluids and energy.
+    var key = selections.get(selection).key();
+    return key.kind() == ResourceKind.ITEM ? key : null;
   }
 
   /**
@@ -1428,7 +1448,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
               row.total().toString(),
               row.reserved().toString(),
               row.available().toString(),
-              index < selectionCraftable.size() && selectionCraftable.get(index)));
+              index < selectionCraftable.size() && selectionCraftable.get(index),
+              row.key().kind().ordinal()));
     }
     UUID operation = unresolved();
     String staged =
@@ -1455,7 +1476,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             offset,
             totalRows,
             pageSize,
-            kind.ordinal(),
+            everything ? TerminalPackets.KIND_ALL : kind.ordinal(),
             used,
             capacity,
             infinite,

@@ -26,6 +26,8 @@ public final class RecipeViewerHoldings {
             (long) stack.getCount(),
             RecipeViewerHoldings::add);
     for (var row : menu.view().rows()) {
+      // Q147: the All view also lists fluids and energy, which a recipe viewer does not count.
+      if (row.kind() != 0) continue;
       long available;
       try {
         available = new BigInteger(row.available()).min(MAX).longValue();

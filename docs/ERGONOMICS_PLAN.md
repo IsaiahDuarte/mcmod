@@ -414,7 +414,10 @@ screens.
   [Evidence](evidence/ergonomics-q146-job-strip-2026-11-01.md). Running jobs appear in the
   Items view (a strip above the grid with output, progress and a cancel), so following a job
   doesn't need the Jobs tab. Keep, Plan and Tree stay in Jobs, reached by the dialog's Details.
-- [ ] **Q147 — Fluids and energy inline (n4, from Q138).** Size L. An "Everything" kind in the
+- [x] **Q147 — Fluids and energy inline (n4, from Q138).** Size L. Done 2026-11-01 (commit
+  subject `Q147:`): one **Storage** tab lists items, fluids and energy (the user asked for the
+  kind tabs to go); a kind tool narrows it; actions follow each row's kind.
+  [Evidence](evidence/ergonomics-q147-one-storage-grid-2026-11-01.md). An "Everything" kind in the
   Items view lists items, fluids and energy in one grid. This needs a mixed-kind server query
   (search, sort and paging across kinds) and per-kind click rules. Fluid and energy entries
   can't be taken onto the cursor. Decide whether the separate tabs remain.

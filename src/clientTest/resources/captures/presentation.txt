@@ -99,6 +99,8 @@ terminal-fluids-scale-4.png
 terminal-fluids-scale-1.png
 terminal-fluids-buckets-scale-1.png
 terminal-fluids-buckets-scale-4.png
+terminal-all-kinds-scale-4.png
+terminal-all-kinds-scale-1.png
 jobs-scroll-top-scale-4.png
 jobs-scrolled-end-scale-4.png
 jobs-scrolled-end-scale-1.png

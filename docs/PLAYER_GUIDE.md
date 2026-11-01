@@ -202,7 +202,7 @@ Deposit and withdrawing needs Withdraw.
   plan appears below it: the steps, or what is missing. **Start** starts it, **Keep** keeps
   that many in stock, **Details** opens the full plan in Jobs, and Escape or **Close** closes
   the dialog. Up and Down step the amount; Enter starts.
-- **Running jobs:** while you have jobs running, a strip over the Items grid shows each one:
+- **Running jobs:** while you have jobs running, a strip over the grid shows each one:
   its item, crafts done of total and a progress bar (amber while it waits). Hover a job to see
   why it waits; click it to see its steps in **Jobs**. Click **✕** twice to cancel it (the
   first click only arms it). When more jobs run than fit, the last space says how many more and
@@ -219,17 +219,22 @@ Deposit and withdrawing needs Withdraw.
   With items on your cursor the grid's tooltip says what a click stores. Under a search the
   line below the grid reads "Showing X of Y".
   Things you craft at the terminal (in its grid, or jobs you start in its Jobs tab) show first
-  in the Items grid until you close the screen. If
+  in the grid until you close the screen. If
   storage is full, the rest stays with you.
 - **Counts:** hover an item for its total, reserved and available counts. The bar
   under the grid shows how full your item cells are.
 - **Status:** the lamp at the end of the search row is green when the network is online;
   hover it for details. If the network is offline, the reason shows over the grid.
-- **Fluids and energy:** the **Fluids** tab fills buckets and tanks (**Fill**), or
-  empties them when you Shift-click a filled container. The **Energy** tab charges or
-  drains FE items, up to 1,000 FE per click. On the Fluids tab, **mB** switches amounts to
-  whole buckets (**B**: `5B`, or `<1B` for less than one); tooltips keep the exact mB, and
-  the choice is remembered.
+- **One grid for everything:** the **Storage** tab lists items, fluids and energy together.
+  The kind tool at the end of the search row (**All kinds**) narrows the grid to **Items**,
+  **Fluids** or **Energy** and back. Jobs and Patterns are the other two tabs.
+- **Fluids and energy:** select a fluid and **Fill** fills buckets and tanks; select the
+  energy entry and **Charge** or **Drain** charge or drain FE items, up to 1,000 FE per click.
+  Ctrl+Shift-click a filled container or charged item in your inventory to empty its fluid or
+  energy into storage (Shift-click alone stores the item itself; with the kind tool on
+  **Fluids** or **Energy**, Shift-click empties or drains it). With a fluid selected, **mB**
+  switches fluid amounts to whole buckets (**B**: `5B`, or `<1B` for less than one); tooltips
+  keep the exact mB, and the choice is remembered.
 - **Returning a stuck move:** if a move is interrupted, **Return** sends the items in
   transit back to where they came from.
 
@@ -673,8 +678,8 @@ own access. Changing the choice needs Manage. Nested gateways can only narrow ac
 ## Wireless access
 
 Place a **Wireless Access Point** on the network and feed it FE. Use a **Wireless
-Terminal** on it to bind it, and charge the handheld (for example in the terminal's
-Energy tab). Then use the handheld within 64 blocks in the same dimension to open the
+Terminal** on it to bind it, and charge the handheld (for example with the terminal's
+**Charge**). Then use the handheld within 64 blocks in the same dimension to open the
 storage terminal.
 - **Costs:** the access point uses 16 FE per tick while you are connected, and each
   move costs the handheld 64 FE plus 1 FE per block between you and the access point

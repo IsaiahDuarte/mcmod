@@ -102,6 +102,8 @@ final class EmiClientVerification {
   private Runnable then;
 
   void register() {
+    // Q147: written for the Items view; the default All view has its own presentation check.
+    dev.izzy.factorycore.platform.client.TerminalScreen.startKindForTest(0);
     NeoForge.EVENT_BUS.addListener(this::tick);
   }
 
