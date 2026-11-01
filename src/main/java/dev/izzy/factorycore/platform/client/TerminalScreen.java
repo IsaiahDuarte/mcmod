@@ -43,7 +43,15 @@ import org.lwjgl.glfw.GLFW;
  * order the single-class screen used.
  */
 public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
-  static final int MAIN = 192, SIDE = 180, COLUMNS = 9;
+  static final int BASE_MAIN = 192, SIDE = 180, BASE_COLUMNS = 9, MAX_COLUMNS = 18;
+
+  /**
+   * Q137 (n3): grid columns and main panel width for this screen size. The terminal widens in steps
+   * of one column (18 px) to fill the screen, leaving room for the help button and, when open, the
+   * crafting panel.
+   */
+  private int columns = BASE_COLUMNS, main = BASE_MAIN;
+
   static final int SEARCH_Y = TabButton.STRIP + 6;
 
   /** The view, sort, direction, tall, sync and ★ tools: their own row under the search box. */
@@ -132,7 +140,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   public TerminalScreen(TerminalMenu menu, Inventory inventory, Component title) {
     super(menu, inventory, title);
-    imageWidth = MAIN;
+    imageWidth = BASE_MAIN;
     imageHeight = FIXED + NORMAL_ROWS * 18;
   }
 
@@ -168,7 +176,18 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   public int columns() {
-    return COLUMNS;
+    return columns;
+  }
+
+  /** The main panel's width (without the crafting panel). */
+  public int main() {
+    return main;
+  }
+
+  /** Columns that fit {@code screenWidth}, with {@code side} px taken by the crafting panel. */
+  static int fitColumns(int screenWidth, int side) {
+    int spare = screenWidth - side - BASE_MAIN - 2 * (GuideLinks.SIZE + GuideLinks.INSET + 2);
+    return Math.max(BASE_COLUMNS, Math.min(MAX_COLUMNS, BASE_COLUMNS + spare / 18));
   }
 
   public int rows() {
@@ -342,12 +361,18 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   protected void init() {
     String previousSearch = search == null ? menu.view().search() : search.getValue();
     laidOutTall = TerminalSearchSupport.tall(menu.view().sort());
+    columns = fitColumns(width, craftingOpen() ? SIDE : 0);
+    main = BASE_MAIN + (columns - BASE_COLUMNS) * 18;
     int fit = (height - 6 - FIXED) / 18;
-    storage.layout(Math.max(MIN_ROWS, Math.min(laidOutTall ? 256 / COLUMNS : NORMAL_ROWS, fit)));
-    imageWidth = craftingOpen() ? MAIN + SIDE : MAIN;
+    storage.layout(Math.max(MIN_ROWS, Math.min(laidOutTall ? 256 / columns : NORMAL_ROWS, fit)));
+    imageWidth = craftingOpen() ? main + SIDE : main;
     imageHeight = FIXED + storage.rows() * 18;
+    // The inventory stays nine wide, centred under the grid.
     menu.layoutInventory(
-        GRID_X + 1, storage.inventoryTop() + 1, storage.hotbarTop() + 1, () -> !jobsMode);
+        GRID_X + 1 + (columns - BASE_COLUMNS) * 9,
+        storage.inventoryTop() + 1,
+        storage.hotbarTop() + 1,
+        () -> !jobsMode);
     super.init();
     tabs.clear();
 
@@ -356,7 +381,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     var labels = new ArrayList<Component>();
     for (int tab = 0; tab <= PATTERNS_TAB; tab++)
       labels.add(Component.translatable("gui.factorycore.terminal.tab." + tab));
-    int[] widths = TabButton.widths(font, labels, MAIN - 2 * tabX, 1);
+    int[] widths = TabButton.widths(font, labels, main - 2 * tabX, 1);
     for (int tab = 0; tab <= PATTERNS_TAB; tab++) {
       int choice = tab;
       var label = labels.get(tab);
@@ -386,22 +411,19 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     // The search box has its own row, ended by the status lamp; under it, show-craftable, sort,
     // direction and tall (right-aligned).
     var searchRow =
-        new Rect(GRID_X, SEARCH_Y, MAIN - 2 * GRID_X - LAMP - PanelLayout.GAP, PanelLayout.ROW);
-    var toolRow = new Rect(GRID_X, TOOLS_Y, MAIN - 2 * GRID_X, PanelLayout.ROW);
+        new Rect(GRID_X, SEARCH_Y, main - 2 * GRID_X - LAMP - PanelLayout.GAP, PanelLayout.ROW);
+    var toolRow = new Rect(GRID_X, TOOLS_Y, main - 2 * GRID_X, PanelLayout.ROW);
     // Q17: with a recipe viewer installed, a fifth tool syncs the search with it.
     boolean viewer = RecipeViewerSearch.bridge() != null;
     // Q67: ★ (saved views) comes last, so the saved views can cover what is left of it.
-    var tools =
-        PanelLayout.alignRight(
-            toolRow,
-            viewer ? new int[] {16, 30, 14, 14, 14, 14} : new int[] {16, 30, 14, 14, 14},
-            2);
+    // Q137 (n5): every tool is a word in the same button style; a toggle reads green when on.
+    var tools = PanelLayout.alignRight(toolRow, toolWidths(viewer, toolRow.width()), 2);
     var star = tools.removeLast();
     viewsButton =
         addRenderableWidget(
             tool(
                 star,
-                Component.literal("★"),
+                toggle("gui.factorycore.terminal.views", viewsOpen),
                 "gui.factorycore.terminal.views.help",
                 () -> viewsOpen = !viewsOpen));
     savedViewButtons.clear();
@@ -481,7 +503,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         addRenderableWidget(
             tool(
                 tools.get(3),
-                Component.translatable("gui.factorycore.terminal.tall"),
+                toggle("gui.factorycore.terminal.tall", laidOutTall),
                 "gui.factorycore.terminal.tall.help",
                 () ->
                     send(
@@ -667,15 +689,51 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         "gui.factorycore.terminal.sort." + TerminalSearchSupport.mode(menu.view().sort()));
   }
 
-  /** The view tool: grey for Stored, gold for All, aqua for Craftable only (Q62). */
+  /** The view tool names the current view: Stored, All or Craftable (Q62). */
   private Component craftablesLabel() {
-    return Component.literal("⚒")
-        .withStyle(
-            switch (menu.view().view()) {
-              case TerminalPackets.VIEW_ALL -> net.minecraft.ChatFormatting.GOLD;
-              case TerminalPackets.VIEW_CRAFTABLE -> net.minecraft.ChatFormatting.AQUA;
-              default -> net.minecraft.ChatFormatting.GRAY;
-            });
+    return Component.translatable("gui.factorycore.terminal.view." + menu.view().view());
+  }
+
+  /** A toggle tool's word: green when on, plain when off (grey reads as disabled). */
+  private static Component toggle(String key, boolean on) {
+    var word = Component.translatable(key);
+    return on ? word.withStyle(net.minecraft.ChatFormatting.GREEN) : word;
+  }
+
+  /**
+   * Q137: tool widths from their longest label, right to left in the order view, sort, direction,
+   * tall, [viewer sync], views. A row too narrow for them all shrinks the words evenly (buttons
+   * scroll a clipped label).
+   */
+  private int[] toolWidths(boolean viewer, int row) {
+    var keys = new ArrayList<List<String>>();
+    keys.add(
+        List.of(
+            "gui.factorycore.terminal.view.0",
+            "gui.factorycore.terminal.view.1",
+            "gui.factorycore.terminal.view.2"));
+    keys.add(
+        java.util.stream.IntStream.of(0, 1, 2, 3, 64)
+            .mapToObj(mode -> "gui.factorycore.terminal.sort." + mode)
+            .toList());
+    keys.add(List.of());
+    keys.add(List.of("gui.factorycore.terminal.tall"));
+    if (viewer) keys.add(List.of("gui.factorycore.terminal.viewer_sync"));
+    keys.add(List.of("gui.factorycore.terminal.views"));
+    int[] widths = new int[keys.size()];
+    int words = 0, total = 2 * (keys.size() - 1);
+    for (int index = 0; index < widths.length; index++) {
+      int widest = 6;
+      for (var key : keys.get(index))
+        widest = Math.max(widest, font.width(Component.translatable(key)));
+      widths[index] = widest + 8;
+      total += widths[index];
+      if (index != 2) words += widths[index];
+    }
+    if (total > row && words > 0)
+      for (int index = 0; index < widths.length; index++)
+        if (index != 2) widths[index] = widths[index] * (words - (total - row)) / words;
+    return widths;
   }
 
   /** The arrow shows the visible order: down is the mode's natural order, up is reversed. */
@@ -733,12 +791,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     for (int i = 0; i < tabs.size(); i++) tabs.get(i).setSelected(shown == i);
     storage.tick(storageHidden());
     showViews();
-    viewsButton.setMessage(
-        Component.literal("★")
-            .withStyle(
-                viewsOpen
-                    ? net.minecraft.ChatFormatting.YELLOW
-                    : net.minecraft.ChatFormatting.GRAY));
+    viewsButton.setMessage(toggle("gui.factorycore.terminal.views", viewsOpen));
     sortButton.setMessage(sortLabel());
     sortButton.active = !view.busy();
     directionButton.setMessage(directionLabel());
@@ -774,7 +827,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   @Override
   protected void renderBg(GuiGraphics graphics, float partial, int mouseX, int mouseY) {
     int body = TabButton.STRIP;
-    Panels.panel(graphics, new Rect(leftPos, topPos + body, MAIN, imageHeight - body));
+    Panels.panel(graphics, new Rect(leftPos, topPos + body, main, imageHeight - body));
     if (craftingOpen()) crafting.renderBg(graphics);
     if (jobsMode) {
       jobs.renderBg(graphics);
@@ -793,7 +846,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
    * status.
    */
   private Rect lamp() {
-    return new Rect(MAIN - GRID_X - LAMP, SEARCH_Y + (PanelLayout.ROW - LAMP) / 2, LAMP, LAMP);
+    return new Rect(main - GRID_X - LAMP, SEARCH_Y + (PanelLayout.ROW - LAMP) / 2, LAMP, LAMP);
   }
 
   private static final int LAMP = 8;
@@ -999,7 +1052,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
         .withStyle(
             TerminalSearchSupport.sync(menu.view().sort())
                 ? net.minecraft.ChatFormatting.GREEN
-                : net.minecraft.ChatFormatting.GRAY)
+                : net.minecraft.ChatFormatting.WHITE)
         .withStyle(
             style -> style.withUnderlined(TerminalSearchSupport.clearViewer(menu.view().sort())));
   }

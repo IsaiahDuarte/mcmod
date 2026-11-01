@@ -59,41 +59,37 @@ public final class GuideLinks {
     if (item == null) return;
     int page = GuideContent.pageFor(item);
     int left = screen.getGuiLeft(), top = screen.getGuiTop();
-    int right = left + screen.getXSize(), bottom = top + screen.getYSize();
-    // The first spot on screen that no control already uses: beside the panel's top-right corner,
-    // inside it, then beside the bottom-right corner (tabs and side slots differ per screen).
-    int[][] spots = {
-      {right + INSET, top + INSET},
-      {right - SIZE - INSET, top + INSET},
-      {right + INSET, bottom - SIZE - INSET}
-    };
-    for (var spot : spots) {
-      if (spot[0] < 0
-          || spot[1] < 0
-          || spot[0] + SIZE > screen.width
-          || spot[1] + SIZE > screen.height
-          || occupied(event.getListenersList(), spot[0], spot[1])) continue;
-      event.addListener(
-          Button.builder(Component.literal("?"), pressed -> GuideScreen.open(page))
-              .bounds(spot[0], spot[1], SIZE, SIZE)
-              .tooltip(Tooltip.create(Component.translatable("gui.factorycore.guide_button")))
-              .build());
-      return;
-    }
+    int right = left + screen.getXSize();
+    // Q137 (n6): always the same spot, just outside the panel's top-right corner; side widgets
+    // (the upgrade slot) start below it. Only a panel touching the screen edge puts it inside.
+    int x = right + INSET + SIZE <= screen.width ? right + INSET : right - SIZE - INSET;
+    var button = new HelpButton(x, top + INSET, pressed -> GuideScreen.open(page));
+    button.setTooltip(Tooltip.create(Component.translatable("gui.factorycore.guide_button")));
+    event.addListener(button);
   }
 
-  private static boolean occupied(
-      java.util.List<net.minecraft.client.gui.components.events.GuiEventListener> listeners,
-      int x,
-      int y) {
-    for (var listener : listeners)
-      // Hidden widgets count too: some (the upgrade slot) show once their data arrives.
-      if (listener instanceof net.minecraft.client.gui.components.AbstractWidget widget
-          && x < widget.getX() + widget.getWidth()
-          && widget.getX() < x + SIZE
-          && y < widget.getY() + widget.getHeight()
-          && widget.getY() < y + SIZE) return true;
-    return false;
+  /** The panel-relative x and y of the help button, for verification. */
+  public static int[] spot(AbstractContainerScreen<?> screen) {
+    int right = screen.getGuiLeft() + screen.getXSize();
+    int x = right + INSET + SIZE <= screen.width ? right + INSET : right - SIZE - INSET;
+    return new int[] {x, screen.getGuiTop() + INSET};
+  }
+
+  /** A square <b>?</b> button whose glyph is centred to the pixel. */
+  static final class HelpButton extends Button {
+    HelpButton(int x, int y, OnPress press) {
+      super(x, y, SIZE, SIZE, Component.literal("?"), press, DEFAULT_NARRATION);
+    }
+
+    @Override
+    public void renderString(
+        net.minecraft.client.gui.GuiGraphics graphics,
+        net.minecraft.client.gui.Font font,
+        int color) {
+      // The glyph is 5x7 px; Button centres the 6 px advance and an 8 px line, one px off each.
+      graphics.drawString(
+          font, getMessage(), getX() + (SIZE - 5) / 2, getY() + (SIZE - 7) / 2, color);
+    }
   }
 
   @SubscribeEvent

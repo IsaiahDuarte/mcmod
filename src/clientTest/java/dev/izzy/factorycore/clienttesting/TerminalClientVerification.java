@@ -523,6 +523,8 @@ public final class TerminalClientVerification {
         client.resizeDisplay();
       }
       case 31 -> {
+        // Q137 (n3): the grid widens past nine columns when the screen has room.
+        check(screen.columns() > 9, "the terminal widens with the screen: " + screen.columns());
         captures.grab(client, "terminal-saved-views-scale-4.png");
         client.options.guiScale().set(1);
         client.resizeDisplay();

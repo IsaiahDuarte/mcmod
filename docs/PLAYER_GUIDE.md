@@ -181,16 +181,20 @@ Deposit and withdrawing needs Withdraw.
 - **Search box:** Up and Down recall your last 16 searches, right-click clears it, and
   **Ctrl+F** (rebindable as "Focus terminal search") puts the cursor in it. Shift-right-click
   makes it take the cursor whenever the terminal opens (again to stop); this is remembered.
-- **Saved views:** **★** at the end of the row under the search box swaps the sort tools
+- **Layout:** the terminal widens with your window, up to 18 columns, and the window's height
+  sets its rows. Each tool under the search box is a word; a toggle (Tall, Sync, Views) is
+  green when on. Hover any tool to see what it does.
+- **Saved views:** **Views** at the end of the row under the search box swaps the sort tools
   for five numbered buttons. Click an empty (grey) one to save the current search, sort,
   direction and item view in it, and a saved one to use it again. Shift-click saves over a
   view, and right-click empties it. Saved views are kept with your player, in every terminal.
 - **Sort:** the sort button cycles Name, Qty, Mod, ID and New (most recently stored or
-  taken first, since the server started); the arrow beside it reverses the order. **⇕** makes the grid fill the window's height instead of six rows. Your search,
+  taken first, since the server started); the arrow beside it reverses the order. **Tall** makes the grid fill the window's height
+  instead of six rows. Your search,
   sort and grid height are remembered.
-- **Craftable items:** items your Crafters can make have an orange corner. **⚒** switches
-  the view: stored items (grey), stored plus craftable items you have none of, marked **+**
-  (gold), or only craftable items (aqua). Click a **+** item (or middle-click any craftable
+- **Craftable items:** items your Crafters can make have an orange corner. The view
+  tool switches between **Stored**, **All** (stored plus craftable items you have none of,
+  marked **+**) and **Craftable** (only craftable items). Click a **+** item (or middle-click any craftable
   item) to open it in Jobs, ready to type an amount. The view is remembered.
 - **Taking items:** left-click takes a stack and right-click takes half. Shift-click
   sends the stack to your inventory. Over an item, Shift+wheel up takes one and Shift+wheel
@@ -752,14 +756,14 @@ mode, it switches and says so above the hotbar. On any other recipe (furnace, bl
 **Inputs** and **Outputs** for a Processing Pattern, items and fluids with their amounts (fluids
 rounded up to 250 mB steps). A recipe with more than three outputs keeps the first three, and a
 message says so; one with more than nine inputs cannot be transferred. Dragging an item or fluid onto the program editor types its
-expression. With JEI installed the terminal's search row also has a **J** button: while it is
-green, what you type in the terminal search is copied into JEI's search and the other way
-round. Right-click **J** to have JEI's search emptied each time the terminal opens (the J is
-underlined while that is on). Both settings are remembered with your sort. Everything also works
+expression. With JEI installed the terminal's search row also has a **Sync** button: while it
+is green, what you type in the terminal search is copied into JEI's search and the other way
+round. Right-click **Sync** to have JEI's search emptied each time the terminal opens (the word
+is underlined while that is on). Both settings are remembered with your sort. Everything also works
 without JEI.
 
 EMI works the same way. Its fill button sets the terminal's ghosts, or with Ctrl held opens the
-item in **Jobs**. You can drag from EMI onto filters and the program editor, and **J** syncs
+item in **Jobs**. You can drag from EMI onto filters and the program editor, and **Sync** syncs
 with EMI's search. EMI counts the terminal's stock as well as your inventory when it marks what
 you can make.
 

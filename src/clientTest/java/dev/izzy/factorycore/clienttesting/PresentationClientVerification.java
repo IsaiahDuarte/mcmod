@@ -391,7 +391,25 @@ public final class PresentationClientVerification {
   private void guideFromImporter(BlockPos importerAt) {
     int importerPage =
         dev.izzy.factorycore.platform.guide.GuideContent.pageFor("factorycore:importer");
-    step(client -> waited() > 4 && press(client, "?"));
+    step(
+        client -> {
+          if (waited() <= 4) return false;
+          // Q137 (n6): the ? sits at the same spot beside the panel's top-right corner.
+          var screen =
+              (net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>) client.screen;
+          int[] spot = dev.izzy.factorycore.platform.client.GuideLinks.spot(screen);
+          check(
+              spot[0] == screen.getGuiLeft() + screen.getXSize() + 3
+                  && client.screen.children().stream()
+                      .anyMatch(
+                          child ->
+                              child instanceof Button button
+                                  && button.getMessage().getString().equals("?")
+                                  && button.getX() == spot[0]
+                                  && button.getY() == spot[1]),
+              "the ? button sits beside the panel's top-right corner");
+          return press(client, "?");
+        });
     step(
         client -> {
           if (!(client.screen instanceof dev.izzy.factorycore.platform.client.GuideScreen guide)
@@ -1575,7 +1593,7 @@ public final class PresentationClientVerification {
         client -> {
           if (!(client.screen instanceof TerminalScreen) || waited() < 6) return false;
           setScale(client, 4);
-          return press(client, "⚒");
+          return pressView(client);
         });
     step(
         client -> {
@@ -1609,7 +1627,7 @@ public final class PresentationClientVerification {
         });
     step(client -> press(client, "Items"));
     // Q62: the view tool cycles All → Craftable → Stored.
-    step(client -> waited() > 4 && press(client, "⚒"));
+    step(client -> waited() > 4 && pressView(client));
     step(
         client -> {
           var view = terminal(client).getMenu().view();
@@ -1623,7 +1641,7 @@ public final class PresentationClientVerification {
               .append("items view craftable: ")
               .append(view.rows().stream().map(row -> row.icon() + "=" + row.total()).toList())
               .append('\n');
-          return press(client, "⚒");
+          return pressView(client);
         });
     step(
         client -> {
@@ -1845,6 +1863,11 @@ public final class PresentationClientVerification {
   }
 
   /** Presses the visible, active button with this exact label; false when none is pressable. */
+  /** The view tool, whose word is the current view (Q137). */
+  private static boolean pressView(Minecraft client) {
+    return press(client, "Stored") || press(client, "All") || press(client, "Craftable");
+  }
+
   private static boolean press(Minecraft client, String label) {
     for (var child : client.screen.children())
       if (child instanceof Button button

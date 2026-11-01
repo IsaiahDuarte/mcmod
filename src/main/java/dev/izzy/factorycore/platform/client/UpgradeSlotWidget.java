@@ -40,7 +40,9 @@ public final class UpgradeSlotWidget extends AbstractWidget {
   /** Placed beside a container screen's panel. */
   public static UpgradeSlotWidget beside(
       int left, int top, int width, int menu, IntSupplier state) {
-    return new UpgradeSlotWidget(left + width + 2, top + 4, menu, state);
+    // Below the help button (GuideLinks), which sits beside the panel's top-right corner.
+    return new UpgradeSlotWidget(
+        left + width + 2, top + GuideLinks.INSET + GuideLinks.SIZE + 3, menu, state);
   }
 
   @Override

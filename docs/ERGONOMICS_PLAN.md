@@ -370,7 +370,8 @@ screens.
   in the terminal and Portable Storage. [Evidence](evidence/ergonomics-q134-shift-drag-2026-11-01.md). Holding Shift and dragging the left mouse
   button across the player inventory moves each stack passed over, as in vanilla chests.
   Test it against the terminal and Portable Storage.
-- [ ] **Q137 — Terminal layout and button consistency (n3, n5, n6).** Size M.
+- [x] **Q137 — Terminal layout and button consistency (n3, n5, n6).** Size M. Done 2026-11-01
+  (commit subject `Q137:`). [Evidence](evidence/ergonomics-q137-terminal-layout-2026-11-01.md).
   - **Width:** a wider terminal that uses the screen width at every scale.
   - **Buttons:** one icon style for the terminal's button cluster, with labels or tooltips that
     say what each does.

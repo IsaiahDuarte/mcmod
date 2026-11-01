@@ -2,7 +2,6 @@ package dev.izzy.factorycore.platform.client;
 
 import static dev.izzy.factorycore.platform.client.TerminalScreen.GRID_X;
 import static dev.izzy.factorycore.platform.client.TerminalScreen.GRID_Y;
-import static dev.izzy.factorycore.platform.client.TerminalScreen.MAIN;
 
 import dev.izzy.factorycore.platform.client.ui.PanelLayout;
 import dev.izzy.factorycore.platform.client.ui.Panels;
@@ -89,7 +88,7 @@ final class TerminalPatternsView {
                   Component.translatable("gui.factorycore.terminal.patterns.mode." + value)));
     }
     width += 10;
-    int right = MAIN - GRID_X, y = infoY();
+    int right = screen.main() - GRID_X, y = infoY();
     modeButton =
         screen.add(
             net.minecraft.client.gui.components.Button.builder(
@@ -137,7 +136,8 @@ final class TerminalPatternsView {
                 ? "gui.factorycore.terminal.patterns.show"
                 : "gui.factorycore.terminal.patterns.hide");
     int width = font.width(label);
-    return new Rect(MAIN - GRID_X - SCROLLBAR - 2 - width, GRID_Y + row * ROW_HEIGHT + 1, width, 8);
+    return new Rect(
+        screen.main() - GRID_X - SCROLLBAR - 2 - width, GRID_Y + row * ROW_HEIGHT + 1, width, 8);
   }
 
   /** Opening the view asks the server for its window (and starts its refreshes). */
@@ -184,7 +184,8 @@ final class TerminalPatternsView {
       }
     }
     var track =
-        new Rect(left + MAIN - GRID_X - SCROLLBAR, top + GRID_Y, SCROLLBAR, screen.rows() * 18);
+        new Rect(
+            left + screen.main() - GRID_X - SCROLLBAR, top + GRID_Y, SCROLLBAR, screen.rows() * 18);
     Panels.scrollbar(
         graphics, track, rows, view.total(), view.offset(), Math.max(1, view.total() - fit()));
   }
@@ -193,7 +194,7 @@ final class TerminalPatternsView {
     var view = view();
     var font = screen.font();
     int rows = Math.min(fit(), view.crafters().size());
-    int width = MAIN - 2 * GRID_X - SCROLLBAR - 2;
+    int width = screen.main() - 2 * GRID_X - SCROLLBAR - 2;
     if (view.crafters().isEmpty())
       Panels.wrapped(
           graphics,
@@ -267,7 +268,7 @@ final class TerminalPatternsView {
         font.plainSubstrByWidth(
             info.getString(),
             filterButton == null
-                ? MAIN - 2 * GRID_X
+                ? screen.main() - 2 * GRID_X
                 : filterButton.getX() - screen.left() - GRID_X - 4),
         GRID_X + 1,
         infoY() + 5,

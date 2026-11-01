@@ -2,7 +2,6 @@ package dev.izzy.factorycore.platform.client;
 
 import static dev.izzy.factorycore.platform.client.TerminalScreen.GRID_X;
 import static dev.izzy.factorycore.platform.client.TerminalScreen.GRID_Y;
-import static dev.izzy.factorycore.platform.client.TerminalScreen.MAIN;
 
 import dev.izzy.factorycore.core.EnumKeys;
 import dev.izzy.factorycore.core.crafting.CraftingJob;
@@ -117,7 +116,7 @@ final class TerminalJobsView {
 
   /** The plan and job-step breakdowns cover the strip, the text and the job list. */
   private Rect overlay() {
-    return new Rect(GRID_X, STRIP_Y, MAIN - 2 * GRID_X, jobsBottom() - STRIP_Y);
+    return new Rect(GRID_X, STRIP_Y, screen.main() - 2 * GRID_X, jobsBottom() - STRIP_Y);
   }
 
   private int overlayLines() {
@@ -148,7 +147,7 @@ final class TerminalJobsView {
     var font = screen.font();
     var first =
         PanelLayout.fit(
-            new Rect(GRID_X, y, MAIN - 2 * GRID_X, PanelLayout.ROW),
+            new Rect(GRID_X, y, screen.main() - 2 * GRID_X, PanelLayout.ROW),
             new int[] {20, 20, 26, 26, 30, 34},
             3);
     // Q64: − and + step the typed amount and preview it.
@@ -181,7 +180,7 @@ final class TerminalJobsView {
     startJob = jobButton("start", first.get(5), this::start);
     var second =
         PanelLayout.fit(
-            new Rect(GRID_X, y + PanelLayout.ROW + 4, MAIN - 2 * GRID_X, PanelLayout.ROW),
+            new Rect(GRID_X, y + PanelLayout.ROW + 4, screen.main() - 2 * GRID_X, PanelLayout.ROW),
             new int[] {32, 32, 32, 40, 20},
             3);
     keepJob =
@@ -454,7 +453,7 @@ final class TerminalJobsView {
                 * jobs.offset()
                 / Math.max(1, Math.max(0, jobs.total() - visible));
     Panels.thumb(graphics, new Rect(thumbX, bar.y() + 1, thumb, bar.height() - 2));
-    var list = new Rect(left + GRID_X, top + JOBS_Y, MAIN - 2 * GRID_X, jobRows() * 18);
+    var list = new Rect(left + GRID_X, top + JOBS_Y, screen.main() - 2 * GRID_X, jobRows() * 18);
     Panels.inset(graphics, list);
     var jobRows = jobs.jobs();
     for (int line = 0; line < jobRows() && jobScroll + line < jobRows.size(); line++) {
@@ -798,7 +797,7 @@ final class TerminalJobsView {
     var jobs = menu().jobView();
     var font = screen.font();
     if (planShown() || detailShown()) return;
-    int width = MAIN - 2 * GRID_X;
+    int width = screen.main() - 2 * GRID_X;
     Component first;
     if (!jobs.preview().icon().isEmpty())
       first =
@@ -948,7 +947,7 @@ final class TerminalJobsView {
   private int jobRowAt(double mouseX, double mouseY) {
     if (planShown() || detailShown()) return -1;
     int left = screen.left(), top = screen.top();
-    if (mouseX < left + GRID_X || mouseX >= left + MAIN - GRID_X) return -1;
+    if (mouseX < left + GRID_X || mouseX >= left + screen.main() - GRID_X) return -1;
     int line = (int) Math.floor((mouseY - top - JOBS_Y) / 18);
     if (mouseY < top + JOBS_Y || line >= jobRows()) return -1;
     int index = jobScroll + line;
@@ -983,7 +982,7 @@ final class TerminalJobsView {
   private boolean overJobList(double mouseX, double mouseY) {
     int left = screen.left(), top = screen.top();
     return mouseX >= left + GRID_X
-        && mouseX < left + MAIN - GRID_X
+        && mouseX < left + screen.main() - GRID_X
         && mouseY >= top + JOBS_Y
         && mouseY < top + JOBS_Y + jobRows() * 18;
   }

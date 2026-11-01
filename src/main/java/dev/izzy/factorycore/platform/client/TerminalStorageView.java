@@ -1,9 +1,7 @@
 package dev.izzy.factorycore.platform.client;
 
-import static dev.izzy.factorycore.platform.client.TerminalScreen.COLUMNS;
 import static dev.izzy.factorycore.platform.client.TerminalScreen.GRID_X;
 import static dev.izzy.factorycore.platform.client.TerminalScreen.GRID_Y;
-import static dev.izzy.factorycore.platform.client.TerminalScreen.MAIN;
 
 import dev.izzy.factorycore.platform.client.ui.PanelLayout;
 import dev.izzy.factorycore.platform.client.ui.Panels;
@@ -34,7 +32,7 @@ import net.minecraft.world.item.Items;
  * entry. Coordinates are panel-relative unless a name says absolute.
  */
 final class TerminalStorageView {
-  private static final int SCROLL_X = GRID_X + COLUMNS * 18 + 4, SCROLL_WIDTH = 12;
+  private static final int SCROLL_WIDTH = 12;
 
   private final TerminalScreen screen;
   private final List<AbstractButton> cells = new ArrayList<>();
@@ -42,6 +40,11 @@ final class TerminalStorageView {
   private int rows = 4, desiredOffset, selected;
   private long shownRevision;
   private boolean dragging;
+
+  /** The scrollbar's x, right of the grid, which is as wide as the terminal's columns. */
+  private int scrollX() {
+    return GRID_X + screen.columns() * 18 + 4;
+  }
 
   TerminalStorageView(TerminalScreen screen) {
     this.screen = screen;
@@ -107,15 +110,15 @@ final class TerminalStorageView {
 
   boolean windowSettled() {
     var view = menu().view();
-    return view.size() == COLUMNS * rows && view.offset() == desiredOffset;
+    return view.size() == screen.columns() * rows && view.offset() == desiredOffset;
   }
 
   int itemX(int index) {
-    return screen.left() + GRID_X + 1 + 18 * (index % COLUMNS);
+    return screen.left() + GRID_X + 1 + 18 * (index % screen.columns());
   }
 
   int itemY(int index) {
-    return screen.top() + GRID_Y + 1 + 18 * (index / COLUMNS);
+    return screen.top() + GRID_Y + 1 + 18 * (index / screen.columns());
   }
 
   private int infoY() {
@@ -132,7 +135,7 @@ final class TerminalStorageView {
 
   void layout(int rows) {
     this.rows = rows;
-    desiredOffset = desiredOffset / COLUMNS * COLUMNS;
+    desiredOffset = desiredOffset / screen.columns() * screen.columns();
   }
 
   void resetOffset() {
@@ -144,11 +147,14 @@ final class TerminalStorageView {
   }
 
   void requestWindow() {
-    screen.send(TerminalPackets.WINDOW, desiredOffset, COLUMNS * rows, new byte[32]);
+    screen.send(TerminalPackets.WINDOW, desiredOffset, screen.columns() * rows, new byte[32]);
   }
 
   private int maxOffset() {
-    return Math.max(0, ((menu().view().total() + COLUMNS - 1) / COLUMNS - rows) * COLUMNS);
+    return Math.max(
+        0,
+        ((menu().view().total() + screen.columns() - 1) / screen.columns() - rows)
+            * screen.columns());
   }
 
   /** Adds the info row's buttons, then one invisible button per grid cell for focus and input. */
@@ -157,7 +163,7 @@ final class TerminalStorageView {
     var font = screen.font();
     int kind = screen.kind();
     // Info row: the tab's actions on the left, Return and Crafting on the right.
-    var info = new Rect(GRID_X, infoY(), MAIN - 2 * GRID_X, PanelLayout.ROW);
+    var info = new Rect(GRID_X, infoY(), screen.main() - 2 * GRID_X, PanelLayout.ROW);
     var crafting = Component.translatable("gui.factorycore.terminal.grid.panel");
     var close = Component.translatable("gui.factorycore.terminal.grid.panel.close");
     var returnLabel = Component.translatable("gui.factorycore.terminal.return");
@@ -222,7 +228,7 @@ final class TerminalStorageView {
                         new byte[32]);
                 }));
 
-    for (int index = 0; index < COLUMNS * rows; index++) {
+    for (int index = 0; index < screen.columns() * rows; index++) {
       int cell = index;
       cells.add(
           screen.add(
@@ -306,7 +312,7 @@ final class TerminalStorageView {
   void renderBg(GuiGraphics graphics) {
     int left = screen.left(), top = screen.top(), kind = screen.kind();
     var entries = entries();
-    for (int index = 0; index < COLUMNS * rows; index++) {
+    for (int index = 0; index < screen.columns() * rows; index++) {
       int x = itemX(index) - 1, y = itemY(index) - 1;
       Panels.slot(graphics, x, y);
       if (index >= entries.size()) continue;
@@ -335,8 +341,8 @@ final class TerminalStorageView {
     var view = menu().view();
     Panels.scrollbar(
         graphics,
-        new Rect(left + SCROLL_X, top + GRID_Y, SCROLL_WIDTH, rows * 18),
-        COLUMNS * rows,
+        new Rect(left + scrollX(), top + GRID_Y, SCROLL_WIDTH, rows * 18),
+        screen.columns() * rows,
         view.total(),
         desiredOffset,
         maxOffset());
@@ -381,7 +387,7 @@ final class TerminalStorageView {
           graphics,
           screen.font(),
           StatusStrip.text(menu().deviceStatus()),
-          new Rect(GRID_X + 4, GRID_Y + 4, COLUMNS * 18 - 8, 3 * PanelLayout.LINE),
+          new Rect(GRID_X + 4, GRID_Y + 4, screen.columns() * 18 - 8, 3 * PanelLayout.LINE),
           Panels.BAD);
   }
 
@@ -526,14 +532,14 @@ final class TerminalStorageView {
     int left = screen.left(), top = screen.top();
     return mouseY >= top + GRID_Y
         && mouseY < top + GRID_Y + rows * 18
-        && mouseX >= left + SCROLL_X
-        && mouseX < left + SCROLL_X + SCROLL_WIDTH;
+        && mouseX >= left + scrollX()
+        && mouseX < left + scrollX() + SCROLL_WIDTH;
   }
 
   private int rowAt(double mouseX, double mouseY) {
     int x = (int) Math.floor((mouseX - screen.left() - GRID_X) / 18);
     int y = (int) Math.floor((mouseY - screen.top() - GRID_Y) / 18);
-    return x < 0 || x >= COLUMNS || y < 0 || y >= rows ? -1 : x + COLUMNS * y;
+    return x < 0 || x >= screen.columns() || y < 0 || y >= rows ? -1 : x + screen.columns() * y;
   }
 
   /** Scrollbar drags and grid clicks; A3: middle-click any craftable, or click a ghost, to ask. */
@@ -706,7 +712,11 @@ final class TerminalStorageView {
     }
     if ((rowAt(mouseX, mouseY) >= 0 || overScrollbar(mouseX, mouseY)) && scrollY != 0) {
       desiredOffset =
-          Math.max(0, Math.min(maxOffset(), desiredOffset + (scrollY > 0 ? -COLUMNS : COLUMNS)));
+          Math.max(
+              0,
+              Math.min(
+                  maxOffset(),
+                  desiredOffset + (scrollY > 0 ? -screen.columns() : screen.columns())));
       return true;
     }
     return false;
@@ -723,7 +733,7 @@ final class TerminalStorageView {
 
   private void scrollTo(double y) {
     double fraction = Math.max(0, Math.min(1, (y - screen.top() - GRID_Y) / (rows * 18)));
-    desiredOffset = (int) Math.round(fraction * maxOffset() / COLUMNS) * COLUMNS;
+    desiredOffset = (int) Math.round(fraction * maxOffset() / screen.columns()) * screen.columns();
   }
 
   private void clickRow(int index, int button) {

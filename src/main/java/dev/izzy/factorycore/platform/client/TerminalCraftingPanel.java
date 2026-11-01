@@ -1,6 +1,5 @@
 package dev.izzy.factorycore.platform.client;
 
-import static dev.izzy.factorycore.platform.client.TerminalScreen.MAIN;
 import static dev.izzy.factorycore.platform.client.TerminalScreen.SIDE;
 
 import dev.izzy.factorycore.platform.client.ui.ChoiceButton;
@@ -74,11 +73,11 @@ final class TerminalCraftingPanel {
   }
 
   int gridX() {
-    return MAIN + GRID_X;
+    return screen.main() + GRID_X;
   }
 
   int resultX() {
-    return MAIN + GRID_X + 54 + 14;
+    return screen.main() + GRID_X + 54 + 14;
   }
 
   private int resultY() {
@@ -90,7 +89,7 @@ final class TerminalCraftingPanel {
     gridTabs.clear();
     var font = screen.font();
     int left = screen.left(), top = screen.top();
-    int x0 = MAIN;
+    int x0 = screen.main();
     var modes = new int[3];
     for (int page = 0; page < 3; page++)
       modes[page] =
@@ -487,7 +486,7 @@ final class TerminalCraftingPanel {
   /** The panel, the ghost cells (target outlined) and the result well. */
   void renderBg(GuiGraphics graphics) {
     int left = screen.left(), top = screen.top(), body = TabButton.STRIP;
-    Panels.panel(graphics, new Rect(left + MAIN, top + body, SIDE, BOTTOM - body));
+    Panels.panel(graphics, new Rect(left + screen.main(), top + body, SIDE, BOTTOM - body));
     var view = menu().gridView();
     for (int cell = 0; cell < 9; cell++) {
       int index = cellIndex(cell);
@@ -521,7 +520,7 @@ final class TerminalCraftingPanel {
   void renderLabels(GuiGraphics graphics) {
     var view = menu().gridView();
     var font = screen.font();
-    int x = MAIN + GRID_X, width = SIDE - 14;
+    int x = screen.main() + GRID_X, width = SIDE - 14;
     int y = STATUS_Y;
     if (gridPage != 0 && !view.cells().get(target).isEmpty()) {
       graphics.drawString(font, ghostAmount(target), x, GRID_Y + 54 + 6, Panels.TEXT, false);
