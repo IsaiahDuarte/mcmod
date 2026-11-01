@@ -29,6 +29,19 @@ final class ProgramAuthoringClientVerification {
           else screen.charTyped(character, 0);
         }
         require(editor.getValue().equals(SOURCE), "Typed multiline source preserved exactly");
+        // Q135: while typing, screen-key hooks (JEI's R and U) never see the key.
+        require(
+            net.neoforged.neoforge.client.ClientHooks.onScreenKeyPressedPre(
+                    screen, GLFW.GLFW_KEY_R, 0, 0)
+                && editor.getValue().equals(SOURCE),
+            "A focused editor takes R before other mods' key hooks");
+        screen.setFocused(null);
+        require(
+            !net.neoforged.neoforge.client.ClientHooks.onScreenKeyPressedPre(
+                screen, GLFW.GLFW_KEY_R, 0, 0),
+            "Without editor focus the key reaches other mods again");
+        screen.setFocused(editor);
+        editor.setFocused(true);
         editor.insert(" bogus");
         advance(ticks);
       }

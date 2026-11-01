@@ -35,7 +35,8 @@ import org.lwjgl.glfw.GLFW;
  * buttons are grouped: saving and deploying, running, and writing (templates, insert, preview,
  * Wasm). Templates open in the same chooser as Insert, by name.
  */
-public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
+public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu>
+    implements TextKeys.Capture {
   private ProgramTextEditor editor;
   private DraftHistory history;
   private EditBox search;
@@ -517,6 +518,11 @@ public final class ProgramScreen extends AbstractContainerScreen<ProgramMenu> {
       for (var line : menu.authorView().preview())
         lines.addAll(font.split(Component.literal(line), editorWidth() - 12));
     return lines;
+  }
+
+  @Override
+  public boolean capturingText() {
+    return editor != null && editor.isFocused() && getFocused() == editor;
   }
 
   @Override

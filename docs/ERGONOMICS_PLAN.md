@@ -340,7 +340,11 @@ screens.
 
   Done when: a GameTest imports from slot 97 of a 100-slot inventory and exports into it once
   slots 0–63 are full.
-- [ ] **Q135 — Crash while typing in the Program Controller (n22).** Size S. The pasted log has
+- [x] **Q135 — Crash while typing in the Program Controller (n22).** Size S. Done 2026-11-01
+  (commit subject `Q135:`): JEI and other mods no longer see keys while the editor has focus, and
+  editor tooltips wrap and stay on screen. No crash report exists: the instance's only reports
+  are mod-loading failures from before the playthrough. The pasted error was a non-fatal
+  Polymorph mixin warning. [Evidence](evidence/ergonomics-q135-typing-2026-11-01.md). The pasted log has
   no crash report. It shows only a Polymorph mixin failure on JEI's transfer code (Polymorph,
   Sophisticated Core and JEI), triggered from JEI's recipe screen.
   - **Crash report:** get `crash-reports/crash-*.txt` from the user.

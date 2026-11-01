@@ -367,7 +367,8 @@ public final class ProgramTextEditor extends AbstractScrollWidget {
   public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     super.renderWidget(graphics, mouseX, mouseY, partial);
     if (visible && isMouseOver(mouseX, mouseY) && !diagnostics.isEmpty() && !showing())
-      graphics.renderComponentTooltip(font, problem(diagnostics.getFirst()), mouseX, mouseY);
+      // Q135: wrapped and kept on screen, drawn after the buttons.
+      Tooltips.show(font, problem(diagnostics.getFirst()));
   }
 
   /** A problem as lines: where and what, then the hint and an example when there are any. */
