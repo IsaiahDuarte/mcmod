@@ -220,7 +220,11 @@ machine. The same rule kept processing patterns away from modded machines (ADR 0
   of a shared handler instance. Such mods can implement `ExternalBackingProvider` to be exact.
   For processing, a multiblock reached from two blocks can be leased by two jobs at once; the job
   still only collects outputs it can attribute (ADR 0032).
-- **Follow-up:** reaching item handlers over 64 slots is plan Q145.
+- **Large inventories (Q145):** an item port left on the default window (slot 0, count 64), and
+  whose provider describes no indexed partitions, reaches the whole handler. It re-measures the
+  handler size on every call, which follows inventories that resize when upgraded, and stops at
+  1,024 slots. Counts read up to 64 pages of 16 slots, so every pass is still bounded. A narrowed
+  window still means exactly those slots.
 - **Tests:**
   - `ModdedProviderGameTests` covers an Importer and a keep-stock Exporter on an undescribed
     100-slot inventory.

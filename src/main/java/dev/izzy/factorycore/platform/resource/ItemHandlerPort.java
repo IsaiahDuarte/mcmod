@@ -9,9 +9,14 @@ import java.util.UUID;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.IItemHandler;
 
-/** Explicit bounded slot window on a caller-selected side's item capability. */
+/**
+ * Explicit bounded slot window on a caller-selected side's item capability, or (Q145) the whole
+ * handler up to {@link #WHOLE_SLOTS} slots, re-measured on every call.
+ */
 public final class ItemHandlerPort implements ResourcePort {
   public static final int MAX_SLOTS_PER_CALL = 64;
+  public static final int WHOLE_SLOTS = 1024;
+  private final boolean whole;
   private final UUID backingId;
   private final IItemHandler handler;
   private final PlatformResourceCodec codec;
@@ -37,6 +42,29 @@ public final class ItemHandlerPort implements ResourcePort {
     }
     this.firstSlot = firstSlot;
     this.slotCount = slotCount;
+    whole = false;
+  }
+
+  private ItemHandlerPort(UUID backingId, IItemHandler handler, PlatformResourceCodec codec) {
+    this.backingId = Objects.requireNonNull(backingId);
+    this.handler = Objects.requireNonNull(handler);
+    this.codec = Objects.requireNonNull(codec);
+    firstSlot = 0;
+    slotCount = WHOLE_SLOTS;
+    whole = true;
+  }
+
+  /** Every slot of {@code handler}, up to {@link #WHOLE_SLOTS}, however many it has right now. */
+  public static ItemHandlerPort whole(
+      UUID backingId, IItemHandler handler, PlatformResourceCodec codec) {
+    return new ItemHandlerPort(backingId, handler, codec);
+  }
+
+  private int end() {
+    if (!whole) return firstSlot + slotCount;
+    int slots = handler.getSlots();
+    if (slots < 0) throw new IllegalStateException("Negative item handler size");
+    return Math.min(slots, WHOLE_SLOTS);
   }
 
   @Override
@@ -58,7 +86,8 @@ public final class ItemHandlerPort implements ResourcePort {
     OperationResult.requireQuantity(offered);
     if (offered == 0 || key.kind() != ResourceKind.ITEM) return 0;
     int amount = (int) Math.min(offered, Integer.MAX_VALUE);
-    for (int slot = firstSlot; slot < firstSlot + slotCount; slot++) {
+    int end = end();
+    for (int slot = firstSlot; slot < end; slot++) {
       var offeredStack = codec.itemStack(key, amount);
       var simulated = handler.insertItem(slot, offeredStack, true);
       int accepted = accepted(key, amount, simulated);
@@ -83,7 +112,8 @@ public final class ItemHandlerPort implements ResourcePort {
     OperationResult.requireQuantity(requested);
     if (requested == 0 || key.kind() != ResourceKind.ITEM) return 0;
     int amount = (int) Math.min(requested, Integer.MAX_VALUE);
-    for (int slot = firstSlot; slot < firstSlot + slotCount; slot++) {
+    int end = end();
+    for (int slot = firstSlot; slot < end; slot++) {
       var observed = handler.getStackInSlot(slot);
       if (observed.isEmpty() || !codec.itemKey(observed).equals(key)) continue;
       var extracted = handler.extractItem(slot, amount, false);

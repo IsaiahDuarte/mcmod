@@ -95,13 +95,14 @@ public final class WorldConnectors {
     if (view.face() == binding.face.getOpposite())
       // The Interface's own face: slots narrow its bound window and never widen it.
       return (long) view.first() < settings.firstSlot()
-              || (long) view.first() + view.count()
-                  > (long) settings.firstSlot() + settings.slotCount()
+              || (long) view.first() + view.count() > (long) settings.firstSlot() + span(binding)
           ? OperationResult.Reason.WRONG_RESOURCE
           : OperationResult.Reason.OK;
     // Another face re-indexes a sided container's slots, so a narrowed binding cannot be mapped
     // onto it: only an Interface bound to every slot of its own face may use another side.
-    if (settings.firstSlot() != 0 || settings.slotCount() < slots(binding.handler, handle.kind()))
+    if (!binding.whole()
+        && (settings.firstSlot() != 0
+            || settings.slotCount() < slots(binding.handler, handle.kind())))
       return OperationResult.Reason.RESERVED;
     Object other;
     try {
@@ -303,7 +304,7 @@ public final class WorldConnectors {
               binding.handler,
               new PlatformResourceCodec(binding.owner.serverLevel().registryAccess()),
               settings.firstSlot(),
-              settings.slotCount(),
+              span(binding),
               cursor);
       if (bindings.get(handle.connector().id()) != binding)
         return new Observation(OperationResult.Reason.OFFLINE, null);
@@ -344,6 +345,11 @@ public final class WorldConnectors {
      * A whole-capability fluid selection covers at most 64 tanks; a handler with more is reported
      * unsupported rather than partially counted or moved.
      */
+    /** Q145: an undivided default item port reaches the whole handler. */
+    boolean whole() {
+      return !indexed && owner.settings().wholeItemHandler();
+    }
+
     boolean unsupportedWhole(ResourceKind kind) {
       return kind == ResourceKind.FLUID
           && owner.settings().wholeFluidHandler()
@@ -536,6 +542,8 @@ public final class WorldConnectors {
           switch (settings.kind()) {
             case ITEM -> {
               var items = (IItemHandler) handler;
+              if (!indexed && settings.wholeItemHandler())
+                yield ItemHandlerPort.whole(backing, items, codec);
               int count = Math.min(settings.slotCount(), items.getSlots() - settings.firstSlot());
               if (count <= 0)
                 throw new IllegalArgumentException("Selected item window is unavailable");
@@ -837,14 +845,14 @@ public final class WorldConnectors {
       var tags = new PlatformFilterTags(server);
       long total = 0;
       int cursor = 0;
-      for (int i = 0; i < 4 && cursor >= 0; i++) {
+      for (int i = 0; i < MAX_PAGES && cursor >= 0; i++) {
         var page =
             ExternalStockPage.read(
                 binding.handle.kind(),
                 binding.handler,
                 codec,
                 settings.firstSlot(),
-                settings.slotCount(),
+                span(binding),
                 cursor);
         for (var row : page.entries())
           if (filter.matches(row.key(), tags)) total = Math.addExact(total, row.stored());
@@ -882,21 +890,27 @@ public final class WorldConnectors {
         : 0;
   }
 
+  /** Pages a full count may read: a whole item handler is up to 1024 slots (Q145). */
+  private static final int MAX_PAGES =
+      ConnectorSettings.WHOLE_ITEM_SLOTS / ExternalStockPage.PAGE_SIZE;
+
+  /** The slot count a binding's own window spans. */
+  private static int span(Binding binding) {
+    return binding.whole()
+        ? ConnectorSettings.WHOLE_ITEM_SLOTS
+        : binding.owner.settings().slotCount();
+  }
+
   private long freshTotal(Binding binding, ResourceKey key) {
     if (binding.unsupportedWhole(key.kind())) return 0;
     var settings = binding.owner.settings();
     var codec = new PlatformResourceCodec(binding.owner.serverLevel().registryAccess());
     long total = 0;
     int cursor = 0;
-    for (int step = 0; step < 4 && cursor >= 0; step++) {
+    for (int step = 0; step < MAX_PAGES && cursor >= 0; step++) {
       var page =
           ExternalStockPage.read(
-              key.kind(),
-              binding.handler,
-              codec,
-              settings.firstSlot(),
-              settings.slotCount(),
-              cursor);
+              key.kind(), binding.handler, codec, settings.firstSlot(), span(binding), cursor);
       for (var entry : page.entries())
         if (entry.key().equals(key)) total = Math.addExact(total, entry.stored());
       cursor = page.next();

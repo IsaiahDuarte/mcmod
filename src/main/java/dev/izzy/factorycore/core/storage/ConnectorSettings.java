@@ -65,6 +65,17 @@ public record ConnectorSettings(
     return rate <= tier.portRate(kind);
   }
 
+  /** Most item slots a whole-handler item port reaches (Q145). */
+  public static final int WHOLE_ITEM_SLOTS = 1024;
+
+  /**
+   * Q145: the default item window (slots 0–63) means the whole handler, up to {@link
+   * #WHOLE_ITEM_SLOTS}, unless the provider describes indexed partitions.
+   */
+  public boolean wholeItemHandler() {
+    return kind == ResourceKind.ITEM && firstSlot == 0 && slotCount == 64;
+  }
+
   /** Legacy fluid defaults mean the whole capability, including paginated large catalogs. */
   public boolean wholeFluidHandler() {
     return kind == ResourceKind.FLUID && firstSlot == 0 && slotCount == 64;

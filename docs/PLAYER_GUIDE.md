@@ -424,7 +424,9 @@ The screen sets the following:
   visible and can still be taken out.
 - **Slots and rate per tick.** For a container with up to 64 slots (or tanks) the screen
   shows a strip of them: click a slot to use only it, Shift-click to use a range. Larger
-  containers show First slot and Slot count fields instead.
+  containers show First slot and Slot count fields instead. Left at the default (slot 0,
+  count 64), an item port reaches every slot of the container, up to 1,024, so big modded
+  chests work without setting anything.
 
 It also shows what it is attached to (the container's name, such as *Chest* or the
 name you gave it on an anvil), which side of it is used, and whether it is ready. **Apply & Close** saves, and **Cancel** discards. Saving needs Edit; without

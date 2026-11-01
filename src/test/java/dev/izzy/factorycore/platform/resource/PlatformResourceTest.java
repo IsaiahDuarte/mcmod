@@ -321,4 +321,26 @@ class PlatformResourceTest {
         IllegalArgumentException.class,
         () -> ExternalStockPage.read(ResourceKind.ITEM, handler, codec, 0, 1, -1));
   }
+
+  @Test
+  void wholeItemPortReachesPastSlotSixtyFourAndFollowsResizes() {
+    var handler = new ItemStackHandler(100);
+    for (int slot = 0; slot < 64; slot++)
+      handler.setStackInSlot(slot, new ItemStack(Items.STONE, 64));
+    handler.setStackInSlot(97, new ItemStack(Items.DIRT, 5));
+    var port = ItemHandlerPort.whole(UUID.randomUUID(), handler, codec);
+    var dirt = codec.itemKey(new ItemStack(Items.DIRT));
+    var iron = codec.itemKey(new ItemStack(Items.IRON_INGOT));
+    assertEquals(5, port.extract(dirt, 64));
+    assertEquals(10, port.insert(iron, 10));
+    assertEquals(Items.IRON_INGOT, handler.getStackInSlot(64).getItem());
+    handler.setSize(64);
+    for (int slot = 0; slot < 64; slot++)
+      handler.setStackInSlot(slot, new ItemStack(Items.STONE, 64));
+    assertEquals(0, port.insert(iron, 1), "A shrunk handler is re-measured, not overrun");
+    var page =
+        ExternalStockPage.read(
+            ResourceKind.ITEM, new ItemStackHandler(2000), codec, 0, 1024, 63 * 16);
+    assertEquals(-1, page.next(), "A whole page walk stops at 1024 slots");
+  }
 }

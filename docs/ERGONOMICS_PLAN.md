@@ -329,7 +329,9 @@ screens.
   Done when: GameTests with a test-only non-vanilla handler block cover import, export and keep
   stock, and a fault quarantines without loss. Smoke-test with Sophisticated Storage in the
   user's pack.
-- [ ] **Q145 — Inventories over 64 slots (from Q136).** Size M. A port reads and writes an item
+- [x] **Q145 — Inventories over 64 slots (from Q136).** Size M. Done 2026-11-01 (commit
+  subject `Q145:`): the default item window reaches the whole handler, up to 1,024 slots.
+  [Evidence](evidence/ergonomics-q145-large-inventories-2026-11-01.md). A port reads and writes an item
   window of at most 64 slots (`ConnectorSettings`), so most of a big modded chest is out of reach
   (Sophisticated Storage gold chests have 81 slots, and higher tiers over 100). With the default
   window, a port should reach the whole handler in bounded steps, as `wholeFluidHandler` already

@@ -38,7 +38,11 @@ public record ExternalStockPage(List<Entry> entries, int next) {
         switch (kind) {
           case ITEM -> {
             int slots = ((IItemHandler) handler).getSlots();
-            if (slots < 0 || firstSlot < 0 || firstSlot > slots || slotCount <= 0 || slotCount > 64)
+            if (slots < 0
+                || firstSlot < 0
+                || firstSlot > slots
+                || slotCount <= 0
+                || slotCount > ItemHandlerPort.WHOLE_SLOTS)
               throw new IllegalStateException("Invalid foreign item window");
             yield Math.min(slotCount, slots - firstSlot);
           }

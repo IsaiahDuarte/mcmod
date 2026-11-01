@@ -28,7 +28,8 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 /**
  * Q136 (n21, ADR 0013 amendment): Importers and Exporters work on a modded inventory that is
  * neither a vanilla container nor describes its backing (here a 100-slot test block, as a
- * Sophisticated Storage chest is), taking it as one block, with exact accounting.
+ * Sophisticated Storage chest is), taking it as one block, with exact accounting. Q145: a default
+ * port reaches every slot, not only the first 64.
  */
 @GameTestHolder("factorycore_tests")
 @PrefixGameTestTemplate(false)
@@ -71,8 +72,8 @@ public final class ModdedProviderGameTests {
     h.setBlock(TARGET, ConnectorFixture.WIDE.get());
     ConnectorFixture.WideEntity chest = h.getBlockEntity(TARGET);
     chest.handler.setStackInSlot(0, new ItemStack(Items.IRON_INGOT, 40));
-    // Within a port's 64-slot window; slots past it are Q145.
-    chest.handler.setStackInSlot(63, new ItemStack(Items.DIRT, 64));
+    // Q145: past slot 63, which a default port reaches as the whole handler.
+    chest.handler.setStackInSlot(97, new ItemStack(Items.DIRT, 64));
     var importer = place(h, PortContent.IMPORTER, owner);
     var registry = net.saved().registry();
     h.startSequence()
@@ -93,7 +94,13 @@ public final class ModdedProviderGameTests {
                         + registry.stock(cell, net.key(Items.IRON_INGOT)).total()
                         + " "
                         + importer.diagnostic()))
-        .thenExecute(() -> place(h, PortContent.EXPORTER, owner))
+        .thenExecute(
+            () -> {
+              // Q145: with slots 0–63 full, the exported stock must land past them.
+              for (int slot = 0; slot < 64; slot++)
+                chest.handler.setStackInSlot(slot, new ItemStack(Items.COBBLESTONE, 64));
+              place(h, PortContent.EXPORTER, owner);
+            })
         .thenWaitUntil(() -> net.assertValid(PORT))
         .thenExecute(
             () -> {
@@ -111,8 +118,9 @@ public final class ModdedProviderGameTests {
             () ->
                 h.assertTrue(
                     count(chest, Items.IRON_INGOT) == 8
+                        && count(chest, Items.COBBLESTONE) == 64 * 64
                         && registry.stock(cell, net.key(Items.IRON_INGOT)).total() == 32,
-                    "An Exporter keeps eight in it, and storage loses exactly those"))
+                    "An Exporter keeps eight in it past slot 63, and storage loses exactly those"))
         .thenIdle(40)
         .thenExecute(
             () -> {

@@ -111,7 +111,9 @@ provider kind and has no automatic import/export rule or power upkeep. Default
 rates are 64 item units or 1,000 mB/FE per tick in each direction, with both
 provider and connector accounting. Configured maxima are 128 item units or
 1,000 mB/FE under existing shared command budgets. Priority is -1,000..1,000;
-item windows visit up to 64 slots starting at any valid platform index. These
+item windows visit up to 64 slots starting at any valid platform index; the
+default window (slot 0, count 64) reaches the whole handler up to 1,024 slots
+(ADR 0013 amendment, plan Q145). These
 are provisional admission/balance choices, not completed automatic selection or
 measured throughput. Recipes/models load in headless checks; survival/client,
 combined power demand and complete progression remain pending.
