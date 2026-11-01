@@ -827,9 +827,11 @@ public final class ProcessingJobGameTests {
   }
 
   @GameTest(template = "empty", timeoutTicks = 400)
-  public static void opaqueCapabilityWithoutBackingEvidenceCannotStartProcessing(GameTestHelper h) {
+  public static void anUndescribedModdedMachineReceivesProcessingInput(GameTestHelper h) {
     var f = setup(h);
     h.setBlock(FURNACE, ConnectorFixture.OPAQUE.get());
+    ConnectorFixture.OpaqueEntity machine = h.getBlockEntity(FURNACE);
+    machine.handler.extractItem(0, 64, false);
     UUID[] id = {null};
     h.startSequence()
         .thenWaitUntil(() -> ready(h, f))
@@ -839,20 +841,23 @@ public final class ProcessingJobGameTests {
               id[0] = jobs(h).submit(actor(f.owner), f.origin, f.ingot, 1).job();
             })
         .thenWaitUntil(
-            () ->
-                h.assertTrue(
-                    f.saved.craftingJobs().get(id[0]).reason() == JobReason.MACHINE_IDENTITY,
-                    "Capability presence cannot establish independent persistent machine ownership"))
-        .thenExecute(
             () -> {
+              // Q136: identity is the machine block itself, so the job dispatches.
               var job = f.saved.craftingJobs().get(id[0]);
               h.assertTrue(
-                  job.dispatch() == null
-                      && job.snapshot().staged().isEmpty()
-                      && f.stock(f.ore) == 1
-                      && f.saved.registry().stock(f.cell, f.ore).reserved() == 1,
-                  "Unsupported opaque machine received no input and reservations remain owned");
+                  job.dispatch() != null
+                      && machine.handler.getStackInSlot(0).is(Items.RAW_IRON)
+                      && machine.handler.getStackInSlot(0).getCount() == 1
+                      && f.stock(f.ore) == 0,
+                  "The modded machine receives exactly the input: "
+                      + job.reason()
+                      + " "
+                      + machine.handler.getStackInSlot(0));
+            })
+        .thenExecute(
+            () -> {
               jobs(h).cancel(actor(f.owner), id[0]);
+              machine.handler.extractItem(0, 64, false);
             })
         .thenSucceed();
   }

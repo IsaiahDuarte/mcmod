@@ -439,16 +439,9 @@ public final class WorldConnectors {
           || networks.membership(owner.position()).status() != NetworkTopology.Status.VALID)
         return new Registration(OperationResult.Reason.OFFLINE, null);
       var providerBlock = identity.providerEntity(owner);
-      // Q34/Q35: a Constructor or Destructor is its own provider (its buffer).
-      if (providerBlock != null
-          && providerBlock != owner
-          && !(providerBlock instanceof ExternalBackingProvider)
-          && !(providerBlock instanceof Container
-              && providerBlock
-                  .getClass()
-                  .getPackageName()
-                  .equals("net.minecraft.world.level.block.entity")))
-        return new Registration(OperationResult.Reason.UNSUPPORTED, null);
+      // Q136 (ADR 0013 amendment): any block entity offering the capability is a provider. One
+      // that neither is a vanilla container nor describes its backing is taken as one block, as
+      // a single chest is; aliases sharing a handler instance are still refused as OVERLAP.
       boolean vanilla =
           providerBlock instanceof Container
               && providerBlock

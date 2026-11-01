@@ -107,10 +107,10 @@ persistent component UUIDs), member coordinates and registered block-entity type
 The shared existing `factorycore:external_identity` marker schema1 is initialized
 only during new capture, after every described group/marker has validated. At
 most3 groups ×64 loaded components are inspected, without capabilities or stock
-queries. A provider without persistent block-entity identity and normalized backing evidence
-(vanilla container or explicit `ExternalBackingProvider`) is unsupported for
-new processing dispatch; the job retains its ingredient reservations and reports
-`machine_identity`.
+queries. A provider without a persistent block entity is unsupported for new processing
+dispatch; the job retains its ingredient reservations and reports `machine_identity`. Since
+2026-11-01 (ADR 0013 amendment, plan Q136) an undescribed modded block entity is identified as
+one block; before, it also needed a vanilla container or an explicit `ExternalBackingProvider`.
 
 Before every insertion/collection pass and cancelled cleanup, read-only metadata
 validation must match all saved fingerprints and the exact target. A fresh machine

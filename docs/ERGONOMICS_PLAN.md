@@ -73,7 +73,7 @@ display, one lock), so batch the screenshot step at the end of a slice.
 
 **2026-11-01: lane P goes first.** The user's first real playthrough (in an ATM10-style pack)
 ended with "This is pretty unusable". Wave P fixes what it found before any other wave
-continues. Within it, work in order: Q136 and Q135 (it doesn't work or it crashed), Q132–Q134
+continues. Within it, work in order: Q136, Q145 and Q135 (it doesn't work or it crashed), Q132–Q134
 (small and annoying), Q137 and Q140, then Q138 and Q139 (redesigns), then Q141–Q144.
 
 Recommended start (before 2026-11-01): Q52 (a crafting bug) first, then lanes L and the ungated parts of C, T and
@@ -310,7 +310,11 @@ These come from the user's notes from playing the mod in a large modpack, number
 notes (n1–n22). Each slice still follows the loop: tests, docs, scale 1 and 4 screenshots for
 screens.
 
-- [ ] **Q136 — Modded containers (n21).** Size L. An Importer would not connect to a
+- [x] **Q136 — Modded containers (n21).** Size L. Done 2026-11-01 (commit subject `Q136:`): any
+  block entity offering the capability is a provider, taken as one block when it describes
+  nothing. The Interface uses Storage mode for `c:chests` and `c:barrels`. ADR 0013 amendment.
+  Not yet smoke-tested with Sophisticated Storage in the user's pack, so check in the next
+  playthrough. [Evidence](evidence/ergonomics-q136-modded-containers-2026-11-01.md). An Importer would not connect to a
   Sophisticated Storage chest. `WorldConnectors.probe` returns UNSUPPORTED for any block entity
   that is neither a vanilla `Container` nor an `ExternalBackingProvider`, so almost every modded
   inventory is refused.
@@ -325,6 +329,15 @@ screens.
   Done when: GameTests with a test-only non-vanilla handler block cover import, export and keep
   stock, and a fault quarantines without loss. Smoke-test with Sophisticated Storage in the
   user's pack.
+- [ ] **Q145 — Inventories over 64 slots (from Q136).** Size M. A port reads and writes an item
+  window of at most 64 slots (`ConnectorSettings`), so most of a big modded chest is out of reach
+  (Sophisticated Storage gold chests have 81 slots, and higher tiers over 100). With the default
+  window, a port should reach the whole handler in bounded steps, as `wholeFluidHandler` already
+  does for fluids (for example, a scan cursor that moves on each pass). Keep the per-pass work
+  bounded.
+
+  Done when: a GameTest imports from slot 97 of a 100-slot inventory and exports into it once
+  slots 0–63 are full.
 - [ ] **Q135 — Crash while typing in the Program Controller (n22).** Size S. The pasted log has
   no crash report. It shows only a Polymorph mixin failure on JEI's transfer code (Polymorph,
   Sophisticated Core and JEI), triggered from JEI's recipe screen.

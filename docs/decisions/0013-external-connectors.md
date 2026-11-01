@@ -196,3 +196,35 @@ move is admitted). Persistence: connector schemas 5 (base tier) and 6 (upgraded)
 filter keep schemas 1/3 and their exact earlier bytes. Older builds reject schemas 5/6
 into recovery instead of widening what a container accepts. Changing a port's resource
 kind clears its filter. Machine-mode ports never carry one.
+
+## Amendment — modded inventories (2026-11-01, plan Q136)
+
+The first playthrough in a large modpack found that an Importer would not connect to a
+Sophisticated Storage chest, because every block entity that was neither a vanilla container nor
+an `ExternalBackingProvider` returned UNSUPPORTED. That refused almost every modded inventory and
+machine. The same rule kept processing patterns away from modded machines (ADR 0032).
+
+- **Decision:** any block entity offering the capability is now a provider, unless it is our own
+  canonical storage. One that describes no backing is taken as exactly one block, the way a
+  single chest is. Its persistent identity marker lives in that block entity, as for vanilla
+  containers.
+  - Everything else is unchanged: the OVERLAP refusal for shared handler instances and
+    overlapping groups, exclusive accounting, staged transfers, quarantine on handler faults, the
+    64-slot window, and `ExternalBackingProvider` for providers that describe their backing.
+  - The Interface picks Storage mode for modded containers tagged `c:chests`, `c:barrels` or
+    `minecraft:shulker_boxes`.
+- **Accepted risk:** this is the risk the original decision avoided, and AE2, RS and SFM all
+  accept it. Two blocks can expose one inventory through different handler objects (a
+  multiblock, or a connected-storage controller). Connectors on both are then two providers over
+  one stock, and the network can count it twice. The overlap check still catches the common case
+  of a shared handler instance. Such mods can implement `ExternalBackingProvider` to be exact.
+  For processing, a multiblock reached from two blocks can be leased by two jobs at once; the job
+  still only collects outputs it can attribute (ADR 0032).
+- **Follow-up:** reaching item handlers over 64 slots is plan Q145.
+- **Tests:**
+  - `ModdedProviderGameTests` covers an Importer and a keep-stock Exporter on an undescribed
+    100-slot inventory.
+  - `ConnectorGameTests.sidedAvailabilityMalformedKeysAndUndescribedProvidersBind` replaces the
+    test that required refusal.
+  - `ProcessingJobGameTests.anUndescribedModdedMachineReceivesProcessingInput` replaces the
+    `machine_identity` refusal test.

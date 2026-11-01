@@ -57,12 +57,8 @@ final class ProviderIdentity {
     if (level == null) return Map.of();
     var position = BlockPos.of(target.block());
     var targetEntity = Loaded.blockEntity(level, position);
-    if (!(targetEntity instanceof ExternalBackingProvider)
-        && !(targetEntity instanceof Container
-            && targetEntity
-                .getClass()
-                .getPackageName()
-                .equals("net.minecraft.world.level.block.entity"))) return Map.of();
+    // Q136: any machine block entity may be identified; an undescribed one is one block.
+    if (targetEntity == null || targetEntity instanceof CanonicalStorage) return Map.of();
     var identities = new IdentityHashMap<BlockEntity, UUID>();
     var missing = new ArrayList<BlockEntity>();
     var result = new EnumMap<ResourceKind, UUID>(ResourceKind.class);

@@ -74,16 +74,24 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
 
   /**
    * A fresh Interface's mode from what its socket faces: Storage for storage containers (chests,
-   * barrels, shulker boxes, identified backing providers), Buffer otherwise. Machines are reached
-   * with Importers, Exporters and cable ports (H5–H7), never by joining storage.
+   * barrels, shulker boxes, including modded ones tagged {@code c:chests} or {@code c:barrels}, and
+   * identified backing providers), Buffer otherwise. Machines are reached with Importers, Exporters
+   * and cable ports (H5–H7), never by joining storage.
    */
   public static InterfaceKind detect(Level level, BlockPos position, Direction facing) {
     var target = position.relative(facing);
     var entity = level.getBlockEntity(target);
+    var state = level.getBlockState(target);
     if (entity instanceof ChestBlockEntity
         || entity instanceof BarrelBlockEntity
         || entity instanceof ShulkerBoxBlockEntity
-        || entity instanceof ExternalBackingProvider) return InterfaceKind.STORAGE;
+        || entity instanceof ExternalBackingProvider
+        // Q136: modded chests and barrels, by the common tags.
+        || entity != null
+            && (state.is(net.neoforged.neoforge.common.Tags.Blocks.CHESTS)
+                || state.is(net.neoforged.neoforge.common.Tags.Blocks.BARRELS)
+                || state.is(net.minecraft.tags.BlockTags.SHULKER_BOXES)))
+      return InterfaceKind.STORAGE;
     return InterfaceKind.BUFFER;
   }
 

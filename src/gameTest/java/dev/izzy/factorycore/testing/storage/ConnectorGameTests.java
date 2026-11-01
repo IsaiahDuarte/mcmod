@@ -445,7 +445,8 @@ public final class ConnectorGameTests {
   }
 
   @GameTest(template = "empty", timeoutTicks = 200)
-  public static void sidedAvailabilityMalformedKeysAndOpaqueBackingReject(GameTestHelper helper) {
+  public static void sidedAvailabilityMalformedKeysAndUndescribedProvidersBind(
+      GameTestHelper helper) {
     var setup = setup(helper);
     helper.setBlock(PROVIDER, ConnectorFixture.BLOCK.get());
     var wrongSide = new BlockPos(4, 1, 0);
@@ -503,10 +504,12 @@ public final class ConnectorGameTests {
         .thenWaitUntil(() -> ready(helper, setup.runtime(), CONNECTOR))
         .thenExecute(
             () ->
+                // Q136 (ADR 0013 amendment): a modded inventory that describes no backing is taken
+                // as one block, as AE2, RS and SFM do, instead of being refused.
                 helper.assertTrue(
                     setup.runtime().connectors().bind(setup.connector()).reason()
-                        == OperationResult.Reason.UNSUPPORTED,
-                    "Opaque alias ownership rejected explicitly after topology revalidation"))
+                        == OperationResult.Reason.OK,
+                    "An undescribed modded provider binds as one block after revalidation"))
         .thenSucceed();
   }
 

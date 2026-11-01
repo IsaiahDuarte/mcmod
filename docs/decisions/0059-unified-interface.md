@@ -30,7 +30,8 @@ it:
 
 - **Placement.** A fresh item placed with its socket against a block that has an item,
   fluid or energy capability becomes Storage for a supported storage container
-  (vanilla containers and identified backing providers). Otherwise it becomes Machine.
+  (vanilla containers, identified backing providers and, since Q136, modded blocks tagged
+  `c:chests` or `c:barrels`). Otherwise it becomes Machine.
   Placed against nothing usable, it becomes Buffer. An item that carries a lease keeps
   the mode of that lease, so moving an Interface never changes its kind.
 - **Switching mode.** The Interface screens share a mode row (Storage / Machine /
