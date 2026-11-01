@@ -14,6 +14,7 @@
     "factorycore:creative_energy_source",
     "factorycore:network_cable",
     "factorycore:gateway",
+    "factorycore:tunnel",
     "factorycore:crafter",
     "factorycore:wireless_access_point",
     "factorycore:storage_terminal",

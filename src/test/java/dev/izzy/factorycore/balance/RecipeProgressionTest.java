@@ -144,6 +144,7 @@ class RecipeProgressionTest {
           entry("gateway", Stage.EXPANDED),
           entry("wireless_access_point", Stage.EXPANDED),
           entry("wireless_terminal", Stage.EXPANDED),
+          entry("tunnel", Stage.EXPANDED),
           entry("advanced_module", Stage.ADVANCED),
           entry("advanced_item_cell", Stage.ADVANCED),
           entry("advanced_fluid_cell", Stage.ADVANCED),

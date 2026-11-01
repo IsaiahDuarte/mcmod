@@ -54,6 +54,7 @@ that consume them.
 | Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
 | Starter | Wrench | 4 iron ingots, 1 copper ingot |
 | Starter | Portable Storage | 5 iron ingots, 1 Storage Terminal, 1 Storage Drive, 2 redstone dust |
+| Expanded | Tunnel (makes 2) | 4 iron ingots, 2 quartz, 2 network cables, 1 ender pearl |
 | Starter | Constructor | 1 Exporter, 1 dispenser, 5 iron ingots, 2 redstone dust |
 | Starter | Destructor | 1 Importer, 1 iron pickaxe, 5 iron ingots, 2 redstone dust |
 | Starter | Relay | 4 iron ingots, 3 redstone dust, 2 Network Cables |
@@ -355,6 +356,23 @@ connect to its back and sides. Use it with an empty hand to open its screen.
 **Auto smelter:** on a furnace, put an Exporter on top with raw ores in its filter, an Exporter
 on a side with coal and **Keep** 8, and an Importer underneath. Ores in storage are smelted and
 the ingots come back.
+
+## Tunnels
+
+A **Tunnel** connects one face to faraway faces through the network, carrying items, fluids,
+FE and redstone directly, without storing anything.
+1. **Place:** place tunnels with their front (the face you click) toward the blocks they serve.
+   Their other faces connect to the network like a cable.
+2. **Input:** with an empty hand, sneak-use the tunnel that things go into.
+3. **Outputs:** within a minute, sneak-use each tunnel that things come out of. Then sneak-use
+   the input again to finish.
+
+- **Items, fluids and FE:** what a machine, hopper or pipe puts into the input's front goes
+  straight into the blocks in front of its outputs, taking turns between outputs. Anything none
+  of them can take stays with the machine that tried to insert it.
+- **Redstone:** every output gives off the redstone signal the input receives.
+- **Network:** the tunnels must be on the same network and loaded, and setting them up needs
+  Manage. Use an input tunnel with an empty hand to see how many outputs it reaches.
 
 ## Constructor and Destructor
 

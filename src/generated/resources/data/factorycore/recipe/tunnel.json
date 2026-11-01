@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "C": {
+      "item": "factorycore:network_cable"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "minecraft:ender_pearl"
+    },
+    "Q": {
+      "item": "minecraft:quartz"
+    }
+  },
+  "pattern": [
+    "IQI",
+    "CPC",
+    "IQI"
+  ],
+  "result": {
+    "count": 2,
+    "id": "factorycore:tunnel"
+  }
+}

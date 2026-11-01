@@ -427,6 +427,22 @@ public final class FactoryCoreData {
           Items.NETHERITE_INGOT,
           'R',
           Items.REDSTONE);
+      // Q37: two Tunnels from cable, quartz and an ender pearl.
+      shaped(
+          out,
+          redstone,
+          "tunnel",
+          2,
+          Items.ENDER_PEARL,
+          "IQI/CPC/IQI",
+          'I',
+          Items.IRON_INGOT,
+          'Q',
+          Items.QUARTZ,
+          'P',
+          Items.ENDER_PEARL,
+          'C',
+          dev.izzy.factorycore.platform.network.NetworkContent.CABLE_ITEM.get());
       // Q34/Q35: an Exporter with a dispenser builds; an Importer with a pickaxe breaks.
       shaped(
           out,

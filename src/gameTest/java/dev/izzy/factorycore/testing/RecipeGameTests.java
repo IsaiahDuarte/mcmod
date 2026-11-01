@@ -109,8 +109,8 @@ public final class RecipeGameTests {
         "The special recipes are cable dyeing and facades: " + special);
     results.add("facade");
     h.assertTrue(
-        recipes.size() == 33,
-        "All 33 Factory Core crafting recipes, including the Constructor and Destructor (Q34/Q35), including speed upgrades, the Label Tool, the"
+        recipes.size() == 34,
+        "All 34 Factory Core crafting recipes, including the Tunnel (Q37), including speed upgrades, the Label Tool, the"
             + " Wrench (Q22), the Upgrade Toolbelt (Q113), the Storage Monitor (Q28), the Relay"
             + " (Q31), the Portable Storage (Q32), the Importer, the Exporter and the pattern wipe"
             + " (Q4), load");

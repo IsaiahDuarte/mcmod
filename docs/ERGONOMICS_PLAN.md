@@ -865,7 +865,9 @@ New gates:
   Done when: GameTests cover a pair across the Overworld and the Nether, and the far end
   unloading.
 
-- [ ] **Q37 — Point-to-point tunnels (M36).** Size L. Only if QD10 approves P2P.
+- [x] **Q37 — Point-to-point tunnels (M36).** Size L. Done 2026-11-01 (commit subject `Q37:`):
+  one Tunnel block for items, fluids, FE and redstone, with outputs taking turns. ADR 0071.
+  [Evidence](evidence/ergonomics-q37-tunnels-2026-11-01.md).
 
 ## Wave S — friendly language v3 (lane S, needs QD11)
 

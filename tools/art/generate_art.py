@@ -259,6 +259,13 @@ def block_textures():
          AMBER, AMBER_DARK),
         ("destructor_case", ("##.....##", "..##.##..", "....#....", "..##.##..", "##.....##"),
          (214, 58, 48, 255), (120, 30, 24, 255)),
+        # Q37 Tunnel: a ring (unset, grey), filled in (input, cyan) or with a dot (output, amber).
+        ("tunnel_unset", (".#######.", "#.......#", "#.......#", "#.......#", ".#######."),
+         (150, 150, 160, 255), (70, 70, 80, 255)),
+        ("tunnel_input", (".#######.", "#########", "#########", "#########", ".#######."),
+         SIGNAL, SIGNAL_DARK),
+        ("tunnel_output", (".#######.", "#.......#", "#...#...#", "#.......#", ".#######."),
+         AMBER, AMBER_DARK),
     ):
         case = casing(name)
         inset(case, 3, 4, 12, 11)
