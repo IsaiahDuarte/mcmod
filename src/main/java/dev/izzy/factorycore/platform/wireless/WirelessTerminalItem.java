@@ -68,7 +68,8 @@ public final class WirelessTerminalItem extends Item {
   }
 
   /**
-   * Q14: opens the one charged, bound handheld in the main inventory or offhand; refuses with
+   * Q14: opens the one charged, bound handheld in the main inventory or offhand (Q110: or an
+   * accessory slot an optional integration provides, see {@link HandheldSlots}); refuses with
    * "no_handheld" when there is none and "several_handhelds" when there are more, rather than
    * guessing. The session then needs the handheld to stay in that slot.
    */
@@ -81,6 +82,9 @@ public final class WirelessTerminalItem extends Item {
       if (found >= 0) return "several_handhelds";
       found = slot;
     }
+    var worn = HandheldSlots.find(player, WirelessTerminalItem::ready);
+    if (worn.size() + (found >= 0 ? 1 : 0) > 1) return "several_handhelds";
+    if (worn.size() == 1) return open(player, worn.getFirst());
     if (found < 0) return "no_handheld";
     int slot = found;
     return open(player, held -> held.getInventory().getItem(slot));

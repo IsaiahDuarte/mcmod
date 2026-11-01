@@ -1,0 +1,19 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+[[mods]]
+modId="factorycore_curios_tests"
+version="0.1.0-dev"
+displayName="Factory Core Curios GameTests"
+[[dependencies.factorycore_curios_tests]]
+modId="factorycore"
+type="required"
+versionRange="[0.1.0-dev]"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.factorycore_curios_tests]]
+modId="curios"
+type="required"
+versionRange="[9,)"
+ordering="AFTER"
+side="BOTH"

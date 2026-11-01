@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.client.ui.Rect;
 import dev.izzy.factorycore.platform.client.ui.TabButton;
 import dev.izzy.factorycore.platform.client.ui.ToggleButton;
+import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.storage.TerminalCraftingPackets;
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
@@ -45,6 +46,9 @@ final class TerminalCraftingPanel {
   private final TerminalScreen screen;
   private final List<ChoiceButton> gridTabs = new ArrayList<>();
   private Button useRow, craftOne, craftMany, clearGrid, encode, countDown, countUp, mainOutput;
+
+  /** Q6: crafting table, stonecutter or smithing table, for the Table page. */
+  private Button tableButton;
 
   /** Q112: the selected processing slot's amount, typed (items, or mB for fluids). */
   private net.minecraft.client.gui.components.EditBox amountBox;
@@ -149,6 +153,35 @@ final class TerminalCraftingPanel {
     substitutesButton.setOn(substitutes);
     substitutesButton.setTooltip(
         Tooltip.create(Component.translatable("gui.factorycore.terminal.grid.substitutes.help")));
+    // Q6: in the band between the mode tabs and the grid, wide enough for the longest name.
+    int tableWidth = 0;
+    for (var table : PatternContents.Table.values())
+      tableWidth =
+          Math.max(
+              tableWidth,
+              font.width(
+                      Component.translatable("gui.factorycore.terminal.grid.table." + table.key()))
+                  + 10);
+    tableButton =
+        screen.add(
+            Button.builder(
+                    tableLabel(),
+                    button ->
+                        grid(
+                            TerminalCraftingPackets.TABLE,
+                            (menu().gridView().table() + 1) % 3,
+                            0,
+                            1,
+                            new byte[32]))
+                .bounds(
+                    left + x0 + GRID_X,
+                    top + GRID_Y - ToggleButton.HEIGHT - 4,
+                    tableWidth,
+                    ToggleButton.HEIGHT)
+                .tooltip(
+                    Tooltip.create(
+                        Component.translatable("gui.factorycore.terminal.grid.table.help")))
+                .build());
     int counts = resultX();
     countDown =
         screen.add(
@@ -206,6 +239,27 @@ final class TerminalCraftingPanel {
             bottom.get(1).y(),
             bottom.get(1).width(),
             () -> grid(TerminalCraftingPackets.CRAFT, -1, 0, 64, new byte[32]));
+  }
+
+  private Component tableLabel() {
+    return Component.translatable(
+        "gui.factorycore.terminal.grid.table."
+            + PatternContents.Table.of(menu().gridView().table()).key());
+  }
+
+  private boolean stonecutting() {
+    var view = menu().gridView();
+    return !view.processing() && view.table() == PatternContents.Table.STONECUTTING.ordinal();
+  }
+
+  private boolean overResult(double mouseX, double mouseY) {
+    int left = screen.left(), top = screen.top();
+    return screen.craftingOpen()
+        && !menu().gridView().processing()
+        && mouseX >= left + resultX()
+        && mouseX < left + resultX() + 22
+        && mouseY >= top + resultY()
+        && mouseY < top + resultY() + 22;
   }
 
   private Button gridButton(String key, int x, int y, int width, Runnable action) {
@@ -353,7 +407,12 @@ final class TerminalCraftingPanel {
             && view.kind() == kind
             && requestedMode < 0
             && (ghost.processing() || kind == 0);
-    craftOne.active = open && !view.busy() && !ghost.processing() && !ghost.result().isEmpty();
+    craftOne.active =
+        open
+            && !view.busy()
+            && !ghost.processing()
+            && ghost.table() == PatternContents.Table.CRAFTING.ordinal()
+            && !ghost.result().isEmpty();
     craftMany.active = craftOne.active;
     clearGrid.active = !view.busy();
     encode.active =
@@ -376,8 +435,12 @@ final class TerminalCraftingPanel {
     }
     mainOutput.visible = open && gridPage == 2 && filled && target > 9;
     mainOutput.active = !view.busy();
-    substitutesButton.visible = open && !ghost.processing();
+    boolean tableCrafting = ghost.table() == PatternContents.Table.CRAFTING.ordinal();
+    substitutesButton.visible = open && !ghost.processing() && tableCrafting;
     substitutesButton.active = !view.busy();
+    tableButton.visible = open && !ghost.processing();
+    tableButton.active = !view.busy();
+    tableButton.setMessage(tableLabel());
     boolean selected = !ghost.cells().get(target).isEmpty() && ghost.processing() && !view.busy();
     countDown.active = selected && ghost.counts().get(target) > 1;
     countUp.active = selected && ghost.counts().get(target) < 64;
@@ -493,24 +556,19 @@ final class TerminalCraftingPanel {
       graphics.renderTooltip(font, lines, Optional.empty(), mouseX, mouseY);
       return true;
     }
-    if (screen.craftingOpen()
-        && !menu().gridView().processing()
-        && mouseX >= left + resultX()
-        && mouseX < left + resultX() + 22
-        && mouseY >= top + resultY()
-        && mouseY < top + resultY() + 22
-        && !menu().gridView().result().isEmpty()) {
-      graphics.renderTooltip(
-          font,
-          List.of(
-              Component.literal(menu().gridView().resultName()),
-              Component.translatable(
-                  "gui.factorycore.terminal.grid.status." + menu().gridView().status().key(),
-                  menu().gridView().crafted()),
-              Component.translatable("gui.factorycore.terminal.grid.result.help")),
-          Optional.empty(),
-          mouseX,
-          mouseY);
+    if (overResult(mouseX, mouseY) && !menu().gridView().result().isEmpty()) {
+      var lines = new ArrayList<Component>();
+      lines.add(Component.literal(menu().gridView().resultName()));
+      lines.add(
+          Component.translatable(
+              "gui.factorycore.terminal.grid.status." + menu().gridView().status().key(),
+              menu().gridView().crafted()));
+      lines.add(
+          Component.translatable(
+              stonecutting()
+                  ? "gui.factorycore.terminal.grid.result.cut.help"
+                  : "gui.factorycore.terminal.grid.result.help"));
+      graphics.renderTooltip(font, lines, Optional.empty(), mouseX, mouseY);
       return true;
     }
     return false;
@@ -524,6 +582,11 @@ final class TerminalCraftingPanel {
    * (Q4), so Encode rewrites it.
    */
   boolean mouseClicked(double mouseX, double mouseY, int button) {
+    // Q6: clicking a stonecutter result picks the next one (right-click: the previous one).
+    if (stonecutting() && overResult(mouseX, mouseY) && (button == 0 || button == 1)) {
+      grid(TerminalCraftingPackets.CUT, -1, button, 1, new byte[32]);
+      return true;
+    }
     int cell = cellAt(mouseX, mouseY);
     if (cell >= 0) {
       int index = cellIndex(cell);
@@ -570,6 +633,10 @@ final class TerminalCraftingPanel {
 
   /** In processing mode, scrolling over a cell changes its per-craft count (Shift: by 8). */
   boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+    if (stonecutting() && overResult(mouseX, mouseY) && scrollY != 0) {
+      grid(TerminalCraftingPackets.CUT, -1, scrollY < 0 ? 0 : 1, 1, new byte[32]);
+      return true;
+    }
     int cell = cellAt(mouseX, mouseY);
     var grid = menu().gridView();
     if (cell >= 0 && grid.processing() && scrollY != 0) {

@@ -55,6 +55,10 @@ public final class PatternItem extends Item {
       return;
     }
     var output = contents.output();
+    if (contents.table() != PatternContents.Table.CRAFTING)
+      lines.add(
+          Component.translatable("tooltip.factorycore.pattern_table." + contents.table().key())
+              .withStyle(ChatFormatting.GRAY));
     lines.add(
         Component.translatable(
                 "tooltip.factorycore.pattern_output", output.getCount(), output.getHoverName())

@@ -52,7 +52,9 @@ public final class MachinePresetPackets {
     REDSTONE,
     // Q74: the Exporter's order was changed, or the viewer lacks Edit.
     ORDER_SET,
-    ORDER_DENIED;
+    ORDER_DENIED,
+    // Q8: Craft missing needs the Craft grant.
+    CRAFT_DENIED;
 
     public String key() {
       return EnumKeys.key(this);
@@ -84,7 +86,9 @@ public final class MachinePresetPackets {
       CYCLE = 12,
       // H6: apply as mode {@code selection} (an ordinal; text: goal), and set the filter mode.
       DEPLOY_AS = 13,
-      FILTER_MODE = 14;
+      FILTER_MODE = 14,
+      // Q8: the draft's Craft missing choice (selection 1 on, 0 off); Apply saves it.
+      CRAFT = 15;
 
   public record Command(
       int menu,
@@ -102,7 +106,8 @@ public final class MachinePresetPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < 0
-          || action > FILTER_MODE
+          || action > CRAFT
+          || (action == CRAFT && selection > 1)
           || selection < 0
           || selection > 35
           || text.length() > 256
@@ -175,7 +180,8 @@ public final class MachinePresetPackets {
       boolean dirty,
       long staged,
       boolean cleanup,
-      List<RuleStatus> statuses)
+      List<RuleStatus> statuses,
+      boolean craft)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
@@ -200,7 +206,7 @@ public final class MachinePresetPackets {
         boolean cleanup) {
       this(
           menu, session, revision, kind, mode, filter, goal, rules, status, running, reason,
-          editable, busy, dirty, staged, cleanup, List.of());
+          editable, busy, dirty, staged, cleanup, List.of(), false);
     }
 
     public View {
@@ -250,6 +256,7 @@ public final class MachinePresetPackets {
               b.writeBoolean(v.cleanup());
               b.writeVarInt(v.statuses().size());
               for (var status : v.statuses()) WireEnums.write(b, status);
+              b.writeBoolean(v.craft());
             },
             b -> {
               int id = b.readVarInt();
@@ -280,7 +287,8 @@ public final class MachinePresetPackets {
                   b.readBoolean(),
                   b.readVarLong(),
                   b.readBoolean(),
-                  readStatuses(b));
+                  readStatuses(b),
+                  b.readBoolean());
             });
   }
 

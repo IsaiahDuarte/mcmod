@@ -35,7 +35,10 @@ single-threaded and not shared; plans are immutable.
 ## Pattern items and Crafters
 
 `platform.crafting.PatternContents` is the immutable `factorycore:pattern` component
-(codec and stream codec reject invalid data). `pattern(codec)` throws
+(codec and stream codec reject invalid data). Its `table()` (Q6) is CRAFTING, STONECUTTING
+(input in cell 0) or SMITHING (template, base, addition in cells 0–2); `TableRecipes.make`
+revalidates the last two before each craft, `TableRecipes.cuts` lists a stonecutter input's
+results. `pattern(codec)` throws
 IllegalArgumentException for unrepresentable stacks. `CraftingUnitEntity.patterns()`
 is the nine-slot handler (Crafting Patterns with contents only, one per slot);
 `current()`, `origin()` and `diagnostic()` describe the holder. On the server thread,

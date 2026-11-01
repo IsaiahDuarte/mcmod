@@ -17,7 +17,12 @@ class ArchitectureTest {
           .resideOutsideOfPackage("..integration..")
           .should()
           .dependOnClassesThat()
-          .resideInAnyPackage("mezz.jei..", "mekanism..", "..integration..")
+          .resideInAnyPackage(
+              "mezz.jei..",
+              "mekanism..",
+              "top.theillusivec4.curios..",
+              "dev.emi..",
+              "..integration..")
           .allowEmptyShould(false);
 
   @Test

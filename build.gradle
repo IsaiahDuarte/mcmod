@@ -18,6 +18,11 @@ repositories {
         // mezz_config is JEI's own runtime dependency, needed only by the isolated JEI client run.
         filter { includeGroup 'mezz.jei'; includeGroup 'net.mezzdev.config' }
     }
+    // Curios is an optional, compile-only integration (ADR 0069); only curiosTest runs it.
+    exclusiveContent {
+        forRepository { maven { url = 'https://maven.theillusivec4.top/' } }
+        filter { includeGroup 'top.theillusivec4.curios' }
+    }
 }
 
 sourceSets {
@@ -34,6 +39,11 @@ sourceSets {
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
+    // Q110 (ADR 0069): GameTests with Curios at runtime; the only source set that loads Curios.
+    curiosTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
 }
 configurations.clientTestImplementation.extendsFrom(configurations.implementation)
 configurations.clientTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
@@ -42,17 +52,21 @@ configurations.gameTestImplementation.extendsFrom(configurations.implementation)
 configurations.gameTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 configurations.jeiTestImplementation.extendsFrom(configurations.implementation)
 configurations.jeiTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
+configurations.curiosTestImplementation.extendsFrom(configurations.implementation)
+configurations.curiosTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 
 neoForge {
     version = '21.1.252'
     addModdingDependenciesTo(sourceSets.gameTest)
     addModdingDependenciesTo(sourceSets.clientTest)
     addModdingDependenciesTo(sourceSets.jeiTest)
+    addModdingDependenciesTo(sourceSets.curiosTest)
     mods {
         factorycore { sourceSet(sourceSets.main) }
         factorycore_tests { sourceSet(sourceSets.gameTest) }
         factorycore_client_tests { sourceSet(sourceSets.clientTest) }
         factorycore_jei_tests { sourceSet(sourceSets.jeiTest) }
+        factorycore_curios_tests { sourceSet(sourceSets.curiosTest) }
     }
     runs {
         // runData regenerates src/generated/resources from the registry (FactoryCoreData).
@@ -92,6 +106,16 @@ neoForge {
             systemProperty 'factorycore.test.counter', file('build/test-guests/counter.wasm').absolutePath
             systemProperty 'factorycore.noWelcomeGuide', 'true'
             loadedMods = [mods.factorycore, mods.factorycore_tests]
+        }
+        // Q110: Curios-only GameTests (namespace factorycore_curios_tests) with Curios loaded.
+        curiosGameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.curiosTest
+            gameDirectory = file('build/curios-gametest-run')
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'factorycore_curios_tests'
+            systemProperty 'factorycore.test.report', file('build/reports/curios-gametest/results.xml').absolutePath
+            systemProperty 'factorycore.noWelcomeGuide', 'true'
+            loadedMods = [mods.factorycore, mods.factorycore_curios_tests]
         }
         automaticThroughputServer {
             type = 'gameTestServer'
@@ -249,6 +273,9 @@ dependencies {
     // Optional JEI integration: API at compile time only; never bundled or required (A14).
     compileOnly 'mezz.jei:jei-1.21.1-common-api:19.57.0.451'
     compileOnly 'mezz.jei:jei-1.21.1-neoforge-api:19.57.0.451'
+    compileOnly 'top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api'
+    curiosTestCompileOnly 'top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api'
+    curiosTestRuntimeOnly 'top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1'
     jeiTestCompileOnly 'mezz.jei:jei-1.21.1-common-api:19.57.0.451'
     jeiTestCompileOnly 'mezz.jei:jei-1.21.1-neoforge-api:19.57.0.451'
     jeiTestRuntimeOnly 'mezz.jei:jei-1.21.1-neoforge:19.57.0.451'
@@ -363,7 +390,10 @@ tasks.register('wasmDeadlineBenchmark', JavaExec) {
 
 
 // Compile the isolated graphical fixture in the canonical gate; run it explicitly on a desktop.
-tasks.named('check') { dependsOn tasks.named('compileClientTestJava'), tasks.named('compileJeiTestJava') }
+tasks.named('check') {
+    dependsOn tasks.named('compileClientTestJava'), tasks.named('compileJeiTestJava'),
+        tasks.named('compileCuriosTestJava')
+}
 tasks.named('runJeiClient', JavaExec) {
     doFirst {
         delete file('build/client-jei-run/saves/factorycore-jei-verification')
@@ -518,7 +548,8 @@ tasks.named('check') { dependsOn tasks.named('checkGeneratedResources') }
 
 tasks.named('releaseCheck') {
     dependsOn(['AutomaticThroughput', 'WirelessLifecycle', 'GatewayDepth', 'StagingRecovery', 'InterruptionKill',
-               'InterruptionDataOld', 'InterruptionChunksOld', 'SaveOrderRestore', 'SaveOrderChunksRestore']
+               'InterruptionDataOld', 'InterruptionChunksOld', 'SaveOrderRestore', 'SaveOrderChunksRestore',
+               'CuriosGameTest']
         .collect { tasks.named("run${it}Server") })
 }
 

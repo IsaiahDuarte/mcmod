@@ -1064,20 +1064,30 @@ public final class WorldCraftingJobs {
     if (!offer.unit().current()) return null;
     var level = offer.unit().getLevel();
     if (level == null) return null;
-    // The real recipe is revalidated with the concrete (possibly substituted) items every craft.
-    var input = CraftingInput.of(3, 3, cells);
-    var holder = recipes.get(job);
-    if (holder == null || !holder.value().matches(input, level)) {
-      holder =
-          level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level).orElse(null);
-      if (holder == null) return null;
-      recipes.put(job, holder);
-    }
-    var output = holder.value().assemble(input, level.registryAccess());
-    if (!ItemStack.matches(output, offer.contents().output())) return null;
+    ItemStack output;
     var remainders = new ArrayList<ItemStack>();
-    for (var remainder : holder.value().getRemainingItems(input))
-      if (!remainder.isEmpty()) remainders.add(remainder);
+    if (offer.contents().table() != PatternContents.Table.CRAFTING) {
+      // Q6: stonecutter and smithing patterns revalidate their recipe the same way.
+      var made =
+          TableRecipes.make(level, offer.contents().table(), cells, offer.contents().output());
+      if (made == null) return null;
+      output = made.output();
+      remainders.addAll(made.remainders());
+    } else {
+      // The real recipe is revalidated with the concrete (possibly substituted) items every craft.
+      var input = CraftingInput.of(3, 3, cells);
+      var holder = recipes.get(job);
+      if (holder == null || !holder.value().matches(input, level)) {
+        holder =
+            level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level).orElse(null);
+        if (holder == null) return null;
+        recipes.put(job, holder);
+      }
+      output = holder.value().assemble(input, level.registryAccess());
+      for (var remainder : holder.value().getRemainingItems(input))
+        if (!remainder.isEmpty()) remainders.add(remainder);
+    }
+    if (!ItemStack.matches(output, offer.contents().output())) return null;
     var expected = offer.contents().remainders();
     if (remainders.size() != expected.size()) return null;
     for (int i = 0; i < expected.size(); i++)

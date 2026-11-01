@@ -35,6 +35,9 @@ public final class FactoryCoreMod {
 
   public FactoryCoreMod(IEventBus bus, ModContainer container) {
     container.registerConfig(ModConfig.Type.SERVER, FactoryCoreConfig.SERVER);
+    // Q110 (ADR 0069): optional integrations load by name, only when their mod is present.
+    if (net.neoforged.fml.ModList.get().isLoaded("curios"))
+      Integrations.install("dev.izzy.factorycore.platform.integration.curios.CuriosHandhelds");
     FactoryRegistries.register(bus);
     StorageContent.register(bus);
     TerminalContent.register(bus);

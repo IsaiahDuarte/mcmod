@@ -109,3 +109,22 @@ the world schema changes. It is set by menu button `320 + ordinal` with Edit acc
 by a data slot. The preset protocol moves to "4" for the `ORDER_SET`/`ORDER_DENIED` statuses.
 Considered: storing it in the deployment. That would need a preset schema bump and re-deploy
 authority for a setting that only affects ordering.
+
+## Amendment — Exporter crafts what is missing (2026-10-31, ergonomics plan Q8, QD4)
+
+An Exporter's Keep may set **Craft missing** (`MachinePresets.Deployment.craft`, saved as
+`Craft` only when set; kept while paused so a resume restores it). Applying it needs the Craft
+grant besides the usual ones. When an export pass finds none of the Keep's resource in storage, the
+Exporter submits one job for the machine's shortfall (Keep minus what the machine holds), for the
+filter's first exact or registry item or fluid, under the deployment authority's grants and at the
+Exporter's position. The job carries a persistent link derived from the Exporter's node
+(`WorldMachinePresets.craftLink`), so `submitLinked` never starts a second job while one exists,
+also after a reload, and keep-stock deduplication (ADR 0034) is unchanged. The job's output goes
+to storage like any other, and the Exporter sends it on its next pass. Refusals use the job
+status: the Exporter shows `craft_<status>` (for example the principal's job limit) in place of
+its storage reason. A tag-only filter shows `craft_unsupported`, since a tag names no single
+thing to craft.
+
+Alternative considered: crafting straight into the machine (rejected: it would bypass storage
+accounting and the shared delivery path, and the job's output already reaches the Exporter
+through storage).

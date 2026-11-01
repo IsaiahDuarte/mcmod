@@ -273,6 +273,10 @@ connect to its back and sides. Use it with an empty hand to open its screen.
   With several **Only these** slots, the button beside **Keep** sets the order: **In order**
   sends the first slot storage has, **Round robin** takes turns, **Random** picks one. A slot
   the machine refuses doesn't hold up the others.
+  **Craft missing** (with a Keep number): when storage runs out of the first item in the
+  filter, the Exporter starts one crafting job for what the machine is missing, then sends it.
+  It never starts a second job while one runs. The job runs under your Craft permission and
+  counts toward your job limit; if it can't start, the Exporter's status says why.
 - **Resource:** Items, Fluids or Energy. A new one picks what the machine offers on that side.
 - **Stop** pauses it; **Apply** starts it again in your name. You need Edit and Deploy access,
   plus Deposit and Withdraw to move things.
@@ -400,6 +404,13 @@ Craft Blank Patterns.
   **Substitutes** on first if any item the recipe accepts may be used, for example any
   planks for sticks or chests. Jobs then take whichever is most plentiful, and can mix
   them. With it off, the pattern uses exactly the items you placed.
+- **Stonecutter and smithing patterns:** the button under the grid switches the Table page
+  between **Crafting table**, **Stonecutter** and **Smithing table**. For the stonecutter, put
+  the input in the first cell; click the result to choose another one (right-click goes back,
+  or scroll). For smithing, put the template, base and addition in the top row. Press
+  **Encode**: the Crafter makes these like any crafting pattern. The grid's Craft buttons work
+  only for the crafting table. JEI's **+** on a stonecutter or smithing recipe fills the grid
+  for you.
 - **Processing Pattern** (for machines): choose **Inputs** and set the ingredients,
   then **Outputs** (up to three), then **Encode**. Select a slot to change its amount with
   **−**/**+** or type it in the box between them (items, or mB for fluids, rounded up to

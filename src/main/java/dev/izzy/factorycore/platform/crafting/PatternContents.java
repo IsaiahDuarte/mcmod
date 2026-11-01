@@ -23,9 +23,39 @@ import net.minecraft.world.item.ItemStack;
  * Encoded crafting-table pattern carried by a pattern item. Cells are the exact shaped placement
  * (count-one stacks, empty allowed); output and remainders were computed by the server recipe at
  * encode time. Values are immutable copies with value equality.
+ *
+ * <p>Q6 (QD3): {@link Table} says which vanilla workstation's recipe the Crafter reproduces. A
+ * stonecutter pattern holds its one input in cell 0; a smithing pattern holds template, base and
+ * addition in cells 0–2. Both are exact (no substitutes).
  */
 public final class PatternContents {
   public static final int CELLS = 9;
+
+  /** The vanilla recipe type a pattern reproduces. */
+  public enum Table {
+    CRAFTING,
+    STONECUTTING,
+    SMITHING;
+
+    public String key() {
+      return dev.izzy.factorycore.core.EnumKeys.key(this);
+    }
+
+    /** The cells this table reads, all of which must hold an item; null for crafting. */
+    public int[] cells() {
+      return switch (this) {
+        case CRAFTING -> null;
+        case STONECUTTING -> new int[] {0};
+        case SMITHING -> new int[] {0, 1, 2};
+      };
+    }
+
+    public static Table of(int ordinal) {
+      if (ordinal < 0 || ordinal >= values().length)
+        throw new IllegalArgumentException("Pattern table");
+      return values()[ordinal];
+    }
+  }
 
   private final UUID id;
   private final long version;
@@ -40,6 +70,8 @@ public final class PatternContents {
    */
   private final List<List<String>> alternatives;
 
+  private final Table table;
+
   public PatternContents(
       UUID id,
       long version,
@@ -48,6 +80,17 @@ public final class PatternContents {
       ItemStack output,
       List<ItemStack> remainders) {
     this(id, version, priority, cells, output, remainders, NONE);
+  }
+
+  public PatternContents(
+      UUID id,
+      long version,
+      int priority,
+      List<ItemStack> cells,
+      ItemStack output,
+      List<ItemStack> remainders,
+      List<List<String>> alternatives) {
+    this(id, version, priority, cells, output, remainders, alternatives, Table.CRAFTING);
   }
 
   private static final List<List<String>> NONE = java.util.Collections.nCopies(CELLS, List.of());
@@ -59,8 +102,10 @@ public final class PatternContents {
       List<ItemStack> cells,
       ItemStack output,
       List<ItemStack> remainders,
-      List<List<String>> alternatives) {
+      List<List<String>> alternatives,
+      Table table) {
     this.id = Objects.requireNonNull(id);
+    this.table = Objects.requireNonNull(table);
     if (alternatives.size() != CELLS)
       throw new IllegalArgumentException("Pattern needs nine alternative lists");
     var lists = new ArrayList<List<String>>(CELLS);
@@ -89,6 +134,16 @@ public final class PatternContents {
       copied.add(cell.copy());
     }
     if (!any) throw new IllegalArgumentException("Pattern needs an input");
+    var used = table.cells();
+    if (used != null) {
+      var expected = new boolean[CELLS];
+      for (int cell : used) expected[cell] = true;
+      for (int cell = 0; cell < CELLS; cell++)
+        if (copied.get(cell).isEmpty() == expected[cell])
+          throw new IllegalArgumentException("Cells that do not fit a " + table.key() + " recipe");
+      if (alternatives.stream().anyMatch(list -> !list.isEmpty()))
+        throw new IllegalArgumentException("Only crafting-table patterns take substitutes");
+    }
     var rest = new ArrayList<ItemStack>();
     for (var remainder : remainders) {
       if (remainder.isEmpty()) throw new IllegalArgumentException("Empty remainder");
@@ -129,6 +184,11 @@ public final class PatternContents {
   /** Per-cell alternative item IDs (E1); every list empty for an exact pattern. */
   public List<List<String>> alternatives() {
     return alternatives;
+  }
+
+  /** Q6: which workstation's recipe this pattern reproduces. */
+  public Table table() {
+    return table;
   }
 
   public boolean substitutes() {
@@ -211,7 +271,8 @@ public final class PatternContents {
         && ItemStack.matches(output, that.output)
         && same(cells, that.cells)
         && same(remainders, that.remainders)
-        && alternatives.equals(that.alternatives);
+        && alternatives.equals(that.alternatives)
+        && table == that.table;
   }
 
   @Override
@@ -234,7 +295,8 @@ public final class PatternContents {
       List<ItemStack> cells,
       ItemStack output,
       List<ItemStack> remainders,
-      List<List<String>> alternatives) {}
+      List<List<String>> alternatives,
+      Table table) {}
 
   public static final Codec<PatternContents> CODEC =
       RecordCodecBuilder.<Raw>create(
@@ -252,7 +314,20 @@ public final class PatternContents {
                               .listOf()
                               .listOf()
                               .optionalFieldOf("substitutes", NONE)
-                              .forGetter(Raw::alternatives))
+                              .forGetter(Raw::alternatives),
+                          // Q6: absent on crafting-table patterns.
+                          Codec.STRING
+                              .comapFlatMap(
+                                  name -> {
+                                    var table =
+                                        dev.izzy.factorycore.core.EnumKeys.parse(Table.class, name);
+                                    return table == null
+                                        ? DataResult.<Table>error(() -> "Unknown table " + name)
+                                        : DataResult.success(table);
+                                  },
+                                  Table::key)
+                              .optionalFieldOf("table", Table.CRAFTING)
+                              .forGetter(Raw::table))
                       .apply(instance, Raw::new))
           .comapFlatMap(
               raw ->
@@ -265,7 +340,8 @@ public final class PatternContents {
                               raw.cells(),
                               raw.output(),
                               raw.remainders(),
-                              raw.alternatives())),
+                              raw.alternatives(),
+                              raw.table())),
               value ->
                   new Raw(
                       value.id,
@@ -274,7 +350,8 @@ public final class PatternContents {
                       value.cells,
                       value.output,
                       value.remainders,
-                      value.alternatives));
+                      value.alternatives,
+                      value.table));
 
   public static final StreamCodec<RegistryFriendlyByteBuf, PatternContents> STREAM_CODEC =
       StreamCodec.of(
@@ -290,6 +367,7 @@ public final class PatternContents {
               ByteBufCodecs.VAR_INT.encode(buffer, list.size());
               for (var item : list) buffer.writeUtf(item, 256);
             }
+            buffer.writeVarInt(value.table.ordinal());
           },
           buffer -> {
             var id = UUIDUtil.STREAM_CODEC.decode(buffer);
@@ -315,6 +393,13 @@ public final class PatternContents {
               alternatives.add(list);
             }
             return new PatternContents(
-                id, version, priority, cells, output, remainders, alternatives);
+                id,
+                version,
+                priority,
+                cells,
+                output,
+                remainders,
+                alternatives,
+                Table.of(buffer.readVarInt()));
           });
 }

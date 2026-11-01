@@ -6,6 +6,7 @@ import dev.izzy.factorycore.core.resource.ResourceKind;
 import dev.izzy.factorycore.platform.crafting.CraftingContent;
 import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.crafting.ProcessingContents;
+import dev.izzy.factorycore.platform.crafting.TableRecipes;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +44,14 @@ final class TerminalCrafting {
   private final int[] counts = new int[ALL_CELLS];
   private boolean processing;
   private long revision = 1;
+
+  /**
+   * Q6: which workstation the Table page encodes for, and which stonecutter result is chosen (an
+   * index into {@link TableRecipes#cuts}).
+   */
+  private PatternContents.Table table = PatternContents.Table.CRAFTING;
+
+  private int cut;
 
   /**
    * Q4: the main-inventory slot and pattern id of the encoded pattern loaded into the grid, which
@@ -85,8 +94,62 @@ final class TerminalCrafting {
     revision++;
   }
 
+  PatternContents.Table table() {
+    return table;
+  }
+
+  /** Q6: switches the Table page between crafting table, stonecutter and smithing table. */
+  void table(PatternContents.Table next) {
+    table = next;
+    cut = 0;
+    revision++;
+  }
+
+  /** Q6: chooses the next ({@code step} 1) or previous stonecutter result for the input. */
+  void cut(ServerPlayer player, int step) {
+    if (table != PatternContents.Table.STONECUTTING || cells[0] == null) return;
+    var codec = new PlatformResourceCodec(player.registryAccess());
+    int count = TableRecipes.cuts(player.serverLevel(), codec.itemStack(cells[0], 1)).size();
+    if (count == 0) return;
+    cut = Math.floorMod(cut + step, count);
+    revision++;
+  }
+
+  /** Q6: chooses the stonecutter result that is {@code item}, if the input has one. */
+  void cut(ServerPlayer player, net.minecraft.world.item.Item item) {
+    if (table != PatternContents.Table.STONECUTTING || cells[0] == null) return;
+    var codec = new PlatformResourceCodec(player.registryAccess());
+    var results = TableRecipes.cuts(player.serverLevel(), codec.itemStack(cells[0], 1));
+    for (int index = 0; index < results.size(); index++)
+      if (results.get(index).is(item)) {
+        cut = index;
+        revision++;
+        return;
+      }
+  }
+
+  /** Q6: what the stonecutter or smithing grid makes now, or null. */
+  private TableRecipes.Made made(ServerPlayer player) {
+    var codec = new PlatformResourceCodec(player.registryAccess());
+    List<ItemStack> ghosts;
+    try {
+      ghosts = ghosts(cells, codec);
+    } catch (IllegalArgumentException unsupported) {
+      return null;
+    }
+    var level = player.serverLevel();
+    ItemStack wanted = null;
+    if (table == PatternContents.Table.STONECUTTING) {
+      var results = TableRecipes.cuts(level, ghosts.getFirst());
+      if (results.isEmpty()) return null;
+      wanted = results.get(Math.min(cut, results.size() - 1));
+    }
+    return TableRecipes.make(level, table, ghosts, wanted);
+  }
+
   void set(int index, ResourceKey key) {
     if (index < 0 || index >= ALL_CELLS) throw new IllegalArgumentException("Grid cell");
+    if (index == 0) cut = 0;
     if (index < cells.length) cells[index] = key;
     else outputs[index - cells.length] = key;
     counts[index] = 1;
@@ -118,6 +181,7 @@ final class TerminalCrafting {
     Arrays.fill(cells, null);
     Arrays.fill(outputs, null);
     Arrays.fill(counts, 1);
+    cut = 0;
     editingSlot = -1;
     editingId = null;
     revision++;
@@ -143,6 +207,8 @@ final class TerminalCrafting {
     var nextCounts = new int[ALL_CELLS];
     Arrays.fill(nextCounts, 1);
     boolean nextProcessing;
+    var nextTable = PatternContents.Table.CRAFTING;
+    ItemStack wanted = ItemStack.EMPTY;
     UUID id;
     var status = TerminalCraftingPackets.GridStatus.LOADED;
     try {
@@ -151,6 +217,8 @@ final class TerminalCrafting {
       if (stack.is(CraftingContent.CRAFTING_PATTERN.get()) && crafting != null) {
         nextProcessing = false;
         id = crafting.id();
+        nextTable = crafting.table();
+        wanted = crafting.output();
         var ghosts = crafting.cells();
         for (int index = 0; index < cells.length; index++)
           if (!ghosts.get(index).isEmpty()) nextCells[index] = codec.itemKey(ghosts.get(index));
@@ -188,6 +256,9 @@ final class TerminalCrafting {
     System.arraycopy(nextOutputs, 0, outputs, 0, outputs.length);
     System.arraycopy(nextCounts, 0, counts, 0, ALL_CELLS);
     processing = nextProcessing;
+    table = nextTable;
+    cut = 0;
+    if (!wanted.isEmpty()) cut(player, wanted.getItem());
     editingSlot = slot;
     editingId = id;
     revision++;
@@ -213,7 +284,7 @@ final class TerminalCrafting {
 
   /** Current recipe for the ghost selections, if any; advisory until a craft revalidates it. */
   Optional<RecipeHolder<CraftingRecipe>> recipe(ServerPlayer player) {
-    if (processing) return Optional.empty();
+    if (processing || table != PatternContents.Table.CRAFTING) return Optional.empty();
     if (cachedRevision == revision) return cached;
     cachedRevision = revision;
     cached = lookup(player);
@@ -251,6 +322,10 @@ final class TerminalCrafting {
           }
       return ItemStack.EMPTY;
     }
+    if (table != PatternContents.Table.CRAFTING) {
+      var made = made(player);
+      return made == null ? ItemStack.EMPTY : made.output();
+    }
     return recipe(player)
         .map(
             holder ->
@@ -282,6 +357,9 @@ final class TerminalCrafting {
    */
   Outcome craft(ServerPlayer player, int crafts) {
     if (processing) return new Outcome(0, TerminalCraftingPackets.GridStatus.PROCESSING_MODE, null);
+    // Q6: stonecutter and smithing recipes are only encoded; a Crafter makes them.
+    if (table != PatternContents.Table.CRAFTING)
+      return new Outcome(0, TerminalCraftingPackets.GridStatus.ENCODE_ONLY, null);
     var requirement = requirement();
     if (requirement.empty()) return new Outcome(0, TerminalCraftingPackets.GridStatus.EMPTY, null);
     var holder = recipe(player);
@@ -357,6 +435,7 @@ final class TerminalCrafting {
    */
   Outcome encode(ServerPlayer player, boolean substitutes) {
     if (processing) return encodeProcessing(player);
+    if (table != PatternContents.Table.CRAFTING) return encodeTable(player);
     var holder = recipe(player);
     if (holder.isEmpty()) return new Outcome(0, TerminalCraftingPackets.GridStatus.NO_RECIPE, null);
     var codec = new PlatformResourceCodec(player.registryAccess());
@@ -391,6 +470,32 @@ final class TerminalCrafting {
       }
       var contents =
           new PatternContents(UUID.randomUUID(), 1, 0, ghosts, output, remainders, alternatives);
+      contents.pattern(codec);
+      encoded = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
+      encoded.set(CraftingContent.PATTERN.get(), contents);
+    } catch (IllegalArgumentException unsupported) {
+      return new Outcome(0, TerminalCraftingPackets.GridStatus.UNSUPPORTED, null);
+    }
+    return write(player, encoded);
+  }
+
+  /** Q6: encodes the stonecutter or smithing recipe the grid shows (always exact). */
+  private Outcome encodeTable(ServerPlayer player) {
+    var made = made(player);
+    if (made == null) return new Outcome(0, TerminalCraftingPackets.GridStatus.NO_RECIPE, null);
+    ItemStack encoded;
+    try {
+      var codec = new PlatformResourceCodec(player.registryAccess());
+      var contents =
+          new PatternContents(
+              UUID.randomUUID(),
+              1,
+              0,
+              ghosts(cells, codec),
+              made.output(),
+              made.remainders(),
+              java.util.Collections.nCopies(PatternContents.CELLS, List.of()),
+              table);
       contents.pattern(codec);
       encoded = new ItemStack(CraftingContent.CRAFTING_PATTERN.get());
       encoded.set(CraftingContent.PATTERN.get(), contents);

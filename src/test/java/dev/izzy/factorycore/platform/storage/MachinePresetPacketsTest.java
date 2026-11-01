@@ -84,7 +84,14 @@ class MachinePresetPacketsTest {
         IllegalArgumentException.class,
         () ->
             new MachinePresetPackets.Command(
-                1, id, 1, MachinePresetPackets.FILTER_MODE + 1, 0, "", new byte[32]));
+                1, id, 1, MachinePresetPackets.CRAFT + 1, 0, "", new byte[32]));
+    // Q8: Craft missing is on (1) or off (0).
+    new MachinePresetPackets.Command(1, id, 1, MachinePresetPackets.CRAFT, 1, "", new byte[32]);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new MachinePresetPackets.Command(
+                1, id, 1, MachinePresetPackets.CRAFT, 2, "", new byte[32]));
     // H6: Apply-as-mode and set-filter-mode are in range.
     new MachinePresetPackets.Command(
         1, id, 1, MachinePresetPackets.DEPLOY_AS, 3, "8", new byte[32]);

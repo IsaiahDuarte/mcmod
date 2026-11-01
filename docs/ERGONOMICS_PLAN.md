@@ -506,7 +506,10 @@ New gates:
   Done when: `runJeiClient` transfers a furnace recipe and a blasting recipe into a processing
   pattern; a native test covers the output truncation message.
 
-- [ ] **Q6 — Stonecutter and smithing patterns (M6, needs QD3).** Size M.
+- [x] **Q6 — Stonecutter and smithing patterns (M6, needs QD3).** Size M. Done 2026-10-31
+  (commit subject `Q6, Q8, Q110:`). `PatternContents.Table`, `TableRecipes`, a workstation switch
+  on the Table page, JEI handlers; ADR 0030 amendment.
+  [Evidence](evidence/ergonomics-q6-table-patterns-2026-10-31.md).
   Two new pattern modes in the crafting panel, encoded from the vanilla recipe and run inside
   the Crafter, revalidated before each craft like crafting-table patterns.
   Files: `Pattern.java`, `PatternContents.java`, `TerminalCrafting.java`, `CrafterEntity.java`.
@@ -522,7 +525,10 @@ New gates:
   Files: `TerminalJobs.java`, `CraftingPlanner`, `TerminalJobPackets.java`, `TerminalScreen.java`.
   Done when: native tests cover an exact maximum, zero possible, and the 4,096 cap message.
 
-- [ ] **Q8 — Exporter crafts what it is missing (M8, needs QD4).** Size M. After Q52 and Q53.
+- [x] **Q8 — Exporter crafts what it is missing (M8, needs QD4).** Size M. After Q52 and Q53.
+  Done 2026-10-31 (commit subject `Q6, Q8, Q110:`). `Deployment.craft`, one linked job per
+  Exporter, refusals shown on it; ADR 0066 and 0034 amendments.
+  [Evidence](evidence/ergonomics-q8-exporter-craft-2026-10-31.md).
   An Exporter with **Keep** set gets a **Craft missing** toggle. When stock is short and a
   pattern exists, it starts one job for the shortfall under the applier's grants, waits for
   it, then exports. It never holds more than one job.
@@ -626,7 +632,10 @@ New gates:
   Done when: client runs with and without Curios open the terminal by key; the ArchUnit rule
   keeps Curios off mandatory loading.
 
-- [ ] **Q110 — Open key finds Curios slots (M14, needs QD1).** Size S. Lane T.
+- [x] **Q110 — Open key finds Curios slots (M14, needs QD1).** Size S. Lane T. Done
+  2026-10-31 (commit subject `Q6, Q8, Q110:`). `HandheldSlots` hook, optional
+  `integration/curios`, `runCuriosGameTestServer`; [ADR 0069](decisions/0069-curios-and-emi.md).
+  [Evidence](evidence/ergonomics-q110-curios-2026-10-31.md).
   The Q14 key also searches Curios slots when Curios is present, through a new optional
   `client/integration/curios` (server side too) that ArchUnit keeps off mandatory loading.
   Done when: client runs with and without Curios open the terminal by key.

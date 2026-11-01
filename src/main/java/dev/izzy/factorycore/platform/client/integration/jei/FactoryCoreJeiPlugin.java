@@ -24,6 +24,17 @@ public final class FactoryCoreJeiPlugin implements IModPlugin {
   public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
     registration.addRecipeTransferHandler(
         new TerminalTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
+    // Q6: stonecutter and smithing recipes encode as their own pattern kinds.
+    registration.addRecipeTransferHandler(
+        new TableTransferHandler<>(
+            RecipeTypes.STONECUTTING,
+            dev.izzy.factorycore.platform.crafting.PatternContents.Table.STONECUTTING),
+        RecipeTypes.STONECUTTING);
+    registration.addRecipeTransferHandler(
+        new TableTransferHandler<>(
+            RecipeTypes.SMITHING,
+            dev.izzy.factorycore.platform.crafting.PatternContents.Table.SMITHING),
+        RecipeTypes.SMITHING);
     // Q5: every other recipe JEI shows fills the processing grid.
     registration.addUniversalRecipeTransferHandler(
         new ProcessingTransferHandler(registration.getTransferHelper()));

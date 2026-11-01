@@ -159,3 +159,4 @@ The [implementation plan](../IMPLEMENTATION.md) assigns D01–D07 decision deadl
 
 - [0067 — Storage discovery by network](0067-storage-discovery-by-network.md)
 - [0068 — Sentence programs and the offline program helper](0068-sentence-programs.md)
+- [0069 — Curios and EMI as optional integrations](0069-curios-and-emi.md)

@@ -77,7 +77,8 @@ class TerminalCraftingPacketsTest {
             2,
             TerminalCraftingPackets.GridStatus.READY,
             0,
-            (1 << 0) | (1 << 9));
+            (1 << 0) | (1 << 9),
+            0);
     var output = buffer();
     try {
       TerminalCraftingPackets.View.CODEC.encode(output, view);
@@ -109,7 +110,8 @@ class TerminalCraftingPacketsTest {
                   0,
                   TerminalCraftingPackets.GridStatus.READY,
                   0,
-                  mask));
+                  mask,
+                  0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -125,7 +127,52 @@ class TerminalCraftingPacketsTest {
                 0,
                 TerminalCraftingPackets.GridStatus.READY,
                 0,
-                1));
+                1,
+                0));
+  }
+
+  /** Q6: the grid view names its workstation, and a fill can choose one and a result. */
+  @Test
+  void tableAndStonecutterResultRoundTripAndAreBounded() {
+    var cells = Collections.nCopies(12, "");
+    var counts = Collections.nCopies(12, 1);
+    var view =
+        new TerminalCraftingPackets.View(
+            1,
+            UUID.randomUUID(),
+            3,
+            cells,
+            counts,
+            false,
+            "minecraft:stone_bricks",
+            "Stone Bricks",
+            1,
+            TerminalCraftingPackets.GridStatus.READY,
+            0,
+            0,
+            1);
+    var fill =
+        new TerminalCraftingPackets.Fill(
+            1, view.session(), Collections.nCopies(9, ""), 1, "minecraft:stone_bricks");
+    var output = buffer();
+    try {
+      TerminalCraftingPackets.View.CODEC.encode(output, view);
+      TerminalCraftingPackets.Fill.CODEC.encode(output, fill);
+      assertEquals(view, TerminalCraftingPackets.View.CODEC.decode(output));
+      assertEquals(fill, TerminalCraftingPackets.Fill.CODEC.decode(output));
+      assertFalse(output.isReadable());
+    } finally {
+      output.release();
+    }
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalCraftingPackets.Fill(1, view.session(), Collections.nCopies(9, ""), 3, ""));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminalCraftingPackets.Fill(
+                1, view.session(), Collections.nCopies(9, ""), 1, "not a:valid id"));
   }
 
   @Test

@@ -15,7 +15,12 @@ import net.minecraft.server.MinecraftServer;
 
 /** Loaded-only machine presets; bounded discovery and every transfer share world scheduling. */
 public final class WorldMachinePresets {
-  public record Status(MachinePresets.Mode mode, OperationResult.Reason reason, boolean waiting) {}
+  /**
+   * {@code craft} (Q8) is the Craft-missing state shown instead of the reason: "crafting" while
+   * this Exporter's job runs, "craft_" plus the job refusal's key, or null.
+   */
+  public record Status(
+      MachinePresets.Mode mode, OperationResult.Reason reason, boolean waiting, String craft) {}
 
   private static final class Entry {
     final MachineInterfaceEntity owner;
@@ -32,6 +37,9 @@ public final class WorldMachinePresets {
     WorldStorageCatalog.Cursor cursor;
     WorldConnectors.Handle handle;
     OperationResult.Reason reason = OperationResult.Reason.SHORTAGE;
+
+    /** Q8: see {@link Status#craft}. */
+    String craft;
 
     Entry(MachineInterfaceEntity owner) {
       this.owner = owner;
@@ -111,7 +119,8 @@ public final class WorldMachinePresets {
     return new Status(
         deployment == null ? MachinePresets.Mode.PAUSED : deployment.mode(),
         entry == null ? OperationResult.Reason.OFFLINE : entry.reason,
-        entry != null && entry.owner == owner && (entry.scheduled || entry.request != null));
+        entry != null && entry.owner == owner && (entry.scheduled || entry.request != null),
+        entry == null || deployment == null || !deployment.craft() ? null : entry.craft);
   }
 
   public void tagsReloaded() {
@@ -450,9 +459,68 @@ public final class WorldMachinePresets {
                   }
                   if (page.next() == null) {
                     e.pages = 0;
-                    retry(e, OperationResult.Reason.SHORTAGE);
+                    shortage(e, d);
                   } else wake(e);
                 }));
+  }
+
+  /**
+   * Q8 (QD4): storage holds none of what a Keep needs. With Craft missing on, this Exporter starts
+   * one job for the shortfall under its applier's grants, linked to the Exporter so there is never
+   * a second while it runs (also after a reload), and keeps checking storage meanwhile.
+   */
+  private void shortage(Entry e, MachinePresets.Deployment d) {
+    if (d.mode() != MachinePresets.Mode.STOCK || !d.craft()) {
+      e.craft = null;
+      retry(e, OperationResult.Reason.SHORTAGE);
+      return;
+    }
+    var key = craftable(d);
+    long missing = key == null ? 0 : room(e, d);
+    if (missing < 0) {
+      retry(e, e.reason);
+      return;
+    }
+    var jobs = dev.izzy.factorycore.platform.crafting.WorldCraftingJobs.get(server);
+    var link = craftLink(e.node);
+    if (key == null) e.craft = "craft_unsupported";
+    else if (missing == 0) e.craft = null;
+    else if (jobs.linked(link)) e.craft = "crafting";
+    else {
+      var submission = jobs.submitLinked(actor(d), e.owner.position(), key, missing, link);
+      e.craft = submission.job() != null ? "crafting" : "craft_" + submission.reason().key();
+    }
+    retry(e, OperationResult.Reason.SHORTAGE);
+  }
+
+  /** Q8: the job link that makes an Exporter's craft unique. */
+  static UUID craftLink(UUID node) {
+    return UUID.nameUUIDFromBytes(
+        ("factorycore:exporter-craft:" + node).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+  }
+
+  /** Q8: what a Keep crafts: its first exact or registry item or fluid, or null. */
+  private ResourceKey craftable(MachinePresets.Deployment d) {
+    if (d.filter().mode() != ResourceFilter.Mode.INCLUDE) return null;
+    var codec = new PlatformResourceCodec(server.registryAccess());
+    for (var term : d.filter().terms()) {
+      if (term instanceof ResourceFilter.Exact exact) return exact.key();
+      if (term instanceof ResourceFilter.Registry registry) {
+        var id = net.minecraft.resources.ResourceLocation.tryParse(registry.id());
+        if (id == null) continue;
+        if (d.filter().kind() == ResourceKind.ITEM
+            && net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(id))
+          return codec.itemKey(
+              new net.minecraft.world.item.ItemStack(
+                  net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id)));
+        if (d.filter().kind() == ResourceKind.FLUID
+            && net.minecraft.core.registries.BuiltInRegistries.FLUID.containsKey(id))
+          return codec.fluidKey(
+              new net.neoforged.neoforge.fluids.FluidStack(
+                  net.minecraft.core.registries.BuiltInRegistries.FLUID.get(id), 1));
+      }
+    }
+    return null;
   }
 
   /**
@@ -484,7 +552,7 @@ public final class WorldMachinePresets {
     e.best = null;
     e.bestDistance = Integer.MAX_VALUE;
     if (key == null) {
-      retry(e, OperationResult.Reason.SHORTAGE);
+      shortage(e, d);
       return;
     }
     long amount = room(e, d);

@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.client.ui.ChoiceButton;
 import dev.izzy.factorycore.platform.client.ui.PanelLayout;
 import dev.izzy.factorycore.platform.client.ui.Panels;
 import dev.izzy.factorycore.platform.client.ui.Rect;
+import dev.izzy.factorycore.platform.client.ui.ToggleButton;
 import dev.izzy.factorycore.platform.storage.MachinePresetPackets;
 import dev.izzy.factorycore.platform.storage.MachineSettingsMenu;
 import dev.izzy.factorycore.platform.storage.MachineSettingsPackets;
@@ -42,6 +43,10 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
   private FilterSlots filterSlots;
   private EditBox keep;
   private Button redstone, apply, stop, returning, order;
+
+  /** Q8: the Exporter's Craft missing choice, for a Keep. */
+  private ToggleButton craft;
+
   private Rect hint, message, status;
   private int selectedRule = -1;
 
@@ -58,7 +63,9 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
         3 * (PanelLayout.ROW + PanelLayout.GAP)
             + 2 * 18
             + PanelLayout.GAP
-            + (role == PortBlock.Role.EXPORTER ? PanelLayout.ROW + PanelLayout.GAP : 0)
+            + (role == PortBlock.Role.EXPORTER
+                ? PanelLayout.ROW + PanelLayout.GAP + ToggleButton.HEIGHT + PanelLayout.GAP
+                : 0)
             + 2 * PanelLayout.LINE;
     layout = new PanelLayout(PanelLayout.NARROW, PanelLayout.heightFor(body));
     imageWidth = layout.width();
@@ -174,9 +181,21 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
       keep.setHint(Component.translatable("gui.factorycore.port.keep.hint"));
       keep.setTooltip(Tooltip.create(Component.translatable("gui.factorycore.port.keep.help")));
       keep.setValue(typed);
+      var craftRow = rows.row(ToggleButton.HEIGHT);
+      var craftLabel = Component.translatable("gui.factorycore.port.craft");
+      craft =
+          addRenderableWidget(
+              new ToggleButton(
+                  leftPos + craftRow.x(),
+                  topPos + craftRow.y(),
+                  ToggleButton.width(font, craftLabel),
+                  craftLabel,
+                  b -> send(MachinePresetPackets.CRAFT, craft.on() ? 0 : 1, "")));
+      craft.setTooltip(Tooltip.create(Component.translatable("gui.factorycore.port.craft.help")));
     } else {
       keep = null;
       order = null;
+      craft = null;
     }
 
     var redstoneRow = rows.row();
@@ -349,6 +368,10 @@ public final class PortScreen extends AbstractContainerScreen<MachineSettingsMen
     stop.active = editable && running;
     returning.visible = view.cleanup();
     returning.active = view.cleanup() && !view.busy();
+    if (craft != null) {
+      craft.setOn(view.craft());
+      craft.active = editable;
+    }
     if (keep != null) {
       keep.setEditable(editable);
       // The client's placeholder view has revision 1; the server's first publish is newer.

@@ -275,8 +275,8 @@ final class JeiClientVerification {
                     NeoForgeTypes.FLUID_STACK, new FluidStack(Fluids.WATER, 1000), false)
                 .orElseThrow());
         check(
-            editor.getValue().equals("item(\"minecraft:iron_ingot\") fluid(\"minecraft:water\")"),
-            "Ghost drops type item and fluid expressions: " + editor.getValue());
+            editor.getValue().equals("iron ingot fluid water"),
+            "Ghost drops type the item and fluid as programs name them: " + editor.getValue());
         evidence
             .append("jei: program ghost drops -> ")
             .append(editor.getValue().replace('\n', ' '))
@@ -680,6 +680,45 @@ final class JeiClientVerification {
                         .getString()),
             "The processing-to-Table switch is announced: " + overlay(client));
         evidence.append("jei: a crafting recipe on the processing grid announces the switch.\n");
+        // Q6: a stonecutter recipe switches the Table page to the stonecutter.
+        processingRevision = grid.gridRevision();
+        transferProcessing(
+            client,
+            screen.getMenu(),
+            RecipeTypes.STONECUTTING,
+            "stone_bricks_from_stone_stonecutting");
+        panelStage = 31;
+        panelEntered = ticks;
+        return false;
+      }
+      case 31 -> {
+        if (grid.gridRevision() == processingRevision || grid.table() != 1) return false;
+        check(
+            !grid.processing()
+                && grid.cells().get(0).equals("minecraft:stone")
+                && grid.cells().get(1).isEmpty()
+                && grid.result().equals("minecraft:stone_bricks"),
+            "A stonecutter recipe fills the first cell and chooses its result: " + grid);
+        capture(client, "jei-stonecutter-transfer.png");
+        processingRevision = grid.gridRevision();
+        transferProcessing(
+            client, screen.getMenu(), RecipeTypes.SMITHING, "netherite_sword_smithing");
+        panelStage = 32;
+        panelEntered = ticks;
+        return false;
+      }
+      case 32 -> {
+        if (grid.gridRevision() == processingRevision || grid.table() != 2) return false;
+        check(
+            grid.cells().get(0).equals("minecraft:netherite_upgrade_smithing_template")
+                && grid.cells().get(1).equals("minecraft:diamond_sword")
+                && grid.cells().get(2).equals("minecraft:netherite_ingot")
+                && grid.result().equals("minecraft:netherite_sword"),
+            "A smithing recipe fills template, base and addition: " + grid);
+        capture(client, "jei-smithing-transfer.png");
+        evidence.append(
+            "jei: stonecutter (stone -> stone bricks, result chosen) and smithing (netherite"
+                + " sword) recipes fill the Table page's matching workstation.\n");
         // Q17: the J tool turns on search sync.
         check(press(screen, "J"), "The search-sync tool is shown with JEI installed");
         panelStage = 14;

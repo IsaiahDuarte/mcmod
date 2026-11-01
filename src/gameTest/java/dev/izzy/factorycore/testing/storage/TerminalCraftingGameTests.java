@@ -535,6 +535,120 @@ public final class TerminalCraftingGameTests {
   }
 
   /**
+   * Q6: a recipe-viewer fill switches the Table page to the stonecutter or smithing table; the
+   * stonecutter result can be chosen; such recipes encode (and reload) but are not crafted here.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void stonecutterAndSmithingRecipesFillChooseAndEncode(GameTestHelper h) {
+    var f = setup(h);
+    var inventory = f.player.getInventory();
+    inventory.setItem(0, new ItemStack(CraftingContent.BLANK_PATTERN.get()));
+    inventory.setItem(1, new ItemStack(CraftingContent.BLANK_PATTERN.get()));
+    var empty = java.util.Collections.nCopies(8, "");
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
+        .thenExecute(() -> open(h, f))
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              var m = menu(f);
+              var cells = new java.util.ArrayList<String>(List.of("minecraft:stone"));
+              cells.addAll(empty);
+              m.gridFill(
+                  f.player,
+                  new TerminalCraftingPackets.Fill(
+                      m.containerId, m.session(), cells, 1, "minecraft:stone_bricks"));
+              m.broadcastChanges();
+              var view = m.gridView();
+              h.assertTrue(
+                  view.table() == 1 && view.result().equals("minecraft:stone_bricks"),
+                  "The stonecutter fill shows the chosen result: " + view);
+              grid(f, TerminalCraftingPackets.CUT, -1, 0, 1, new byte[32]);
+              h.assertTrue(
+                  !menu(f).gridView().result().equals("minecraft:stone_bricks")
+                      && !menu(f).gridView().result().isEmpty(),
+                  "Clicking the result picks another stonecutter result");
+              grid(f, TerminalCraftingPackets.CUT, -1, 1, 1, new byte[32]);
+              h.assertTrue(
+                  menu(f).gridView().result().equals("minecraft:stone_bricks"),
+                  "Right-clicking goes back");
+              grid(f, TerminalCraftingPackets.CRAFT, -1, 0, 1, new byte[32]);
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.ENCODE_ONLY
+                      && count(f, Items.STONE_BRICKS) == 0,
+                  "The grid does not craft stonecutter recipes: " + menu(f).gridView().status());
+              grid(f, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]);
+              int slot = slotOf(f, CraftingContent.CRAFTING_PATTERN.get());
+              var contents =
+                  slot < 0 ? null : inventory.getItem(slot).get(CraftingContent.PATTERN.get());
+              h.assertTrue(
+                  contents != null
+                      && contents.table()
+                          == dev.izzy.factorycore.platform.crafting.PatternContents.Table
+                              .STONECUTTING
+                      && contents.output().is(Items.STONE_BRICKS)
+                      && contents.cells().get(0).is(Items.STONE),
+                  "Encode writes a stonecutter pattern");
+              var m = menu(f);
+              m.gridFill(
+                  f.player,
+                  new TerminalCraftingPackets.Fill(
+                      m.containerId,
+                      m.session(),
+                      List.of(
+                          "minecraft:netherite_upgrade_smithing_template",
+                          "minecraft:diamond_pickaxe",
+                          "minecraft:netherite_ingot",
+                          "",
+                          "",
+                          "",
+                          "",
+                          "",
+                          ""),
+                      2,
+                      ""));
+              m.broadcastChanges();
+              h.assertTrue(
+                  m.gridView().table() == 2
+                      && m.gridView().result().equals("minecraft:netherite_pickaxe"),
+                  "The smithing fill shows the upgrade: " + m.gridView());
+            })
+        .thenIdle(2)
+        .thenExecute(
+            () -> {
+              grid(f, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]);
+              h.assertTrue(
+                  count(f, CraftingContent.BLANK_PATTERN.get()) == 0
+                      && count(f, CraftingContent.CRAFTING_PATTERN.get()) == 2,
+                  "Encode writes the smithing pattern on the second blank");
+              grid(f, TerminalCraftingPackets.TABLE, 0, 0, 1, new byte[32]);
+              grid(f, TerminalCraftingPackets.CLEAR, -1, 0, 1, new byte[32]);
+              int stonecutter = -1;
+              for (int slot = 0; slot < 36; slot++) {
+                var contents = inventory.getItem(slot).get(CraftingContent.PATTERN.get());
+                if (contents != null && contents.output().is(Items.STONE_BRICKS))
+                  stonecutter = slot;
+              }
+              grid(f, TerminalCraftingPackets.LOAD, -1, stonecutter, 1, new byte[32]);
+              var view = menu(f).gridView();
+              h.assertTrue(
+                  view.table() == 1
+                      && view.cells().get(0).equals("minecraft:stone")
+                      && view.result().equals("minecraft:stone_bricks"),
+                  "Loading a stonecutter pattern restores its workstation and result: " + view);
+              logout(f);
+            })
+        .thenSucceed();
+  }
+
+  /**
    * Q4: an encoded crafting pattern loads back into the Table grid with its Substitutes choice;
    * after a change, Encode rewrites that pattern in its slot without needing a blank.
    */

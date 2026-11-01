@@ -5,6 +5,7 @@ import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.resource.*;
 import dev.izzy.factorycore.core.resource.OperationResult;
 import dev.izzy.factorycore.platform.Actors;
+import dev.izzy.factorycore.platform.crafting.PatternContents;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.resource.PlatformResourceCodec;
 import dev.izzy.factorycore.platform.session.DeviceStatus;
@@ -1055,12 +1056,18 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     var codec = new PlatformResourceCodec(sender.registryAccess());
     crafting.clear();
     if (crafting.processing()) crafting.processing(false);
+    var table = PatternContents.Table.of(fill.table());
+    if (crafting.table() != table) crafting.table(table);
     for (int cell = 0; cell < fill.items().size(); cell++) {
       var id = ResourceLocation.tryParse(fill.items().get(cell));
       var item = id == null ? Items.AIR : BuiltInRegistries.ITEM.get(id);
       if (item == Items.AIR) continue;
       crafting.set(cell, codec.itemKey(new ItemStack(item)));
     }
+    // Q6: a stonecutter transfer names which of the input's results it shows.
+    var result = ResourceLocation.tryParse(fill.result());
+    if (result != null && BuiltInRegistries.ITEM.containsKey(result))
+      crafting.cut(sender, BuiltInRegistries.ITEM.get(result));
     gridStatus = TerminalCraftingPackets.GridStatus.FILLED;
     publish();
   }
@@ -1119,6 +1126,15 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       }
       case TerminalCraftingPackets.MODE -> {
         crafting.processing(command.cell() == 1);
+        gridStatus = TerminalCraftingPackets.GridStatus.READY;
+      }
+      case TerminalCraftingPackets.TABLE -> {
+        if (crafting.processing()) return;
+        crafting.table(PatternContents.Table.of(command.cell()));
+        gridStatus = TerminalCraftingPackets.GridStatus.READY;
+      }
+      case TerminalCraftingPackets.CUT -> {
+        crafting.cut(sender, command.source() == 0 ? 1 : -1);
         gridStatus = TerminalCraftingPackets.GridStatus.READY;
       }
       case TerminalCraftingPackets.COUNT -> {
@@ -1467,7 +1483,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             Math.min(64, result.getCount()),
             gridStatus,
             crafted,
-            fluidMask);
+            fluidMask,
+            crafting.table().ordinal());
     if (!grid.equals(gridView)) {
       gridView = grid;
       PacketDistributor.sendToPlayer(player(), grid);

@@ -45,7 +45,36 @@ public final class MachinePresets {
       Authority authority,
       Mode mode,
       ResourceFilter filter,
-      long target) {
+      long target,
+      boolean craft) {
+    /** Without Q8's Craft missing. */
+    public Deployment(
+        UUID node,
+        long leaseGeneration,
+        long revision,
+        long configuration,
+        Face face,
+        Authority authority,
+        Mode mode,
+        ResourceFilter filter,
+        long target) {
+      this(
+          node,
+          leaseGeneration,
+          revision,
+          configuration,
+          face,
+          authority,
+          mode,
+          filter,
+          target,
+          false);
+    }
+
+    /**
+     * {@code craft} (Q8, QD4): a Keep that finds too little in storage starts one crafting job for
+     * the shortfall, under {@code authority}'s grants. Kept while paused so a resume restores it.
+     */
     public Deployment {
       Objects.requireNonNull(node);
       Objects.requireNonNull(face);
@@ -54,6 +83,8 @@ public final class MachinePresets {
       Objects.requireNonNull(filter);
       if (leaseGeneration <= 0 || revision <= 0 || configuration <= 0 || target < 0)
         throw new IllegalArgumentException("Invalid machine deployment");
+      if (craft && mode != Mode.STOCK && mode != Mode.PAUSED)
+        throw new IllegalArgumentException("Only a Keep can craft what is missing");
     }
 
     public long bytes() {
@@ -179,6 +210,18 @@ public final class MachinePresets {
       Mode mode,
       ResourceFilter filter,
       long target) {
+    return prepare(node, configuration, face, authority, mode, filter, target, false);
+  }
+
+  public Deployment prepare(
+      NodeRegistry.Handle node,
+      long configuration,
+      Face face,
+      Authority authority,
+      Mode mode,
+      ResourceFilter filter,
+      long target,
+      boolean craft) {
     checkThread();
     validate(node);
     var old = deployments.get(node.id());
@@ -192,7 +235,8 @@ public final class MachinePresets {
             authority,
             mode,
             filter,
-            target);
+            target,
+            craft);
     admission(old, next);
     return next;
   }
@@ -274,7 +318,8 @@ public final class MachinePresets {
             old.authority(),
             Mode.PAUSED,
             old.filter(),
-            old.target());
+            old.target(),
+            old.craft());
     deployments.put(node, next);
     interrupted.put(node, old.mode());
     changed.run();

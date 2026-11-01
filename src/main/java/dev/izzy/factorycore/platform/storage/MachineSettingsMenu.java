@@ -47,6 +47,10 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
   private MachineSettingsPackets.Status status = MachineSettingsPackets.Status.READY;
   private MachinePresets.Deployment presetBase;
   private long presetConfiguration, presetRevision = 1, presetGoal = 64;
+
+  /** Q8: the draft's Craft missing choice (Exporter Keep only). */
+  private boolean presetCraft;
+
   private MachinePresets.Mode presetMode = MachinePresets.Mode.PAUSED;
   private ResourceFilter presetFilter = ResourceFilter.all(ResourceKind.ITEM);
   private MachinePresetPackets.Status presetStatus = MachinePresetPackets.Status.READY;
@@ -476,6 +480,7 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
         compatible
             ? presetBase.target()
             : machine.settings().kind() == ResourceKind.ITEM ? 64 : 1000;
+    presetCraft = compatible && presetBase.craft();
     presetDirty = interrupted != null;
     presetRevision++;
     return interrupted != null;
@@ -579,13 +584,16 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
             rules,
             presetStatus,
             runtimeStatus.mode(),
-            runtimeStatus.reason().name().toLowerCase(Locale.ROOT),
+            runtimeStatus.craft() != null
+                ? runtimeStatus.craft()
+                : runtimeStatus.reason().name().toLowerCase(Locale.ROOT),
             presetEditable(),
             presetBusy,
             presetDirty,
             staged == null ? 0 : staged.transfer().staged(),
             staged != null && !uncertain,
-            ruleStatuses(codec));
+            ruleStatuses(codec),
+            presetCraft);
     if (!packet.equals(presetView)) {
       presetView = packet;
       PacketDistributor.sendToPlayer(player(), packet);
@@ -682,6 +690,11 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
           if (filterMode == ResourceFilter.Mode.ALL) terms.clear();
         }
         case MachinePresetPackets.GOAL -> goal = Long.parseLong(packet.text());
+        case MachinePresetPackets.CRAFT -> {
+          if (machine.role() != PortBlock.Role.EXPORTER)
+            throw new IllegalArgumentException("Only an Exporter crafts what is missing");
+          presetCraft = packet.selection() == 1;
+        }
         case MachinePresetPackets.REGISTRY -> {
           terms.add(new ResourceFilter.Registry(packet.text()));
           if (filterMode == ResourceFilter.Mode.ALL) filterMode = ResourceFilter.Mode.INCLUDE;
@@ -796,7 +809,20 @@ public final class MachineSettingsMenu extends AbstractContainerMenu
                 publishPreset();
                 return;
               }
-          machine.deployPreset(actor(), presetMode, presetFilter, goal);
+          // Q8: Craft missing applies to a Keep, and its jobs run under this player's Craft grant.
+          boolean craft =
+              presetCraft
+                  && (presetMode == MachinePresets.Mode.STOCK
+                      || presetMode == MachinePresets.Mode.PAUSED);
+          if (craft
+              && presetMode == MachinePresets.Mode.STOCK
+              && !runtime()
+                  .allows(actor(), machine.position(), NetworkPermissions.Permission.CRAFT)) {
+            presetStatus = MachinePresetPackets.Status.CRAFT_DENIED;
+            publishPreset();
+            return;
+          }
+          machine.deployPreset(actor(), presetMode, presetFilter, goal, craft);
           resetPreset();
           presetStatus = MachinePresetPackets.Status.APPLIED;
           publishPreset();

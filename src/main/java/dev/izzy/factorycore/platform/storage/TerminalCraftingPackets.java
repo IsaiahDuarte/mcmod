@@ -44,7 +44,9 @@ public final class TerminalCraftingPackets {
     /** As LOADED, for a crafting pattern that allows substitutes. */
     LOADED_SUBSTITUTES,
     /** Q4: Encode rewrote the loaded pattern in place. */
-    REWRITTEN;
+    REWRITTEN,
+    /** Q6: stonecutter and smithing recipes are encoded, not crafted in the grid. */
+    ENCODE_ONLY;
 
     public String key() {
       return EnumKeys.key(this);
@@ -75,6 +77,13 @@ public final class TerminalCraftingPackets {
    */
   public static final int MAIN = 8;
 
+  /**
+   * Q6: TABLE sets the Table page's workstation (cell = {@link
+   * dev.izzy.factorycore.platform.crafting.PatternContents.Table} ordinal); CUT picks the next
+   * (source 0) or previous (source 1) stonecutter result.
+   */
+  public static final int TABLE = 9, CUT = 10;
+
   /** Nine input cells plus three processing output cells (indices 9–11). */
   public static final int CELLS = TerminalCrafting.ALL_CELLS;
 
@@ -96,8 +105,10 @@ public final class TerminalCraftingPackets {
     public Command {
       fingerprint = fingerprint.clone();
       if (action < SET_OWN
-          || action > MAIN
+          || action > CUT
           || (action == MAIN && cell != 10 && cell != 11)
+          || (action == TABLE && (cell < 0 || cell > 2))
+          || (action == CUT && source > 1)
           || cell < -1
           || cell >= CELLS
           || source < 0
@@ -157,7 +168,8 @@ public final class TerminalCraftingPackets {
       int resultCount,
       GridStatus status,
       int crafted,
-      int fluidMask)
+      int fluidMask,
+      int table)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
@@ -187,6 +199,7 @@ public final class TerminalCraftingPackets {
           resultCount,
           status,
           crafted,
+          0,
           0);
     }
 
@@ -204,7 +217,9 @@ public final class TerminalCraftingPackets {
       cells = List.copyOf(cells);
       counts = List.copyOf(counts);
       Objects.requireNonNull(status);
-      if (fluidMask < 0
+      if (table < 0
+          || table > 2
+          || fluidMask < 0
           || fluidMask >= (1 << CELLS)
           || !processing && fluidMask != 0
           || cells.size() != CELLS
@@ -243,6 +258,7 @@ public final class TerminalCraftingPackets {
               WireEnums.write(buffer, value.status);
               buffer.writeVarInt(value.crafted);
               buffer.writeVarInt(value.fluidMask);
+              buffer.writeVarInt(value.table);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -265,6 +281,7 @@ public final class TerminalCraftingPackets {
                   buffer.readVarInt(),
                   WireEnums.read(buffer, GridStatus.class),
                   buffer.readVarInt(),
+                  buffer.readVarInt(),
                   buffer.readVarInt());
             });
   }
@@ -273,9 +290,16 @@ public final class TerminalCraftingPackets {
 
   /**
    * Recipe-viewer transfer: nine registry item IDs ("" = empty) set as crafting ghost cells by
-   * registry identity. Ghost cells move nothing; a later craft revalidates real stock.
+   * registry identity. Ghost cells move nothing; a later craft revalidates real stock. Q6: {@code
+   * table} is the workstation (PatternContents.Table ordinal) and {@code result} the chosen
+   * stonecutter result's item ID ("" otherwise).
    */
-  public record Fill(int menu, UUID session, List<String> items) implements CustomPacketPayload {
+  public record Fill(int menu, UUID session, List<String> items, int table, String result)
+      implements CustomPacketPayload {
+    public Fill(int menu, UUID session, List<String> items) {
+      this(menu, session, items, 0, "");
+    }
+
     public static final int MAX_ID = 256;
     public static final Type<Fill> TYPE =
         new Type<>(
@@ -283,7 +307,11 @@ public final class TerminalCraftingPackets {
 
     public Fill {
       items = List.copyOf(items);
-      if (items.size() != GridRequirement.CELLS
+      if (table < 0
+          || table > 2
+          || result.length() > MAX_ID
+          || !result.isEmpty() && ResourceLocation.tryParse(result) == null
+          || items.size() != GridRequirement.CELLS
           || items.stream()
               .anyMatch(
                   id ->
@@ -303,6 +331,8 @@ public final class TerminalCraftingPackets {
               buffer.writeVarInt(value.menu);
               buffer.writeUUID(value.session);
               for (var id : value.items) buffer.writeUtf(id, MAX_ID);
+              buffer.writeVarInt(value.table);
+              buffer.writeUtf(value.result, MAX_ID);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -310,7 +340,7 @@ public final class TerminalCraftingPackets {
               var items = new ArrayList<String>(GridRequirement.CELLS);
               for (int cell = 0; cell < GridRequirement.CELLS; cell++)
                 items.add(buffer.readUtf(MAX_ID));
-              return new Fill(menu, session, items);
+              return new Fill(menu, session, items, buffer.readVarInt(), buffer.readUtf(MAX_ID));
             });
   }
 

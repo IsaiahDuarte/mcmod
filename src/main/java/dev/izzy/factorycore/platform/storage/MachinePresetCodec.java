@@ -28,6 +28,8 @@ final class MachinePresetCodec {
       tag.putString("Mode", value.mode().name());
       tag.putLong("Target", value.target());
       tag.put("Filter", FilterCodec.encode(value.filter()));
+      // Q8: written only when set, so other deployments save as before.
+      if (value.craft()) tag.putBoolean("Craft", true);
       list.add(tag);
     }
     root.put("Deployments", list);
@@ -72,6 +74,11 @@ final class MachinePresetCodec {
     return Map.copyOf(result);
   }
 
+  private static boolean craft(CompoundTag tag) {
+    Nbt.require(tag, "Craft", Tag.TAG_BYTE, "machine");
+    return tag.getBoolean("Craft");
+  }
+
   static List<MachinePresets.Deployment> decode(CompoundTag root) {
     Nbt.fields(
         root,
@@ -104,7 +111,8 @@ final class MachinePresetCodec {
               "Permissions",
               "Mode",
               "Target",
-              "Filter"));
+              "Filter",
+              "Craft"));
       for (String name : List.of("Node", "Principal", "Network", "Segment"))
         if (!tag.hasUUID(name)) throw new IllegalArgumentException("Machine deployment UUID");
       for (String name : List.of("Lease", "Revision", "Configuration", "Permissions", "Target"))
@@ -127,7 +135,8 @@ final class MachinePresetCodec {
                   tag.getLong("Permissions")),
               MachinePresets.Mode.valueOf(tag.getString("Mode")),
               filter,
-              tag.getLong("Target"));
+              tag.getLong("Target"),
+              tag.contains("Craft") && craft(tag));
       bytes = Math.addExact(bytes, value.bytes());
       if (bytes > MachinePresets.MAX_BYTES)
         throw new IllegalArgumentException("Machine deployment metadata limit");

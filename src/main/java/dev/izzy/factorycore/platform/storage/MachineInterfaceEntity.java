@@ -364,6 +364,19 @@ public final class MachineInterfaceEntity extends ConnectorEntity
       MachinePresets.Mode mode,
       ResourceFilter filter,
       long target) {
+    return deployPreset(actor, mode, filter, target, false);
+  }
+
+  /**
+   * As {@link #deployPreset(NetworkPermissions.Actor, MachinePresets.Mode, ResourceFilter, long)};
+   * {@code craft} (Q8) also needs the actor's Craft grant, since jobs run under it.
+   */
+  public MachinePresets.Deployment deployPreset(
+      NetworkPermissions.Actor actor,
+      MachinePresets.Mode mode,
+      ResourceFilter filter,
+      long target,
+      boolean craft) {
     validatePlaced();
     if (filter.kind() != settings().kind())
       throw new IllegalArgumentException("Preset/port resource mismatch");
@@ -383,6 +396,8 @@ public final class MachineInterfaceEntity extends ConnectorEntity
           List.of(NetworkPermissions.Permission.WITHDRAW, NetworkPermissions.Permission.DEPOSIT))
         if (!runtime.allows(actor, position(), permission))
           throw new IllegalStateException("Machine preset resource permission denied");
+    if (craft && !runtime.allows(actor, position(), NetworkPermissions.Permission.CRAFT))
+      throw new IllegalStateException("Machine preset craft permission denied");
     var scope = runtime.membership(position()).scope();
     var saved = DeviceSavedData.get(serverLevel().getServer());
     var next =
@@ -401,7 +416,8 @@ public final class MachineInterfaceEntity extends ConnectorEntity
                     saved.network(scope.network()).generation()),
                 mode,
                 filter,
-                target);
+                target,
+                craft);
     if (mode != MachinePresets.Mode.PAUSED
         && super.configure(actor, settings(), label(), next.configuration())
             != NetworkAuthority.Decision.ALLOWED)
@@ -429,7 +445,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
     var mode = presets.interrupted(handle().id());
     var paused = presets.get(handle().id());
     if (mode == null || paused.filter().kind() != settings().kind()) return false;
-    deployPreset(actor, mode, paused.filter(), paused.target());
+    deployPreset(actor, mode, paused.filter(), paused.target(), paused.craft());
     return true;
   }
 

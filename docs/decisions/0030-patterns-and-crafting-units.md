@@ -93,3 +93,22 @@ terminal was considered and rejected: a wireless terminal has no "beside", and a
 path would bypass the shared transfer and permission checks that the inventory path already
 satisfies. Taking blanks from network storage through the transfer layer remains possible later if
 players ask for it.
+
+## Amendment — Stonecutter and smithing patterns (2026-10-31, ergonomics plan Q6, QD3)
+
+A crafting pattern records which workstation it reproduces (`PatternContents.Table`: crafting,
+stonecutting or smithing; saved as `table`, absent for crafting). A stonecutter pattern holds its
+one input in cell 0 and names the chosen result as its output, because one input has several
+results. A smithing pattern holds template, base and addition in cells 0–2. Both are exact (no
+substitutes). The Crafter runs them like crafting-table patterns: `TableRecipes.make` looks the
+recipe up with the concrete items before every craft and refuses when it no longer gives the
+encoded output and remainders. The core `Pattern` stays type CRAFTING, so planning, reservation
+and dispatch are unchanged.
+
+The terminal's Table page gains a workstation switch rather than more mode tabs, which would not
+fit the panel's width. Its Craft buttons stay crafting-table only: crafting from the player's
+inventory in the grid needs no stonecutter or smithing path to be useful, and a Crafter makes
+both. JEI transfer fills either kind and, for the stonecutter, chooses the shown result.
+Alternatives considered: separate pattern items per workstation (rejected: more items, recipes
+and Crafter slots rules for the same behaviour), and processing patterns with a "stonecutter
+machine" (rejected: vanilla has no automatable stonecutter block entity to bind).
