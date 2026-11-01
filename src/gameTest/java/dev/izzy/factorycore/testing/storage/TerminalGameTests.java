@@ -892,7 +892,14 @@ public final class TerminalGameTests {
                     shown(f)
                         && inventory.countItem(Items.COBBLESTONE) == 0
                         && f.saved.registry().stock(f.cell, cobble).total() == 10,
-                    "Shift+wheel down stores exactly one"))
+                    "Shift+wheel down stores exactly one: status "
+                        + menu(f).view().status()
+                        + ", busy "
+                        + menu(f).view().busy()
+                        + ", held "
+                        + inventory.countItem(Items.COBBLESTONE)
+                        + ", stored "
+                        + f.saved.registry().stock(f.cell, cobble).total()))
         .thenIdle(3)
         .thenExecute(() -> command(f, TerminalPackets.CURSOR_ONE, row(f, cobble), 1, new byte[32]))
         .thenWaitUntil(

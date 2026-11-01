@@ -780,7 +780,9 @@ New gates:
 
 ## Wave E — new blocks (lane B)
 
-- [ ] **Q28 — Storage Monitor (M28).** Size M.
+- [x] **Q28 — Storage Monitor (M28).** Size M. Done 2026-10-31 (commit subject `Q28:`), with
+  deposit-all, lock and craft-at-zero (a take that finds none starts a job for one stack).
+  [Evidence](evidence/ergonomics-q28-storage-monitor-2026-10-31.md).
   A block placed on a cable shows one item's count on its face. Use with an item to set what
   it shows (needs Edit); use with an empty hand to take a stack; use with the shown item to
   deposit. Every take and deposit goes through the shared player-transfer path.
@@ -1171,6 +1173,13 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   could do nothing; the J tool was one example. `TickGate` now allows a burst of 4 back to back.
   The average stays one per 2 ticks.
   [Evidence](evidence/ergonomics-q16-emi-2026-10-31.md).
+- [ ] **Q129 — Intermittent `gridShortcutsMoveOneAndSwapIntoTheHotbar` (from Q26/Q28).** Size S.
+  Three of about twelve `verify` runs on 2026-10-31 failed at "Shift+wheel down stores exactly
+  one": the DEPOSIT_ROW command 3 ticks after the withdraw had no effect. Eight standalone
+  GameTest runs and three further `verify` runs passed. The assertion now reports the view
+  status, busy flag, held and stored counts. Next failure: read them, find which guard dropped
+  the command (busy, rate gate, row key, deferral), fix the cause or the test's timing.
+  Done when: the cause is named, and a regression GameTest or test fix lands.
 - [ ] **Q128 — GameTests that click several times in one tick (from Q27).** Size S. Before
   Q127, a menu command within 2 ticks of the last was dropped, so a test that sends several
   commands in one tick may have passed without anything happening. Q27 found one

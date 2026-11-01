@@ -319,6 +319,17 @@ def block_textures():
     screen.hline(6, 8, 5, SCREEN_HI)
     out["terminal_screen"] = screen
 
+    # Q28: Storage Monitor: a dark screen framed in copper; the item and count are drawn on it.
+    monitor = casing("storage_monitor_front")
+    monitor.rect(1, 1, 14, 14, COPPER_DARK)
+    monitor.rect(2, 2, 13, 13, SCREEN_BG)
+    monitor.hline(3, 5, 12, SCREEN)
+    out["storage_monitor_front"] = monitor
+    mside = casing("storage_monitor_side")
+    inset(mside, 4, 6, 11, 9)
+    mside.hline(5, 10, 7, COPPER)
+    out["storage_monitor_side"] = mside
+
     # Crafting Unit: grid top, processor sides.
     grid = casing("crafting_unit_top")
     inset(grid, 2, 2, 12, 12)

@@ -48,6 +48,7 @@ public final class FactoryCoreMod {
     PortContent.register(bus);
     EnergyBankContent.register(bus);
     FuelGeneratorContent.register(bus);
+    dev.izzy.factorycore.platform.monitor.MonitorContent.register(bus);
     CraftingContent.register(bus);
     ProgramContent.register(bus);
     WirelessContent.register(bus);

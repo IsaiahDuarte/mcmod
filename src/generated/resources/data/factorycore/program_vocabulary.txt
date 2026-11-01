@@ -36,6 +36,7 @@ item factorycore:starter_energy_bank
 item factorycore:starter_fluid_cell
 item factorycore:starter_item_cell
 item factorycore:storage_drive
+item factorycore:storage_monitor
 item factorycore:storage_terminal
 item factorycore:throughput_upgrade
 item factorycore:upgrade_toolbelt

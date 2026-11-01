@@ -26,6 +26,14 @@ public final class TerminalClient {
     dev.izzy.factorycore.platform.storage.MachineInspection.sink(InspectScreen::open);
   }
 
+  /** Q28: the Storage Monitor's face. */
+  @SubscribeEvent
+  public static void renderers(
+      net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+    event.registerBlockEntityRenderer(
+        dev.izzy.factorycore.platform.monitor.MonitorContent.ENTITY.get(), MonitorRenderer::new);
+  }
+
   @SubscribeEvent
   public static void screens(RegisterMenuScreensEvent event) {
     event.register(TerminalContent.MENU.get(), TerminalScreen::new);

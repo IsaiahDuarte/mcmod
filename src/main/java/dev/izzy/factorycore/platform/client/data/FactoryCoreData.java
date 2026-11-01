@@ -407,6 +407,22 @@ public final class FactoryCoreData {
           Items.NETHERITE_INGOT,
           'R',
           Items.REDSTONE);
+      // Q28: the Storage Monitor (starter stage).
+      shaped(
+          out,
+          misc,
+          "storage_monitor",
+          1,
+          Items.GLASS,
+          "IGI/CRC/III",
+          'I',
+          Items.IRON_INGOT,
+          'G',
+          Items.GLASS,
+          'C',
+          Items.COPPER_INGOT,
+          'R',
+          Items.REDSTONE);
       // Q22: the Wrench (starter stage: vanilla parts only).
       shaped(
           out,

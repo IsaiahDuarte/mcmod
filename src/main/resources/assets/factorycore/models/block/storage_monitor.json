@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "factorycore:block/casing",
+    "front": "factorycore:block/storage_monitor_front",
+    "side": "factorycore:block/storage_monitor_side"
+  }
+}

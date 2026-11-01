@@ -31,11 +31,12 @@ QD13 resolved yes. ADR 0048 and ADR 0039 amended.
 - **`RecipeGameTests`:** both new items have no recipe, and every other item keeps exactly one
   survival source.
 - **Full GameTest run:** 506 of 506 pass.
-- **Test placement:** the first version moved the player 300 blocks along X. GameTests are
-  placed at random, and twice in `verify` that broke `gridShortcutsMoveOneAndSwapIntoTheHotbar`
-  (its deposit was dropped). The likely cause: the move loaded a chunk beside that test's
-  network, which then revalidated. Standalone runs, including one under full CPU load, passed.
-  The far point is now straight up, so the player stays in the same chunk column.
+- **Test placement:** the first version moved the player 300 blocks along X, and twice in
+  `verify` `gridShortcutsMoveOneAndSwapIntoTheHotbar` failed ("Shift+wheel down stores exactly
+  one"). The far point was moved straight up on the guess that loading a chunk was the cause.
+  - **Correction (Q28):** that test failed once more with no far move in the suite, so the guess
+    was wrong. The flake is recorded as Q129. The straight-up far point is kept: it is still a
+    valid test of reach.
 
 ## Not covered
 

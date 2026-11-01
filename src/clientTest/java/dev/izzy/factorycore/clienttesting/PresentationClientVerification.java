@@ -2147,6 +2147,19 @@ public final class PresentationClientVerification {
                   + " gateways active/active/no_power/unpaired\n");
           return true;
         });
+    server(PresentationScenes::monitor);
+    step(
+        client ->
+            client.level != null
+                && client.level.getBlockEntity(PresentationScenes.MONITOR)
+                    instanceof dev.izzy.factorycore.platform.monitor.MonitorEntity monitor
+                && monitor.count() == 1_234);
+    view(PresentationScenes.MONITOR_CLOSE, "monitor-close.png", 20);
+    step(
+        client -> {
+          evidence.append("monitor: shows 1,234 cobblestone as 1.2k\n");
+          return true;
+        });
     view(PresentationScenes.STATES, "states-day.png", 40);
     view(PresentationScenes.STATES_CLOSE, "states-day-close.png", 20);
     server(player -> player.serverLevel().setDayTime(18000));

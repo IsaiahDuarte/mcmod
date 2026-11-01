@@ -53,6 +53,7 @@ that consume them.
 | Starter | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
 | Starter | Wrench | 4 iron ingots, 1 copper ingot |
+| Starter | Storage Monitor | 5 iron ingots, 1 glass block, 2 copper ingots, 1 redstone dust |
 | Expanded | Expansion Module | 4 gold ingots, 2 redstone dust, 1 Nether quartz |
 | Expanded | Crafter | 4 iron ingots, 2 gold ingots, 2 redstone dust, 1 crafting table |
 | Expanded | Program Controller | 4 iron ingots, 1 gold ingot, 3 redstone dust, 1 redstone repeater |
@@ -256,6 +257,24 @@ to stop.
 
 The **Wireless Terminal** opens the same screen from a distance (see
 [Wireless access](#wireless-access)).
+
+## Storage Monitor
+
+A **Storage Monitor** placed on the network shows one item and how much of it the network
+stores, on its front face. The count updates about once a second ("1.2k" for 1,234). It reads
+"—" while the network is offline or whoever chose the item can no longer view it.
+- **Choose:** use it with an item to show that item. This needs Edit and moves nothing.
+- **Take:** use it with an empty hand to take a stack into your selected hotbar slot, or the
+  first free slot. This needs Withdraw.
+- **Craft:** if none is stored and the network has a pattern for it, the same use starts a job
+  for one stack instead (needs Craft).
+- **Store:** use it with the shown item to store the stack in your hand. Use it again within
+  half a second to store every stack of that item in your inventory. This needs Deposit.
+- **Lock:** sneak-use with an empty hand locks or unlocks what it shows (needs Edit), so a stray
+  click with another item does not change it.
+
+Every move goes through the same checks as the terminal: storage that is full keeps your items
+in your inventory.
 
 ## Importer and Exporter
 

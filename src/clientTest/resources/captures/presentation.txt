@@ -4,6 +4,7 @@ orientation-north-east-up.png
 orientation-south-west-down.png
 states-day.png
 states-day-close.png
+monitor-close.png
 states-night.png
 states-night-close.png
 held-first-person-network_controller.png

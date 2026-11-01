@@ -89,6 +89,11 @@ final class PresentationScenes {
   static final View STATES = new View(50.5, 68.5, 33.5, 0, 25);
   static final View STATES_CLOSE = new View(46.5, 67.0, 38.0, 0, 30);
   static final View HELD = new View(50.5, 65, 36.5, 0, 15);
+
+  /** Q28: a Storage Monitor at the end of the status row, its own root and drive behind it. */
+  static final BlockPos MONITOR = new BlockPos(61, 65, STATE_Z);
+
+  static final View MONITOR_CLOSE = View.looking(61.5, 66.2, 38.3, 61.5, 65.5, 40);
   static final BlockPos SCREENS = new BlockPos(0, 65, 0);
 
   private PresentationScenes() {}
@@ -212,6 +217,12 @@ final class PresentationScenes {
         3);
     if (level.getBlockEntity(new BlockPos(57, 65, z)) instanceof FuelGeneratorEntity generator)
       generator.slots().setStackInSlot(FuelGeneratorEntity.FUEL, new ItemStack(Items.COAL, 64));
+    root(level, MONITOR.south(), player);
+    drive(level, MONITOR.south().east(), 0);
+    level.setBlock(
+        MONITOR,
+        facing(dev.izzy.factorycore.platform.monitor.MonitorContent.BLOCK.get(), Direction.NORTH),
+        3);
 
     int lamps = z + 3;
     // Programs share one root behind them: stopped, running, paused, trapped.
@@ -418,6 +429,22 @@ final class PresentationScenes {
   }
 
   /** Stores the raw iron for the waiting smelting job once the rebuilt network is online. */
+  /** Q28: stores 1,234 cobblestone and shows it on the monitor (as using it with cobblestone). */
+  static void monitor(ServerPlayer player) {
+    var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(MONITOR.south().east());
+    var key =
+        new PlatformResourceCodec(player.registryAccess())
+            .itemKey(new ItemStack(Items.COBBLESTONE));
+    DeviceSavedData.get(player.server)
+        .registry()
+        .insert(CellHandleData.read(drive.cell(0)), key, 1_234);
+    var monitor =
+        (dev.izzy.factorycore.platform.monitor.MonitorEntity)
+            player.serverLevel().getBlockEntity(MONITOR);
+    if (!monitor.use(player, new ItemStack(Items.COBBLESTONE)) || !key.equals(monitor.shown()))
+      throw new IllegalStateException("The monitor scene shows cobblestone");
+  }
+
   static void stockIron(ServerPlayer player) {
     var drive = (StorageDriveEntity) player.serverLevel().getBlockEntity(SCREENS.east());
     var key =
