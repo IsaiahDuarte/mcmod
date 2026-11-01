@@ -198,7 +198,8 @@ Deposit and withdrawing needs Withdraw.
   it. A hotbar key (1–9) over an item fills that hotbar slot with a stack of it, storing what
   was there first. Holding Shift keeps the grid's order still while counts change.
 - **Depositing:** click the grid with items on your cursor, or Shift-click an
-  inventory slot. Shift-double-click deposits every stack of that item in your inventory;
+  inventory slot; keep Shift and the button held and drag across more slots to store each one.
+  Shift-double-click deposits every stack of that item in your inventory;
   Space-click stores the whole hotbar or the whole main inventory, whichever you clicked in.
   With items on your cursor the grid's tooltip says what a click stores. Under a search the
   line below the grid reads "Showing X of Y".
@@ -301,7 +302,7 @@ A **Portable Storage** is one item cell you can carry and use without a network.
 - **Taking:** click a stack to take a stack onto the cursor (right click: half). Shift-click to
   take a stack into your inventory.
 - **Storing:** click with a stack to store it (right click: one item). Shift-click an inventory
-  stack to store it.
+  stack to store it, or Shift-drag across several.
 - **Charge:** each take or store costs 64 FE. It uses the same battery as the Wireless Terminal
   and charges the same way. With no charge, nothing moves.
 - **Display:** counts are short ("1.0k"). Hover for the exact amount, and use the arrows to page

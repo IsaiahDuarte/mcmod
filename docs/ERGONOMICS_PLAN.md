@@ -366,7 +366,8 @@ screens.
   completed"; show only failures and anything the player must act on. Messages that don't fit
   wrap or are shortened with the full text on hover ("insufficient available i…" is cut off
   today). Check this at scales 1 and 4.
-- [ ] **Q134 — Shift-drag to store (n17).** Size S. Holding Shift and dragging the left mouse
+- [x] **Q134 — Shift-drag to store (n17).** Size S. Done 2026-11-01 (commit subject `Q134:`):
+  in the terminal and Portable Storage. [Evidence](evidence/ergonomics-q134-shift-drag-2026-11-01.md). Holding Shift and dragging the left mouse
   button across the player inventory moves each stack passed over, as in vanilla chests.
   Test it against the terminal and Portable Storage.
 - [ ] **Q137 — Terminal layout and button consistency (n3, n5, n6).** Size M.

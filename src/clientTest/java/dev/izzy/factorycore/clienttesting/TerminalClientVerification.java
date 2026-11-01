@@ -92,7 +92,9 @@ public final class TerminalClientVerification {
       BRANCH = new BlockPos(-1, 65, 1),
       PROGRAM = new BlockPos(1, 65, 0),
       ACCESS_POINT = new BlockPos(1, 66, 1);
-  private int stage, ticks, entered, rule, craftStep, policyMask;
+  private int stage, ticks, entered, rule, craftStep, policyMask, dragStep;
+  private final java.util.concurrent.atomic.AtomicBoolean dragStored =
+      new java.util.concurrent.atomic.AtomicBoolean();
   private boolean sampleSeeded;
   private int searchStep, scrollStep;
   private final ProgramAuthoringClientVerification programAuthoring =
@@ -332,6 +334,7 @@ public final class TerminalClientVerification {
             });
         return;
       }
+      if (!shiftDragStores(client, screen)) return;
       client.options.guiScale().set(3);
       client.resizeDisplay();
       next();
@@ -1607,6 +1610,83 @@ public final class TerminalClientVerification {
   }
 
   /** Sends the actual sneak state the server reads for gateway sneak-use. */
+  /**
+   * Q134 (n17): Shift-press on one inventory stack and drag over two more stores all three, one
+   * move at a time, with exact counts in storage.
+   */
+  private boolean shiftDragStores(Minecraft client, TerminalScreen screen) {
+    var server = client.getSingleplayerServer();
+    var principal = client.player.getUUID();
+    var inventory = client.player.getInventory();
+    switch (dragStep) {
+      case 0 -> {
+        server.execute(
+            () -> {
+              var player = server.getPlayerList().getPlayer(principal);
+              for (int slot = 9; slot < 12; slot++)
+                player
+                    .getInventory()
+                    .setItem(slot, new net.minecraft.world.item.ItemStack(Items.COBBLESTONE, 16));
+              player.containerMenu.broadcastChanges();
+            });
+        dragStep = 1;
+      }
+      case 1 -> {
+        for (int slot = 9; slot < 12; slot++)
+          if (inventory.getItem(slot).getCount() != 16) return false;
+        int[] at = new int[6];
+        for (var slot : screen.getMenu().slots)
+          if (slot.container == inventory
+              && slot.getContainerSlot() >= 9
+              && slot.getContainerSlot() < 12) {
+            int index = (slot.getContainerSlot() - 9) * 2;
+            at[index] = screen.getGuiLeft() + slot.x + 8;
+            at[index + 1] = screen.getGuiTop() + slot.y + 8;
+          }
+        screen.holdShift(true);
+        screen.mouseClicked(at[0], at[1], 0);
+        screen.mouseDragged(at[2], at[3], 0, at[2] - at[0], 0);
+        screen.mouseDragged(at[4], at[5], 0, at[4] - at[2], 0);
+        screen.mouseDragged(at[4], at[5], 0, 0, 0);
+        screen.mouseReleased(at[4], at[5], 0);
+        screen.holdShift(false);
+        dragStep = 2;
+      }
+      case 2 -> {
+        for (int slot = 9; slot < 12; slot++) if (!inventory.getItem(slot).isEmpty()) return false;
+        if (screen.getMenu().view().busy()) return false;
+        server.execute(
+            () -> {
+              try {
+                var codec = new PlatformResourceCodec(server.registryAccess());
+                var saved = DeviceSavedData.get(server);
+                check(
+                    saved
+                            .registry()
+                            .stock(
+                                cell,
+                                codec.itemKey(
+                                    new net.minecraft.world.item.ItemStack(Items.COBBLESTONE)))
+                            .total()
+                        == 48,
+                    "Shift-drag stores each of the three stacks once, exactly");
+                dragStored.set(true);
+              } catch (RuntimeException error) {
+                failure.set(error);
+              }
+            });
+        dragStep = 3;
+      }
+      case 3 -> {
+        return dragStored.get();
+      }
+      default -> {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private static void shift(Minecraft client, boolean down) {
     client.player.connection.send(
         new ServerboundPlayerCommandPacket(

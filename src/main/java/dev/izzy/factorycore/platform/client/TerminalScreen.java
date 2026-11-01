@@ -100,6 +100,12 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   private boolean holdOrder;
 
+  /** Q134: Shift-drag over the inventory; slots wait here until the terminal is not busy. */
+  private final ShiftDrag shiftDrag = new ShiftDrag();
+
+  private final java.util.ArrayDeque<Slot> dragged = new java.util.ArrayDeque<>();
+  private boolean holdShift;
+
   /** Q18: whether the auto-focus preference was applied for this opening. */
   private boolean focusChecked;
 
@@ -680,6 +686,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   @Override
   protected void containerTick() {
     super.containerTick();
+    drainDragged();
     var view = menu.view();
     if (TerminalSearchSupport.tall(view.sort()) != laidOutTall) {
       rebuildWidgets();
@@ -886,6 +893,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
               true);
       return true;
     }
+    shiftDrag.press(button, shiftDown() && !patternsMode && kind() == 0, slotAt(mouseX, mouseY));
     if (!storageHidden() && storage.mouseClicked(mouseX, mouseY, button)) return true;
     if (jobsMode && jobs.mouseClicked(mouseX, mouseY, button)) return true;
     if (patternsMode && patterns.mouseClicked(mouseX, mouseY, button)) return true;
@@ -911,12 +919,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   @Override
   public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
     if (storage.mouseDragged(y)) return true;
+    if (shiftDrag.drag(button, shiftDown(), slotAt(x, y), dragged::add)) return true;
     return super.mouseDragged(x, y, button, dx, dy);
   }
 
   @Override
   public boolean mouseReleased(double x, double y, int button) {
     storage.mouseReleased();
+    shiftDrag.release();
     return super.mouseReleased(x, y, button);
   }
 
@@ -1029,6 +1039,32 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   /** Test hook (Q64): types in the Jobs amount box and previews it, as Enter does. */
   public void typeAmount(String text) {
     jobs.typeAmount(text);
+  }
+
+  /** Test hook (Q134): acts as if Shift were held for inventory clicks and drags. */
+  public void holdShift(boolean hold) {
+    holdShift = hold;
+  }
+
+  boolean shiftDown() {
+    return hasShiftDown() || holdShift;
+  }
+
+  /** The slot at a screen position, independent of the last rendered frame. */
+  Slot slotAt(double x, double y) {
+    for (var slot : menu.slots)
+      if (slot.isActive() && isHovering(slot.x, slot.y, 16, 16, x, y)) return slot;
+    return null;
+  }
+
+  /** Q134: stores one dragged-over stack per idle tick; the server takes one move at a time. */
+  private void drainDragged() {
+    if (dragged.isEmpty() || menu.view().busy() || kind() != 0 || patternsMode) {
+      if (kind() != 0 || patternsMode) dragged.clear();
+      return;
+    }
+    var slot = dragged.poll();
+    if (slot.hasItem()) storage.deposit(slot);
   }
 
   /** Test hook (Q63): holds the grid order as if Shift were down. */

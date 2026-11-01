@@ -114,4 +114,37 @@ public final class PortableStorageScreen extends AbstractContainerScreen<Portabl
     super.render(graphics, mouseX, mouseY, partial);
     renderTooltip(graphics, mouseX, mouseY);
   }
+
+  /** Q134: Shift-drag across the inventory quick-moves each stack passed over. */
+  private final ShiftDrag shiftDrag = new ShiftDrag();
+
+  private Slot slotAt(double x, double y) {
+    for (var slot : menu.slots)
+      if (slot.isActive() && isHovering(slot.x, slot.y, 16, 16, x, y)) return slot;
+    return null;
+  }
+
+  @Override
+  public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    shiftDrag.press(button, hasShiftDown(), slotAt(mouseX, mouseY));
+    return super.mouseClicked(mouseX, mouseY, button);
+  }
+
+  @Override
+  public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
+    if (shiftDrag.drag(
+        button,
+        hasShiftDown(),
+        slotAt(x, y),
+        slot ->
+            slotClicked(slot, slot.index, 0, net.minecraft.world.inventory.ClickType.QUICK_MOVE)))
+      return true;
+    return super.mouseDragged(x, y, button, dx, dy);
+  }
+
+  @Override
+  public boolean mouseReleased(double x, double y, int button) {
+    shiftDrag.release();
+    return super.mouseReleased(x, y, button);
+  }
 }

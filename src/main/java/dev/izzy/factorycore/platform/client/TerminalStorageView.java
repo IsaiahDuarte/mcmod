@@ -613,7 +613,7 @@ final class TerminalStorageView {
    * Shift-double-click deposits every matching stack (Q18).
    */
   boolean depositClicked(double mouseX, double mouseY, int button) {
-    var slot = screen.getSlotUnderMouse();
+    var slot = screen.slotAt(mouseX, mouseY);
     var player = screen.client().player;
     int left = screen.left(), top = screen.top(), kind = screen.kind();
     // Q63: Space-click on an inventory slot stores its whole region (hotbar or main inventory).
@@ -629,13 +629,13 @@ final class TerminalStorageView {
       return true;
     }
     if (button == 0
-        && Screen.hasShiftDown()
+        && screen.shiftDown()
         && kind == 0
         && slot != null
         && slot.container == player.getInventory()
         && depositAllClicked(slot)) return true;
     if (button != 0
-        || !Screen.hasShiftDown()
+        || !screen.shiftDown()
         || slot == null
         || slot.container != player.getInventory()
         || !slot.hasItem()
@@ -651,6 +651,12 @@ final class TerminalStorageView {
       screen.send(TerminalPackets.DISCHARGE, slot.getContainerSlot(), 1, new byte[32]);
       return true;
     }
+    deposit(slot);
+    return true;
+  }
+
+  /** Stores the stack in player inventory {@code slot} (a Shift-click on it). */
+  void deposit(net.minecraft.world.inventory.Slot slot) {
     try {
       var key =
           new PlatformResourceCodec(screen.client().level.registryAccess()).itemKey(slot.getItem());
@@ -660,10 +666,12 @@ final class TerminalStorageView {
           Math.min(64, slot.getItem().getCount()),
           TerminalPackets.fingerprint(key));
     } catch (IllegalArgumentException unsupported) {
-      player.displayClientMessage(
-          Component.translatable("gui.factorycore.terminal.status.unsupported"), true);
+      screen
+          .client()
+          .player
+          .displayClientMessage(
+              Component.translatable("gui.factorycore.terminal.status.unsupported"), true);
     }
-    return true;
   }
 
   boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
