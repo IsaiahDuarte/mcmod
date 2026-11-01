@@ -290,6 +290,11 @@ public final class TerminalClientVerification {
       next();
       return;
     }
+    // Q132 (n13): taking and storing never shows an empty grid between updates.
+    if (stage == 5 || stage == 6)
+      check(
+          !screen.getMenu().view().rows().isEmpty(),
+          "The grid keeps its rows while a take or store refreshes: " + view.status());
     if (stage == 5 && menu.getCarried().getCount() == 23 && !view.busy()) {
       check(
           ItemStack.isSameItemSameComponents(menu.getCarried(), named(1)),

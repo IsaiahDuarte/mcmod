@@ -353,7 +353,10 @@ screens.
   - **Clipped tooltip:** the screenshot shows the editor's error tooltip drawn past the screen's
     left edge and cut off ("what to move but found the end of the line"). Keep tooltips on
     screen.
-- [ ] **Q132 — Terminal flicker on take and store (n13).** Size S. The grid flashes when items
+- [x] **Q132 — Terminal flicker on take and store (n13).** Size S. Done 2026-11-01 (commit
+  subject `Q132:`): after a take or store the server kept re-running the search with the rows
+  cleared, so one empty view went out first. It now keeps the rows until the new ones replace
+  them. [Evidence](evidence/ergonomics-q132-flicker-2026-11-01.md). The grid flashes when items
   are taken or stored. Find the cause (for example, a full re-sync clearing the grid, or a
   re-sort between snapshots), keep the grid stable between updates, and add a client test that
   takes and stores without an empty frame.

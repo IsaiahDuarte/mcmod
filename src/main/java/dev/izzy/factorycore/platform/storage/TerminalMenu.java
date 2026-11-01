@@ -634,12 +634,23 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   }
 
   private void refresh() {
+    refresh(false);
+  }
+
+  /**
+   * Re-runs the search. Q132 (n13): after a take or store ({@code keepRows}) the rows shown stay
+   * until the new result replaces them, so the grid never flashes empty. A command in between names
+   * a row's resource key, and every move is still checked against real stock.
+   */
+  private void refresh(boolean keepRows) {
     closeSearch();
     after = null;
     next = null;
-    selections = List.of();
-    selectionNames = List.of();
-    selectionCraftable = List.of();
+    if (!keepRows) {
+      selections = List.of();
+      selectionNames = List.of();
+      selectionCraftable = List.of();
+    }
     revision++;
     status = TerminalPackets.Status.LOADING;
     scanned = player().server.getTickCount();
@@ -1385,7 +1396,7 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
       return;
     }
     if (authorized()) {
-      refresh();
+      refresh(true);
       status = TerminalPackets.Status.of(result.reason());
       if (pendingCrafts > 0) {
         if (result.transfer() != null && result.transfer().delivered() > 0) continueCraft();
