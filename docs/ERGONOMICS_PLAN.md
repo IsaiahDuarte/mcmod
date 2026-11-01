@@ -300,7 +300,10 @@ New gates:
 
 ## Wave 0 — reliability (lane R)
 
-- [ ] **Q1 — Networks stay online when chunks load nearby (M1, needs PD7).** Size M.
+- [x] **Q1 — Networks stay online when chunks load nearby (M1, needs PD7).** Size M. Done
+  2026-10-31 (commit subject `Q1:`). `ChunkEdgeIndex` invalidates neighbours only through the
+  shared edge; 73% fewer chunk invalidations in a full GameTest run; 10 consecutive full runs
+  pass. [Evidence](evidence/ergonomics-q1-chunk-edges-2026-10-31.md).
   Narrow chunk-load invalidation to regions with a position on the shared chunk edge, as PD7
   proposes, after measuring the callback cost ([ADR 0011](decisions/0011-live-region-coordination.md)
   asks for P7 evidence).

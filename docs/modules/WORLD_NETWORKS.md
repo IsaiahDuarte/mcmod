@@ -30,9 +30,10 @@ updates do not invalidate topology (see [ADR 0058](../decisions/0058-device-pres
 An edit checks at most its own position and six neighbors. Affected publications
 are cancelled immediately; their registry routing predicate denies stock use
 before another tick. Repeated notifications coalesce until a scheduled replacement.
-Indexed chunk callbacks invalidate known region references in the changed chunk
-and its four horizontal neighbor chunks, including regions
-whose original anchor was removed. No world scan or unknown-chunk load occurs.
+Indexed chunk callbacks invalidate known region references in the changed chunk,
+and in its four horizontal neighbor chunks only those with a position on the edge
+facing it (`ChunkEdgeIndex`, PD7), including regions whose original anchor was removed.
+A chunk loading beside a base whose cables do not reach that border leaves it online. No world scan or unknown-chunk load occurs.
 Canonical root/gateway lease generation, conflict and position checks also run
 on every valid membership query: copying a root outside its indexed region still
 stops the original stock immediately. Grant/policy checks run when authority is

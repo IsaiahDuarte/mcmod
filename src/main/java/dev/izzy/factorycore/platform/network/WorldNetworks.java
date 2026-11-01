@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.network;
 
 import dev.izzy.factorycore.core.Failures;
+import dev.izzy.factorycore.core.network.ChunkEdgeIndex;
 import dev.izzy.factorycore.core.network.DiscoverySeeds;
 import dev.izzy.factorycore.core.network.NetworkAuthority;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
@@ -64,8 +65,6 @@ public final class WorldNetworks {
   private static final UUID WORK_PROGRAM = new UUID(0xFAC7000, 2);
   private static final ServerScoped<WorldNetworks> SERVERS = ServerScoped.of(WorldNetworks::new);
 
-  private record ChunkKey(String dimension, int x, int z) {}
-
   private record Structural(NodeRegistry.Handle handle, NodeRegistry.Position position) {}
 
   private final MinecraftServer server;
@@ -78,7 +77,7 @@ public final class WorldNetworks {
   private WorldConnectors connectors;
   private final Map<NodeRegistry.Position, Region> owners = new HashMap<>();
   private final Map<NodeRegistry.Position, WiredDiscovery.Wire> geometry = new HashMap<>();
-  private final Map<ChunkKey, Map<Region, Integer>> chunks = new HashMap<>();
+  private final ChunkEdgeIndex<Region> chunks = new ChunkEdgeIndex<>();
   private final Map<String, WorldWireReader> readers = new HashMap<>();
   private final ArrayDeque<Region> active = new ArrayDeque<>();
   private String diagnostic = "";
@@ -399,16 +398,8 @@ public final class WorldNetworks {
 
   private void assign(NodeRegistry.Position position, Region next) {
     var previous = next == null ? owners.remove(position) : owners.put(position, next);
-    if (previous == next) return;
-    var key = chunk(position);
-    var index = chunks.computeIfAbsent(key, k -> new HashMap<>());
-    if (previous != null) {
-      int count = index.getOrDefault(previous, 0) - 1;
-      if (count <= 0) index.remove(previous);
-      else index.put(previous, count);
-    }
-    if (next != null) index.merge(next, 1, Integer::sum);
-    if (index.isEmpty()) chunks.remove(key);
+    var block = BlockPos.of(position.block());
+    chunks.move(position.dimension(), block.getX(), block.getZ(), previous, next);
   }
 
   /** True when discovery captured this gateway's wireless port reciprocally at its partner. */
@@ -791,11 +782,6 @@ public final class WorldNetworks {
     return level;
   }
 
-  private static ChunkKey chunk(NodeRegistry.Position position) {
-    var block = BlockPos.of(position.block());
-    return new ChunkKey(position.dimension(), block.getX() >> 4, block.getZ() >> 4);
-  }
-
   public static void loaded(ChunkEvent.Load event) {
     chunkChanged(event);
   }
@@ -812,18 +798,13 @@ public final class WorldNetworks {
     var runtime = get(level.getServer());
     if (runtime.saved == null) return;
     var position = event.getChunk().getPos();
-    runtime.invalidateChunk(level.dimension().location().toString(), position.x, position.z);
-    // First loading an unindexed chunk can expose a connection to its indexed neighbors.
-    runtime.invalidateChunk(level.dimension().location().toString(), position.x - 1, position.z);
-    runtime.invalidateChunk(level.dimension().location().toString(), position.x + 1, position.z);
-    runtime.invalidateChunk(level.dimension().location().toString(), position.x, position.z - 1);
-    runtime.invalidateChunk(level.dimension().location().toString(), position.x, position.z + 1);
+    // PD7: the chunk's own regions, and neighbours' regions only where they touch its border, the
+    // only places a connection into this chunk can appear or disappear.
+    var affected =
+        runtime.chunks.affected(level.dimension().location().toString(), position.x, position.z);
+    if (affected.isEmpty()) return;
+    for (var region : affected) runtime.invalidate(runtime.resolve(region));
     runtime.wake();
-  }
-
-  private void invalidateChunk(String dimension, int x, int z) {
-    var index = chunks.get(new ChunkKey(dimension, x, z));
-    if (index != null) for (var region : index.keySet()) invalidate(resolve(region));
   }
 
   private static String message(RuntimeException error) {

@@ -35,8 +35,13 @@ replacement and retained-source depth 32, 8,192 queued source iterators/containe
 256 discovery visits/advance; scheduled steps use 32 visits.
 Discovery permits 8,192 seed visits and 32,768 probes while retaining its
 4,096 graph-vertex limit, so full-size replacement seeds plus repeated anchors
-fit without weakening tick budgets. Position edits inspect at most seven indexed positions. Chunk invalidation checks the changed chunk and four horizontal neighbor indexes,
-so loading a previously unindexed chunk cannot leave an adjacent publication current.
+fit without weakening tick budgets. Position edits inspect at most seven indexed positions. Chunk invalidation checks the changed chunk and, in each of its four horizontal
+neighbors, only regions with a position on the edge facing it, so loading a previously
+unindexed chunk cannot leave an adjacent publication current (amended 2026-10-31 by
+PD7, Q1: before, every region in the four neighbor chunks was invalidated, so walking
+near a base took it offline). `ChunkEdgeIndex` keeps counts per chunk and per chunk edge;
+a callback visits five small maps. Measurement:
+[chunk-edge invalidation](../performance/chunk-edge-invalidation-2026-10-31.md).
 It visits only those indexed region references, capped by admitted runtime geometry;
 rebuild, source traversal, indexing, permission registration and activation are
 charged shared work. Chunk callback cost and full rebuild latency must be measured

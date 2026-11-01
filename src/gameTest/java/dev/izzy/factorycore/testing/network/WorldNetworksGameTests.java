@@ -158,10 +158,9 @@ public final class WorldNetworksGameTests {
 
   @GameTest(template = "empty", timeoutTicks = 200)
   // The fixture borrows a Minecraft-owned chunk, which must never be closed.
-  public static void firstNeighborChunkLoadInvalidatesExistingBoundaryPublication(
-      GameTestHelper helper) {
+  public static void ownChunkLoadInvalidatesItsNetworkAndRevalidates(GameTestHelper helper) {
     // Deliberate fixture loading is distinct from the production nonloading reader.
-    var neighbor = helper.getLevel().getChunk(helper.absolutePos(ROOT).offset(-16, 0, 0));
+    var own = helper.getLevel().getChunk(helper.absolutePos(ROOT));
     root(helper, ROOT, UUID.randomUUID());
     helper.setBlock(CABLE, NetworkContent.CABLE.get());
     var drive = drive(helper, DRIVE);
@@ -174,13 +173,13 @@ public final class WorldNetworksGameTests {
             () -> {
               registry.insert(handle, IRON, 100);
               // Invoke the typed lifecycle adapter; the fixture keeps the chunk loaded.
-              WorldNetworks.loaded(new ChunkEvent.Load(neighbor, false));
+              WorldNetworks.loaded(new ChunkEvent.Load(own, false));
               status(helper, DRIVE, NetworkTopology.Status.REBUILDING);
               helper.assertTrue(
                   !registry.stock(handle, IRON).loaded()
                       && registry.extract(handle, IRON, 1, null).reason()
                           == OperationResult.Reason.OFFLINE,
-                  "An unindexed neighboring chunk event immediately invalidates old routing");
+                  "A chunk event for the network's own chunk immediately invalidates old routing");
             })
         .thenWaitUntil(() -> status(helper, DRIVE, NetworkTopology.Status.VALID))
         .thenExecute(
@@ -189,6 +188,38 @@ public final class WorldNetworksGameTests {
                     registry.stock(handle, IRON).total() == 100
                         && registry.stock(handle, IRON).loaded(),
                     "Event revalidation preserves stock"))
+        .thenSucceed();
+  }
+
+  /**
+   * PD7 (Q1): loading a neighbouring chunk whose shared edge holds none of the network leaves it
+   * online. The fixture's blocks share one z, so the north neighbour is untouched unless they sit
+   * on their chunk's north edge, and then the south one is. ChunkEdgeIndexTest covers the edge.
+   */
+  @GameTest(template = "empty", timeoutTicks = 200)
+  public static void neighbourChunkLoadAwayFromTheNetworkKeepsItOnline(GameTestHelper helper) {
+    var at = helper.absolutePos(ROOT);
+    var neighbour = helper.getLevel().getChunk(at.offset(0, 0, (at.getZ() & 15) == 0 ? 16 : -16));
+    root(helper, ROOT, UUID.randomUUID());
+    helper.setBlock(CABLE, NetworkContent.CABLE.get());
+    var drive = drive(helper, DRIVE);
+    var handle = CellHandleData.read(drive.cell(0));
+    var registry = DeviceSavedData.get(helper.getLevel().getServer()).registry();
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> status(helper, DRIVE, NetworkTopology.Status.VALID))
+        .thenExecute(
+            () -> {
+              registry.insert(handle, IRON, 100);
+              WorldNetworks.loaded(new ChunkEvent.Load(neighbour, false));
+              WorldNetworks.unloaded(new ChunkEvent.Unload(neighbour));
+              status(helper, DRIVE, NetworkTopology.Status.VALID);
+              helper.assertTrue(
+                  registry.stock(handle, IRON).loaded()
+                      && registry.extract(handle, IRON, 1, null).reason()
+                          == OperationResult.Reason.OK,
+                  "A neighbouring chunk that touches no cable leaves the network online");
+            })
         .thenSucceed();
   }
 
