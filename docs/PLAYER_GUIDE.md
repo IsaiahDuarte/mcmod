@@ -202,6 +202,11 @@ Deposit and withdrawing needs Withdraw.
   plan appears below it: the steps, or what is missing. **Start** starts it, **Keep** keeps
   that many in stock, **Details** opens the full plan in Jobs, and Escape or **Close** closes
   the dialog. Up and Down step the amount; Enter starts.
+- **Running jobs:** while you have jobs running, a strip over the Items grid shows each one:
+  its item, crafts done of total and a progress bar (amber while it waits). Hover a job to see
+  why it waits; click it to see its steps in **Jobs**. Click **✕** twice to cancel it (the
+  first click only arms it). When more jobs run than fit, the last space says how many more and
+  opens **Jobs**. The strip takes the grid's top row and gives it back when your jobs finish.
 - **Taking items:** left-click takes a stack and right-click takes half. Shift-click
   sends the stack to your inventory. Over an item, Shift+wheel up takes one and Shift+wheel
   down stores one; Ctrl+wheel up adds one to your cursor and Ctrl+wheel down stores one from

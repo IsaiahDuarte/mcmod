@@ -23,6 +23,11 @@ public record Rect(int x, int y, int width, int height) {
     return other.x >= x && other.y >= y && other.right() <= right() && other.bottom() <= bottom();
   }
 
+  /** Whether the point lies inside (right and bottom exclusive). */
+  public boolean contains(double px, double py) {
+    return px >= x && px < right() && py >= y && py < bottom();
+  }
+
   public boolean overlaps(Rect other) {
     return x < other.right() && other.x < right() && y < other.bottom() && other.y < bottom();
   }

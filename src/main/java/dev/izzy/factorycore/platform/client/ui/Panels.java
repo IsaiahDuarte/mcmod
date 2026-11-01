@@ -59,6 +59,7 @@ public final class Panels {
       MARKER = 0xffd9822b,
       METER = 0xff2f8fb5,
       METER_FULL = 0xffc0392b,
+      METER_WAITING = 0xffe0a030,
       TRACK = 0xff555555,
       DISABLED = 0x60c6c6c6,
       BADGE_FILL = 0xd01a1d21,
@@ -130,6 +131,11 @@ public final class Panels {
   /** A meter's filled part, red when {@code nearlyFull} (a Drive bay at 90 % or more). */
   public static void meter(GuiGraphics graphics, Rect filled, boolean nearlyFull) {
     fill(graphics, filled, nearlyFull ? METER_FULL : METER);
+  }
+
+  /** Q146: a job's progress, amber while it waits or delivers rather than runs. */
+  public static void jobMeter(GuiGraphics graphics, Rect filled, boolean waiting) {
+    fill(graphics, filled, waiting ? METER_WAITING : METER);
   }
 
   /** A flat meter track for a bar too thin for an inset (a Drive bay's capacity). */

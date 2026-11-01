@@ -70,6 +70,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private final TerminalJobsView jobs = new TerminalJobsView(this);
   private final TerminalCraftDialog craftDialog = new TerminalCraftDialog(this);
   private final TerminalPatternsView patterns = new TerminalPatternsView(this);
+  private final TerminalJobStrip jobStrip = new TerminalJobStrip(this);
 
   private EditBox search;
   private boolean jobsMode;
@@ -329,6 +330,42 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   }
 
   /** Switches to Jobs; {@code request} (or null) is a craftable to select once it is listed. */
+  /**
+   * Q146: opens Jobs on listed job {@code index}'s steps (a strip chip's click), or on the job list
+   * when {@code index} is negative.
+   */
+  void showJob(int index) {
+    boolean previousJobs = jobsMode;
+    jobsMode = true;
+    patternsMode = false;
+    jobs.openJob(index);
+    if (!previousJobs) rebuildWidgets();
+  }
+
+  /** Q146: cancels listed job {@code index} (the strip's armed ✕). */
+  void cancelJob(int index) {
+    jobs.cancel(index);
+  }
+
+  /** The grid area's top without the job strip, panel-relative (for verification). */
+  public static int gridTopForTest() {
+    return GRID_Y;
+  }
+
+  /** Q146: whether the running-jobs strip is shown over the Items grid (for verification). */
+  public boolean jobStripShown() {
+    return storage.strip();
+  }
+
+  /** Q146: chip {@code index}'s absolute centre and its ✕'s, for verification clicks. */
+  public int[] jobStripPoints(int index) {
+    var chip = jobStrip.chip(index).offset(leftPos, topPos);
+    var cancel = jobStrip.cancel(index).offset(leftPos, topPos);
+    return new int[] {
+      chip.x() + 8, chip.y() + 8, cancel.x() + cancel.width() / 2, cancel.y() + cancel.height() / 2
+    };
+  }
+
   void showJobs(String request) {
     jobs.request(request);
     boolean previousJobs = jobsMode;
@@ -825,6 +862,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     syncedSearch = view.search();
     int shown = jobsMode ? JOBS_TAB : patternsMode ? PATTERNS_TAB : kind;
     for (int i = 0; i < tabs.size(); i++) tabs.get(i).setSelected(shown == i);
+    // Q146: the strip takes the grid's first row while the viewer has jobs; the cells follow.
+    boolean strip = !storageHidden() && kind == 0 && runningJobs() > 0;
+    if (strip != storage.strip()) {
+      storage.setStrip(strip);
+      rebuildWidgets();
+      return;
+    }
+    jobStrip.tick();
     storage.tick(storageHidden());
     showViews();
     viewsButton.setMessage(toggle("gui.factorycore.terminal.views", viewsOpen));
@@ -877,6 +922,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       return;
     }
     storage.renderBg(graphics);
+    if (storage.strip()) jobStrip.render(graphics, mouseX, mouseY);
   }
 
   /**
@@ -930,6 +976,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       patterns.renderTooltip(graphics, mouseX, mouseY);
       return;
     }
+    if (storage.strip() && jobStrip.renderTooltip(graphics, mouseX, mouseY)) return;
     if (storage.renderTooltip(graphics, mouseX, mouseY)) return;
     if (crafting.renderTooltip(graphics, mouseX, mouseY)) return;
     // Q61: a malformed query says what is wrong when the search box is hovered.
@@ -988,6 +1035,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       return true;
     }
     shiftDrag.press(button, shiftDown() && !patternsMode && kind() == 0, slotAt(mouseX, mouseY));
+    if (storage.strip() && jobStrip.mouseClicked(mouseX, mouseY, button)) return true;
     if (!storageHidden() && storage.mouseClicked(mouseX, mouseY, button)) return true;
     if (jobsMode && jobs.mouseClicked(mouseX, mouseY, button)) return true;
     if (patternsMode && patterns.mouseClicked(mouseX, mouseY, button)) return true;

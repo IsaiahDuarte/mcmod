@@ -62,6 +62,14 @@ final class TerminalJobsView {
 
   private boolean showDetail;
 
+  /**
+   * Ticks to keep {@link #showDetail} while a DETAIL request is answered; until then the view has
+   * no detail, which would otherwise close it at once.
+   */
+  private int detailWait;
+
+  private static final int DETAIL_WAIT = 20;
+
   /** A2: the previewed plan's breakdown replaces the craftable strip and job list while shown. */
   private boolean showPlan;
 
@@ -87,6 +95,28 @@ final class TerminalJobsView {
 
   private TerminalMenu menu() {
     return screen.getMenu();
+  }
+
+  /**
+   * Q146: opens listed job {@code index}'s steps, as a click on its row does. A negative index just
+   * shows the job list.
+   */
+  void openJob(int index) {
+    showPlan = false;
+    if (index < 0) {
+      showDetail = false;
+      return;
+    }
+    jobSelected = index;
+    showDetail = true;
+    detailOffset = 0;
+    detailWait = DETAIL_WAIT;
+    job(TerminalJobPackets.DETAIL, index, 1);
+  }
+
+  /** Q146: cancels listed job {@code index}, as the Cancel button does for the selected job. */
+  void cancel(int index) {
+    job(TerminalJobPackets.CANCEL, index, 1);
   }
 
   /** Asks to select {@code icon} (or nothing) once listed; the strip and list show again. */
@@ -380,7 +410,9 @@ final class TerminalJobsView {
     keepJob.active = craftSelected < jobs.craftables().size();
     amountBox.visible = jobsMode;
     if (jobs.preview().icon().isEmpty()) showPlan = false;
-    if (jobs.detail().job().output().icon().isEmpty()) showDetail = false;
+    if (detailWait > 0) detailWait--;
+    if (jobs.detail().job().output().icon().isEmpty() && detailWait == 0) showDetail = false;
+    else if (!jobs.detail().job().output().icon().isEmpty()) detailWait = 0;
     jobScroll = Math.max(0, Math.min(jobScroll, jobs.jobs().size() - jobRows()));
     detailOffset = Math.max(0, Math.min(detailOffset, Math.max(0, detailLines() - overlayLines())));
     planButton.visible = jobsMode;
@@ -1013,10 +1045,7 @@ final class TerminalJobsView {
     if (button == 0 && jobRow >= 0) {
       jobSelected = jobRow;
       // A4: clicking a job opens its steps; the server keeps it open while it is listed.
-      showDetail = true;
-      showPlan = false;
-      detailOffset = 0;
-      job(TerminalJobPackets.DETAIL, jobRow, 1);
+      openJob(jobRow);
       return true;
     }
     return false;

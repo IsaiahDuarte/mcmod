@@ -37,7 +37,11 @@ final class TerminalStorageView {
   private final TerminalScreen screen;
   private final List<AbstractButton> cells = new ArrayList<>();
   private Button one, stack, returning, craftingToggle;
-  private int rows = 4, desiredOffset, selected;
+
+  /** Rows laid out for the grid area; the job strip (Q146) takes the first one while shown. */
+  private int laid = 4, desiredOffset, selected;
+
+  private boolean strip;
   private long shownRevision;
   private boolean dragging;
 
@@ -54,8 +58,24 @@ final class TerminalStorageView {
     return screen.getMenu();
   }
 
+  /** Grid rows: the laid-out rows less the job strip's row while it is shown. */
   int rows() {
-    return rows;
+    return laid - (strip ? 1 : 0);
+  }
+
+  /** Q146: whether the running-jobs strip takes the grid area's first row. */
+  boolean strip() {
+    return strip;
+  }
+
+  /** Q146: shows or hides the job strip; the screen rebuilds its widgets after a change. */
+  void setStrip(boolean shown) {
+    strip = shown;
+  }
+
+  /** The grid's top, panel-relative: below the job strip while it is shown. */
+  int gridTop() {
+    return GRID_Y + (strip ? 18 : 0);
   }
 
   /** The server row index of the selected entry (its position differs while frozen). */
@@ -110,7 +130,7 @@ final class TerminalStorageView {
 
   boolean windowSettled() {
     var view = menu().view();
-    return view.size() == screen.columns() * rows && view.offset() == desiredOffset;
+    return view.size() == screen.columns() * rows() && view.offset() == desiredOffset;
   }
 
   int itemX(int index) {
@@ -118,11 +138,11 @@ final class TerminalStorageView {
   }
 
   int itemY(int index) {
-    return screen.top() + GRID_Y + 1 + 18 * (index / screen.columns());
+    return screen.top() + gridTop() + 1 + 18 * (index / screen.columns());
   }
 
   private int infoY() {
-    return GRID_Y + rows * 18 + 4;
+    return GRID_Y + laid * 18 + 4;
   }
 
   int inventoryTop() {
@@ -134,7 +154,7 @@ final class TerminalStorageView {
   }
 
   void layout(int rows) {
-    this.rows = rows;
+    this.laid = rows;
     desiredOffset = desiredOffset / screen.columns() * screen.columns();
   }
 
@@ -147,13 +167,13 @@ final class TerminalStorageView {
   }
 
   void requestWindow() {
-    screen.send(TerminalPackets.WINDOW, desiredOffset, screen.columns() * rows, new byte[32]);
+    screen.send(TerminalPackets.WINDOW, desiredOffset, screen.columns() * rows(), new byte[32]);
   }
 
   private int maxOffset() {
     return Math.max(
         0,
-        ((menu().view().total() + screen.columns() - 1) / screen.columns() - rows)
+        ((menu().view().total() + screen.columns() - 1) / screen.columns() - rows())
             * screen.columns());
   }
 
@@ -231,7 +251,7 @@ final class TerminalStorageView {
                         new byte[32]);
                 }));
 
-    for (int index = 0; index < screen.columns() * rows; index++) {
+    for (int index = 0; index < screen.columns() * rows(); index++) {
       int cell = index;
       cells.add(
           screen.add(
@@ -315,7 +335,7 @@ final class TerminalStorageView {
   void renderBg(GuiGraphics graphics) {
     int left = screen.left(), top = screen.top(), kind = screen.kind();
     var entries = entries();
-    for (int index = 0; index < screen.columns() * rows; index++) {
+    for (int index = 0; index < screen.columns() * rows(); index++) {
       int x = itemX(index) - 1, y = itemY(index) - 1;
       Panels.slot(graphics, x, y);
       if (index >= entries.size()) continue;
@@ -349,8 +369,8 @@ final class TerminalStorageView {
     var view = menu().view();
     Panels.scrollbar(
         graphics,
-        new Rect(left + scrollX(), top + GRID_Y, SCROLL_WIDTH, rows * 18),
-        screen.columns() * rows,
+        new Rect(left + scrollX(), top + gridTop(), SCROLL_WIDTH, rows() * 18),
+        screen.columns() * rows(),
         view.total(),
         desiredOffset,
         maxOffset());
@@ -395,7 +415,7 @@ final class TerminalStorageView {
           graphics,
           screen.font(),
           StatusStrip.text(menu().deviceStatus()),
-          new Rect(GRID_X + 4, GRID_Y + 4, screen.columns() * 18 - 8, 3 * PanelLayout.LINE),
+          new Rect(GRID_X + 4, gridTop() + 4, screen.columns() * 18 - 8, 3 * PanelLayout.LINE),
           Panels.BAD);
   }
 
@@ -582,16 +602,16 @@ final class TerminalStorageView {
 
   private boolean overScrollbar(double mouseX, double mouseY) {
     int left = screen.left(), top = screen.top();
-    return mouseY >= top + GRID_Y
-        && mouseY < top + GRID_Y + rows * 18
+    return mouseY >= top + gridTop()
+        && mouseY < top + gridTop() + rows() * 18
         && mouseX >= left + scrollX()
         && mouseX < left + scrollX() + SCROLL_WIDTH;
   }
 
   private int rowAt(double mouseX, double mouseY) {
     int x = (int) Math.floor((mouseX - screen.left() - GRID_X) / 18);
-    int y = (int) Math.floor((mouseY - screen.top() - GRID_Y) / 18);
-    return x < 0 || x >= screen.columns() || y < 0 || y >= rows ? -1 : x + screen.columns() * y;
+    int y = (int) Math.floor((mouseY - screen.top() - gridTop()) / 18);
+    return x < 0 || x >= screen.columns() || y < 0 || y >= rows() ? -1 : x + screen.columns() * y;
   }
 
   /** Scrollbar drags and grid clicks; A3: middle-click any craftable, or click a ghost, to ask. */
@@ -785,7 +805,7 @@ final class TerminalStorageView {
   }
 
   private void scrollTo(double y) {
-    double fraction = Math.max(0, Math.min(1, (y - screen.top() - GRID_Y) / (rows * 18)));
+    double fraction = Math.max(0, Math.min(1, (y - screen.top() - gridTop()) / (rows() * 18)));
     desiredOffset = (int) Math.round(fraction * maxOffset() / screen.columns()) * screen.columns();
   }
 

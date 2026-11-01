@@ -408,7 +408,10 @@ screens.
   - **Recipe conflicts:** a recipe whose result or ingredients can vary (tags, several matching
     recipes) shows arrows to cycle the choices, both in the encoder and on the crafting output.
   - **Overlap:** this overlaps Q69 (larger processing patterns).
-- [ ] **Q146 — Jobs inline in the Items view (n4, from Q138).** Size M. Running jobs appear in the
+- [x] **Q146 — Jobs inline in the Items view (n4, from Q138).** Size M. Done 2026-11-01 (commit
+  subject `Q146:`): a strip over the grid with a chip per own job (icon, done/total, progress
+  bar, two-click ✕); a chip opens its steps in Jobs.
+  [Evidence](evidence/ergonomics-q146-job-strip-2026-11-01.md). Running jobs appear in the
   Items view (a strip above the grid with output, progress and a cancel), so following a job
   doesn't need the Jobs tab. Keep, Plan and Tree stay in Jobs, reached by the dialog's Details.
 - [ ] **Q147 — Fluids and energy inline (n4, from Q138).** Size L. An "Everything" kind in the
@@ -1366,6 +1369,14 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   could do nothing; the J tool was one example. `TickGate` now allows a burst of 4 back to back.
   The average stays one per 2 ticks.
   [Evidence](evidence/ergonomics-q16-emi-2026-10-31.md).
+- [ ] **Q151 — Split-root restart check misses its deadline under load (found by Q146).**
+  Size S. `runTerminalRestartClient`'s restart JVM fails `SplitRootVerification` phase 1
+  ("Split-root lifecycle deadline … gateway=NO_ROOT"): the gateway 272 cables from its root never
+  joins within 1,000 ticks. Seen 2026-11-01 with a load average of about 23 (a game running on the
+  same machine): 1 of 2 runs at `2605478` (before Q144) and 2 of 3 runs with Q146; the run that
+  passed reached VALID before the first 100-tick report. Find whether discovery across the
+  unforced chunks between the two forced ones depends on tick time, and make the check wait on
+  the real condition or make discovery finish in bounded server ticks regardless of load.
 - [ ] **Q129 — Intermittent `gridShortcutsMoveOneAndSwapIntoTheHotbar` (from Q26/Q28).** Size S.
   Three of about twelve `verify` runs on 2026-10-31 failed at "Shift+wheel down stores exactly
   one": the DEPOSIT_ROW command 3 ticks after the withdraw had no effect. Eight standalone

@@ -1830,8 +1830,9 @@ public final class PresentationClientVerification {
           if (detail.steps().isEmpty() || waited() < 6) return false;
           evidence.append("jobs monitor waiting: ").append(detail).append('\n');
           captures.grab(client, "jobs-monitor-waiting-scale-4.png");
-          return press(client, "Cancel");
+          return press(client, "Back");
         });
+    jobStripTour();
     step(client -> jobView(client).jobs().isEmpty() && waited() > 4);
     step(
         client -> {
@@ -1845,6 +1846,89 @@ public final class PresentationClientVerification {
     server(PresentationScenes::fewJobs);
     serverUntil(
         player -> valid(player, base.east(2)) && valid(player, PresentationScenes.JOB_UNIT));
+  }
+
+  /**
+   * Q146: with the waiting iron job listed, the Items view shows it in the strip over the grid
+   * (scales 4 and 1); a click on the chip opens its steps in Jobs; back in Items, one click on ✕
+   * only arms it and a second cancels the job, after which the strip goes and the grid gets its row
+   * back.
+   */
+  private void jobStripTour() {
+    step(client -> waited() > 2 && press(client, "Items"));
+    for (int scale : new int[] {4, 1}) {
+      step(
+          client -> {
+            setScale(client, scale);
+            return true;
+          });
+      step(
+          client -> {
+            var screen = terminal(client);
+            if (waited() < 8 || !screen.jobStripShown() || !screen.windowSettled()) return false;
+            check(!screen.jobsMode(), "The strip shows in the Items view");
+            check(
+                screen.itemY(0) - screen.getGuiTop() == 18 + TerminalScreen.gridTopForTest() + 1,
+                "The grid starts below the strip");
+            captures.grab(client, "items-job-strip-scale-" + scale + ".png");
+            return true;
+          });
+    }
+    step(
+        client -> {
+          setScale(client, 4);
+          return true;
+        });
+    step(
+        client -> {
+          if (waited() < 6) return false;
+          var screen = terminal(client);
+          var points = screen.jobStripPoints(0);
+          return screen.mouseClicked(points[0], points[1], 0);
+        });
+    step(
+        client -> {
+          var screen = terminal(client);
+          var detail = jobView(client).detail();
+          if (!screen.jobsMode() || detail.steps().isEmpty() || waited() < 4) return false;
+          check(
+              detail.job().output().icon().equals("minecraft:iron_ingot"),
+              "The chip opens the iron job: " + detail);
+          evidence.append("job strip: chip opens ").append(detail.job().output()).append('\n');
+          return press(client, "Back");
+        });
+    step(client -> waited() > 2 && press(client, "Items"));
+    step(
+        client -> {
+          var screen = terminal(client);
+          if (waited() < 8 || !screen.jobStripShown()) return false;
+          var points = screen.jobStripPoints(0);
+          return screen.mouseClicked(points[2], points[3], 0);
+        });
+    step(
+        client -> {
+          if (waited() < 10) return false;
+          var jobs = jobView(client).jobs();
+          check(
+              !jobs.isEmpty()
+                  && jobs.getFirst().state()
+                      != dev.izzy.factorycore.core.crafting.CraftingJob.State.CANCELLING,
+              "One click on ✕ only arms it: " + jobs);
+          var screen = terminal(client);
+          var points = screen.jobStripPoints(0);
+          return screen.mouseClicked(points[2], points[3], 0);
+        });
+    step(
+        client -> {
+          var screen = terminal(client);
+          if (!jobView(client).jobs().isEmpty() || screen.jobStripShown() || waited() < 4)
+            return false;
+          check(
+              screen.itemY(0) - screen.getGuiTop() == TerminalScreen.gridTopForTest() + 1,
+              "The grid gets its row back");
+          evidence.append("job strip: second ✕ click cancels; strip gone\n");
+          return true;
+        });
   }
 
   /**
@@ -2678,18 +2762,26 @@ public final class PresentationClientVerification {
           return true;
         });
     waitTicks(6);
+    // A busy view ignores a take (a scale change re-requests the window), so press Enter only
+    // once it settles, and again if the take was not acted on.
     step(
         client -> {
+          if (terminal(client).getMenu().view().busy()) return false;
           captures.grab(client, "terminal-keyboard-scale-4.png");
           return client.screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
         });
     step(
-        client ->
-            !client.player.containerMenu.getCarried().isEmpty()
-                && waited() > 4
-                && client.screen instanceof TerminalScreen screen
-                && !screen.getMenu().view().busy()
-                && !screen.getMenu().view().rows().isEmpty());
+        client -> {
+          var screen = terminal(client);
+          if (client.player.containerMenu.getCarried().isEmpty()) {
+            if (waited() % 40 == 39 && !screen.getMenu().view().busy())
+              screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+            return false;
+          }
+          return waited() > 4
+              && !screen.getMenu().view().busy()
+              && !screen.getMenu().view().rows().isEmpty();
+        });
     step(
         client -> {
           var screen = (TerminalScreen) client.screen;
