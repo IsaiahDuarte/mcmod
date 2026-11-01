@@ -38,6 +38,34 @@ public final class NetworkContent {
       FactoryRegistries.ITEMS.register(
           "network_cable", () -> new CableItem(CABLE.get(), new Item.Properties()));
 
+  /** Q30: the block a facade shows. */
+  public static final DeferredHolder<
+          net.minecraft.core.component.DataComponentType<?>,
+          net.minecraft.core.component.DataComponentType<
+              net.minecraft.core.Holder<net.minecraft.world.level.block.Block>>>
+      FACADE_BLOCK =
+          FactoryRegistries.COMPONENTS.registerComponentType(
+              "facade_block",
+              builder ->
+                  builder
+                      .persistent(
+                          net.minecraft.core.registries.BuiltInRegistries.BLOCK.holderByNameCodec())
+                      .networkSynchronized(
+                          net.minecraft.network.codec.ByteBufCodecs.holderRegistry(
+                              net.minecraft.core.registries.Registries.BLOCK)));
+
+  public static final DeferredItem<FacadeItem> FACADE_ITEM =
+      FactoryRegistries.ITEMS.register("facade", () -> new FacadeItem(new Item.Properties()));
+
+  public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FacadeEntity>>
+      FACADE_ENTITY = FactoryRegistries.entity("cable_facade", FacadeEntity::new, CABLE);
+
+  public static final DeferredHolder<
+          RecipeSerializer<?>, SimpleCraftingRecipeSerializer<FacadeRecipe>>
+      FACADE_RECIPE =
+          FactoryRegistries.RECIPE_SERIALIZERS.register(
+              "facade", () -> new SimpleCraftingRecipeSerializer<>(FacadeRecipe::new));
+
   /** Q29: recolouring cables in a crafting grid. */
   public static final DeferredHolder<
           RecipeSerializer<?>, SimpleCraftingRecipeSerializer<CableDyeRecipe>>

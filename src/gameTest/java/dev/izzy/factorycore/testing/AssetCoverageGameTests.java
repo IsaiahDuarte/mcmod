@@ -18,6 +18,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -143,14 +144,25 @@ public final class AssetCoverageGameTests {
         new CreativeModeTab.ItemDisplayParameters(
             helper.getLevel().enabledFeatures(), false, helper.getLevel().registryAccess()));
     var shown = new ArrayList<String>();
-    for (var stack : tab.getDisplayItems())
+    var stacks = new ArrayList<ItemStack>();
+    for (var stack : tab.getDisplayItems()) {
       shown.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath());
+      for (var earlier : stacks)
+        helper.assertFalse(
+            ItemStack.isSameItemSameComponents(earlier, stack),
+            "Creative tab lists no stack twice: " + stack);
+      stacks.add(stack);
+    }
     var expected = new HashSet<String>();
     for (var id : BuiltInRegistries.ITEM.keySet())
       if (id.getNamespace().equals(NAMESPACE) && !StorageContent.TAB_HIDDEN.contains(id.getPath()))
         expected.add(id.getPath());
+    // Q30: a blank facade is hidden; facades of a few blocks are listed instead.
+    expected.add("facade");
     helper.assertTrue(
-        shown.size() == new HashSet<>(shown).size(), "Creative tab lists no item twice: " + shown);
+        shown.stream().filter(path -> !path.equals("facade")).distinct().count()
+            == shown.stream().filter(path -> !path.equals("facade")).count(),
+        "Creative tab lists no other item twice: " + shown);
     helper.assertTrue(
         new HashSet<>(shown).equals(expected), "Creative tab " + shown + " != " + expected);
     helper.assertTrue(shown.get(0).equals("storage_drive"), "Curated order comes first");

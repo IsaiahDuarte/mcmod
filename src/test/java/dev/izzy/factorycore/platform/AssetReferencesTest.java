@@ -36,6 +36,8 @@ class AssetReferencesTest {
           "minecraft:block/cube",
           "minecraft:block/cube_bottom_top",
           "minecraft:block/orientable",
+          // Q30: the facade item is drawn by code as the block it shows.
+          "minecraft:builtin/entity",
           "minecraft:item/generated");
 
   /** Screen sprites (ADR 0064) are referenced from code, not models, and may be any size. */

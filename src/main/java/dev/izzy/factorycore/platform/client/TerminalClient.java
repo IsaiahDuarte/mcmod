@@ -51,6 +51,24 @@ public final class TerminalClient {
       net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
     event.registerBlockEntityRenderer(
         dev.izzy.factorycore.platform.monitor.MonitorContent.ENTITY.get(), MonitorRenderer::new);
+    event.registerBlockEntityRenderer(NetworkContent.FACADE_ENTITY.get(), FacadeRenderer::new);
+  }
+
+  /** Q30: the facade item is drawn as the block it shows. */
+  @SubscribeEvent
+  public static void clientExtensions(
+      net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent event) {
+    event.registerItem(
+        new net.neoforged.neoforge.client.extensions.common.IClientItemExtensions() {
+          private FacadeRenderer.Item renderer;
+
+          @Override
+          public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
+            if (renderer == null) renderer = new FacadeRenderer.Item();
+            return renderer;
+          }
+        },
+        NetworkContent.FACADE_ITEM.get());
   }
 
   @SubscribeEvent

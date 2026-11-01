@@ -100,11 +100,12 @@ class RecipeProgressionTest {
   private static final Set<String> REVERSALS = Set.of("blank_pattern_from_pattern.json");
 
   /**
-   * Q29: special recipes (code, no grid) that only recolour items the grid already holds, so they
-   * add no source. Their behaviour is covered by CableColorGameTests.
+   * Special recipes (code, no grid). Q29 recolouring adds no source. Q30 facades are the facade's
+   * one source: a cable and any vanilla block, so the starter stage. Their behaviour is covered by
+   * CableColorGameTests and FacadeGameTests.
    */
   private static final Map<String, String> SPECIAL =
-      Map.of("cable_dye.json", "factorycore:cable_dye");
+      Map.of("cable_dye.json", "factorycore:cable_dye", "facade.json", "factorycore:facade");
 
   /** The ADR 0048 stage of every survival item; it must equal the computed stage. */
   private static final Map<String, Stage> EXPECTED =

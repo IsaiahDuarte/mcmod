@@ -2213,6 +2213,54 @@ public final class PresentationClientVerification {
           client.options.setCameraType(CameraType.FIRST_PERSON);
           return true;
         });
+    // Q30: a faced cable in the world, and facade items (drawn as their block) in the hotbar.
+    server(
+        player -> {
+          player.getInventory().clearContent();
+          player.getInventory().selected = 0;
+          player
+              .getInventory()
+              .setItem(
+                  0,
+                  dev.izzy.factorycore.platform.network.FacadeItem.of(
+                      net.minecraft.world.level.block.Blocks.STONE_BRICKS, 2));
+          player
+              .getInventory()
+              .setItem(
+                  1,
+                  dev.izzy.factorycore.platform.network.FacadeItem.of(
+                      net.minecraft.world.level.block.Blocks.OAK_PLANKS, 1));
+          player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+          PresentationScenes.teleport(player, PresentationScenes.FACADES);
+        });
+    for (int scale : new int[] {1, 4}) {
+      step(
+          client -> {
+            setScale(client, scale);
+            return true;
+          });
+      step(
+          client -> {
+            return aim(client, PresentationScenes.FACADES)
+                && client
+                    .player
+                    .getMainHandItem()
+                    .is(dev.izzy.factorycore.platform.network.NetworkContent.FACADE_ITEM.get())
+                && waited() >= 30;
+          });
+      String name = "facade-scale-" + scale + ".png";
+      step(
+          client -> {
+            aim(client, PresentationScenes.FACADES);
+            captures.grab(client, name);
+            return true;
+          });
+    }
+    step(
+        client -> {
+          setScale(client, 2);
+          return true;
+        });
     server(player -> player.getInventory().clearContent());
 
     // Tooltips: every item's real lines are translated; corners exercise edge positioning.

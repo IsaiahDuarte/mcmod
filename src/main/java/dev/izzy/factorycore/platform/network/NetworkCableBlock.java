@@ -2,6 +2,7 @@ package dev.izzy.factorycore.platform.network;
 
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -19,7 +20,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.PipeBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
@@ -40,8 +43,12 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * CableColor#joins join} have no link, in discovery and in the arms alike. Use a dye on a placed
  * cable to colour it, or a wet sponge to clear it; the item keeps its colour in {@code
  * block_state}.
+ *
+ * <p>Q30: with {@link #FACADE} set the cable is a full block drawn as another block ({@link
+ * FacadeEntity}, the only time a cable has an entity). The facade changes nothing about links;
+ * breaking a faced cable takes the facade off first.
  */
-public final class NetworkCableBlock extends NetworkedBlock {
+public final class NetworkCableBlock extends NetworkedBlock implements EntityBlock {
   private static final VoxelShape CORE = box(6, 6, 6, 10, 10, 10);
   private static final Map<Direction, VoxelShape> ARMS = new EnumMap<>(Direction.class);
 
@@ -57,11 +64,13 @@ public final class NetworkCableBlock extends NetworkedBlock {
   public static final EnumProperty<CableColor> COLOR =
       EnumProperty.create("color", CableColor.class);
 
+  public static final BooleanProperty FACADE = BooleanProperty.create("facade");
+
   private final Map<BlockState, VoxelShape> shapes = new HashMap<>();
 
   public NetworkCableBlock(Properties properties) {
     super(properties);
-    var initial = stateDefinition.any().setValue(COLOR, CableColor.NONE);
+    var initial = stateDefinition.any().setValue(COLOR, CableColor.NONE).setValue(FACADE, false);
     for (var side : PipeBlock.PROPERTY_BY_DIRECTION.values())
       initial = initial.setValue(side, false);
     registerDefaultState(initial);
@@ -69,7 +78,7 @@ public final class NetworkCableBlock extends NetworkedBlock {
       var shape = CORE;
       for (var side : Direction.values())
         if (state.getValue(property(side))) shape = Shapes.or(shape, ARMS.get(side));
-      shapes.put(state, shape.optimize());
+      shapes.put(state, state.getValue(FACADE) ? Shapes.block() : shape.optimize());
     }
   }
 
@@ -116,7 +125,55 @@ public final class NetworkCableBlock extends NetworkedBlock {
   @Override
   protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
     builder.add(PipeBlock.PROPERTY_BY_DIRECTION.values().toArray(BooleanProperty[]::new));
-    builder.add(COLOR);
+    builder.add(COLOR, FACADE);
+  }
+
+  /** Only a faced cable has an entity: it holds the block the facade shows. */
+  @Override
+  public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
+    return state.getValue(FACADE) ? new FacadeEntity(position, state) : null;
+  }
+
+  /** A facade going on or off changes no link, so the network need not rebuild. */
+  @Override
+  protected boolean cosmeticOnly(BlockState before, BlockState after) {
+    return before.is(this)
+            && after.is(this)
+            && before.setValue(FACADE, false).equals(after.setValue(FACADE, false))
+        || super.cosmeticOnly(before, after);
+  }
+
+  /** Q30: the facade a faced cable drops when it is broken outright (explosion, Wrench). */
+  @Override
+  protected List<ItemStack> dropsOnBreak(BlockEntity entity) {
+    return entity instanceof FacadeEntity facade && facade.shown() != null
+        ? List.of(FacadeItem.of(facade.shown(), 1))
+        : List.of();
+  }
+
+  /**
+   * Q30: a player breaking a faced cable takes only the facade off (dropped unless in creative);
+   * the cable stays, with the same links.
+   */
+  @Override
+  public boolean onDestroyedByPlayer(
+      BlockState state,
+      Level level,
+      BlockPos position,
+      Player player,
+      boolean willHarvest,
+      net.minecraft.world.level.material.FluidState fluid) {
+    if (!state.getValue(FACADE))
+      return super.onDestroyedByPlayer(state, level, position, player, willHarvest, fluid);
+    if (!level.isClientSide()) {
+      if (level.getBlockEntity(position) instanceof FacadeEntity facade
+          && facade.shown() != null
+          && !player.getAbilities().instabuild)
+        popResource(level, position, FacadeItem.of(facade.shown(), 1));
+      level.removeBlockEntity(position);
+      level.setBlock(position, state.setValue(FACADE, false), Block.UPDATE_ALL);
+    }
+    return false;
   }
 
   @Override
@@ -165,13 +222,27 @@ public final class NetworkCableBlock extends NetworkedBlock {
       Player player,
       InteractionHand hand,
       BlockHitResult hit) {
+    if (held.getItem() instanceof FacadeItem) {
+      var shown = FacadeItem.shown(held);
+      if (state.getValue(FACADE) || shown == null)
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+      if (!level.isClientSide()) {
+        level.setBlock(position, state.setValue(FACADE, true), Block.UPDATE_ALL);
+        if (level.getBlockEntity(position) instanceof FacadeEntity facade) facade.show(shown);
+        held.consume(1, player);
+      }
+      return ItemInteractionResult.sidedSuccess(level.isClientSide());
+    }
     CableColor next;
     if (held.getItem() instanceof DyeItem dye) next = CableColor.of(dye.getDyeColor());
     else if (held.is(Items.WET_SPONGE)) next = CableColor.NONE;
     else return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     if (state.getValue(COLOR) == next) return ItemInteractionResult.CONSUME;
     if (!level.isClientSide()) {
-      level.setBlock(position, connected(level, position, next), Block.UPDATE_ALL);
+      level.setBlock(
+          position,
+          connected(level, position, next).setValue(FACADE, state.getValue(FACADE)),
+          Block.UPDATE_ALL);
       if (held.getItem() instanceof DyeItem) held.consume(1, player);
     }
     return ItemInteractionResult.sidedSuccess(level.isClientSide());

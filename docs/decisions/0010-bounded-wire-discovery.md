@@ -85,6 +85,34 @@ save format).
   and would be harder to recolour in place.
 - **A per-cable block entity:** rejected. Cables have no entity, and keeping it that way keeps
   wide cable runs cheap.
-- **A cable anchor that blocks one side (M93):** not added here (Q130). A per-face property on
+- **A cable anchor that blocks one side (M93):** not added here (Q96). A per-face property on
   the cable would multiply its states by 64. AE2's anchor is a part on a multipart cable, which
   Factory Core does not have.
+
+## Amendment — facades (2026-10-31, ergonomics plan Q30, QD6)
+
+The cable block also has a `facade` state.
+- **Entity:** while `facade` is true, the cable has a `FacadeEntity` holding the block it shows.
+  This is the only time a cable has an entity, because `newBlockEntity` returns null otherwise.
+  Wide plain runs stay entity-free.
+- **Links:** a facade changes nothing about links. The wire reader ignores the state, and
+  `cosmeticOnly` treats a facade going on or off as no topology change.
+- **Shape:** a faced cable is a full block.
+- **Allowed blocks:** `FacadeItem.allowed` accepts a full, opaque, model-rendered block with no
+  entity and a block item, from outside Factory Core. It is read from the default state, so client
+  and server agree.
+- **Saved data:** `FactoryCoreFacade` holds schema 1 and the block id. An unknown or disallowed
+  block, or another schema, loads as no facade. The cable and its links are unaffected.
+- **Breaking:** a player's break (`onDestroyedByPlayer`) takes the facade off, keeps the cable,
+  and drops the facade unless the player is in creative. A removal by any other means (explosion,
+  Wrench) drops the facade through `dropsOnBreak` alongside the cable's loot.
+- **Rendering:** a block-entity renderer draws the block 0.2% oversize, so the cable's arm ends
+  never show through. The facade item uses a built-in entity model drawn as its block.
+- **Recipe:** the special recipe `factorycore:facade` is the facade's one survival source.
+
+**Alternatives:**
+- **A baked model that wraps the shown block's model:** this would render in the chunk mesh
+  instead of per frame. It was deferred: it needs model-data plumbing, and the renderer is enough
+  for a few facades per base. Revisit if a profile shows facades in frame time.
+- **A separate facade block:** rejected. Discovery and colour already key on the cable block, and
+  a second block would need both.

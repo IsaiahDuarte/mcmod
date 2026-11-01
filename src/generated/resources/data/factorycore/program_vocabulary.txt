@@ -18,6 +18,7 @@ item factorycore:expanded_fluid_cell
 item factorycore:expanded_item_cell
 item factorycore:expansion_module
 item factorycore:exporter
+item factorycore:facade
 item factorycore:factory_guide
 item factorycore:fuel_generator
 item factorycore:gateway

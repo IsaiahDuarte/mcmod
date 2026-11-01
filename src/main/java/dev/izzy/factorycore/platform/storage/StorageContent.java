@@ -73,11 +73,12 @@ public final class StorageContent {
 
   /**
    * Items left out of the creative tab: encoded patterns are meaningless without their recipe data,
-   * and a cable port's item only carries a lease. Every other Factory Core item is shown, curated
+   * and a cable port's item only carries a lease; a facade with no block shows nothing (a few
+   * facades of common blocks are shown instead). Every other Factory Core item is shown, curated
    * ones first.
    */
   public static final Set<String> TAB_HIDDEN =
-      Set.of("crafting_pattern", "processing_pattern", "cable_port");
+      Set.of("crafting_pattern", "processing_pattern", "cable_port", "facade");
 
   public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB =
       FactoryRegistries.TABS.register(
@@ -119,6 +120,14 @@ public final class StorageContent {
                               && !TAB_HIDDEN.contains(id.getPath()))
                             shown.add(BuiltInRegistries.ITEM.get(id));
                         shown.forEach(output::accept);
+                        // Q30: facades of a few common building blocks.
+                        for (var block :
+                            java.util.List.of(
+                                net.minecraft.world.level.block.Blocks.STONE_BRICKS,
+                                net.minecraft.world.level.block.Blocks.OAK_PLANKS,
+                                net.minecraft.world.level.block.Blocks.SMOOTH_STONE))
+                          output.accept(
+                              dev.izzy.factorycore.platform.network.FacadeItem.of(block, 1));
                       })
                   .build());
 

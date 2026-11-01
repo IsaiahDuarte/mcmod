@@ -50,4 +50,4 @@ QD5 resolved yes: 16 dyes plus uncoloured. SPEC R02 and ADR 0010 amended.
 
 ## Not done
 
-- **Cable anchor (M93):** split out as Q130.
+- **Cable anchor (M93):** left to Q96.

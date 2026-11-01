@@ -99,6 +99,16 @@ It connects to every device as usual.
 An uncoloured cable touching two colours joins them into one network, so keep plain cable away
 from the place where two coloured runs meet.
 
+**Facades** hide a cable inside a wall. A facade makes the cable look like a full block, such as
+stone bricks, and it connects exactly as before.
+- **Making:** craft one cable (any colour) with one plain full block to get 4 facades of that
+  block. Blocks you can see through, blocks with an inventory and Factory Core blocks can't be
+  used.
+- **Placing:** use a facade on a placed cable. A cable takes one facade.
+- **Removing:** breaking a faced cable takes only the facade off and drops it. Break it again to
+  take the cable. An explosion or the Wrench gives back both.
+- **Recolouring:** you can still recolour a faced cable with a dye or a wet sponge.
+
 ## Storage Drive and cells
 
 Use a cell on a drive to install it in the first empty bay; a drive holds four. Use

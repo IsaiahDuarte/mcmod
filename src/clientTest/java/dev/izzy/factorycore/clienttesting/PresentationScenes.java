@@ -98,6 +98,11 @@ final class PresentationScenes {
   /** Q29: red, blue and uncoloured cable runs side by side (z=43..45), x=60..64. */
   static final View CABLES_COLOURED = View.looking(62.5, 68.0, 40.5, 62.5, 65.4, 44.5);
 
+  /** Q30: the middle of the red run wears a stone brick facade. */
+  static final BlockPos FACED = new BlockPos(62, 65, STATE_Z + 3);
+
+  static final View FACADES = View.looking(62.5, 66.6, 40.6, 62.5, 65.5, 43.5);
+
   static final BlockPos SCREENS = new BlockPos(0, 65, 0);
 
   private PresentationScenes() {}
@@ -234,6 +239,20 @@ final class PresentationScenes {
           var at = new BlockPos(x, 65, z + 3 + row);
           level.setBlock(at, cableBlock.connected(level, at, runs.get(row)), 3);
         }
+    var facade = dev.izzy.factorycore.platform.network.FacadeItem.of(Blocks.STONE_BRICKS, 1);
+    level
+        .getBlockState(FACED)
+        .useItemOn(
+            facade,
+            level,
+            player,
+            net.minecraft.world.InteractionHand.MAIN_HAND,
+            new net.minecraft.world.phys.BlockHitResult(
+                net.minecraft.world.phys.Vec3.atCenterOf(FACED), Direction.UP, FACED, false));
+    if (!level
+        .getBlockState(FACED)
+        .getValue(dev.izzy.factorycore.platform.network.NetworkCableBlock.FACADE))
+      throw new IllegalStateException("The gallery facade goes on");
     root(level, MONITOR.south(), player);
     drive(level, MONITOR.south().east(), 0);
     level.setBlock(

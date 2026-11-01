@@ -60,7 +60,7 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
 @EventBusSubscriber(modid = FactoryCoreMod.MOD_ID, value = Dist.CLIENT)
 public final class FactoryCoreData {
   /** Items whose model is hand-authored geometry rather than a block parent or flat icon. */
-  private static final Set<String> CUSTOM_ITEM_MODELS = Set.of("network_cable");
+  private static final Set<String> CUSTOM_ITEM_MODELS = Set.of("network_cable", "facade");
 
   private FactoryCoreData() {}
 
@@ -160,6 +160,13 @@ public final class FactoryCoreData {
               out,
               net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
                   FactoryCoreMod.MOD_ID, "cable_dye"));
+      // Q30: facades of any plain full block.
+      net.minecraft.data.recipes.SpecialRecipeBuilder.special(
+              dev.izzy.factorycore.platform.network.FacadeRecipe::new)
+          .save(
+              out,
+              net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                  FactoryCoreMod.MOD_ID, "facade"));
       var redstone = RecipeCategory.REDSTONE;
       var misc = RecipeCategory.MISC;
       shaped(

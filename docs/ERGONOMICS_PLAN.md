@@ -795,7 +795,7 @@ New gates:
 
 - [x] **Q29 — Coloured cables (M29, needs QD5).** Size M. Done 2026-10-31 (commit subject
   `Q29:`): dye or wet sponge in the world, a dye or water-bucket grid recipe, colour kept on
-  break and Pick Block. The cable anchor is split out as Q130. ADR 0010 amendment.
+  break and Pick Block. The cable anchor stays as Q96. ADR 0010 amendment.
   [Evidence](evidence/ergonomics-q29-coloured-cables-2026-10-31.md).
   Dye a cable in hand or in the world; a water bucket recipe or a wet sponge clears it. Bounded
   discovery treats different colours as not connected. Also a **cable anchor** that blocks one
@@ -803,14 +803,9 @@ New gates:
   Done when: GameTests cover two coloured runs side by side staying two networks, uncoloured
   joining both, and recolouring rebuilding the network.
 
-- [ ] **Q130 — Cable anchor (M93, from Q29).** Size M. Stop one face of a cable from
-  connecting. Q29 left it out: a per-face cable property multiplies the cable's states by 64,
-  and AE2's anchor is a part on a multipart cable. Options: a Wrench mode that toggles a face,
-  stored in a sparse per-chunk attachment that the wire reader and arms both read; or a thin
-  "cable cap" block placed in the neighbouring space.
-  Done when: the anchored face has no arm and no port, the wiring-consistency GameTest covers
-  it, and removing the anchor rebuilds the link.
-- [ ] **Q30 — Facades (M30, needs QD6).** Size M. After Q29.
+- [x] **Q30 — Facades (M30, needs QD6).** Size M. After Q29. Done 2026-11-01 (commit subject
+  `Q30:`). ADR 0010 amendment.
+  [Evidence](evidence/ergonomics-q30-facades-2026-11-01.md).
   Done when: a facade hides a cable without changing its connections, breaks off on its own,
   and renders at scale 1 and 4 screenshots.
 
@@ -1236,7 +1231,13 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
 
 ## Wave B2 — cables and world (lane B)
 
-- [ ] **Q96 — Cable anchor (M93, needs QD5).** Size S. With Q29.
+- [ ] **Q96 — Cable anchor (M93, needs QD5).** Size M. After Q29.
+  Stop one face of a cable from connecting. Q29 left it out: a per-face cable property multiplies the cable's states by 64,
+  and AE2's anchor is a part on a multipart cable. Options: a Wrench mode that toggles a face,
+  stored in a sparse per-chunk attachment that the wire reader and arms both read; or a thin
+  "cable cap" block placed in the neighbouring space.
+  Done when: the anchored face has no arm and no port, the wiring-consistency GameTest covers
+  it, and removing the anchor rebuilds the link.
 - [ ] **Q97 — Cauldrons (M106).** Size S. Low priority.
   Programs, Importers and Exporters can fill and drain cauldrons.
   Done when: a GameTest fills a cauldron with water from storage and drains it back.
