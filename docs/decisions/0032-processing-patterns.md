@@ -136,3 +136,23 @@ these checks reconcile independent interrupted world/provider saves. Those
 recovery gates remain explicit. Native regressions exercise fresh same-coordinate
 replacement through active work and cancelled cleanup, read-only refusal to
 initialize a replacement, and original provider NBT restoration without input replay.
+
+## Amendment — emit steps (2026-10-31, ergonomics plan Q115, QD19)
+
+A job step whose pattern is a Signal Interface's emit pattern (ADR 0059 amendment) has no
+machine, lease or dispatch. Each run, `WorldCraftingJobs.emit` reserves for the job up to what
+the step still needs from units of its output that are stored and **not reserved**, using the
+same CRAFT-checked cells as acceptance. Each reserved unit counts as one craft
+(`CraftingJob.emitted`). The units stay reserved, like stock reserved on accept, until a later
+step pulls them or delivery releases them. When too few have arrived, the job waits with reason
+`emitting` and retries on the normal schedule.
+
+This is a deliberate exception to "completion is never a storage count increase". The step
+claims only units that already exist and that nothing else holds, so nothing is double-counted
+or created. However, it cannot tell the emitted machine's output from any other arrival. The
+player owns that claim, as AE2 does with its crafting emitter. A reservation that would exceed
+`MAX_RESERVATIONS` waits with `reservation_limit` and takes nothing.
+
+Cancelling releases the emitted units with the job's other reservations, so they stay in
+storage. The Interface turns off at its next evaluation. Nested job persistence is unchanged:
+an emit step is an ordinary step with a pattern ID and version 1.

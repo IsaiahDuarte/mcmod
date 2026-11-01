@@ -402,14 +402,19 @@ final class TerminalJobs {
                       : TerminalJobPackets.StepStatus.RUNNING;
       var offer = patterns == null ? null : patterns.offer(step.pattern());
       var dispatch = index == current ? job.dispatch() : null;
+      // Q115: an emit step names its Signal Interface and that Interface's label.
+      var emitter = patterns == null ? null : patterns.emitter(step.pattern());
+      var signal = emitter == null ? null : emitter.signal();
       steps.add(
           new TerminalJobPackets.StepRow(
               entry(step.output(), ""),
               step.done(),
               step.crafts(),
               status,
-              machine(offer, dispatch),
-              offer == null ? "" : offer.unit().label()));
+              signal != null
+                  ? blockAt(signal.getLevel(), signal.getBlockPos())
+                  : machine(offer, dispatch),
+              signal != null ? signal.label() : offer == null ? "" : offer.unit().label()));
     }
     boolean cancellable = job.principal().equals(viewer.getUUID()) || actor().operator();
     return new TerminalJobPackets.Detail(

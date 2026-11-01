@@ -34,7 +34,12 @@ public record Pattern(
 
   public enum Type {
     CRAFTING,
-    PROCESSING
+    PROCESSING,
+    /**
+     * Q115: a Signal Interface set to Craft. No inputs: the step turns the signal on and takes each
+     * unit of the output that appears in storage, one unit per craft.
+     */
+    EMIT
   }
 
   /** An exact pattern: every input is exactly its key (no substitution). */
@@ -65,7 +70,10 @@ public record Pattern(
     if (outputAmount < 1) throw new IllegalArgumentException("Pattern must produce output");
     inputs = checked(inputs, MAX_INPUT_KEYS, "input");
     byproducts = checked(byproducts, MAX_BYPRODUCT_KEYS, "byproduct");
-    if (inputs.isEmpty()) throw new IllegalArgumentException("Pattern needs inputs");
+    if (type == Type.EMIT) {
+      if (!inputs.isEmpty() || !byproducts.isEmpty() || outputAmount != 1)
+        throw new IllegalArgumentException("An emit pattern makes one unit from nothing");
+    } else if (inputs.isEmpty()) throw new IllegalArgumentException("Pattern needs inputs");
     if (inputs.containsKey(output))
       throw new IllegalArgumentException("Pattern output cannot also be its input");
     var copy = new LinkedHashMap<ResourceKey, List<ResourceKey>>();

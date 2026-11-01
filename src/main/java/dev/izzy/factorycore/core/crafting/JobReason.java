@@ -40,7 +40,9 @@ public enum JobReason {
   RATE_LIMIT,
   OVERLAP,
   UNSUPPORTED,
-  REDSTONE;
+  REDSTONE,
+  /** Q115: a Signal Interface set to Craft is on; the job waits for its item to arrive. */
+  EMITTING;
 
   public String key() {
     return EnumKeys.key(this);

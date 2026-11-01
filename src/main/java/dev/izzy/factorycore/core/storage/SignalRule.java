@@ -6,19 +6,27 @@ import java.util.Objects;
  * C1: what a Signal-mode Interface emits. {@link Condition#STOCK} compares the network's stored
  * amount of the watched resources (summed over the filter, Q24) with {@code threshold}; {@link
  * Condition#ENERGY} does the same for the network's stored energy (FE); {@link Condition#JOB} is
- * true while a crafting job for the watched resource is running. {@link Output#FULL} emits 15 when
- * the condition holds; {@link Output#PROPORTIONAL} grows like a comparator: 0 at the "off" end, 15
- * at the threshold. {@link Compare#EQUAL} has no "toward" direction, so it is always full.
+ * true while a crafting job for the watched resource is running; {@link Condition#CRAFT} (Q115)
+ * offers the watched item to crafting and is true while a job waits for it. {@link Output#FULL}
+ * emits 15 when the condition holds; {@link Output#PROPORTIONAL} grows like a comparator: 0 at the
+ * "off" end, 15 at the threshold. {@link Compare#EQUAL} has no "toward" direction, so it is always
+ * full.
  */
 public record SignalRule(Condition condition, Compare compare, long threshold, Output output) {
   public enum Condition {
     STOCK,
     JOB,
-    ENERGY;
+    ENERGY,
+    CRAFT;
 
-    /** Compares an amount with the threshold (not a running job). */
+    /** Compares an amount with the threshold (not a running or waiting job). */
     public boolean counts() {
-      return this != JOB;
+      return this == STOCK || this == ENERGY;
+    }
+
+    /** Follows the one exact watched resource (a job runs or waits for it). */
+    public boolean followsJobs() {
+      return this == JOB || this == CRAFT;
     }
   }
 

@@ -747,7 +747,10 @@ New gates:
   Files: `SignalMenu.java`, `SignalScreen.java`, `WorldSignals.java`, ADR 0059 amendment.
   Done when: GameTests cover a tag filter crossing its threshold and a reload.
 
-- [ ] **Q115 — Emit to craft (from Q24, M92).** Size M. Lane D. Needs QD19.
+- [x] **Q115 — Emit to craft (from Q24, M92).** Size M. Lane D. Needs QD19. Done 2026-10-31
+  (commit subject `Q115:`). Signal condition **Craft**, `Pattern.Type.EMIT`, emit steps reserve
+  arriving units; ADR 0059 and 0032 amendments.
+  [Evidence](evidence/ergonomics-q115-emit-to-craft-2026-10-31.md).
   A crafting step that turns a labelled Signal Interface on until the requested item arrives, so
   a redstone-driven machine can be a crafting step (AE2 Level Emitter with Crafting Card). It
   changes crafting dispatch, so it waits for the QD19 amendment to ADR 0060 / ADR 0032.

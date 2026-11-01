@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.signal;
 
 import dev.izzy.factorycore.core.crafting.CraftingJob;
+import dev.izzy.factorycore.core.crafting.Pattern;
 import dev.izzy.factorycore.core.network.NetworkPermissions;
 import dev.izzy.factorycore.core.network.NetworkTopology;
 import dev.izzy.factorycore.core.resource.OperationResult;
@@ -117,6 +118,50 @@ public final class WorldSignals {
     for (var signal : signals) if (signal.release(deployment)) dueNow(signal);
   }
 
+  /** Q115: the emit pattern a Signal Interface at {@code origin} offers; stable across reloads. */
+  public static UUID emitterId(dev.izzy.factorycore.core.network.NodeRegistry.Position origin) {
+    return UUID.nameUUIDFromBytes(
+        ("factorycore:emit:" + origin.dimension() + ":" + origin.block())
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+  }
+
+  /** Q115: a Signal Interface set to Craft, offering its one watched item to crafting. */
+  public record Emitter(Pattern pattern, SignalInterfaceEntity signal) {}
+
+  /** Signal Interfaces set to Craft one segment may use; more are left out, as for patterns. */
+  public static final int MAX_EMITTERS = 256;
+
+  /**
+   * Q115: the Craft-mode Signal Interfaces in {@code scope}'s segment whose owner may still view
+   * the network, each as an emit pattern for its one watched resource.
+   */
+  public List<Emitter> emitters(NetworkTopology.Scope scope) {
+    var networks = WorldNetworks.get(server);
+    var found = new java.util.ArrayList<Emitter>();
+    for (var signal : signals) {
+      if (found.size() == MAX_EMITTERS) break;
+      if (signal.rule().condition() != SignalRule.Condition.CRAFT
+          || signal.owner() == null
+          || !signal.current()) continue;
+      var resource = signal.resource();
+      if (resource == null) continue;
+      var origin = signal.origin();
+      var member = networks.membership(origin);
+      if (member.status() != NetworkTopology.Status.VALID
+          || !member.scope().segment().equals(scope.segment())
+          || !networks.allows(
+              new NetworkPermissions.Actor(signal.owner(), false),
+              origin,
+              NetworkPermissions.Permission.VIEW)) continue;
+      found.add(
+          new Emitter(
+              new Pattern(
+                  emitterId(origin), 1, Pattern.Type.EMIT, 0, Map.of(), resource, 1, Map.of()),
+              signal));
+    }
+    return found;
+  }
+
   /** Number of Signal Interfaces being evaluated (for tests and diagnostics). */
   public int tracked() {
     return signals.size();
@@ -150,7 +195,7 @@ public final class WorldSignals {
     boolean energy = rule.condition() == SignalRule.Condition.ENERGY;
     if (owner == null
         || !energy && watch == null
-        || rule.condition() == SignalRule.Condition.JOB && resource == null) {
+        || rule.condition().followsJobs() && resource == null) {
       signal.output(0, "unset");
       return;
     }
@@ -164,6 +209,24 @@ public final class WorldSignals {
     var actor = new NetworkPermissions.Actor(owner, false);
     if (!networks.allows(actor, origin, NetworkPermissions.Permission.VIEW)) {
       signal.output(0, "denied");
+      return;
+    }
+    if (rule.condition() == SignalRule.Condition.CRAFT) {
+      // Q115: on while a job's current step is this Interface's emit pattern.
+      var pattern = emitterId(signal.origin());
+      boolean waiting = false;
+      for (var job : DeviceSavedData.get(server).craftingJobs().all()) {
+        int index = job.current();
+        if (index >= 0
+            && job.network().equals(member.scope().network())
+            && job.state() != CraftingJob.State.CANCELLING
+            && job.state() != CraftingJob.State.DELIVERING
+            && job.steps().get(index).pattern().equals(pattern)) {
+          waiting = true;
+          break;
+        }
+      }
+      signal.output(rule.strength(waiting), "");
       return;
     }
     if (rule.condition() == SignalRule.Condition.JOB) {

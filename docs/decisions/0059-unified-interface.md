@@ -214,3 +214,26 @@ and the loot drops event, so a pick-up carries exactly what breaking would.
 Alternatives: rotating with the block's `rotate` hook (rejected: it bypasses authority and the
 in-transit check), or a mode-switch-style re-lease (rejected: it would lose settings and upgrades
 for a purely positional change).
+
+## Amendment — emit to craft (2026-10-31, ergonomics plan Q115, QD19)
+
+A Signal Interface has a fourth condition, **Craft** (`SignalRule.Condition.CRAFT`; saved by
+name, so older worlds load unchanged). With an owner, one exact watched resource and a valid
+network, it offers an emit pattern to its own segment's crafting index:
+
+- **The pattern:** `Pattern.Type.EMIT`, with no inputs and one unit out. Its ID is derived from
+  the Interface's position (`WorldSignals.emitterId`), so it survives a reload. It is offered
+  only while the owner still holds View there, and at most 256 per segment.
+- **Planning:** the planner treats it as a leaf producer, like any pattern of priority 0. A
+  pattern of higher priority wins; ties fall back to pattern ID.
+- **Signal:** the Interface is on (strength from the rule's output) while some job's current
+  step is its emit pattern and that job is neither cancelling nor delivering. It is evaluated
+  on the usual one-second schedule.
+- **Job progress:** see the ADR 0032 amendment of the same date for how an emit step takes the
+  units that arrive.
+
+Alternatives:
+- **A dedicated Level Emitter block with a Crafting Card** (AE2). Rejected: the Signal mode
+  already watches one item and owns redstone output.
+- **Fulfilling emit steps only from a named Importer.** Rejected: it would tie the
+  Interface to one input path, and AE2 also accepts any arrival.

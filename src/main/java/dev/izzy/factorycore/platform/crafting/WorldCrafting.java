@@ -65,10 +65,30 @@ public final class WorldCrafting {
     }
   }
 
-  /** Patterns visible to one segment, keyed by output. Overflow beyond the bounds is reported. */
-  public record Index(Map<ResourceKey, List<Offer>> byOutput, boolean truncated) {
+  /**
+   * Patterns visible to one segment, keyed by output, and (Q115) the segment's Craft-mode Signal
+   * Interfaces by emit-pattern ID. Overflow beyond the bounds is reported.
+   */
+  public record Index(
+      Map<ResourceKey, List<Offer>> byOutput,
+      boolean truncated,
+      Map<UUID, dev.izzy.factorycore.platform.signal.WorldSignals.Emitter> emitters) {
+    public Index(Map<ResourceKey, List<Offer>> byOutput, boolean truncated) {
+      this(byOutput, truncated, Map.of());
+    }
+
+    /** Pattern holders' patterns first, then emitters, which have no inputs to plan. */
     public Collection<Pattern> producers(ResourceKey key) {
-      return byOutput.getOrDefault(key, List.of()).stream().map(Offer::pattern).toList();
+      var producers = new ArrayList<Pattern>();
+      for (var offer : byOutput.getOrDefault(key, List.of())) producers.add(offer.pattern());
+      for (var emitter : emitters.values())
+        if (emitter.pattern().output().equals(key)) producers.add(emitter.pattern());
+      return producers;
+    }
+
+    /** Q115: the emitter offering {@code pattern}, or null. */
+    public dev.izzy.factorycore.platform.signal.WorldSignals.Emitter emitter(UUID pattern) {
+      return emitters.get(pattern);
     }
 
     public Offer offer(UUID pattern) {
@@ -224,6 +244,11 @@ public final class WorldCrafting {
                       offer.published(),
                       more);
             });
-    return new Index(byOutput, truncated);
+    var emitters =
+        new LinkedHashMap<UUID, dev.izzy.factorycore.platform.signal.WorldSignals.Emitter>();
+    for (var emitter :
+        dev.izzy.factorycore.platform.signal.WorldSignals.get(server).emitters(scope))
+      emitters.put(emitter.pattern().id(), emitter);
+    return new Index(byOutput, truncated, emitters);
   }
 }

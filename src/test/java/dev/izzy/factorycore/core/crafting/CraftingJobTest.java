@@ -287,4 +287,55 @@ class CraftingJobTest {
     org.junit.jupiter.api.Assertions.assertThrows(
         IllegalArgumentException.class, () -> step.advanced(java.util.Map.of(birch, 4L)));
   }
+
+  @Test
+  void emitStepsReserveArrivingUnitsAsTheirCraftsAndBoundTheirProgress() {
+    // Q115: no logs in stock; a Signal Interface set to Craft "makes" them one unit per craft.
+    var emitter = new Pattern(new UUID(0, 3), 1, Pattern.Type.EMIT, 0, Map.of(), LOG, 1, Map.of());
+    var plan =
+        new CraftingPlanner(key -> key.equals(LOG) ? List.of(emitter) : List.of(PLANK_PATTERN))
+            .plan(PLANKS, 8, Map.of());
+    assertEquals(CraftingPlanner.Status.OK, plan.status());
+    var job =
+        CraftingJob.accepted(
+            new UUID(0, 9),
+            new UUID(0, 10),
+            new UUID(0, 11),
+            new UUID(0, 11),
+            new NodeRegistry.Position("minecraft:overworld", 5),
+            plan,
+            Map.of());
+    assertEquals(0, job.current());
+    assertEquals(emitter.id(), job.steps().getFirst().pattern());
+    assertEquals(2, job.steps().getFirst().crafts(), "Two logs make eight planks");
+    assertThrows(IllegalArgumentException.class, () -> job.emitted(CELL, LOG, 3), "Over the step");
+    assertThrows(IllegalArgumentException.class, () -> job.emitted(CELL, PLANKS, 1), "Wrong key");
+    job.emitted(CELL, LOG, 1);
+    job.emitted(new UUID(0, 8), LOG, 1);
+    assertEquals(1, job.current(), "Both logs arrived; the plank step is next");
+    assertEquals(2, job.reservedAmount(LOG), "Arrived units stay reserved until used");
+    assertEquals(0, job.stagedAmount(LOG));
+    job.pulled(CELL, LOG, 1);
+    job.crafted(Map.of(LOG, 1L), Map.of(PLANKS, 4L));
+    job.pulled(new UUID(0, 8), LOG, 1);
+    job.crafted(Map.of(LOG, 1L), Map.of(PLANKS, 4L));
+    assertEquals(CraftingJob.State.DELIVERING, job.state());
+    var copy = new CraftingJob(job.snapshot());
+    assertEquals(job.snapshot(), copy.snapshot(), "Emit progress survives a save");
+  }
+
+  @Test
+  void anEmitPatternHasNoInputsAndMakesOneUnit() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new Pattern(new UUID(0, 3), 1, Pattern.Type.EMIT, 0, Map.of(), LOG, 2, Map.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new Pattern(
+                new UUID(0, 3), 1, Pattern.Type.EMIT, 0, Map.of(PLANKS, 1L), LOG, 1, Map.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new Pattern(new UUID(0, 3), 1, Pattern.Type.CRAFTING, 0, Map.of(), LOG, 1, Map.of()));
+  }
 }

@@ -385,6 +385,13 @@ of any Interface screen. In its screen:
 - **When**: *Stored* compares that total with a number (≥, < or exactly =; items, or mB for
   fluids); *Energy* compares the network's stored energy (FE) instead and needs no slots;
   *Job running* turns on while a crafting job for the one watched item runs.
+  *Craft* offers the one watched item to crafting, as if a pattern made it from nothing. When a
+  job needs more of it than storage holds, the signal turns on. Every unit that then arrives in
+  storage, from any source, goes to the job, and the signal turns off when the job has enough or
+  is cancelled. Use it to run a machine that only needs redstone, such as a cobblestone
+  generator behind an Importer. The Jobs view names the Interface and says
+  "Signal on: waiting for the item to arrive in storage". A pattern for the same item wins only
+  if its priority is higher.
 - **Output**: *full 15*, or *proportional*, which rises like a comparator to 15 at the
   number.
 - **Apply** saves it. The signal then reads storage with your access, so you need Edit

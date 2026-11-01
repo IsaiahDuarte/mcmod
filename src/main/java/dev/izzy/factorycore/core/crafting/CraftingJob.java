@@ -92,6 +92,11 @@ public final class CraftingJob {
       }
       return new Step(pattern, version, output, crafts, done + 1, next);
     }
+
+    /** Q115: this emit step with {@code amount} more units arrived. */
+    Step emitted(long amount) {
+      return new Step(pattern, version, output, crafts, done + amount, uses);
+    }
   }
 
   /** Active processing craft at one interface: exact units inserted and collected so far. */
@@ -394,6 +399,39 @@ public final class CraftingJob {
     else cell.put(key, held - amount);
     if (cell.isEmpty()) reserved.remove(backing);
     stage(key, amount);
+  }
+
+  /**
+   * Q115: the current step is an emit step, and {@code amount} units of its output, which appeared
+   * in storage, were reserved for this job at {@code backing}. Those units are the step's crafts;
+   * they stay reserved until a later step or delivery takes them, like stock reserved on accept.
+   */
+  public void emitted(UUID backing, ResourceKey key, long amount) {
+    if (state != State.RUNNING || dispatch != null)
+      throw new IllegalStateException("Job is not running a direct craft");
+    int index = current();
+    if (index < 0) throw new IllegalStateException("No unfinished step");
+    var step = steps.get(index);
+    if (!step.output().equals(key) || amount < 1 || amount > step.crafts() - step.done())
+      throw new IllegalArgumentException("Emitted units do not match the step");
+    var cell = reserved.get(backing);
+    if ((cell == null || !cell.containsKey(key)) && !roomForReservation())
+      throw new IllegalStateException("Too many reservations");
+    reserved
+        .computeIfAbsent(backing, b -> new LinkedHashMap<>())
+        .merge(key, amount, Math::addExact);
+    steps.set(index, step.emitted(amount));
+    if (current() < 0) {
+      state = State.DELIVERING;
+      reason = null;
+    }
+  }
+
+  /** True while one more (backing, key) reservation entry fits {@link #MAX_RESERVATIONS}. */
+  public boolean roomForReservation() {
+    int entries = 0;
+    for (var cell : reserved.values()) entries += cell.size();
+    return entries < MAX_RESERVATIONS;
   }
 
   /** Records that a backing's reservation for {@code key} was released. */

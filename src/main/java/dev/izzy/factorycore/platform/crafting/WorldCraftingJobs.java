@@ -757,6 +757,8 @@ public final class WorldCraftingJobs {
     if (!networks().allows(actor, scopeAnchor, NetworkPermissions.Permission.CRAFT))
       return JobReason.DENIED;
     var crafting = WorldCrafting.get(server).index(networks().membership(scopeAnchor).scope());
+    var emitter = crafting.emitter(step.pattern());
+    if (emitter != null) return emit(job, step, actor, scopeAnchor);
     var indexed = crafting.offer(step.pattern());
     if (indexed == null || indexed.pattern().version() != step.version())
       return JobReason.PATTERN_MISSING;
@@ -831,6 +833,35 @@ public final class WorldCraftingJobs {
     job.crafted(inputs, outputs);
     for (var permit : permits) permit.finish(permit.amount());
     return null;
+  }
+
+  /**
+   * Q115: an emit step. Its Signal Interface is on while this step is current (WorldSignals); each
+   * unit of the output now in storage and not reserved is reserved for this job and counts as one
+   * craft, up to what the step still needs. Waits with {@code emitting} until enough arrived.
+   */
+  private JobReason emit(
+      CraftingJob job,
+      CraftingJob.Step step,
+      NetworkPermissions.Actor actor,
+      NodeRegistry.Position origin) {
+    var key = step.output();
+    var registry = saved().registry();
+    long need = step.crafts() - step.done();
+    for (var cell : cells(actor, origin, key)) {
+      if (need == 0) break;
+      long take = Math.min(need, cell.available());
+      if (take == 0) continue;
+      var backing = cell.handle().backing();
+      var held = job.reserved().get(backing);
+      if ((held == null || !held.containsKey(key)) && !job.roomForReservation())
+        return JobReason.RESERVATION_LIMIT;
+      var result = registry.reserve(cell.handle(), job.id(), key, take);
+      if (result.amount() == 0) continue;
+      job.emitted(backing, key, result.amount());
+      need -= result.amount();
+    }
+    return need == 0 ? null : JobReason.EMITTING;
   }
 
   /** The loaded current interface at a dispatch position, or null. */
