@@ -175,6 +175,15 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     VIEWER.offer(menu, itemId);
   }
 
+  /** Q140: a stored item or fluid under the mouse and its slot, for recipe-viewer lookups. */
+  public record Hovered(Object ingredient, int x, int y, int width, int height) {}
+
+  /** The item or fluid entry at a screen position, or null (other views, empty cells, energy). */
+  public Hovered hoveredIngredient(double mouseX, double mouseY) {
+    if (storageHidden() || jobsMode || patternsMode) return null;
+    return storage.hoveredAt(mouseX, mouseY);
+  }
+
   public int columns() {
     return columns;
   }
@@ -1110,15 +1119,34 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     return null;
   }
 
-  /** Q134: stores one dragged-over stack per idle tick; the server takes one move at a time. */
+  /**
+   * Q134: stores one dragged-over stack at a time. The server drops a move sent while it is busy,
+   * and a just-sent move may not show as busy yet, so the next waits until the last one's slot
+   * changed and the terminal is idle. A slot unchanged after 20 ticks was dropped and is sent
+   * again, up to three times.
+   */
   private void drainDragged() {
-    if (dragged.isEmpty() || menu.view().busy() || kind() != 0 || patternsMode) {
-      if (kind() != 0 || patternsMode) dragged.clear();
+    if (kind() != 0 || patternsMode) {
+      dragged.clear();
       return;
     }
+    if (dragging != null && ItemStack.matches(dragging.getItem(), draggingStack)) {
+      if (clock - draggingSent < 20) return;
+      if (++draggingTries < 3) dragged.addFirst(dragging);
+    } else draggingTries = 0;
+    dragging = null;
+    if (dragged.isEmpty() || menu.view().busy() || clock - lastCommand < 4) return;
     var slot = dragged.poll();
-    if (slot.hasItem()) storage.deposit(slot);
+    if (!slot.hasItem()) return;
+    dragging = slot;
+    draggingSent = clock;
+    draggingStack = slot.getItem().copy();
+    storage.deposit(slot);
   }
+
+  private Slot dragging;
+  private int draggingSent, draggingTries;
+  private ItemStack draggingStack = ItemStack.EMPTY;
 
   /** Test hook (Q63): holds the grid order as if Shift were down. */
   public void holdOrder(boolean hold) {

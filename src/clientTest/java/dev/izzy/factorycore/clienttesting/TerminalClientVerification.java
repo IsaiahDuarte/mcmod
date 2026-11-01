@@ -124,6 +124,22 @@ public final class TerminalClientVerification {
               + stage
               + " craftStep="
               + craftStep
+              + " dragStep="
+              + dragStep
+              + " slots9-11="
+              + (client.player == null
+                  ? "?"
+                  : client.player.getInventory().getItem(9)
+                      + "/"
+                      + client.player.getInventory().getItem(10)
+                      + "/"
+                      + client.player.getInventory().getItem(11))
+              + (client.screen instanceof TerminalScreen shown
+                  ? " busy="
+                      + shown.getMenu().view().busy()
+                      + " status="
+                      + shown.getMenu().view().status()
+                  : "")
               + (client.screen instanceof TerminalScreen terminal
                   ? " grid=" + terminal.getMenu().gridView()
                   : "")
@@ -421,6 +437,22 @@ public final class TerminalClientVerification {
                 && view.rows().getFirst().name().equals("Client hopper variant"),
             "Name sorting uses display names rather than registry order");
         checkNoOverlap(screen);
+        // Q140 (n15): recipe viewers' R and U see the entry under the mouse as its item.
+        var first = screen.hoveredIngredient(screen.itemX(0) + 8, screen.itemY(0) + 8);
+        check(
+            first != null
+                && first.ingredient() instanceof net.minecraft.world.item.ItemStack stack
+                && net.minecraft.core.registries.BuiltInRegistries.ITEM
+                    .getKey(stack.getItem())
+                    .toString()
+                    .equals(view.rows().getFirst().icon())
+                && first.x() == screen.itemX(0)
+                && first.y() == screen.itemY(0)
+                && first.width() == 16,
+            "A grid entry is a lookup target for recipe viewers: " + first);
+        check(
+            screen.hoveredIngredient(screen.getGuiLeft() - 20, screen.getGuiTop()) == null,
+            "Outside the grid there is no lookup target");
         captures.grab(client, "scale-2-all-items.png");
         search(screen, "hopper variant");
       }

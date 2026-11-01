@@ -460,11 +460,23 @@ final class TerminalStorageView {
     var entries = entries();
     if (row >= 0 && row < entries.size()) {
       var value = entries.get(row);
-      graphics.renderTooltip(
-          font,
+      var stack = kind == 0 ? itemStack(value.icon()) : ItemStack.EMPTY;
+      // Q140 (n15): an item shows its standard tooltip (so tooltip mods style it and add their
+      // lines) followed by the terminal's counts and help.
+      var lines = new ArrayList<Component>();
+      if (!stack.isEmpty()) {
+        lines.addAll(
+            net.minecraft.client.gui.screens.Screen.getTooltipFromItem(screen.client(), stack));
+        // Rows carry the stored stack's display name but not its components; keep that name.
+        if (!lines.isEmpty() && !lines.getFirst().getString().equals(value.name()))
+          lines.set(
+              0, Component.literal(value.name()).withStyle(net.minecraft.ChatFormatting.ITALIC));
+      } else {
+        lines.add(Component.literal(value.name()));
+        lines.add(Component.literal(value.icon()));
+      }
+      lines.addAll(
           List.of(
-              Component.literal(value.name()),
-              Component.literal(value.icon()),
               Component.translatable(
                   "gui.factorycore.terminal.counts" + (kind == 0 ? "" : "." + kind),
                   value.total(),
@@ -475,10 +487,9 @@ final class TerminalStorageView {
                       ? value.none()
                           ? "gui.factorycore.terminal.craftable.ghost"
                           : "gui.factorycore.terminal.craftable.stocked"
-                      : "gui.factorycore.terminal.select.help" + (kind == 0 ? "" : "." + kind))),
-          Optional.empty(),
-          mouseX,
-          mouseY);
+                      : "gui.factorycore.terminal.select.help" + (kind == 0 ? "" : "." + kind))));
+      if (stack.isEmpty()) graphics.renderTooltip(font, lines, Optional.empty(), mouseX, mouseY);
+      else graphics.renderTooltip(font, lines, stack.getTooltipImage(), stack, mouseX, mouseY);
       return true;
     }
     if ((kind == 0 || !menu().view().status().quiet())
@@ -508,6 +519,39 @@ final class TerminalStorageView {
       return true;
     }
     return false;
+  }
+
+  /** One of a registered item, or empty for an unknown id. */
+  private static ItemStack itemStack(String id) {
+    var location = ResourceLocation.tryParse(id);
+    return location != null && BuiltInRegistries.ITEM.containsKey(location)
+        ? new ItemStack(BuiltInRegistries.ITEM.get(location))
+        : ItemStack.EMPTY;
+  }
+
+  /**
+   * Q140 (n15): the item ({@link ItemStack}) or fluid ({@link
+   * net.neoforged.neoforge.fluids.FluidStack}, one bucket) shown at a screen position, with its 16
+   * px slot, for recipe viewers' R and U keys; null over anything else.
+   */
+  TerminalScreen.Hovered hoveredAt(double mouseX, double mouseY) {
+    int kind = screen.kind(), row = rowAt(mouseX, mouseY);
+    var entries = entries();
+    if (row < 0 || row >= entries.size() || kind == 2) return null;
+    var id = entries.get(row).icon();
+    Object ingredient;
+    if (kind == 0) {
+      var stack = itemStack(id);
+      if (stack.isEmpty()) return null;
+      ingredient = stack;
+    } else {
+      var location = ResourceLocation.tryParse(id);
+      if (location == null || !BuiltInRegistries.FLUID.containsKey(location)) return null;
+      var fluid = BuiltInRegistries.FLUID.get(location);
+      if (fluid == net.minecraft.world.level.material.Fluids.EMPTY) return null;
+      ingredient = new net.neoforged.neoforge.fluids.FluidStack(fluid, 1000);
+    }
+    return new TerminalScreen.Hovered(ingredient, itemX(row), itemY(row), 16, 16);
   }
 
   /** Items show themselves; energy shows redstone; a fluid's bucket is the fallback icon. */

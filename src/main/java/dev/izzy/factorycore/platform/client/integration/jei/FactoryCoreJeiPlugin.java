@@ -85,6 +85,32 @@ public final class FactoryCoreJeiPlugin implements IModPlugin {
             return areas;
           }
         });
+    // Q140 (n15): R and U over a terminal entry look it up, as over any inventory slot.
+    registration.addGuiContainerHandler(
+        dev.izzy.factorycore.platform.client.TerminalScreen.class,
+        new mezz.jei.api.gui.handlers.IGuiContainerHandler<
+            dev.izzy.factorycore.platform.client.TerminalScreen>() {
+          @Override
+          public java.util.Optional<? extends mezz.jei.api.runtime.IClickableIngredient<?>>
+              getClickableIngredientUnderMouse(
+                  mezz.jei.api.gui.builder.IClickableIngredientFactory factory,
+                  dev.izzy.factorycore.platform.client.TerminalScreen screen,
+                  double mouseX,
+                  double mouseY) {
+            var hovered = screen.hoveredIngredient(mouseX, mouseY);
+            if (hovered == null) return java.util.Optional.empty();
+            var area =
+                new net.minecraft.client.renderer.Rect2i(
+                    hovered.x(), hovered.y(), hovered.width(), hovered.height());
+            if (hovered.ingredient() instanceof net.minecraft.world.item.ItemStack stack)
+              return factory.createBuilder(stack).buildWithArea(area);
+            return factory
+                .createBuilder(
+                    mezz.jei.api.neoforge.NeoForgeTypes.FLUID_STACK,
+                    (net.neoforged.neoforge.fluids.FluidStack) hovered.ingredient())
+                .buildWithArea(area);
+          }
+        });
     registration.addGhostIngredientHandler(ProgramScreen.class, new ProgramGhostHandler());
     registration.addGhostIngredientHandler(
         dev.izzy.factorycore.platform.client.BufferSettingsScreen.class,

@@ -756,7 +756,8 @@ mode, it switches and says so above the hotbar. On any other recipe (furnace, bl
 **Inputs** and **Outputs** for a Processing Pattern, items and fluids with their amounts (fluids
 rounded up to 250 mB steps). A recipe with more than three outputs keeps the first three, and a
 message says so; one with more than nine inputs cannot be transferred. Dragging an item or fluid onto the program editor types its
-expression. With JEI installed the terminal's search row also has a **Sync** button: while it
+expression. With JEI or EMI, R and U over a terminal entry show its recipes and uses, as over any slot.
+With JEI installed the terminal's search row also has a **Sync** button: while it
 is green, what you type in the terminal search is copied into JEI's search and the other way
 round. Right-click **Sync** to have JEI's search emptied each time the terminal opens (the word
 is underlined while that is on). Both settings are remembered with your sort. Everything also works

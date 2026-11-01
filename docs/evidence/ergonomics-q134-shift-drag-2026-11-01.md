@@ -31,3 +31,10 @@ presses on slot 9, drags over 10 and 11 (11 twice), and releases.
 
 Not covered by a test: Portable Storage shares `ShiftDrag`, and its move is the vanilla
 quick-move it already used for Shift-click.
+
+## Follow-up (with Q140)
+
+The tour later failed once: two of three slots stored. A move sent just after another command
+reached the server while it was still busy, and the server dropped it. The terminal now waits for
+each sent slot to change before sending the next. A slot still unchanged after 20 ticks is sent
+again, up to three times. The tour then passed three runs in a row.

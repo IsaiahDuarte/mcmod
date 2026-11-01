@@ -376,7 +376,9 @@ screens.
   - **Buttons:** one icon style for the terminal's button cluster, with labels or tooltips that
     say what each does.
   - **Help button:** in the same place on every screen, with the "?" centred.
-- [ ] **Q140 — JEI-like item lookups in the terminal (n15).** Size S. U (uses) and R (recipes)
+- [x] **Q140 — JEI-like item lookups in the terminal (n15).** Size S. Done 2026-11-01 (commit
+  subject `Q140:`). [Evidence](evidence/ergonomics-q140-viewer-lookups-2026-11-01.md). Not yet
+  confirmed with JEI in the pack. U (uses) and R (recipes)
   on a terminal entry open JEI or EMI, through their APIs, as on any inventory slot. Item
   tooltips use the standard item tooltip, so tooltip mods style them.
 - [ ] **Q138 — One terminal view (n4).** Size L. AE2-style view toggles: everything, stored only,

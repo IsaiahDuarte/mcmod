@@ -26,6 +26,19 @@ public final class FactoryCoreEmiPlugin implements EmiPlugin {
   @Override
   public void register(EmiRegistry registry) {
     registry.addRecipeHandler(TerminalContent.MENU.get(), new TerminalRecipeHandler());
+    // Q140 (n15): R and U over a terminal entry look it up, as over any inventory slot.
+    registry.addStackProvider(
+        dev.izzy.factorycore.platform.client.TerminalScreen.class,
+        (screen, x, y) -> {
+          var hovered = screen.hoveredIngredient(x, y);
+          if (hovered == null) return dev.emi.emi.api.stack.EmiStackInteraction.EMPTY;
+          var stack =
+              hovered.ingredient() instanceof net.minecraft.world.item.ItemStack item
+                  ? dev.emi.emi.api.stack.EmiStack.of(item)
+                  : dev.emi.emi.api.neoforge.NeoForgeEmiStack.of(
+                      (net.neoforged.neoforge.fluids.FluidStack) hovered.ingredient());
+          return new dev.emi.emi.api.stack.EmiStackInteraction(stack);
+        });
     registry.addDragDropHandler(ProgramScreen.class, new ProgramDrop());
     registry.addDragDropHandler(BufferSettingsScreen.class, new FilterDrop<>());
     registry.addDragDropHandler(PortScreen.class, new FilterDrop<>());
