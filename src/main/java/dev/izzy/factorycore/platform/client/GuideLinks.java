@@ -37,6 +37,7 @@ public final class GuideLinks {
           Map.entry(CrafterScreen.class, "factorycore:crafter"),
           Map.entry(ProgramScreen.class, "factorycore:program_controller"),
           Map.entry(EnergyBankScreen.class, "factorycore:starter_energy_bank"),
+          Map.entry(FuelGeneratorScreen.class, "factorycore:fuel_generator"),
           Map.entry(OverviewScreen.class, "factorycore:network_controller"),
           Map.entry(NetworkAccessScreen.class, "factorycore:network_controller"),
           Map.entry(GatewayPolicyScreen.class, "factorycore:gateway"));

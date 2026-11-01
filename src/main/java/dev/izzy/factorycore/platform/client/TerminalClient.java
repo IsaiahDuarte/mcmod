@@ -92,6 +92,9 @@ public final class TerminalClient {
     event.register(
         dev.izzy.factorycore.platform.storage.EnergyBankContent.MENU.get(), EnergyBankScreen::new);
     event.register(NetworkContent.ACCESS_MENU.get(), NetworkAccessScreen::new);
+    event.register(
+        dev.izzy.factorycore.platform.power.FuelGeneratorContent.MENU.get(),
+        FuelGeneratorScreen::new);
     event.register(NetworkContent.OVERVIEW_MENU.get(), OverviewScreen::new);
     event.register(RecoveryContent.MENU.get(), RecoveryScreen::new);
     event.register(

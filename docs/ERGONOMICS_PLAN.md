@@ -428,7 +428,9 @@ screens.
   `Q141:`): device tiles with counts, "Getting started" and "Next steps" headings replace the
   "Optional:" prefix. [Evidence](evidence/ergonomics-q141-network-overview-2026-11-01.md). Explain or remove "optional"; make the
   screen look less bare.
-- [ ] **Q142 — Fuel Generator screen (n2).** Size M. A screen showing the fuel slot, burn time,
+- [x] **Q142 — Fuel Generator screen (n2).** Size M. Done 2026-11-01 (commit subject `Q142:`):
+  an empty-handed use opens the screen in place of the chat status line.
+  [Evidence](evidence/ergonomics-q142-fuel-generator-screen-2026-11-01.md). A screen showing the fuel slot, burn time,
   stored and produced FE, and its status.
 - [ ] **Q143 — Interface screen (n20).** Size M.
   - **Sort mod clash:** the screen clashes with inventory-sort mods; mark our slot areas so sort

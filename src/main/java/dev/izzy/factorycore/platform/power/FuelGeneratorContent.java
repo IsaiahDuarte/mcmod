@@ -102,6 +102,12 @@ public final class FuelGeneratorContent {
           FactoryRegistries.entity(
               "creative_energy_source", CreativeEnergySourceEntity::new, CREATIVE_BLOCK);
 
+  /** Q142: the generator's screen. */
+  public static final DeferredHolder<
+          net.minecraft.world.inventory.MenuType<?>,
+          net.minecraft.world.inventory.MenuType<FuelGeneratorMenu>>
+      MENU = FactoryRegistries.menu("fuel_generator", FuelGeneratorMenu::new);
+
   private FuelGeneratorContent() {}
 
   private static void capabilities(RegisterCapabilitiesEvent event) {

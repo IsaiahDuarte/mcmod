@@ -581,6 +581,12 @@ tick into neighbours such as an Energy Bank. Empty lava buckets go to a containe
 slot: take them with a hopper below, or sneak-use with an empty hand. It pauses when
 full and keeps its fuel. It needs no network.
 
+Use it with an empty hand to open its screen. It shows the stored FE with a bar, the FE it gave
+out last tick, what it is doing (Burning, Idle: insert furnace fuel, or Paused and why) and the
+seconds left on the current fuel. Below that are the **Fuel** slot, a bar for the current
+fuel's burn, and the **Container** slot, which you can only take from. Shift-click fuel from
+your inventory to put it in.
+
 The **Creative Energy Source** (creative mode only, no recipe) is an endless generator. It pushes
 as much FE each tick as each neighbour takes, and it never runs down. The creative cells are the
 Infinite Item and Infinite Fluid Cells in the creative tab.

@@ -1,10 +1,8 @@
 package dev.izzy.factorycore.platform.power;
 
 import com.mojang.serialization.MapCodec;
-import dev.izzy.factorycore.core.storage.FuelGenerator;
 import dev.izzy.factorycore.platform.CarriedComponents;
 import java.util.List;
-import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentType;
@@ -108,7 +106,9 @@ public final class FuelGeneratorBlock extends BaseEntityBlock implements Carried
     return ItemInteractionResult.CONSUME;
   }
 
-  /** Empty hand reports status; sneaking with an empty hand takes remainders, then fuel. */
+  /**
+   * Empty hand opens the screen (Q142); sneaking with an empty hand takes remainders, then fuel.
+   */
   @Override
   protected InteractionResult useWithoutItem(
       BlockState state, Level level, BlockPos position, Player player, BlockHitResult hit) {
@@ -131,19 +131,8 @@ public final class FuelGeneratorBlock extends BaseEntityBlock implements Carried
       }
       return InteractionResult.PASS;
     }
-    var core = generator.generator();
-    var reason = generator.blockedReason();
-    player.displayClientMessage(
-        Component.translatable(
-            "message.factorycore.generator_status",
-            core.energy(),
-            FuelGenerator.CAPACITY,
-            core.burnRemaining(),
-            FuelGenerator.MAX_OUTPUT,
-            Component.translatable(
-                "status.factorycore.generator."
-                    + (reason.isEmpty() ? core.status().name().toLowerCase(Locale.ROOT) : reason))),
-        true);
+    if (player instanceof net.minecraft.server.level.ServerPlayer server)
+      FuelGeneratorMenu.open(server, generator);
     return InteractionResult.CONSUME;
   }
 

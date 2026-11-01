@@ -10,6 +10,7 @@ import dev.izzy.factorycore.platform.network.WorldNetworks;
 import dev.izzy.factorycore.platform.power.FuelGeneratorBlock;
 import dev.izzy.factorycore.platform.power.FuelGeneratorContent;
 import dev.izzy.factorycore.platform.power.FuelGeneratorEntity;
+import dev.izzy.factorycore.platform.power.FuelGeneratorMenu;
 import dev.izzy.factorycore.platform.storage.EnergyBankEntity;
 import dev.izzy.factorycore.testing.Net;
 import java.util.HashMap;
@@ -97,6 +98,81 @@ public final class FuelGeneratorGameTests {
                   "Bottom face never accepts fuel");
             })
         .thenSucceed();
+  }
+
+  /**
+   * Q142: the screen's menu syncs stored FE, burn left and total, and the status; shift-clicking
+   * fuel from the inventory fills the fuel slot, other items stay, and the container slot is take
+   * only.
+   */
+  @GameTest(template = "empty", timeoutTicks = 100)
+  public static void screenMenuShowsBurnAndMovesFuel(GameTestHelper h) {
+    var generator = place(h);
+    var player = h.makeMockPlayer(GameType.SURVIVAL);
+    var menu = FuelGeneratorMenu.create(1, player.getInventory(), generator);
+    var client = new FuelGeneratorMenu(1, player.getInventory(), buffer(h, generator));
+    h.assertTrue(client.status().equals("loading"), "Client shows loading before the first sync");
+    var stone = new ItemStack(Items.COBBLESTONE, 5);
+    player.getInventory().setItem(9, stone);
+    player.getInventory().setItem(10, new ItemStack(Items.COAL, 3));
+    menu.quickMoveStack(player, 2);
+    h.assertTrue(
+        player.getInventory().getItem(9).getCount() == 5
+            && generator.slots().getStackInSlot(FuelGeneratorEntity.FUEL).isEmpty(),
+        "Cobblestone is not fuel and stays in the inventory");
+    menu.quickMoveStack(player, 3);
+    h.assertTrue(
+        generator.slots().getStackInSlot(FuelGeneratorEntity.FUEL).is(Items.COAL)
+            && player.getInventory().getItem(10).isEmpty(),
+        "Shift-click moves coal into the fuel slot");
+    h.assertFalse(
+        menu.slots.get(1).mayPlace(new ItemStack(Items.BUCKET)), "The container slot is take only");
+    h.startSequence()
+        .thenWaitUntil(
+            () -> {
+              sync(menu, client);
+              h.assertTrue(
+                  client.status().equals("burning")
+                      && client.burnTotal() == 1600
+                      && client.burnRemaining() > 0
+                      && client.burnRemaining() < 1600
+                      && client.energy() == generator.generator().energy()
+                      && client.energy() > 0,
+                  "Synced: burning coal (1600 ticks) with FE stored, was "
+                      + client.status()
+                      + " "
+                      + client.burnRemaining()
+                      + "/"
+                      + client.burnTotal()
+                      + " "
+                      + client.energy());
+            })
+        .thenExecute(
+            () -> {
+              generator.slots().setStackInSlot(FuelGeneratorEntity.FUEL, ItemStack.EMPTY);
+              load(h, generator, 70_000, 0, 0);
+              sync(menu, client);
+              h.assertTrue(
+                  client.energy() == 70_000 && client.status().equals("no_fuel"),
+                  "Above 65,535 FE syncs whole, and an empty fuel slot says so");
+            })
+        .thenSucceed();
+  }
+
+  private static net.minecraft.network.RegistryFriendlyByteBuf buffer(
+      GameTestHelper h, FuelGeneratorEntity generator) {
+    var buffer =
+        new net.minecraft.network.RegistryFriendlyByteBuf(
+            io.netty.buffer.Unpooled.buffer(),
+            h.getLevel().registryAccess(),
+            net.neoforged.neoforge.network.connection.ConnectionType.NEOFORGE);
+    buffer.writeBlockPos(generator.getBlockPos());
+    return buffer;
+  }
+
+  /** Copies the server menu's data slots to the client menu, as a sync would. */
+  private static void sync(FuelGeneratorMenu server, FuelGeneratorMenu client) {
+    for (int i = 0; i < 8; i++) client.setData(i, server.data(i));
   }
 
   @GameTest(template = "empty", timeoutTicks = 100)

@@ -51,6 +51,10 @@ class FuelGeneratorTest {
     assertEquals(80, generator.extract(500, true, 11), "A later tick has a fresh budget");
     assertEquals(920, generator.energy());
     assertEquals(80, generator.extract(500, false, 11));
+    assertEquals(80, generator.recentOutput(11), "Q142: what tick 11 gave out");
+    assertEquals(80, generator.recentOutput(12), "Still shown before tick 12 extracts");
+    assertEquals(0, generator.recentOutput(13), "Nothing given out for a whole tick");
+    assertEquals(0, new FuelGenerator().recentOutput(0), "A new generator has given nothing");
     assertThrows(IllegalStateException.class, () -> generator.extract(1, false, 10));
     assertThrows(IllegalArgumentException.class, () -> generator.extract(-1, false, 11));
     var low = new FuelGenerator(new FuelGenerator.Snapshot(7, 0, 0));

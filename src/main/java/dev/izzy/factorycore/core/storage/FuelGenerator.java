@@ -89,6 +89,14 @@ public final class FuelGenerator {
   }
 
   /**
+   * FE extracted in the latest tick that extracted any, if that was {@code now} or the tick before
+   * (a screen syncs before the level ticks); otherwise 0. Q142's screen shows it.
+   */
+  public long recentOutput(long now) {
+    return budgetTick <= now && budgetTick >= now - 1 ? spent : 0;
+  }
+
+  /**
    * Removes up to {@code requested} FE, bounded by stored energy and the remaining per-tick output
    * budget for {@code tick}. Simulation reports the same amount without changing state.
    */

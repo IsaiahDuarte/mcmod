@@ -2021,6 +2021,72 @@ public final class PresentationClientVerification {
   }
 
   /**
+   * Q142: a Fuel Generator placed on the bank, with coal, opened by an empty-handed use. The screen
+   * shows it burning and giving FE to the bank below; it is removed again afterwards.
+   */
+  private void generatorScreen(BlockPos target) {
+    server(
+        player -> {
+          player
+              .serverLevel()
+              .setBlock(
+                  target,
+                  dev.izzy.factorycore.platform.power.FuelGeneratorContent.BLOCK
+                      .get()
+                      .defaultBlockState(),
+                  3);
+          if (player.serverLevel().getBlockEntity(target)
+              instanceof dev.izzy.factorycore.platform.power.FuelGeneratorEntity generator)
+            generator
+                .slots()
+                .setStackInSlot(
+                    dev.izzy.factorycore.platform.power.FuelGeneratorEntity.FUEL,
+                    new ItemStack(net.minecraft.world.item.Items.COAL, 12));
+        });
+    use(target, Direction.SOUTH, false);
+    step(
+        client -> {
+          if (!(client.screen
+                  instanceof dev.izzy.factorycore.platform.client.FuelGeneratorScreen screen)
+              || waited() < 30) return false;
+          var menu = screen.getMenu();
+          if (!menu.status().equals("burning")
+              || menu.burnRemaining() <= 0
+              || menu.output() != dev.izzy.factorycore.core.storage.FuelGenerator.PER_BURN_TICK)
+            return false;
+          evidence
+              .append("generator screen: ")
+              .append(menu.energy())
+              .append(" FE stored, ")
+              .append(menu.output())
+              .append(" FE/t out, burn ")
+              .append(menu.burnRemaining())
+              .append('/')
+              .append(menu.burnTotal())
+              .append(", fuel ")
+              .append(menu.slots.getFirst().getItem())
+              .append('\n');
+          return menu.slots.getFirst().getItem().getCount() == 11;
+        });
+    scales("generator", dev.izzy.factorycore.platform.client.FuelGeneratorScreen.class, false);
+    step(
+        client -> {
+          if (client.screen != null) client.screen.onClose();
+          return client.screen == null;
+        });
+    server(
+        player -> {
+          if (player.serverLevel().getBlockEntity(target)
+              instanceof dev.izzy.factorycore.platform.power.FuelGeneratorEntity generator)
+            for (int slot = 0; slot < 2; slot++)
+              generator.slots().setStackInSlot(slot, ItemStack.EMPTY);
+          player
+              .serverLevel()
+              .setBlock(target, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+        });
+  }
+
+  /**
    * Q19: an empty-handed click on the Exporter's upgrade slot (the real press and release through
    * the screen) takes the Overdrive out: the port drops to Throughput and its rate to 256, and the
    * Overdrive reaches the player (cursor, or inventory when the change closed the screen) without
@@ -2748,6 +2814,7 @@ public final class PresentationClientVerification {
     upgrade(base.east(3), ThroughputTier.ADVANCED, true);
     upgrade(base.east(3), ThroughputTier.ENDGAME, true);
     bankScreen(base.east(6).south());
+    generatorScreen(base.east(6).south().above());
     use(base.east(5), Direction.SOUTH, false);
     scales("program", ProgramScreen.class, false);
     // D9: the editor highlights language-v2 keywords (else, has, side, emit, redstone, ...).
