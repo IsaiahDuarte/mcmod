@@ -30,7 +30,7 @@ The first playable release includes:
 
 “Scripting first” describes development order relative to a full visual automation editor. The storage terminal, pattern editor, presets, and friendly script editor ship in the first release. Internal milestones are incomplete development slices, not permission to shrink this scope.
 
-**Later:** visual automation graphs; additional guest SDKs; Mekanism-specific chemicals/gases; reactor telemetry/control; cross-dimensional links; infinite fluid/energy storage; general-purpose cross-branch RPC. Arbitrary Wasm does not need to round-trip through a visual editor.
+**Later:** visual automation graphs; additional guest SDKs; Mekanism-specific chemicals/gases; reactor telemetry/control; cross-dimensional links; infinite energy storage; general-purpose cross-branch RPC. Arbitrary Wasm does not need to round-trip through a visual editor.
 
 One Minecraft/loader combination is required. Platform/runtime selection follows D01/D04 in the implementation plan.
 
@@ -82,7 +82,7 @@ Store resources by exact identity and quantity. Item identity includes component
 | Resource | First-release storage model |
 | --- | --- |
 | Items | Finite cells measured in total item units, upgraded to an infinite-capacity item tier. |
-| Fluids | Finite cells and external tanks, measured in the selected platform's documented fluid unit. Mixed identities are cataloged separately within a cell's total volume. |
+| Fluids | Finite cells, upgraded to an infinite-capacity fluid tier (ergonomics Q27, QD14), and external tanks, measured in the selected platform's documented fluid unit. Mixed identities are cataloged separately within a cell's total volume. |
 | Energy | Finite banks and external providers with explicit capacity and input/output rates. No implicit energy storage in item/fluid cells. |
 | Chemicals | Later typed adapters and storage; not silently treated as ordinary fluids. |
 

@@ -950,7 +950,8 @@ def item_textures():
     out = {}
     for tier in ("starter", "expanded", "advanced", "infinite"):
         out[f"{tier}_item_cell"] = item_cell(tier)
-    for tier in ("starter", "expanded", "advanced"):
+    # Q27: the fluid line has an Infinite tier too.
+    for tier in ("starter", "expanded", "advanced", "infinite"):
         out[f"{tier}_fluid_cell"] = fluid_cell(tier)
     # Modules carry the marking of the tier they upgrade a cell to.
     out["expansion_module"] = module("expanded")

@@ -770,7 +770,9 @@ New gates:
   charge, no range limit in one dimension). Creative tab only.
   Done when: GameTests cover each; no recipe exists for them.
 
-- [ ] **Q27 — Infinite fluid cell (M27, needs QD14).** Size S.
+- [x] **Q27 — Infinite fluid cell (M27, needs QD14).** Size S. Done 2026-10-31 (commit subject
+  `Q27:`). `CellTier.INFINITE_FLUID` reached with the Infinite Module; ADR 0048 amendment, SPEC.
+  [Evidence](evidence/ergonomics-q27-infinite-fluid-cell-2026-10-31.md).
   Done when: GameTests cover the upgrade path and a reload; the cell table and ADR 0048 are updated.
 
 ## Wave E — new blocks (lane B)

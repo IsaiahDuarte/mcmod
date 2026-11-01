@@ -255,23 +255,24 @@ public final class StorageDriveGameTests {
               == InteractionResult.CONSUME,
           "Finite fluid upgrade");
     }
+    // Q27 (QD14): the Infinite Module now reaches the Infinite fluid tier from the offhand too.
     player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(StorageContent.INFINITE.get()));
     helper.assertTrue(
         StorageContent.INFINITE
                     .get()
                     .use(helper.getLevel(), player, InteractionHand.MAIN_HAND)
                     .getResult()
-                == InteractionResult.FAIL
-            && player.getMainHandItem().getCount() == 1,
-        "No infinite fluid tier; module preserved");
+                == InteractionResult.CONSUME
+            && player.getOffhandItem().is(StorageContent.cell(CellTier.INFINITE_FLUID)),
+        "Infinite fluid tier from the offhand");
     fluid = player.getOffhandItem();
     drive.installCell(fluid);
     var placed = CellHandleData.read(drive.cell(0));
     var water = new ResourceKey(ResourceKind.FLUID, "minecraft:water", new byte[0]);
     activate(helper, drive);
     helper.assertTrue(
-        registry.insert(placed, water, Long.MAX_VALUE).amount() == 4096000,
-        "Finite advanced fluid capacity in mB");
+        registry.insert(placed, water, 5_000_000).amount() == 5_000_000,
+        "The Infinite fluid cell takes more than an Advanced one (4,096,000 mB)");
     registry.reserve(placed, UUID.randomUUID(), water, 2000);
     helper.assertTrue(
         registry.insert(placed, IRON, 1).amount() == 0, "Fluid cell cannot accept items");
@@ -294,10 +295,10 @@ public final class StorageDriveGameTests {
             && registry.definition(handle).location() == null,
         "Bad placed reload did not consume portable generation");
     helper.assertTrue(
-        registry.stock(handle, water).total() == 4096000
+        registry.stock(handle, water).total() == 5_000_000
             && registry.stock(handle, water).reserved() == 2000
             && !registry.stock(handle, water).loaded(),
-        "Finite fluid stock and claims preserved offline");
+        "Infinite fluid stock and claims preserved offline");
     helper.succeed();
   }
 

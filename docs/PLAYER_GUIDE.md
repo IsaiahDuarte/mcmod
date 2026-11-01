@@ -125,14 +125,14 @@ needs Edit access.
 | Starter | 8,192 items | 16,000 mB |
 | Expanded | 65,536 items | 256,000 mB |
 | Advanced | 1,048,576 items | 4,096,000 mB |
-| Infinite | No limit | Not available |
+| Infinite | No limit | No limit |
 
 Items count individual items, not stacks; 1,000 mB is one bucket. Item cells hold only
 items and fluid cells only fluids.
 
 **Upgrading a cell:** in the drive screen, click the cell's bay with a module on your
 cursor. Alternatively, hold the cell in your offhand and use the module. Apply
-Expansion, then Advanced, then Infinite (items only). The cell keeps its contents.
+Expansion, then Advanced, then Infinite. The cell keeps its contents.
 A rejected upgrade consumes nothing.
 
 ## Storage Terminal

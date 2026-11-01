@@ -36,6 +36,24 @@ class ResourceAccountingTest {
   }
 
   @Test
+  void fluidLedgersMayBeInfiniteButEnergyLedgersMayNot() {
+    // Q27 (QD14): an Infinite fluid cell; there is still no infinite energy bank.
+    var water = new ResourceKey(ResourceKind.FLUID, "minecraft:water", new byte[0]);
+    var fluid = new ResourceLedger(UUID.randomUUID(), ResourceKind.FLUID, 4_096_000, false, 10, 10);
+    assertEquals(4_096_000, fluid.insert(water, Long.MAX_VALUE).amount());
+    assertEquals(OperationResult.Reason.OK, fluid.resize(Long.MAX_VALUE, true).reason());
+    assertEquals(Long.MAX_VALUE - 4_096_000, fluid.insert(water, Long.MAX_VALUE).amount());
+    var restored = LedgerStateCodec.decode(LedgerStateCodec.encode(fluid.persistentState()));
+    assertTrue(restored.infinite());
+    var energy = new ResourceLedger(UUID.randomUUID(), ResourceKind.ENERGY, 1_000, false, 10, 10);
+    assertEquals(
+        OperationResult.Reason.WRONG_RESOURCE, energy.resize(Long.MAX_VALUE, true).reason());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ResourceLedger(UUID.randomUUID(), ResourceKind.ENERGY, 1, true, 10, 10));
+  }
+
+  @Test
   void reservationsCompeteWithoutRemovingStockAndSurviveUpgradesAndUnload() {
     var store = ledger(100, false);
     var owner = UUID.randomUUID();
@@ -82,7 +100,8 @@ class ResourceAccountingTest {
         () -> new ResourceKey(ResourceKind.ENERGY, "minecraft:lava", new byte[0]));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ResourceLedger(UUID.randomUUID(), ResourceKind.FLUID, 1, true, 1, 1));
+        // Q27: fluids have an Infinite tier now; energy still does not.
+        () -> new ResourceLedger(UUID.randomUUID(), ResourceKind.ENERGY, 1, true, 1, 1));
     assertThrows(UnsupportedOperationException.class, () -> store.snapshot().put(GOLD, 1L));
   }
 

@@ -10,7 +10,9 @@ public enum CellTier {
   INFINITE_ITEM(ResourceKind.ITEM, 3, Long.MAX_VALUE, true),
   STARTER_FLUID(ResourceKind.FLUID, 0, 16000, false),
   EXPANDED_FLUID(ResourceKind.FLUID, 1, 256000, false),
-  ADVANCED_FLUID(ResourceKind.FLUID, 2, 4096000, false);
+  ADVANCED_FLUID(ResourceKind.FLUID, 2, 4096000, false),
+  // Q27 (QD14): last, so earlier tiers keep their ordinals.
+  INFINITE_FLUID(ResourceKind.FLUID, 3, Long.MAX_VALUE, true);
 
   private final ResourceKind kind;
   private final int level;

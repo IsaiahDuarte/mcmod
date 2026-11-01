@@ -32,6 +32,7 @@
   "item.factorycore.starter_fluid_cell": "Starter Fluid Cell",
   "item.factorycore.expanded_fluid_cell": "Expanded Fluid Cell",
   "item.factorycore.advanced_fluid_cell": "Advanced Fluid Cell",
+  "item.factorycore.infinite_fluid_cell": "Infinite Fluid Cell",
   "itemGroup.factorycore": "Factory Core",
   "block.factorycore.network_controller": "Network Controller",
   "block.factorycore.gateway": "Gateway",

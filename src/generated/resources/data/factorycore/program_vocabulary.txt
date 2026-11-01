@@ -20,6 +20,7 @@ item factorycore:factory_guide
 item factorycore:fuel_generator
 item factorycore:gateway
 item factorycore:importer
+item factorycore:infinite_fluid_cell
 item factorycore:infinite_item_cell
 item factorycore:infinite_module
 item factorycore:interface

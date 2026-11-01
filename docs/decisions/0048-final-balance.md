@@ -71,8 +71,9 @@ Nine registered items have no recipe on purpose. Expanded/Advanced/Infinite item
 cells, Expanded/Advanced fluid cells and Expanded/Advanced energy banks come from
 applying modules in the offhand (ADR 0006). This keeps populated contents out of
 vanilla crafting. Crafting and Processing Patterns are encoded from Blank Patterns in
-the terminal (ADR 0030/0032). No recipe consumes a cell or a bank. Infinite fluid and
-energy tiers do not exist. Each recipe has a recipe-book unlock advancement.
+the terminal (ADR 0030/0032). No recipe consumes a cell or a bank. An infinite energy tier does
+not exist. The Infinite fluid cell (Q27) also has no recipe: the Infinite Module upgrades an
+Advanced fluid cell. Each recipe has a recipe-book unlock advancement.
 
 Totals, as the GameTests craft them:
 
@@ -92,7 +93,7 @@ Totals, as the GameTests craft them:
 | Device | Value |
 | --- | --- |
 | Item cells Starter / Expanded / Advanced / Infinite | 8,192 / 65,536 / 1,048,576 item units / no gameplay cap (signed-long technical ceiling) |
-| Fluid cells Starter / Expanded / Advanced | 16,000 / 256,000 / 4,096,000 mB |
+| Fluid cells Starter / Expanded / Advanced / Infinite | 16,000 / 256,000 / 4,096,000 mB / no gameplay cap (signed-long technical ceiling; Q27) |
 | Storage Drive | 4 cell slots |
 | Energy Bank Starter / Expanded / Advanced | 100,000 / 1,000,000 / 10,000,000 FE; 1,000 / 4,000 / 16,000 FE/tick per direction |
 | Buffered Interface | 9 slots; default 64 items/tick, installed tier caps 64 / 256 / 576 |
@@ -178,3 +179,14 @@ option is an encoding of exactly the result, yielding one. `RecipeGameTests` sti
 through the `RecipeManager` (canonical grid, unlock, unbound result) and names it as the one
 exception to its one-recipe-per-item check. Alternative: wiping only by sneak-use (rejected: the
 plan asks for the crafting-grid wipe AE2 and RS2 players expect).
+
+## Amendment — Infinite fluid cell (2026-10-31, ergonomics plan Q27, QD14)
+
+`CellTier.INFINITE_FLUID` is level 3 of the fluid line, with the same signed-long technical
+ceiling as the Infinite item cell. It is added after the existing tiers, so their ordinals are
+unchanged. The Infinite Module (8 netherite, a Nether star) upgrades an Advanced fluid cell to
+it in place, in the drive screen or from the offhand. The backing, contents and reservations are
+kept, as for items, and no new recipe exists. The cost equals the item path, because a fluid cell
+holds one resource kind just as an item cell does. Bulk cell tools (the rest of QD14) are not
+added. `RecipeProgressionTest` pins the new row and that only the two Infinite tiers are
+unbounded. The core ledger (`LedgerState`, `ResourceLedger`) refuses infinite only for energy.

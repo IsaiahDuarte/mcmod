@@ -129,7 +129,7 @@ public final class DriveScreenGameTests {
   }
 
   @GameTest(template = "empty")
-  public static void fullDriveAndFluidInfiniteRefuseWithoutLoss(GameTestHelper h) {
+  public static void fullDriveRefusesWithoutLossAndAFluidCellReachesInfinite(GameTestHelper h) {
     var drive = drive(h);
     drive.installCell(new ItemStack(StorageContent.cell(CellTier.STARTER_FLUID)));
     for (int i = 1; i < DrivePackets.BAYS; i++)
@@ -149,27 +149,82 @@ public final class DriveScreenGameTests {
         "The refusal travels translated: " + menu.view().detail());
 
     var fluid = CellHandleData.read(drive.cell(0));
-    menu.setCarried(new ItemStack(StorageContent.ADVANCED.get()));
+    // Each click waits out the command gate (Q127), so every one is really applied.
+    Object[] advanced = {null};
+    h.startSequence()
+        .thenIdle(10)
+        .thenExecute(() -> click(menu, player, StorageContent.ADVANCED.get()))
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  ((CellItem) drive.cell(0).getItem()).tier() == CellTier.STARTER_FLUID
+                      && menu.getCarried().getCount() == 1,
+                  "Advanced cannot skip Expanded; the module is kept");
+              click(menu, player, StorageContent.EXPANSION.get());
+            })
+        .thenIdle(3)
+        .thenExecute(() -> click(menu, player, StorageContent.ADVANCED.get()))
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  ((CellItem) drive.cell(0).getItem()).tier() == CellTier.ADVANCED_FLUID,
+                  "Expansion then Advanced");
+              advanced[0] = CellHandleData.read(drive.cell(0));
+              click(menu, player, StorageContent.EXPANSION.get());
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  CellHandleData.read(drive.cell(0)).equals(advanced[0])
+                      && menu.getCarried().getCount() == 1,
+                  "A lower-tier module cannot downgrade the Advanced cell or consume the module");
+              // Q27 (QD14): the Infinite Module takes an Advanced fluid cell to Infinite.
+              click(menu, player, StorageContent.INFINITE.get());
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () -> {
+              var infinite = CellHandleData.read(drive.cell(0));
+              var saved = DeviceSavedData.get(h.getLevel().getServer());
+              h.assertTrue(
+                  ((CellItem) drive.cell(0).getItem()).tier() == CellTier.INFINITE_FLUID
+                      && infinite.backing().equals(fluid.backing())
+                      && saved.registry().definition(infinite).infinite()
+                      && menu.getCarried().isEmpty(),
+                  "The Infinite Module upgrades the fluid cell in place and is used up");
+              activate(h);
+              var water =
+                  new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
+                          h.getLevel().registryAccess())
+                      .fluidKey(
+                          new net.neoforged.neoforge.fluids.FluidStack(
+                              net.minecraft.world.level.material.Fluids.WATER, 1));
+              long beyond = CellTier.ADVANCED_FLUID.capacity() * 4;
+              h.assertTrue(
+                  saved.registry().insert(infinite, water, beyond).amount() == beyond,
+                  "It stores four times an Advanced fluid cell");
+              var reloaded =
+                  DeviceSavedData.load(
+                      saved.save(
+                          new net.minecraft.nbt.CompoundTag(), h.getLevel().registryAccess()),
+                      h.getLevel().registryAccess());
+              h.assertTrue(
+                  reloaded.registry().definition(infinite).infinite()
+                      && reloaded.registry().definition(infinite).kind() == ResourceKind.FLUID
+                      && reloaded.registry().stock(infinite, water).total() == beyond,
+                  "The infinite fluid cell and its contents survive a reload");
+            })
+        .thenSucceed();
+  }
+
+  /** Clicks bay 0 with a fresh {@code module} on the cursor. */
+  private static void click(
+      DriveMenu menu, ServerPlayer player, net.minecraft.world.item.Item module) {
+    menu.setCarried(new ItemStack(module));
     menu.clickMenuButton(player, 0);
-    menu.setCarried(new ItemStack(StorageContent.EXPANSION.get()));
-    menu.clickMenuButton(player, 0);
-    menu.setCarried(new ItemStack(StorageContent.ADVANCED.get()));
-    menu.clickMenuButton(player, 0);
-    var advanced = CellHandleData.read(drive.cell(0));
-    menu.setCarried(new ItemStack(StorageContent.EXPANSION.get()));
-    menu.clickMenuButton(player, 0);
-    h.assertTrue(
-        CellHandleData.read(drive.cell(0)).equals(advanced) && menu.getCarried().getCount() == 1,
-        "A lower-tier module cannot downgrade the Advanced cell or consume the module");
-    menu.setCarried(new ItemStack(StorageContent.INFINITE.get()));
-    menu.clickMenuButton(player, 0);
-    h.assertTrue(
-        ((CellItem) drive.cell(0).getItem()).tier() == CellTier.ADVANCED_FLUID
-            && CellHandleData.read(drive.cell(0)).equals(advanced)
-            && advanced.backing().equals(fluid.backing())
-            && menu.getCarried().getCount() == 1,
-        "Fluid cells stop at Advanced; the Infinite module is refused and kept");
-    h.succeed();
   }
 
   @GameTest(template = "empty")

@@ -51,6 +51,8 @@ public final class RecipeGameTests {
           "infinite_item_cell",
           "expanded_fluid_cell",
           "advanced_fluid_cell",
+          // Q27: the Infinite Module upgrades an Advanced fluid cell.
+          "infinite_fluid_cell",
           "expanded_energy_bank",
           "advanced_energy_bank",
           "crafting_pattern",

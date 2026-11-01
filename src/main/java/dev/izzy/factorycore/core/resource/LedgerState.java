@@ -39,7 +39,7 @@ public record LedgerState(
         || reservationLimit <= 0
         || contents.size() > catalogLimit
         || reservations.size() > reservationLimit
-        || (infinite && kind != ResourceKind.ITEM)) {
+        || (infinite && kind == ResourceKind.ENERGY)) {
       throw new IllegalArgumentException("Invalid ledger configuration");
     }
     try {

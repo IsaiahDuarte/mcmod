@@ -53,7 +53,8 @@ public final class ResourceLedger {
     this.id = Objects.requireNonNull(id);
     this.kind = Objects.requireNonNull(kind);
     OperationResult.requireQuantity(capacity);
-    if (catalogLimit <= 0 || reservationLimit <= 0 || (infinite && kind != ResourceKind.ITEM)) {
+    // Q27: item and fluid cells have Infinite tiers; energy has none.
+    if (catalogLimit <= 0 || reservationLimit <= 0 || (infinite && kind == ResourceKind.ENERGY)) {
       throw new IllegalArgumentException("Invalid storage limits or unsupported infinite tier");
     }
     this.capacity = capacity;
@@ -314,7 +315,7 @@ public final class ResourceLedger {
   public OperationResult resize(long newCapacity, boolean newInfinite) {
     checkThread();
     OperationResult.requireQuantity(newCapacity);
-    if (newInfinite && kind != ResourceKind.ITEM) return new OperationResult(0, WRONG_RESOURCE);
+    if (newInfinite && kind == ResourceKind.ENERGY) return new OperationResult(0, WRONG_RESOURCE);
     if (!newInfinite && newCapacity < total) return new OperationResult(0, FULL);
     capacity = newCapacity;
     infinite = newInfinite;

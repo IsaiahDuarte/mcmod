@@ -438,10 +438,17 @@ class RecipeProgressionTest {
             CellTier.INFINITE_ITEM, Long.MAX_VALUE,
             CellTier.STARTER_FLUID, 16_000L,
             CellTier.EXPANDED_FLUID, 256_000L,
-            CellTier.ADVANCED_FLUID, 4_096_000L),
+            CellTier.ADVANCED_FLUID, 4_096_000L,
+            CellTier.INFINITE_FLUID, Long.MAX_VALUE),
         cells,
         "Cell capacities (item units / mB)");
-    assertTrue(CellTier.INFINITE_ITEM.infinite(), "Only the Infinite item tier is unbounded");
+    // Q27 (QD14): the Infinite fluid tier joins the Infinite item tier as unbounded.
+    for (var tier : CellTier.values())
+      assertEquals(
+          tier == CellTier.INFINITE_ITEM || tier == CellTier.INFINITE_FLUID,
+          tier.infinite(),
+          tier + " is unbounded only at the Infinite level");
+    assertEquals(CellTier.INFINITE_FLUID, CellTier.ADVANCED_FLUID.upgrade(3));
     var banks = new LinkedHashMap<EnergyBankTier, List<Long>>();
     for (var tier : EnergyBankTier.values()) banks.put(tier, List.of(tier.capacity(), tier.rate()));
     assertEquals(
