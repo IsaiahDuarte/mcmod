@@ -534,10 +534,14 @@ tasks.register('programHelperJar', Jar) {
         include 'data/factorycore/program_vocabulary.txt'
     }
     from(file('docs/PROGRAM_LANGUAGE.md'))
+    from(file('docs/PROGRAM_EXAMPLES.md'))
     manifest { attributes('Main-Class': 'dev.izzy.factorycore.core.program.helper.ProgramHelper') }
 }
 // Tests read the language reference from the same path the helper jar serves it from.
-tasks.named('processTestResources', ProcessResources) { from(file('docs/PROGRAM_LANGUAGE.md')) }
+tasks.named('processTestResources', ProcessResources) {
+    from(file('docs/PROGRAM_LANGUAGE.md'))
+    from(file('docs/PROGRAM_EXAMPLES.md'))
+}
 
 // Manual A15/D07 measurement (not part of check): dedicated-server workload benchmark.
 tasks.named('runBenchmarkServer', JavaExec) {

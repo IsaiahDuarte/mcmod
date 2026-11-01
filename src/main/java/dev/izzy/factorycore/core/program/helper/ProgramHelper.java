@@ -39,11 +39,12 @@ public final class ProgramHelper {
           + " set with the Label Tool; ask for them.";
 
   private final Vocabulary vocabulary;
-  private final String reference;
+  private final String reference, examples;
 
-  public ProgramHelper(Vocabulary vocabulary, String reference) {
+  public ProgramHelper(Vocabulary vocabulary, String reference, String examples) {
     this.vocabulary = vocabulary;
     this.reference = reference;
+    this.examples = examples;
   }
 
   public static void main(String[] args) throws IOException {
@@ -52,7 +53,10 @@ public final class ProgramHelper {
         vocabularyFile == null || vocabularyFile.isBlank()
             ? resource("/data/factorycore/program_vocabulary.txt")
             : Files.readString(Path.of(vocabularyFile), StandardCharsets.UTF_8);
-    new ProgramHelper(Vocabulary.read(vocabulary), resource("/PROGRAM_LANGUAGE.md"))
+    new ProgramHelper(
+            Vocabulary.read(vocabulary),
+            resource("/PROGRAM_LANGUAGE.md"),
+            resource("/PROGRAM_EXAMPLES.md"))
         .serve(System.in, System.out);
   }
 
@@ -125,7 +129,7 @@ public final class ProgramHelper {
             Map.of()),
         tool(
             "list_examples",
-            "The built-in example programs (the editor's templates), by name.",
+            "Example programs from one line to a whole factory, then the editor's templates.",
             Map.of()),
         tool(
             "check_program",
@@ -170,7 +174,7 @@ public final class ProgramHelper {
     return switch (name) {
       case "language_reference" -> text(reference, false);
       case "list_examples" -> {
-        var out = new StringBuilder();
+        var out = new StringBuilder(examples).append("\n# Editor templates\n\n");
         for (var template : ProgramTemplates.ALL)
           out.append("## ")
               .append(template.name())

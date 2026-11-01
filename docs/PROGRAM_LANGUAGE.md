@@ -1,7 +1,8 @@
 # Factory Core programs
 
 A Program Controller runs **rules** written as plain sentences. This page is the whole language.
-The [decision record](decisions/0068-sentence-programs.md) explains why it looks this way.
+The [decision record](decisions/0068-sentence-programs.md) explains why it looks this way, and
+[Program examples](PROGRAM_EXAMPLES.md) has programs from one line to a whole factory.
 
 ```text
 # Run a cable to each furnace and label it "furnace" with the Label Tool.

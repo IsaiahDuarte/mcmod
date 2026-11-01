@@ -44,7 +44,7 @@ Controller's editor and press **Check**.
 | Tool | Gives |
 | --- | --- |
 | `language_reference` | The language guide ([PROGRAM_LANGUAGE.md](PROGRAM_LANGUAGE.md)). |
-| `list_examples` | The editor's templates. |
+| `list_examples` | [Program examples](PROGRAM_EXAMPLES.md), then the editor's templates. |
 | `check_program` | `ok`, or each problem with its line, column, hint and an example. When ok, it also gives the rules and the program with every name as its ID. |
 | `find_names` | How a program names items, item groups or fluids that match some text, closest first. |
 

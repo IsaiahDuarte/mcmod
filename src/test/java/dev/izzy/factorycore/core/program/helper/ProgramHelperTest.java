@@ -19,7 +19,8 @@ class ProgramHelperTest {
   private static ProgramHelper helper() throws IOException {
     return new ProgramHelper(
         Vocabulary.read(resource("/data/factorycore/program_vocabulary.txt")),
-        resource("/PROGRAM_LANGUAGE.md"));
+        resource("/PROGRAM_LANGUAGE.md"),
+        resource("/PROGRAM_EXAMPLES.md"));
   }
 
   private static String resource(String name) throws IOException {
@@ -123,6 +124,7 @@ class ProgramHelperTest {
     var helper = helper();
     assertTrue(text(call(helper, "language_reference", Map.of())).contains("## Sentences"));
     var examples = text(call(helper, "list_examples", Map.of()));
+    assertTrue(examples.contains("### Ore processing line"), "The examples page comes first");
     assertTrue(
         examples.contains("## Auto smelter") && examples.contains("keep 8 coal in furnace side"));
     var names = text(call(helper, "find_names", Map.of("query", "oak pl"))).split("\n");
