@@ -108,6 +108,9 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
       return new WiredDiscovery.Wire(
           List.of(new NetworkTopology.Node(id, NetworkTopology.Role.CABLE, "", true)), ports, null);
     }
+    // Q31: a Relay is a cable joint whose ports exist only while powered (wiredFace).
+    if (state.getBlock() instanceof RelayBlock)
+      return ordinary(block, state, id(position, "wire"), NetworkTopology.Role.CABLE, true);
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
     if (entity instanceof WiredMember member) {
       var vertex = member.wireVertex();

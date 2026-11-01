@@ -128,6 +128,7 @@ class RecipeProgressionTest {
           entry("label_tool", Stage.STARTER),
           entry("wrench", Stage.STARTER),
           entry("storage_monitor", Stage.STARTER),
+          entry("relay", Stage.STARTER),
           entry("upgrade_toolbelt", Stage.STARTER),
           entry("expansion_module", Stage.EXPANDED),
           entry("expanded_item_cell", Stage.EXPANDED),

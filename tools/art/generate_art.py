@@ -326,6 +326,16 @@ def block_textures():
     screen.hline(6, 8, 5, SCREEN_HI)
     out["terminal_screen"] = screen
 
+    # Q31: Relay: a cable cross through the casing, its centre lit while powered.
+    for powered in (False, True):
+        relay = casing("relay_on" if powered else "relay")
+        inset(relay, 3, 3, 12, 12)
+        band = SIGNAL if powered else CASE_SHADOW
+        relay.hline(4, 11, 7, band)
+        relay.vline(7, 4, 11, band)
+        relay.rect(6, 6, 9, 9, AMBER if powered else CASE_LIGHT)
+        out[relay.name] = relay
+
     # Q28: Storage Monitor: a dark screen framed in copper; the item and count are drawn on it.
     monitor = casing("storage_monitor_front")
     monitor.rect(1, 1, 14, 14, COPPER_DARK)

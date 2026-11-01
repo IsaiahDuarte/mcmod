@@ -109,10 +109,10 @@ public final class RecipeGameTests {
         "The special recipes are cable dyeing and facades: " + special);
     results.add("facade");
     h.assertTrue(
-        recipes.size() == 29,
-        "All 29 Factory Core crafting recipes, including speed upgrades, the Label Tool, the"
-            + " Wrench (Q22), the Upgrade Toolbelt (Q113), the Storage Monitor (Q28), the"
-            + " Importer, the Exporter and the pattern wipe (Q4), load");
+        recipes.size() == 30,
+        "All 30 Factory Core crafting recipes, including speed upgrades, the Label Tool, the"
+            + " Wrench (Q22), the Upgrade Toolbelt (Q113), the Storage Monitor (Q28), the Relay"
+            + " (Q31), the Importer, the Exporter and the pattern wipe (Q4), load");
     for (var holder : recipes) {
       var input = input(holder.value());
       var found = manager.getRecipeFor(RecipeType.CRAFTING, input, h.getLevel());

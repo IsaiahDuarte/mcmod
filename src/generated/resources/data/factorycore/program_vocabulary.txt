@@ -33,6 +33,7 @@ item factorycore:network_controller
 item factorycore:overdrive_upgrade
 item factorycore:processing_pattern
 item factorycore:program_controller
+item factorycore:relay
 item factorycore:starter_energy_bank
 item factorycore:starter_fluid_cell
 item factorycore:starter_item_cell

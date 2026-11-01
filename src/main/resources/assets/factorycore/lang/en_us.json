@@ -36,6 +36,7 @@
   "item.factorycore.creative_wireless_terminal": "Creative Wireless Terminal",
   "block.factorycore.creative_energy_source": "Creative Energy Source",
   "block.factorycore.storage_monitor": "Storage Monitor",
+  "block.factorycore.relay": "Relay",
   "item.factorycore.facade": "Facade",
   "item.factorycore.facade.of": "%s Facade",
   "item.factorycore.network_cable.white": "White Network Cable",

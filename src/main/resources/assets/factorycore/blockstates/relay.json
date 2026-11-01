@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "factorycore:block/relay"
+    },
+    "powered=true": {
+      "model": "factorycore:block/relay_on"
+    }
+  }
+}

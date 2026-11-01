@@ -34,6 +34,14 @@ public final class NetworkContent {
   public static final DeferredItem<LeasedBlockItem> GATEWAY_ITEM =
       FactoryRegistries.ITEMS.register(
           "gateway", () -> new LeasedBlockItem(GATEWAY.get(), LeasedBlockItem.Tooltip.lines()));
+
+  /** Q31: connects like a cable only while it has a redstone signal. */
+  public static final DeferredBlock<RelayBlock> RELAY =
+      FactoryRegistries.BLOCKS.registerBlock("relay", RelayBlock::new, properties());
+
+  public static final DeferredItem<?> RELAY_ITEM =
+      FactoryRegistries.ITEMS.registerSimpleBlockItem(RELAY);
+
   public static final DeferredItem<?> CABLE_ITEM =
       FactoryRegistries.ITEMS.register(
           "network_cable", () -> new CableItem(CABLE.get(), new Item.Properties()));

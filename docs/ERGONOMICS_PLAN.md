@@ -809,7 +809,8 @@ New gates:
   Done when: a facade hides a cable without changing its connections, breaks off on its own,
   and renders at scale 1 and 4 screenshots.
 
-- [ ] **Q31 — Relay (M31, needs QD7).** Size S.
+- [x] **Q31 — Relay (M31, needs QD7).** Size S. Done 2026-11-01 (commit subject `Q31:`). ADR
+  0007 amendment. [Evidence](evidence/ergonomics-q31-relay-2026-11-01.md).
   Done when: GameTests cover the branch going offline when unpowered, back online when powered,
   and the rebuild rate limit.
 

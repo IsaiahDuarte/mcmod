@@ -6,6 +6,7 @@
     "factorycore:storage_drive",
     "factorycore:importer",
     "factorycore:starter_energy_bank",
+    "factorycore:relay",
     "factorycore:storage_monitor",
     "factorycore:program_controller",
     "factorycore:creative_energy_source",

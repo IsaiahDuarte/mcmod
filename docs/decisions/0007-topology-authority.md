@@ -60,3 +60,22 @@ structural/device unload and recovery, revocation before queued execution,
 private defaults and explicit ownership transfer. Verify per-call work/admission
 bounds and changed-generation publication rejection. World ports, chunk behavior,
 network persistence and end-to-end scheduling remain separate mandatory evidence.
+
+## Amendment — Relay (2026-11-01, ergonomics plan Q31, QD7)
+
+Redstone may now change topology, through one block: the Relay (`RelayBlock`).
+- **Ports:** the Relay's wired faces, and so its ports, exist only while its `powered` state is
+  true. `WorldWireReader` reads it as a cable joint, so this authority stays in the wire reader.
+- **Applying a change:** a neighbour change schedules a block tick. The tick reads the signal
+  and, if it changed, sets `powered`, which marks the network changed through the usual
+  `onPlace`/`neighborChanged` path.
+- **Rate limit:** after applying a change, the Relay schedules its next read `COOLDOWN` (20)
+  ticks later, and ignores neighbour changes while that tick is pending. So a Relay causes at
+  most one rebuild per second, and settles on the last signal.
+- **State:** it has no entity and saves only `powered`. Placement reads the current signal.
+
+**Alternatives:**
+- **A redstone mode on the existing Gateway:** rejected. Gateways have policy and lease state,
+  and an on/off switch is a simpler, separate idea.
+- **Applying every change at once:** rejected by QD7. A clock on the Relay would rebuild the
+  network every tick.

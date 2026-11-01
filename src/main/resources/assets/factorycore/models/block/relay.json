@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "factorycore:block/relay",
+    "bottom": "factorycore:block/relay",
+    "side": "factorycore:block/relay"
+  }
+}

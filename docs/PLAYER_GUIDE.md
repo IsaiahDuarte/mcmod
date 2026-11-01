@@ -53,6 +53,7 @@ that consume them.
 | Starter | Starter Energy Bank | 4 iron ingots, 4 redstone dust, 1 copper ingot |
 | Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
 | Starter | Wrench | 4 iron ingots, 1 copper ingot |
+| Starter | Relay | 4 iron ingots, 3 redstone dust, 2 Network Cables |
 | Starter | Storage Monitor | 5 iron ingots, 1 glass block, 2 copper ingots, 1 redstone dust |
 | Expanded | Expansion Module | 4 gold ingots, 2 redstone dust, 1 Nether quartz |
 | Expanded | Crafter | 4 iron ingots, 2 gold ingots, 2 redstone dust, 1 crafting table |
@@ -98,6 +99,11 @@ It connects to every device as usual.
 
 An uncoloured cable touching two colours joins them into one network, so keep plain cable away
 from the place where two coloured runs meet.
+
+A **Relay** is a switch in a cable run. It connects like a cable on all six faces while it has a
+redstone signal, and on none without one, so everything beyond it goes offline. Each switch
+rebuilds the network, so the Relay changes at most once a second. A signal that flickers faster
+than that is followed after a delay, ending on the last state.
 
 **Facades** hide a cable inside a wall. A facade makes the cable look like a full block, such as
 stone bricks, and it connects exactly as before.

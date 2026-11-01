@@ -427,6 +427,20 @@ public final class FactoryCoreData {
           Items.NETHERITE_INGOT,
           'R',
           Items.REDSTONE);
+      // Q31: the Relay (starter stage): two cables switched by redstone.
+      shaped(
+          out,
+          redstone,
+          "relay",
+          1,
+          Items.REDSTONE,
+          "IRI/CRC/IRI",
+          'I',
+          Items.IRON_INGOT,
+          'R',
+          Items.REDSTONE,
+          'C',
+          dev.izzy.factorycore.platform.network.NetworkContent.CABLE_ITEM.get());
       // Q28: the Storage Monitor (starter stage).
       shaped(
           out,
