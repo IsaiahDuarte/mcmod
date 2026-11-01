@@ -27,14 +27,19 @@ public final class TerminalClient {
     dev.izzy.factorycore.platform.storage.MachineInspection.sink(InspectScreen::open);
   }
 
-  /** Q29: the cable stripe (tint index 0) takes the cable's colour, in the world and as an item. */
+  /**
+   * Q29: the cable stripe (tint index 0) takes the cable's colour, in the world and as an item.
+   * Q144: a cable port draws the same cable models, so it is tinted too (uncoloured); without a
+   * handler its stripe rendered white.
+   */
   @SubscribeEvent
   public static void blockColors(
       net.neoforged.neoforge.client.event.RegisterColorHandlersEvent.Block event) {
     event.register(
         (state, level, position, tint) ->
             tint == 0 ? 0xFF000000 | NetworkCableBlock.color(state).tint() : -1,
-        NetworkContent.CABLE.get());
+        NetworkContent.CABLE.get(),
+        dev.izzy.factorycore.platform.storage.PortContent.CABLE_PORT.get());
   }
 
   @SubscribeEvent

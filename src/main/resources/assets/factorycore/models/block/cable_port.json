@@ -1,10 +1,10 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "copper": "factorycore:block/copper",
     "contact": "factorycore:block/contact",
     "cable": "factorycore:block/network_cable",
-    "particle": "factorycore:block/copper"
+    "particle": "factorycore:block/cable_port_plate",
+    "plate": "factorycore:block/cable_port_plate"
   },
   "elements": [
     {
@@ -88,22 +88,22 @@
       ],
       "faces": {
         "north": {
-          "texture": "#copper"
+          "texture": "#plate"
         },
         "south": {
-          "texture": "#copper"
+          "texture": "#plate"
         },
         "east": {
-          "texture": "#copper"
+          "texture": "#plate"
         },
         "west": {
-          "texture": "#copper"
+          "texture": "#plate"
         },
         "up": {
-          "texture": "#copper"
+          "texture": "#plate"
         },
         "down": {
-          "texture": "#copper"
+          "texture": "#plate"
         }
       }
     },

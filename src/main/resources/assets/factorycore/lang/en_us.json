@@ -478,6 +478,7 @@
   "tooltip.factorycore.cable_port_item": "Left by a port broken while items were in transit; place it against the machine to finish them.",
   "block.factorycore.exporter": "Exporter",
   "tooltip.factorycore.importer": "Place it on a machine or chest: it pulls everything (or what you filter) from that side into network storage.",
+  "tooltip.factorycore.port_cable_hint": "For programs, no block is needed: label a machine with the Label Tool and the cable beside it becomes a small cable port.",
   "tooltip.factorycore.exporter": "Place it on a machine or chest: it pushes the items you choose from network storage into that side.",
   "tooltip.factorycore.constructor": "Places blocks from network storage into the space it faces, or fires fireworks and drops other items.",
   "tooltip.factorycore.destructor": "Breaks the block it faces and stores the drops in the network.",

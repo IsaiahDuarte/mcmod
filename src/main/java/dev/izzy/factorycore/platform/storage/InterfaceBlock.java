@@ -3,7 +3,6 @@ package dev.izzy.factorycore.platform.storage;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.resource.ExternalBackingProvider;
 import java.util.List;
-import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -28,9 +27,6 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.shapes.CollisionContext;
-import net.minecraft.world.phys.shapes.Shapes;
-import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * The unified Interface (ADR 0059): one block whose {@link #KIND} selects the existing device that
@@ -93,26 +89,6 @@ public final class InterfaceBlock extends NetworkedBlock implements EntityBlock 
                 || state.is(net.minecraft.tags.BlockTags.SHULKER_BOXES)))
       return InterfaceKind.STORAGE;
     return InterfaceKind.BUFFER;
-  }
-
-  private static final Map<Direction, VoxelShape> SOCKETS =
-      Map.of(
-          Direction.NORTH, Shapes.or(Block.box(0, 0, 3, 16, 16, 16), Block.box(3, 3, 0, 13, 13, 3)),
-          Direction.SOUTH,
-              Shapes.or(Block.box(0, 0, 0, 16, 16, 13), Block.box(3, 3, 13, 13, 13, 16)),
-          Direction.EAST,
-              Shapes.or(Block.box(0, 0, 0, 13, 16, 16), Block.box(13, 3, 3, 16, 13, 13)),
-          Direction.WEST, Shapes.or(Block.box(3, 0, 0, 16, 16, 16), Block.box(0, 3, 3, 3, 13, 13)),
-          Direction.UP, Shapes.or(Block.box(0, 0, 0, 16, 13, 16), Block.box(3, 13, 3, 13, 16, 13)),
-          Direction.DOWN, Shapes.or(Block.box(0, 3, 0, 16, 16, 16), Block.box(3, 0, 3, 13, 3, 13)));
-
-  @Override
-  protected VoxelShape getShape(
-      BlockState state, BlockGetter level, BlockPos position, CollisionContext context) {
-    var kind = state.getValue(KIND);
-    return kind == InterfaceKind.BUFFER || kind == InterfaceKind.SIGNAL
-        ? Shapes.block()
-        : SOCKETS.get(state.getValue(BlockStateProperties.FACING));
   }
 
   @Override

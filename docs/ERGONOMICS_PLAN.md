@@ -54,7 +54,7 @@ display, one lock), so batch the screenshot step at the end of a slice.
 
 | Lane | Slices | Main files | Gates |
 | --- | --- | --- | --- |
-| P — Playthrough (first) | Q132–Q144 | `WorldConnectors`, `TerminalScreen`, `client/ui`, pattern encoder, machine screens, `generate_art.py` | None |
+| P — Playthrough (first) | Q132–Q150 | `WorldConnectors`, `TerminalScreen`, `client/ui`, pattern encoder, machine screens, `generate_art.py` | QD26 (Q150 only) |
 | R — Reliability | Q1 | `WorldNetworks`, `WorldWireReader`, ADR 0011 | PD7 |
 | K — Code health | Q52–Q60 | `WorldCraftingJobs`, `CraftingJobs`, `TerminalScreen`, `client/ui`, energy buffers, `WasmProgram` | None |
 | C — Crafting | Q2–Q8, Q68–Q71 | `CrafterBlock`, `CrafterEntity`, `TerminalCrafting`, `Pattern`, `CraftingPlanner`, `WorldMachinePresets`, `client/integration/jei` | QD3, QD4, QD18, QD19, QD21 |
@@ -303,6 +303,7 @@ New gates:
 | QD23 | Separate insert and extract priority, and a redstone switch per storage. Amends [ADR 0013](decisions/0013-external-connectors.md) routing. | Yes | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes |
 | QD24 | Tunnelled and explosion-proof cables (M107). | No for now | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): no (Q98 dropped) |
 | QD25 | Which JEI chord does "fill what I have and request each missing ingredient" (M65, Q111) use? Ctrl+click on **+** already opens the recipe's output in Jobs (A5, [ADR 0043](decisions/0043-jei-integration.md), player guide), so taking Ctrl for M65 changes a shipped binding. Options: (a) Ctrl+click becomes M65 and the output request moves to another chord or a Jobs button; (b) M65 uses Ctrl+Shift+click (Shift alone is JEI's "max"), A5 unchanged; (c) Ctrl+click asks which. Found 2026-10-30 while starting Q111. | (b): keeps A5 and its tests, and both intents stay one click away | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): (b) Ctrl+Shift+click |
+| QD26 | Importer and Exporter as parts on a cable face, several per cable block (n9, Q150)? Cable ports already reach machines for programs; this adds automatic import and export without a full block, as AE2's buses do. Changes the cable from a plain block to one with a block entity and parts. Amends [ADR 0065](decisions/0065-cable-ports.md) and [ADR 0066](decisions/0066-importer-exporter.md). | Yes, after Wave P, as a new ADR | Open (found 2026-11-01 by Q144) |
 
 ## Wave P — first playthrough (lane P, first; 2026-11-01)
 
@@ -440,7 +441,12 @@ screens.
     buttons don't overlap them.
   - **Buttons:** fewer, clearer buttons.
   - **Direction:** changing direction is explicit, not a click that cycles it unexpectedly.
-- [ ] **Q144 — Port and cable looks (n9, n10, n18, n19).** Size M.
+- [x] **Q144 — Port and cable looks (n9, n10, n18, n19).** Size M. Done 2026-11-01 (commit
+  subject `Q144:`): ports are full cubes with a flush steel front; cable ports have a steel plate
+  and are tinted (a missing colour handler drew their stripe white); the cable stripe runs along
+  the centre; the Crafter's textures are centred. Cable ports cover n9 for programs only, so the
+  Importer and Exporter tooltips point at them and the rest is Q150.
+  [Evidence](evidence/ergonomics-q144-port-and-cable-looks-2026-11-01.md).
   - **Ports:** remove the orange squares sticking out of the Interface, Importer and Exporter.
   - **Cables:** the cable connector should not be orange, and should not turn white when
     connected (or should explain why it does). Remove the offset line along the cable.
@@ -449,6 +455,11 @@ screens.
     block. Cable ports (ADR 0065) already exist, made with the Label Tool. Make them easier to
     find (guide, recipe, a tooltip on the Importer) and check that they cover this before
     building anything new.
+- [ ] **Q150 — Importer and Exporter as cable attachments (n9, from Q144, needs QD26).** Size L.
+  AE2 import and export buses: a small part on a cable face, up to six per cable block, each
+  importing from or exporting to the block it faces with the full-block device's filters,
+  upgrades and leases. Needs a cable block that carries parts (block entity per cable with
+  parts, per-part shapes and models) and an ADR amending ADR 0065 and ADR 0066.
 
 ## Wave 0 — reliability (lane R)
 

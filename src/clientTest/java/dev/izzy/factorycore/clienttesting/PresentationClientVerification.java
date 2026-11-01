@@ -335,6 +335,43 @@ public final class PresentationClientVerification {
     return true;
   }
 
+  /**
+   * Q144: every Factory Core block state whose model has a tinted quad has a block colour handler.
+   * A state without one draws the tinted layer untinted: the cable port's stripe rendered white.
+   * Returns how many states were checked.
+   */
+  static int checkTintedBlocksHaveColours(Minecraft client) {
+    int checked = 0;
+    var random = net.minecraft.util.RandomSource.create(0);
+    for (var block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+      var id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block);
+      if (!id.getNamespace().equals(dev.izzy.factorycore.platform.FactoryCoreMod.MOD_ID)) continue;
+      for (var state : block.getStateDefinition().getPossibleStates()) {
+        var model = client.getBlockRenderer().getBlockModel(state);
+        var sides = new java.util.ArrayList<Direction>(List.of(Direction.values()));
+        sides.add(null);
+        for (var side : sides)
+          for (var quad :
+              model.getQuads(
+                  state,
+                  side,
+                  random,
+                  net.neoforged.neoforge.client.model.data.ModelData.EMPTY,
+                  null)) {
+            if (!quad.isTinted()) continue;
+            checked++;
+            int colour =
+                client
+                    .getBlockColors()
+                    .getColor(state, client.level, BlockPos.ZERO, quad.getTintIndex());
+            check(colour != -1, id + " " + state + " has a tinted quad and no colour handler");
+          }
+      }
+    }
+    check(checked > 0, "No tinted quads found; the cable stripe should be one");
+    return checked;
+  }
+
   private void view(PresentationScenes.View view, String capture, int settle) {
     server(player -> PresentationScenes.teleport(player, view));
     step(client -> aim(client, view) && waited() >= settle);
@@ -2336,6 +2373,7 @@ public final class PresentationClientVerification {
     // Orientation gallery from two opposite corners covers every facing's front.
     view(PresentationScenes.ORIENT_NORTH_EAST_UP, "orientation-north-east-up.png", 80);
     view(PresentationScenes.ORIENT_SOUTH_WEST_DOWN, "orientation-south-west-down.png", 60);
+    view(PresentationScenes.ORIENT_FRONTS, "orientation-fronts.png", 20);
 
     // Status lamps follow real state within the refresh period.
     serverUntil(
@@ -2399,6 +2437,16 @@ public final class PresentationClientVerification {
                 && monitor.count() == 1_234);
     view(PresentationScenes.MONITOR_CLOSE, "monitor-close.png", 20);
     view(PresentationScenes.CABLES_COLOURED, "cables-coloured.png", 20);
+    // Q144: full-cube ports with flush fronts, and every tinted model has a colour handler.
+    view(PresentationScenes.PORTS_CLOSE, "ports-close.png", 20);
+    step(
+        client -> {
+          evidence
+              .append("tinted models: ")
+              .append(checkTintedBlocksHaveColours(client))
+              .append('\n');
+          return true;
+        });
     step(
         client -> {
           evidence.append("monitor: shows 1,234 cobblestone as 1.2k\n");
@@ -3055,6 +3103,8 @@ public final class PresentationClientVerification {
           return true;
         });
     serverUntil(PresentationScenes::labelRowDone);
+    // Q144 first: the label-row view after it puts the player back where the next steps aim.
+    view(PresentationScenes.ROW_PORTS, "cable-ports-close.png", 10);
     view(PresentationScenes.ROW, "label-row.png", 10);
     // Q11: holding the tool shows the three labels and a marker on the chest.
     step(

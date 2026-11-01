@@ -2,10 +2,12 @@
 # to capture a name not listed here.
 orientation-north-east-up.png
 orientation-south-west-down.png
+orientation-fronts.png
 states-day.png
 states-day-close.png
 monitor-close.png
 cables-coloured.png
+ports-close.png
 facade-scale-1.png
 facade-scale-4.png
 portable-storage-scale-1.png
@@ -139,6 +141,7 @@ guide-smelting.png
 label-tool-scale-1.png
 label-tool-scale-4.png
 label-row.png
+cable-ports-close.png
 label-overlay.png
 network-view.png
 inspect-scale-1.png

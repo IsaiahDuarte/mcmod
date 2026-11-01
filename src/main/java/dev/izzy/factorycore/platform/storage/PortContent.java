@@ -47,6 +47,9 @@ public final class PortContent {
       FactoryRegistries.BLOCKS.registerBlock(
           "cable_port", CablePortBlock::new, DeviceProperties.machine());
 
+  /** Q144 (n9): points the player at cable ports, the small one-cable way to reach machines. */
+  static final String CABLE_PORT_HINT = "tooltip.factorycore.port_cable_hint";
+
   public static final DeferredItem<LeasedBlockItem> CABLE_PORT_ITEM =
       FactoryRegistries.ITEMS.register(
           "cable_port",
@@ -56,12 +59,14 @@ public final class PortContent {
                   LeasedBlockItem.Tooltip.lines(
                       "tooltip.factorycore.cable_port", "tooltip.factorycore.cable_port_item")));
 
-  public static final DeferredItem<LeasedBlockItem> IMPORTER_ITEM = item("importer", IMPORTER);
-  public static final DeferredItem<LeasedBlockItem> EXPORTER_ITEM = item("exporter", EXPORTER);
+  public static final DeferredItem<LeasedBlockItem> IMPORTER_ITEM =
+      item("importer", IMPORTER, "tooltip.factorycore.port_use", CABLE_PORT_HINT);
+  public static final DeferredItem<LeasedBlockItem> EXPORTER_ITEM =
+      item("exporter", EXPORTER, "tooltip.factorycore.port_use", CABLE_PORT_HINT);
   public static final DeferredItem<LeasedBlockItem> CONSTRUCTOR_ITEM =
-      item("constructor", CONSTRUCTOR);
+      item("constructor", CONSTRUCTOR, "tooltip.factorycore.port_use");
   public static final DeferredItem<LeasedBlockItem> DESTRUCTOR_ITEM =
-      item("destructor", DESTRUCTOR);
+      item("destructor", DESTRUCTOR, "tooltip.factorycore.port_use");
 
   public static final DeferredHolder<MenuType<?>, MenuType<MachineSettingsMenu>> IMPORTER_MENU =
       FactoryRegistries.menu(
@@ -82,14 +87,17 @@ public final class PortContent {
 
   private PortContent() {}
 
-  private static DeferredItem<LeasedBlockItem> item(String name, DeferredBlock<PortBlock> block) {
+  private static DeferredItem<LeasedBlockItem> item(
+      String name, DeferredBlock<PortBlock> block, String... extraLines) {
+    var keys = new String[extraLines.length + 1];
+    keys[0] = "tooltip.factorycore." + name;
+    System.arraycopy(extraLines, 0, keys, 1, extraLines.length);
     return FactoryRegistries.ITEMS.register(
         name,
         () ->
             new LeasedBlockItem(
                 block.get(),
-                LeasedBlockItem.Tooltip.lines(
-                        "tooltip.factorycore." + name, "tooltip.factorycore.port_use")
+                LeasedBlockItem.Tooltip.lines(keys)
                     .then(
                         LeasedBlockItem.Tooltip.throughput(
                             ConnectorData.FIELD, tag -> ConnectorData.read(tag).tier()))));

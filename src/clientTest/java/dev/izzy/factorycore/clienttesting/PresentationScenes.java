@@ -85,6 +85,19 @@ final class PresentationScenes {
       View.looking(
           ORIENT_X - 5, ORIENT_Y - 8, ORIENT_Z + 30, ORIENT_X + 7.5, ORIENT_Y, ORIENT_Z + 10.5);
 
+  /**
+   * Q144: the Storage Interface, Importer and Crafter rows of the gallery, north and east facings:
+   * their fronts are flush, with no copper socket standing out.
+   */
+  static final View ORIENT_FRONTS =
+      View.looking(
+          ORIENT_X + 6.5,
+          ORIENT_Y + 2.5,
+          ORIENT_Z + 3.0,
+          ORIENT_X + 1.5,
+          ORIENT_Y + 0.5,
+          ORIENT_Z + 9.5);
+
   static final int STATE_Z = 40;
   static final View STATES = new View(50.5, 68.5, 33.5, 0, 25);
   static final View STATES_CLOSE = new View(46.5, 67.0, 38.0, 0, 30);
@@ -97,6 +110,9 @@ final class PresentationScenes {
 
   /** Q29: red, blue and uncoloured cable runs side by side (z=43..45), x=60..64. */
   static final View CABLES_COLOURED = View.looking(62.5, 68.0, 40.5, 62.5, 65.4, 44.5);
+
+  /** Q144: the screens scene's Importer and Exporter on their chests, seen from the east. */
+  static final View PORTS_CLOSE = View.looking(11.0, 66.9, 2.0, 7.8, 65.3, -0.2);
 
   /** Q30: the middle of the red run wears a stone brick facade. */
   static final BlockPos FACED = new BlockPos(62, 65, STATE_Z + 3);
@@ -608,6 +624,9 @@ final class PresentationScenes {
 
   /** Q9: a root, three cables and a furnace beside each, south of the screens. */
   static final BlockPos ROW_ROOT = new BlockPos(-8, 65, 6);
+
+  /** Q144: the row's three cable ports from the north, their plates against the furnaces. */
+  static final View ROW_PORTS = View.looking(-7.8, 67.0, 4.4, -6.0, 65.3, 6.6);
 
   /** The middle furnace, which the tour uses the tool on. */
   static final BlockPos ROW_TARGET = ROW_ROOT.offset(2, 0, 1);

@@ -212,6 +212,17 @@ def port(c, x0, y0, size=6):
     c.px(mid, y0 + size // 2 - 1, SIGNAL_HI)
 
 
+def ring(c, x0, y0, x1, y1):
+    """Q144: a steel ring around a black well with a centred 2x2 signal pin (no copper)."""
+    c.rect(x0, y0, x1, y1, STEEL_DARK)
+    c.hline(x0, x1, y0, STEEL)
+    c.vline(x0, y0, y1, STEEL)
+    c.rect(x0 + 1, y0 + 1, x1 - 1, y1 - 1, PANEL_SHADOW)
+    mx, my = (x0 + x1) // 2, (y0 + y1) // 2
+    c.rect(mx, my, mx + 1, my + 1, SIGNAL)
+    c.px(mx, my, SIGNAL_HI)
+
+
 def flat(name, base, grain=3, lines=None):
     c = Canvas(name)
     c.rect(0, 0, 15, 15, base, grain=grain)
@@ -283,28 +294,47 @@ def block_textures():
     port(side, 5, 5)
     out["network_controller_side"] = side
 
-    # Cable: a 4-pixel band (v 6..9) whose length runs along u; junction at (0..3, 0..3).
+    # Cable: a 4-pixel band (v 6..9) whose length runs along u; junction at (0..3, 0..3). Q144:
+    # the signal stripe is the two middle rows (7, 8) of the band, drawn only by the tinted overlay,
+    # so it sits on the cable's centre line and is not drawn twice.
     cable = Canvas("network_cable")
     cable.rect(0, 0, 15, 15, CASE, grain=3)
     for x in range(16):
         notch = x % 4 == 3
         cable.px(x, 6, CASE_SHADOW if notch else CASE_LIGHT)
         cable.px(x, 7, CASE_SHADOW if notch else CASE)
-        cable.px(x, 8, SIGNAL_DARK if notch else SIGNAL)
+        cable.px(x, 8, CASE_SHADOW if notch else CASE)
         cable.px(x, 9, CASE_EDGE)
     cable.rect(0, 0, 3, 3, CASE_LIGHT)
     cable.hline(0, 3, 3, CASE_SHADOW)
     cable.vline(3, 0, 3, CASE_SHADOW)
-    cable.rect(1, 1, 2, 2, SIGNAL)
-    cable.px(1, 1, SIGNAL_HI)
     out["network_cable"] = cable
     # Q29: the cable's signal stripe as a greyscale overlay, tinted by the cable's colour (the
-    # uncoloured tint is SIGNAL, so a plain cable looks as before). Same uv layout as the cable.
+    # uncoloured tint is SIGNAL). Same uv layout as the cable.
     stripe = Canvas("network_cable_stripe")
     for x in range(16):
-        stripe.px(x, 8, (115, 115, 115, 255) if x % 4 == 3 else (255, 255, 255, 255))
+        shade = (115, 115, 115, 255) if x % 4 == 3 else (255, 255, 255, 255)
+        stripe.px(x, 7, shade)
+        stripe.px(x, 8, shade)
     stripe.rect(1, 1, 2, 2, (255, 255, 255, 255))
     out["network_cable_stripe"] = stripe
+
+    # Q144: the face of an Interface, Importer, Exporter, Constructor, Destructor or Tunnel that
+    # touches its block: flush, a steel ring around a dark well with a signal pin, centred.
+    front = casing("connector_front")
+    inset(front, 3, 3, 12, 12)
+    ring(front, 5, 5, 10, 10)
+    out["connector_front"] = front
+    # Q144: a cable port's plate, in casing steel (not copper), with signal pins in the corners.
+    plate = Canvas("cable_port_plate")
+    plate.rect(0, 0, 15, 15, CASE_LIGHT, grain=3)
+    plate.hline(3, 12, 3, CASE_HI)
+    plate.vline(3, 3, 12, CASE_HI)
+    plate.hline(3, 12, 12, CASE_SHADOW)
+    plate.vline(12, 4, 12, CASE_SHADOW)
+    for x, y in ((4, 4), (11, 4), (4, 11), (11, 11)):
+        plate.px(x, y, SIGNAL)
+    out["cable_port_plate"] = plate
 
     # Storage Drive: four stacked bays, empty in the base face; cells are bay overlays.
     out["storage_drive_front"] = drive_front({})
@@ -360,42 +390,43 @@ def block_textures():
     mside.hline(5, 10, 7, COPPER)
     out["storage_monitor_side"] = mside
 
-    # Crafting Unit: grid top, processor sides.
+    # Crafting Unit: grid top, processor sides. Q144: every part is centred on the 16-pixel grid
+    # (insets 2..13, a 3x3 grid spanning 4..11, a 4x4 chip at 6..9).
     grid = casing("crafting_unit_top")
-    inset(grid, 2, 2, 12, 12)
+    inset(grid, 2, 2, 13, 13)
     for gx in range(3):
         for gy in range(3):
-            x, y = 3 + gx * 3, 3 + gy * 3
+            x, y = 4 + gx * 3, 4 + gy * 3
             grid.rect(x, y, x + 1, y + 1, COPPER)
             grid.px(x, y, COPPER_HI)
     out["crafting_unit_top"] = grid
     chip = casing("crafting_unit_side")
-    inset(chip, 2, 2, 12, 12)
-    chip.rect(5, 5, 9, 9, CASE_LIGHT)
-    chip.rect(6, 6, 8, 8, COPPER)
-    chip.px(6, 6, COPPER_HI)
-    for i in (5, 7, 9):
+    inset(chip, 2, 2, 13, 13)
+    chip.rect(5, 5, 10, 10, CASE_LIGHT)
+    chip.rect(6, 6, 9, 9, COPPER)
+    chip.hline(6, 9, 6, COPPER_HI)
+    chip.vline(6, 6, 9, COPPER_HI)
+    for i in (6, 9):
         chip.px(i, 3, STEEL)
-        chip.px(i, 11, STEEL)
+        chip.px(i, 12, STEEL)
         chip.px(3, i, STEEL)
-        chip.px(11, i, STEEL)
+        chip.px(12, i, STEEL)
         chip.px(i, 4, STEEL_DARK)
-        chip.px(i, 10, STEEL_DARK)
+        chip.px(i, 11, STEEL_DARK)
         chip.px(4, i, STEEL_DARK)
-        chip.px(10, i, STEEL_DARK)
+        chip.px(11, i, STEEL_DARK)
     out["crafting_unit_side"] = chip
 
-    # Crafting Interface: input arrow -> processing port -> output arrow.
+    # Crafter (and Crafting Interface) front: inputs in (amber chevron) -> processing ring ->
+    # outputs out (cyan chevron). Q144: centred on the grid, like the Interface's front.
     ci = casing("crafting_interface_front")
-    inset(ci, 2, 3, 13, 11)
-    port(ci, 6, 4, size=5)
-    ci.hline(3, 5, 7, AMBER)
-    ci.px(4, 6, AMBER)
-    ci.px(4, 8, AMBER)
-    ci.hline(11, 12, 7, SIGNAL)
-    ci.px(12, 6, SIGNAL)
-    ci.px(12, 8, SIGNAL)
-    ci.px(13, 7, SIGNAL)
+    inset(ci, 2, 3, 13, 12)
+    ring(ci, 5, 5, 10, 10)
+    for x, color in ((3, AMBER), (11, SIGNAL)):
+        ci.px(x, 6, color)
+        ci.px(x + 1, 7, color)
+        ci.px(x + 1, 8, color)
+        ci.px(x, 9, color)
     out["crafting_interface_front"] = ci
 
     # Program Controller: code screen with a prompt; chip on top.
