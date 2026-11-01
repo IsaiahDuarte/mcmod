@@ -462,10 +462,11 @@ public final class LabelToolItem extends Item {
 
               @Override
               public boolean connected(BlockPos from, Direction side) {
-                return dev.izzy.factorycore.platform.network.NetworkedBlock.wired(
-                        level.getBlockState(from), side)
-                    && dev.izzy.factorycore.platform.network.NetworkedBlock.wired(
-                        level.getBlockState(from.relative(side)), side.getOpposite());
+                var here = level.getBlockState(from);
+                return dev.izzy.factorycore.platform.network.NetworkedBlock.wired(here, side)
+                    // Q29: differently coloured cables are separate runs.
+                    && dev.izzy.factorycore.platform.network.NetworkCableBlock.linksTo(
+                        here, level.getBlockState(from.relative(side)), side);
               }
 
               @Override

@@ -285,6 +285,13 @@ def block_textures():
     cable.rect(1, 1, 2, 2, SIGNAL)
     cable.px(1, 1, SIGNAL_HI)
     out["network_cable"] = cable
+    # Q29: the cable's signal stripe as a greyscale overlay, tinted by the cable's colour (the
+    # uncoloured tint is SIGNAL, so a plain cable looks as before). Same uv layout as the cable.
+    stripe = Canvas("network_cable_stripe")
+    for x in range(16):
+        stripe.px(x, 8, (115, 115, 115, 255) if x % 4 == 3 else (255, 255, 255, 255))
+    stripe.rect(1, 1, 2, 2, (255, 255, 255, 255))
+    out["network_cable_stripe"] = stripe
 
     # Storage Drive: four stacked bays, empty in the base face; cells are bay overlays.
     out["storage_drive_front"] = drive_front({})

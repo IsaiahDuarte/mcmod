@@ -57,3 +57,34 @@ seed and neighbor admission, one-visit progress and shared FairScheduler dispatc
 Use actual world placement/ports and nonloading chunk behavior for the adapter.
 Full world-event coordination, activation, multiplayer/restart and representative
 server performance remain mandatory owning-stage work.
+
+## Amendment — coloured cables (2026-10-31, ergonomics plan Q29, QD5)
+
+The cable block has a `color` state: `none` or one of the 16 dyes (`CableColor`; the names are
+save format).
+
+- **Links:** two cables are linked only when their colours join: either is `none`, or both are
+  the same.
+- **Discovery:** `WorldWireReader` drops a cable's port toward a loaded neighbour cable whose
+  colour does not join. The neighbour drops its port too, and discovery links only reciprocal
+  ports, so the link is absent from both sides. An unloaded neighbour is decided by its own
+  (cached) reading, so no chunk is loaded.
+- **Arms:** `NetworkCableBlock.linksTo(self, neighbour, side)` applies the same rule, so arms
+  match ports. `CableColorGameTests` checks this.
+- **Other devices:** devices have no colour and link to any cable.
+- **Recolouring:** a recolour is a block-state change. `onPlace` and the neighbours'
+  `neighborChanged` mark both positions changed, so the network rebuilds like any placement.
+- **Items:** the colour travels on the item as vanilla `block_state` and comes back through the
+  loot table (`copy_state`, only when coloured) and Pick Block. An uncoloured cable keeps no
+  component, so it stacks with crafted cable.
+- **Crafting:** the grid recipe is one special recipe, `factorycore:cable_dye`, like vanilla
+  armour dyeing. It has no recipe-book entry and makes no new cable.
+
+**Alternatives:**
+- **Sixteen cable blocks:** rejected. They would need sixteen items, recipes and loot tables,
+  and would be harder to recolour in place.
+- **A per-cable block entity:** rejected. Cables have no entity, and keeping it that way keeps
+  wide cable runs cheap.
+- **A cable anchor that blocks one side (M93):** not added here (Q130). A per-face property on
+  the cable would multiply its states by 64. AE2's anchor is a part on a multipart cable, which
+  Factory Core does not have.

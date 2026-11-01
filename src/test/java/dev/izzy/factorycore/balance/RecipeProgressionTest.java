@@ -99,6 +99,13 @@ class RecipeProgressionTest {
    */
   private static final Set<String> REVERSALS = Set.of("blank_pattern_from_pattern.json");
 
+  /**
+   * Q29: special recipes (code, no grid) that only recolour items the grid already holds, so they
+   * add no source. Their behaviour is covered by CableColorGameTests.
+   */
+  private static final Map<String, String> SPECIAL =
+      Map.of("cable_dye.json", "factorycore:cable_dye");
+
   /** The ADR 0048 stage of every survival item; it must equal the computed stage. */
   private static final Map<String, Stage> EXPECTED =
       Map.ofEntries(
@@ -159,7 +166,8 @@ class RecipeProgressionTest {
     try (var files = Files.list(Path.of(url.toURI()))) {
       for (var file : files.sorted().toList()) {
         assertTrue(file.toString().endsWith(".json"), "Only recipe JSON: " + file);
-        if (REVERSALS.contains(file.getFileName().toString())) continue;
+        var name = file.getFileName().toString();
+        if (REVERSALS.contains(name) || SPECIAL.containsKey(name)) continue;
         var json =
             JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
                 .getAsJsonObject();
@@ -391,6 +399,30 @@ class RecipeProgressionTest {
    * Q4: each reversal is one shapeless ingredient, every option of which is an encoding whose only
    * input is the result, and it yields exactly one. So it gives back what was spent, nothing more.
    */
+  @Test
+  void specialRecipesAreOnlyTheListedRecolours() throws Exception {
+    var url = RecipeProgressionTest.class.getResource("/data/factorycore/recipe");
+    assertNotNull(url, "Recipe directory on the test classpath");
+    try (var files = Files.list(Path.of(url.toURI()))) {
+      for (var file : files.toList()) {
+        var json =
+            JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
+                .getAsJsonObject();
+        var name = file.getFileName().toString();
+        var type = json.get("type").getAsString();
+        boolean standard = type.startsWith("minecraft:crafting_s");
+        assertEquals(
+            !standard,
+            SPECIAL.containsKey(name),
+            "Only listed recipes are special: " + name + " (" + type + ")");
+        if (!standard) {
+          assertEquals(SPECIAL.get(name), type, name);
+          assertEquals(Set.of("type", "category"), json.keySet(), "No grid or result: " + name);
+        }
+      }
+    }
+  }
+
   @Test
   void reversalsOnlyGiveBackWhatAnEncodingConsumed() throws Exception {
     var url = RecipeProgressionTest.class.getResource("/data/factorycore/recipe");

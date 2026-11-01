@@ -2155,6 +2155,7 @@ public final class PresentationClientVerification {
                     instanceof dev.izzy.factorycore.platform.monitor.MonitorEntity monitor
                 && monitor.count() == 1_234);
     view(PresentationScenes.MONITOR_CLOSE, "monitor-close.png", 20);
+    view(PresentationScenes.CABLES_COLOURED, "cables-coloured.png", 20);
     step(
         client -> {
           evidence.append("monitor: shows 1,234 cobblestone as 1.2k\n");

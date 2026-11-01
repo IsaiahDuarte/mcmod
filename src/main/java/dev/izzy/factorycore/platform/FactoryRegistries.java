@@ -33,6 +33,9 @@ public final class FactoryRegistries {
       DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, FactoryCoreMod.MOD_ID);
   public static final DeferredRegister<CreativeModeTab> TABS =
       DeferredRegister.create(Registries.CREATIVE_MODE_TAB, FactoryCoreMod.MOD_ID);
+  public static final DeferredRegister<net.minecraft.world.item.crafting.RecipeSerializer<?>>
+      RECIPE_SERIALIZERS =
+          DeferredRegister.create(Registries.RECIPE_SERIALIZER, FactoryCoreMod.MOD_ID);
 
   private FactoryRegistries() {}
 
@@ -43,6 +46,7 @@ public final class FactoryRegistries {
     MENUS.register(bus);
     COMPONENTS.register(bus);
     TABS.register(bus);
+    RECIPE_SERIALIZERS.register(bus);
   }
 
   /** A block entity type valid for {@code blocks}, resolved when the type is built. */

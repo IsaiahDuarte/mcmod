@@ -2,7 +2,8 @@
   "parent": "minecraft:block/block",
   "textures": {
     "cable": "factorycore:block/network_cable",
-    "particle": "factorycore:block/network_cable"
+    "particle": "factorycore:block/network_cable",
+    "stripe": "factorycore:block/network_cable_stripe"
   },
   "elements": [
     {
@@ -140,6 +141,154 @@
           "texture": "#cable"
         }
       }
+    },
+    {
+      "from": [
+        -0.02,
+        5.98,
+        5.98
+      ],
+      "to": [
+        16.02,
+        10.02,
+        10.02
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            6,
+            16,
+            10
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0,
+            6,
+            16,
+            10
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0,
+            6,
+            16,
+            10
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0,
+            6,
+            16,
+            10
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        }
+      }
+    },
+    {
+      "from": [
+        4.98,
+        4.98,
+        4.98
+      ],
+      "to": [
+        11.02,
+        11.02,
+        11.02
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#stripe",
+          "tintindex": 0
+        }
+      }
     }
   ],
   "display": {
@@ -177,5 +326,6 @@
         0.8
       ]
     }
-  }
+  },
+  "render_type": "minecraft:cutout"
 }

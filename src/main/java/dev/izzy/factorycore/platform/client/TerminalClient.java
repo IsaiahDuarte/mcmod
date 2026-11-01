@@ -1,6 +1,7 @@
 package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.network.NetworkCableBlock;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.program.ProgramContent;
 import dev.izzy.factorycore.platform.storage.BufferedInterfaceContent;
@@ -24,6 +25,24 @@ public final class TerminalClient {
     dev.izzy.factorycore.platform.ClientScreens.install(new ItemScreens());
     dev.izzy.factorycore.platform.storage.LabelOverlay.sink(LabelOverlayRenderer::receive);
     dev.izzy.factorycore.platform.storage.MachineInspection.sink(InspectScreen::open);
+  }
+
+  /** Q29: the cable stripe (tint index 0) takes the cable's colour, in the world and as an item. */
+  @SubscribeEvent
+  public static void blockColors(
+      net.neoforged.neoforge.client.event.RegisterColorHandlersEvent.Block event) {
+    event.register(
+        (state, level, position, tint) ->
+            tint == 0 ? 0xFF000000 | NetworkCableBlock.color(state).tint() : -1,
+        NetworkContent.CABLE.get());
+  }
+
+  @SubscribeEvent
+  public static void itemColors(
+      net.neoforged.neoforge.client.event.RegisterColorHandlersEvent.Item event) {
+    event.register(
+        (stack, tint) -> tint == 0 ? 0xFF000000 | NetworkCableBlock.color(stack).tint() : -1,
+        NetworkContent.CABLE_ITEM.get());
   }
 
   /** Q28: the Storage Monitor's face. */

@@ -96,7 +96,15 @@ public final class RecipeGameTests {
     var unlocked = new HashSet<ResourceLocation>();
     for (var advancement : h.getLevel().getServer().getAdvancements().getAllAdvancements())
       unlocked.addAll(advancement.value().rewards().recipes());
-    var recipes = modRecipes(h);
+    var recipes = new ArrayList<RecipeHolder<CraftingRecipe>>();
+    var special = new ArrayList<String>();
+    // Q29: cable dyeing is a special recipe (no fixed grid, no book entry, makes no new item); it
+    // has its own GameTest (CableColorGameTests). Every other recipe is checked below.
+    for (var holder : modRecipes(h))
+      if (holder.value().isSpecial()) special.add(holder.id().getPath());
+      else recipes.add(holder);
+    h.assertTrue(
+        special.equals(List.of("cable_dye")), "The one special recipe is cable dyeing: " + special);
     h.assertTrue(
         recipes.size() == 29,
         "All 29 Factory Core crafting recipes, including speed upgrades, the Label Tool, the"

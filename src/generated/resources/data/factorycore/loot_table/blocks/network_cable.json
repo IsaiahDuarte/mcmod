@@ -11,6 +11,27 @@
       "entries": [
         {
           "type": "minecraft:item",
+          "functions": [
+            {
+              "block": "factorycore:network_cable",
+              "conditions": [
+                {
+                  "condition": "minecraft:inverted",
+                  "term": {
+                    "block": "factorycore:network_cable",
+                    "condition": "minecraft:block_state_property",
+                    "properties": {
+                      "color": "none"
+                    }
+                  }
+                }
+              ],
+              "function": "minecraft:copy_state",
+              "properties": [
+                "color"
+              ]
+            }
+          ],
           "name": "factorycore:network_cable"
         }
       ],

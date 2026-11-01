@@ -87,6 +87,18 @@ Network Access screen (see [Sharing a network](#sharing-a-network)).
 Breaking and replacing a controller keeps its owner and grants. If the controller's
 chunk unloads, its network pauses; nothing is lost.
 
+**Coloured cables** keep two networks apart when their cables run side by side. A coloured
+cable connects to cables of its own colour and to uncoloured cables, never to another colour.
+It connects to every device as usual.
+- **Colouring:** use a dye on a placed cable to colour it (one dye per cable). In a crafting
+  grid, up to 8 cables and one dye make that many cables of the dye's colour.
+- **Clearing:** use a wet sponge on a placed cable (the sponge is kept), or craft up to 8 cables
+  with a water bucket (you get the empty bucket back).
+- **Drops:** a broken cable drops in its colour, and Pick Block gives a cable of that colour.
+
+An uncoloured cable touching two colours joins them into one network, so keep plain cable away
+from the place where two coloured runs meet.
+
 ## Storage Drive and cells
 
 Use a cell on a drive to install it in the first empty bay; a drive holds four. Use

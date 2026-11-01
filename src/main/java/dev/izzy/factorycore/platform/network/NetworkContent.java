@@ -5,6 +5,9 @@ import dev.izzy.factorycore.platform.DeviceProperties;
 import dev.izzy.factorycore.platform.FactoryRegistries;
 import dev.izzy.factorycore.platform.LeasedBlockItem;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
@@ -32,7 +35,16 @@ public final class NetworkContent {
       FactoryRegistries.ITEMS.register(
           "gateway", () -> new LeasedBlockItem(GATEWAY.get(), LeasedBlockItem.Tooltip.lines()));
   public static final DeferredItem<?> CABLE_ITEM =
-      FactoryRegistries.ITEMS.registerSimpleBlockItem(CABLE);
+      FactoryRegistries.ITEMS.register(
+          "network_cable", () -> new CableItem(CABLE.get(), new Item.Properties()));
+
+  /** Q29: recolouring cables in a crafting grid. */
+  public static final DeferredHolder<
+          RecipeSerializer<?>, SimpleCraftingRecipeSerializer<CableDyeRecipe>>
+      CABLE_DYE =
+          FactoryRegistries.RECIPE_SERIALIZERS.register(
+              "cable_dye", () -> new SimpleCraftingRecipeSerializer<>(CableDyeRecipe::new));
+
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<NetworkNodeEntity>>
       NODE_ENTITY =
           FactoryRegistries.entity("network_node", NetworkNodeEntity::new, CONTROLLER, GATEWAY);

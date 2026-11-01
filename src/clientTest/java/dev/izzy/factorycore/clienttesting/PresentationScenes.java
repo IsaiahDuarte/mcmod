@@ -94,6 +94,10 @@ final class PresentationScenes {
   static final BlockPos MONITOR = new BlockPos(61, 65, STATE_Z);
 
   static final View MONITOR_CLOSE = View.looking(61.5, 66.2, 38.3, 61.5, 65.5, 40);
+
+  /** Q29: red, blue and uncoloured cable runs side by side (z=43..45), x=60..64. */
+  static final View CABLES_COLOURED = View.looking(62.5, 68.0, 40.5, 62.5, 65.4, 44.5);
+
   static final BlockPos SCREENS = new BlockPos(0, 65, 0);
 
   private PresentationScenes() {}
@@ -217,6 +221,19 @@ final class PresentationScenes {
         3);
     if (level.getBlockEntity(new BlockPos(57, 65, z)) instanceof FuelGeneratorEntity generator)
       generator.slots().setStackInSlot(FuelGeneratorEntity.FUEL, new ItemStack(Items.COAL, 64));
+    // Q29: three parallel runs; red and blue never join, the plain run joins the blue beside it.
+    var cableBlock = NetworkContent.CABLE.get();
+    var runs =
+        List.of(
+            dev.izzy.factorycore.platform.network.CableColor.RED,
+            dev.izzy.factorycore.platform.network.CableColor.BLUE,
+            dev.izzy.factorycore.platform.network.CableColor.NONE);
+    for (int pass = 0; pass < 2; pass++)
+      for (int row = 0; row < runs.size(); row++)
+        for (int x = 60; x <= 64; x++) {
+          var at = new BlockPos(x, 65, z + 3 + row);
+          level.setBlock(at, cableBlock.connected(level, at, runs.get(row)), 3);
+        }
     root(level, MONITOR.south(), player);
     drive(level, MONITOR.south().east(), 0);
     level.setBlock(

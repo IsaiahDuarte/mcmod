@@ -91,8 +91,23 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
       }
       return ordinary(block, state, canonical, NetworkTopology.Role.ROOT, valid);
     }
-    if (state.is(NetworkContent.CABLE.get()))
-      return ordinary(block, state, id(position, "wire"), NetworkTopology.Role.CABLE, true);
+    if (state.is(NetworkContent.CABLE.get())) {
+      // Q29: no port toward a loaded cable whose colour does not join this one. Both sides drop
+      // it, so the link is gone either way; an unloaded neighbour is decided by its own reading.
+      var id = id(position, "wire");
+      var color = NetworkCableBlock.color(state);
+      var ports = new ArrayList<WiredDiscovery.Port>(6);
+      for (var face : Direction.values()) {
+        if (!NetworkedBlock.wired(state, face)) continue;
+        var next = block.relative(face);
+        var neighbourChunk = Loaded.chunk(level, next);
+        if (neighbourChunk != null
+            && !color.joins(NetworkCableBlock.color(neighbourChunk.getBlockState(next)))) continue;
+        ports.add(port(block, face, id));
+      }
+      return new WiredDiscovery.Wire(
+          List.of(new NetworkTopology.Node(id, NetworkTopology.Role.CABLE, "", true)), ports, null);
+    }
     var entity = chunk.getBlockEntity(block, LevelChunk.EntityCreationType.CHECK);
     if (entity instanceof WiredMember member) {
       var vertex = member.wireVertex();

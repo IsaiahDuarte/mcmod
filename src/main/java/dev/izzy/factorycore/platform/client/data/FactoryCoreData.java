@@ -3,6 +3,8 @@ package dev.izzy.factorycore.platform.client.data;
 import dev.izzy.factorycore.core.storage.EnergyBankTier;
 import dev.izzy.factorycore.platform.CarriedComponents;
 import dev.izzy.factorycore.platform.FactoryCoreMod;
+import dev.izzy.factorycore.platform.network.CableColor;
+import dev.izzy.factorycore.platform.network.NetworkCableBlock;
 import dev.izzy.factorycore.platform.network.NetworkedBlock;
 import dev.izzy.factorycore.platform.storage.EnergyBankContent;
 import dev.izzy.factorycore.platform.storage.InterfaceContent;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
+import net.minecraft.advancements.critereon.StatePropertiesPredicate;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
@@ -34,8 +37,11 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.functions.CopyBlockState;
 import net.minecraft.world.level.storage.loot.functions.CopyComponentsFunction;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.predicates.InvertedLootItemCondition;
+import net.minecraft.world.level.storage.loot.predicates.LootItemBlockStatePropertyCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -147,6 +153,13 @@ public final class FactoryCoreData {
 
     @Override
     protected void buildRecipes(RecipeOutput out) {
+      // Q29: recolouring cables (a special recipe, like vanilla armour dyeing).
+      net.minecraft.data.recipes.SpecialRecipeBuilder.special(
+              dev.izzy.factorycore.platform.network.CableDyeRecipe::new)
+          .save(
+              out,
+              net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                  FactoryCoreMod.MOD_ID, "cable_dye"));
       var redstone = RecipeCategory.REDSTONE;
       var misc = RecipeCategory.MISC;
       shaped(
@@ -581,6 +594,28 @@ public final class FactoryCoreData {
     @Override
     protected void generate() {
       for (var block : getKnownBlocks()) {
+        if (block instanceof NetworkCableBlock) {
+          // Q29: a coloured cable drops coloured; an uncoloured one drops plain cable that stacks.
+          var uncoloured =
+              LootItemBlockStatePropertyCondition.hasBlockStateProperties(block)
+                  .setProperties(
+                      StatePropertiesPredicate.Builder.properties()
+                          .hasProperty(NetworkCableBlock.COLOR, CableColor.NONE));
+          var keepColour =
+              CopyBlockState.copyState(block)
+                  .copy(NetworkCableBlock.COLOR)
+                  .when(InvertedLootItemCondition.invert(uncoloured));
+          add(
+              block,
+              LootTable.lootTable()
+                  .withPool(
+                      applyExplosionCondition(
+                          block,
+                          LootPool.lootPool()
+                              .setRolls(ConstantValue.exactly(1))
+                              .add(LootItem.lootTableItem(block).apply(keepColour)))));
+          continue;
+        }
         if (!(block instanceof CarriedComponents carried)) {
           dropSelf(block);
           continue;
