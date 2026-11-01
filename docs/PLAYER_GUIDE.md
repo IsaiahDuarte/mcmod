@@ -226,9 +226,10 @@ Deposit and withdrawing needs Withdraw.
 - **Returning a stuck move:** if a move is interrupted, **Return** sends the items in
   transit back to where they came from.
 
-**Crafting grid.** Press **Crafting »** under the grid to open the crafting panel beside the
-terminal, and choose **Table** for a 3×3 grid of *ghost*
-cells: nothing moves into the grid, so closing never loses items.
+**Pattern Encoder.** Press **Encoder »** under the grid to open the Pattern Encoder beside the
+terminal. **Crafting** (a table recipe) and **Processing** (a machine recipe) at its top
+switch between the two kinds of pattern. In Crafting it shows a 3×3 grid of *ghost* cells and
+the result: nothing moves into the grid, so closing never loses items.
 - **Filling the grid:** click a cell, then Ctrl-click an item in your inventory.
   Alternatively, Ctrl-click a network item (or press 1–8) and press **Use selected**.
 - **Clearing:** right-click a cell to clear it, or press **Clear** to clear them all.
@@ -522,21 +523,22 @@ are not kept.
 ## Patterns and the Crafter
 
 Craft Blank Patterns.
-- **Crafting Pattern:** set up a recipe in the terminal's Table grid and press
+- **Crafting Pattern:** set up a recipe in the Pattern Encoder's Crafting grid and press
   **Encode** with a blank in your inventory. Your ingredients are not used. Turn
   **Substitutes** on first if any item the recipe accepts may be used, for example any
   planks for sticks or chests. Jobs then take whichever is most plentiful, and can mix
   them. With it off, the pattern uses exactly the items you placed.
-- **Stonecutter and smithing patterns:** the button under the grid switches the Table page
+- **Stonecutter and smithing patterns:** the button under the grid switches the Crafting page
   between **Crafting table**, **Stonecutter** and **Smithing table**. For the stonecutter, put
   the input in the first cell; click the result to choose another one (right-click goes back,
   or scroll). For smithing, put the template, base and addition in the top row. Press
   **Encode**: the Crafter makes these like any crafting pattern. The grid's Craft buttons work
   only for the crafting table. JEI's **+** on a stonecutter or smithing recipe fills the grid
   for you.
-- **Processing Pattern** (for machines): choose **Inputs** and set the ingredients,
-  then **Outputs** (up to three), then **Encode**. Select a slot to change its amount with
-  **−**/**+** or type it in the box between them (items, or mB for fluids, rounded up to
+- **Processing Pattern** (for machines): choose **Processing**. The ingredients go in the
+  **Inputs** grid on the left and the results in the **Outputs** column on the right (up to
+  three), then press **Encode**. Select a slot to change its amount with **−**/**+** under the
+  grid or type it in the box between them (items, or mB for fluids, rounded up to
   250 mB steps) and press Enter. The first output is what the pattern makes; select another
   output and press **Main** to make it the main one (the rest become byproducts).
 - **Amounts:** use **+ / −** or scroll to change them; Shift-scroll changes them
@@ -753,11 +755,11 @@ Commands for the same rights are in the [admin guide](ADMIN_GUIDE.md#access-comm
 
 ## JEI or EMI (optional)
 
-With JEI installed, the **+** button on a crafting recipe fills the terminal's Table
+With JEI installed, the **+** button on a crafting recipe fills the Pattern Encoder's Crafting
 grid with ghosts. Where a slot accepts several items, it picks the one you have most of
 (undamaged items in your inventory plus the terminal's stock). If the grid was in the other
 mode, it switches and says so above the hotbar. On any other recipe (furnace, blasting, or another mod's machine) it fills
-**Inputs** and **Outputs** for a Processing Pattern, items and fluids with their amounts (fluids
+the **Inputs** and **Outputs** of a Processing Pattern, items and fluids with their amounts (fluids
 rounded up to 250 mB steps). A recipe with more than three outputs keeps the first three, and a
 message says so; one with more than nine inputs cannot be transferred. Dragging an item or fluid onto the program editor types its
 expression. With JEI or EMI, R and U over a terminal entry show its recipes and uses, as over any slot.

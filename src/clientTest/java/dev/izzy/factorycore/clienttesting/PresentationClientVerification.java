@@ -724,7 +724,7 @@ public final class PresentationClientVerification {
     use(base.east(2), Direction.SOUTH, false);
     step(
         client ->
-            client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Crafting »"));
+            client.screen instanceof TerminalScreen && waited() > 4 && press(client, "Encoder »"));
     step(
         client ->
             terminal(client).craftingOpen()
@@ -772,7 +772,7 @@ public final class PresentationClientVerification {
         client ->
             terminal(client).getMenu().gridView().cells().stream().allMatch(String::isEmpty)
                 && waited() > 4
-                && press(client, "Inputs"));
+                && press(client, "Processing"));
     step(
         client ->
             terminal(client).getMenu().gridView().processing()
@@ -793,7 +793,13 @@ public final class PresentationClientVerification {
                 && press(client, "+"));
     step(client -> terminal(client).getMenu().gridView().amount(0) == 1000 && waited() > 4);
     panelCaptures("crafting-inputs");
-    step(client -> press(client, "Outputs"));
+    // Q139 (n8): the outputs sit beside the inputs; clicking the first one targets it.
+    step(
+        client -> {
+          var screen = terminal(client);
+          int[] at = screen.encoderCell(9);
+          return screen.mouseClicked(at[0], at[1], 0);
+        });
     step(client -> waited() > 4 && useGhost(client, "minecraft:water"));
     step(client -> terminal(client).getMenu().gridView().fluid(9) && waited() > 4);
     countGhost(9, 2);
@@ -802,10 +808,8 @@ public final class PresentationClientVerification {
     step(
         client -> {
           var screen = terminal(client);
-          screen.mouseClicked(
-              screen.getGuiLeft() + screen.gridX() + 27,
-              screen.getGuiTop() + screen.gridY() + 9,
-              0);
+          int[] at = screen.encoderCell(10);
+          screen.mouseClicked(at[0], at[1], 0);
           return useGhost(client, "minecraft:stone");
         });
     step(
@@ -814,7 +818,7 @@ public final class PresentationClientVerification {
                 && waited() > 4);
     countGhost(10, 2);
     panelCaptures("crafting-outputs");
-    step(client -> press(client, "« Crafting"));
+    step(client -> press(client, "« Encoder"));
     step(
         client -> {
           if (waited() < 6) return false;
@@ -823,7 +827,7 @@ public final class PresentationClientVerification {
               terminal(client).getMenu().gridView().amount(0) == 1000
                   && terminal(client).getMenu().gridView().amount(9) == 500,
               "Collapse preserves all ghosts");
-          return press(client, "Crafting »");
+          return press(client, "Encoder »");
         });
     step(client -> terminal(client).craftingOpen() && waited() > 6 && press(client, "Encode"));
     step(
@@ -871,7 +875,7 @@ public final class PresentationClientVerification {
               "Ghost edits and encoding consume no declared resources");
           player.getInventory().clearContent();
         });
-    step(client -> press(client, "Table"));
+    step(client -> press(client, "Crafting"));
     step(
         client -> {
           if (waited() < 6 || terminal(client).getMenu().gridView().processing()) return false;

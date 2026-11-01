@@ -28,17 +28,19 @@ import net.minecraft.world.item.Items;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * The Terminal's crafting panel (ADR 0028, ADR 0032, playtest H2), docked to the right of the main
- * panel and only as tall as its content: the Table/Inputs/Outputs choice, the ghost 3×3 grid with
- * the result or per-cell counts, Use row, Clear, Encode, Substitutes and Craft/×64. Shown only
- * while the screen's {@link TerminalScreen#craftingOpen()} is true. Coordinates are panel-relative.
+ * The Terminal's Pattern Encoder (ADR 0028, ADR 0032, playtest H2; Q139), docked to the right of
+ * the main panel and only as tall as its content: the Crafting/Processing choice, the ghost 3×3
+ * grid with the result (Crafting) or, beside it, the three outputs (Processing), Use selected,
+ * Clear, Encode, Substitutes or the amount row, and Craft/×64. Shown only while the screen's {@link
+ * TerminalScreen#craftingOpen()} is true. Coordinates are panel-relative.
  */
 final class TerminalCraftingPanel {
   /** The ghost grid, relative to this panel's left edge. */
   /** Lined up with the storage grid's first row. */
   static final int GRID_X = 7, GRID_Y = TerminalScreen.GRID_Y + 1;
 
-  private static final int STATUS_Y = GRID_Y + 54 + 4 + ToggleButton.HEIGHT + 4,
+  // Below Substitutes (Crafting) or the 16 px amount row (Processing).
+  private static final int STATUS_Y = GRID_Y + 54 + 4 + 16 + 4,
       CRAFT_Y = STATUS_Y + 3 * PanelLayout.LINE + 4,
       BOTTOM = CRAFT_Y + PanelLayout.ROW + PanelLayout.EDGE;
 
@@ -56,7 +58,7 @@ final class TerminalCraftingPanel {
   private ToggleButton substitutesButton;
   private boolean substitutes;
 
-  /** 0 = crafting grid, 1 = processing inputs, 2 = processing outputs (first row = 3 outputs). */
+  /** 0 = crafting, 1 = processing (inputs 0–8 in the grid, outputs 9–11 in the column beside). */
   private int gridPage;
 
   private int target;
@@ -90,14 +92,14 @@ final class TerminalCraftingPanel {
     var font = screen.font();
     int left = screen.left(), top = screen.top();
     int x0 = screen.main();
-    var modes = new int[3];
-    for (int page = 0; page < 3; page++)
+    var modes = new int[2];
+    for (int page = 0; page < 2; page++)
       modes[page] =
           font.width(Component.translatable("gui.factorycore.terminal.grid.mode." + page)) + 10;
     var modeCells =
         PanelLayout.fit(
             new Rect(x0 + 7, TabButton.STRIP + 7, SIDE - 14, PanelLayout.ROW), modes, 4);
-    for (int page = 0; page < 3; page++) {
+    for (int page = 0; page < 2; page++) {
       int choice = page;
       var button =
           new ChoiceButton(
@@ -181,11 +183,12 @@ final class TerminalCraftingPanel {
                     Tooltip.create(
                         Component.translatable("gui.factorycore.terminal.grid.table.help")))
                 .build());
-    int counts = resultX();
+    // Q139: in Processing the amount row sits under the grid, where Substitutes is in Crafting.
+    int counts = gridX(), rowY = GRID_Y + 54 + 4;
     countDown =
         screen.add(
             Button.builder(Component.literal("−"), button -> changeCount(-1))
-                .bounds(left + counts, top + GRID_Y, 22, 18)
+                .bounds(left + counts, top + rowY, 14, 16)
                 .tooltip(
                     Tooltip.create(
                         Component.translatable("gui.factorycore.terminal.grid.count.down")))
@@ -193,7 +196,7 @@ final class TerminalCraftingPanel {
     countUp =
         screen.add(
             Button.builder(Component.literal("+"), button -> changeCount(1))
-                .bounds(left + counts, top + GRID_Y + 36, 22, 18)
+                .bounds(left + counts + 48, top + rowY, 14, 16)
                 .tooltip(
                     Tooltip.create(
                         Component.translatable("gui.factorycore.terminal.grid.count.up")))
@@ -202,10 +205,10 @@ final class TerminalCraftingPanel {
         screen.add(
             new net.minecraft.client.gui.components.EditBox(
                 screen.font(),
-                // Wider than − and + (into the gap after the grid) so "1000" mB fits.
-                left + counts - 12,
-                top + GRID_Y + 19,
-                34,
+                // Between − and +, wide enough for "1000" mB.
+                left + counts + 16,
+                top + rowY,
+                30,
                 16,
                 Component.translatable("gui.factorycore.terminal.grid.amount_box")));
     amountBox.setMaxLength(5);
@@ -218,7 +221,7 @@ final class TerminalCraftingPanel {
             Button.builder(
                     Component.translatable("gui.factorycore.terminal.grid.main"),
                     button -> grid(TerminalCraftingPackets.MAIN, target, 0, 1, new byte[32]))
-                .bounds(left + counts - 34, top + GRID_Y + 36, 32, 18)
+                .bounds(left + counts + 64, top + rowY, 28, 16)
                 .tooltip(
                     Tooltip.create(
                         Component.translatable("gui.factorycore.terminal.grid.main.help")))
@@ -290,8 +293,8 @@ final class TerminalCraftingPanel {
 
   private void selectPage(int page) {
     gridPage = page;
-    target = page == 2 ? 9 : 0;
-    int mode = page == 0 ? 0 : 1;
+    target = 0;
+    int mode = page;
     if (menu().gridView().processing() != (mode == 1) || requestedMode >= 0) {
       requestedMode = mode;
       modeRevision = menu().gridView().gridRevision();
@@ -432,7 +435,7 @@ final class TerminalCraftingPanel {
       amountBox.setValue(filled ? Integer.toString(amountShownValue) : "");
       amountBox.moveCursorToStart(false);
     }
-    mainOutput.visible = open && gridPage == 2 && filled && target > 9;
+    mainOutput.visible = open && gridPage == 1 && filled && target > 9;
     mainOutput.active = !view.busy();
     boolean tableCrafting = ghost.table() == PatternContents.Table.CRAFTING.ordinal();
     substitutesButton.visible = open && !ghost.processing() && tableCrafting;
@@ -445,19 +448,24 @@ final class TerminalCraftingPanel {
     countUp.active = selected && ghost.counts().get(target) < 64;
   }
 
-  /** Server cell index shown at a displayed 3×3 position, or -1 for an unused output-page cell. */
-  private int cellIndex(int display) {
-    if (gridPage == 2) return display < 3 ? 9 + display : -1;
-    return display;
-  }
-
+  /** The server cell under the mouse: 0–8 in the grid, 9–11 in the output column, or -1. */
   private int cellAt(double mouseX, double mouseY) {
     if (!screen.craftingOpen()) return -1;
-    int column = (int) Math.floor((mouseX - screen.left() - gridX()) / 18);
     int row = (int) Math.floor((mouseY - screen.top() - GRID_Y) / 18);
-    return column < 0 || column > 2 || row < 0 || row > (gridPage == 2 ? 0 : 2)
-        ? -1
-        : row * 3 + column;
+    if (row < 0 || row > 2) return -1;
+    int column = (int) Math.floor((mouseX - screen.left() - gridX()) / 18);
+    if (column >= 0 && column <= 2) return row * 3 + column;
+    double outputX = mouseX - screen.left() - resultX();
+    return gridPage == 1 && outputX >= 0 && outputX < 18 ? 9 + row : -1;
+  }
+
+  /** A cell's panel-relative top-left: the grid for 0–8, the output column for 9–11. */
+  int cellX(int cell) {
+    return cell < 9 ? gridX() + 18 * (cell % 3) : resultX();
+  }
+
+  int cellY(int cell) {
+    return GRID_Y + 18 * (cell < 9 ? cell / 3 : cell - 9);
   }
 
   // ---------------------------------------------------------------- drawing
@@ -488,10 +496,8 @@ final class TerminalCraftingPanel {
     int left = screen.left(), top = screen.top(), body = TabButton.STRIP;
     Panels.panel(graphics, new Rect(left + screen.main(), top + body, SIDE, BOTTOM - body));
     var view = menu().gridView();
-    for (int cell = 0; cell < 9; cell++) {
-      int index = cellIndex(cell);
-      if (index < 0) continue;
-      int cellX = left + gridX() + 18 * (cell % 3), cellY = top + GRID_Y + 18 * (cell / 3);
+    for (int index = 0; index < (view.processing() ? 12 : 9); index++) {
+      int cellX = left + cellX(index), cellY = top + cellY(index);
       Panels.slot(graphics, cellX, cellY);
       if (index == target) Panels.selectedEdge(graphics, new Rect(cellX, cellY, 18, 18));
       if (view.cells().get(index).isEmpty()) continue;
@@ -501,10 +507,10 @@ final class TerminalCraftingPanel {
         screen.drawCount(
             graphics, shown, cellX, cellY, CountText.compact(Integer.toString(view.amount(index))));
     }
+    var font = screen.font();
+    graphics.drawString(
+        font, "→", left + gridX() + 54 + 3, top + resultY() + 7, Panels.TEXT, false);
     if (!view.processing()) {
-      var font = screen.font();
-      graphics.drawString(
-          font, "→", left + gridX() + 54 + 3, top + resultY() + 7, Panels.TEXT, false);
       Panels.inset(graphics, new Rect(left + resultX(), top + resultY(), 22, 22));
       var output = ResourceIcons.item(view.result());
       if (output != null) {
@@ -522,8 +528,28 @@ final class TerminalCraftingPanel {
     var font = screen.font();
     int x = screen.main() + GRID_X, width = SIDE - 14;
     int y = STATUS_Y;
-    if (gridPage != 0 && !view.cells().get(target).isEmpty()) {
-      graphics.drawString(font, ghostAmount(target), x, GRID_Y + 54 + 6, Panels.TEXT, false);
+    if (gridPage != 0) {
+      // Q139 (n8): which side is which, over the inputs grid and the outputs column.
+      int headY = GRID_Y - PanelLayout.LINE;
+      graphics.drawString(
+          font,
+          Component.translatable("gui.factorycore.terminal.grid.inputs"),
+          gridX(),
+          headY,
+          Panels.MUTED,
+          false);
+      var outputs = Component.translatable("gui.factorycore.terminal.grid.outputs");
+      graphics.drawString(
+          font,
+          outputs,
+          Math.min(resultX(), screen.main() + SIDE - 7 - 72 - 2 - font.width(outputs)),
+          headY,
+          Panels.MUTED,
+          false);
+      if (!view.cells().get(target).isEmpty()) {
+        graphics.drawString(font, ghostAmount(target), x, y, Panels.TEXT, false);
+        y += PanelLayout.LINE;
+      }
     }
     if (!view.status().quiet()) {
       var status =
@@ -538,7 +564,7 @@ final class TerminalCraftingPanel {
     var font = screen.font();
     int left = screen.left(), top = screen.top();
     if (cellAt(mouseX, mouseY) >= 0) {
-      int cell = cellIndex(cellAt(mouseX, mouseY));
+      int cell = cellAt(mouseX, mouseY);
       var ghost = menu().gridView();
       var lines = new ArrayList<Component>();
       if (cell >= 0 && !ghost.cells().get(cell).isEmpty()) {
@@ -588,8 +614,7 @@ final class TerminalCraftingPanel {
     }
     int cell = cellAt(mouseX, mouseY);
     if (cell >= 0) {
-      int index = cellIndex(cell);
-      if (index < 0) return true;
+      int index = cell;
       if (button == 1) grid(TerminalCraftingPackets.CLEAR, index, 0, 1, new byte[32]);
       else {
         target = index;
@@ -620,7 +645,7 @@ final class TerminalCraftingPanel {
             slot.getContainerSlot(),
             1,
             TerminalPackets.fingerprint(key));
-        target = gridPage == 2 ? 9 + (target - 8) % 3 : (target + 1) % 9;
+        target = target >= 9 ? 9 + (target - 8) % 3 : (target + 1) % 9;
       } catch (IllegalArgumentException unsupported) {
         client.player.displayClientMessage(
             Component.translatable("gui.factorycore.terminal.status.unsupported"), true);
@@ -639,8 +664,8 @@ final class TerminalCraftingPanel {
     int cell = cellAt(mouseX, mouseY);
     var grid = menu().gridView();
     if (cell >= 0 && grid.processing() && scrollY != 0) {
-      int index = cellIndex(cell);
-      if (index < 0 || grid.cells().get(index).isEmpty()) return true;
+      int index = cell;
+      if (grid.cells().get(index).isEmpty()) return true;
       target = index;
       changeCount((Screen.hasShiftDown() ? 8 : 1) * (scrollY > 0 ? 1 : -1));
       return true;

@@ -1128,6 +1128,11 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     }
   }
 
+  /** The screen x and y of encoder cell {@code cell}'s centre (0–8 grid, 9–11 outputs). */
+  public int[] encoderCell(int cell) {
+    return new int[] {leftPos + crafting.cellX(cell) + 9, topPos + crafting.cellY(cell) + 9};
+  }
+
   /** Test hook (Q112): selects processing cell {@code cell} and types its amount. */
   public void typeGridAmount(int cell, String text) {
     crafting.select(cell);

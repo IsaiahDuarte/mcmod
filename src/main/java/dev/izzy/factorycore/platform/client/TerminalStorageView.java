@@ -183,6 +183,9 @@ final class TerminalStorageView {
     craftingToggle =
         screen.add(
             button(right.get(1), screen.craftingOpen() ? close : crafting, screen::toggleCrafting));
+    craftingToggle.setTooltip(
+        net.minecraft.client.gui.components.Tooltip.create(
+            Component.translatable("gui.factorycore.terminal.grid.panel.help")));
     // Fluids show Fill; Energy shows Charge and Drain. Size them for the longest label.
     var oneLabel = Component.translatable("gui.factorycore.terminal.action." + kind + ".one");
     var twoLabel = Component.translatable("gui.factorycore.terminal.action." + kind + ".two");

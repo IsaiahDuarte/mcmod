@@ -391,7 +391,13 @@ screens.
     shows "Craft" over it, and clicking it opens the craft-amount dialog (a modal).
   - **Jobs:** jobs are configured in the same modal, not on a separate page.
   - **Overlap:** this overlaps the existing terminal-depth items (Wave T2); fold them in.
-- [ ] **Q139 — Pattern Encoder rethink (n7, n8, n12, n16).** Size L.
+- [x] **Q139 — Pattern Encoder rethink (n7, n8, n12, n16).** Size L. Done 2026-11-01 for naming
+  and layout (commit subject `Q139:`). "Encoder »" opens the Pattern Encoder. Its two modes,
+  Crafting and Processing, replace Table/Inputs/Outputs. Processing shows the Inputs grid and
+  the Outputs column side by side under headings, with the amount row below. Split out:
+  explicit hand crafting into storage (Q148), recipe-conflict arrows (Q149), and very large
+  recipes (Q69). [Evidence](evidence/ergonomics-q139-pattern-encoder-2026-11-01.md). Original
+  scope:
   - **Name:** the "Crafting" button is a pattern encoder, so name and show it as one.
   - **Layout:** follow AE2's encoding terminal. Inputs and outputs are clearly separate, there
     is room for very large processing recipes (ATM Star-style), and it switches clearly between
@@ -408,6 +414,16 @@ screens.
   Items view lists items, fluids and energy in one grid. This needs a mixed-kind server query
   (search, sort and paging across kinds) and per-kind click rules. Fluid and energy entries
   can't be taken onto the cursor. Decide whether the separate tabs remain.
+- [ ] **Q148 — Hand crafting into storage (n16, from Q139).** Size M. In the encoder's
+  Crafting mode, crafting by hand is its own labelled action, and its output goes into network
+  storage, not the inventory. Server side: after the craft, the crafted amount moves from the
+  inventory into storage on the same guarded route, exactly that amount and only that key. If
+  storage refuses it, it stays in the inventory with a message. GameTests cover a full store, a
+  refused store and a partial craft.
+- [ ] **Q149 — Recipe-conflict arrows (n12, from Q139).** Size M. When several recipes match the
+  encoder's grid, or a cell's item comes from a tag with several members, arrows on the result
+  (and on that cell) cycle the choices. The encoded pattern records the one shown. This
+  extends the stonecutter cycling (Q6) to crafting recipes and tag ingredients.
 - [ ] **Q141 — Network Controller screen (n1).** Size S. Explain or remove "optional"; make the
   screen look less bare.
 - [ ] **Q142 — Fuel Generator screen (n2).** Size M. A screen showing the fuel slot, burn time,

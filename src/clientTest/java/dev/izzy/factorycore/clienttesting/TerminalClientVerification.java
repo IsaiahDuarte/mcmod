@@ -649,7 +649,7 @@ public final class TerminalClientVerification {
       }
       case 1 -> {
         if (!screen.craftingOpen()) {
-          click(screen, "Crafting »");
+          click(screen, "Encoder »");
           return;
         }
         if (!client.player.getInventory().getItem(20).is(Items.OAK_LOG)) return;
