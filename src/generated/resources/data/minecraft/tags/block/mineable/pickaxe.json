@@ -7,6 +7,7 @@
     "factorycore:importer",
     "factorycore:starter_energy_bank",
     "factorycore:program_controller",
+    "factorycore:creative_energy_source",
     "factorycore:network_cable",
     "factorycore:gateway",
     "factorycore:crafter",

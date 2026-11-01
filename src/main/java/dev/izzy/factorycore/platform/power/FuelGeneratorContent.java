@@ -82,9 +82,31 @@ public final class FuelGeneratorContent {
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FuelGeneratorEntity>>
       ENTITY = FactoryRegistries.entity("fuel_generator", FuelGeneratorEntity::new, BLOCK);
 
+  /** Q26 (QD13): creative tab only; no recipe. */
+  public static final DeferredBlock<CreativeEnergySourceBlock> CREATIVE_BLOCK =
+      FactoryRegistries.BLOCKS.registerBlock(
+          "creative_energy_source", CreativeEnergySourceBlock::new, DeviceProperties.machine());
+
+  public static final DeferredItem<net.minecraft.world.item.BlockItem> CREATIVE_ITEM =
+      FactoryRegistries.ITEMS.register(
+          "creative_energy_source",
+          () ->
+              new net.minecraft.world.item.BlockItem(
+                  CREATIVE_BLOCK.get(),
+                  new net.minecraft.world.item.Item.Properties()
+                      .rarity(net.minecraft.world.item.Rarity.EPIC)));
+
+  public static final DeferredHolder<
+          BlockEntityType<?>, BlockEntityType<CreativeEnergySourceEntity>>
+      CREATIVE_ENTITY =
+          FactoryRegistries.entity(
+              "creative_energy_source", CreativeEnergySourceEntity::new, CREATIVE_BLOCK);
+
   private FuelGeneratorContent() {}
 
   private static void capabilities(RegisterCapabilitiesEvent event) {
+    event.registerBlockEntity(
+        Capabilities.EnergyStorage.BLOCK, CREATIVE_ENTITY.get(), (source, face) -> source.energy());
     event.registerBlockEntity(
         Capabilities.EnergyStorage.BLOCK, ENTITY.get(), (generator, face) -> generator.energy());
     event.registerBlockEntity(

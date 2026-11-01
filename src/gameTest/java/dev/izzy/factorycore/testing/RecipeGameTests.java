@@ -58,7 +58,10 @@ public final class RecipeGameTests {
           "crafting_pattern",
           "processing_pattern",
           // H5: a cable port's item only exists to carry the lease of a port broken mid-transfer.
-          "cable_port");
+          "cable_port",
+          // Q26 (QD13): creative-tab items have no survival source at all.
+          "creative_wireless_terminal",
+          "creative_energy_source");
 
   private static final BlockPos TABLE = new BlockPos(1, 1, 1);
 

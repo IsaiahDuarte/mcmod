@@ -461,6 +461,10 @@ tick into neighbours such as an Energy Bank. Empty lava buckets go to a containe
 slot: take them with a hopper below, or sneak-use with an empty hand. It pauses when
 full and keeps its fuel. It needs no network.
 
+The **Creative Energy Source** (creative mode only, no recipe) is an endless generator. It pushes
+as much FE each tick as each neighbour takes, and it never runs down. The creative cells are the
+Infinite Item and Infinite Fluid Cells in the creative tab.
+
 ## Energy Bank
 
 A bank stores FE for the network. All six faces accept and provide FE once the
@@ -548,6 +552,9 @@ storage terminal.
   click) on a block you have none of takes a stack of it from the network into your hotbar and
   selects it, if you are in the access point's range and may withdraw there. Each pick costs
   the handheld 64 FE plus 1 per block, like any move.
+- **Creative Wireless Terminal:** creative mode only (no recipe). It needs no charge and reaches
+  its access point from anywhere in the same dimension, for opening, moves and Pick Block. The
+  access point still needs power and its chunk loaded.
 
 ## Wireless links
 

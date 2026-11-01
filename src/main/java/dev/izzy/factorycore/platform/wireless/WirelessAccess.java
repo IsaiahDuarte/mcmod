@@ -26,6 +26,7 @@ public final class WirelessAccess implements TerminalAccess {
 
   private final AccessPointEntity point;
   private final Function<ServerPlayer, ItemStack> handheld;
+  private final boolean creative;
 
   /**
    * Q101 (M126, ADR 0039): one handheld action costs {@link #ACTION_COST} plus 1 FE per block
@@ -46,8 +47,15 @@ public final class WirelessAccess implements TerminalAccess {
 
   /** Q14: {@code handheld} finds the handheld where it was opened from. */
   WirelessAccess(AccessPointEntity point, Function<ServerPlayer, ItemStack> handheld) {
+    this(point, handheld, false);
+  }
+
+  /** Q26: {@code creative} when the session was opened with the creative handheld. */
+  WirelessAccess(
+      AccessPointEntity point, Function<ServerPlayer, ItemStack> handheld, boolean creative) {
     this.point = point;
     this.handheld = handheld;
+    this.creative = creative;
   }
 
   @Override
@@ -66,11 +74,14 @@ public final class WirelessAccess implements TerminalAccess {
         && point.current()
         && player.level() == point.getLevel()
         && player.server.getPlayerList().getPlayer(player.getUUID()) == player
-        && held.is(WirelessContent.HANDHELD.get())
+        && WirelessTerminalItem.handheld(held)
         && binding != null
         && binding.position() == point.getBlockPos().asLong()
         && binding.dimension().equals(point.origin().dimension())
-        && player.distanceToSqr(Vec3.atCenterOf(point.getBlockPos())) <= range;
+        // Q26: the creative handheld reaches its access point anywhere in the dimension, but only
+        // in a session opened with it.
+        && WirelessTerminalItem.creative(held) == creative
+        && (creative || player.distanceToSqr(Vec3.atCenterOf(point.getBlockPos())) <= range);
   }
 
   @Override
@@ -90,6 +101,7 @@ public final class WirelessAccess implements TerminalAccess {
 
   @Override
   public boolean spendAction(ServerPlayer player) {
+    if (creative) return true;
     var energy = handheld.apply(player).getCapability(Capabilities.EnergyStorage.ITEM);
     int cost = (int) actionCost(player, point);
     if (energy == null || energy.extractEnergy(cost, true) < cost) return false;
@@ -99,6 +111,8 @@ public final class WirelessAccess implements TerminalAccess {
 
   @Override
   public double reachSquared() {
-    return (double) point.range() * point.range();
+    // Q26: a session opened with the creative handheld reaches the whole dimension; present()
+    // still requires that handheld, so swapping it for an ordinary one ends the session.
+    return creative ? Double.MAX_VALUE : (double) point.range() * point.range();
   }
 }

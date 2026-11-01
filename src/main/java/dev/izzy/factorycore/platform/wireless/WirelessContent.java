@@ -63,7 +63,12 @@ public final class WirelessContent {
           "wireless_access_point", () -> new BlockItem(ACCESS_POINT.get(), new Item.Properties()));
 
   public static final DeferredItem<WirelessTerminalItem> HANDHELD =
-      FactoryRegistries.ITEMS.register("wireless_terminal", WirelessTerminalItem::new);
+      FactoryRegistries.ITEMS.register("wireless_terminal", () -> new WirelessTerminalItem());
+
+  /** Q26 (QD13): creative tab only; no recipe, no charge, no range limit in its dimension. */
+  public static final DeferredItem<WirelessTerminalItem> CREATIVE_HANDHELD =
+      FactoryRegistries.ITEMS.register(
+          "creative_wireless_terminal", () -> new WirelessTerminalItem(true));
 
   public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<AccessPointEntity>>
       ACCESS_POINT_ENTITY =

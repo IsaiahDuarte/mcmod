@@ -91,8 +91,8 @@ public final class WirelessPick {
     var inventory = player.getInventory();
     for (int slot = 0; slot < inventory.items.size(); slot++) {
       var stack = inventory.items.get(slot);
-      if (stack.is(WirelessContent.HANDHELD.get())
-          && stack.get(WirelessContent.BINDING.get()) != null) return slot;
+      if (WirelessTerminalItem.handheld(stack) && stack.get(WirelessContent.BINDING.get()) != null)
+        return slot;
     }
     return -1;
   }
@@ -128,7 +128,10 @@ public final class WirelessPick {
     if (Loaded.chunk(level, pointPos) == null
         || !(level.getBlockEntity(pointPos) instanceof AccessPointEntity point)
         || !point.current()) return "missing";
-    if (player.distanceToSqr(Vec3.atCenterOf(pointPos)) > (double) point.range() * point.range())
+    // Q26: the creative handheld picks from anywhere in its dimension, without charge.
+    boolean creative = WirelessTerminalItem.creative(handheld);
+    if (!creative
+        && player.distanceToSqr(Vec3.atCenterOf(pointPos)) > (double) point.range() * point.range())
       return "out_of_range";
     if (point.energy() < point.tickCost()) return "no_power";
     var actor = Actors.of(player);
@@ -144,7 +147,8 @@ public final class WirelessPick {
     if (slot < 0) return "hotbar_full";
     var energy = handheld.getCapability(Capabilities.EnergyStorage.ITEM);
     int cost = (int) WirelessAccess.actionCost(player, point);
-    if (energy == null || energy.extractEnergy(cost, true) < cost) return "handheld_power";
+    if (!creative && (energy == null || energy.extractEnergy(cost, true) < cost))
+      return "handheld_power";
     var key = new PlatformResourceCodec(player.registryAccess()).itemKey(wanted);
     int target = slot;
     var admission =
@@ -169,7 +173,7 @@ public final class WirelessPick {
                 });
     if (admission.rejection() != dev.izzy.factorycore.core.resource.OperationResult.Reason.OK)
       return "none";
-    energy.extractEnergy(cost, false);
+    if (!creative) energy.extractEnergy(cost, false);
     return "";
   }
 }

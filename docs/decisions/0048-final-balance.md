@@ -190,3 +190,26 @@ kept, as for items, and no new recipe exists. The cost equals the item path, bec
 holds one resource kind just as an item cell does. Bulk cell tools (the rest of QD14) are not
 added. `RecipeProgressionTest` pins the new row and that only the two Infinite tiers are
 unbounded. The core ledger (`LedgerState`, `ResourceLedger`) refuses infinite only for energy.
+
+## Amendment — creative items (2026-10-31, ergonomics plan Q26, QD13)
+
+Two items exist only in the creative tab, with no recipe or other survival source.
+`RecipeGameTests` lists them among the items without a recipe.
+
+- **Creative Energy Source:** a standalone block, not a network node. It exposes FE that never
+  runs out and pushes `Integer.MAX_VALUE` FE per tick to each neighbour, so every receiver's
+  own rate limit applies. It stores and saves nothing.
+- **Creative Wireless Terminal:** a handheld with no battery. A session opened with it reaches
+  its bound access point from anywhere in the same dimension, and moves and Pick Block cost it
+  nothing.
+  - The access point still pays its upkeep, and its chunk must be loaded.
+  - The session's reach belongs to the handheld it was opened with. Swapping in an ordinary
+    handheld ends a far session.
+
+The creative item and fluid cells of QD13 are the Infinite Item and Infinite Fluid Cells (Q27),
+which the creative tab lists: storage with no limit, like Refined Storage's creative disks.
+
+An AE2-style creative cell that supplies unlimited copies of its partitioned items is **not**
+added. It would create items inside the storage ledger, outside every conservation and
+reservation rule. A creative source of items belongs outside the network: for example, a
+creative mod's chest behind an Importer.

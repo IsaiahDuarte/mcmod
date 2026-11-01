@@ -401,6 +401,21 @@ def block_textures():
     gtop.px(7, 7, STEEL)
     out["fuel_generator_top"] = gtop
 
+    # Q26: Creative Energy Source, the generator's bolt in the Infinite tier's purple.
+    dark, base, hi = TIERS["infinite"]
+    cside = casing("creative_energy_source_side")
+    for y in (3, 12):
+        cside.hline(2, 13, y, base)
+        cside.hline(2, 13, y + 1, dark)
+    inset(cside, 5, 6, 10, 10, grain=0)
+    cside.rect(5, 6, 10, 10, PANEL)
+    cside.glyph(6, 6, GLYPHS["bolt"], hi, shadow=dark)
+    out["creative_energy_source_side"] = cside
+    ctop = casing("creative_energy_source_top")
+    inset(ctop, 3, 3, 11, 11)
+    ctop.glyph(4, 6, GLYPHS["inf"], hi)
+    out["creative_energy_source_top"] = ctop
+
     # Wireless Access Point: broadcast arcs.
     out["wireless_access_point_top"] = access_point_top("off")
     out["wireless_access_point_side"] = access_point_side("off")
@@ -905,8 +920,8 @@ def pattern(kind):
     return c
 
 
-def wireless_terminal():
-    c = Canvas("wireless_terminal")
+def wireless_terminal(creative=False):
+    c = Canvas("creative_wireless_terminal" if creative else "wireless_terminal")
     c.vline(11, 0, 3, STEEL)
     c.px(11, 0, SIGNAL_HI)
     c.px(13, 1, SIGNAL)
@@ -925,6 +940,13 @@ def wireless_terminal():
         c.px(x, 13, STEEL)
     c.px(10, 11, AMBER)
     c.px(10, 13, STEEL_DARK)
+    if creative:
+        # Q26: the Infinite tier's purple trim and the infinity mark on the screen.
+        dark, base, hi = TIERS["infinite"]
+        c.hline(4, 11, 4, base)
+        c.hline(4, 11, 14, dark)
+        c.rect(5, 6, 10, 8, SCREEN_BG)
+        c.glyph(4, 6, GLYPHS["inf"], hi)
     return c
 
 
@@ -966,6 +988,7 @@ def item_textures():
     for kind in ("blank", "crafting", "processing"):
         out[f"{kind}_pattern"] = pattern(kind)
     out["wireless_terminal"] = wireless_terminal()
+    out["creative_wireless_terminal"] = wireless_terminal(creative=True)
     out["factory_guide"] = guide()
     return out
 

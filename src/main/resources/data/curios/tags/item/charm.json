@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "factorycore:wireless_terminal"
+    "factorycore:wireless_terminal",
+    "factorycore:creative_wireless_terminal"
   ]
 }

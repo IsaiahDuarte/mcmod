@@ -765,7 +765,10 @@ New gates:
   Files: `OverviewMenu.java`, `OverviewScreen.java`.
   Done when: a GameTest with a Program Controller and an Access Point reports both.
 
-- [ ] **Q26 — Creative items (M26, needs QD13).** Size S.
+- [x] **Q26 — Creative items (M26, needs QD13).** Size S. Done 2026-10-31 (commit subject
+  `Q26:`). Creative Energy Source and creative Wireless Terminal; the Infinite item and fluid
+  cells are the creative cells (an AE2-style item-minting cell is declined); ADR 0048 and 0039
+  amendments. [Evidence](evidence/ergonomics-q26-creative-items-2026-10-31.md).
   Creative energy source block, creative item and fluid cells, creative Wireless Terminal (no
   charge, no range limit in one dimension). Creative tab only.
   Done when: GameTests cover each; no recipe exists for them.
@@ -1168,6 +1171,12 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   could do nothing; the J tool was one example. `TickGate` now allows a burst of 4 back to back.
   The average stays one per 2 ticks.
   [Evidence](evidence/ergonomics-q16-emi-2026-10-31.md).
+- [ ] **Q128 — GameTests that click several times in one tick (from Q27).** Size S. Before
+  Q127, a menu command within 2 ticks of the last was dropped, so a test that sends several
+  commands in one tick may have passed without anything happening. Q27 found one
+  (`DriveScreenGameTests`), now fixed. Find the others: a command followed by another before
+  any tick, with no check of each command's effect. Space them out or assert each effect.
+  Done when: each such test asserts every command's effect, and the full GameTest run passes.
 - [x] **Q123 — Editor support.** Size M. Done 2026-10-31 (commit subject `Q123:`),
   [Evidence](evidence/ergonomics-q123-editor-suggestions-2026-10-31.md).
   Highlighting; suggestions while typing: after `move`, `keep`, `craft`, `has` or `except`, the

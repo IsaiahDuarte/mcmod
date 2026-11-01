@@ -11,6 +11,8 @@ item factorycore:blank_pattern
 item factorycore:cable_port
 item factorycore:crafter
 item factorycore:crafting_pattern
+item factorycore:creative_energy_source
+item factorycore:creative_wireless_terminal
 item factorycore:expanded_energy_bank
 item factorycore:expanded_fluid_cell
 item factorycore:expanded_item_cell

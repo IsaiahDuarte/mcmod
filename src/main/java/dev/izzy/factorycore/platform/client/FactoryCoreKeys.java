@@ -147,10 +147,7 @@ public final class FactoryCoreKeys {
         && minecraft
             .player
             .getInventory()
-            .contains(
-                stack ->
-                    stack.is(
-                        dev.izzy.factorycore.platform.wireless.WirelessContent.HANDHELD.get())))
+            .contains(dev.izzy.factorycore.platform.wireless.WirelessTerminalItem::handheld))
       PacketDistributor.sendToServer(
           new dev.izzy.factorycore.platform.wireless.WirelessPick.Pick(pick.getBlockPos()));
     if (!event.isUseItem()

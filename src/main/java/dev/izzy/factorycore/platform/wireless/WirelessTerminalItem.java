@@ -19,13 +19,37 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.capabilities.Capabilities;
 
-/** Rechargeable handheld terminal: bind it to an access point, then use it within range. */
+/**
+ * Rechargeable handheld terminal: bind it to an access point, then use it within range. Q26 (QD13):
+ * the creative one (creative tab only, no recipe) needs no charge and reaches its access point from
+ * anywhere in the same dimension.
+ */
 public final class WirelessTerminalItem extends Item {
   public static final int CAPACITY = 20_000;
   public static final int CHARGE_RATE = 1_000;
 
+  private final boolean creative;
+
   public WirelessTerminalItem() {
-    super(new Item.Properties().stacksTo(1));
+    this(false);
+  }
+
+  public WirelessTerminalItem(boolean creative) {
+    super(
+        creative
+            ? new Item.Properties().stacksTo(1).rarity(net.minecraft.world.item.Rarity.EPIC)
+            : new Item.Properties().stacksTo(1));
+    this.creative = creative;
+  }
+
+  /** Either Wireless Terminal. */
+  public static boolean handheld(ItemStack stack) {
+    return stack.getItem() instanceof WirelessTerminalItem;
+  }
+
+  /** The creative Wireless Terminal: no charge, no range limit in its dimension. */
+  public static boolean creative(ItemStack stack) {
+    return stack.getItem() instanceof WirelessTerminalItem item && item.creative;
   }
 
   /** Using the handheld on an access point binds it there. */
@@ -90,10 +114,10 @@ public final class WirelessTerminalItem extends Item {
     return open(player, held -> held.getInventory().getItem(slot));
   }
 
-  /** A bound handheld with charge for at least one action. */
+  /** A bound handheld with charge for at least one action (Q26: or a bound creative one). */
   private static boolean ready(ItemStack stack) {
-    if (!stack.is(WirelessContent.HANDHELD.get())
-        || stack.get(WirelessContent.BINDING.get()) == null) return false;
+    if (!handheld(stack) || stack.get(WirelessContent.BINDING.get()) == null) return false;
+    if (creative(stack)) return true;
     var energy = stack.getCapability(Capabilities.EnergyStorage.ITEM);
     return energy != null && energy.getEnergyStored() >= WirelessAccess.ACTION_COST;
   }
@@ -119,7 +143,7 @@ public final class WirelessTerminalItem extends Item {
     if (Loaded.chunk(level, pos) == null
         || !(level.getBlockEntity(pos) instanceof AccessPointEntity point)) return "missing";
     if (point.energy() < point.tickCost()) return "no_power";
-    var access = new WirelessAccess(point, handheld);
+    var access = new WirelessAccess(point, handheld, creative(handheld.apply(player)));
     if (!access.canUse(player)) return "out_of_range";
     return TerminalMenu.open(
             player, access, Component.translatable("item.factorycore.wireless_terminal"))
@@ -130,10 +154,17 @@ public final class WirelessTerminalItem extends Item {
   @Override
   public void appendHoverText(
       ItemStack stack, Item.TooltipContext context, List<Component> lines, TooltipFlag flag) {
-    var energy = stack.getOrDefault(WirelessContent.ENERGY.get(), 0);
-    lines.add(
-        Component.translatable("tooltip.factorycore.handheld_energy", energy, CAPACITY)
-            .withStyle(ChatFormatting.GRAY));
+    if (creative)
+      lines.add(
+          Component.translatable("tooltip.factorycore.handheld_creative")
+              .withStyle(ChatFormatting.LIGHT_PURPLE));
+    else
+      lines.add(
+          Component.translatable(
+                  "tooltip.factorycore.handheld_energy",
+                  stack.getOrDefault(WirelessContent.ENERGY.get(), 0),
+                  CAPACITY)
+              .withStyle(ChatFormatting.GRAY));
     lines.add(
         Component.translatable(
                 stack.get(WirelessContent.BINDING.get()) == null

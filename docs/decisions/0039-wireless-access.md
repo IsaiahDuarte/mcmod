@@ -74,3 +74,20 @@ the 64 FE minimum: each action checks its own cost and is refused with `no_power
 Alternatives: scaling upkeep instead (rejected: it charges idle sessions, not use) and a squared
 curve (rejected: harsh with Overdrive range and hard to explain). Evidence:
 `WirelessGameTests` (84 FE at 20 blocks, refusal below that; a pick costs 64 + its distance).
+
+## Amendment — creative Wireless Terminal (2026-10-31, ergonomics plan Q26, QD13)
+
+`WirelessContent.CREATIVE_HANDHELD` is a `WirelessTerminalItem` whose `creative` flag removes the
+handheld's battery and the access point's range check within the bound dimension. The flag
+applies only to a session opened with it: `WirelessAccess` records it at open, `present`
+requires the same kind of handheld to stay in the slot, and `reachSquared` is unlimited only
+for that session.
+
+Everything else is unchanged:
+- same-dimension binding;
+- a loaded, current and powered access point;
+- View, or Withdraw for Pick Block, at the access point;
+- the access point's per-tick upkeep.
+
+Item and Pick checks that named the ordinary handheld now accept either
+(`WirelessTerminalItem.handheld`), and the Curios charm tag lists both.

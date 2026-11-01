@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "factorycore:block/creative_energy_source_top",
+    "bottom": "factorycore:block/creative_energy_source_top",
+    "side": "factorycore:block/creative_energy_source_side"
+  }
+}
