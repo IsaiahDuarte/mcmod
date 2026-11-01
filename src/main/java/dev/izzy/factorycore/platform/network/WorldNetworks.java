@@ -405,10 +405,10 @@ public final class WorldNetworks {
   /** True when discovery captured this gateway's wireless port reciprocally at its partner. */
   private static boolean bridged(
       Region region, LinkModule link, NodeRegistry.Position position, WiredDiscovery.Wire wire) {
-    if (link.partner() == null) return false;
-    long partner = link.partner().asLong();
+    var partner = link.partnerPosition();
+    if (partner == null) return false;
     for (var port : wire.ports()) {
-      if (port.neighbor().block() != partner) continue;
+      if (!port.neighbor().equals(partner)) continue;
       var other = region.discovery.captured(port.neighbor());
       if (other != null && other.ports().stream().anyMatch(p -> p.neighbor().equals(position)))
         return true;
@@ -560,8 +560,11 @@ public final class WorldNetworks {
       var member = region.discovery.publishedTopology().membership(vertex);
       // Discovery joins only reciprocal captured ports, so an unpaired, unpowered or one-sided
       // endpoint is a dead-end node with no wireless route to meter.
+      // An unloaded far end is read as an unloaded cable: its segment waits and no route crosses
+      // the link, so there is nothing to meter, and rebuilding would only loop.
       if (bridged(region, link, position, wire)
-          && member.status() == NetworkTopology.Status.VALID) {
+          && member.status() == NetworkTopology.Status.VALID
+          && !link.partnerUnloaded()) {
         var pair = link.pair();
         if (pair == null) {
           // The published bridge is stale; every activity change notifies both ends, so rebuild

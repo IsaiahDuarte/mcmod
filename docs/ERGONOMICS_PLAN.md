@@ -856,7 +856,10 @@ New gates:
 
 ## Wave X — distance (lane X, needs QD10)
 
-- [ ] **Q36 — Cross-dimension links (M35).** Size M.
+- [x] **Q36 — Cross-dimension links (M35).** Size M. Done 2026-11-01 (commit subject `Q36:`):
+  128 FE per tick, no range limit; also fixes a rebuild loop on any pair whose far end unloads.
+  ADR 0040 amendment.
+  [Evidence](evidence/ergonomics-q36-cross-dimension-links-2026-11-01.md).
   A link pair may span dimensions with a higher FE cost. While either end's chunk is unloaded
   the link waits; it never loads chunks.
   Done when: GameTests cover a pair across the Overworld and the Nether, and the far end

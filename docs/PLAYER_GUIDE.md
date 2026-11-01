@@ -647,11 +647,15 @@ storage terminal.
 
 A **Wireless Link** joins a distant subnetwork without cables.
 1. **Install:** use a link on the parent's gateway and another on the subnetwork's
-   gateway, up to 256 blocks apart in one dimension. Click the gateway's cross or dot
-   face; the wireless connection joins that side.
-2. **Pair:** with an empty hand, sneak-use one linked gateway, then the other.
-3. **Power:** each linked gateway takes FE on any face and uses 32 FE per tick.
+   gateway, up to 256 blocks apart in one dimension, or any distance apart in different
+   dimensions. Click the gateway's cross or dot face; the wireless connection joins that side.
+2. **Pair:** with an empty hand, sneak-use one linked gateway, then the other within 60
+   seconds. For gateways in different dimensions, travel through the portal between the two.
+3. **Power:** each linked gateway takes FE on any face and uses 32 FE per tick, or 128 FE
+   per tick when its partner is in another dimension.
 
+- **Unloaded ends:** links never load chunks. While one end's chunk is unloaded, the
+  subnetwork behind it waits, and the other side keeps working.
 - **Status:** open the gateway to see the link's state on its status line.
 - **Shared limit:** a pair shares 256 items, 4,000 mB and 8,000 FE per tick across
   everything that uses it.

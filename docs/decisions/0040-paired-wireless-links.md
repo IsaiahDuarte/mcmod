@@ -53,3 +53,17 @@ external-write recovery.
 
 The endpoint block is removed. A link is now an upgrade installed in a gateway and
 keeps every rule above; see [ADR 0061](0061-gateway-link-upgrade.md).
+
+## Amendment — cross-dimension pairs (2026-11-01, plan Q36, gate QD10)
+
+- **Cross-dimension pairs:** a pair may span dimensions. The partner is saved with its
+  dimension (`PartnerDimension`); a link saved without one names its own dimension, and an
+  invalid one is kept as unknown data. Pairing selects the first gateway, then accepts the
+  second in any dimension within the same 60-second window (Overworld time). A cross-dimension
+  pair has no range limit and costs 128 FE per tick at each end, instead of 32.
+- **Shared limits:** the per-pair limits (ADR 0050) key on both ends' dimension and position.
+- **Unloaded far end:** links still never load chunks. While the far end's chunk is unloaded,
+  its branch reads it as an unloaded cable and waits, and the near side stays online. Discovery
+  no longer rebuilds while a bridged partner is unloaded; before this, a published link whose
+  partner had unloaded rebuilt every tick, in either kind of pair.
+- **Tests:** `CrossDimensionLinkGameTests` and `WirelessBudgetTest`.

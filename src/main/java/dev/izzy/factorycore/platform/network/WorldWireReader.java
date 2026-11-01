@@ -81,7 +81,7 @@ public final class WorldWireReader implements Function<NodeRegistry.Position, Wi
         if (link != null && link.active())
           ports.add(
               new WiredDiscovery.Port(
-                  Positions.of(level, link.partner()), link.downstream() ? downstream : upstream));
+                  link.partnerPosition(), link.downstream() ? downstream : upstream));
         return new WiredDiscovery.Wire(
             List.of(
                 new NetworkTopology.Node(upstream, NetworkTopology.Role.CABLE, "", true),

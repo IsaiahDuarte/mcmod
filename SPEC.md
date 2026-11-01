@@ -286,7 +286,7 @@ Storage capacity, transfer throughput, crafting concurrency, and connection conv
 | --- | --- | --- |
 | Starter | Small item cell, terminal/manual grid, hopper imports, basic finite fluid/energy storage. Starter storage and wired basic routing have no upkeep requirement. | Cheap cables and physical interfaces. |
 | Expanded | More capacity, basic patterns/crafting units, stock presets, accessible scripting/controllers. | Wired branches plus a powered, limited-range wireless terminal access point. |
-| Advanced | Higher per-interface throughput, more crafting workers, larger finite fluid/energy stores. | Powered paired wireless links for separated sites in the same dimension. |
+| Advanced | Higher per-interface throughput, more crafting workers, larger finite fluid/energy stores. | Powered paired wireless links for separated sites, in the same dimension or across dimensions at a higher FE cost ([ADR 0040](docs/decisions/0040-paired-wireless-links.md)). |
 | Endgame | Expensive infinite item capacity and high-throughput factory upgrades. | Upgraded same-dimension links in v1; cross-dimensional link upgrades Later. |
 
 - Wireless terminal access changes player access, not machine discovery, chunk loading, or routing throughput. It requires authorization, same dimension, configured range, and locally available power at the access point.

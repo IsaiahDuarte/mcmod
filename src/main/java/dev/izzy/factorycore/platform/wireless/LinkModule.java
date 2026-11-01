@@ -33,19 +33,26 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * gateway's upstream or downstream side; while paired, in range and paying {@link #TICK_COST} FE
  * per tick from its own buffer, discovery adds one reciprocal port from that side's vertex to the
  * partner gateway, so the pair behaves as one cable edge. It never loads chunks; an unloaded
- * partner suspends the link segment. The host gateway persists it under {@link #FIELD}.
+ * partner suspends the link segment. The host gateway persists it under {@link #FIELD}. Q36 (QD10):
+ * the partner may be in another dimension, with no range limit and {@link #CROSS_DIMENSION_COST} FE
+ * per tick.
  */
 public final class LinkModule {
   public static final String FIELD = "FactoryCoreLink";
   public static final long CAPACITY = 20_000;
   public static final long INPUT_RATE = 1_000;
   public static final long TICK_COST = 32;
+
+  /** Q36: per-tick cost of a link whose partner is in another dimension. */
+  public static final long CROSS_DIMENSION_COST = 128;
+
   public static final int RANGE = 256;
   private static final String RECOVERY = "FactoryCoreLinkRecovery";
 
   private final NetworkNodeEntity host;
   private Direction side;
   private Long partner;
+  private String partnerDimension;
   private UUID owner;
   private boolean powered;
   private ThroughputTier tier = ThroughputTier.BASE;
@@ -111,10 +118,46 @@ public final class LinkModule {
     return partner == null ? null : BlockPos.of(partner);
   }
 
+  /** The partner's dimension id (Q36); the host's own when unset. */
+  public String partnerDimension() {
+    return partnerDimension != null ? partnerDimension : ownDimension();
+  }
+
+  private String ownDimension() {
+    var level = host.getLevel();
+    return level == null ? null : level.dimension().location().toString();
+  }
+
+  /** The partner's network position, in its own dimension; null when unpaired. */
+  public NodeRegistry.Position partnerPosition() {
+    return partner == null ? null : new NodeRegistry.Position(partnerDimension(), partner);
+  }
+
+  /** True when the partner is in another dimension (Q36). */
+  public boolean crossDimension() {
+    var own = ownDimension();
+    return partner != null
+        && partnerDimension != null
+        && own != null
+        && !partnerDimension.equals(own);
+  }
+
+  /** FE per tick this link pays while paired. */
+  public long tickCost() {
+    return crossDimension() ? CROSS_DIMENSION_COST : TICK_COST;
+  }
+
+  /** The partner's level, or null when unpaired or that dimension is gone. */
+  public ServerLevel partnerLevel() {
+    if (partner == null || !(host.getLevel() instanceof ServerLevel own)) return null;
+    return own.getServer().getLevel(Loaded.dimension(partnerDimension()));
+  }
+
   /** Sets or clears the partner gateway; callers refresh topology at both ends. */
-  void partner(BlockPos value) {
+  void partner(ServerLevel level, BlockPos value) {
     partner = value == null ? null : value.asLong();
-    powered = partner != null && input.energy() >= TICK_COST;
+    partnerDimension = value == null ? null : level.dimension().location().toString();
+    powered = partner != null && input.energy() >= tickCost();
     host.setChanged();
   }
 
@@ -145,7 +188,7 @@ public final class LinkModule {
   public String diagnostic() {
     if (rejected != null) return "unknown_data";
     if (partner == null) return "unpaired";
-    if (!inRange(position(), partner())) return "out_of_range";
+    if (!crossDimension() && !inRange(position(), partner())) return "out_of_range";
     if (!powered) return "no_power";
     return "";
   }
@@ -160,13 +203,10 @@ public final class LinkModule {
 
   /** Current reciprocal pair identity, without loading either gateway's chunk. */
   public WirelessBudget.Link pair() {
-    if (!(host.getLevel() instanceof ServerLevel server) || !active()) return null;
-    var other = loaded(server, partner());
-    if (other == null || !other.active() || !position().equals(other.partner())) return null;
-    String dimension = server.dimension().location().toString();
-    return new WirelessBudget.Link(
-        new NodeRegistry.Position(dimension, position().asLong()),
-        new NodeRegistry.Position(dimension, other.position().asLong()));
+    if (!active()) return null;
+    var other = partnerOf();
+    if (other == null || !other.active()) return null;
+    return new WirelessBudget.Link(origin(), other.origin());
   }
 
   /** Installed throughput upgrade; BASE or ENDGAME (Overdrive) for links. */
@@ -201,17 +241,36 @@ public final class LinkModule {
    * ends carry it; otherwise 1. Never loads the partner chunk.
    */
   public int pairScale() {
-    if (!(host.getLevel() instanceof ServerLevel server) || partner == null) return 1;
-    var other = loaded(server, partner());
-    return other != null && position().equals(other.partner())
-        ? Math.min(tier.linkScale(), other.tier.linkScale())
-        : 1;
+    var other = partnerOf();
+    return other != null ? Math.min(tier.linkScale(), other.tier.linkScale()) : 1;
+  }
+
+  /** True when the partner's chunk (or dimension) is not loaded; never loads it. */
+  public boolean partnerUnloaded() {
+    var level = partnerLevel();
+    return partner != null && (level == null || Loaded.chunk(level, partner()) == null);
+  }
+
+  /** The loaded partner link that names this one back, without loading its chunk; else null. */
+  public LinkModule partnerOf() {
+    var level = partnerLevel();
+    if (level == null) return null;
+    var other = loaded(level, partner());
+    return other != null && other.names(host) ? other : null;
+  }
+
+  /** True when this link's partner is {@code gateway}. */
+  boolean names(NetworkNodeEntity gateway) {
+    return partner != null
+        && gateway.getLevel() != null
+        && partner == gateway.getBlockPos().asLong()
+        && partnerDimension().equals(gateway.getLevel().dimension().location().toString());
   }
 
   /** Pays operating power every tick; a change in powered state re-discovers both ends. */
   public void serverTick() {
     if (rejected != null || partner == null) return;
-    boolean next = input.spend(TICK_COST);
+    boolean next = input.spend(tickCost());
     if (next != powered) {
       powered = next;
       refresh();
@@ -221,7 +280,8 @@ public final class LinkModule {
   public void refresh() {
     var level = host.getLevel();
     WorldNetworks.changed(level, position());
-    if (partner != null) WorldNetworks.changed(level, partner());
+    var far = partnerLevel();
+    if (far != null) WorldNetworks.changed(far, partner());
   }
 
   /** Who may install, pair or upgrade: MANAGE on a valid network, else the link's owner. */
@@ -244,6 +304,7 @@ public final class LinkModule {
     tag.putString("Side", side.getSerializedName());
     tag.putLong("Energy", input.energy());
     if (partner != null) tag.putLong("Partner", partner);
+    if (partnerDimension != null) tag.putString("PartnerDimension", partnerDimension);
     if (owner != null) tag.putUUID("Owner", owner);
     if (tier != ThroughputTier.BASE) tag.putString("Throughput", tier.name());
     return tag;
@@ -255,10 +316,18 @@ public final class LinkModule {
     link.side = Direction.byName(tag.getString("Side").toLowerCase(Locale.ROOT));
     link.input.restore(tag.getLong("Energy"));
     link.partner = tag.contains("Partner") ? tag.getLong("Partner") : null;
+    link.partnerDimension =
+        link.partner != null && tag.contains("PartnerDimension", Tag.TAG_STRING)
+            ? tag.getString("PartnerDimension")
+            : null;
     link.owner = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     link.powered = link.partner != null && link.input.energy() >= TICK_COST;
+
     try {
       if (link.side == null) throw new IllegalArgumentException("Missing link side");
+      if (link.partnerDimension != null
+          && net.minecraft.resources.ResourceLocation.tryParse(link.partnerDimension) == null)
+        throw new IllegalArgumentException("Invalid partner dimension");
       if (tag.contains("Throughput")) {
         if (!tag.contains("Throughput", Tag.TAG_STRING))
           throw new IllegalArgumentException("Invalid throughput type");

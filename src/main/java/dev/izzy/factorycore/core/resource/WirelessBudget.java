@@ -13,14 +13,18 @@ public final class WirelessBudget {
   public static final int MAX_LINKS = 32768, MAX_PATH = 64;
   public static final long ITEMS = 256, FLUID_MB = 4000, ENERGY_FE = 8000;
 
-  /** Physical pair identity survives reload/re-pair to the same coordinates within a tick. */
+  /**
+   * Physical pair identity survives reload/re-pair to the same coordinates within a tick. Q36: the
+   * ends may be in different dimensions; they are ordered by dimension, then block.
+   */
   public record Link(NodeRegistry.Position first, NodeRegistry.Position second) {
     public Link {
       Objects.requireNonNull(first);
       Objects.requireNonNull(second);
-      if (!first.dimension().equals(second.dimension()) || first.equals(second))
-        throw new IllegalArgumentException("A wireless pair needs distinct same-dimension ends");
-      if (Long.compareUnsigned(first.block(), second.block()) > 0) {
+      if (first.equals(second))
+        throw new IllegalArgumentException("A wireless pair needs distinct ends");
+      int order = first.dimension().compareTo(second.dimension());
+      if (order > 0 || order == 0 && Long.compareUnsigned(first.block(), second.block()) > 0) {
         var swap = first;
         first = second;
         second = swap;

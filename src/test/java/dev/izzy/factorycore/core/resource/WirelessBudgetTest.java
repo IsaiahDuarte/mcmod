@@ -33,6 +33,21 @@ class WirelessBudgetTest {
     assertThrows(IllegalArgumentException.class, () -> new WirelessBudget.Hop(pair, 0));
   }
 
+  @Test
+  void aCrossDimensionPairHasOneIdentityWhicheverEndNamesIt() {
+    var overworld = new NodeRegistry.Position("minecraft:overworld", 5);
+    var nether = new NodeRegistry.Position("minecraft:the_nether", 5);
+    var forward = new WirelessBudget.Link(overworld, nether);
+    assertEquals(forward, new WirelessBudget.Link(nether, overworld));
+    var budget = new WirelessBudget();
+    budget.claim(List.of(forward), 1, ResourceKind.ITEM, 200).finish(200);
+    assertEquals(
+        WirelessBudget.ITEMS - 200,
+        budget.available(
+            List.of(new WirelessBudget.Link(nether, overworld)), 1, ResourceKind.ITEM, 1024));
+    assertThrows(IllegalArgumentException.class, () -> new WirelessBudget.Link(nether, nether));
+  }
+
   private static WirelessBudget.Link link(int value) {
     return new WirelessBudget.Link(
         new NodeRegistry.Position("minecraft:overworld", value * 2L),
