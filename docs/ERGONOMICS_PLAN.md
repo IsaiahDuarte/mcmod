@@ -54,6 +54,7 @@ display, one lock), so batch the screenshot step at the end of a slice.
 
 | Lane | Slices | Main files | Gates |
 | --- | --- | --- | --- |
+| P — Playthrough (first) | Q132–Q144 | `WorldConnectors`, `TerminalScreen`, `client/ui`, pattern encoder, machine screens, `generate_art.py` | None |
 | R — Reliability | Q1 | `WorldNetworks`, `WorldWireReader`, ADR 0011 | PD7 |
 | K — Code health | Q52–Q60 | `WorldCraftingJobs`, `CraftingJobs`, `TerminalScreen`, `client/ui`, energy buffers, `WasmProgram` | None |
 | C — Crafting | Q2–Q8, Q68–Q71 | `CrafterBlock`, `CrafterEntity`, `TerminalCrafting`, `Pattern`, `CraftingPlanner`, `WorldMachinePresets`, `client/integration/jei` | QD3, QD4, QD18, QD19, QD21 |
@@ -70,7 +71,12 @@ display, one lock), so batch the screenshot step at the end of a slice.
 | N — Nits | Q99–Q103 | spread across lanes T, C, D, L/S and A | None |
 | V — Verification | Q51 | evidence | None |
 
-Recommended start: Q52 (a crafting bug) first, then lanes L and the ungated parts of C, T and
+**2026-11-01: lane P goes first.** The user's first real playthrough (in an ATM10-style pack)
+ended with "This is pretty unusable". Wave P fixes what it found before any other wave
+continues. Within it, work in order: Q136 and Q135 (it doesn't work or it crashed), Q132–Q134
+(small and annoying), Q137 and Q140, then Q138 and Q139 (redesigns), then Q141–Q144.
+
+Recommended start (before 2026-11-01): Q52 (a crafting bug) first, then lanes L and the ungated parts of C, T and
 D in parallel, and the user answers PD7 and the QD gates. Q1 goes first in lane R once PD7 is
 resolved, because network flicker breaks every other lane's GameTests now and then.
 
@@ -297,6 +303,90 @@ New gates:
 | QD23 | Separate insert and extract priority, and a redstone switch per storage. Amends [ADR 0013](decisions/0013-external-connectors.md) routing. | Yes | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): yes |
 | QD24 | Tunnelled and explosion-proof cables (M107). | No for now | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): no (Q98 dropped) |
 | QD25 | Which JEI chord does "fill what I have and request each missing ingredient" (M65, Q111) use? Ctrl+click on **+** already opens the recipe's output in Jobs (A5, [ADR 0043](decisions/0043-jei-integration.md), player guide), so taking Ctrl for M65 changes a shipped binding. Options: (a) Ctrl+click becomes M65 and the output request moves to another chord or a Jobs button; (b) M65 uses Ctrl+Shift+click (Shift alone is JEI's "max"), A5 unchanged; (c) Ctrl+click asks which. Found 2026-10-30 while starting Q111. | (b): keeps A5 and its tests, and both intents stay one click away | Resolved 2026-10-31 (user: "do everything that gets us closer to AE2/Refined/SFM parity"): (b) Ctrl+Shift+click |
+
+## Wave P — first playthrough (lane P, first; 2026-11-01)
+
+These come from the user's notes from playing the mod in a large modpack, numbered as in those
+notes (n1–n22). Each slice still follows the loop: tests, docs, scale 1 and 4 screenshots for
+screens.
+
+- [ ] **Q136 — Modded containers (n21).** Size L. An Importer would not connect to a
+  Sophisticated Storage chest. `WorldConnectors.probe` returns UNSUPPORTED for any block entity
+  that is neither a vanilla `Container` nor an `ExternalBackingProvider`, so almost every modded
+  inventory is refused.
+  - Accept any block exposing the item, fluid or energy capability, as AE2, RS and SFM do. Keep
+    the existing guarantees: per-provider exclusive accounting, quarantine on handler faults,
+    no loss on partial moves.
+  - **Identity rule:** for a backing that spans several blocks and that we cannot see
+    (multiblocks, connected storage), decide whether we skip identity or use the declared
+    interface, and record the trade-off in an ADR.
+  - **Feedback:** the port's status must say why it is refused, not just fail to work.
+
+  Done when: GameTests with a test-only non-vanilla handler block cover import, export and keep
+  stock, and a fault quarantines without loss. Smoke-test with Sophisticated Storage in the
+  user's pack.
+- [ ] **Q135 — Crash while typing in the Program Controller (n22).** Size S. The pasted log has
+  no crash report. It shows only a Polymorph mixin failure on JEI's transfer code (Polymorph,
+  Sophisticated Core and JEI), triggered from JEI's recipe screen.
+  - **Crash report:** get `crash-reports/crash-*.txt` from the user.
+  - **JEI key capture:** check that the program editor tells JEI it has text focus, so keys like
+    R and U never open JEI while typing. If it doesn't, fix it and add a client test.
+  - **Clipped tooltip:** the screenshot shows the editor's error tooltip drawn past the screen's
+    left edge and cut off ("what to move but found the end of the line"). Keep tooltips on
+    screen.
+- [ ] **Q132 — Terminal flicker on take and store (n13).** Size S. The grid flashes when items
+  are taken or stored. Find the cause (for example, a full re-sync clearing the grid, or a
+  re-sort between snapshots), keep the grid stable between updates, and add a client test that
+  takes and stores without an empty frame.
+- [ ] **Q133 — Terminal messages (n11, n14).** Size S. Drop success messages such as "Transfer
+  completed"; show only failures and anything the player must act on. Messages that don't fit
+  wrap or are shortened with the full text on hover ("insufficient available i…" is cut off
+  today). Check this at scales 1 and 4.
+- [ ] **Q134 — Shift-drag to store (n17).** Size S. Holding Shift and dragging the left mouse
+  button across the player inventory moves each stack passed over, as in vanilla chests.
+  Test it against the terminal and Portable Storage.
+- [ ] **Q137 — Terminal layout and button consistency (n3, n5, n6).** Size M.
+  - **Width:** a wider terminal that uses the screen width at every scale.
+  - **Buttons:** one icon style for the terminal's button cluster, with labels or tooltips that
+    say what each does.
+  - **Help button:** in the same place on every screen, with the "?" centred.
+- [ ] **Q140 — JEI-like item lookups in the terminal (n15).** Size S. U (uses) and R (recipes)
+  on a terminal entry open JEI or EMI, through their APIs, as on any inventory slot. Item
+  tooltips use the standard item tooltip, so tooltip mods style them.
+- [ ] **Q138 — One terminal view (n4).** Size L. AE2-style view toggles: everything, stored only,
+  or craftable only.
+  - **Inline:** items, fluids, energy and jobs appear inline. An item at zero that can be crafted
+    shows "Craft" over it, and clicking it opens the craft-amount dialog (a modal).
+  - **Jobs:** jobs are configured in the same modal, not on a separate page.
+  - **Overlap:** this overlaps the existing terminal-depth items (Wave T2); fold them in.
+- [ ] **Q139 — Pattern Encoder rethink (n7, n8, n12, n16).** Size L.
+  - **Name:** the "Crafting" button is a pattern encoder, so name and show it as one.
+  - **Layout:** follow AE2's encoding terminal. Inputs and outputs are clearly separate, there
+    is room for very large processing recipes (ATM Star-style), and it switches clearly between
+    crafting and processing.
+  - **Crafting by hand:** crafting a recipe by hand is an explicit choice, and its output goes
+    back into storage.
+  - **Recipe conflicts:** a recipe whose result or ingredients can vary (tags, several matching
+    recipes) shows arrows to cycle the choices, both in the encoder and on the crafting output.
+  - **Overlap:** this overlaps Q69 (larger processing patterns).
+- [ ] **Q141 — Network Controller screen (n1).** Size S. Explain or remove "optional"; make the
+  screen look less bare.
+- [ ] **Q142 — Fuel Generator screen (n2).** Size M. A screen showing the fuel slot, burn time,
+  stored and produced FE, and its status.
+- [ ] **Q143 — Interface screen (n20).** Size M.
+  - **Sort mod clash:** the screen clashes with inventory-sort mods; mark our slot areas so sort
+    buttons don't overlap them.
+  - **Buttons:** fewer, clearer buttons.
+  - **Direction:** changing direction is explicit, not a click that cycles it unexpectedly.
+- [ ] **Q144 — Port and cable looks (n9, n10, n18, n19).** Size M.
+  - **Ports:** remove the orange squares sticking out of the Interface, Importer and Exporter.
+  - **Cables:** the cable connector should not be orange, and should not turn white when
+    connected (or should explain why it does). Remove the offset line along the cable.
+  - **Crafter:** redo its off-grid texture.
+  - **Small ports (n9):** n9 asks for small ports that attach to several blocks from one cable
+    block. Cable ports (ADR 0065) already exist, made with the Label Tool. Make them easier to
+    find (guide, recipe, a tooltip on the Importer) and check that they cover this before
+    building anything new.
 
 ## Wave 0 — reliability (lane R)
 
