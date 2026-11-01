@@ -54,9 +54,12 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
 
   private Button redstone;
   private EditBox id, rate, target, slotGoal;
-  private Button setSlotGoal;
+
+  /** Q143: ticks until typed numbers go to the draft (no Set buttons); -1 when none wait. */
+  private int typedDelay = -1;
+
   private int shownGoalRule = -1;
-  private Button apply, reset, addId, addTag, setRate, setTarget, clear, addById, sampleButton;
+  private Button apply, reset, addId, addTag, clear, addById, sampleButton;
   private Button takeOne, takeStack, returning;
   private ChoiceButton settingsView, inventoryView;
   private final List<ChoiceButton> modes = new ArrayList<>(), filters = new ArrayList<>();
@@ -147,10 +150,8 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     }
     numbersRow = rows.row();
     var halves = PanelLayout.columns(numbersRow, 2, PanelLayout.GAP);
-    var setLabel = Component.translatable("gui.factorycore.buffer.set");
-    int setWidth = font.width(setLabel) + 10;
-    rate = number(halves.get(0), "rate", setWidth);
-    target = number(halves.get(1), "target", setWidth);
+    rate = number(halves.get(0), "rate");
+    target = number(halves.get(1), "target");
     rate.setTooltip(
         Tooltip.create(
             ThroughputContent.limits(
@@ -162,18 +163,6 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
         Tooltip.create(
             ThroughputContent.limits(
                 "gui.factorycore.buffer.target.help", BufferPolicy.MAX_TARGET)));
-    setRate =
-        settings(
-            button(
-                setCell(halves.get(0), setWidth),
-                "set",
-                () -> number(rate, BufferSettingsPackets.RATE)));
-    setTarget =
-        settings(
-            button(
-                setCell(halves.get(1), setWidth),
-                "set",
-                () -> number(target, BufferSettingsPackets.TARGET)));
 
     // The filter slots, with Add by ID and Clear beside them (a right-click removes one slot).
     var slotsRow = rows.row(2 * PanelLayout.SLOT);
@@ -221,14 +210,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     // The selected slot's rule, or the typed-ID row while "Add by ID" is open.
     describeRow = rows.row(3 * PanelLayout.LINE);
     // Q73: in Stock mode with an allow list, the selected slot's own goal at the row's right.
-    var goalSet = Component.translatable("gui.factorycore.buffer.set");
-    int goalSetWidth = font.width(goalSet) + 10;
-    var goalCell =
-        new Rect(
-            describeRow.right() - goalSetWidth - 2 - 30,
-            describeRow.y(),
-            30 + 2 + goalSetWidth,
-            PanelLayout.ROW);
+    var goalCell = new Rect(describeRow.right() - 30, describeRow.y(), 30, PanelLayout.ROW);
     slotGoal =
         settings(
             addRenderableWidget(
@@ -244,13 +226,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
         Tooltip.create(
             Component.translatable(
                 "gui.factorycore.buffer.slot_goal.help", BufferPolicy.MAX_TARGET)));
-    setSlotGoal =
-        settings(
-            button(
-                new Rect(
-                    goalCell.right() - goalSetWidth, goalCell.y(), goalSetWidth, PanelLayout.ROW),
-                "set",
-                this::slotGoal));
+    slotGoal.setResponder(typed -> typedDelay = TYPED_DELAY);
     var idCells =
         PanelLayout.fit(
             new Rect(describeRow.x(), describeRow.y(), describeRow.width(), PanelLayout.ROW),
@@ -401,13 +377,11 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
             action));
   }
 
-  /** The Set button's cell at the right end of a number cell. */
-  private static Rect setCell(Rect cell, int width) {
-    return new Rect(cell.right() - width, cell.y(), width, cell.height());
-  }
+  /** Ticks after the last keystroke before typed numbers go to the draft. */
+  private static final int TYPED_DELAY = 6;
 
-  /** A caption, then a number field up to the Set button. */
-  private EditBox number(Rect cell, String key, int setWidth) {
+  /** A caption, then a number field filling the cell; typing sends it to the draft (Q143). */
+  private EditBox number(Rect cell, String key) {
     int caption =
         font.width(Component.translatable("gui.factorycore.buffer." + key)) + PanelLayout.GAP + 2;
     var box =
@@ -417,10 +391,11 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
                     font,
                     leftPos + cell.x() + caption,
                     topPos + cell.y() + 1,
-                    cell.width() - caption - setWidth - 2,
+                    cell.width() - caption - 2,
                     16,
                     Component.translatable("gui.factorycore.buffer." + key))));
     box.setMaxLength(3);
+    box.setResponder(typed -> typedDelay = TYPED_DELAY);
     return box;
   }
 
@@ -442,6 +417,37 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     } catch (NumberFormatException invalid) {
       minecraft.player.displayClientMessage(
           Component.translatable("gui.factorycore.buffer.status.invalid"), true);
+    }
+  }
+
+  /**
+   * Q143: sends the rate, goal and slot goal that were typed and differ from the draft, so Apply
+   * saves them; a number that is not valid yet waits for more typing (Enter says it is invalid).
+   */
+  private void sendTyped() {
+    var view = menu.view();
+    var typedRate = parsed(rate);
+    if (typedRate != null && typedRate != view.rate())
+      send(BufferSettingsPackets.RATE, 0, typedRate, "", new byte[32]);
+    var typedTarget = parsed(target);
+    if (typedTarget != null && typedTarget != view.target())
+      send(BufferSettingsPackets.TARGET, 0, typedTarget, "", new byte[32]);
+    if (slotGoal.visible) {
+      int own = ownGoal(selectedRule);
+      var typedGoal = parsed(slotGoal);
+      if (slotGoal.getValue().isBlank()
+          ? own != BufferPolicy.DEFAULT_GOAL
+          : typedGoal != null && typedGoal != own) slotGoal();
+    }
+  }
+
+  /** The box's number when it is a valid amount, else null. */
+  private static Integer parsed(EditBox box) {
+    try {
+      int value = Integer.parseInt(box.getValue().strip());
+      return value < 0 || value > BufferPolicy.MAX_TARGET ? null : value;
+    } catch (NumberFormatException invalid) {
+      return null;
     }
   }
 
@@ -493,6 +499,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
   @Override
   protected void containerTick() {
     super.containerTick();
+    if (typedDelay >= 0 && typedDelay-- == 0) sendTyped();
     sync();
   }
 
@@ -531,7 +538,7 @@ public final class BufferSettingsScreen extends AbstractContainerScreen<BufferSe
     takeOne.active = inventory && !view.busy() && selected;
     takeStack.active = takeOne.active;
     returning.active = inventory && !view.busy() && view.staged() > 0 && !view.uncertain();
-    slotGoal.visible = setSlotGoal.visible = slotGoals();
+    slotGoal.visible = slotGoals();
     if (shown != view.revision() || shownGoalRule != selectedRule) {
       if (!slotGoal.isFocused()) {
         int own = ownGoal(selectedRule);

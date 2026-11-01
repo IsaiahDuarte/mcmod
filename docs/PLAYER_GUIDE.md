@@ -441,7 +441,10 @@ The screen sets the following:
   chests work without setting anything.
 
 It also shows what it is attached to (the container's name, such as *Chest* or the
-name you gave it on an anvil), which side of it is used, and whether it is ready. **Apply & Close** saves, and **Cancel** discards. Saving needs Edit; without
+name you gave it on an anvil) and whether it is ready.
+- **Side:** a row of the six directions shows which way it faces (selected). Directions with
+  a container (a chest, barrel or machine) can be picked; hover one to see which block it is.
+  Picking one turns the Interface to face that block and reopens the screen. It needs Edit. **Apply & Close** saves, and **Cancel** discards. Saving needs Edit; without
 it the screen is read-only. A container can be connected by only one Interface.
 
 ### Buffer mode
@@ -456,9 +459,9 @@ The **Settings** tab controls what the network does with the buffer:
   - Export pulls matching items from storage into the buffer.
   - Stock keeps the buffer filled to the **Goal**. With **Only these**, each
     filter slot can have its own goal: select the slot, type an amount in the
-    box beside its description and press **Set** (or Enter). The slot shows its
+    box beside its description. The slot shows its
     goal in the corner and counts only what it matches, so one buffer can keep
-    64 coal and 16 iron. Empty the box and **Set** to go back to the Goal.
+    64 coal and 16 iron. Empty the box to go back to the Goal.
 - **Filter slots:** click a slot while holding an item to add it, drag an item
   from JEI, or use **Sample**. Click a filled slot to change how it matches:
   the item (any components), **=** that exact item, for tools and armour **%**
@@ -466,8 +469,11 @@ The **Settings** tab controls what the network does with the buffer:
   Right-click removes it. **Add by ID…** lets you type an ID or #tag instead.
   **Filter** chooses all items, allow the slots, or block the slots. **Clear**
   resets to all items.
-- **Rate** and **Goal** take a number and **Set**. **Apply** saves your changes;
-  **Reset** discards them.
+- **Rate** and **Goal** take a number; what you type joins your changes a moment later
+  (or at once with Enter). **Apply** saves your changes; **Reset** discards them.
+
+Other mods' buttons, such as an inventory-sort button, are hidden on our screens where they
+would cover our controls or where the screen shows no inventory slots.
 
 The **Inventory** tab shows the nine slots.
 - **Take 1 / Take 64** move a selected item to you; Shift-click your own item to
@@ -836,7 +842,8 @@ applies.
 ## Wrench
 
 - **Turn:** use it on an Importer, Exporter, cable port, Storage Interface or Crafter to
-  turn it to the next side that touches a block (not a cable or another device). A turned
+  turn it to the next side that touches a block (not a cable or another device). To pick a
+  Storage Interface's side directly, use the **Side** row on its screen. A turned
   port works on the new side at once. It needs Edit rights. It waits while something is
   still moving through the port; try again a moment later. A turned Importer or Exporter
   pauses and resumes for whoever started it, as after any settings change.

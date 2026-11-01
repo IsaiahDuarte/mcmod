@@ -37,7 +37,7 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
   private static final ConnectorSettings.Access[] ACCESS = ConnectorSettings.Access.values();
 
   private static final int BODY =
-      6 * (PanelLayout.ROW + PanelLayout.GAP)
+      7 * (PanelLayout.ROW + PanelLayout.GAP)
           + PanelLayout.LINE
           + PanelLayout.GAP
           + PanelLayout.LINE;
@@ -56,6 +56,10 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
   private ChoiceButton settingsView, filterView;
   private final List<ChoiceButton> kinds = new ArrayList<>(), accesses = new ArrayList<>();
   private final List<AbstractWidget> settingsWidgets = new ArrayList<>();
+
+  /** Q143: one choice per face, in 3D order: the Interface faces the block on the chosen one. */
+  private final List<ChoiceButton> faces = new ArrayList<>();
+
   private SlotPicker picker;
   private boolean picking;
   private ResourceKind kind = ResourceKind.ITEM;
@@ -259,6 +263,24 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
             () -> filter(ConnectorSettingsPackets.FilterCommand.TAG, 0, filterId.getValue()));
 
     // The Interface's mode, then the result of the last Apply.
+    // Q143 (n20): which side it faces, chosen explicitly (the Wrench still turns it one step).
+    faces.clear();
+    var faceCells =
+        PanelLayout.columns(rows.row(), net.minecraft.core.Direction.values().length, 2);
+    for (var face : net.minecraft.core.Direction.values()) {
+      int index = face.get3DDataValue();
+      var button =
+          choice(
+              faceCells.get(index),
+              Component.translatable("direction.factorycore." + face.getName()),
+              "gui.factorycore.connector.face.none",
+              () ->
+                  minecraft.gameMode.handleInventoryButtonClick(
+                      menu.containerId,
+                      dev.izzy.factorycore.platform.storage.ConnectorSettingsMenu.TURN + index));
+      faces.add(button);
+      settingsWidgets.add(button);
+    }
     modeRow = rows.row();
     InterfaceModeRow.add(
         this::addRenderableWidget,
@@ -400,6 +422,26 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
     for (int i = 0; i < ACCESS.length; i++) {
       accesses.get(i).setSelected(ACCESS[i] == access);
       accesses.get(i).active = editable && ACCESS[i] != access;
+    }
+    for (int i = 0; i < faces.size(); i++) {
+      var face = net.minecraft.core.Direction.from3DDataValue(i);
+      var block = view.faces().isEmpty() ? "" : view.faces().get(i);
+      boolean current = view.facing() == i;
+      faces.get(i).setSelected(current);
+      faces.get(i).active = editable && !current && !block.isEmpty();
+      var direction = Component.translatable("direction.factorycore." + face.getName());
+      faces
+          .get(i)
+          .setTooltip(
+              Tooltip.create(
+                  block.isEmpty()
+                      ? Component.translatable("gui.factorycore.connector.face.none", direction)
+                      : Component.translatable(
+                          current
+                              ? "gui.factorycore.connector.face.current"
+                              : "gui.factorycore.connector.face.help",
+                          Component.translatable(block),
+                          direction)));
     }
     apply.active = editable && view.generation() > 0;
     priority.setEditable(editable);
@@ -553,7 +595,8 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
       caption(g, "window_first", slotHalves.get(0));
       caption(g, "window_count", slotHalves.get(1));
     }
-    // The side it reaches and how fast, on one muted line (details in the rate tooltip).
+    // What it reaches and how fast, on one muted line (details in the rate tooltip); the face
+    // row below shows which side (Q143).
     // Q101 (M123): what it is attached to comes first ("Chest · East · up to …").
     var info =
         view.attachedName().isEmpty() && view.attachedKey().isEmpty()
@@ -562,8 +605,6 @@ public final class ConnectorSettingsScreen extends AbstractContainerScreen<Conne
                 ? Component.translatable(view.attachedKey())
                 : Component.literal(view.attachedName());
     info.append(" · ")
-        .append(Component.translatable("direction.factorycore." + view.side()))
-        .append(" · ")
         .append(
             Component.translatable(
                 "gui.factorycore.connector.speed",

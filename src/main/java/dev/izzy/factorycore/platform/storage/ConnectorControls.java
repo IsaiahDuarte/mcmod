@@ -28,6 +28,15 @@ final class ConnectorControls {
     }
   }
 
+  /** Opens the Storage Interface's settings screen. */
+  static void open(ServerPlayer server, ConnectorEntity entity) {
+    MenuSession.open(
+        server,
+        dev.izzy.factorycore.platform.DeviceNames.title(
+            entity, Component.translatable("gui.factorycore.interface.title.storage")),
+        (id, inventory, session) -> new ConnectorSettingsMenu(id, inventory, entity, session));
+  }
+
   /** Empty-hand use in Storage or Machine mode opens the settings screen (U16: no shortcuts). */
   static InteractionResult use(Level level, BlockPos position, Player player) {
     if (!player.getMainHandItem().isEmpty()) return InteractionResult.PASS;
@@ -42,11 +51,7 @@ final class ConnectorControls {
       }
       entity.validatePlaced();
       if (!entity.canUse(server)) return InteractionResult.FAIL;
-      MenuSession.open(
-          server,
-          dev.izzy.factorycore.platform.DeviceNames.title(
-              entity, Component.translatable("gui.factorycore.interface.title.storage")),
-          (id, inventory, session) -> new ConnectorSettingsMenu(id, inventory, entity, session));
+      open(server, entity);
       return InteractionResult.CONSUME;
     } catch (IllegalArgumentException | IllegalStateException failure) {
       player.displayClientMessage(

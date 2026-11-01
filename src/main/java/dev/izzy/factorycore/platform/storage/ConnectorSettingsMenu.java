@@ -210,7 +210,9 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
                     new dev.izzy.factorycore.platform.resource.PlatformResourceCodec(
                         player().registryAccess())),
                 attachedKey(),
-                attachedName()));
+                attachedName(),
+                connector.targetDirection().get3DDataValue(),
+                faces()));
   }
 
   /** Q101 (M123): the attached block's translation key, or "" for air. */
@@ -390,8 +392,76 @@ public final class ConnectorSettingsMenu extends AbstractContainerMenu
     return upgrade.get();
   }
 
+  /**
+   * Q143 (playthrough note 20): button {@code TURN} + a face's 3D index points the Interface at the
+   * block on that face, an explicit choice in place of the Wrench's next-face turn. It needs a
+   * block with a block entity there (not a device or cable) and Edit; on success the screen reopens
+   * facing it.
+   */
+  public static final int TURN = 300;
+
+  /** The view's faces: per face in 3D order, the neighbour's name key, or "" if none to face. */
+  private java.util.List<String> faces() {
+    var faces = new java.util.ArrayList<String>(6);
+    for (var face : Direction.values()) {
+      var position = connector.getBlockPos();
+      var level = connector.serverLevel();
+      faces.add(
+          faceable(face)
+              ? level.getBlockState(position.relative(face)).getBlock().getDescriptionId()
+              : "");
+    }
+    return faces;
+  }
+
+  /** A face the screen offers: a block with a block entity (a container), not a device or cable. */
+  private boolean faceable(Direction face) {
+    var level = connector.serverLevel();
+    var position = connector.getBlockPos();
+    return WrenchItem.attachable(level, position, face)
+        && level.getBlockEntity(position.relative(face)) != null;
+  }
+
+  private boolean turn(ServerPlayer sender, Direction face) {
+    if (face == connector.targetDirection() || !faceable(face)) {
+      status = MachineSettingsPackets.Status.INVALID;
+      publish();
+      return false;
+    }
+    try {
+      if (connector.turn(dev.izzy.factorycore.platform.Actors.of(sender), face)
+          != dev.izzy.factorycore.core.network.NetworkAuthority.Decision.ALLOWED) {
+        status = MachineSettingsPackets.Status.DENIED;
+        publish();
+        return false;
+      }
+    } catch (IllegalStateException | IllegalArgumentException refused) {
+      status =
+          "turn_busy".equals(refused.getMessage())
+              ? MachineSettingsPackets.Status.SWITCH_BUSY
+              : MachineSettingsPackets.Status.INVALID;
+      publish();
+      return false;
+    }
+    sender.closeContainer();
+    ConnectorControls.open(sender, connector);
+    sender.displayClientMessage(
+        Component.translatable(
+            "message.factorycore.wrench_turned",
+            Component.translatable("direction.factorycore." + face.getName())),
+        true);
+    return true;
+  }
+
   @Override
   public boolean clickMenuButton(Player player, int button) {
+    if (button >= TURN && button < TURN + 6) {
+      if (connector == null
+          || !current()
+          || !(player instanceof ServerPlayer sender)
+          || sender != viewer) return false;
+      return turn(sender, Direction.from3DDataValue(button - TURN));
+    }
     if (dev.izzy.factorycore.platform.upgrade.UpgradeSlots.requested(button))
       return connector != null
           && player instanceof ServerPlayer upgrader

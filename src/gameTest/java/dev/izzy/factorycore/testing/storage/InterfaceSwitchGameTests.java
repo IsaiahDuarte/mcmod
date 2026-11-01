@@ -27,6 +27,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -210,6 +212,87 @@ public final class InterfaceSwitchGameTests {
                       && kind(h) == InterfaceKind.BUFFER
                       && h.getBlockEntity(PORT) instanceof BufferedInterfaceEntity,
                   "The screen closes and the Interface is now a Buffer");
+              owner.connection.disconnect(Component.literal("done"));
+            })
+        .thenSucceed();
+  }
+
+  /**
+   * Q143 (playthrough note 20): the screen lists the faces that touch a block and points the
+   * Interface at the chosen one, reopening on it; a face with nothing (or the controller) and the
+   * current face are refused.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void screenFaceButtonTurnsToTheChosenBlock(GameTestHelper h) {
+    var owner = player(h);
+    owner.getInventory().clearContent();
+    var net = Net.in(h, owner.getUUID());
+    net.controller(ROOT);
+    h.setBlock(PORT.east(), Blocks.CHEST);
+    h.setBlock(PORT.above(), Blocks.BARREL);
+    h.setBlock(PORT.below(), Blocks.STONE);
+    h.setBlock(PORT, InterfaceContent.state(InterfaceKind.STORAGE, Direction.EAST));
+    ConnectorEntity connector = h.getBlockEntity(PORT);
+    connector.place(new ItemStack(InterfaceContent.ITEM.get()));
+    ConnectorSettingsMenu[] menu = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, net))
+        .thenExecute(
+            () -> {
+              h.useBlock(PORT, owner);
+              h.assertTrue(
+                  owner.containerMenu instanceof ConnectorSettingsMenu,
+                  "Storage Interface screen opened");
+              menu[0] = (ConnectorSettingsMenu) owner.containerMenu;
+            })
+        .thenWaitUntil(
+            () -> {
+              menu[0].broadcastChanges();
+              h.assertTrue(menu[0].view().faces().size() == 6, "The view lists the six faces");
+            })
+        .thenExecute(
+            () -> {
+              var view = menu[0].view();
+              h.assertTrue(
+                  view.facing() == Direction.EAST.get3DDataValue()
+                      && view.faces()
+                          .get(Direction.EAST.get3DDataValue())
+                          .equals("block.minecraft.chest")
+                      && view.faces()
+                          .get(Direction.UP.get3DDataValue())
+                          .equals("block.minecraft.barrel")
+                      && view.faces().get(Direction.WEST.get3DDataValue()).isEmpty()
+                      && view.faces().get(Direction.NORTH.get3DDataValue()).isEmpty()
+                      && view.faces().get(Direction.DOWN.get3DDataValue()).isEmpty(),
+                  "Faces: the chest (current) and the barrel; not the controller, stone or air, was "
+                      + view.faces());
+              h.assertFalse(
+                  menu[0].clickMenuButton(
+                      owner, ConnectorSettingsMenu.TURN + Direction.WEST.get3DDataValue()),
+                  "The controller's face is refused");
+              h.assertFalse(
+                  menu[0].clickMenuButton(
+                      owner, ConnectorSettingsMenu.TURN + Direction.DOWN.get3DDataValue()),
+                  "Plain stone is not offered or accepted");
+              h.assertFalse(
+                  menu[0].clickMenuButton(
+                      owner, ConnectorSettingsMenu.TURN + Direction.EAST.get3DDataValue()),
+                  "The current face changes nothing");
+              h.assertTrue(
+                  h.getLevel()
+                          .getBlockState(h.absolutePos(PORT))
+                          .getValue(BlockStateProperties.FACING)
+                      == Direction.EAST,
+                  "Refusals left it facing the chest");
+              h.assertTrue(
+                  menu[0].clickMenuButton(
+                      owner, ConnectorSettingsMenu.TURN + Direction.UP.get3DDataValue()),
+                  "The barrel's face turns it");
+              h.assertTrue(
+                  connector.targetDirection() == Direction.UP
+                      && owner.containerMenu instanceof ConnectorSettingsMenu reopened
+                      && reopened != menu[0],
+                  "It faces the barrel and the screen reopened on it");
               owner.connection.disconnect(Component.literal("done"));
             })
         .thenSucceed();

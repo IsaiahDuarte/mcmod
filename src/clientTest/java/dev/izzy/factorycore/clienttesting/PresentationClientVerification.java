@@ -134,6 +134,63 @@ public final class PresentationClientVerification {
     NeoForge.EVENT_BUS.addListener(
         (net.neoforged.neoforge.client.event.ClientChatReceivedEvent.System event) ->
             chat.add(event.getMessage().getString()));
+    NeoForge.EVENT_BUS.addListener(this::sortMod);
+  }
+
+  /** Q143: while true, {@link #sortMod} adds a sort button the way Inventory Tweaks does. */
+  private boolean sortMod;
+
+  /**
+   * Q143: Inventory Tweaks' placement (from its 1.21.1 jar): for a group of nine or more player
+   * slots, a 14x16 button at the right-most (then lowest) slot's x + 17, y, whether or not the slot
+   * is shown.
+   */
+  private void sortMod(net.neoforged.neoforge.client.event.ScreenEvent.Init.Post event) {
+    if (!sortMod
+        || !(event.getScreen()
+            instanceof
+            net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen)) return;
+    var slots =
+        screen.getMenu().slots.stream()
+            .filter(slot -> slot.container instanceof net.minecraft.world.entity.player.Inventory)
+            .toList();
+    if (slots.size() < 9) return;
+    var last =
+        slots.stream()
+            .max(
+                java.util.Comparator.<net.minecraft.world.inventory.Slot>comparingInt(
+                        slot -> slot.x)
+                    .thenComparingInt(slot -> slot.y))
+            .orElseThrow();
+    event.addListener(
+        Button.builder(Component.literal("S"), pressed -> {})
+            .bounds(screen.getGuiLeft() + last.x + 17, screen.getGuiTop() + last.y, 14, 16)
+            .build());
+  }
+
+  /** The fake sort button is the only foreign widget; it is hidden or clear of our widgets. */
+  private boolean sortButtonClear(Minecraft client, boolean shown, String page) {
+    var foreign = dev.izzy.factorycore.platform.client.ForeignWidgets.on(client.screen);
+    if (foreign.size() != 1) return false;
+    var sort = foreign.getFirst();
+    if (sort.visible != shown) return false;
+    for (var child : client.screen.children())
+      if (child != sort
+          && child instanceof net.minecraft.client.gui.components.AbstractWidget other
+          && other.visible
+          && sort.visible
+          && sort.getX() < other.getX() + other.getWidth()
+          && other.getX() < sort.getX() + sort.getWidth()
+          && sort.getY() < other.getY() + other.getHeight()
+          && other.getY() < sort.getY() + sort.getHeight())
+        throw new IllegalStateException("Sort button overlaps " + other.getMessage().getString());
+    evidence
+        .append("sort button on ")
+        .append(page)
+        .append(": ")
+        .append(sort.visible ? "shown at " + sort.getX() + "," + sort.getY() : "hidden")
+        .append('\n');
+    return true;
   }
 
   // ------------------------------------------------------------------ plumbing
@@ -2677,7 +2734,28 @@ public final class PresentationClientVerification {
               dev.izzy.factorycore.core.storage.BufferRegistry.Mode.PAUSED,
               new dev.izzy.factorycore.core.storage.BufferPolicy(filter, 64, 64));
         });
+    // Q143: with a sort mod's button added, it stays hidden on Settings (the player's slots are
+    // hidden there) and shows clear of our widgets on Inventory.
+    step(
+        client -> {
+          sortMod = true;
+          return true;
+        });
     use(base.east(3), Direction.SOUTH, false);
+    step(
+        client ->
+            client.screen instanceof BufferSettingsScreen
+                && waited() > 4
+                && sortButtonClear(client, false, "Settings")
+                && press(client, "Inventory"));
+    step(client -> waited() > 4 && sortButtonClear(client, true, "Inventory"));
+    step(client -> press(client, "Settings"));
+    step(
+        client -> {
+          if (waited() < 4 || !sortButtonClear(client, false, "Settings again")) return false;
+          sortMod = false;
+          return true;
+        });
     scales("buffer", BufferSettingsScreen.class, false);
     // Q73: Stock mode with goals on two slots: badges on the slots and the selected slot's box.
     PolicySwap[] swap = {null};

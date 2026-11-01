@@ -65,10 +65,17 @@ public final class WrenchItem extends Item {
   static Direction nextFace(Level level, BlockPos position, Direction from) {
     for (int step = 1; step < 6; step++) {
       var face = Direction.from3DDataValue((from.get3DDataValue() + step) % 6);
-      var neighbour = level.getBlockState(position.relative(face));
-      if (!neighbour.isAir() && !(neighbour.getBlock() instanceof NetworkedBlock)) return face;
+      if (attachable(level, position, face)) return face;
     }
     return null;
+  }
+
+  /**
+   * True when the neighbour on {@code face} is a block other than a Factory Core device or cable.
+   */
+  public static boolean attachable(Level level, BlockPos position, Direction face) {
+    var neighbour = level.getBlockState(position.relative(face));
+    return !neighbour.isAir() && !(neighbour.getBlock() instanceof NetworkedBlock);
   }
 
   private static InteractionResult turn(

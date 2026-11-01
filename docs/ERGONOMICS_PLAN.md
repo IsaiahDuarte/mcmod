@@ -432,7 +432,10 @@ screens.
   an empty-handed use opens the screen in place of the chat status line.
   [Evidence](evidence/ergonomics-q142-fuel-generator-screen-2026-11-01.md). A screen showing the fuel slot, burn time,
   stored and produced FE, and its status.
-- [ ] **Q143 — Interface screen (n20).** Size M.
+- [x] **Q143 — Interface screen (n20).** Size M. Done 2026-11-01 (commit subject `Q143:`):
+  other mods' buttons are hidden where they would cover ours or no slots show; the Buffer's
+  three Set buttons are gone; the Storage Interface's screen has an explicit Side row.
+  [Evidence](evidence/ergonomics-q143-interface-screen-2026-11-01.md).
   - **Sort mod clash:** the screen clashes with inventory-sort mods; mark our slot areas so sort
     buttons don't overlap them.
   - **Buttons:** fewer, clearer buttons.

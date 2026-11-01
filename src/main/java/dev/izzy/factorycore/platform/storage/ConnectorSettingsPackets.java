@@ -85,7 +85,9 @@ public final class ConnectorSettingsPackets {
       String insertMode,
       List<FilterEdits.Rule> insertRules,
       String attachedKey,
-      String attachedName)
+      String attachedName,
+      int facing,
+      List<String> faces)
       implements CustomPacketPayload {
     /**
      * Q101 (M123): the attached container, as its block's translation key ("" when nothing is
@@ -126,7 +128,9 @@ public final class ConnectorSettingsPackets {
           insertMode,
           insertRules,
           "",
-          "");
+          "",
+          -1,
+          List.of());
     }
 
     public static final Type<View> TYPE =
@@ -143,6 +147,10 @@ public final class ConnectorSettingsPackets {
           || insertMode.length() > 16
           || attachedKey.length() > MAX_ATTACHED_KEY
           || attachedName.length() > MAX_ATTACHED_NAME
+          || facing < -1
+          || facing > 5
+          || !faces.isEmpty() && faces.size() != 6
+          || faces.stream().anyMatch(face -> face.length() > MAX_ATTACHED_KEY)
           || insertRules.size() > dev.izzy.factorycore.core.resource.ResourceFilter.MAX_TERMS
           || maxRate > ThroughputTier.maxQuantum(form.kind())
           || itemSlots < 0
@@ -178,6 +186,9 @@ public final class ConnectorSettingsPackets {
               for (var rule : v.insertRules()) FilterEdits.Rule.write(b, rule);
               b.writeUtf(v.attachedKey(), MAX_ATTACHED_KEY);
               b.writeUtf(v.attachedName(), MAX_ATTACHED_NAME);
+              b.writeVarInt(v.facing() + 1);
+              b.writeVarInt(v.faces().size());
+              for (var face : v.faces()) b.writeUtf(face, MAX_ATTACHED_KEY);
             },
             b ->
                 new View(
@@ -197,7 +208,17 @@ public final class ConnectorSettingsPackets {
                     b.readUtf(16),
                     rules(b),
                     b.readUtf(MAX_ATTACHED_KEY),
-                    b.readUtf(MAX_ATTACHED_NAME)));
+                    b.readUtf(MAX_ATTACHED_NAME),
+                    b.readVarInt() - 1,
+                    ConnectorSettingsPackets.faces(b)));
+  }
+
+  private static List<String> faces(RegistryFriendlyByteBuf b) {
+    int size = b.readVarInt();
+    if (size != 0 && size != 6) throw new IllegalArgumentException("Connector face count");
+    var faces = new java.util.ArrayList<String>(size);
+    for (int i = 0; i < size; i++) faces.add(b.readUtf(View.MAX_ATTACHED_KEY));
+    return faces;
   }
 
   private static List<FilterEdits.Rule> rules(RegistryFriendlyByteBuf b) {
