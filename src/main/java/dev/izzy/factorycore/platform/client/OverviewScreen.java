@@ -33,8 +33,23 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
           new Step(NetworkTopology.Role.INTERFACE, "machines", true),
           new Step(NetworkTopology.Role.CRAFTER, "crafter", true));
 
+  /** Q141 (n1): what the network has, as item tiles: role, the block that stands for it. */
+  private static final NetworkTopology.Role[] SHOWN = {
+    NetworkTopology.Role.STORAGE,
+    NetworkTopology.Role.TERMINAL,
+    NetworkTopology.Role.INTERFACE,
+    NetworkTopology.Role.CRAFTER,
+    NetworkTopology.Role.PROGRAM
+  };
+
+  private static final String[] ICONS = {
+    "storage_drive", "storage_terminal", "importer", "crafter", "program_controller"
+  };
+
+  private static final int TILE = 20;
+
   private static final int STATUS_HEIGHT = 2 * PanelLayout.LINE,
-      COUNTS_HEIGHT = 3 * PanelLayout.LINE,
+      COUNTS_HEIGHT = PanelLayout.LINE + TILE,
       STEP_HEIGHT = 2 * PanelLayout.LINE + 2,
       CHECK_WIDTH = PanelLayout.WIDE - 2 * PanelLayout.EDGE - 10;
 
@@ -60,9 +75,9 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
         "gui.factorycore.overview.step." + step.key() + (done ? ".done" : ".todo"));
   }
 
-  /** The checklist's height: each step takes the lines its text wraps to. */
+  /** The checklist's height: two headings, and each step takes the lines its text wraps to. */
   private int checklistHeight() {
-    int height = 0;
+    int height = 2 * PanelLayout.LINE;
     for (var step : STEPS)
       height += Math.max(1, font.split(stepText(step), CHECK_WIDTH).size()) * PanelLayout.LINE + 2;
     return height;
@@ -163,24 +178,25 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
     }
     // The state just changed and the next tick lays the panel out again; draw nothing until then.
     if (counts == null || energy == null || checklist == null) return;
-    // What the network has, in two columns.
-    var columns = PanelLayout.columns(counts, 2, PanelLayout.GAP);
-    NetworkTopology.Role[] shown = {
-      NetworkTopology.Role.STORAGE,
-      NetworkTopology.Role.TERMINAL,
-      NetworkTopology.Role.INTERFACE,
-      NetworkTopology.Role.CRAFTER,
-      NetworkTopology.Role.PROGRAM
-    };
-    for (int i = 0; i < shown.length; i++) {
-      var cell = columns.get(i % 2);
+    // What the network has: a heading, then a tile per kind of device with its count.
+    graphics.drawString(
+        font,
+        Component.translatable("gui.factorycore.overview.has"),
+        counts.x(),
+        counts.y(),
+        Panels.MUTED,
+        false);
+    for (int i = 0; i < SHOWN.length; i++) {
+      var tile = tile(i);
+      int count = menu.count(SHOWN[i]);
+      Panels.inset(graphics, new Rect(tile.x(), tile.y(), TILE, TILE));
+      graphics.renderFakeItem(icon(i), tile.x() + 2, tile.y() + 2);
       graphics.drawString(
           font,
-          Component.translatable(
-              "gui.factorycore.overview.count." + key(shown[i]), menu.count(shown[i])),
-          cell.x(),
-          cell.y() + (i / 2) * PanelLayout.LINE,
-          Panels.TEXT,
+          Integer.toString(count),
+          tile.x() + TILE + 3,
+          tile.y() + (TILE - 8) / 2,
+          count > 0 ? Panels.TEXT : Panels.MUTED,
           false);
     }
     // Energy: the total, then each kind of device that uses it.
@@ -205,9 +221,30 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
           energy.y() + (i + 1) * PanelLayout.LINE,
           Panels.MUTED,
           false);
-    // The checklist: a tick or a cross (never colour alone) and the next thing to do.
+    // The checklist: a tick or a cross (never colour alone) and the next thing to do, under
+    // "Getting started" (needed) and "Next steps" (extras, marked with a circle).
     int y = checklist.y();
+    boolean extras = false;
+    graphics.drawString(
+        font,
+        Component.translatable("gui.factorycore.overview.steps.needed"),
+        checklist.x(),
+        y,
+        Panels.MUTED,
+        false);
+    y += PanelLayout.LINE;
     for (var step : STEPS) {
+      if (step.optional() && !extras) {
+        extras = true;
+        graphics.drawString(
+            font,
+            Component.translatable("gui.factorycore.overview.steps.extra"),
+            checklist.x(),
+            y,
+            Panels.MUTED,
+            false);
+        y += PanelLayout.LINE;
+      }
       boolean done = menu.count(step.role()) > 0;
       String mark = done ? "✔" : step.optional() ? "○" : "✖";
       int color = done ? Panels.GOOD : step.optional() ? Panels.MUTED : Panels.BAD;
@@ -224,10 +261,35 @@ public final class OverviewScreen extends AbstractContainerScreen<OverviewMenu> 
     }
   }
 
+  /** Tile {@code i}'s panel-relative box: icon well and count, five across the counts row. */
+  private Rect tile(int i) {
+    int width = counts.width() / SHOWN.length;
+    return new Rect(counts.x() + i * width, counts.y() + PanelLayout.LINE, width, TILE);
+  }
+
+  private static net.minecraft.world.item.ItemStack icon(int i) {
+    var item =
+        net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                dev.izzy.factorycore.platform.FactoryCoreMod.MOD_ID, ICONS[i]));
+    return new net.minecraft.world.item.ItemStack(item);
+  }
+
   @Override
   public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     super.render(graphics, mouseX, mouseY, partial);
     renderTooltip(graphics, mouseX, mouseY);
+    if (counts != null && detailed())
+      for (int i = 0; i < SHOWN.length; i++)
+        if (tile(i).offset(leftPos, topPos).contains(new Rect(mouseX, mouseY, 0, 0))) {
+          graphics.renderTooltip(
+              font,
+              Component.translatable(
+                  "gui.factorycore.overview.count." + key(SHOWN[i]), menu.count(SHOWN[i])),
+              mouseX,
+              mouseY);
+          return;
+        }
     if (energy != null
         && detailed()
         && energy.offset(leftPos, topPos).contains(new Rect(mouseX, mouseY, 0, 0)))

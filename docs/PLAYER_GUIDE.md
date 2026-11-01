@@ -82,8 +82,10 @@ A Controller starts a private network owned by whoever placed it. Cables connect
 all six faces. Connect everything to exactly one controller: two connected
 controllers stop the network until you separate them. A long cable run can take a few
 ticks to come online. Use the controller to open the **Network** overview: whether the
-network works (and what to fix if not), what it has, its **energy use**, and a checklist of
-what a first network needs: storage, a terminal, then machines and Crafters. Energy use is
+network works (and what to fix if not), what it has (a tile per kind of device with its count;
+hover over one for its name), its **energy use**, and a checklist. **Getting started** lists
+what a first network needs (storage and a terminal); **Next steps** lists the extras you can
+add when you want them (machines and Crafters), marked with a circle until they are there. Energy use is
 what the devices that power themselves (Access Points, Program Controllers and Wireless
 Links) spend, in FE per tick averaged over a second, with each kind's count and use; hover
 over it for the five largest users. **Access…** opens the

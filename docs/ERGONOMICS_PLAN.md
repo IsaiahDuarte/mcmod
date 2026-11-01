@@ -424,7 +424,9 @@ screens.
   encoder's grid, or a cell's item comes from a tag with several members, arrows on the result
   (and on that cell) cycle the choices. The encoded pattern records the one shown. This
   extends the stonecutter cycling (Q6) to crafting recipes and tag ingredients.
-- [ ] **Q141 — Network Controller screen (n1).** Size S. Explain or remove "optional"; make the
+- [x] **Q141 — Network Controller screen (n1).** Size S. Done 2026-11-01 (commit subject
+  `Q141:`): device tiles with counts, "Getting started" and "Next steps" headings replace the
+  "Optional:" prefix. [Evidence](evidence/ergonomics-q141-network-overview-2026-11-01.md). Explain or remove "optional"; make the
   screen look less bare.
 - [ ] **Q142 — Fuel Generator screen (n2).** Size M. A screen showing the fuel slot, burn time,
   stored and produced FE, and its status.
