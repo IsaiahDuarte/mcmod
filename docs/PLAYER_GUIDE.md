@@ -194,8 +194,12 @@ Deposit and withdrawing needs Withdraw.
   sort and grid height are remembered.
 - **Craftable items:** items your Crafters can make have an orange corner. The view
   tool switches between **Stored**, **All** (stored plus craftable items you have none of,
-  marked **+**) and **Craftable** (only craftable items). Click a **+** item (or middle-click any craftable
-  item) to open it in Jobs, ready to type an amount. The view is remembered.
+  marked **Craft**) and **Craftable** (only craftable items). The view is remembered.
+- **Crafting from the grid:** click a **Craft** item (or middle-click any craftable item) to
+  open the craft dialog over the grid. Type an amount (or `>=N` to top stock up to N) and the
+  plan appears below it: the steps, or what is missing. **Start** starts it, **Keep** keeps
+  that many in stock, **Details** opens the full plan in Jobs, and Escape or **Close** closes
+  the dialog. Up and Down step the amount; Enter starts.
 - **Taking items:** left-click takes a stack and right-click takes half. Shift-click
   sends the stack to your inventory. Over an item, Shift+wheel up takes one and Shift+wheel
   down stores one; Ctrl+wheel up adds one to your cursor and Ctrl+wheel down stores one from

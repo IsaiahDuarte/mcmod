@@ -381,7 +381,11 @@ screens.
   confirmed with JEI in the pack. U (uses) and R (recipes)
   on a terminal entry open JEI or EMI, through their APIs, as on any inventory slot. Item
   tooltips use the standard item tooltip, so tooltip mods style them.
-- [ ] **Q138 — One terminal view (n4).** Size L. AE2-style view toggles: everything, stored only,
+- [x] **Q138 — One terminal view (n4).** Size L. Done 2026-11-01 for the craft dialog (commit
+  subject `Q138:`): "Craft" on ghost entries, and a modal over the grid that previews, starts
+  and keeps stock. The view toggles already existed (Stored / All / Craftable, Q62). Inline
+  jobs and inline fluids and energy are split into Q146 and Q147.
+  [Evidence](evidence/ergonomics-q138-craft-dialog-2026-11-01.md). Original scope: AE2-style view toggles: everything, stored only,
   or craftable only.
   - **Inline:** items, fluids, energy and jobs appear inline. An item at zero that can be crafted
     shows "Craft" over it, and clicking it opens the craft-amount dialog (a modal).
@@ -397,6 +401,13 @@ screens.
   - **Recipe conflicts:** a recipe whose result or ingredients can vary (tags, several matching
     recipes) shows arrows to cycle the choices, both in the encoder and on the crafting output.
   - **Overlap:** this overlaps Q69 (larger processing patterns).
+- [ ] **Q146 — Jobs inline in the Items view (n4, from Q138).** Size M. Running jobs appear in the
+  Items view (a strip above the grid with output, progress and a cancel), so following a job
+  doesn't need the Jobs tab. Keep, Plan and Tree stay in Jobs, reached by the dialog's Details.
+- [ ] **Q147 — Fluids and energy inline (n4, from Q138).** Size L. An "Everything" kind in the
+  Items view lists items, fluids and energy in one grid. This needs a mixed-kind server query
+  (search, sort and paging across kinds) and per-kind click rules. Fluid and energy entries
+  can't be taken onto the cursor. Decide whether the separate tabs remain.
 - [ ] **Q141 — Network Controller screen (n1).** Size S. Explain or remove "optional"; make the
   screen look less bare.
 - [ ] **Q142 — Fuel Generator screen (n2).** Size M. A screen showing the fuel slot, burn time,

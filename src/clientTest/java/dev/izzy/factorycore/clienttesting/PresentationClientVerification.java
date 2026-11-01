@@ -1617,15 +1617,34 @@ public final class PresentationClientVerification {
               return screen.mouseClicked(screen.itemX(index) + 9, screen.itemY(index) + 9, 0);
           throw new IllegalStateException("Stick is a zero-count craftable row");
         });
+    // Q138 (n4): the click opens the craft dialog over the grid; typing an amount previews it.
     step(
         client -> {
           var jobs = jobView(client);
           if (jobs.craftables().stream().noneMatch(e -> e.icon().equals("minecraft:stick"))
               || waited() < 6) return false;
-          captures.grab(client, "items-request-scale-4.png");
+          var screen = terminal(client);
+          check(
+              screen.craftDialogItem().equals("minecraft:stick") && !screen.jobsMode(),
+              "Clicking a Craft entry opens the craft dialog, not the Jobs tab");
+          screen.craftDialogAmount("2");
           return true;
         });
-    step(client -> press(client, "Items"));
+    step(
+        client -> {
+          var jobs = jobView(client);
+          if (!jobs.preview().icon().equals("minecraft:stick")
+              || !jobs.preview().amount().equals("2")
+              || waited() < 4) return false;
+          captures.grab(client, "items-request-scale-4.png");
+          // Escape closes the dialog and leaves the terminal open.
+          var screen = terminal(client);
+          screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE, 0, 0);
+          check(
+              screen.craftDialogItem().isEmpty() && client.screen == screen,
+              "Escape closes the craft dialog only");
+          return true;
+        });
     // Q62: the view tool cycles All → Craftable → Stored.
     step(client -> waited() > 4 && pressView(client));
     step(

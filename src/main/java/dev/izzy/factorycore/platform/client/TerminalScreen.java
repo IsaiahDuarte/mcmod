@@ -68,6 +68,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   private final TerminalStorageView storage = new TerminalStorageView(this);
   private final TerminalCraftingPanel crafting = new TerminalCraftingPanel(this);
   private final TerminalJobsView jobs = new TerminalJobsView(this);
+  private final TerminalCraftDialog craftDialog = new TerminalCraftDialog(this);
   private final TerminalPatternsView patterns = new TerminalPatternsView(this);
 
   private EditBox search;
@@ -296,6 +297,31 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   <T extends GuiEventListener & Renderable & NarratableEntry> T add(T widget) {
     return addRenderableWidget(widget);
+  }
+
+  /** A widget that takes input but is drawn by its owner (the craft dialog). */
+  <T extends GuiEventListener & NarratableEntry> T listen(T widget) {
+    return addWidget(widget);
+  }
+
+  /** Q138: opens the craft dialog for a craftable Items entry. */
+  void openCraftDialog(String item, String name) {
+    craftDialog.openFor(item, name);
+  }
+
+  /** The item the craft dialog is open for, or empty (for verification). */
+  public String craftDialogItem() {
+    return craftDialog.item();
+  }
+
+  /** Test hook: types an amount in the craft dialog and previews it. */
+  public void craftDialogAmount(String text) {
+    craftDialog.typeAmount(text);
+  }
+
+  /** Test hook: presses the craft dialog's Start. */
+  public void craftDialogStart() {
+    craftDialog.pressStart();
   }
 
   void rebuild() {
@@ -539,6 +565,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     patterns.init();
     crafting.init();
     jobs.init();
+    craftDialog.init();
     crafting.update();
     // Widgets start visible; the saved views must not take clicks before the first tick.
     showViews();
@@ -814,6 +841,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     var request = VIEWER.take(menu);
     if (request != null) showJobs(request);
     jobs.tick(jobsMode);
+    if (jobsMode || patternsMode || storageHidden() || kind() != 0) craftDialog.close();
+    craftDialog.tick();
     storage.tickVisibility(storageHidden());
     patterns.tick(patternsMode);
     jobs.tickButtons(jobsMode);
@@ -884,6 +913,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
   public void render(GuiGraphics graphics, int mouseX, int mouseY, float partial) {
     super.render(graphics, mouseX, mouseY, partial);
     renderJobsBadge(graphics);
+    craftDialog.render(graphics, mouseX, mouseY, partial);
+    if (craftDialog.covers(mouseX, mouseY)) return;
     renderTooltip(graphics, mouseX, mouseY);
     var lamp = lamp().offset(leftPos, topPos);
     if (mouseX >= lamp.x() - 2
@@ -922,6 +953,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   @Override
   public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    if (craftDialog.mouseClicked(mouseX, mouseY, button)) return true;
     // Q99 (M111): right-clicking the sync tool toggles clearing the viewer's search on open.
     if (button == 1
         && syncButton != null
@@ -970,7 +1002,14 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
    * processing mode, scrolling over a cell changes its per-craft count (Shift: by 8).
    */
   @Override
+  public boolean charTyped(char c, int modifiers) {
+    if (craftDialog.charTyped(c, modifiers)) return true;
+    return super.charTyped(c, modifiers);
+  }
+
+  @Override
   public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    if (craftDialog.covers(mouseX, mouseY)) return true;
     if (jobsMode && jobs.mouseScrolled(mouseX, mouseY, scrollY)) return true;
     if (patternsMode && patterns.mouseScrolled(mouseX, mouseY, scrollY)) return true;
     if (!storageHidden() && storage.mouseScrolled(mouseX, mouseY, scrollY)) return true;
@@ -994,6 +1033,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 
   @Override
   public boolean keyPressed(int key, int scan, int modifiers) {
+    var dialog = craftDialog.keyPressed(key, scan, modifiers);
+    if (dialog != null) return dialog;
     // Q112: Enter in the processing amount box applies it.
     if ((key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) && crafting.applyAmount())
       return true;

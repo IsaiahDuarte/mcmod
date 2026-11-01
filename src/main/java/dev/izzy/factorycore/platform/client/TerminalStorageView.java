@@ -325,7 +325,12 @@ final class TerminalStorageView {
       if (value.craftable() && value.none()) {
         // A ghost: nothing stored, but a pattern can make it.
         Panels.veil(graphics, icon);
-        screen.drawCount(graphics, shown, x, y, "+");
+        screen.drawCount(
+            graphics,
+            shown,
+            x,
+            y,
+            Component.translatable("gui.factorycore.terminal.craft_ghost").getString());
         continue;
       }
       if (value.craftable()) Panels.marker(graphics, new Rect(x + 1, y + 1, 3, 3));
@@ -617,9 +622,10 @@ final class TerminalStorageView {
   private void request(int index) {
     var rows = entries();
     if (index >= rows.size() || !rows.get(index).craftable()) return;
-    var icon = rows.get(index).icon();
-    screen.send(TerminalPackets.REQUEST, rows.get(index).token(), 1, new byte[32]);
-    screen.showJobs(icon);
+    var row = rows.get(index);
+    screen.send(TerminalPackets.REQUEST, row.token(), 1, new byte[32]);
+    // Q138 (n4): the amount is asked for in a dialog over the grid, not in the Jobs tab.
+    screen.openCraftDialog(row.icon(), row.name());
   }
 
   /** Q18: the last Shift-click deposit (slot, item, time), for Shift-double-click. */
