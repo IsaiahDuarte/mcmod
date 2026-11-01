@@ -18,6 +18,11 @@ repositories {
         // mezz_config is JEI's own runtime dependency, needed only by the isolated JEI client run.
         filter { includeGroup 'mezz.jei'; includeGroup 'net.mezzdev.config' }
     }
+    // EMI is an optional, compile-only integration (ADR 0069); only emiTest runs it.
+    exclusiveContent {
+        forRepository { maven { url = 'https://maven.terraformersmc.com/releases/' } }
+        filter { includeGroup 'dev.emi' }
+    }
     // Curios is an optional, compile-only integration (ADR 0069); only curiosTest runs it.
     exclusiveContent {
         forRepository { maven { url = 'https://maven.theillusivec4.top/' } }
@@ -39,6 +44,11 @@ sourceSets {
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
+    // Q16 (ADR 0069): isolated EMI graphical run; the only source set with EMI at runtime.
+    emiTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
     // Q110 (ADR 0069): GameTests with Curios at runtime; the only source set that loads Curios.
     curiosTest {
         compileClasspath += sourceSets.main.output
@@ -52,6 +62,8 @@ configurations.gameTestImplementation.extendsFrom(configurations.implementation)
 configurations.gameTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 configurations.jeiTestImplementation.extendsFrom(configurations.implementation)
 configurations.jeiTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
+configurations.emiTestImplementation.extendsFrom(configurations.implementation)
+configurations.emiTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 configurations.curiosTestImplementation.extendsFrom(configurations.implementation)
 configurations.curiosTestRuntimeOnly.extendsFrom(configurations.runtimeOnly)
 
@@ -60,12 +72,14 @@ neoForge {
     addModdingDependenciesTo(sourceSets.gameTest)
     addModdingDependenciesTo(sourceSets.clientTest)
     addModdingDependenciesTo(sourceSets.jeiTest)
+    addModdingDependenciesTo(sourceSets.emiTest)
     addModdingDependenciesTo(sourceSets.curiosTest)
     mods {
         factorycore { sourceSet(sourceSets.main) }
         factorycore_tests { sourceSet(sourceSets.gameTest) }
         factorycore_client_tests { sourceSet(sourceSets.clientTest) }
         factorycore_jei_tests { sourceSet(sourceSets.jeiTest) }
+        factorycore_emi_tests { sourceSet(sourceSets.emiTest) }
         factorycore_curios_tests { sourceSet(sourceSets.curiosTest) }
     }
     runs {
@@ -163,6 +177,8 @@ verificationRun('wirelessLifecycleServer', dir: 'wireless-lifecycle-run',
     props: ['wireless.server': true, 'wireless.report': reportFile('wireless-lifecycle/result.txt')])
 verificationRun('jeiClient', client: true, dir: 'client-jei-run', sourceSet: sourceSets.jeiTest,
     mods: [neoForge.mods.factorycore, neoForge.mods.factorycore_jei_tests], props: clientReport('client-jei'))
+verificationRun('emiClient', client: true, dir: 'client-emi-run', sourceSet: sourceSets.emiTest,
+    mods: [neoForge.mods.factorycore, neoForge.mods.factorycore_emi_tests], props: clientReport('client-emi'))
 verificationRun('terminalClient', client: true, dir: 'client-terminal-run', props: clientReport('client-terminal'))
 verificationRun('presentationClient', client: true, dir: 'client-presentation-run',
     props: clientReport('client-presentation') + [presentation: true])
@@ -274,7 +290,11 @@ dependencies {
     compileOnly 'mezz.jei:jei-1.21.1-common-api:19.57.0.451'
     compileOnly 'mezz.jei:jei-1.21.1-neoforge-api:19.57.0.451'
     compileOnly 'top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api'
+    compileOnly 'dev.emi:emi-neoforge:1.1.24+1.21.1:api'
     curiosTestCompileOnly 'top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api'
+    // The EMI fixture drives EMI's own handler lookups, which are outside its API.
+    emiTestCompileOnly 'dev.emi:emi-neoforge:1.1.24+1.21.1'
+    emiTestRuntimeOnly 'dev.emi:emi-neoforge:1.1.24+1.21.1'
     curiosTestRuntimeOnly 'top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1'
     jeiTestCompileOnly 'mezz.jei:jei-1.21.1-common-api:19.57.0.451'
     jeiTestCompileOnly 'mezz.jei:jei-1.21.1-neoforge-api:19.57.0.451'
@@ -392,7 +412,7 @@ tasks.register('wasmDeadlineBenchmark', JavaExec) {
 // Compile the isolated graphical fixture in the canonical gate; run it explicitly on a desktop.
 tasks.named('check') {
     dependsOn tasks.named('compileClientTestJava'), tasks.named('compileJeiTestJava'),
-        tasks.named('compileCuriosTestJava')
+        tasks.named('compileEmiTestJava'), tasks.named('compileCuriosTestJava')
 }
 tasks.named('runJeiClient', JavaExec) {
     doFirst {
@@ -402,6 +422,16 @@ tasks.named('runJeiClient', JavaExec) {
     doLast {
         requirePass(reportFile('client-jei/result.txt'), 'JEI graphical verification did not complete.')
         requireCaptures('src/jeiTest/resources/captures/jei.txt', reportFile('client-jei/screenshots'))
+    }
+}
+tasks.named('runEmiClient', JavaExec) {
+    doFirst {
+        delete file('build/client-emi-run/saves/factorycore-emi-verification')
+        delete reportFile('client-emi')
+    }
+    doLast {
+        requirePass(reportFile('client-emi/result.txt'), 'EMI graphical verification did not complete.')
+        requireCaptures('src/emiTest/resources/captures/emi.txt', reportFile('client-emi/screenshots'))
     }
 }
 tasks.named('runTerminalClient', JavaExec) {

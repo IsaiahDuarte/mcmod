@@ -71,6 +71,8 @@ are not gated; the local run is the gate.
 | Terminal tour and restart | `runTerminalRestartClient` (`TerminalClientVerification`) | Every terminal mode, settings screens, program editor/authoring and wireless handheld through real input, then a separate-JVM restart restoring preferences and state |
 | Presentation tour | `runPresentationClient` (`PresentationClientVerification`) | Orientations, lamps/bays, held items, tooltips, every screen at GUI scales 1–4 in the 427×240 minimum, upgrade installs, Jobs mode and access/recovery screens |
 | JEI client | `runJeiClient` (`src/jeiTest`, JEI at runtime only) | Recipe transfer into the grid and ghost drops into the program editor through JEI's own runtime |
+| EMI client | `runEmiClient` (`src/emiTest`, EMI at runtime only) | Crafting, processing, stonecutter and smithing fills, Ctrl request, search sync, drops into the program editor and a Buffer filter, and the upgrade-panel exclusion, through EMI's own filler and drag-drop registries |
+| Curios GameTests | `runCuriosGameTestServer` (`src/curiosTest`, Curios at runtime only) | The open key finds a Wireless Terminal worn in a Curios charm slot |
 | Two-client multiplayer | `runMultiplayerCheck` | Concurrent withdrawals conserve, and revocation applies live, between two real clients |
 | Server benchmark | `runBenchmarkServer` (manual, quiet machine) | Idle/small/large/overload/1,024-network workloads, tick-time percentiles, backlog and exact conservation |
 | Microbenchmarks | `coreBenchmark`, `wasmBenchmark` | Portable core and Wasm timings and allocations |

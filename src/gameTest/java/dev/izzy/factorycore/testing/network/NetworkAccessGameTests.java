@@ -13,6 +13,7 @@ import dev.izzy.factorycore.platform.network.NetworkAccessMenu;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.storage.DeviceSavedData;
 import dev.izzy.factorycore.testing.Net;
 import dev.izzy.factorycore.testing.TestPlayers;
@@ -139,7 +140,9 @@ public final class NetworkAccessGameTests {
                       && menu.view().status() == AccessPackets.Status.UPDATED
                       && listed(menu, guest.getUUID(), view),
                   "One generation step; the view shows the grant");
-              // A second click inside the 2-tick command window is dropped, not applied.
+              // Q127: quick clicks pass up to the burst; one past it is dropped, not applied.
+              for (int click = 1; click < MenuSession.COMMAND_BURST; click++)
+                send(menu, owner, AccessPackets.PAGE, guest.getUUID(), 0);
               send(menu, owner, AccessPackets.GRANT, guest.getUUID(), Permission.CRAFT.ordinal());
               h.assertTrue(
                   !allowed(h, guest, CABLE, Permission.CRAFT)

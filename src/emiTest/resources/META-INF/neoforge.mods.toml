@@ -1,0 +1,19 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+[[mods]]
+modId="factorycore_emi_tests"
+version="0.1.0-dev"
+displayName="Factory Core EMI Verification Fixture"
+[[dependencies.factorycore_emi_tests]]
+modId="factorycore"
+type="required"
+versionRange="[0.1.0-dev]"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.factorycore_emi_tests]]
+modId="emi"
+type="required"
+versionRange="[1.1,)"
+ordering="AFTER"
+side="CLIENT"

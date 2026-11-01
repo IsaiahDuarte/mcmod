@@ -52,7 +52,7 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
       Player player,
       boolean maxTransfer,
       boolean doTransfer) {
-    var available = Holdings.of(player, menu);
+    var available = dev.izzy.factorycore.platform.client.RecipeViewerHoldings.of(player, menu);
     var inputs = cells(slots.getSlotViews(RecipeIngredientRole.INPUT), available);
     var outputs = cells(slots.getSlotViews(RecipeIngredientRole.OUTPUT), available);
     if (inputs.size() > ProcessingTransfer.MAX_INPUTS)

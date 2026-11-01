@@ -649,7 +649,10 @@ New gates:
   Files: `AccessPointEntity.java`, `WirelessAccess.java`, ADR 0054 amendment, balance table.
   Done when: GameTests cover range per tier and the extra cost; PLAYER_GUIDE table updated.
 
-- [ ] **Q16 — EMI support (M16, needs QD2).** Size M.
+- [x] **Q16 — EMI support (M16, needs QD2).** Size M. Done 2026-10-31 (commit subject `Q16,
+  Q127:`). `integration/emi` plugin; `runEmiClient` covers every feature;
+  [ADR 0069](decisions/0069-curios-and-emi.md).
+  [Evidence](evidence/ergonomics-q16-emi-2026-10-31.md).
   Optional EMI plugin with the same features as JEI: crafting and processing transfer (after
   Q5), ghost-slot drag into filters, program-editor drag, and Ctrl-click to request.
   Files: new `client/integration/emi`.
@@ -1154,6 +1157,12 @@ Q80 is not used: the upgrade toolbelt (M89) is part of Q19.
   example program was converted mechanically with the printer, with IR equality checked per
   program. ADRs 0035 and 0062 are superseded, and Machine Inspection prints sentence lines.
 
+- [x] **Q127 — Quick clicks are not dropped.** Size S. Found by Q16's EMI run. Done 2026-10-31
+  (commit subject `Q16, Q127:`). The menu command gate admitted at most one command per 2
+  ticks and silently dropped the rest. So a click right after a search, or a quick double click,
+  could do nothing; the J tool was one example. `TickGate` now allows a burst of 4 back to back.
+  The average stays one per 2 ticks.
+  [Evidence](evidence/ergonomics-q16-emi-2026-10-31.md).
 - [x] **Q123 — Editor support.** Size M. Done 2026-10-31 (commit subject `Q123:`),
   [Evidence](evidence/ergonomics-q123-editor-suggestions-2026-10-31.md).
   Highlighting; suggestions while typing: after `move`, `keep`, `craft`, `has` or `except`, the

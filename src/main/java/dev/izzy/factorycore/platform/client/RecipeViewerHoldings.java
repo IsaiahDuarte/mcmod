@@ -1,4 +1,4 @@
-package dev.izzy.factorycore.platform.client.integration.jei;
+package dev.izzy.factorycore.platform.client;
 
 import dev.izzy.factorycore.platform.storage.TerminalMenu;
 import java.math.BigInteger;
@@ -12,19 +12,19 @@ import net.minecraft.world.entity.player.Player;
  * stacks in the inventory plus the available amount of each terminal row shown. Damaged tools and
  * armour are left out, so a transfer never prefers wearing them down.
  */
-final class Holdings {
+public final class RecipeViewerHoldings {
   private static final BigInteger MAX = BigInteger.valueOf(Long.MAX_VALUE);
 
-  private Holdings() {}
+  private RecipeViewerHoldings() {}
 
-  static Map<String, Long> of(Player player, TerminalMenu menu) {
+  public static Map<String, Long> of(Player player, TerminalMenu menu) {
     var counts = new HashMap<String, Long>();
     for (var stack : player.getInventory().items)
       if (!stack.isEmpty() && !stack.isDamaged())
         counts.merge(
             BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(),
             (long) stack.getCount(),
-            Holdings::add);
+            RecipeViewerHoldings::add);
     for (var row : menu.view().rows()) {
       long available;
       try {
@@ -32,7 +32,7 @@ final class Holdings {
       } catch (NumberFormatException unreadable) {
         available = 0;
       }
-      counts.merge(row.icon(), available, Holdings::add);
+      counts.merge(row.icon(), available, RecipeViewerHoldings::add);
     }
     return counts;
   }

@@ -166,6 +166,7 @@ Normal autocrafting uses saved recipes, with no script required. Crafting-table 
 
 - Requests preview dependencies/shortages, then create a job on submission. Reserve against current state; preview is advisory.
 - Plan recursively under a budget. Explain dependency cycles. Pattern priority chooses alternatives; stable pattern IDs break ties. Global optimality is not required.
+- Crafter patterns reproduce a crafting-table, stonecutter or smithing-table recipe (ergonomics Q6, QD3, [ADR 0030](docs/decisions/0030-patterns-and-crafting-units.md) amendment). Each craft revalidates that workstation's real recipe.
 - Crafting-table patterns may opt in to substitutes (parity E1, [ADR 0063](docs/decisions/0063-pattern-substitution.md)): an input may use any item its recipe ingredient accepted at encode time. The planner picks from stock (most available, then registry ID) and still reserves once. Each craft revalidates the real recipe with the chosen items. Processing patterns stay exact.
 - Reserve once in the shared ledger. External inventories remain mutable; revalidate reservations until extraction.
 - Lease relevant machine ports before dispatch. Mod-owned jobs/scripts wait or return busy. Foreign pipes, players, and machines are not blocked by this lease.

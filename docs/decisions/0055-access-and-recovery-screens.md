@@ -21,7 +21,7 @@ commands (ADR 0049 access commands, transfer recovery commands).
     goes through the new `WorldNetworks.transferOwnership`; `AccessCommands` and the screen
     share `AccessAdministration`.
   - **Packet checks.** Commands must match the session nonce, container id and sender. They are
-    rate-limited to one per 2 ticks.
+    rate-limited to one per 2 ticks on average, up to four back to back (Q127).
 - **Ownership transfer.**
   - Only the current owner or an operator can transfer, and only while holding Manage at the
     origin. Delegated Manage cannot transfer, and the nil UUID is refused.

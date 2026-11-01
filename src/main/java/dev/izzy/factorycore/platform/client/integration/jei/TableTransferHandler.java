@@ -95,7 +95,9 @@ final class TableTransferHandler<R extends Recipe<?>>
         new TerminalCraftingPackets.Fill(
             menu.containerId,
             menu.session(),
-            GridTransfer.choose(options, Holdings.of(player, menu)),
+            GridTransfer.choose(
+                options,
+                dev.izzy.factorycore.platform.client.RecipeViewerHoldings.of(player, menu)),
             table.ordinal(),
             result));
     return null;

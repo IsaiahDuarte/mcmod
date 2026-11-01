@@ -30,12 +30,25 @@ inventory or offhand, but not in an accessory slot.
     the inventory and offhand. One opens it; two or more are refused as before.
   - **Session:** it reads the same Curios slot each tick, so taking the terminal off closes the
     terminal.
-- **EMI (Q16).** A separate `emi` plugin mirrors JEI's features through EMI's API. See the Q16
-  entry in the ergonomics plan for its scope and evidence.
+- **EMI (Q16).** A separate `integration/emi` plugin (`@EmiEntrypoint`) mirrors the JEI one
+  through EMI's API:
+  - **Fill:** one `EmiRecipeHandler` for the terminal menu fills the Table grid (crafting,
+    stonecutter, smithing) or the processing grid (any other recipe), and moves nothing. With
+    Ctrl it opens the output as a request instead.
+  - **Available stock:** the handler reports the player's inventory plus the terminal's stock as
+    EMI's inventory, so EMI marks recipes the network can supply.
+  - **Drops:** drag-drop handlers cover ghost filters and the program editor. A generic exclusion
+    area keeps EMI's lists off the upgrade panel.
+  - **Search:** the terminal's search sync uses `EmiApi` search text.
+  - **Shared code:** what the player holds (`RecipeViewerHoldings`) and search sync
+    (`RecipeViewerSearch`) live in mandatory client code, so both plugins use them.
+  - **Tag name:** the `curios:charm` item tag has a translation, as EMI asks of every listed tag.
 - **Evidence runs.** Each integration has its own source set that alone puts the mod on the
   runtime classpath:
   - `curiosTest`, with `runCuriosGameTestServer` in `releaseCheck`;
-  - EMI's run, per Q16.
+  - `emiTest`, with `runEmiClient`, a graphical run (needs a display) like `runJeiClient`. The
+    fixture drives EMI's own `EmiRecipeFiller` and `EmiDragDropHandlers`, so it compiles against
+    the full EMI jar rather than the API.
 
   The ordinary GameTest and client runs keep running without the mods.
 

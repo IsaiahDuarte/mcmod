@@ -243,7 +243,7 @@ Commands revalidate current body/menu, physical range/VIEW, structural lease,
 face and full scope. Draft editing/deployment also requires live EDIT/DEPLOY;
 active deployment rechecks WITHDRAW/DEPOSIT. Wrong nonce/revision cannot publish.
 External canonical/configuration changes reload the draft before another action.
-Commands admit at most one per two ticks; changed display state polls every five.
+Commands admit one per two ticks on average, up to four back to back (Q127); changed display state polls every five.
 Known-owner Return uses guarded scheduled progress, checks accepted origin/root/
 segment and actual principal, and cancels queued work when the menu closes.
 Uncertain records remain non-replayable. Only known complete empty records retire.

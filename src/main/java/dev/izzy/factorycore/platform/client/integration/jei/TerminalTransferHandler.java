@@ -86,7 +86,9 @@ final class TerminalTransferHandler
         new TerminalCraftingPackets.Fill(
             menu.containerId,
             menu.session(),
-            GridTransfer.choose(options, Holdings.of(player, menu))));
+            GridTransfer.choose(
+                options,
+                dev.izzy.factorycore.platform.client.RecipeViewerHoldings.of(player, menu))));
     return null;
   }
 }

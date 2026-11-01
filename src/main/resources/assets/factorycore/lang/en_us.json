@@ -1,4 +1,5 @@
 {
+  "tag.item.curios.charm": "Charm slot (Curios)",
   "gui.factorycore.terminal.sort.0": "Name",
   "gui.factorycore.terminal.sort.1": "Qty",
   "gui.factorycore.terminal.sort.2": "Mod",
@@ -19,7 +20,7 @@
   "gui.factorycore.terminal.tall": "⇕",
   "gui.factorycore.terminal.tall.help": "Tall: the grid fills the window's height. Click again for six rows.",
   "gui.factorycore.terminal.viewer_sync": "J",
-  "gui.factorycore.terminal.viewer_sync.help": "Sync the search with JEI both ways (green: on). Right-click: empty JEI's search whenever the terminal opens (underlined: on).",
+  "gui.factorycore.terminal.viewer_sync.help": "Sync the search with the recipe viewer (JEI or EMI) both ways (green: on). Right-click: empty its search whenever the terminal opens (underlined: on).",
   "block.factorycore.storage_drive": "Storage Drive",
   "item.factorycore.expansion_module": "Expansion Module",
   "item.factorycore.advanced_module": "Advanced Module",

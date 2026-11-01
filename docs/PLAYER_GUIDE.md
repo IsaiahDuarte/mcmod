@@ -617,7 +617,7 @@ gateway screen.
 
 Commands for the same rights are in the [admin guide](ADMIN_GUIDE.md#access-commands).
 
-## JEI (optional)
+## JEI or EMI (optional)
 
 With JEI installed, the **+** button on a crafting recipe fills the terminal's Table
 grid with ghosts. Where a slot accepts several items, it picks the one you have most of
@@ -631,6 +631,11 @@ green, what you type in the terminal search is copied into JEI's search and the 
 round. Right-click **J** to have JEI's search emptied each time the terminal opens (the J is
 underlined while that is on). Both settings are remembered with your sort. Everything also works
 without JEI.
+
+EMI works the same way. Its fill button sets the terminal's ghosts, or with Ctrl held opens the
+item in **Jobs**. You can drag from EMI onto filters and the program editor, and **J** syncs
+with EMI's search. EMI counts the terminal's stock as well as your inventory when it marks what
+you can make.
 
 ## Label Tool
 

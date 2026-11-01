@@ -9,6 +9,7 @@ import dev.izzy.factorycore.platform.Positions;
 import dev.izzy.factorycore.platform.network.NetworkContent;
 import dev.izzy.factorycore.platform.network.NetworkNodeEntity;
 import dev.izzy.factorycore.platform.network.WorldNetworks;
+import dev.izzy.factorycore.platform.session.MenuSession;
 import dev.izzy.factorycore.platform.storage.*;
 import dev.izzy.factorycore.platform.storage.RecoveryPackets;
 import dev.izzy.factorycore.platform.storage.StagingClass;
@@ -193,8 +194,20 @@ public final class RecoveryScreenGameTests {
               h.assertTrue(
                   saved.transfers().get(legacy).staged() == 12
                       && saved.transfers().contains(legacy)
-                      && theirs.view().status() == RecoveryPackets.Status.MISSING,
-                  "Wrong-session and rate-limited commands change nothing");
+                      && theirs.view().status() != RecoveryPackets.Status.SETTLED,
+                  "Wrong-session commands and a non-operator's Retire change nothing");
+              // Q127: quick clicks pass up to the burst; one past it is dropped, not applied.
+              for (int click = 0; click < MenuSession.COMMAND_BURST; click++)
+                send(mine, owner, RecoveryPackets.HOME, legacy);
+              send(mine, owner, RecoveryPackets.RETURN, legacy);
+              h.assertTrue(
+                  mine.view().status() == RecoveryPackets.Status.READY && !evidence(owner, legacy),
+                  "A command past the burst is dropped: " + mine.view().status());
+            })
+        .thenIdle(10)
+        .thenExecute(
+            () -> {
+              var mine = menus[0];
               send(mine, owner, RecoveryPackets.RETURN, legacy);
               h.assertTrue(
                   mine.view().status() == RecoveryPackets.Status.LEGACY && !evidence(owner, legacy),

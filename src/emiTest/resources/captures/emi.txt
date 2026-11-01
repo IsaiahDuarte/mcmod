@@ -1,0 +1,11 @@
+# Screenshots this suite must capture. Gradle requires each file; the verification refuses
+# to capture a name not listed here.
+emi-terminal.png
+emi-crafting-fill.png
+emi-request-jobs.png
+emi-processing-fill.png
+emi-stonecutter-fill.png
+emi-smithing-fill.png
+emi-search-sync.png
+emi-program-drop.png
+emi-buffer-drop.png

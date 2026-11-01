@@ -454,7 +454,7 @@ remain vanilla. Client commands carry menu/session/revision, bounded fields and
 a32-byte identity digest; they carry no root, principal or resource components.
 Rules and display names are bounded to128/96 characters. Inventory changes
 advance the displayed selection revision. Polling is at most once per five ticks,
-commands at most once per two ticks.
+commands once per two ticks on average, up to four back to back (Q127).
 
 Four native settings GameTests cover draft/apply/reset/external invalidation,
 nonce rejection/non-consuming samples/stale empty selections and conserved

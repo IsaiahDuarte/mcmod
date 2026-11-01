@@ -19,8 +19,14 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * domain state and views; a menu with several views uses one session for all of them.
  */
 public final class MenuSession {
-  /** Commands are admitted at most once per this many ticks. */
+  /** Commands are admitted on average once per this many ticks. */
   public static final int COMMAND_TICKS = 2;
+
+  /**
+   * Q127: up to this many commands are admitted back to back (a click right after typing, a quick
+   * double click), so a player's click is not silently dropped; the sustained rate is unchanged.
+   */
+  public static final int COMMAND_BURST = 4;
 
   /** Builds the server-side menu for a fresh session nonce. */
   @FunctionalInterface
@@ -33,7 +39,7 @@ public final class MenuSession {
   private final UUID id;
   private final boolean server;
   private final TickGate poll;
-  private final TickGate commands = new TickGate(COMMAND_TICKS);
+  private final TickGate commands = new TickGate(COMMAND_TICKS, COMMAND_BURST);
   private boolean active = true;
 
   public MenuSession(
