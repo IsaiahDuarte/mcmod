@@ -11,7 +11,7 @@ description='''Shared storage and automation in development. Storage cells and d
 [[dependencies.factorycore]]
 modId="neoforge"
 type="required"
-versionRange="[21.1.252]"
+versionRange="[21.1.250,21.1.252]"
 ordering="NONE"
 side="BOTH"
 

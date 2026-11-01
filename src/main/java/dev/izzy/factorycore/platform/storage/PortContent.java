@@ -26,6 +26,22 @@ public final class PortContent {
           properties -> new PortBlock(PortBlock.Role.EXPORTER, properties),
           DeviceProperties.machine());
 
+  /** Q34 (ADR 0070): an Exporter that places, launches or drops what it exports in front of it. */
+  public static final DeferredBlock<PortBlock> CONSTRUCTOR =
+      FactoryRegistries.BLOCKS.registerBlock(
+          "constructor",
+          properties ->
+              new PortBlock(PortBlock.Role.EXPORTER, PortBlock.WorldAction.CONSTRUCT, properties),
+          DeviceProperties.machine());
+
+  /** Q35 (ADR 0070): an Importer that breaks the block in front, or picks up items there. */
+  public static final DeferredBlock<PortBlock> DESTRUCTOR =
+      FactoryRegistries.BLOCKS.registerBlock(
+          "destructor",
+          properties ->
+              new PortBlock(PortBlock.Role.IMPORTER, PortBlock.WorldAction.DESTRUCT, properties),
+          DeviceProperties.machine());
+
   /** H5 (ADR 0065): made by the Label Tool from a cable; its item only carries a busy lease. */
   public static final DeferredBlock<CablePortBlock> CABLE_PORT =
       FactoryRegistries.BLOCKS.registerBlock(
@@ -42,6 +58,10 @@ public final class PortContent {
 
   public static final DeferredItem<LeasedBlockItem> IMPORTER_ITEM = item("importer", IMPORTER);
   public static final DeferredItem<LeasedBlockItem> EXPORTER_ITEM = item("exporter", EXPORTER);
+  public static final DeferredItem<LeasedBlockItem> CONSTRUCTOR_ITEM =
+      item("constructor", CONSTRUCTOR);
+  public static final DeferredItem<LeasedBlockItem> DESTRUCTOR_ITEM =
+      item("destructor", DESTRUCTOR);
 
   public static final DeferredHolder<MenuType<?>, MenuType<MachineSettingsMenu>> IMPORTER_MENU =
       FactoryRegistries.menu(

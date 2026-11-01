@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "factorycore:block/destructor"
+    },
+    "facing=east": {
+      "model": "factorycore:block/destructor",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "factorycore:block/destructor",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "factorycore:block/destructor",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "factorycore:block/destructor",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "factorycore:block/destructor",
+      "x": 90
+    }
+  }
+}

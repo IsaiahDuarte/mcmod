@@ -485,6 +485,14 @@ public class ConnectorEntity extends BlockEntity
     };
   }
 
+  /**
+   * The block whose inventory this connector reaches: the one it faces. Q34/Q35: a Constructor or
+   * Destructor reaches its own buffer instead.
+   */
+  public BlockPos providerPosition() {
+    return worldPosition.relative(targetDirection());
+  }
+
   public Object capability() {
     validatePlaced();
     if (cache != null && cachedDirection != targetDirection()) {

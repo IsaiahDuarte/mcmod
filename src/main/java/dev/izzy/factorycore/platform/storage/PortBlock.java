@@ -47,17 +47,52 @@ public final class PortBlock extends NetworkedBlock implements EntityBlock {
     }
   }
 
+  /**
+   * Q34/Q35 (QD9, ADR 0070): what the port does with the world in front of it. A Constructor is an
+   * Exporter into its own buffer that places, launches or drops from it; a Destructor is an
+   * Importer from its own buffer that it breaks blocks and picks up items into.
+   */
+  public enum WorldAction {
+    NONE,
+    CONSTRUCT,
+    DESTRUCT
+  }
+
   private final Role role;
+  private final WorldAction action;
 
   public PortBlock(Role role, Properties properties) {
+    this(role, WorldAction.NONE, properties);
+  }
+
+  public PortBlock(Role role, WorldAction action, Properties properties) {
     super(properties);
     this.role = role;
+    this.action = action;
     registerDefaultState(
         stateDefinition.any().setValue(BlockStateProperties.FACING, Direction.NORTH));
   }
 
   public Role role() {
     return role;
+  }
+
+  /** The world action of the port at {@code state}; NONE for any other block. */
+  public static WorldAction action(BlockState state) {
+    return state.getBlock() instanceof PortBlock port ? port.action : WorldAction.NONE;
+  }
+
+  @Override
+  public <T extends BlockEntity>
+      net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+          Level level,
+          BlockState state,
+          net.minecraft.world.level.block.entity.BlockEntityType<T> type) {
+    if (level.isClientSide() || action == WorldAction.NONE) return null;
+    return ticker(
+        type,
+        MachineInterfaceContent.ENTITY.get(),
+        (tickLevel, position, tickState, port) -> port.worldTick());
   }
 
   /** The role of the port at {@code state}, or null for any other block (an Interface). */
@@ -148,9 +183,12 @@ public final class PortBlock extends NetworkedBlock implements EntityBlock {
 
   @Override
   protected List<ItemStack> dropsOnBreak(BlockEntity entity) {
-    return entity instanceof ConnectorEntity connector
-        ? List.of(connector.portableForBreak())
-        : List.of();
+    if (!(entity instanceof ConnectorEntity connector)) return List.of();
+    // Q34/Q35: a Constructor's or Destructor's buffer comes back with it.
+    var drops = new java.util.ArrayList<ItemStack>();
+    drops.add(connector.portableForBreak());
+    if (entity instanceof MachineInterfaceEntity port) drops.addAll(port.worldBufferContents());
+    return drops;
   }
 
   /** Cables connect on every face but the socket. */

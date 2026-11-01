@@ -64,6 +64,11 @@ public final class MachineInterfaceEntity extends ConnectorEntity
       net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
     super.saveAdditional(tag, registries);
     RedstoneControlled.save(redstone, tag);
+    if (worldBuffer != null) {
+      var buffer = worldBuffer.serializeNBT(registries);
+      buffer.putInt("Schema", 1);
+      tag.put(WorldActions.FIELD, buffer);
+    }
     if (exportOrder != dev.izzy.factorycore.core.storage.ExportOrder.IN_ORDER)
       tag.putString("ExportOrder", exportOrder.name());
   }
@@ -73,6 +78,11 @@ public final class MachineInterfaceEntity extends ConnectorEntity
       net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
     super.loadAdditional(tag, registries);
     RedstoneControlled.load(redstone, tag);
+    if (worldBuffer != null && tag.getCompound(WorldActions.FIELD).getInt("Schema") == 1) {
+      var buffer = tag.getCompound(WorldActions.FIELD);
+      // A saved buffer of another size keeps its stacks: the handler grows to hold them.
+      worldBuffer.deserializeNBT(registries, buffer);
+    }
     exportOrder = dev.izzy.factorycore.core.storage.ExportOrder.IN_ORDER;
     for (var order : dev.izzy.factorycore.core.storage.ExportOrder.values())
       if (order.name().equals(tag.getString("ExportOrder"))) exportOrder = order;
@@ -335,6 +345,7 @@ public final class MachineInterfaceEntity extends ConnectorEntity
    * Items if the touched face offers them, else fluids, else energy (items when it offers none).
    */
   private ResourceKind offeredKind() {
+    if (worldBuffer != null) return ResourceKind.ITEM;
     var level = serverLevel();
     var target = getBlockPos().relative(targetDirection());
     var side = targetDirection().getOpposite();
@@ -577,6 +588,109 @@ public final class MachineInterfaceEntity extends ConnectorEntity
 
   public MachineInterfaceEntity(BlockPos position, BlockState state) {
     super(MachineInterfaceContent.ENTITY.get(), position, state);
+    worldBuffer =
+        switch (PortBlock.action(state)) {
+          case NONE -> null;
+          case CONSTRUCT -> new WorldBuffer(WorldActions.CONSTRUCTOR_SLOTS, 1);
+          case DESTRUCT -> new WorldBuffer(WorldActions.DESTRUCTOR_SLOTS, 64);
+        };
+  }
+
+  /**
+   * Q34/Q35 (ADR 0070): the buffer a Constructor exports into or a Destructor imports from, in
+   * place of a neighbour's inventory; null for every other port. It is saved with the block and
+   * dropped when the block breaks, so nothing in it is lost.
+   */
+  private final WorldBuffer worldBuffer;
+
+  private int worldAge;
+
+  private final class WorldBuffer extends net.neoforged.neoforge.items.ItemStackHandler {
+    private final int limit;
+
+    WorldBuffer(int slots, int limit) {
+      super(slots);
+      this.limit = limit;
+    }
+
+    /** A Constructor holds one item at a time, so storage gives up only what it is placing. */
+    @Override
+    public int getSlotLimit(int slot) {
+      return limit;
+    }
+
+    @Override
+    protected void onContentsChanged(int slot) {
+      setChanged();
+    }
+  }
+
+  /** The buffer's stacks, for dropping on break. */
+  List<ItemStack> worldBufferContents() {
+    if (worldBuffer == null) return List.of();
+    var stacks = new java.util.ArrayList<ItemStack>();
+    for (int slot = 0; slot < worldBuffer.getSlots(); slot++)
+      if (!worldBuffer.getStackInSlot(slot).isEmpty())
+        stacks.add(worldBuffer.getStackInSlot(slot).copy());
+    return stacks;
+  }
+
+  public net.neoforged.neoforge.items.IItemHandler worldBuffer() {
+    return worldBuffer;
+  }
+
+  @Override
+  public Object capability() {
+    if (worldBuffer == null) return super.capability();
+    validatePlaced();
+    return settings().kind() == ResourceKind.ITEM ? worldBuffer : null;
+  }
+
+  @Override
+  public BlockPos providerPosition() {
+    return worldBuffer == null ? super.providerPosition() : getBlockPos();
+  }
+
+  @Override
+  public Object capabilityAt(net.minecraft.core.Direction face) {
+    return worldBuffer == null ? super.capabilityAt(face) : capability();
+  }
+
+  @Override
+  public int[] containerSize() {
+    return worldBuffer == null ? super.containerSize() : new int[] {worldBuffer.getSlots(), 0};
+  }
+
+  /**
+   * Acts on the world every {@link WorldActions#PERIOD} ticks while a preset runs and redstone
+   * allows it (see {@link WorldActions}).
+   */
+  void worldTick() {
+    if (worldBuffer == null || ++worldAge < WorldActions.PERIOD) return;
+    worldAge = 0;
+    if (isRemoved() || handle() == null) return;
+    var server = serverLevel().getServer();
+    var deployment = DeviceSavedData.get(server).machinePresets().get(handle().id());
+    if (deployment == null
+        || deployment.mode() == dev.izzy.factorycore.core.storage.MachinePresets.Mode.PAUSED
+        || WorldNetworks.get(server).membership(position()).status()
+            != NetworkTopology.Status.VALID) return;
+    var control = redstone.control();
+    if (control == dev.izzy.factorycore.core.storage.RedstoneGate.Control.POWERED
+            && !redstone.powered()
+        || control == dev.izzy.factorycore.core.storage.RedstoneGate.Control.UNPOWERED
+            && redstone.powered()) return;
+    boolean changed =
+        switch (PortBlock.action(getBlockState())) {
+          case CONSTRUCT ->
+              WorldActions.construct(
+                  serverLevel(), getBlockPos(), targetDirection(), worldBuffer, deployment);
+          case DESTRUCT ->
+              WorldActions.destruct(
+                  serverLevel(), getBlockPos(), targetDirection(), worldBuffer, deployment);
+          case NONE -> false;
+        };
+    if (changed) redstoneWake();
   }
 
   @Override

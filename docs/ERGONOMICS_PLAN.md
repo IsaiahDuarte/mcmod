@@ -824,18 +824,35 @@ New gates:
 
 ## Wave G — world interaction (lane G, needs QD9)
 
-- [ ] **Q34 — Constructor (M34).** Size L.
+- [x] **Q34 — Constructor (M34).** Size L. Done 2026-11-01 (commit subject `Q34/Q35:`) for
+  items: places blocks, launches fireworks and drops items, with the Exporter's filter,
+  redstone control, presets and schedules. One action per 4 ticks; speed upgrades speed only the
+  delivery into its buffer. Fluids are moved to Q131. ADR 0070.
+  [Evidence](evidence/ergonomics-q34-q35-constructor-destructor-2026-11-01.md).
   Places blocks or fluids, drops items, or launches fireworks from storage in front of it, with
   a filter, redstone control, scheduling (M76) and speed upgrades (M94, RS2). Own ADR.
   Done when: GameTests cover placing, dropping, a protected position refusing (a cancelled
   place event), and nothing lost when the target is blocked.
 
-- [ ] **Q35 — Destructor (M34).** Size L.
+- [x] **Q35 — Destructor (M34).** Size L. Done 2026-11-01 (commit subject `Q34/Q35:`) for
+  blocks without an entity and item pickup. Fluid pickup and the Fortune and Silk Touch upgrades
+  are moved to Q131. ADR 0070.
+  [Evidence](evidence/ergonomics-q34-q35-constructor-destructor-2026-11-01.md).
   Breaks blocks, picks up fluid sources, or picks up items in front of it into storage, with a
   filter, Fortune and Silk Touch upgrades. Full storage leaves the block in place; nothing is
   voided. Own ADR.
   Done when: GameTests cover breaking, pickup, full storage leaving the block, and a cancelled
   break event.
+
+- [ ] **Q131 — Constructor and Destructor: fluids, Fortune and Silk Touch (from Q34/Q35).** Size M.
+  - **Fluids:** place fluid sources from fluid storage, and pick sources up. A fluid buffer cannot
+    drop when the block breaks, so it must only ever hold fluid it can act on in the same tick
+    (or the block must refuse to break while holding fluid).
+  - **Upgrades:** Fortune and Silk Touch upgrades in the port's upgrade slots change the
+    Destructor's tool.
+
+  Done when: GameTests cover placing and picking up water, a Silk Touch Destructor dropping stone
+  rather than cobblestone, and no fluid lost on break.
 
 ## Wave X — distance (lane X, needs QD10)
 

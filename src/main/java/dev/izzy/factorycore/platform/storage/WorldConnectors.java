@@ -439,7 +439,9 @@ public final class WorldConnectors {
           || networks.membership(owner.position()).status() != NetworkTopology.Status.VALID)
         return new Registration(OperationResult.Reason.OFFLINE, null);
       var providerBlock = identity.providerEntity(owner);
+      // Q34/Q35: a Constructor or Destructor is its own provider (its buffer).
       if (providerBlock != null
+          && providerBlock != owner
           && !(providerBlock instanceof ExternalBackingProvider)
           && !(providerBlock instanceof Container
               && providerBlock

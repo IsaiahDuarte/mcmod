@@ -183,7 +183,7 @@ final class ProviderIdentity {
   }
 
   BlockEntity providerEntity(ConnectorEntity owner) {
-    var position = owner.getBlockPos().relative(owner.targetDirection());
+    var position = owner.providerPosition();
     var chunk = Loaded.chunk(owner.serverLevel(), position);
     return chunk == null
         ? null
@@ -192,11 +192,14 @@ final class ProviderIdentity {
 
   /** Normalize vanilla double chests and check both chunks before any capability lookup. */
   List<Provider> providerPositions(ConnectorEntity owner) {
+    // Q34/Q35: a Constructor's or Destructor's buffer is its own, one-block provider.
+    if (owner.providerPosition().equals(owner.getBlockPos()))
+      return List.of(
+          new Provider(
+              Positions.of(owner.serverLevel(), owner.getBlockPos()), owner.settings().kind()));
     try {
       return providerPositions(
-          owner.serverLevel(),
-          owner.getBlockPos().relative(owner.targetDirection()),
-          owner.settings().kind());
+          owner.serverLevel(), owner.providerPosition(), owner.settings().kind());
     } catch (RuntimeException fault) {
       owner.quarantine(fault);
       throw fault;

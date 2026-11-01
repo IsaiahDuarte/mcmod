@@ -253,6 +253,12 @@ def block_textures():
          SIGNAL, SIGNAL_DARK),
         ("exporter_case", ("....#....", "...#.#...", "..#...#..", ".#.....#.", "#.......#"),
          AMBER, AMBER_DARK),
+        # Q34/Q35: the Constructor builds (a block outline, amber); the Destructor breaks (a
+        # cross, red).
+        ("constructor_case", ("#########", "#.......#", "#.......#", "#.......#", "#########"),
+         AMBER, AMBER_DARK),
+        ("destructor_case", ("##.....##", "..##.##..", "....#....", "..##.##..", "##.....##"),
+         (214, 58, 48, 255), (120, 30, 24, 255)),
     ):
         case = casing(name)
         inset(case, 3, 4, 12, 11)

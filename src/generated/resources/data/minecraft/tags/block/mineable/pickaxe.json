@@ -1,9 +1,11 @@
 {
   "values": [
+    "factorycore:constructor",
     "factorycore:interface",
     "factorycore:cable_port",
     "factorycore:exporter",
     "factorycore:storage_drive",
+    "factorycore:destructor",
     "factorycore:importer",
     "factorycore:starter_energy_bank",
     "factorycore:relay",

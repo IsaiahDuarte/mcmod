@@ -17,7 +17,9 @@ public final class MachineInterfaceContent {
               MachineInterfaceEntity::new,
               PortContent.IMPORTER,
               PortContent.EXPORTER,
-              PortContent.CABLE_PORT);
+              PortContent.CABLE_PORT,
+              PortContent.CONSTRUCTOR,
+              PortContent.DESTRUCTOR);
 
   private MachineInterfaceContent() {}
 

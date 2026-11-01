@@ -427,6 +427,37 @@ public final class FactoryCoreData {
           Items.NETHERITE_INGOT,
           'R',
           Items.REDSTONE);
+      // Q34/Q35: an Exporter with a dispenser builds; an Importer with a pickaxe breaks.
+      shaped(
+          out,
+          redstone,
+          "constructor",
+          1,
+          Items.DISPENSER,
+          "IDI/RER/III",
+          'I',
+          Items.IRON_INGOT,
+          'D',
+          Items.DISPENSER,
+          'R',
+          Items.REDSTONE,
+          'E',
+          dev.izzy.factorycore.platform.storage.PortContent.EXPORTER_ITEM.get());
+      shaped(
+          out,
+          redstone,
+          "destructor",
+          1,
+          Items.IRON_PICKAXE,
+          "IPI/RMR/III",
+          'I',
+          Items.IRON_INGOT,
+          'P',
+          Items.IRON_PICKAXE,
+          'R',
+          Items.REDSTONE,
+          'M',
+          dev.izzy.factorycore.platform.storage.PortContent.IMPORTER_ITEM.get());
       // Q32: the Portable Storage: a terminal and a drive in one case.
       shaped(
           out,

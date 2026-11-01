@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "D": {
+      "item": "minecraft:dispenser"
+    },
+    "E": {
+      "item": "factorycore:exporter"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    "IDI",
+    "RER",
+    "III"
+  ],
+  "result": {
+    "count": 1,
+    "id": "factorycore:constructor"
+  }
+}

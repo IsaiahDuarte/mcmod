@@ -37,6 +37,8 @@
   "block.factorycore.creative_energy_source": "Creative Energy Source",
   "block.factorycore.storage_monitor": "Storage Monitor",
   "block.factorycore.relay": "Relay",
+  "block.factorycore.constructor": "Constructor",
+  "block.factorycore.destructor": "Destructor",
   "item.factorycore.portable_storage": "Portable Storage",
   "container.factorycore.portable_storage": "Portable Storage",
   "tooltip.factorycore.portable_storage_energy": "%s / %s FE (%s FE per take or store)",

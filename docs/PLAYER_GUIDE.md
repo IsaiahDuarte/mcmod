@@ -54,6 +54,8 @@ that consume them.
 | Starter | Blank Pattern ×4 | 4 paper, 4 redstone dust, 1 iron ingot |
 | Starter | Wrench | 4 iron ingots, 1 copper ingot |
 | Starter | Portable Storage | 5 iron ingots, 1 Storage Terminal, 1 Storage Drive, 2 redstone dust |
+| Starter | Constructor | 1 Exporter, 1 dispenser, 5 iron ingots, 2 redstone dust |
+| Starter | Destructor | 1 Importer, 1 iron pickaxe, 5 iron ingots, 2 redstone dust |
 | Starter | Relay | 4 iron ingots, 3 redstone dust, 2 Network Cables |
 | Starter | Storage Monitor | 5 iron ingots, 1 glass block, 2 copper ingots, 1 redstone dust |
 | Expanded | Expansion Module | 4 gold ingots, 2 redstone dust, 1 Nether quartz |
@@ -353,6 +355,26 @@ connect to its back and sides. Use it with an empty hand to open its screen.
 **Auto smelter:** on a furnace, put an Exporter on top with raw ores in its filter, an Exporter
 on a side with coal and **Keep** 8, and an Importer underneath. Ores in storage are smelted and
 the ingots come back.
+
+## Constructor and Destructor
+
+These work like an Exporter and an Importer, with the same screen, filter, redstone control and
+presets, but the face they act on is the world in front of them.
+- **Constructor:** set what to export, as for an Exporter. One item at a time, it:
+  - places a block into the space in front, if that space is empty or replaceable;
+  - launches a firework rocket;
+  - drops any other item into open space in front.
+
+  If the space is blocked or protected, it keeps the item and waits; nothing more leaves storage.
+- **Destructor:** like an Importer, it starts working when placed. It breaks the block in front
+  (with the drops a pickaxe gets) into storage, or picks up items lying there.
+  - **Full storage:** it holds one block's drops at a time. While storage cannot take them, it
+    leaves the next block alone.
+  - **What it won't break:** blocks with an inventory or other block entity, fluids, unbreakable
+    blocks and Factory Core blocks.
+- **Protection:** both act as the player who set them up, so a protected area refuses them just
+  as it would refuse that player.
+- **Breaking them:** breaking either block gives back anything it holds.
 
 ## Interface
 
