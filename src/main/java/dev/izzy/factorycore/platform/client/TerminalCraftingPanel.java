@@ -35,7 +35,8 @@ import org.lwjgl.glfw.GLFW;
  */
 final class TerminalCraftingPanel {
   /** The ghost grid, relative to this panel's left edge. */
-  static final int GRID_X = 7, GRID_Y = TabButton.STRIP + 29;
+  /** Lined up with the storage grid's first row. */
+  static final int GRID_X = 7, GRID_Y = TerminalScreen.GRID_Y + 1;
 
   private static final int STATUS_Y = GRID_Y + 54 + 4 + ToggleButton.HEIGHT + 4,
       CRAFT_Y = STATUS_Y + 3 * PanelLayout.LINE + 4,

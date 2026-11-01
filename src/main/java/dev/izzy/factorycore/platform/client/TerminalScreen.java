@@ -45,13 +45,17 @@ import org.lwjgl.glfw.GLFW;
 public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
   static final int MAIN = 192, SIDE = 180, COLUMNS = 9;
   static final int SEARCH_Y = TabButton.STRIP + 6;
-  static final int GRID_X = PanelLayout.EDGE, GRID_Y = SEARCH_Y + PanelLayout.ROW + 4;
+
+  /** The view, sort, direction, tall, sync and ★ tools: their own row under the search box. */
+  static final int TOOLS_Y = SEARCH_Y + PanelLayout.ROW + 1;
+
+  static final int GRID_X = PanelLayout.EDGE, GRID_Y = TOOLS_Y + PanelLayout.ROW + 3;
 
   /** Everything but the grid rows: search, info row, inventory, hotbar and edges. */
   private static final int FIXED =
       GRID_Y + 4 + PanelLayout.ROW + 4 + 54 + 4 + 18 + PanelLayout.EDGE;
 
-  private static final int NORMAL_ROWS = 6, MIN_ROWS = 3;
+  static final int NORMAL_ROWS = 6, MIN_ROWS = 3;
 
   private final TerminalStorageView storage = new TerminalStorageView(this);
   private final TerminalCraftingPanel crafting = new TerminalCraftingPanel(this);
@@ -373,15 +377,17 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
       tabX += width + 1;
     }
 
-    // Search row: search, then show-craftable, sort, direction and tall; the status lamp ends it.
+    // The search box has its own row, ended by the status lamp; under it, show-craftable, sort,
+    // direction and tall (right-aligned).
     var searchRow =
         new Rect(GRID_X, SEARCH_Y, MAIN - 2 * GRID_X - LAMP - PanelLayout.GAP, PanelLayout.ROW);
+    var toolRow = new Rect(GRID_X, TOOLS_Y, MAIN - 2 * GRID_X, PanelLayout.ROW);
     // Q17: with a recipe viewer installed, a fifth tool syncs the search with it.
     boolean viewer = RecipeViewerSearch.bridge() != null;
     // Q67: ★ (saved views) comes last, so the saved views can cover what is left of it.
     var tools =
         PanelLayout.alignRight(
-            searchRow,
+            toolRow,
             viewer ? new int[] {16, 30, 14, 14, 14, 14} : new int[] {16, 30, 14, 14, 14},
             2);
     var star = tools.removeLast();
@@ -393,8 +399,8 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 "gui.factorycore.terminal.views.help",
                 () -> viewsOpen = !viewsOpen));
     savedViewButtons.clear();
-    // The saved views cover the search box and the view, sort and direction tools.
-    int viewsLeft = searchRow.x(), viewsRight = tools.get(2).right();
+    // The saved views cover the tool row up to the direction tool; the search stays usable.
+    int viewsLeft = toolRow.x(), viewsRight = tools.get(2).right();
     int viewWidth =
         (viewsRight - viewsLeft - 2 * (TerminalPackets.SAVED_VIEWS - 1))
             / TerminalPackets.SAVED_VIEWS;
@@ -403,9 +409,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
           addRenderableWidget(
               new SavedViewButton(
                   leftPos + viewsLeft + index * (viewWidth + 2),
-                  topPos + searchRow.y(),
+                  topPos + toolRow.y(),
                   viewWidth,
-                  searchRow.height(),
+                  toolRow.height(),
                   index)));
     search =
         addRenderableWidget(
@@ -413,7 +419,7 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
                 font,
                 leftPos + searchRow.x() + 1,
                 topPos + searchRow.y() + 1,
-                tools.getFirst().x() - 4 - searchRow.x() - 2,
+                searchRow.width() - 2,
                 16,
                 Component.translatable("gui.factorycore.terminal.search")));
     search.setMaxLength(128);
@@ -502,10 +508,9 @@ public final class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
     craftablesButton.visible &= !viewsOpen;
   }
 
-  /** Q67: the saved-view row or the search box and sort tools, whichever ★ chose. */
+  /** Q67: the saved-view buttons or the sort tools, whichever ★ chose. */
   private void showViews() {
     var saved = menu.view().saved();
-    search.visible = !viewsOpen;
     sortButton.visible = !viewsOpen;
     directionButton.visible = !viewsOpen;
     for (int index = 0; index < savedViewButtons.size(); index++) {

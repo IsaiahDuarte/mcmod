@@ -72,6 +72,9 @@ as fit the window when the player's Tall preference is on (at least 3 rows; 4 at
 supported 427×240 GUI), bounded to 256 cells. The mouse wheel scrolls by a row; the scrollbar
 supports direct clicks and dragging. Items/Fluids/Energy/Jobs/Patterns are tabs on the panel's
 top edge, padded to fit its width (`TabButton.widths`); the status lamp ends the search row.
+The search box has that row to itself (player request, 2026-10-31); the view, sort, direction,
+tall, sync and ★ tools sit right-aligned on the row under it (`TOOLS_Y`), and the saved views
+replace them there, leaving the search usable.
 The crafting grid opens as a panel to the right. The Jobs view replaces the grid and hides the
 inventory slots while shown (they are neither drawn nor clickable; contents are unchanged).
 The Patterns view (Q3) also replaces the grid but keeps the inventory, so patterns can be carried

@@ -555,8 +555,10 @@ public final class PresentationClientVerification {
                 .append(": ")
                 .append(checkFits(client, client.screen))
                 .append('\n');
+            // The search box has its own row (player request, 2026-10-31), so a 240-pixel-tall
+            // GUI (scale 4 in this 960-pixel window) fits the screen's minimum of 3 rows.
             check(
-                terminal(client).columns() >= 9 && terminal(client).rows() >= 4,
+                terminal(client).columns() >= 9 && terminal(client).rows() >= 3,
                 "Expanded crafting panel keeps a usable resource browser");
             captures.grab(client, name + "-scale-" + target + ".png");
             return true;
