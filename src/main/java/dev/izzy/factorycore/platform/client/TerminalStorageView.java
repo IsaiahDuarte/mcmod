@@ -340,7 +340,7 @@ final class TerminalStorageView {
         view.total(),
         desiredOffset,
         maxOffset());
-    if (kind == 0 && view.status() == TerminalPackets.Status.READY) {
+    if (kind == 0 && view.status().quiet()) {
       var bar = capacityBar();
       Panels.inset(graphics, bar.offset(left, top));
       var capacity = new BigInteger(view.capacity());
@@ -359,6 +359,12 @@ final class TerminalStorageView {
   }
 
   /** The info row's free width on the left (Items tab): capacity text above a thin bar. */
+  /** {@code text} cut to {@code width} pixels, ending in "…" when it had to be cut. */
+  static String ellipsize(net.minecraft.client.gui.Font font, String text, int width) {
+    if (font.width(text) <= width) return text;
+    return font.plainSubstrByWidth(text, Math.max(0, width - font.width("…"))) + "…";
+  }
+
   private int infoTextWidth() {
     int right = returning.visible ? returning.getX() : craftingToggle.getX();
     return right - screen.left() - 4 - GRID_X;
@@ -384,10 +390,12 @@ final class TerminalStorageView {
     var view = menu().view();
     var font = screen.font();
     int textY = infoY() + 2;
-    if (view.status() != TerminalPackets.Status.READY) {
+    if (!view.status().quiet()) {
+      // Q133 (n11): a message that does not fit ends in "…"; hovering shows all of it.
       graphics.drawString(
           font,
-          font.plainSubstrByWidth(
+          ellipsize(
+              font,
               Component.translatable("gui.factorycore.terminal.status." + view.status().key())
                   .getString(),
               Math.max(10, infoTextWidth())),
@@ -467,31 +475,30 @@ final class TerminalStorageView {
           mouseY);
       return true;
     }
-    if (kind == 0
+    if ((kind == 0 || !menu().view().status().quiet())
         && mouseX >= left + GRID_X
         && mouseX < left + GRID_X + infoTextWidth()
         && mouseY >= top + infoY()
         && mouseY < top + infoY() + PanelLayout.ROW) {
       var view = menu().view();
-      graphics.renderTooltip(
-          font,
-          List.of(
-              view.status() == TerminalPackets.Status.READY
-                  ? Component.translatable(
-                      view.infinite()
-                          ? "gui.factorycore.terminal.capacity.infinite"
-                          : "gui.factorycore.terminal.capacity",
-                      view.used(),
-                      view.capacity())
-                  : Component.translatable(
-                      "gui.factorycore.terminal.status." + view.status().key()),
-              Component.translatable(
-                  view.external()
-                      ? "gui.factorycore.terminal.capacity.external"
-                      : "gui.factorycore.terminal.capacity.cells")),
-          Optional.empty(),
-          mouseX,
-          mouseY);
+      var lines = new ArrayList<Component>();
+      lines.add(
+          view.status().quiet()
+              ? Component.translatable(
+                  view.infinite()
+                      ? "gui.factorycore.terminal.capacity.infinite"
+                      : "gui.factorycore.terminal.capacity",
+                  view.used(),
+                  view.capacity())
+              : Component.translatable("gui.factorycore.terminal.status." + view.status().key()));
+      if (kind == 0)
+        lines.add(
+            Component.translatable(
+                view.external()
+                    ? "gui.factorycore.terminal.capacity.external"
+                    : "gui.factorycore.terminal.capacity.cells"));
+      // Q133: wrapped and kept on screen at every scale.
+      Tooltips.show(font, lines);
       return true;
     }
     return false;

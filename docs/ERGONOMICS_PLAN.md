@@ -360,7 +360,9 @@ screens.
   are taken or stored. Find the cause (for example, a full re-sync clearing the grid, or a
   re-sort between snapshots), keep the grid stable between updates, and add a client test that
   takes and stores without an empty frame.
-- [ ] **Q133 — Terminal messages (n11, n14).** Size S. Drop success messages such as "Transfer
+- [x] **Q133 — Terminal messages (n11, n14).** Size S. Done 2026-11-01 (commit subject
+  `Q133:`): success statuses show the capacity line, and warnings that don't fit end in "…" with
+  the full text on hover. [Evidence](evidence/ergonomics-q133-messages-2026-11-01.md). Drop success messages such as "Transfer
   completed"; show only failures and anything the player must act on. Messages that don't fit
   wrap or are shortened with the full text on hover ("insufficient available i…" is cut off
   today). Check this at scales 1 and 4.

@@ -60,6 +60,17 @@ public final class TerminalPackets {
       return EnumKeys.key(this);
     }
 
+    /**
+     * Q133 (n14): success needs no message. The grid shows these as Ready (the capacity line); only
+     * failures and things the player must act on are written out.
+     */
+    public boolean quiet() {
+      return switch (this) {
+        case READY, OK, FILLED, EMPTIED, CHARGED, DISCHARGED -> true;
+        default -> false;
+      };
+    }
+
     public static Status of(OperationResult.Reason reason) {
       return EnumKeys.require(Status.class, EnumKeys.key(reason));
     }

@@ -517,6 +517,80 @@ public final class PresentationClientVerification {
     step(client -> client.screen == null && waited() > 4);
   }
 
+  /**
+   * Q133 (n11, n14): a store's success shows no message, and a warning too long for the info row
+   * ends in "…" (full text on hover), at scales 1 and 4. The warning is a client copy of the
+   * current view; the original is put back afterwards.
+   */
+  private void warningScales() {
+    TerminalPackets.View[] original = {null};
+    step(
+        client -> {
+          var view = terminal(client).getMenu().view();
+          check(
+              view.status().quiet(),
+              "A completed store shows no success message: " + view.status());
+          original[0] = view;
+          return true;
+        });
+    for (int value : new int[] {1, 4}) {
+      int target = value;
+      step(
+          client -> {
+            setScale(client, target);
+            return true;
+          });
+      // The resize re-sends the window; mark the settled view, then capture a few frames later.
+      step(
+          client -> {
+            if (waited() < 8) return false;
+            var v = terminal(client).getMenu().view();
+            terminal(client)
+                .getMenu()
+                .accept(
+                    new TerminalPackets.View(
+                        v.menu(),
+                        v.session(),
+                        v.revision(),
+                        TerminalPackets.Status.UNCERTAIN,
+                        v.rows(),
+                        v.next(),
+                        v.busy(),
+                        v.staged(),
+                        v.search(),
+                        v.sort(),
+                        v.offset(),
+                        v.total(),
+                        v.size(),
+                        v.kind(),
+                        v.used(),
+                        v.capacity(),
+                        v.infinite(),
+                        v.external(),
+                        v.view(),
+                        v.uncertain(),
+                        v.all(),
+                        v.saved()));
+            return true;
+          });
+      step(
+          client -> {
+            if (waited() < 4) return false;
+            check(
+                terminal(client).getMenu().view().status() == TerminalPackets.Status.UNCERTAIN,
+                "The warning view is still shown");
+            captures.grab(client, "terminal-warning-scale-" + target + ".png");
+            return true;
+          });
+    }
+    step(
+        client -> {
+          setScale(client, 2);
+          terminal(client).getMenu().accept(original[0]);
+          return true;
+        });
+  }
+
   private static TerminalScreen terminal(Minecraft client) {
     return (TerminalScreen) client.screen;
   }
@@ -2405,6 +2479,7 @@ public final class PresentationClientVerification {
           return screen.mouseClicked(screen.itemX(0) + 9, screen.itemY(0) + 9, 0);
         });
     step(client -> client.player.containerMenu.getCarried().isEmpty() && waited() > 4);
+    warningScales();
     scales("terminal", TerminalScreen.class, true);
     craftingTour(base);
     jobsTour(base);
