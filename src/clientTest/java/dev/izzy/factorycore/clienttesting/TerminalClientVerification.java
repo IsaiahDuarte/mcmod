@@ -696,18 +696,19 @@ public final class TerminalClientVerification {
       }
       case 4 -> {
         if (!grid.cells().get(1).isEmpty() || !grid.result().equals("minecraft:oak_planks")) return;
-        click(screen, "Craft");
+        click(screen, "Hand craft");
         craftStep++;
       }
       case 5 -> {
         var inventory = client.player.getInventory();
         plankSlot = inventory.findSlotMatchingItem(new ItemStack(Items.OAK_PLANKS));
-        if (grid.status() != TerminalCraftingPackets.GridStatus.CRAFTED || plankSlot < 0) return;
+        // Q148 (n16): a hand craft's output goes into storage, not the inventory.
+        if (grid.status() != TerminalCraftingPackets.GridStatus.STORED) return;
         check(
             inventory.getItem(20).isEmpty()
                 && inventory.countItem(Items.OAK_LOG) == 0
-                && inventory.countItem(Items.OAK_PLANKS) == 4,
-            "Actual Craft button consumes the log and returns four planks to a free slot");
+                && inventory.countItem(Items.OAK_PLANKS) == 0,
+            "Actual Hand craft button consumes the log and stores the four planks");
         client.options.guiScale().set(2);
         client.resizeDisplay();
         entered = ticks;
@@ -717,13 +718,14 @@ public final class TerminalClientVerification {
         if (ticks - entered < 10) return;
         checkNoOverlap(screen);
         captures.grab(client, "terminal-grid-scale-2.png");
-        server.execute(
-            () ->
-                server
-                    .getPlayerList()
-                    .getPlayer(principal)
-                    .getInventory()
-                    .setItem(plankSlot, ItemStack.EMPTY));
+        if (plankSlot >= 0)
+          server.execute(
+              () ->
+                  server
+                      .getPlayerList()
+                      .getPlayer(principal)
+                      .getInventory()
+                      .setItem(plankSlot, ItemStack.EMPTY));
         click(screen, "Clear");
         craftStep++;
       }

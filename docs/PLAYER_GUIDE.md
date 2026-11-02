@@ -245,8 +245,11 @@ the result: nothing moves into the grid, so closing never loses items.
 - **Filling the grid:** click a cell, then Ctrl-click an item in your inventory.
   Alternatively, Ctrl-click a network item (or press 1–8) and press **Use selected**.
 - **Clearing:** right-click a cell to clear it, or press **Clear** to clear them all.
-- **Crafting:** **Craft** (C) crafts once and **×64** (Shift+C) crafts up to 64
-  times. Missing ingredients are withdrawn from storage first if you have Withdraw.
+- **Crafting by hand:** in Crafting mode, **Hand craft** (C) crafts once and **×64**
+  (Shift+C) crafts up to 64 times. The result goes into network storage: exactly what was
+  crafted, nothing else from your inventory. If storage is full, what does not fit stays in
+  your inventory and the grid says so. Missing ingredients are withdrawn from storage first if
+  you have Withdraw.
 - **Running short:** if storage runs out, it crafts what it can and shows
   *Partial*. A craft whose output would not fit in your inventory is refused before
   anything is used.

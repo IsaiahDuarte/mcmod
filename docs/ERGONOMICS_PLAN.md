@@ -421,7 +421,10 @@ screens.
   Items view lists items, fluids and energy in one grid. This needs a mixed-kind server query
   (search, sort and paging across kinds) and per-kind click rules. Fluid and energy entries
   can't be taken onto the cursor. Decide whether the separate tabs remain.
-- [ ] **Q148 — Hand crafting into storage (n16, from Q139).** Size M. In the encoder's
+- [x] **Q148 — Hand crafting into storage (n16, from Q139).** Size M. Done 2026-11-02 (commit
+  subject `Q148:`): **Hand craft** stores exactly the crafted output; what storage refuses stays
+  with a message. [Evidence](evidence/ergonomics-q148-hand-craft-into-storage-2026-11-02.md).
+  In the encoder's
   Crafting mode, crafting by hand is its own labelled action, and its output goes into network
   storage, not the inventory. Server side: after the craft, the crafted amount moves from the
   inventory into storage on the same guarded route, exactly that amount and only that key. If

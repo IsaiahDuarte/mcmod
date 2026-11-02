@@ -233,14 +233,26 @@ final class TerminalCraftingPanel {
             bottom.get(0).x(),
             bottom.get(0).y(),
             bottom.get(0).width(),
-            () -> grid(TerminalCraftingPackets.CRAFT, -1, 0, 1, new byte[32]));
+            () ->
+                grid(
+                    TerminalCraftingPackets.CRAFT,
+                    -1,
+                    TerminalCraftingPackets.INTO_STORAGE,
+                    1,
+                    new byte[32]));
     craftMany =
         gridButton(
             "craft_stack",
             bottom.get(1).x(),
             bottom.get(1).y(),
             bottom.get(1).width(),
-            () -> grid(TerminalCraftingPackets.CRAFT, -1, 0, 64, new byte[32]));
+            () ->
+                grid(
+                    TerminalCraftingPackets.CRAFT,
+                    -1,
+                    TerminalCraftingPackets.INTO_STORAGE,
+                    64,
+                    new byte[32]));
   }
 
   private Component tableLabel() {
@@ -676,7 +688,12 @@ final class TerminalCraftingPanel {
   /** C crafts one, Shift+C a stack, when Craft is available. */
   boolean craftKey(int key) {
     if (key != GLFW.GLFW_KEY_C || !craftOne.active) return false;
-    grid(TerminalCraftingPackets.CRAFT, -1, 0, Screen.hasShiftDown() ? 64 : 1, new byte[32]);
+    grid(
+        TerminalCraftingPackets.CRAFT,
+        -1,
+        TerminalCraftingPackets.INTO_STORAGE,
+        Screen.hasShiftDown() ? 64 : 1,
+        new byte[32]);
     return true;
   }
 }

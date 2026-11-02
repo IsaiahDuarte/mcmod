@@ -256,6 +256,106 @@ public final class TerminalCraftingGameTests {
         .thenSucceed();
   }
 
+  /** Q148: fills the cell with cobblestone until only {@code free} item units remain. */
+  private static void leaveFree(Fixture f, long free) {
+    var cobble = f.codec.itemKey(new ItemStack(Items.COBBLESTONE));
+    var owner = f.saved.registry().ownership(f.cell.backing());
+    long room = owner.definition().capacity() - owner.total() - free;
+    if (room > 0) f.saved.registry().insert(f.cell, cobble, room);
+  }
+
+  /**
+   * Q148 (n16): a hand craft into storage, with {@code free} item units left in the cell, three
+   * planks already in the inventory and two logs to craft (eight planks). Exactly the eight crafted
+   * planks go to storage as far as it takes them; the three stay; the status says whether all were
+   * stored.
+   */
+  private static void craftIntoStorage(
+      GameTestHelper h, long free, TerminalCraftingPackets.GridStatus expected, int stored) {
+    craftIntoStorage(h, free, expected, stored, 2);
+  }
+
+  /** As above, asking for {@code crafts} crafts (more than two: only two logs exist). */
+  private static void craftIntoStorage(
+      GameTestHelper h,
+      long free,
+      TerminalCraftingPackets.GridStatus expected,
+      int stored,
+      int crafts) {
+    var f = setup(h);
+    var planks = f.codec.itemKey(new ItemStack(Items.OAK_PLANKS));
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
+        .thenExecute(
+            () -> {
+              if (free >= 0) leaveFree(f, free);
+              f.player.getInventory().setItem(0, new ItemStack(Items.OAK_LOG, 2));
+              f.player.getInventory().setItem(5, new ItemStack(Items.OAK_PLANKS, 3));
+              open(h, f);
+            })
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              ghost(f, 0, 0);
+              h.assertTrue(
+                  menu(f).gridView().result().equals("minecraft:oak_planks"), "Planks recipe");
+              grid(
+                  f,
+                  TerminalCraftingPackets.CRAFT,
+                  -1,
+                  TerminalCraftingPackets.INTO_STORAGE,
+                  crafts,
+                  new byte[32]);
+            })
+        .thenWaitUntil(
+            () -> {
+              menu(f).broadcastChanges();
+              h.assertTrue(
+                  menu(f).gridView().status() == expected,
+                  "Hand craft ends " + expected + ": " + menu(f).gridView().status());
+            })
+        .thenExecute(
+            () -> {
+              h.assertTrue(
+                  menu(f).gridView().crafted() == 2 && count(f, Items.OAK_LOG) == 0,
+                  "Both logs were crafted");
+              h.assertTrue(
+                  f.saved.registry().stock(f.cell, planks).total() == stored
+                      && count(f, Items.OAK_PLANKS) == 3 + 8 - stored,
+                  "Exactly "
+                      + stored
+                      + " crafted planks were stored, the rest kept: stored="
+                      + f.saved.registry().stock(f.cell, planks).total()
+                      + " inventory="
+                      + count(f, Items.OAK_PLANKS));
+              logout(f);
+            })
+        .thenSucceed();
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void handCraftStoresExactlyTheCraftedOutput(GameTestHelper h) {
+    craftIntoStorage(h, -1, TerminalCraftingPackets.GridStatus.STORED, 8);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void aPartialHandCraftStoresWhatWasCrafted(GameTestHelper h) {
+    craftIntoStorage(h, -1, TerminalCraftingPackets.GridStatus.STORED, 8, 3);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void handCraftKeepsWhatAFullStorageRefuses(GameTestHelper h) {
+    craftIntoStorage(h, 0, TerminalCraftingPackets.GridStatus.KEPT, 0);
+  }
+
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void handCraftStoresWhatFitsAndKeepsTheRest(GameTestHelper h) {
+    craftIntoStorage(h, 5, TerminalCraftingPackets.GridStatus.KEPT, 5);
+  }
+
   @GameTest(template = "empty", timeoutTicks = 400)
   public static void missingIngredientsAreWithdrawnFromStorageThenCrafted(GameTestHelper h) {
     var f = setup(h);

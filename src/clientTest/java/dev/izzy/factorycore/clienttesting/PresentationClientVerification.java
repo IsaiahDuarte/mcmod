@@ -852,17 +852,36 @@ public final class PresentationClientVerification {
               player.getInventory().countItem(CraftingContent.BLANK_PATTERN.get()) == 1,
               "Table Encode consumes one blank");
         });
-    step(client -> press(client, "Craft"));
+    step(client -> press(client, "Hand craft"));
     step(
         client ->
             terminal(client).getMenu().gridView().status()
-                    == TerminalCraftingPackets.GridStatus.CRAFTED
+                    == TerminalCraftingPackets.GridStatus.STORED
                 && waited() > 4);
     server(
         player ->
             check(
-                player.getInventory().countItem(Items.OAK_PLANKS) == 4,
-                "Craft returns four real planks"));
+                player.getInventory().countItem(Items.OAK_PLANKS) == 0,
+                "Q148: Hand craft stores the four planks instead of keeping them"));
+    // The Jobs scene starts with no planks stored.
+    server(
+        player -> {
+          var drive =
+              (StorageDriveEntity)
+                  player.serverLevel().getBlockEntity(PresentationScenes.SCREENS.east());
+          var key =
+              new PlatformResourceCodec(player.registryAccess())
+                  .itemKey(new ItemStack(Items.OAK_PLANKS));
+          var registry = DeviceSavedData.get(player.server).registry();
+          for (int slot = 0; slot < 4; slot++) {
+            if (drive.cell(slot).isEmpty()) continue;
+            var cell = CellHandleData.read(drive.cell(slot));
+            if (registry.ownership(cell.backing()).definition().kind() != ResourceKind.ITEM)
+              continue;
+            long stored = registry.stock(cell, key).total();
+            if (stored > 0) registry.extract(cell, key, stored, null);
+          }
+        });
     step(client -> press(client, "Clear"));
     step(
         client ->

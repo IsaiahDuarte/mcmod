@@ -62,6 +62,14 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
   /** Q109: the grid result being crafted, pinned once a craft succeeds. */
   private ResourceKey craftingResult;
 
+  /**
+   * Q148: whether the current hand craft stores its output, the output count of one craft, and,
+   * while its moves run, how much of it is still to be stored.
+   */
+  private boolean storeCrafted, storing;
+
+  private long craftedEach, storeLeft;
+
   private final TerminalAccess terminal;
   private final BlockPos position;
   private UUID query, route;
@@ -1205,6 +1213,8 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         gatherAttempts = 0;
         crafted = 0;
         var result = crafting.preview(sender);
+        storeCrafted = command.source() == TerminalCraftingPackets.INTO_STORAGE;
+        craftedEach = result.getCount();
         try {
           craftingResult =
               result.isEmpty()
@@ -1299,7 +1309,41 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     crafted = outcome.crafted();
     gridStatus = outcome.status();
     if (crafted > 0 && craftingResult != null && pin(craftingResult)) refresh();
+    if (storeCrafted && crafted > 0 && craftingResult != null && craftedEach > 0)
+      storeOutput(Math.multiplyExact(craftedEach, (long) crafted));
     publish();
+  }
+
+  /**
+   * Q148 (n16): moves exactly {@code amount} of the crafted output, and only that key, from the
+   * inventory into storage on the guarded deposit route, one stack at a time. What storage refuses
+   * stays in the inventory and the grid says so ({@code KEPT}).
+   */
+  private void storeOutput(long amount) {
+    var codec = new PlatformResourceCodec(player().registryAccess());
+    chain.clear();
+    long left = amount;
+    for (int slot = 0; slot < 36 && left > 0; slot++) {
+      var stack = player().getInventory().getItem(slot);
+      if (stack.isEmpty() || !craftingResult.equals(keyOrNull(codec, stack))) continue;
+      long move = Math.min(left, stack.getCount());
+      chain.add(
+          new Step(slot, craftingResult, move, WorldStorageRoutes.Direction.TO_STORAGE, false));
+      left -= move;
+    }
+    storing = true;
+    storeLeft = amount;
+    if (!nextStep()) endStoring();
+  }
+
+  /** Q148: the store chain ended; the grid reports whether all of the output was stored. */
+  private void endStoring() {
+    storing = false;
+    storeCrafted = false;
+    gridStatus =
+        storeLeft == 0
+            ? TerminalCraftingPackets.GridStatus.STORED
+            : TerminalCraftingPackets.GridStatus.KEPT;
   }
 
   /** Q109: moves {@code key} to the front of the recent list; true when the order changed. */
@@ -1418,15 +1462,19 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     if (authorized()) {
       refresh(true);
       status = TerminalPackets.Status.of(result.reason());
+      if (storing && result.transfer() != null)
+        storeLeft = Math.max(0, storeLeft - result.transfer().delivered());
       if (pendingCrafts > 0) {
         if (result.transfer() != null && result.transfer().delivered() > 0) continueCraft();
         else finishCraft(partialCraft());
+        if (storing) return;
       }
       // Q18/Q63: the next queued move, while the last one completed.
       if (!chain.isEmpty()) {
         if (result.reason() == OperationResult.Reason.OK && nextStep()) return;
         chain.clear();
       }
+      if (storing && !busy) endStoring();
       publish();
     } else {
       pendingCrafts = 0;

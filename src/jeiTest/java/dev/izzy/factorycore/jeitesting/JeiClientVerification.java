@@ -119,7 +119,10 @@ final class JeiClientVerification {
               + " runtime="
               + (RuntimeCapture.runtime != null)
               + " screen="
-              + (client.screen == null ? "none" : client.screen.getClass().getName()));
+              + (client.screen == null ? "none" : client.screen.getClass().getName())
+              + (client.screen instanceof TerminalScreen terminal
+                  ? " grid=" + terminal.getMenu().gridView().status() + " panelStage=" + panelStage
+                  : ""));
     switch (stage) {
       case 0 -> {
         if (client.screen instanceof AccessibilityOnboardingScreen onboarding) {
@@ -465,7 +468,7 @@ final class JeiClientVerification {
         check(text.isEmpty(), "Opening the terminal emptied JEI's search: " + text);
         evidence.append(
             "jei: clear-on-open emptied JEI's search (dirt) when the terminal opened\n");
-        check(press(screen, "J", 1), "Right-click on J again");
+        check(press(screen, "Sync", 1), "Right-click on Sync again");
         clearStep = 2;
       }
       case 2 -> {
@@ -507,19 +510,22 @@ final class JeiClientVerification {
         check(
             client.player.getInventory().countItem(CraftingContent.CRAFTING_PATTERN.get()) == 1,
             "JEI-filled table recipe encodes one crafting pattern");
-        if (!press(screen, "Craft")) return false;
+        if (!press(screen, "Hand craft")) return false;
       }
       case 3 -> {
-        if (grid.status() != TerminalCraftingPackets.GridStatus.CRAFTED
-            || client.player.getInventory().countItem(Items.CRAFTING_TABLE) != 1) return false;
+        // Q148: a hand craft's output goes into storage.
+        if (grid.status() != TerminalCraftingPackets.GridStatus.STORED) return false;
         check(
-            client.player.getInventory().countItem(Items.CRAFTING_TABLE) == 1,
-            "JEI-filled recipe crafts one real table");
-        if (!press(screen, "Inputs")) return false;
+            client.player.getInventory().countItem(Items.CRAFTING_TABLE) == 0,
+            "JEI-filled recipe crafts one real table into storage");
+        // Q139: the encoder's modes are Crafting and Processing.
+        if (!press(screen, "Processing")) return false;
       }
       case 4 -> {
         if (!grid.processing()) return false;
-        if (!press(screen, "Outputs")) return false;
+        // Q139 (n8): outputs sit beside the inputs; clicking the first one targets it.
+        int[] at = screen.encoderCell(9);
+        screen.mouseClicked(at[0], at[1], 0);
       }
       case 5 -> {
         var rows = screen.getMenu().view().rows();
@@ -577,7 +583,7 @@ final class JeiClientVerification {
       }
       case 8 -> {
         if (!ready.get()) return false;
-        if (!press(screen, "« Crafting")) return false;
+        if (!press(screen, "« Encoder")) return false;
       }
       case 9 -> {
         check(!screen.craftingOpen(), "Panel stays collapsed with processing ghosts");
@@ -596,11 +602,11 @@ final class JeiClientVerification {
                     child ->
                         child instanceof Button button
                             && button.visible
-                            && button.getMessage().getString().equals("Table"))
+                            && button.getMessage().getString().equals("Crafting"))
                 .map(child -> (Button) child)
                 .findFirst()
                 .orElseThrow();
-        check(!table.active, "JEI fill selects the Table tab");
+        check(!table.active, "JEI fill selects Crafting mode");
         evidence.append(
             "jei: fill reveals crafting panel; real Craft and table Encode; visible Inputs/Outputs author a processing pattern at scale 4; exact stock 12 planks + 1 stone, one crafted table, one pattern of each kind; second JEI transfer reopens Table from collapsed Outputs.\n");
         // A5: the Ctrl branch of the transfer button, fed JEI's own recipe layout.
@@ -722,7 +728,7 @@ final class JeiClientVerification {
             "jei: stonecutter (stone -> stone bricks, result chosen) and smithing (netherite"
                 + " sword) recipes fill the Table page's matching workstation.\n");
         // Q17: the J tool turns on search sync.
-        check(press(screen, "J"), "The search-sync tool is shown with JEI installed");
+        check(press(screen, "Sync"), "The search-sync tool is shown with JEI installed");
         panelStage = 14;
         panelEntered = ticks;
         return false;
@@ -744,7 +750,7 @@ final class JeiClientVerification {
             "jei: search sync copies the terminal search into JEI (cobble) and JEI's back into"
                 + " the terminal, which searches it on the server (stone).\n");
         // Q99 (M111): right-click J asks for JEI's search to be emptied when the terminal opens.
-        check(press(screen, "J", 1), "Right-click on J");
+        check(press(screen, "Sync", 1), "Right-click on Sync");
       }
       case 17 -> {
         if (!TerminalSearchSupport.clearViewer(screen.getMenu().view().sort())) return false;
@@ -753,10 +759,10 @@ final class JeiClientVerification {
                 .anyMatch(
                     child ->
                         child instanceof Button button
-                            && button.getMessage().getString().equals("J")
+                            && button.getMessage().getString().equals("Sync")
                             && button.getMessage().getStyle().isUnderlined()),
             "J is underlined while clear-on-open is set");
-        check(press(screen, "J"), "Sync turns off");
+        check(press(screen, "Sync"), "Sync turns off");
       }
       case 18 -> {
         if (TerminalSearchSupport.sync(screen.getMenu().view().sort())) return false;

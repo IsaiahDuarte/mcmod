@@ -46,7 +46,11 @@ public final class TerminalCraftingPackets {
     /** Q4: Encode rewrote the loaded pattern in place. */
     REWRITTEN,
     /** Q6: stonecutter and smithing recipes are encoded, not crafted in the grid. */
-    ENCODE_ONLY;
+    ENCODE_ONLY,
+    /** Q148: crafted by hand and the whole output moved into network storage. */
+    STORED,
+    /** Q148: crafted, but storage took none or only part of the output; the rest stayed. */
+    KEPT;
 
     public String key() {
       return EnumKeys.key(this);
@@ -63,6 +67,12 @@ public final class TerminalCraftingPackets {
    * encode the current recipe onto a blank pattern from the player's main inventory.
    */
   public static final int SET_OWN = 0, SET_ROW = 1, CLEAR = 2, CRAFT = 3, ENCODE = 4;
+
+  /**
+   * Q148: CRAFT's {@code source}: 0 leaves the output in the inventory, {@link #INTO_STORAGE} then
+   * moves exactly the crafted amount of the output into network storage.
+   */
+  public static final int INTO_STORAGE = 1;
 
   /** MODE: cell 0 = crafting, 1 = processing. COUNT: cell 0–11, crafts = units 1–64. */
   public static final int MODE = 5, COUNT = 6;

@@ -319,7 +319,7 @@ final class EmiClientVerification {
             () -> {
               evidence.append(
                   "emi: stonecutter (stone bricks) and smithing (netherite sword) fills\n");
-              check(press(screen, "J"), "The search-sync tool is shown with EMI installed");
+              check(press(screen, "Sync"), "The search-sync tool is shown with EMI installed");
             });
         return true;
       }
@@ -346,7 +346,7 @@ final class EmiClientVerification {
             () -> {
               evidence.append(
                   "emi: search sync copies cobble into EMI and stone back to the terminal\n");
-              check(press(screen, "J"), "Sync turns off");
+              check(press(screen, "Sync"), "Sync turns off");
             });
         return true;
       }
