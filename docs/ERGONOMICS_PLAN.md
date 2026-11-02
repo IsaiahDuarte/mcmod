@@ -430,7 +430,10 @@ screens.
   inventory into storage on the same guarded route, exactly that amount and only that key. If
   storage refuses it, it stays in the inventory with a message. GameTests cover a full store, a
   refused store and a partial craft.
-- [ ] **Q149 — Recipe-conflict arrows (n12, from Q139).** Size M. When several recipes match the
+- [x] **Q149 — Recipe-conflict arrows (n12, from Q139).** Size M. Done 2026-11-02 (commit
+  subject `Q149:`): "‹1/2›" under the result chooses among matching recipes; a cyan mark and
+  scrolling cycle a cell's accepted items; Crafters run the recipe the pattern was encoded from.
+  [Evidence](evidence/ergonomics-q149-recipe-choices-2026-11-02.md). When several recipes match the
   encoder's grid, or a cell's item comes from a tag with several members, arrows on the result
   (and on that cell) cycle the choices. The encoded pattern records the one shown. This
   extends the stonecutter cycling (Q6) to crafting recipes and tag ingredients.

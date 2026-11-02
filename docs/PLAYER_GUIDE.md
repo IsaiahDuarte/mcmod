@@ -245,6 +245,11 @@ the result: nothing moves into the grid, so closing never loses items.
 - **Filling the grid:** click a cell, then Ctrl-click an item in your inventory.
   Alternatively, Ctrl-click a network item (or press 1–8) and press **Use selected**.
 - **Clearing:** right-click a cell to clear it, or press **Clear** to clear them all.
+- **Recipe choices:** when several recipes match the grid, **‹1/2›** appears under the result:
+  click its left or right half (or scroll over the result) to choose. **Encode** and
+  **Hand craft** use the recipe shown, and a Crafter running that pattern makes the same
+  output. A small cyan corner on a cell means the recipe accepts other items there (for
+  example any planks); scroll over the cell to choose one.
 - **Crafting by hand:** in Crafting mode, **Hand craft** (C) crafts once and **×64**
   (Shift+C) crafts up to 64 times. The result goes into network storage: exactly what was
   crafted, nothing else from your inventory. If storage is full, what does not fit stays in

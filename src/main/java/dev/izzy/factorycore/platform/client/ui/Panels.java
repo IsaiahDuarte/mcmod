@@ -60,6 +60,7 @@ public final class Panels {
       METER = 0xff2f8fb5,
       METER_FULL = 0xffc0392b,
       METER_WAITING = 0xffe0a030,
+      CHOICE_MARK = 0xff36c5f0,
       TRACK = 0xff555555,
       DISABLED = 0x60c6c6c6,
       BADGE_FILL = 0xd01a1d21,
@@ -131,6 +132,11 @@ public final class Panels {
   /** A meter's filled part, red when {@code nearlyFull} (a Drive bay at 90 % or more). */
   public static void meter(GuiGraphics graphics, Rect filled, boolean nearlyFull) {
     fill(graphics, filled, nearlyFull ? METER_FULL : METER);
+  }
+
+  /** Q149: a small cyan corner mark on a ghost cell whose recipe accepts other items. */
+  public static void choiceMark(GuiGraphics graphics, Rect area) {
+    fill(graphics, area, CHOICE_MARK);
   }
 
   /** Q146: a job's progress, amber while it waits or delivers rather than runs. */

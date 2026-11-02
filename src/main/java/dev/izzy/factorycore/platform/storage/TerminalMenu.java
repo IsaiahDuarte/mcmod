@@ -1171,7 +1171,10 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
         gridStatus = TerminalCraftingPackets.GridStatus.READY;
       }
       case TerminalCraftingPackets.CUT -> {
-        crafting.cut(sender, command.source() == 0 ? 1 : -1);
+        // Q149: a crafting cell (0–8) cycles the items its ingredient accepts.
+        if (command.cell() >= 0 && command.cell() < 9)
+          crafting.cycleCell(sender, command.cell(), command.source() == 0 ? 1 : -1);
+        else crafting.cut(sender, command.source() == 0 ? 1 : -1);
         gridStatus = TerminalCraftingPackets.GridStatus.READY;
       }
       case TerminalCraftingPackets.COUNT -> {
@@ -1564,7 +1567,10 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
             gridStatus,
             crafted,
             fluidMask,
-            crafting.table().ordinal());
+            crafting.table().ordinal(),
+            crafting.choice(player()),
+            crafting.choices(player()),
+            crafting.alternativesMask(player()));
     if (!grid.equals(gridView)) {
       gridView = grid;
       PacketDistributor.sendToPlayer(player(), grid);

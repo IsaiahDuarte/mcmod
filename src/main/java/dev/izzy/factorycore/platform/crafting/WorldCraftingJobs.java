@@ -1109,8 +1109,17 @@ public final class WorldCraftingJobs {
       var input = CraftingInput.of(3, 3, cells);
       var holder = recipes.get(job);
       if (holder == null || !holder.value().matches(input, level)) {
-        holder =
-            level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level).orElse(null);
+        // Q149: several recipes may match the same cells; use the one this pattern was encoded
+        // from, the one whose output is the pattern's.
+        holder = null;
+        for (var candidate :
+            level.getRecipeManager().getRecipesFor(RecipeType.CRAFTING, input, level))
+          if (ItemStack.matches(
+              candidate.value().assemble(input, level.registryAccess()),
+              offer.contents().output())) {
+            holder = candidate;
+            break;
+          }
         if (holder == null) return null;
         recipes.put(job, holder);
       }

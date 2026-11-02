@@ -68,6 +68,13 @@ final class TerminalCrafting {
   private long cachedRevision;
   private Optional<RecipeHolder<CraftingRecipe>> cached = Optional.empty();
 
+  /**
+   * Q149 (n12): which of the crafting recipes matching the grid is shown, encoded and crafted, and
+   * how many match (by recipe ID order, so the choice is stable). A cell change starts again at the
+   * first.
+   */
+  private int variant, choices;
+
   long revision() {
     return revision;
   }
@@ -105,8 +112,18 @@ final class TerminalCrafting {
     revision++;
   }
 
-  /** Q6: chooses the next ({@code step} 1) or previous stonecutter result for the input. */
+  /**
+   * Q6: chooses the next ({@code step} 1) or previous stonecutter result for the input. Q149: on
+   * the crafting table it chooses among the recipes that match the grid.
+   */
   void cut(ServerPlayer player, int step) {
+    if (!processing && table == PatternContents.Table.CRAFTING) {
+      recipe(player);
+      if (choices < 2) return;
+      variant = Math.floorMod(variant + step, choices);
+      revision++;
+      return;
+    }
     if (table != PatternContents.Table.STONECUTTING || cells[0] == null) return;
     var codec = new PlatformResourceCodec(player.registryAccess());
     int count = TableRecipes.cuts(player.serverLevel(), codec.itemStack(cells[0], 1)).size();
@@ -150,6 +167,7 @@ final class TerminalCrafting {
   void set(int index, ResourceKey key) {
     if (index < 0 || index >= ALL_CELLS) throw new IllegalArgumentException("Grid cell");
     if (index == 0) cut = 0;
+    variant = 0;
     if (index < cells.length) cells[index] = key;
     else outputs[index - cells.length] = key;
     counts[index] = 1;
@@ -182,6 +200,7 @@ final class TerminalCrafting {
     Arrays.fill(outputs, null);
     Arrays.fill(counts, 1);
     cut = 0;
+    variant = 0;
     editingSlot = -1;
     editingId = null;
     revision++;
@@ -292,17 +311,101 @@ final class TerminalCrafting {
   }
 
   private Optional<RecipeHolder<CraftingRecipe>> lookup(ServerPlayer player) {
+    choices = 0;
     if (requirement().empty()) return Optional.empty();
     try {
       var codec = new PlatformResourceCodec(player.registryAccess());
       var input = CraftingInput.of(3, 3, ghosts(cells, codec));
-      return player
-          .serverLevel()
-          .getRecipeManager()
-          .getRecipeFor(RecipeType.CRAFTING, input, player.serverLevel());
+      var matches =
+          new ArrayList<>(
+              player
+                  .serverLevel()
+                  .getRecipeManager()
+                  .getRecipesFor(RecipeType.CRAFTING, input, player.serverLevel()));
+      matches.sort(java.util.Comparator.comparing(holder -> holder.id().toString()));
+      choices = matches.size();
+      if (matches.isEmpty()) return Optional.empty();
+      return Optional.of(matches.get(Math.floorMod(variant, matches.size())));
     } catch (IllegalArgumentException unsupported) {
       return Optional.empty();
     }
+  }
+
+  /** Q149: how many crafting recipes match the grid (0 or 1 when there is no choice). */
+  int choices(ServerPlayer player) {
+    recipe(player);
+    return processing || table != PatternContents.Table.CRAFTING
+        ? 0
+        : Math.min(choices, TerminalCraftingPackets.MAX_CHOICES);
+  }
+
+  /** Q149: the shown recipe choice, 0-based. */
+  int choice(ServerPlayer player) {
+    int count = choices(player);
+    return count == 0 ? 0 : Math.floorMod(variant, count);
+  }
+
+  /**
+   * Q149: the items the shown recipe accepts in crafting cell {@code index} (its ingredient's
+   * options, distinct, in the ingredient's order), or an empty list when the cell is empty, has no
+   * recipe or only one choice.
+   */
+  List<net.minecraft.world.item.Item> alternatives(ServerPlayer player, int index) {
+    if (processing || table != PatternContents.Table.CRAFTING) return List.of();
+    if (index < 0 || index >= cells.length || cells[index] == null) return List.of();
+    var holder = recipe(player);
+    if (holder.isEmpty()) return List.of();
+    ItemStack ghost;
+    try {
+      ghost = new PlatformResourceCodec(player.registryAccess()).itemStack(cells[index], 1);
+    } catch (IllegalArgumentException unsupported) {
+      return List.of();
+    }
+    for (var ingredient : holder.get().value().getIngredients()) {
+      if (ingredient.isEmpty() || !ingredient.test(ghost)) continue;
+      var options = new java.util.LinkedHashSet<net.minecraft.world.item.Item>();
+      for (var option : ingredient.getItems()) options.add(option.getItem());
+      return options.size() < 2
+              || options.size() > dev.izzy.factorycore.core.crafting.Pattern.MAX_ALTERNATIVES
+          ? List.of()
+          : List.copyOf(options);
+    }
+    return List.of();
+  }
+
+  /** Q149: cells (bit per crafting cell) whose ingredient accepts other items. */
+  int alternativesMask(ServerPlayer player) {
+    if (maskRevision == revision) return mask;
+    maskRevision = revision;
+    mask = computeMask(player);
+    return mask;
+  }
+
+  private long maskRevision = -1;
+  private int mask;
+
+  private int computeMask(ServerPlayer player) {
+    int mask = 0;
+    for (int index = 0; index < cells.length; index++)
+      if (!alternatives(player, index).isEmpty()) mask |= 1 << index;
+    return mask;
+  }
+
+  /**
+   * Q149: puts the next ({@code step} 1) or previous item the recipe accepts in cell {@code index}.
+   * The recipe choice is kept when it still matches.
+   */
+  void cycleCell(ServerPlayer player, int index, int step) {
+    var options = alternatives(player, index);
+    if (options.isEmpty()) return;
+    var codec = new PlatformResourceCodec(player.registryAccess());
+    var current = codec.itemStack(cells[index], 1).getItem();
+    int at = Math.max(0, options.indexOf(current));
+    var next = options.get(Math.floorMod(at + step, options.size()));
+    int keep = variant;
+    cells[index] = codec.itemKey(new ItemStack(next));
+    revision++;
+    variant = keep;
   }
 
   ItemStack preview(ServerPlayer player) {

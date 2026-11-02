@@ -261,6 +261,25 @@ final class TerminalCraftingPanel {
             + PatternContents.Table.of(menu().gridView().table()).key());
   }
 
+  /** Q149: the recipe-choice row under the result: "‹ i/n ›", panel-relative. */
+  private Rect choiceRow() {
+    return new Rect(resultX() - 4, resultY() + 24, 30, 10);
+  }
+
+  /** Q149: whether several crafting recipes match and the choice row is shown. */
+  private boolean choosing() {
+    var view = menu().gridView();
+    return !view.processing()
+        && view.table() == PatternContents.Table.CRAFTING.ordinal()
+        && view.choices() > 1;
+  }
+
+  /** Q149: whether crafting cell {@code index} accepts other items (scroll cycles them). */
+  private boolean alternative(int index) {
+    var view = menu().gridView();
+    return !view.processing() && index < 9 && (view.alternatives() & (1 << index)) != 0;
+  }
+
   private boolean stonecutting() {
     var view = menu().gridView();
     return !view.processing() && view.table() == PatternContents.Table.STONECUTTING.ordinal();
@@ -515,6 +534,7 @@ final class TerminalCraftingPanel {
       if (view.cells().get(index).isEmpty()) continue;
       var shown = ghostIcon(index).getDefaultInstance();
       graphics.renderFakeItem(shown, cellX + 1, cellY + 1);
+      if (alternative(index)) Panels.choiceMark(graphics, new Rect(cellX + 14, cellY + 1, 3, 3));
       if (view.processing())
         screen.drawCount(
             graphics, shown, cellX, cellY, CountText.compact(Integer.toString(view.amount(index))));
@@ -530,6 +550,17 @@ final class TerminalCraftingPanel {
         shown.setCount(Math.max(1, view.resultCount()));
         graphics.renderFakeItem(shown, left + resultX() + 3, top + resultY() + 3);
         graphics.renderItemDecorations(font, shown, left + resultX() + 3, top + resultY() + 3);
+      }
+      if (choosing()) {
+        var row = choiceRow().offset(left, top);
+        String text = "‹" + (view.choice() + 1) + "/" + view.choices() + "›";
+        graphics.drawString(
+            font,
+            text,
+            row.x() + (row.width() - font.width(text)) / 2,
+            row.y() + 1,
+            Panels.TEXT,
+            false);
       }
     }
   }
@@ -588,6 +619,10 @@ final class TerminalCraftingPanel {
                   .getHoverName());
         else lines.add(ghostIcon(cell).getName(ghostIcon(cell).getDefaultInstance()));
         if (ghost.processing()) lines.add(ghostAmount(cell));
+        if (alternative(cell))
+          lines.add(
+              Component.translatable("gui.factorycore.terminal.grid.cell.alternatives")
+                  .withStyle(net.minecraft.ChatFormatting.AQUA));
       }
       lines.add(Component.translatable("gui.factorycore.terminal.grid.cell.help"));
       graphics.renderTooltip(font, lines, Optional.empty(), mouseX, mouseY);
@@ -605,6 +640,13 @@ final class TerminalCraftingPanel {
               stonecutting()
                   ? "gui.factorycore.terminal.grid.result.cut.help"
                   : "gui.factorycore.terminal.grid.result.help"));
+      if (choosing())
+        lines.add(
+            Component.translatable(
+                    "gui.factorycore.terminal.grid.result.choices",
+                    menu().gridView().choice() + 1,
+                    menu().gridView().choices())
+                .withStyle(net.minecraft.ChatFormatting.AQUA));
       graphics.renderTooltip(font, lines, Optional.empty(), mouseX, mouseY);
       return true;
     }
@@ -622,6 +664,14 @@ final class TerminalCraftingPanel {
     // Q6: clicking a stonecutter result picks the next one (right-click: the previous one).
     if (stonecutting() && overResult(mouseX, mouseY) && (button == 0 || button == 1)) {
       grid(TerminalCraftingPackets.CUT, -1, button, 1, new byte[32]);
+      return true;
+    }
+    // Q149: the left half of the choice row shows the previous matching recipe, the right half
+    // the next.
+    var choice = choiceRow().offset(screen.left(), screen.top());
+    if (choosing() && button == 0 && choice.contains(mouseX, mouseY)) {
+      boolean next = mouseX >= choice.x() + choice.width() / 2.0;
+      grid(TerminalCraftingPackets.CUT, -1, next ? 0 : 1, 1, new byte[32]);
       return true;
     }
     int cell = cellAt(mouseX, mouseY);
@@ -673,8 +723,16 @@ final class TerminalCraftingPanel {
       grid(TerminalCraftingPackets.CUT, -1, scrollY < 0 ? 0 : 1, 1, new byte[32]);
       return true;
     }
+    if (choosing() && overResult(mouseX, mouseY) && scrollY != 0) {
+      grid(TerminalCraftingPackets.CUT, -1, scrollY < 0 ? 0 : 1, 1, new byte[32]);
+      return true;
+    }
     int cell = cellAt(mouseX, mouseY);
     var grid = menu().gridView();
+    if (cell >= 0 && alternative(cell) && scrollY != 0) {
+      grid(TerminalCraftingPackets.CUT, cell, scrollY < 0 ? 0 : 1, 1, new byte[32]);
+      return true;
+    }
     if (cell >= 0 && grid.processing() && scrollY != 0) {
       int index = cell;
       if (grid.cells().get(index).isEmpty()) return true;

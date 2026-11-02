@@ -74,6 +74,9 @@ public final class TerminalCraftingPackets {
    */
   public static final int INTO_STORAGE = 1;
 
+  /** Q149: at most this many matching crafting recipes are told apart. */
+  public static final int MAX_CHOICES = 64;
+
   /** MODE: cell 0 = crafting, 1 = processing. COUNT: cell 0–11, crafts = units 1–64. */
   public static final int MODE = 5, COUNT = 6;
 
@@ -179,11 +182,52 @@ public final class TerminalCraftingPackets {
       GridStatus status,
       int crafted,
       int fluidMask,
-      int table)
+      int table,
+      int choice,
+      int choices,
+      int alternatives)
       implements CustomPacketPayload {
     public static final Type<View> TYPE =
         new Type<>(
             ResourceLocation.fromNamespaceAndPath(FactoryCoreMod.MOD_ID, "terminal_grid_view"));
+
+    /**
+     * Without Q149's recipe choices: {@code choice} of {@code choices} matching crafting recipes is
+     * shown, and bit {@code n} of {@code alternatives} marks a crafting cell whose ingredient
+     * accepts other items.
+     */
+    public View(
+        int menu,
+        UUID session,
+        long gridRevision,
+        List<String> cells,
+        List<Integer> counts,
+        boolean processing,
+        String result,
+        String resultName,
+        int resultCount,
+        GridStatus status,
+        int crafted,
+        int fluidMask,
+        int table) {
+      this(
+          menu,
+          session,
+          gridRevision,
+          cells,
+          counts,
+          processing,
+          result,
+          resultName,
+          resultCount,
+          status,
+          crafted,
+          fluidMask,
+          table,
+          0,
+          0,
+          0);
+    }
 
     public View(
         int menu,
@@ -241,8 +285,13 @@ public final class TerminalCraftingPackets {
           || resultCount < 0
           || resultCount > 64
           || crafted < 0
-          || crafted > GridRequirement.MAX_CRAFTS)
-        throw new IllegalArgumentException("Invalid grid view bounds");
+          || crafted > GridRequirement.MAX_CRAFTS
+          || choices < 0
+          || choices > MAX_CHOICES
+          || choice < 0
+          || choices > 0 && choice >= choices
+          || alternatives < 0
+          || alternatives >= 1 << 9) throw new IllegalArgumentException("Invalid grid view bounds");
       for (int cell = 0; cell < CELLS; cell++)
         if ((fluidMask & (1 << cell)) != 0 && cells.get(cell).isEmpty())
           throw new IllegalArgumentException("Empty fluid ghost");
@@ -269,6 +318,9 @@ public final class TerminalCraftingPackets {
               buffer.writeVarInt(value.crafted);
               buffer.writeVarInt(value.fluidMask);
               buffer.writeVarInt(value.table);
+              buffer.writeVarInt(value.choice);
+              buffer.writeVarInt(value.choices);
+              buffer.writeVarInt(value.alternatives);
             },
             buffer -> {
               int menu = buffer.readVarInt();
@@ -290,6 +342,9 @@ public final class TerminalCraftingPackets {
                   buffer.readUtf(96),
                   buffer.readVarInt(),
                   WireEnums.read(buffer, GridStatus.class),
+                  buffer.readVarInt(),
+                  buffer.readVarInt(),
+                  buffer.readVarInt(),
                   buffer.readVarInt(),
                   buffer.readVarInt(),
                   buffer.readVarInt());

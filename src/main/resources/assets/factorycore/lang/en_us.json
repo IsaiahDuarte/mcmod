@@ -918,6 +918,8 @@
   "gui.factorycore.terminal.grid.table.stonecutting": "Stonecutter",
   "gui.factorycore.terminal.grid.table.smithing": "Smithing table",
   "gui.factorycore.terminal.grid.table.help": "Which workstation's recipe the grid encodes. Stonecutter: put the input in the first cell, then click the result to choose. Smithing table: template, base and addition in the top row. A Crafter makes both.",
+  "gui.factorycore.terminal.grid.result.choices": "Recipe %s of %s match these items: click ‹ or › below, or scroll here, to choose. Encode and Hand craft use the one shown.",
+  "gui.factorycore.terminal.grid.cell.alternatives": "This recipe also accepts other items here: scroll to choose one.",
   "gui.factorycore.terminal.grid.result.cut.help": "Click for the next stonecutter result, right-click for the previous one, or scroll.",
   "gui.factorycore.terminal.grid.status.encode_only": "Encode this recipe as a pattern; a Crafter makes it",
   "tooltip.factorycore.pattern_table.stonecutting": "Stonecutter recipe",

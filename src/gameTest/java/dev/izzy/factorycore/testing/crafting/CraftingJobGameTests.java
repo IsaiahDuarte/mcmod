@@ -162,6 +162,42 @@ public final class CraftingJobGameTests {
         .thenSucceed();
   }
 
+  /**
+   * Q149: two recipes match dirt over dirt (gameTest data). A pattern encoded from the second
+   * (podzol) crafts it at the Crafter, which picks the matching recipe with the pattern's output.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void aPatternFromTheSecondMatchingRecipeCraftsItsOwnOutput(GameTestHelper h) {
+    var f = setup(h);
+    f.unit()
+        .patterns()
+        .insertItem(2, pattern(new int[] {0, 3}, Items.DIRT, Items.PODZOL, 1), false);
+    var codec = new PlatformResourceCodec(h.getLevel().registryAccess());
+    var dirt = codec.itemKey(new ItemStack(Items.DIRT));
+    var podzol = codec.itemKey(new ItemStack(Items.PODZOL));
+    UUID[] id = {null};
+    h.startSequence()
+        .thenWaitUntil(() -> ready(h, f))
+        .thenExecute(
+            () -> {
+              f.saved().registry().insert(f.cell(), dirt, 2);
+              var submission = jobs(h).submit(actor(f.owner()), f.origin(), podzol, 1);
+              h.assertTrue(submission.job() != null, "Submitted: " + submission.reason());
+              id[0] = submission.job();
+            })
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved().craftingJobs().get(id[0]) == null,
+                    "Job finishes: " + f.saved().craftingJobs().get(id[0])))
+        .thenExecute(
+            () ->
+                h.assertTrue(
+                    f.stock(podzol) == 1 && f.stock(dirt) == 0,
+                    "One podzol from two dirt, not the first recipe's coarse dirt"))
+        .thenSucceed();
+  }
+
   @GameTest(template = "empty", timeoutTicks = 200)
   public static void shortageOrDeniedRequestReservesNothing(GameTestHelper h) {
     var f = setup(h);

@@ -256,6 +256,125 @@ public final class TerminalCraftingGameTests {
         .thenSucceed();
   }
 
+  /**
+   * Q149 (n12): two test recipes (gameTest data) both make something from dirt over dirt. The grid
+   * lists both, CUT shows the second, and Encode and Hand craft use the one shown.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void severalMatchingRecipesAreChosenAndUsed(GameTestHelper h) {
+    var f = setup(h);
+    var podzol = f.codec.itemKey(new ItemStack(Items.PODZOL));
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
+        .thenExecute(
+            () -> {
+              f.player.getInventory().setItem(0, new ItemStack(Items.DIRT, 2));
+              f.player
+                  .getInventory()
+                  .setItem(1, new ItemStack(CraftingContent.BLANK_PATTERN.get()));
+              open(h, f);
+            })
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              ghost(f, 0, 0);
+              ghost(f, 3, 0);
+              var view = menu(f).gridView();
+              h.assertTrue(
+                  view.choices() == 2
+                      && view.choice() == 0
+                      && view.result().equals("minecraft:coarse_dirt"),
+                  "Both recipes match; the first by ID is shown: " + view);
+              grid(f, TerminalCraftingPackets.CUT, -1, 0, 1, new byte[32]);
+              view = menu(f).gridView();
+              h.assertTrue(
+                  view.choice() == 1 && view.result().equals("minecraft:podzol"),
+                  "The arrow shows the second recipe: " + view);
+            })
+        .thenIdle(3)
+        .thenExecute(() -> grid(f, TerminalCraftingPackets.ENCODE, -1, 0, 1, new byte[32]))
+        .thenWaitUntil(
+            () -> {
+              menu(f).broadcastChanges();
+              h.assertTrue(
+                  menu(f).gridView().status() == TerminalCraftingPackets.GridStatus.ENCODED,
+                  "Encoded: " + menu(f).gridView().status());
+            })
+        .thenExecute(
+            () -> {
+              var pattern =
+                  f.player
+                      .getInventory()
+                      .getItem(slotOf(f, CraftingContent.CRAFTING_PATTERN.get()));
+              h.assertTrue(
+                  pattern.get(CraftingContent.PATTERN.get()).output().is(Items.PODZOL),
+                  "The pattern records the recipe shown");
+            })
+        .thenIdle(3)
+        .thenExecute(
+            () ->
+                grid(
+                    f,
+                    TerminalCraftingPackets.CRAFT,
+                    -1,
+                    TerminalCraftingPackets.INTO_STORAGE,
+                    1,
+                    new byte[32]))
+        .thenWaitUntil(
+            () ->
+                h.assertTrue(
+                    f.saved.registry().stock(f.cell, podzol).total() == 1
+                        && count(f, Items.DIRT) == 0,
+                    "Hand craft makes the recipe shown"))
+        .thenExecute(() -> logout(f))
+        .thenSucceed();
+  }
+
+  /**
+   * Q149: a cell whose ingredient is a tag (the stick recipe's planks) is marked, and CUT on it
+   * puts another plank there while the recipe still matches.
+   */
+  @GameTest(template = "empty", timeoutTicks = 300)
+  public static void aTagCellCyclesTheItemsItsRecipeAccepts(GameTestHelper h) {
+    var f = setup(h);
+    h.startSequence()
+        .thenWaitUntil(
+            () ->
+                TestMenus.ready(
+                    h, f.terminal.canUse(f.player), f.terminal.getBlockPos(), "Network ready"))
+        .thenExecute(
+            () -> {
+              f.player.getInventory().setItem(0, new ItemStack(Items.OAK_PLANKS, 2));
+              open(h, f);
+            })
+        .thenWaitUntil(() -> loaded(h, f))
+        .thenExecute(
+            () -> {
+              ghost(f, 0, 0);
+              ghost(f, 3, 0);
+              var view = menu(f).gridView();
+              h.assertTrue(
+                  view.result().equals("minecraft:stick")
+                      && (view.alternatives() & 1) != 0
+                      && (view.alternatives() & 8) != 0
+                      && (view.alternatives() & 2) == 0,
+                  "Both plank cells accept other planks: " + view);
+              grid(f, TerminalCraftingPackets.CUT, 0, 0, 1, new byte[32]);
+              view = menu(f).gridView();
+              h.assertTrue(
+                  !view.cells().get(0).equals("minecraft:oak_planks")
+                      && view.cells().get(0).endsWith("_planks")
+                      && view.cells().get(3).equals("minecraft:oak_planks")
+                      && view.result().equals("minecraft:stick"),
+                  "Cell 0 now holds another plank and the recipe still matches: " + view);
+              logout(f);
+            })
+        .thenSucceed();
+  }
+
   /** Q148: fills the cell with cobblestone until only {@code free} item units remain. */
   private static void leaveFree(Fixture f, long free) {
     var cobble = f.codec.itemKey(new ItemStack(Items.COBBLESTONE));

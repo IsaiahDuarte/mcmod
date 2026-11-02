@@ -883,6 +883,51 @@ public final class PresentationClientVerification {
           }
         });
     step(client -> press(client, "Clear"));
+    // Q149 (n12): two recipes (client-test data) make something from dirt over dirt. The result
+    // shows "‹ 1/2 ›"; a click on its right half shows the second. Planks cells are marked.
+    server(player -> storeItems(player, Items.DIRT, 2));
+    step(
+        client -> {
+          if (!terminal(client).getMenu().gridView().cells().stream().allMatch(String::isEmpty)
+              || waited() < 4) return false;
+          int[] at = terminal(client).encoderCell(0);
+          return terminal(client).mouseClicked(at[0], at[1], 0);
+        });
+    step(client -> waited() > 2 && useGhost(client, "minecraft:dirt"));
+    step(
+        client -> {
+          if (terminal(client).getMenu().gridView().cells().get(0).isEmpty() || waited() < 4)
+            return false;
+          int[] at = terminal(client).encoderCell(3);
+          return terminal(client).mouseClicked(at[0], at[1], 0);
+        });
+    step(client -> waited() > 2 && useGhost(client, "minecraft:dirt"));
+    step(
+        client -> {
+          var grid = terminal(client).getMenu().gridView();
+          return grid.choices() == 2
+              && grid.result().equals("minecraft:coarse_dirt")
+              && waited() > 4;
+        });
+    panelCaptures("crafting-choices");
+    step(
+        client -> {
+          var screen = terminal(client);
+          return screen.mouseClicked(
+              screen.getGuiLeft() + screen.resultX() + 20,
+              screen.getGuiTop() + screen.resultY() + 28,
+              0);
+        });
+    step(
+        client -> {
+          var grid = terminal(client).getMenu().gridView();
+          if (waited() < 4 || !grid.result().equals("minecraft:podzol")) return false;
+          check(grid.choice() == 1, "The arrow shows the second matching recipe");
+          evidence.append(
+              "recipe choices: dirt over dirt shows 1/2 coarse dirt, then 2/2 podzol\n");
+          return press(client, "Clear");
+        });
+    server(player -> storeItems(player, Items.DIRT, -2));
     step(
         client ->
             terminal(client).getMenu().gridView().cells().stream().allMatch(String::isEmpty)
@@ -2157,6 +2202,27 @@ public final class PresentationClientVerification {
   /** The view tool, whose word is the current view (Q137). */
   private static boolean pressView(Minecraft client) {
     return press(client, "Stored") || press(client, "All") || press(client, "Craftable");
+  }
+
+  /**
+   * Q149: stores {@code amount} of {@code item} in the screens drive's item cell (negative: takes).
+   */
+  private static void storeItems(
+      ServerPlayer player, net.minecraft.world.item.Item item, long amount) {
+    var drive =
+        (StorageDriveEntity) player.serverLevel().getBlockEntity(PresentationScenes.SCREENS.east());
+    var key = new PlatformResourceCodec(player.registryAccess()).itemKey(new ItemStack(item));
+    var registry = DeviceSavedData.get(player.server).registry();
+    for (int slot = 0; slot < 4; slot++) {
+      if (drive.cell(slot).isEmpty()) continue;
+      var cell = CellHandleData.read(drive.cell(slot));
+      if (registry.ownership(cell.backing()).definition().kind() != ResourceKind.ITEM) continue;
+      if (amount > 0) registry.insert(cell, key, amount);
+      else if (registry.stock(cell, key).total() >= -amount)
+        registry.extract(cell, key, -amount, null);
+      else continue;
+      return;
+    }
   }
 
   /** Q147: shows one kind in the open terminal (the kind tool's cycle, set directly). */
