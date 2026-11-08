@@ -932,6 +932,69 @@ public final class TerminalGameTests {
   }
 
   /**
+   * Q129: a grant change makes the terminal's observation stale (DENIED). The rows stay shown while
+   * it rescans, so the grid does not flash empty and a row command sent then still works. Before
+   * the fix the rows were cleared at once and the command found no row.
+   */
+  @GameTest(template = "empty", timeoutTicks = 400)
+  public static void rowsAndRowCommandsSurviveAStaleObservation(GameTestHelper helper) {
+    var f = setup(helper);
+    var inventory = f.player.getInventory();
+    var codec = new PlatformResourceCodec(f.player.registryAccess());
+    var cobble = codec.itemKey(new ItemStack(Items.COBBLESTONE));
+    helper
+        .startSequence()
+        .thenWaitUntil(() -> ready(helper, f))
+        .thenExecute(
+            () -> {
+              f.saved.registry().insert(f.cell, cobble, 10);
+              inventory.setItem(0, new ItemStack(Items.COBBLESTONE, 1));
+              open(helper, f);
+            })
+        .thenWaitUntil(() -> loaded(helper, f))
+        .thenWaitUntil(() -> helper.assertTrue(shown(f), "Listed"))
+        .thenExecute(
+            () -> {
+              var network =
+                  dev.izzy.factorycore.platform.network.WorldNetworks.get(f.player.server)
+                      .membership(f.terminal.origin())
+                      .scope()
+                      .network();
+              f.saved
+                  .network(network)
+                  .setGrants(
+                      new dev.izzy.factorycore.core.network.NetworkPermissions.Actor(
+                          f.player.getUUID(), false),
+                      java.util.UUID.randomUUID(),
+                      java.util.EnumSet.of(
+                          dev.izzy.factorycore.core.network.NetworkPermissions.Permission.VIEW));
+              menu(f).broadcastChanges();
+              helper.assertTrue(
+                  !menu(f).view().rows().isEmpty(),
+                  "The rows stay while the stale observation is rescanned");
+              command(f, TerminalPackets.DEPOSIT_ROW, row(f, cobble), 1, new byte[32]);
+            })
+        .thenWaitUntil(
+            () ->
+                helper.assertTrue(
+                    shown(f)
+                        && inventory.countItem(Items.COBBLESTONE) == 0
+                        && f.saved.registry().stock(f.cell, cobble).total() == 11,
+                    "The row command sent during the rescan stores the one cobblestone: status "
+                        + menu(f).view().status()
+                        + ", busy "
+                        + menu(f).view().busy()
+                        + ", held "
+                        + inventory.countItem(Items.COBBLESTONE)
+                        + ", stored "
+                        + f.saved.registry().stock(f.cell, cobble).total()
+                        + ", rows "
+                        + menu(f).view().rows()))
+        .thenExecute(() -> logout(f))
+        .thenSucceed();
+  }
+
+  /**
    * Q63: Space-click on a main-inventory slot stores the whole main inventory until storage is
    * full; the stack that only partly fits keeps the rest, later stacks and the hotbar stay.
    */

@@ -483,20 +483,13 @@ public final class TerminalMenu extends AbstractContainerMenu implements DeviceS
     if (query != null && !busy) {
       var result = transfers().search().window(query, actor(), offset, pageSize);
       if (result.reason() == OperationResult.Reason.DENIED) {
-        // A captured scope/grant or the exclusive sorted-page anchor went stale.
+        // A captured scope/grant or the exclusive sorted-page anchor went stale (a network
+        // revalidation changes the scope). Q129: the rows shown stay until the new observation
+        // replaces them, as after a move (Q132), so the grid does not flash empty and a row
+        // command in between still names its row. If access was really lost, rescan's start is
+        // refused and clears them. The rows are unchanged, so their tokens and the revision that
+        // names them stay valid until the new rows arrive.
         after = null;
-        selections = List.of();
-        selectionNames = List.of();
-        selectionCraftable = List.of();
-        next = null;
-        totalRows = 0;
-        allRows = 0;
-        offset = 0;
-        used = "0";
-        capacity = "0";
-        infinite = false;
-        external = false;
-        revision++;
         rescan(tick);
         result =
             query == null ? null : transfers().search().window(query, actor(), offset, pageSize);
